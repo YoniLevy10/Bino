@@ -25,22 +25,27 @@ async function loadTemplateTextFromDb(
   clientId: string,
   templateKey: WhatsAppTemplateKey
 ): Promise<string | null> {
-  const { data, error } = await admin
-    .from('whatsapp_templates')
-    .select('template_text')
-    .eq('client_id', clientId)
-    .eq('template_key', templateKey)
-    .maybeSingle()
+  try {
+    const { data, error } = await admin
+      .from('whatsapp_templates')
+      .select('template_text')
+      .eq('client_id', clientId)
+      .eq('template_key', templateKey)
+      .maybeSingle()
 
-  if (error) {
-    console.warn('[whatsapp_templates]', error.message)
-  }
+    if (error) {
+      console.warn('[whatsapp_templates]', error.message)
+    }
 
-  const fromDb = (data as { template_text?: string } | null)?.template_text
-  if (fromDb != null && String(fromDb).trim().length > 0) {
-    return String(fromDb)
+    const fromDb = (data as { template_text?: string } | null)?.template_text
+    if (fromDb != null && String(fromDb).trim().length > 0) {
+      return String(fromDb)
+    }
+    return null
+  } catch (err) {
+    console.warn('[whatsapp_templates] fetch failed, using default:', err instanceof Error ? err.message : String(err))
+    return null
   }
-  return null
 }
 
 /**

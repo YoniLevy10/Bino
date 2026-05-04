@@ -1133,8 +1133,8 @@ async function runWhatsAppInboundBackground(
         .eq('is_active', true)
 
       if (deactivateError) {
-        console.error('❌ Error deactivating old sessions:', deactivateError)
-        return
+        console.error('❌ Error deactivating old sessions (continuing):', deactivateError)
+        // Non-fatal: old sessions may linger, but we still create a new one and reply
       }
 
       const { data: createdSession, error: sessionInsertError } = await supabaseAdmin
@@ -1151,15 +1151,20 @@ async function runWhatsAppInboundBackground(
         .single()
 
       if (sessionInsertError) {
-        console.error('❌ Error creating session:', sessionInsertError)
-        return
+        console.error('❌ Error creating session (continuing to reply):', sessionInsertError)
+        // Non-fatal: reply to the user even if session state failed to save
+      } else {
+        console.log('✅ Session created:', createdSession.id)
       }
 
-      console.log('✅ Session created:', createdSession.id)
       console.log('🏗️ Project linked:', project.name)
 
       if (!isTestWhatsAppSender) {
-        await getOrCreateResident(supabaseAdmin, webhookClientId, from, project.id)
+        try {
+          await getOrCreateResident(supabaseAdmin, webhookClientId, from, project.id)
+        } catch (residentErr) {
+          console.error('❌ Error in getOrCreateResident (continuing):', residentErr)
+        }
       }
 
       try {

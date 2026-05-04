@@ -1,5 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
+const fetchWithTimeout = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer))
+}
+
 export function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,5 +30,7 @@ export function getSupabaseAdmin() {
     throw new Error(`Invalid NEXT_PUBLIC_SUPABASE_URL format: ${supabaseUrl}`)
   }
 
-  return createClient(supabaseUrl, supabaseServiceRoleKey)
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    global: { fetch: fetchWithTimeout },
+  })
 }
