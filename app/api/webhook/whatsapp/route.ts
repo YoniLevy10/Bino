@@ -17,6 +17,7 @@ import {
 } from '@/lib/whatsapp-intent'
 import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
+import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
 import { resolveWhatsAppTemplateMessage } from '@/lib/whatsapp-templates'
 import { sendManagerSMS, sendWorkerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
 import {
@@ -602,17 +603,16 @@ async function runWhatsAppInboundBackground(
     }
 
     const clientName = (waClient as { name?: string | null } | null)?.name || 'המערכת'
-    const smsSenderName = (waClient as { sms_sender_name?: string | null } | null)?.sms_sender_name || 'במקור'
+    const smsSenderName = (waClient as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
     const clientManagerPhone = (waClient as { manager_phone?: string | null } | null)?.manager_phone || null
 
     type WaTemplateVars = Partial<
-      Record<'project_name' | 'ticket_number' | 'description' | 'reporter_name' | 'building_line', string>
+      Record<'project_name' | 'ticket_number' | 'description' | 'reporter_name' | 'building_line' | 'list', string>
     >
 
     async function sendWa(
       to: string,
       templateKey: WhatsAppTemplateKey,
-      fallbackText: string,
       creds?: { phoneNumberId?: string; accessToken?: string },
       vars: WaTemplateVars = {}
     ) {
@@ -620,7 +620,7 @@ async function runWhatsAppInboundBackground(
         supabaseAdmin,
         webhookClientId,
         templateKey,
-        fallbackText,
+        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[templateKey],
         vars
       )
       return sendWhatsAppTextMessage(to, msg, creds, { clientId: webhookClientId })
@@ -648,11 +648,6 @@ async function runWhatsAppInboundBackground(
       hasMedia: !!mediaId,
     })
 
-    /** מוצג כשאין טקסט תקין — שתי הזרימות: QR או חיפוש בניין ואז תיאור, ואז אופציה לתמונה */
-    const flowHelpMessage =
-      'לדיווח תקלה: כתבו בטקסט את תיאור הבעיה, או סרקו את קוד ה־QR בבניין.\n' +
-      'אחרי שנפתחה פנייה – אפשר לשלוח גם תמונה של התקלה.'
-
     /** Shared WhatsApp location → ticket metadata / session stash */
     async function handleInboundLocation(loc: WaLocation) {
       const { data: session, error: sessionError } = await supabaseAdmin
@@ -672,12 +667,7 @@ async function runWhatsAppInboundBackground(
       if (session?.active_ticket_id) {
         await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, session.active_ticket_id, loc)
         try {
-          await sendWa(
-            waRecipient,
-            'ticket_opened',
-            '📍 קיבלנו את המיקום וצירפנו אותו לתקלה.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send location ack (active ticket):', sendError)
         }
@@ -694,7 +684,7 @@ async function runWhatsAppInboundBackground(
       if (recentTicket && recentTicket.status !== 'CLOSED') {
         await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, recentTicket.id, loc)
         try {
-          await sendWa(waRecipient, 'ticket_opened', '📍 קיבלנו את המיקום וצירפנו לתקלה האחרונה.', residentWhatsAppCreds)
+          await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send location ack (recent ticket):', sendError)
         }
@@ -725,12 +715,7 @@ async function runWhatsAppInboundBackground(
         }
 
         try {
-          await sendWa(
-            waRecipient,
-            'ticket_opened',
-            '📍 קיבלנו את המיקום!\nכתבו עכשיו בקצרה את תיאור התקלה — נשלב את המיקום בפנייה.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'location_stashed', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send location-before-text:', sendError)
         }
@@ -738,7 +723,7 @@ async function runWhatsAppInboundBackground(
       }
 
       try {
-        await sendWa(waRecipient, 'welcome', flowHelpMessage, residentWhatsAppCreds)
+        await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
       } catch (sendError) {
         console.error('⚠️ Failed to send location-context guidance:', sendError)
       }
@@ -749,12 +734,7 @@ async function runWhatsAppInboundBackground(
         await handleInboundLocation(waLocation)
       } else {
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            'לא הצלחנו לקרוא את פרטי המיקום — נסו שוב או שלחו כתובת בטקסט.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'location_error', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send invalid-location reply:', sendError)
         }
@@ -764,7 +744,7 @@ async function runWhatsAppInboundBackground(
 
     if (messageType === 'sticker') {
       try {
-        await sendWa(waRecipient, 'welcome', 'קיבלנו את ההודעה שלך 👍', residentWhatsAppCreds)
+        await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
       } catch (sendError) {
         console.error('⚠️ Failed to send sticker reply:', sendError)
       }
@@ -773,7 +753,7 @@ async function runWhatsAppInboundBackground(
 
     if (messageType === 'contacts') {
       try {
-        await sendWa(waRecipient, 'welcome', 'לדיווח תקלה שלח הודעת טקסט', residentWhatsAppCreds)
+        await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
       } catch (sendError) {
         console.error('⚠️ Failed to send contacts reply:', sendError)
       }
@@ -782,7 +762,7 @@ async function runWhatsAppInboundBackground(
 
     if (messageType === 'audio') {
       try {
-        await sendWa(waRecipient, 'welcome', 'לדיווח תקלה שלח הודעת טקסט', residentWhatsAppCreds)
+        await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
       } catch (sendError) {
         console.error('⚠️ Failed to send audio reply:', sendError)
       }
@@ -791,12 +771,7 @@ async function runWhatsAppInboundBackground(
 
     if (messageType === 'video' || messageType === 'document') {
       try {
-        await sendWa(
-          waRecipient,
-          'error_general',
-          'לא הצלחנו לקרוא את ההודעה, נסה שוב בטקסט',
-          residentWhatsAppCreds
-        )
+        await sendWa(waRecipient, 'unsupported_message', residentWhatsAppCreds)
       } catch (sendError) {
         console.error('⚠️ Failed to send unsupported-media reply:', sendError)
       }
@@ -875,12 +850,7 @@ async function runWhatsAppInboundBackground(
               // Step 4: Send confirmation message
               console.log(`⏳ PIPELINE_STEP: 4/4 Sending WhatsApp confirmation`)
               try {
-                await sendWa(
-                  waRecipient,
-                  'ticket_opened',
-                  '✅ התמונה התקבלה בהצלחה וצורפה לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
-                  residentWhatsAppCreds
-                )
+                await sendWa(waRecipient, 'image_attached', residentWhatsAppCreds)
                 console.log(`✅ PIPELINE_SUCCESS: Step 4 USER_MSG - Confirmation message sent`)
               } catch (sendError) {
                 console.error('⚠️ PIPELINE_WARNING: Step 4 failed to send confirmation (attachment was successful)', {
@@ -916,12 +886,7 @@ async function runWhatsAppInboundBackground(
           ticketId,
         })
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            '⚠️ לא הצלחנו להוסיף את התמונה, אך התקלה שלך תקבלה.\n\nנעדכן כשיהיה טיפול.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'image_failed', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ PIPELINE_WARNING: Failed to send fallback message', {
             error: sendError,
@@ -949,12 +914,7 @@ async function runWhatsAppInboundBackground(
           console.error('❌ Failed to stash pending WhatsApp image on session:', stashErr)
         } else {
           try {
-            await sendWa(
-              waRecipient,
-              'ticket_opened',
-              '🖼️ קיבלנו את התמונה!\n\nכדי לצרף אותה לתקלה, כתבו עכשיו בקצרה את תיאור התקלה בטקסט.',
-              residentWhatsAppCreds
-            )
+            await sendWa(waRecipient, 'image_stashed', residentWhatsAppCreds)
           } catch (sendError) {
             console.error('⚠️ Failed to send image-before-text guidance:', sendError)
           }
@@ -1001,12 +961,7 @@ async function runWhatsAppInboundBackground(
             if (attachmentCreated) {
               console.log(`⏳ PIPELINE_STEP: 4/4 Sending WhatsApp confirmation`)
               try {
-                await sendWa(
-                  waRecipient,
-                  'ticket_opened',
-                  '✅ התמונה התקבלה בהצלחה וצורפה לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
-                  residentWhatsAppCreds
-                )
+                await sendWa(waRecipient, 'image_attached', residentWhatsAppCreds)
               } catch (sendError) {
                 console.error('⚠️ PIPELINE_WARNING: Failed to send confirmation (recent ticket attach)', sendError)
               }
@@ -1024,12 +979,7 @@ async function runWhatsAppInboundBackground(
 
         console.log(`📤 PIPELINE_FALLBACK: recent-ticket attach failed`, { failureReason, ticketId })
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            '⚠️ לא הצלחנו להוסיף את התמונה, אך התקלה שלך התקבלה.\n\nאם תרצו, נסו לשלוח את התמונה שוב או פנו למנהלת הבניין.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'image_failed', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send recent-ticket fallback message:', sendError)
         }
@@ -1043,7 +993,7 @@ async function runWhatsAppInboundBackground(
       console.log('📍 Image received but no session context and no recent ticket - guiding user to start')
 
       try {
-        await sendWa(waRecipient, 'welcome', flowHelpMessage, residentWhatsAppCreds)
+        await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
       } catch (sendError) {
         console.error('⚠️ Failed to send image-context-needed message:', sendError)
       }
@@ -1054,7 +1004,7 @@ async function runWhatsAppInboundBackground(
     if (!textBody) {
       if (messageType === 'reaction') {
         try {
-          await sendWa(waRecipient, 'welcome', flowHelpMessage, residentWhatsAppCreds)
+          await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send reaction reply:', sendError)
         }
@@ -1077,8 +1027,7 @@ async function runWhatsAppInboundBackground(
         try {
           await sendWa(
             waRecipient,
-            'error_general',
-            'לא הצלחנו לקרוא את ההודעה, נסה שוב בטקסט',
+            'unsupported_message',
             residentWhatsAppCreds
           )
         } catch (sendError) {
@@ -1114,13 +1063,12 @@ async function runWhatsAppInboundBackground(
           return s
         }) ?? []
 
-      const body =
-        lines.length > 0
-          ? lines.join('\n')
-          : 'לא מצאנו תקלה פתוחה המקושרת למספר שלך במערכת. לפתיחת פנייה כתבו את הבניין או סרקו את קוד ה־QR.'
-
       try {
-        await sendWa(waRecipient, 'welcome', body, residentWhatsAppCreds)
+        if (lines.length > 0) {
+          await sendWhatsAppTextMessage(waRecipient, lines.join('\n'), residentWhatsAppCreds, { clientId: webhookClientId })
+        } else {
+          await sendWa(waRecipient, 'no_open_tickets', residentWhatsAppCreds)
+        }
       } catch (sendError) {
         console.error('⚠️ Failed to send status reply:', sendError)
       }
@@ -1136,12 +1084,7 @@ async function runWhatsAppInboundBackground(
 
       if (!parsedStart) {
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            'פורמט קוד ה-QR לא תקין. אנא סרקו שוב את הקוד או פנו למנהלת הבניין.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'qr_invalid', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send invalid-start-code reply:', sendError)
         }
@@ -1170,12 +1113,7 @@ async function runWhatsAppInboundBackground(
         console.log('⚠️ No project found for code:', projectCode)
 
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            '❌ לא הצלחנו לזהות את הפרויקט.\n\nנסו שוב:\n1️⃣ סרקו את QR מחדש\n2️⃣ או כתבו את כתובת הבניין (רחוב ומספר)\n3️⃣ או צרו קשר למנהלת הבניין',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'project_not_found', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send project-not-found reply:', sendError)
         }
@@ -1226,13 +1164,10 @@ async function runWhatsAppInboundBackground(
       try {
         const buildingLine = buildingNumber ? ` (בניין ${buildingNumber})` : ''
 
-        await sendWa(
-          waRecipient,
-          'ticket_opened',
-          'ברוכים הבאים! פתחנו תקלה חדשה עבורכם ב{{project_name}}{{building_line}}. כתבו בקצרה את הבעיה 📝',
-          residentWhatsAppCreds,
-          { project_name: project.name, building_line: buildingLine }
-        )
+        await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
+          project_name: project.name,
+          building_line: buildingLine,
+        })
       } catch (sendError) {
         console.error('⚠️ Failed to send start-flow reply:', sendError)
       }
@@ -1273,12 +1208,7 @@ async function runWhatsAppInboundBackground(
           session = await getActiveSession(from, supabaseAdmin, webhookClientId)
           if (session) {
             try {
-              await sendWa(
-                waRecipient,
-                'ticket_opened',
-                'מה הבעיה? כתבו בקצרה את תיאור התקלה 📝',
-                residentWhatsAppCreds
-              )
+              await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds)
             } catch (sendError) {
               console.error('⚠️ Failed to send resident-memory prompt:', sendError)
             }
@@ -1345,13 +1275,9 @@ async function runWhatsAppInboundBackground(
 
           // Send confirmation
           try {
-            await sendWa(
-              waRecipient,
-              'ticket_opened',
-              'ברוכים הבאים! פתחנו תקלה חדשה עבורכם ב{{project_name}}. כתבו בקצרה את הבעיה 📝',
-              residentWhatsAppCreds,
-              { project_name: selectedProject.name }
-            )
+            await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
+              project_name: selectedProject.name,
+            })
           } catch (sendError) {
             console.error('⚠️ Failed to send selection confirmation:', sendError)
           }
@@ -1365,12 +1291,7 @@ async function runWhatsAppInboundBackground(
         console.log(`⚠️ Invalid selection (out of range): ${numericSelection}`)
 
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            'אנא השיבו רק עם מספר האפשרות המתאים: 1, 2 או 3.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send invalid-selection message:', sendError)
         }
@@ -1388,12 +1309,7 @@ async function runWhatsAppInboundBackground(
           console.log('⚠️ Pending selection exists but message is not numeric')
 
           try {
-            await sendWa(
-              waRecipient,
-              'error_general',
-              '⚠️ השיבו רק עם מספר האפשרות: 1, 2 או 3',
-              residentWhatsAppCreds
-            )
+            await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
           } catch (sendError) {
             console.error('⚠️ Failed to send pending-reminder message:', sendError)
           }
@@ -1413,11 +1329,8 @@ async function runWhatsAppInboundBackground(
       if (!addressLike) {
         console.log('ℹ️ Free-text does not look address-like; sending guidance instead of searching:', textBody)
 
-        const fallbackMessage =
-          'לא הצלחנו לזהות את הבניין.\n\n📍 כדי שנוכל לאתר אותו, כתבו את כתובת הבניין (רחוב ומספר)\n\nאו:\n1. סרקו את קוד ה-QR בבניין\n2. פנו למנהלת הבניין לקבלת קוד הגישה'
-
         try {
-          await sendWa(waRecipient, 'error_general', fallbackMessage, residentWhatsAppCreds)
+          await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send no-match message:', sendError)
         }
@@ -1446,12 +1359,7 @@ async function runWhatsAppInboundBackground(
         console.log('❌ No building matches found for search:', textBody)
 
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            'לא הצלחנו לזהות את הבניין.\n\n📍 כדי שנוכל לאתר אותו, כתבו את כתובת הבניין (רחוב ומספר)\n\nאו:\n1. סרקו את קוד ה-QR בבניין\n2. פנו למנהלת הבניין לקבלת קוד הגישה',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send no-match message:', sendError)
         }
@@ -1496,13 +1404,9 @@ async function runWhatsAppInboundBackground(
 
         // Send confirmation message with project name
         try {
-          await sendWa(
-            waRecipient,
-            'ticket_opened',
-            'ברוכים הבאים! פתחנו תקלה חדשה עבורכם ב{{project_name}}. כתבו בקצרה את הבעיה 📝',
-            residentWhatsAppCreds,
-            { project_name: matchedProject.name }
-          )
+          await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
+            project_name: matchedProject.name,
+          })
         } catch (sendError) {
           console.error('⚠️ Failed to send search-match confirmation:', sendError)
         }
@@ -1525,12 +1429,7 @@ async function runWhatsAppInboundBackground(
         console.error('⚠️ Failed to create pending selection, sending fallback message')
 
         try {
-          await sendWa(
-            waRecipient,
-            'error_general',
-            'תקלה טכנית. אנא סרקו את קוד ה-QR בבניין או פנו למנהלת הבניין.',
-            residentWhatsAppCreds
-          )
+          await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
         } catch (sendError) {
           console.error('⚠️ Failed to send error message:', sendError)
         }
@@ -1538,17 +1437,16 @@ async function runWhatsAppInboundBackground(
         return
       }
 
-      // Build and send numbered list
-      let matchList = 'מצאנו כמה בניינים תואמים:\n\n'
-      searchResults.forEach((project: ProjectRow, index: number) => {
+      // Build numbered list and inject as {{list}} variable into the template
+      const listLines = searchResults.map((project: ProjectRow, index: number) => {
         const addressText = project.address ? ` (${project.address})` : ''
-        matchList += `${index + 1}. ${project.name}${addressText}\n`
+        return `${index + 1}. ${project.name}${addressText}`
       })
-      matchList +=
-        '\n📌 להמשך, השיבו רק עם מספר האפשרות: 1, 2 או 3'
 
       try {
-        await sendWa(waRecipient, 'error_general', matchList, residentWhatsAppCreds)
+        await sendWa(waRecipient, 'building_multiple_matches', residentWhatsAppCreds, {
+          list: listLines.join('\n'),
+        })
       } catch (sendError) {
         console.error('⚠️ Failed to send multi-match list:', sendError)
       }
@@ -1575,9 +1473,9 @@ async function runWhatsAppInboundBackground(
         try {
           await sendWa(
             waRecipient,
-            'ticket_opened',
-            `קיבלנו כבר את הדיווח שלך, מספר תקלה: ${dupTicket.ticket_number}. נעדכן אותך בהתקדמות.`,
-            residentWhatsAppCreds
+            'duplicate_ticket',
+            residentWhatsAppCreds,
+            { ticket_number: String(dupTicket.ticket_number) }
           )
         } catch (sendError) {
           console.error('⚠️ Failed to send duplicate-ticket reply:', sendError)
@@ -1733,10 +1631,6 @@ async function runWhatsAppInboundBackground(
     try {
       const buildingText = buildingNumber ? `\nבניין: ${buildingNumber}` : ''
 
-      const pendingNote = pendingForApproval
-        ? '\n\nℹ️ מספר הטלפון שלכם עדיין לא מופיע ברשימת הדיירים של הבניין במערכת — הבקשה נשמרה לאישור המנהלת (שרה). אחרי האישור תופיעו ברשימה.'
-        : ''
-
       const { data: projRow } = await supabaseAdmin
         .from('projects')
         .select('name')
@@ -1750,7 +1644,7 @@ async function runWhatsAppInboundBackground(
         supabaseAdmin,
         webhookClientId,
         'ticket_opened',
-        'התקלה התקבלה בהצלחה.{{building_line}}\nמספר הפנייה שלך: {{ticket_number}}\n\nתיאור: {{description}}\nמדווח: {{reporter_name}}\nפרויקט: {{project_name}}\n\n💡 אפשר גם לשלוח תמונה של התקלה — זה יעזור לנו לטפל בה מהר יותר.\n\nנעדכן כשיהיה טיפול.\nלפתיחת תקלה נוספת: סרקו שוב את קוד ה־QR בבניין או כתבו רחוב ומספר בניין.',
+        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['ticket_opened'],
         {
           building_line: buildingText,
           ticket_number: String(createdTicket.ticket_number),
@@ -1759,6 +1653,15 @@ async function runWhatsAppInboundBackground(
           project_name: projectNameForWa,
         }
       )
+
+      const pendingNote = pendingForApproval
+        ? await resolveWhatsAppTemplateMessage(
+            supabaseAdmin,
+            webhookClientId,
+            'pending_approval_note',
+            WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['pending_approval_note']
+          )
+        : ''
 
       await sendWhatsAppTextMessage(
         waRecipient,

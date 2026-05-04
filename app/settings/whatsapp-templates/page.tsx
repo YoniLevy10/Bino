@@ -7,9 +7,12 @@ import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import {
   WHATSAPP_TEMPLATE_KEYS,
   type WhatsAppTemplateKey,
+  type WhatsAppTemplateCategory,
   WHATSAPP_TEMPLATE_LABELS,
   WHATSAPP_TEMPLATE_EDITOR_DEFAULTS,
   WHATSAPP_TEMPLATE_VAR_NAMES,
+  WHATSAPP_TEMPLATE_CATEGORIES,
+  WHATSAPP_TEMPLATE_CATEGORY_LABELS,
 } from '@/lib/whatsapp-template-keys'
 import { interpolateWhatsAppTemplate } from '@/lib/whatsapp-templates'
 import { toast } from '@/lib/error-handler'
@@ -32,7 +35,17 @@ const PREVIEW_SAMPLE: Record<(typeof WHATSAPP_TEMPLATE_VAR_NAMES)[number], strin
   description: 'נזילה מהצנרת בחדר האמבטיה',
   reporter_name: 'ישראל ישראלי',
   building_line: '\nבניין: ב׳',
+  list: '1. מגדלי הים התיכון\n2. בית הכרמל',
 }
+
+const CATEGORY_ORDER: WhatsAppTemplateCategory[] = [
+  'flow',
+  'building',
+  'location',
+  'image',
+  'unsupported',
+  'general',
+]
 
 function insertVarAtCursor(
   el: HTMLTextAreaElement | null,
@@ -165,6 +178,16 @@ export default function WhatsappTemplatesPage() {
     )
   }
 
+  const keysByCategory = useMemo(() => {
+    const map: Partial<Record<WhatsAppTemplateCategory, WhatsAppTemplateKey[]>> = {}
+    for (const key of WHATSAPP_TEMPLATE_KEYS) {
+      const cat = WHATSAPP_TEMPLATE_CATEGORIES[key]
+      if (!map[cat]) map[cat] = []
+      map[cat]!.push(key)
+    }
+    return map
+  }, [])
+
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
@@ -180,7 +203,7 @@ export default function WhatsappTemplatesPage() {
         {!isMobile && (
           <PageHeader
             title="תבניות הודעות וואטסאפ"
-            subtitle="עריכת טקסטים שנשלחים לדיירים מהמערכת"
+            subtitle="עריכת כל הטקסטים שנשלחים לדיירים — אין שום הודעה hardcoded במערכת"
             actions={
               <Link href="/settings" style={styles.backLink}>
                 ← חזרה להגדרות
@@ -204,49 +227,60 @@ export default function WhatsappTemplatesPage() {
             </div>
           </div>
         ) : (
-          <div style={styles.grid}>
-            {WHATSAPP_TEMPLATE_KEYS.map((key) => (
-              <Card key={key} title={WHATSAPP_TEMPLATE_LABELS[key]} noPadding>
-                <div style={styles.cardInner}>
-                  <div style={styles.readonlyKey}>מפתח מערכת: {key}</div>
+          <div style={styles.sections}>
+            {CATEGORY_ORDER.map((cat) => {
+              const keys = keysByCategory[cat]
+              if (!keys?.length) return null
+              return (
+                <div key={cat}>
+                  <div style={styles.categoryHeader}>{WHATSAPP_TEMPLATE_CATEGORY_LABELS[cat]}</div>
+                  <div style={styles.grid}>
+                    {keys.map((key) => (
+                      <Card key={key} title={WHATSAPP_TEMPLATE_LABELS[key]} noPadding>
+                        <div style={styles.cardInner}>
+                          <div style={styles.readonlyKey}>מפתח מערכת: {key}</div>
 
-                  <div style={styles.chipsRow}>
-                    <span style={styles.chipsLabel}>משתנים:</span>
-                    {WHATSAPP_TEMPLATE_VAR_NAMES.map((v) => chip(`{{${v}}}`, key))}
+                          <div style={styles.chipsRow}>
+                            <span style={styles.chipsLabel}>משתנים:</span>
+                            {WHATSAPP_TEMPLATE_VAR_NAMES.map((v) => chip(`{{${v}}}`, key))}
+                          </div>
+
+                          <label style={styles.lab}>תוכן ההודעה</label>
+                          <textarea
+                            ref={setRef(key)}
+                            dir="rtl"
+                            value={drafts[key] || ''}
+                            onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
+                            rows={5}
+                            style={styles.textarea}
+                          />
+
+                          <div style={styles.previewBlock}>
+                            <div style={styles.previewLabel}>תצוגה מקדימה</div>
+                            <div style={styles.waChrome}>
+                              <div style={styles.waBubble}>
+                                <p style={styles.waText}>{previews[key]}</p>
+                                <span style={styles.waTime}>14:02</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => saveKey(key)}
+                            loading={savingKey === key}
+                            style={{ alignSelf: 'flex-start' }}
+                          >
+                            שמירה
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
-
-                  <label style={styles.lab}>תוכן ההודעה</label>
-                  <textarea
-                    ref={setRef(key)}
-                    dir="rtl"
-                    value={drafts[key] || ''}
-                    onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                    rows={8}
-                    style={styles.textarea}
-                  />
-
-                  <div style={styles.previewBlock}>
-                    <div style={styles.previewLabel}>תצוגה מקדימה</div>
-                    <div style={styles.waChrome}>
-                      <div style={styles.waBubble}>
-                        <p style={styles.waText}>{previews[key]}</p>
-                        <span style={styles.waTime}>14:02</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => saveKey(key)}
-                    loading={savingKey === key}
-                    style={{ alignSelf: 'flex-start' }}
-                  >
-                    שמירה
-                  </Button>
                 </div>
-              </Card>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -255,7 +289,7 @@ export default function WhatsappTemplatesPage() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  content: { padding: '32px 40px', maxWidth: '900px', margin: '0 auto' },
+  content: { padding: '32px 40px', maxWidth: '960px', margin: '0 auto' },
   backLink: {
     fontSize: '14px',
     fontWeight: 600,
@@ -263,7 +297,16 @@ const styles: Record<string, CSSProperties> = {
     textDecoration: 'none',
   },
   loading: { padding: '48px', display: 'flex', justifyContent: 'center' },
-  grid: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  sections: { display: 'flex', flexDirection: 'column', gap: '32px' },
+  categoryHeader: {
+    fontSize: '16px',
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+    marginBottom: '12px',
+    paddingBottom: '8px',
+    borderBottom: `2px solid ${theme.colors.border}`,
+  },
+  grid: { display: 'flex', flexDirection: 'column', gap: '16px' },
   cardInner: { padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '12px' },
   readonlyKey: {
     fontSize: '12px',
@@ -276,7 +319,7 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.borderStrong}`,
     background: theme.colors.muted,
     borderRadius: theme.radius.full,
-    padding: '6px 12px',
+    padding: '4px 10px',
     fontSize: '12px',
     cursor: 'pointer',
     color: theme.colors.primary,
@@ -305,7 +348,7 @@ const styles: Record<string, CSSProperties> = {
     background: '#ECE5DD',
     borderRadius: theme.radius.lg,
     padding: '16px 12px',
-    minHeight: '120px',
+    minHeight: '80px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
