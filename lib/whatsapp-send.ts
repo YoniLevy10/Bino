@@ -46,7 +46,12 @@ export async function sendRawWhatsAppPayloadWithCredentials(
     const data = (await response.json()) as Record<string, unknown>
 
     if (!response.ok) {
-      console.error('⚠️ WhatsApp send failed (credentials):', JSON.stringify(data))
+      const metaCode = (data as { error?: { code?: number } }).error?.code
+      if (metaCode === 190) {
+        console.error('🚨 WHATSAPP_TOKEN_EXPIRED: Meta returned OAuthException code 190 — update whatsapp_access_token in clients table immediately.', JSON.stringify(data))
+      } else {
+        console.error('⚠️ WhatsApp send failed (credentials):', JSON.stringify(data))
+      }
       return null
     }
 
@@ -114,7 +119,12 @@ async function sendRawWhatsAppPayload(
     const data = (await response.json()) as Record<string, unknown>
 
     if (!response.ok) {
-      console.error('⚠️ WhatsApp send rejected:', JSON.stringify(data))
+      const metaCode = (data as { error?: { code?: number } }).error?.code
+      if (metaCode === 190) {
+        console.error('🚨 WHATSAPP_TOKEN_EXPIRED: Meta returned OAuthException code 190 — update whatsapp_access_token in clients table immediately.', JSON.stringify(data))
+      } else {
+        console.error('⚠️ WhatsApp send rejected:', JSON.stringify(data))
+      }
       return null
     }
 
