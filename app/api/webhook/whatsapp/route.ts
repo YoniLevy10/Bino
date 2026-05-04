@@ -627,7 +627,8 @@ async function runWhatsAppInboundBackground(
     }
 
     // Expire temporary WhatsApp session state if inactive (scoped to this tenant)
-    await expireInactiveSessions(supabaseAdmin, webhookClientId)
+    // Fire-and-forget: don't block the critical message-handling path if Supabase is slow/ETIMEDOUT
+    void expireInactiveSessions(supabaseAdmin, webhookClientId)
 
     const { from: waFrom, messageType, textBody, mediaId, mediaType, location: waLocation } = parsedMessage
     const waRecipient = waFrom
