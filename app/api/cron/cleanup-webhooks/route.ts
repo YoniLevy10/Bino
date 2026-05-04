@@ -28,24 +28,24 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       logger.error('CRON', 'cleanup-webhooks failed', new Error(error.message))
-      await admin.from('system_logs').insert({
+      void admin.from('system_logs').insert({
         level: 'error',
         source: 'cron.cleanup-webhooks',
         message: 'delete_failed',
         payload: { ts, detail: error.message },
-      }).catch(() => {})
+      })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     const deleted = count ?? 0
     console.log(`✅ cleanup-webhooks: deleted ${deleted} rows older than ${RETENTION_DAYS} days`)
 
-    await admin.from('system_logs').insert({
+    void admin.from('system_logs').insert({
       level: 'info',
       source: 'cron.cleanup-webhooks',
       message: 'cleanup_complete',
       payload: { ts, deleted, cutoff },
-    }).catch(() => {})
+    })
 
     return NextResponse.json({ ok: true, deleted, cutoff })
   } catch (e) {
