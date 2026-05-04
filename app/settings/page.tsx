@@ -36,6 +36,7 @@ type ClientRow = {
   sms_on_ticket_close?: boolean | null
   whatsapp_phone_number_id?: string | null
   whatsapp_access_token?: string | null
+  sms_sender_name?: string | null
 }
 
 const TABS = [
@@ -75,6 +76,7 @@ function SettingsPageInner() {
 
   const [managerPhone, setManagerPhone] = useState('')
   const [defaultWorkerPhone, setDefaultWorkerPhone] = useState('')
+  const [smsSenderName, setSmsSenderName] = useState('')
   const [smsOnOpen, setSmsOnOpen] = useState(true)
   const [smsOnClose, setSmsOnClose] = useState(true)
 
@@ -124,7 +126,7 @@ function SettingsPageInner() {
         const { data: row, error: cErr } = await supabase
           .from('clients')
           .select(
-            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token'
+            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name'
           )
           .eq('id', resolvedClientId)
           .maybeSingle()
@@ -137,6 +139,7 @@ function SettingsPageInner() {
 
         setManagerPhone(row.manager_phone || '')
         setDefaultWorkerPhone(row.default_worker_phone || '')
+        setSmsSenderName(row.sms_sender_name || '')
         setSmsOnOpen(row.sms_on_ticket_open !== false)
         setSmsOnClose(row.sms_on_ticket_close !== false)
 
@@ -165,11 +168,13 @@ function SettingsPageInner() {
         const payloadWithWorker = {
           manager_phone: managerPhone.trim() || null,
           default_worker_phone: defaultWorkerPhone.trim() || null,
+          sms_sender_name: smsSenderName.trim() || null,
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
         }
         const payloadBase = {
           manager_phone: managerPhone.trim() || null,
+          sms_sender_name: smsSenderName.trim() || null,
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
         }
@@ -439,6 +444,22 @@ function SettingsPageInner() {
                       placeholder="אופציונלי"
                     />
                   </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>מזהה שולח SMS (019) — פר לקוח</label>
+                    <input
+                      type="text"
+                      value={smsSenderName}
+                      onChange={(e) => setSmsSenderName(e.target.value)}
+                      style={styles.input}
+                      placeholder="לדוגמה: Bamakor או 0501234567 (עד 11 תווים לטיניים/ספרות)"
+                      maxLength={11}
+                      dir="ltr"
+                    />
+                    <p style={styles.fieldHint}>
+                      מה שיופיע לנמען בשדה &quot;מאת&quot; בהודעת SMS. חייב להיות אותיות לטיניות/ספרות בלבד, 3–11 תווים.
+                      אם ריק — המערכת תשתמש בברירת המחדל הגלובלית מ-<code>SMS_019_SENDER</code>.
+                    </p>
+                  </div>
                   <label style={styles.checkboxLabel}>
                     <input
                       type="checkbox"
@@ -702,6 +723,12 @@ const styles: Record<string, CSSProperties> = {
   formHint: {
     fontSize: '12px',
     color: theme.colors.textMuted,
+  },
+  fieldHint: {
+    margin: '4px 0 0',
+    fontSize: '12px',
+    color: theme.colors.textMuted,
+    lineHeight: 1.5,
   },
   checkboxLabel: {
     display: 'flex',

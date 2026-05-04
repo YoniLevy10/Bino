@@ -5,7 +5,7 @@ import { fetchWithTimeout } from '@/lib/fetch-timeout'
 export const SMS_019_ENDPOINT = 'https://019sms.co.il/api'
 const SMS_019_API_TOKEN = process.env.SMS_019_API_TOKEN
 const SMS_019_USERNAME = process.env.SMS_019_USERNAME
-export const SMS_019_SENDER = process.env.SMS_019_SENDER || '0559899132'
+export const SMS_019_SENDER = process.env.SMS_019_SENDER || 'Bamakor'
 
 /** 019SMS: source must be Latin alphanumeric, length in a small window (API error 992 if invalid). */
 export const SMS_019_SOURCE_MAX = 11

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
+import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
 
-const VAR_NAMES = ['project_name', 'ticket_number', 'description', 'reporter_name', 'building_line'] as const
+const VAR_NAMES = ['project_name', 'ticket_number', 'description', 'reporter_name', 'building_line', 'list'] as const
 
 const TEMPLATE_CACHE_TTL_MS = 60_000
 const templateTextCache = new Map<string, { text: string; expiresAt: number }>()
@@ -85,28 +86,19 @@ export async function smokeTestWhatsAppTemplates(
   admin: SupabaseClient,
   clientId: string
 ): Promise<void> {
-  const fallbacks: Record<WhatsAppTemplateKey, string> = {
-    welcome:
-      'שלום! ברוכים הבאים למערכת התקלות של {{project_name}}. כדי לפתוח תקלה חדשה, שלחו את תיאור הבעיה.',
-    ticket_opened:
-      'תקלה {{ticket_number}} נפתחה בהצלחה בפרויקט {{project_name}}. תיאור: {{description}}. נחזור אליכם בהקדם.',
-    worker_assigned: 'תקלה {{ticket_number}} הוקצתה לטיפול. אנו על זה — נעדכן אתכם בקרוב.',
-    ticket_closed: 'תקלה {{ticket_number}} נסגרה. תודה שפניתם! במקור — ניהול תקלות חכם.',
-    error_general: 'אירעה שגיאה במערכת. אנא נסו שוב או פנו למנהל.',
-  }
-
   const vars = {
     project_name: 'מגדלי הים התיכון',
     ticket_number: '128',
     description: 'נזילה מהצנרת בחדר האמבטיה',
     reporter_name: 'ישראל ישראלי',
     building_line: '\nבניין: ב׳',
+    list: '1. מגדלי הים התיכון\n2. בית הכרמל',
   }
 
   console.log('[whatsapp_templates][smoke] clientId', clientId)
-  for (const key of Object.keys(fallbacks) as WhatsAppTemplateKey[]) {
+  for (const key of Object.keys(WHATSAPP_TEMPLATE_EDITOR_DEFAULTS) as WhatsAppTemplateKey[]) {
     // eslint-disable-next-line no-await-in-loop
-    const msg = await resolveWhatsAppTemplateMessage(admin, clientId, key, fallbacks[key], vars)
+    const msg = await resolveWhatsAppTemplateMessage(admin, clientId, key, WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[key], vars)
     console.log(`\n[whatsapp_templates][smoke] ${key}\n${msg}`)
   }
 }
