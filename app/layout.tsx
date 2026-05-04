@@ -4,6 +4,7 @@ import "./globals.css";
 import { ToastContainer } from "./components/ToastContainer";
 import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
 import { initializeLogger, LogLevel } from "@/lib/logging";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -101,6 +102,7 @@ export default function RootLayout({
         <RegisterServiceWorker />
         {children}
         <ToastContainer />
+        <SpeedInsights />
       </body>
     </html>
   );
