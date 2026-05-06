@@ -1820,21 +1820,13 @@ export async function POST(req: NextRequest) {
       row: tenantResolved.row,
     }
 
-    void runWhatsAppInboundBackground(
+    await runWhatsAppInboundBackground(
       body,
       requestId,
       parsedMessage,
       supabaseAdmin,
       tenantPayload
-    ).catch((err) => {
-      logger.error(
-        'WEBHOOK',
-        'Background inbound failed',
-        err instanceof Error ? err : new Error(String(err)),
-        { requestId }
-      )
-      webhookJsonLogger.error('whatsapp-webhook-background-error', err, { requestId })
-    })
+    )
     return NextResponse.json({ received: true, status: 'ok' }, { status: 200 })
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
