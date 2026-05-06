@@ -1,11 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc *)",
-      "Bash(git add *)",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__execute_sql",
-      "mcp__claude_ai_Vercel__get_runtime_logs"
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
