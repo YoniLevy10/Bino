@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { after } from 'next/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveClientIdByWhatsAppPhoneNumberId } from '@/lib/tenant-resolution'
@@ -1812,22 +1811,20 @@ export async function POST(req: NextRequest) {
       row: tenantResolved.row,
     }
 
-    after(() => {
-      void runWhatsAppInboundBackground(
-        body,
-        requestId,
-        parsedMessage,
-        supabaseAdmin,
-        tenantPayload
-      ).catch((err) => {
-        logger.error(
-          'WEBHOOK',
-          'Background inbound failed',
-          err instanceof Error ? err : new Error(String(err)),
-          { requestId }
-        )
-        webhookJsonLogger.error('whatsapp-webhook-background-error', err, { requestId })
-      })
+    void runWhatsAppInboundBackground(
+      body,
+      requestId,
+      parsedMessage,
+      supabaseAdmin,
+      tenantPayload
+    ).catch((err) => {
+      logger.error(
+        'WEBHOOK',
+        'Background inbound failed',
+        err instanceof Error ? err : new Error(String(err)),
+        { requestId }
+      )
+      webhookJsonLogger.error('whatsapp-webhook-background-error', err, { requestId })
     })
     return NextResponse.json({ received: true, status: 'ok' }, { status: 200 })
   } catch (error) {
