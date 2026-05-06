@@ -1758,6 +1758,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    console.log('⏱️ Supabase initialized, starting message processing')
     const parsedMessage = parseIncomingWhatsAppMessage(body)
 
     if (!parsedMessage) {
