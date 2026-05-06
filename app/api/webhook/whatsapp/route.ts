@@ -1098,6 +1098,8 @@ async function runWhatsAppInboundBackground(
 
       console.log('🚀 Start flow detected for project code:', projectCode)
       console.log('🏢 Building number:', buildingNumber || 'none')
+      console.log('🔍 Searching for project with code:', projectCode, 'client:', webhookClientId)
+      const projectSearchStart = Date.now()
 
       const { data: project, error: projectError } = await supabaseAdmin
         .from('projects')
@@ -1105,6 +1107,8 @@ async function runWhatsAppInboundBackground(
         .eq('project_code', projectCode)
         .eq('client_id', webhookClientId)
         .maybeSingle()
+
+      console.log('✅ Project query took:', Date.now() - projectSearchStart, 'ms', 'found:', !!project, 'error:', projectError?.message)
 
       if (projectError) {
         console.error('❌ Error fetching project:', projectError)
