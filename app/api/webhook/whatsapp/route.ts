@@ -33,6 +33,8 @@ import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMes
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { findResidentByPhoneClient, getOrCreateResident } from '@/lib/residents-whatsapp'
 
+export const maxDuration = 60
+
 // ARCHIVED: Old WhatsApp manager notification
 // This module previously sent WhatsApp messages to project managers
 // CURRENT STATUS: Using SMS for manager notifications (temporary, while awaiting WhatsApp template approval)
