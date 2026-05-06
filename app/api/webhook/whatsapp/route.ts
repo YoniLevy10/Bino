@@ -1112,6 +1112,7 @@ async function runWhatsAppInboundBackground(
 
       if (projectError) {
         console.error('❌ Error fetching project:', projectError)
+        try { await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds) } catch {}
         return
       }
 
@@ -1809,8 +1810,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true }, { status: 200 })
     }
     if (dupErr) {
+      console.error('⚠️ dedupe insert failed, continuing anyway:', dupErr.message)
       webhookJsonLogger.error('whatsapp-webhooks-dedupe-insert', dupErr, { requestId, dedupeMessageId })
-      return NextResponse.json({ received: true }, { status: 200 })
+      // Do NOT return — continue processing the message
     }
 
     const tenantPayload: WaWebhookTenant = {
