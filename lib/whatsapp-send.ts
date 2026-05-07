@@ -1,5 +1,6 @@
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { getLogger } from '@/lib/logging'
 
 export type WhatsAppFailureLog = {
   clientId: string
@@ -39,7 +40,7 @@ export async function sendRawWhatsAppPayloadWithCredentials(
       WHATSAPP_API_TIMEOUT_MS
     )
     if (!response) {
-      console.error('⚠️ WhatsApp send (credentials): timeout or network error')
+      getLogger().error('WA_SEND', 'timeout or network error (credentials)', new Error('timeout'))
       return null
     }
 
@@ -48,16 +49,16 @@ export async function sendRawWhatsAppPayloadWithCredentials(
     if (!response.ok) {
       const metaCode = (data as { error?: { code?: number } }).error?.code
       if (metaCode === 190) {
-        console.error('🚨 WHATSAPP_TOKEN_EXPIRED: Meta returned OAuthException code 190 — update whatsapp_access_token in clients table immediately.', JSON.stringify(data))
+        getLogger().error('WA_SEND', 'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately', new Error('token_expired'), { data: JSON.stringify(data) })
       } else {
-        console.error('⚠️ WhatsApp send failed (credentials):', JSON.stringify(data))
+        getLogger().error('WA_SEND', 'send failed (credentials)', new Error('meta_error'), { data: JSON.stringify(data) })
       }
       return null
     }
 
     return data
   } catch (e) {
-    console.error('⚠️ WhatsApp send exception (credentials):', e instanceof Error ? e.message : String(e))
+    getLogger().error('WA_SEND', 'send exception (credentials)', e instanceof Error ? e : new Error(String(e)))
     return null
   }
 }
@@ -90,7 +91,7 @@ async function sendRawWhatsAppPayload(
   const phoneNumberId = creds?.phoneNumberId ?? process.env.WHATSAPP_PHONE_NUMBER_ID
 
   if (!accessToken || !phoneNumberId) {
-    console.error('⚠️ WhatsApp send skipped: missing WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID')
+    getLogger().warn('WA_SEND', 'send skipped: missing credentials (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)')
     return null
   }
 
@@ -112,7 +113,7 @@ async function sendRawWhatsAppPayload(
     )
 
     if (!response) {
-      console.error('⚠️ WhatsApp send: timeout or network error')
+      getLogger().error('WA_SEND', 'timeout or network error', new Error('timeout'))
       return null
     }
 
@@ -121,16 +122,16 @@ async function sendRawWhatsAppPayload(
     if (!response.ok) {
       const metaCode = (data as { error?: { code?: number } }).error?.code
       if (metaCode === 190) {
-        console.error('🚨 WHATSAPP_TOKEN_EXPIRED: Meta returned OAuthException code 190 — update whatsapp_access_token in clients table immediately.', JSON.stringify(data))
+        getLogger().error('WA_SEND', 'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately', new Error('token_expired'), { data: JSON.stringify(data) })
       } else {
-        console.error('⚠️ WhatsApp send rejected:', JSON.stringify(data))
+        getLogger().error('WA_SEND', 'send rejected', new Error('meta_error'), { data: JSON.stringify(data) })
       }
       return null
     }
 
     return data
   } catch (e) {
-    console.error('⚠️ WhatsApp send exception:', e instanceof Error ? e.message : String(e))
+    getLogger().error('WA_SEND', 'send exception', e instanceof Error ? e : new Error(String(e)))
     return null
   }
 }
@@ -141,8 +142,6 @@ export async function sendWhatsAppTextMessage(
   creds?: WhatsAppCredentials,
   failureLog?: WhatsAppFailureLog
 ): Promise<Record<string, unknown> | null> {
-  console.log('📤 Sending WhatsApp text message to:', to)
-
   const result = await sendRawWhatsAppPayload(
     {
       to,
@@ -167,8 +166,6 @@ export async function sendWhatsAppTemplateMessage(
   bodyParams: string[] = [],
   languageCode = 'he'
 ): Promise<Record<string, unknown> | null> {
-  console.log('📤 Sending WhatsApp template message to:', to, 'template:', templateName)
-
   const components: WhatsAppTemplateComponent[] = []
 
   if (bodyParams.length > 0) {
@@ -204,10 +201,10 @@ export async function sendWhatsAppTextWithTemplateFallback(
   const direct = await sendWhatsAppTextMessage(to, body)
   if (direct) return direct
 
-  console.warn('⚠️ WhatsApp text send failed — attempting template:', templateName)
+  getLogger().warn('WA_SEND', 'text send failed, attempting template fallback', { templateName })
   const templ = await sendWhatsAppTemplateMessage(to, templateName, templateParams, languageCode)
   if (!templ) {
-    console.error('⚠️ WhatsApp template send also failed')
+    getLogger().warn('WA_SEND', 'template send also failed', { templateName })
   }
   return templ
 }

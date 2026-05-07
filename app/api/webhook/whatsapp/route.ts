@@ -25,7 +25,6 @@ import {
   createAttachmentRecord,
 } from '@/lib/whatsapp-media'
 import { getLogger } from '@/lib/logging'
-import { logger as webhookJsonLogger } from '@/lib/logger'
 import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
 import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
@@ -35,10 +34,6 @@ import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import { findResidentByPhoneClient, getOrCreateResident } from '@/lib/residents-whatsapp'
 
 export const maxDuration = 60
-
-// ARCHIVED: Old WhatsApp manager notification
-// This module previously sent WhatsApp messages to project managers
-// CURRENT STATUS: Using SMS for manager notifications (temporary, while awaiting WhatsApp template approval)
 
 const logger = getLogger()
 
@@ -82,7 +77,7 @@ async function searchProjectsByBuilding(
     .order('project_code', { ascending: true })
 
   if (error) {
-    console.error('❌ Error searching projects:', error)
+    logger.warn('WEBHOOK', 'project search error', { err: error.message })
     return []
   }
 
@@ -116,7 +111,7 @@ async function createPendingSelection(
   })
 
   if (error) {
-    console.error('❌ Error creating pending selection:', error)
+    logger.warn('WEBHOOK', 'create pending selection failed', { err: error.message })
     return null
   }
 
@@ -137,7 +132,7 @@ async function getPendingSelection(
     .maybeSingle()
 
   if (error) {
-    console.error('⚠️ Error fetching pending selection:', error)
+    logger.warn('WEBHOOK', 'fetch pending selection failed', { err: error.message })
     return null
   }
 
@@ -147,7 +142,6 @@ async function getPendingSelection(
 
   // Check if expired
   if (new Date(data.expires_at) < new Date()) {
-    console.log('⏰ Pending selection expired, clearing it')
     await clearPendingSelection(phoneNumber, supabaseAdmin, clientId)
     return null
   }
@@ -168,7 +162,7 @@ async function clearPendingSelection(
     .eq('client_id', clientId)
 
   if (error) {
-    console.error('⚠️ Error clearing pending selection:', error)
+    logger.warn('WEBHOOK', 'clear pending selection failed', { err: error.message })
   }
 }
 
@@ -182,27 +176,6 @@ function isNumericSelection(text: string): number | null {
   }
 
   return null
-}
-
-function logWhatsAppRuntimePath(
-  tag: string,
-  params: {
-    textBody: string
-    phone_number: string
-    session: { project_id?: unknown; active_ticket_id?: unknown } | null | undefined
-  }
-) {
-  const { textBody, phone_number, session } = params
-  console.log(tag, {
-    textBody,
-    phone_number,
-    session_exists: !!session,
-    project_id: session && 'project_id' in session ? (session as { project_id?: unknown }).project_id : null,
-    active_ticket_id:
-      session && 'active_ticket_id' in session
-        ? (session as { active_ticket_id?: unknown }).active_ticket_id
-        : null,
-  })
 }
 
 // Expire temporary WhatsApp session flow state if inactive
@@ -232,9 +205,7 @@ async function expireInactiveSessions(supabaseAdmin: SupabaseClient, clientId: s
       .lt('last_activity_at', incompleteThreshold.toISOString())
 
     if (incompleteError) {
-      console.error('⚠️ Error expiring incomplete sessions:', incompleteError)
-    } else {
-      console.log('✅ Expired incomplete WhatsApp sessions (no ticket, 20min+ inactive)')
+      logger.warn('WEBHOOK', 'expire incomplete sessions failed', { err: incompleteError.message })
     }
 
     // Expire follow-up sessions (with active_ticket_id) after 30 minutes
@@ -251,12 +222,10 @@ async function expireInactiveSessions(supabaseAdmin: SupabaseClient, clientId: s
       .lt('last_activity_at', followUpThreshold.toISOString())
 
     if (followUpError) {
-      console.error('⚠️ Error expiring follow-up sessions:', followUpError)
-    } else {
-      console.log('✅ Expired follow-up WhatsApp sessions (with ticket, 30min+ inactive)')
+      logger.warn('WEBHOOK', 'expire follow-up sessions failed', { err: followUpError.message })
     }
   } catch (error) {
-    console.error('⚠️ Unexpected error in expireInactiveSessions:', error)
+    logger.warn('WEBHOOK', 'expireInactiveSessions unexpected error', { err: error instanceof Error ? error.message : String(error) })
   }
 }
 
@@ -287,7 +256,7 @@ async function getActiveSession(
     .maybeSingle()
 
   if (error) {
-    console.error('❌ Error fetching active session:', error)
+    logger.warn('WEBHOOK', 'fetch active session failed', { err: error.message })
     return null
   }
 
@@ -301,7 +270,7 @@ async function resetSessionCompletely(
   reason: string
 ) {
   const nowIso = new Date().toISOString()
-  console.log('🧼 SESSION_RESET: Clearing WhatsApp session state', { from, reason })
+  logger.debug('WEBHOOK', 'session reset', { reason })
 
   // 1) Clear any pending multi-match selection state (prevents being stuck on "reply 1/2/3")
   await clearPendingSelection(from, supabaseAdmin, clientId)
@@ -320,7 +289,7 @@ async function resetSessionCompletely(
     .eq('is_active', true)
 
   if (error) {
-    console.error('⚠️ SESSION_RESET_FAILED: Could not deactivate sessions', { from, reason, error })
+    logger.warn('WEBHOOK', 'SESSION_RESET_FAILED', { reason, err: error.message })
   }
 }
 
@@ -333,7 +302,7 @@ async function getTicketStatus(ticketId: string, supabaseAdmin: SupabaseClient):
     .maybeSingle()
 
   if (error) {
-    console.error('⚠️ Failed to fetch ticket status:', { ticketId, error })
+    logger.warn('WEBHOOK', 'fetch ticket status failed', { ticketId, err: error.message })
     return null
   }
 
@@ -362,7 +331,7 @@ async function findRecentTicketForPhone(
     .maybeSingle()
 
   if (error) {
-    console.error('⚠️ Failed to find recent ticket for phone:', { from, error })
+    logger.warn('WEBHOOK', 'find recent ticket failed', { err: error.message })
     return null
   }
 
@@ -390,7 +359,7 @@ async function attachPendingWhatsAppImageToTicketIfAny(
     if (msg.includes('pending_whatsapp_media_id') || (error as { code?: string }).code === '42703') {
       return false
     }
-    console.error('⚠️ pending image: could not load session', { from, error })
+    logger.warn('WEBHOOK', 'pending image: could not load session', { err: (error as { message?: string }).message })
     return false
   }
 
@@ -421,7 +390,7 @@ async function attachPendingWhatsAppImageToTicketIfAny(
 
   const mediaData = await downloadWhatsAppMedia(pendingId, 'image')
   if (!mediaData) {
-    console.error('⚠️ pending image: download failed', { pendingId, ticketId })
+    logger.warn('WEBHOOK', 'pending image: download failed', { pendingId, ticketId })
     return false
   }
 
@@ -432,7 +401,7 @@ async function attachPendingWhatsAppImageToTicketIfAny(
     mediaData.mimeType
   )
   if (!uploadResult) {
-    console.error('⚠️ pending image: storage upload failed', { ticketId })
+    logger.warn('WEBHOOK', 'pending image: storage upload failed', { ticketId })
     return false
   }
 
@@ -504,7 +473,7 @@ async function mergeWhatsAppLocationIntoTicketMetadata(
     .eq('id', ticketId)
     .is('deleted_at', null)
   if (error) {
-    console.error('⚠️ mergeWhatsAppLocationIntoTicketMetadata failed:', error)
+    logger.warn('WEBHOOK', 'merge location into ticket failed', { ticketId, err: error.message })
   }
 }
 
@@ -528,7 +497,7 @@ async function attachPendingSessionLocationToTicketIfAny(
     if (msg.includes('pending_location') || (error as { code?: string }).code === '42703') {
       return false
     }
-    console.error('⚠️ pending location: could not load session', { from, error })
+    logger.warn('WEBHOOK', 'pending location: could not load session', { err: (error as { message?: string }).message })
     return false
   }
 
@@ -546,7 +515,7 @@ async function attachPendingSessionLocationToTicketIfAny(
   if (clearErr) {
     const m = String((clearErr as { message?: string }).message || '')
     if (!m.includes('pending_location') && (clearErr as { code?: string }).code !== '42703') {
-      console.error('⚠️ pending location: clear failed', clearErr)
+      logger.warn('WEBHOOK', 'pending location: clear failed', { err: m })
     }
   }
   return true
@@ -579,7 +548,7 @@ async function runWhatsAppInboundBackground(
     } else {
       const phoneNumberId = extractWhatsAppPhoneNumberId(body)
       if (!phoneNumberId) {
-        console.error('❌ Missing WhatsApp phone_number_id in webhook metadata')
+        logger.error('WEBHOOK', 'missing phone_number_id in webhook metadata', new Error('missing_phone_number_id'))
         return
       }
 
@@ -637,12 +606,6 @@ async function runWhatsAppInboundBackground(
     const from = whatsappDbPhoneKey(waFrom)
     const isTestWhatsAppSender = isWhatsAppTestSender(waFrom)
 
-    console.log('📞 From:', isTestWhatsAppSender ? '(מספר בדיקות — לא נשמר במערכת)' : '(redacted)')
-    console.log('🧩 Message Type:', messageType)
-    console.log('💬 Message body:', textBody)
-    console.log('📎 Media ID:', mediaId)
-    console.log('📎 Media Type:', mediaType)
-    
     logger.info('WEBHOOK', 'Parsed incoming message', {
       requestId,
       from: isTestWhatsAppSender ? '(test)' : waRecipient,
@@ -664,16 +627,14 @@ async function runWhatsAppInboundBackground(
         .maybeSingle()
 
       if (sessionError) {
-        console.error('❌ Error fetching session for location:', sessionError)
+        logger.warn('WEBHOOK', 'fetch session for location failed', { err: sessionError.message })
       }
 
       if (session?.active_ticket_id) {
         await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, session.active_ticket_id, loc)
         try {
           await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send location ack (active ticket):', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
         if (session.id) {
           await supabaseAdmin
             .from('sessions')
@@ -688,9 +649,7 @@ async function runWhatsAppInboundBackground(
         await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, recentTicket.id, loc)
         try {
           await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send location ack (recent ticket):', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
@@ -713,23 +672,19 @@ async function runWhatsAppInboundBackground(
         if (stashErr) {
           const msg = String((stashErr as { message?: string }).message || '')
           if (!msg.includes('pending_location') && (stashErr as { code?: string }).code !== '42703') {
-            console.error('❌ pending_location stash failed:', stashErr)
+            logger.warn('WEBHOOK', 'pending_location stash failed', { err: msg })
           }
         }
 
         try {
           await sendWa(waRecipient, 'location_stashed', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send location-before-text:', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
       try {
         await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
-      } catch (sendError) {
-        console.error('⚠️ Failed to send location-context guidance:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
     }
 
     if (messageType === 'location') {
@@ -738,9 +693,7 @@ async function runWhatsAppInboundBackground(
       } else {
         try {
           await sendWa(waRecipient, 'location_error', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send invalid-location reply:', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
       }
       return
     }
@@ -748,27 +701,21 @@ async function runWhatsAppInboundBackground(
     if (messageType === 'sticker') {
       try {
         await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
-      } catch (sendError) {
-        console.error('⚠️ Failed to send sticker reply:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
       return
     }
 
     if (messageType === 'contacts') {
       try {
         await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
-      } catch (sendError) {
-        console.error('⚠️ Failed to send contacts reply:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
       return
     }
 
     if (messageType === 'audio') {
       try {
         await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
-      } catch (sendError) {
-        console.error('⚠️ Failed to send audio reply:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
       return
     }
 
@@ -776,14 +723,13 @@ async function runWhatsAppInboundBackground(
       try {
         await sendWa(waRecipient, 'unsupported_message', residentWhatsAppCreds)
       } catch (sendError) {
-        console.error('⚠️ Failed to send unsupported-media reply:', sendError)
+        // WA send failure is non-fatal
       }
       return
     }
 
     // HANDLE IMAGE MESSAGES
     if (messageType === 'image' && mediaId && mediaType === 'image') {
-      console.log('🖼️ Image message received - downloading and attaching to ticket')
 
       // Check if user has an active session/ticket context
       const { data: session, error: sessionError } = await supabaseAdmin
@@ -797,7 +743,7 @@ async function runWhatsAppInboundBackground(
         .maybeSingle()
 
       if (sessionError) {
-        console.error('❌ Error fetching session for image attachment:', sessionError)
+        logger.warn('WEBHOOK', 'fetch session for image attachment failed', { err: sessionError.message })
       }
 
       // Case A: Active ticket exists - attach image to it
@@ -805,25 +751,12 @@ async function runWhatsAppInboundBackground(
         const ticketId = session.active_ticket_id
         let failureReason = ''
 
-        console.log(`📍 Active ticket found for ${from} - attaching image to ticket: ${ticketId}`)
-
-        // Step 1: Download media from WhatsApp
-        console.log(`⏳ PIPELINE_STEP: 1/4 Downloading image from WhatsApp (mediaId: ${mediaId})`)
         const mediaData = await downloadWhatsAppMedia(mediaId, 'image')
 
         if (!mediaData) {
           failureReason = 'DOWNLOAD_FAILED'
-          console.error(`❌ PIPELINE_FAILURE: Step 1 DOWNLOAD - Could not download media from WhatsApp`, {
-            failureReason,
-            mediaId,
-            ticketId,
-          })
-          // Fall through to fallback message (ticket already exists, preserve it)
+          logger.warn('WEBHOOK', 'image download failed', { mediaId, ticketId, failureReason })
         } else {
-          console.log(`✅ PIPELINE_SUCCESS: Step 1 DOWNLOAD - Downloaded ${mediaData.fileName} (${mediaData.mimeType}, ${mediaData.buffer.length} bytes)`)
-
-          // Step 2: Upload to Supabase Storage
-          console.log(`⏳ PIPELINE_STEP: 2/4 Uploading to Supabase Storage`)
           const uploadResult = await uploadWhatsAppMediaToStorage(
             ticketId,
             mediaData.buffer,
@@ -832,10 +765,6 @@ async function runWhatsAppInboundBackground(
           )
 
           if (uploadResult) {
-            console.log(`✅ PIPELINE_SUCCESS: Step 2 UPLOAD - File stored at ${uploadResult.filePath}`)
-
-            // Step 3: Create database record
-            console.log(`⏳ PIPELINE_STEP: 3/4 Creating attachment database record`)
             const attachmentCreated = await createAttachmentRecord(
               supabaseAdmin,
               ticketId,
@@ -848,54 +777,29 @@ async function runWhatsAppInboundBackground(
             )
 
             if (attachmentCreated) {
-              console.log(`✅ PIPELINE_SUCCESS: Step 3 DB_INSERT - Attachment record created`)
-
-              // Step 4: Send confirmation message
-              console.log(`⏳ PIPELINE_STEP: 4/4 Sending WhatsApp confirmation`)
+              logger.info('WEBHOOK', 'image attached to ticket', { ticketId })
               try {
                 await sendWa(waRecipient, 'image_attached', residentWhatsAppCreds)
-                console.log(`✅ PIPELINE_SUCCESS: Step 4 USER_MSG - Confirmation message sent`)
-              } catch (sendError) {
-                console.error('⚠️ PIPELINE_WARNING: Step 4 failed to send confirmation (attachment was successful)', {
-                  error: sendError,
-                  ticketId,
-                })
-              }
+              } catch { /* WA send failure is non-fatal */ }
 
               // Product rule: after image confirmation, reset to default state
               await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'image_processed_success')
               return
             } else {
               failureReason = 'DB_INSERT_FAILED'
-              console.error(`❌ PIPELINE_FAILURE: Step 3 DB_INSERT - Attachment record creation failed`, {
-                failureReason,
-                ticketId,
-                fileName: mediaData.fileName,
-              })
+              logger.warn('WEBHOOK', 'image attachment DB insert failed', { ticketId, failureReason })
             }
           } else {
             failureReason = 'STORAGE_UPLOAD_FAILED'
-            console.error(`❌ PIPELINE_FAILURE: Step 2 UPLOAD - Supabase Storage upload failed`, {
-              failureReason,
-              ticketId,
-              fileName: mediaData.fileName,
-            })
+            logger.warn('WEBHOOK', 'image storage upload failed', { ticketId, failureReason })
           }
         }
 
         // Fallback: Image download/upload failed but ticket exists, preserve it
-        console.log(`📤 PIPELINE_FALLBACK: Sending user message - attachment failed but ticket preserved`, {
-          failureReason,
-          ticketId,
-        })
+        logger.warn('WEBHOOK', 'image attach failed, sending fallback', { ticketId, failureReason })
         try {
           await sendWa(waRecipient, 'image_failed', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ PIPELINE_WARNING: Failed to send fallback message', {
-            error: sendError,
-            ticketId,
-          })
-        }
+        } catch { /* WA send failure is non-fatal */ }
 
         // Product rule: reset to default state after image attempt
         await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'image_processed_failure')
@@ -904,7 +808,6 @@ async function runWhatsAppInboundBackground(
 
       // Case A5: Building known (session) but ticket not created yet — keep image until first text opens ticket
       if (session?.project_id && !session.active_ticket_id && session.id) {
-        console.log(`📍 Open session (no ticket row yet) — stashing image for first text: ${session.id}`)
         const { error: stashErr } = await supabaseAdmin
           .from('sessions')
           .update({
@@ -914,13 +817,11 @@ async function runWhatsAppInboundBackground(
           .eq('id', session.id)
 
         if (stashErr) {
-          console.error('❌ Failed to stash pending WhatsApp image on session:', stashErr)
+          logger.warn('WEBHOOK', 'stash pending image failed', { err: stashErr.message })
         } else {
           try {
             await sendWa(waRecipient, 'image_stashed', residentWhatsAppCreds)
-          } catch (sendError) {
-            console.error('⚠️ Failed to send image-before-text guidance:', sendError)
-          }
+          } catch { /* WA send failure is non-fatal */ }
         }
 
         return
@@ -932,15 +833,11 @@ async function runWhatsAppInboundBackground(
         const ticketId = recentTicket.id
         let failureReason = ''
 
-        console.log(`📍 No active session. Found recent ticket for ${from} - attaching image to ticket: ${ticketId}`)
-
-        console.log(`⏳ PIPELINE_STEP: 1/4 Downloading image from WhatsApp (mediaId: ${mediaId})`)
         const mediaData = await downloadWhatsAppMedia(mediaId, 'image')
 
         if (!mediaData) {
           failureReason = 'DOWNLOAD_FAILED'
         } else {
-          console.log(`⏳ PIPELINE_STEP: 2/4 Uploading to Supabase Storage`)
           const uploadResult = await uploadWhatsAppMediaToStorage(
             ticketId,
             mediaData.buffer,
@@ -949,7 +846,6 @@ async function runWhatsAppInboundBackground(
           )
 
           if (uploadResult) {
-            console.log(`⏳ PIPELINE_STEP: 3/4 Creating attachment database record`)
             const attachmentCreated = await createAttachmentRecord(
               supabaseAdmin,
               ticketId,
@@ -962,12 +858,10 @@ async function runWhatsAppInboundBackground(
             )
 
             if (attachmentCreated) {
-              console.log(`⏳ PIPELINE_STEP: 4/4 Sending WhatsApp confirmation`)
+              logger.info('WEBHOOK', 'image attached to recent ticket', { ticketId })
               try {
                 await sendWa(waRecipient, 'image_attached', residentWhatsAppCreds)
-              } catch (sendError) {
-                console.error('⚠️ PIPELINE_WARNING: Failed to send confirmation (recent ticket attach)', sendError)
-              }
+              } catch { /* WA send failure is non-fatal */ }
 
               await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'recent_ticket_image_processed_success')
 
@@ -980,12 +874,10 @@ async function runWhatsAppInboundBackground(
           }
         }
 
-        console.log(`📤 PIPELINE_FALLBACK: recent-ticket attach failed`, { failureReason, ticketId })
+        logger.warn('WEBHOOK', 'recent-ticket image attach failed', { ticketId, failureReason })
         try {
           await sendWa(waRecipient, 'image_failed', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send recent-ticket fallback message:', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
 
         await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'recent_ticket_image_processed_failure')
 
@@ -993,13 +885,9 @@ async function runWhatsAppInboundBackground(
       }
 
       // Case C: No context and no recent ticket - guide user to start flow
-      console.log('📍 Image received but no session context and no recent ticket - guiding user to start')
-
       try {
         await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
-      } catch (sendError) {
-        console.error('⚠️ Failed to send image-context-needed message:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
 
       return
     }
@@ -1009,7 +897,7 @@ async function runWhatsAppInboundBackground(
         try {
           await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
         } catch (sendError) {
-          console.error('⚠️ Failed to send reaction reply:', sendError)
+          // WA send failure is non-fatal
         }
         return
       }
@@ -1033,9 +921,7 @@ async function runWhatsAppInboundBackground(
             'unsupported_message',
             residentWhatsAppCreds
           )
-        } catch (sendError) {
-          console.error('⚠️ Failed unknown-type reply:', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
       }
       return
     }
@@ -1072,9 +958,7 @@ async function runWhatsAppInboundBackground(
         } else {
           await sendWa(waRecipient, 'no_open_tickets', residentWhatsAppCreds)
         }
-      } catch (sendError) {
-        console.error('⚠️ Failed to send status reply:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
 
       return
     }
@@ -1088,19 +972,13 @@ async function runWhatsAppInboundBackground(
       if (!parsedStart) {
         try {
           await sendWa(waRecipient, 'qr_invalid', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send invalid-start-code reply:', sendError)
-        }
-
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
       const { projectCode, buildingNumber } = parsedStart
 
-      console.log('🚀 Start flow detected for project code:', projectCode)
-      console.log('🏢 Building number:', buildingNumber || 'none')
-      console.log('🔍 Searching for project with code:', projectCode, 'client:', webhookClientId)
-      const projectSearchStart = Date.now()
+      logger.info('WEBHOOK', 'START flow', { projectCode, hasBuilding: !!buildingNumber })
 
       const { data: project, error: projectError } = await supabaseAdmin
         .from('projects')
@@ -1109,23 +987,16 @@ async function runWhatsAppInboundBackground(
         .eq('client_id', webhookClientId)
         .maybeSingle()
 
-      console.log('✅ Project query took:', Date.now() - projectSearchStart, 'ms', 'found:', !!project, 'error:', projectError?.message)
-
       if (projectError) {
-        console.error('❌ Error fetching project:', projectError)
+        logger.error('WEBHOOK', 'project lookup failed', new Error(projectError.message), { projectCode })
         try { await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds) } catch {}
         return
       }
 
       if (!project) {
-        console.log('⚠️ No project found for code:', projectCode)
-
         try {
           await sendWa(waRecipient, 'project_not_found', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send project-not-found reply:', sendError)
-        }
-
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
@@ -1140,8 +1011,8 @@ async function runWhatsAppInboundBackground(
         .eq('is_active', true)
 
       if (deactivateError) {
-        console.error('❌ Error deactivating old sessions (continuing):', deactivateError)
         // Non-fatal: old sessions may linger, but we still create a new one and reply
+        logger.warn('WEBHOOK', 'deactivate old sessions failed (continuing)', { err: deactivateError.message })
       }
 
       const { data: createdSession, error: sessionInsertError } = await supabaseAdmin
@@ -1158,32 +1029,28 @@ async function runWhatsAppInboundBackground(
         .single()
 
       if (sessionInsertError) {
-        console.error('❌ Error creating session:', sessionInsertError)
+        logger.error('WEBHOOK', 'session insert failed', new Error(sessionInsertError.message))
         try { await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds) } catch {}
         return
       }
-      console.log('✅ Session created:', createdSession.id)
 
-      console.log('🏗️ Project linked:', project.name)
+      logger.info('WEBHOOK', 'session created', { sessionId: createdSession.id, project: project.name })
 
       if (!isTestWhatsAppSender) {
         try {
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, project.id)
         } catch (residentErr) {
-          console.error('❌ Error in getOrCreateResident (continuing):', residentErr)
+          logger.warn('WEBHOOK', 'getOrCreateResident failed (continuing)', { err: residentErr instanceof Error ? residentErr.message : String(residentErr) })
         }
       }
 
       try {
         const buildingLine = buildingNumber ? ` (בניין ${buildingNumber})` : ''
-
         await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
           project_name: project.name,
           building_line: buildingLine,
         })
-      } catch (sendError) {
-        console.error('⚠️ Failed to send start-flow reply:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
 
       return
     }
@@ -1225,9 +1092,7 @@ async function runWhatsAppInboundBackground(
             if (!looksLikeDescription) {
               try {
                 await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds)
-              } catch (sendError) {
-                console.error('⚠️ Failed to send resident-memory prompt:', sendError)
-              }
+              } catch { /* WA send failure is non-fatal */ }
               return
             }
             // else: fall through to ticket creation with textBody as description
@@ -1237,28 +1102,17 @@ async function runWhatsAppInboundBackground(
     }
 
     if (!session) {
-      logWhatsAppRuntimePath('NO_SESSION_PATH_ENTERED', {
-        textBody,
-        phone_number: from,
-        session: null,
-      })
-
       // STEP 2.5: PENDING SELECTION HANDLING (user replies with number 1/2/3)
       const numericSelection = isNumericSelection(textBody)
       let pendingSelection = await getPendingSelection(from, supabaseAdmin, webhookClientId)
 
       if (numericSelection && pendingSelection) {
-        // User selected a valid number and pending selection exists
-        console.log(`✅ User selected option: ${numericSelection}`)
-
         const candidates = pendingSelection.candidate_projects || []
         const selectedIndex = numericSelection - 1
 
         if (selectedIndex >= 0 && selectedIndex < candidates.length) {
           const selectedProject = candidates[selectedIndex]
-          console.log('✅ Creating session for selected building:', selectedProject.name)
 
-          // Ensure only one active session per phone_number
           await supabaseAdmin
             .from('sessions')
             .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
@@ -1266,7 +1120,7 @@ async function runWhatsAppInboundBackground(
             .eq('client_id', webhookClientId)
             .eq('is_active', true)
 
-          const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
+          const { error: sessionCreateError } = await supabaseAdmin
             .from('sessions')
             .insert({
               phone_number: from,
@@ -1280,25 +1134,21 @@ async function runWhatsAppInboundBackground(
             .single()
 
           if (sessionCreateError) {
-            console.error('❌ Error creating session from selection:', sessionCreateError)
+            logger.error('WEBHOOK', 'session create from selection failed', new Error(sessionCreateError.message))
             return
           }
 
-          // Clear pending selection
           await clearPendingSelection(from, supabaseAdmin, webhookClientId)
 
           if (!isTestWhatsAppSender) {
             await getOrCreateResident(supabaseAdmin, webhookClientId, from, selectedProject.id)
           }
 
-          // Send confirmation
           try {
             await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
               project_name: selectedProject.name,
             })
-          } catch (sendError) {
-            console.error('⚠️ Failed to send selection confirmation:', sendError)
-          }
+          } catch { /* WA send failure is non-fatal */ }
 
           return
         }
@@ -1306,91 +1156,46 @@ async function runWhatsAppInboundBackground(
 
       // INVALID NUMERIC SELECTION (number outside range while pending exists)
       if (numericSelection && pendingSelection) {
-        console.log(`⚠️ Invalid selection (out of range): ${numericSelection}`)
-
         try {
           await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send invalid-selection message:', sendError)
-        }
-
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
       // Pending selection + non-numeric: either refine search (address-like) or remind to pick 1/2/3
       if (pendingSelection && !numericSelection) {
         if (isAddressLikeText(textBody)) {
-          console.log('ℹ️ Pending selection cleared — user sent a new address-like query; re-searching')
           await clearPendingSelection(from, supabaseAdmin, webhookClientId)
           pendingSelection = null
         } else {
-          console.log('⚠️ Pending selection exists but message is not numeric')
-
           try {
             await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
-          } catch (sendError) {
-            console.error('⚠️ Failed to send pending-reminder message:', sendError)
-          }
-
+          } catch { /* WA send failure is non-fatal */ }
           return
         }
       }
 
       const addressLike = isAddressLikeText(textBody)
-      logWhatsAppRuntimePath('TEXT_ADDRESS_LIKE_RESULT', {
-        textBody,
-        phone_number: from,
-        session: null,
-      })
-      console.log('TEXT_ADDRESS_LIKE_RESULT_VALUE', { textBody, phone_number: from, addressLike })
 
       if (!addressLike) {
-        console.log('ℹ️ Free-text does not look address-like; sending guidance instead of searching:', textBody)
-
         try {
           await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send no-match message:', sendError)
-        }
-
-        logWhatsAppRuntimePath('GUIDANCE_FALLBACK_RETURNED', {
-          textBody,
-          phone_number: from,
-          session: null,
-        })
-
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
-
-      console.log('ℹ️ Address-like text detected; attempting building search...')
-
-      logWhatsAppRuntimePath('SEARCH_PROJECTS_CALLED', {
-        textBody,
-        phone_number: from,
-        session: null,
-      })
 
       const searchResults = await searchProjectsByBuilding(textBody, supabaseAdmin, webhookClientId)
 
       if (searchResults.length === 0) {
-        // No matches found - send safe error message
-        console.log('❌ No building matches found for search:', textBody)
-
         try {
           await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send no-match message:', sendError)
-        }
-
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
       if (searchResults.length === 1) {
-        // Exactly 1 match - auto-create session
         const matchedProject = searchResults[0]
-        console.log('✅ Found 1 matching building:', matchedProject.name)
 
-        // Ensure only one active session per phone_number
         await supabaseAdmin
           .from('sessions')
           .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
@@ -1398,7 +1203,7 @@ async function runWhatsAppInboundBackground(
           .eq('client_id', webhookClientId)
           .eq('is_active', true)
 
-        const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
+        const { error: sessionCreateError } = await supabaseAdmin
           .from('sessions')
           .insert({
             phone_number: from,
@@ -1412,7 +1217,7 @@ async function runWhatsAppInboundBackground(
           .single()
 
         if (sessionCreateError) {
-          console.error('❌ Error creating session from search match:', sessionCreateError)
+          logger.error('WEBHOOK', 'session create from search match failed', new Error(sessionCreateError.message))
           return
         }
 
@@ -1420,22 +1225,16 @@ async function runWhatsAppInboundBackground(
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
         }
 
-        // Send confirmation message with project name
         try {
           await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
             project_name: matchedProject.name,
           })
-        } catch (sendError) {
-          console.error('⚠️ Failed to send search-match confirmation:', sendError)
-        }
+        } catch { /* WA send failure is non-fatal */ }
 
         return
       }
 
       // Multiple matches (2-3) - store pending selection and send numbered list
-      console.log(`⚠️ Found ${searchResults.length} matching buildings`)
-
-      // Create pending selection state
       const pendingCreated = await createPendingSelection(
         from,
         searchResults,
@@ -1444,14 +1243,10 @@ async function runWhatsAppInboundBackground(
       )
 
       if (!pendingCreated) {
-        console.error('⚠️ Failed to create pending selection, sending fallback message')
-
+        logger.warn('WEBHOOK', 'create pending selection failed, sending technical error')
         try {
           await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
-        } catch (sendError) {
-          console.error('⚠️ Failed to send error message:', sendError)
-        }
-
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
 
@@ -1465,18 +1260,10 @@ async function runWhatsAppInboundBackground(
         await sendWa(waRecipient, 'building_multiple_matches', residentWhatsAppCreds, {
           list: listLines.join('\n'),
         })
-      } catch (sendError) {
-        console.error('⚠️ Failed to send multi-match list:', sendError)
-      }
+      } catch { /* WA send failure is non-fatal */ }
 
       return
     }
-
-    logWhatsAppRuntimePath('TICKET_CREATE_PATH_ENTERED', {
-      textBody,
-      phone_number: from,
-      session,
-    })
 
     // Product rule: never keep active_ticket_id for text follow-ups.
     // Session is only used to bridge: (project identified) -> (ticket description) -> ticket created.
@@ -1489,15 +1276,8 @@ async function runWhatsAppInboundBackground(
           .update({ last_activity_at: new Date().toISOString() })
           .eq('id', session.id)
         try {
-          await sendWa(
-            waRecipient,
-            'duplicate_ticket',
-            residentWhatsAppCreds,
-            { ticket_number: String(dupTicket.ticket_number) }
-          )
-        } catch (sendError) {
-          console.error('⚠️ Failed to send duplicate-ticket reply:', sendError)
-        }
+          await sendWa(waRecipient, 'duplicate_ticket', residentWhatsAppCreds, { ticket_number: String(dupTicket.ticket_number) })
+        } catch { /* WA send failure is non-fatal */ }
         return
       }
     }
@@ -1510,7 +1290,7 @@ async function runWhatsAppInboundBackground(
       .maybeSingle()
 
     if (existingProjectError) {
-      console.error('⚠️ Failed to fetch project for building extraction:', existingProjectError)
+      logger.warn('WEBHOOK', 'fetch project for building extraction failed', { err: existingProjectError.message })
     }
 
     let buildingNumber: string | null = null
@@ -1539,29 +1319,12 @@ async function runWhatsAppInboundBackground(
       .single()
 
     if (ticketError) {
-      console.error('❌ Error creating ticket:', ticketError)
+      logger.error('WEBHOOK', 'ticket insert failed', new Error(ticketError.message))
       return
     }
 
-    const pendingImageAttached = await attachPendingWhatsAppImageToTicketIfAny(
-      from,
-      webhookClientId,
-      createdTicket.id,
-      supabaseAdmin
-    )
-    if (pendingImageAttached) {
-      console.log('✅ Pending WhatsApp image attached to new ticket', { ticketId: createdTicket.id })
-    }
-
-    const pendingLocationAttached = await attachPendingSessionLocationToTicketIfAny(
-      from,
-      webhookClientId,
-      createdTicket.id,
-      supabaseAdmin
-    )
-    if (pendingLocationAttached) {
-      console.log('✅ Pending WhatsApp location merged into new ticket', { ticketId: createdTicket.id })
-    }
+    await attachPendingWhatsAppImageToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
+    await attachPendingSessionLocationToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
 
     const pendingForApproval =
       !!session.project_id &&
@@ -1587,9 +1350,7 @@ async function runWhatsAppInboundBackground(
       waCreds: residentWhatsAppCreds.phoneNumberId && residentWhatsAppCreds.accessToken
         ? { phoneNumberId: residentWhatsAppCreds.phoneNumberId, accessToken: residentWhatsAppCreds.accessToken }
         : null,
-    }).catch((e) => console.error('predictive-alert error:', e))
-
-    // Immediately reset session after ticket creation confirmation is sent (single-purpose session).
+    }).catch((e) => logger.warn('WEBHOOK', 'predictive-alert error', { err: e instanceof Error ? e.message : String(e) }))
 
     const { error: logError } = await supabaseAdmin
       .from('ticket_logs')
@@ -1606,10 +1367,10 @@ async function runWhatsAppInboundBackground(
       })
 
     if (logError) {
-      console.error('⚠️ Ticket log insert failed (non-blocking):', logError)
+      logger.warn('WEBHOOK', 'ticket_logs insert failed (non-blocking)', { err: logError.message })
     }
 
-    console.log('✅ Ticket created:', createdTicket.ticket_number)
+    logger.info('WEBHOOK', 'ticket created', { ticketNumber: createdTicket.ticket_number, clientId: webhookClientId })
 
     try {
       const { data: projectForNotification, error: projectNotificationError } = await supabaseAdmin
@@ -1620,7 +1381,7 @@ async function runWhatsAppInboundBackground(
         .single()
 
       if (projectNotificationError) {
-        console.error('⚠️ Failed to fetch project manager phone:', projectNotificationError)
+        logger.warn('WEBHOOK', 'fetch project for notification failed', { err: projectNotificationError.message })
       } else if (projectForNotification) {
         const buildingLine = buildingNumber ? `בניין: ${buildingNumber}\n` : ''
         const smsMessage = `נפתחה תקלה חדשה\nפרויקט: ${projectForNotification.name}\n${buildingLine}תקלה: #${createdTicket.ticket_number}\nתיאור: ${ticketDescription || 'ללא פירוט'}\nמדווח: ${displayReporterForExternalMessage(waRecipient)}\nכניסה למערכת:\n${getPublicTicketsUrl()}\n${clientName}`
@@ -1628,12 +1389,9 @@ async function runWhatsAppInboundBackground(
         const managerDestination = clientManagerPhone || projectForNotification.manager_phone || getManagerPhoneFromEnv()
 
         if (managerDestination) {
-          console.log('📱 NOTIFICATION_CHANNEL: SMS (new ticket) → manager')
           const smsSent = await sendManagerSMS(managerDestination, smsMessage, smsSenderName, webhookClientId)
-          if (smsSent) {
-            console.log('✅ manager_sms_sent: Manager notification sent successfully via SMS')
-          } else {
-            console.error('❌ manager_sms_failed: Failed to send SMS to manager')
+          if (!smsSent) {
+            logger.warn('WEBHOOK', 'manager SMS failed', { ticketNumber: createdTicket.ticket_number })
           }
         }
 
@@ -1648,18 +1406,15 @@ async function runWhatsAppInboundBackground(
 
           if (workerRow?.phone) {
             const workerMsg = `תקלה חדשה ב${projectForNotification.name}\n#${createdTicket.ticket_number}\n${ticketDescription || 'ללא פירוט'}\nמדווח: ${displayReporterForExternalMessage(waRecipient)}\n${getPublicTicketsUrl()}\n${clientName}`
-            console.log('📱 NOTIFICATION_CHANNEL: SMS (new ticket) → assigned worker')
             const wOk = await sendWorkerSMS(workerRow.phone, workerMsg, smsSenderName, webhookClientId)
-            if (wOk) {
-              console.log('✅ worker_sms_sent: Assigned worker notified')
-            } else {
-              console.error('❌ worker_sms_failed')
+            if (!wOk) {
+              logger.warn('WEBHOOK', 'worker SMS failed', { workerId: projectForNotification.assigned_worker_id })
             }
           }
         }
       }
     } catch (notifyManagerError) {
-      console.error('⚠️ manager_notification_failed: Error notifying manager:', notifyManagerError)
+      logger.warn('WEBHOOK', 'manager notification error', { err: notifyManagerError instanceof Error ? notifyManagerError.message : String(notifyManagerError) })
     }
 
     try {
@@ -1703,9 +1458,7 @@ async function runWhatsAppInboundBackground(
         residentWhatsAppCreds,
         { clientId: webhookClientId }
       )
-    } catch (sendError) {
-      console.error('⚠️ Failed to send ticket-created reply:', sendError)
-    }
+    } catch { /* WA send failure is non-fatal; ticket was already created */ }
 
     // Product rule: if no image is sent, session must reset after ticket creation confirmation.
     // If an image is sent right after, it will attach via recent-ticket lookup (short window).
@@ -1740,7 +1493,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const requestId = `webhook-whatsapp-${Date.now()}`
   logger.info('WEBHOOK', 'WhatsApp webhook POST received', { requestId })
-  webhookJsonLogger.info('whatsapp-webhook-request', { requestId })
 
   try {
     const rawBody = await req.text()
@@ -1748,11 +1500,7 @@ export async function POST(req: NextRequest) {
     const sigHdr = req.headers.get('x-hub-signature-256')
 
     if (metaSecret && !verifyWhatsAppWebhookSignature(rawBody, sigHdr, metaSecret)) {
-      webhookJsonLogger.error(
-        'whatsapp-webhook-invalid-signature',
-        new Error('meta_signature_mismatch'),
-        { requestId }
-      )
+      logger.error('WEBHOOK', 'invalid signature', new Error('meta_signature_mismatch'), { requestId })
       return NextResponse.json({ error: 'invalid signature' }, { status: 403 })
     }
 
@@ -1769,29 +1517,19 @@ export async function POST(req: NextRequest) {
     } catch (envError) {
       const error = envError instanceof Error ? envError : new Error(String(envError))
       logger.error('WEBHOOK', 'Failed to initialize Supabase admin', error, { requestId })
-      webhookJsonLogger.error('whatsapp-webhook-supabase-env', envError, { requestId })
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      webhookJsonLogger.info('whatsapp-webhook-payload-summary', {
-        requestId,
-        bytes: rawBody.length,
-        hasEntry: Array.isArray((body as { entry?: unknown }).entry),
-      })
-      logger.debug('WEBHOOK', 'Full webhook payload (dev only)', { requestId, payload: body })
-    } else {
-      logger.debug('WEBHOOK', 'Webhook payload received', {
-        requestId,
-        hasEntry: Array.isArray((body as { entry?: unknown }).entry),
-      })
-    }
+    logger.debug('WEBHOOK', 'Webhook payload received', {
+      requestId,
+      bytes: rawBody.length,
+      hasEntry: Array.isArray((body as { entry?: unknown }).entry),
+    })
 
-    console.log('⏱️ Supabase initialized, starting message processing')
     const parsedMessage = parseIncomingWhatsAppMessage(body)
 
     if (!parsedMessage) {
-      webhookJsonLogger.info('whatsapp-webhook-no-user-message', { requestId })
+      logger.debug('WEBHOOK', 'no user message in payload', { requestId })
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
@@ -1802,7 +1540,7 @@ export async function POST(req: NextRequest) {
 
     const waRl = await checkWhatsAppWebhookPhoneRateLimit(supabaseAdmin, phoneNumberId)
     if (waRl.isLimited) {
-      webhookJsonLogger.info('whatsapp-webhook-phone-rate-limited', { requestId, phoneNumberId })
+      logger.warn('WEBHOOK', 'rate limited', { requestId, phoneNumberId })
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
@@ -1811,11 +1549,6 @@ export async function POST(req: NextRequest) {
       logger.error(
         'WEBHOOK',
         'No client for WhatsApp phone_number_id',
-        new Error('no_client_for_phone_number_id'),
-        { requestId, phoneNumberId }
-      )
-      webhookJsonLogger.error(
-        'whatsapp-webhook-unknown-phone-number-id',
         new Error('no_client_for_phone_number_id'),
         { requestId, phoneNumberId }
       )
@@ -1828,12 +1561,11 @@ export async function POST(req: NextRequest) {
       client_id: tenantResolved.clientId,
     })
     if (dupErr && dupErr.code === '23505') {
-      webhookJsonLogger.info('whatsapp-webhook-duplicate', { requestId, dedupeMessageId })
+      logger.debug('WEBHOOK', 'duplicate message ignored', { requestId, dedupeMessageId })
       return NextResponse.json({ received: true }, { status: 200 })
     }
     if (dupErr) {
-      console.error('⚠️ dedupe insert failed, continuing anyway:', dupErr.message)
-      webhookJsonLogger.error('whatsapp-webhooks-dedupe-insert', dupErr, { requestId, dedupeMessageId })
+      logger.warn('WEBHOOK', 'dedupe insert failed, continuing', { requestId, dedupeMessageId, err: dupErr.message })
       // Do NOT return — continue processing the message
     }
 
@@ -1853,7 +1585,6 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
     logger.error('WEBHOOK', 'WhatsApp webhook POST error', err, { requestId })
-    webhookJsonLogger.error('whatsapp-webhook-post-unhandled', err, { requestId })
     return NextResponse.json({ received: true }, { status: 200 })
   }
 }

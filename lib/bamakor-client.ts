@@ -38,8 +38,5 @@ export async function resolveBamakorClientIdForBrowser(): Promise<string> {
     return explicit
   }
 
-  if (typeof window !== 'undefined') {
-    window.location.replace('/onboarding')
-  }
-  throw new Error('לא נמצא client_id לארגון')
+  throw new Error('לא נמצא client_id לארגון — פנו לתמיכה')
 }

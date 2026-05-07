@@ -31,12 +31,5 @@ export async function sendManagerSMS(
 ): Promise<boolean> {
   const stripped = phoneNumber.replace(/[\s\-+]/g, '')
   const normalized = stripped.startsWith('0') ? '972' + stripped.slice(1) : stripped
-  console.log('📱 sendManagerSMS normalized:', normalized)
   return send019StaffSms(normalized, message, senderName, { channel: 'manager_sms', clientId })
-}
-
-export const WHATSAPP_STAFF_NOTIFICATIONS_ARCHIVED = {
-  reason: 'WhatsApp templates not yet approved by Meta',
-  status: 'disabled',
-  currentChannel: 'SMS_019',
 }

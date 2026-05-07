@@ -45,6 +45,41 @@ function emptyWorker(): WorkerInput {
   return { full_name: '', phone: '', email: '', role: '' }
 }
 
+function parseCsvRows(text: string): string[][] {
+  const clean = text.replace(/^﻿/, '') // strip Excel BOM
+  const firstLine = clean.split('\n')[0] ?? ''
+  const delimiter = firstLine.includes(';') ? ';' : ','
+  return clean
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+    .map((line) => {
+      const cols: string[] = []
+      let cur = ''
+      let inQ = false
+      for (const ch of line) {
+        if (ch === '"') { inQ = !inQ }
+        else if (ch === delimiter && !inQ) { cols.push(cur.trim()); cur = '' }
+        else { cur += ch }
+      }
+      cols.push(cur.trim())
+      return cols
+    })
+}
+
+function looksLikeHeader(row: string[]): boolean {
+  const keywords = ['שם', 'name', 'קוד', 'code', 'כתובת', 'address', 'טלפון', 'phone', 'full_name', 'תפקיד', 'role', 'אימייל', 'email']
+  return row.some((c) => keywords.some((k) => c.toLowerCase().includes(k)))
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ─── Small UI primitives ──────────────────────────────────────────────────────
 function Field({
   label,
@@ -172,6 +207,8 @@ export default function AdminSetupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<SetupResult | null>(null)
+  const [csvMsgProjects, setCsvMsgProjects] = useState('')
+  const [csvMsgWorkers, setCsvMsgWorkers] = useState('')
 
   // ── Unlock ────────────────────────────────────────────────────────────────
   function handleUnlock() {
@@ -203,6 +240,37 @@ export default function AdminSetupPage() {
   }
   function removeWorker(i: number) {
     setWorkers((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
+  // ── CSV upload ────────────────────────────────────────────────────────────
+  async function handleProjectsCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    const rows = parseCsvRows(text)
+    const data = looksLikeHeader(rows[0] ?? []) ? rows.slice(1) : rows
+    const parsed: ProjectInput[] = data
+      .filter((r) => r[0] && r[1])
+      .map((r) => ({ name: r[0] ?? '', project_code: (r[1] ?? '').toUpperCase(), address: r[2] ?? '' }))
+    if (parsed.length === 0) { setCsvMsgProjects('לא נמצאו שורות תקינות (נדרש: שם, קוד)'); e.target.value = ''; return }
+    setProjects(parsed)
+    setCsvMsgProjects(`✓ נטענו ${parsed.length} פרויקטים`)
+    e.target.value = ''
+  }
+
+  async function handleWorkersCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    const rows = parseCsvRows(text)
+    const data = looksLikeHeader(rows[0] ?? []) ? rows.slice(1) : rows
+    const parsed: WorkerInput[] = data
+      .filter((r) => r[0] && r[1])
+      .map((r) => ({ full_name: r[0] ?? '', phone: r[1] ?? '', email: r[2] ?? '', role: r[3] ?? '' }))
+    if (parsed.length === 0) { setCsvMsgWorkers('לא נמצאו שורות תקינות (נדרש: שם, טלפון)'); e.target.value = ''; return }
+    setWorkers(parsed)
+    setCsvMsgWorkers(`✓ נטענו ${parsed.length} עובדים`)
+    e.target.value = ''
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -605,7 +673,29 @@ export default function AdminSetupPage() {
 
         {/* ── 3. Projects ────────────────────────────────────────────────── */}
         <div style={cardStyle}>
-          <SectionTitle>פרויקטים</SectionTitle>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.xl, paddingBottom: theme.spacing.md, borderBottom: `1.5px solid ${theme.colors.borderSubtle}` }}>
+            <h2 style={{ margin: 0, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.semibold, color: theme.colors.textPrimary }}>פרויקטים</h2>
+            <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexShrink: 0 }}>
+              {csvMsgProjects && (
+                <span style={{ fontSize: theme.typography.fontSize.xs, color: csvMsgProjects.startsWith('✓') ? theme.colors.success : theme.colors.error }}>
+                  {csvMsgProjects}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => downloadCsv('תבנית-פרויקטים.csv', 'שם פרויקט,קוד,כתובת\nבניין הרצל 5,BMK001,הרצל 5 תל אביב')}
+                style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.primary, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+              >
+                הורד תבנית
+              </button>
+              <label style={{ cursor: 'pointer' }}>
+                <span style={{ fontSize: theme.typography.fontSize.xs, background: theme.colors.primaryMuted, color: theme.colors.primary, border: `1px solid ${theme.colors.primary}`, borderRadius: theme.radius.sm, padding: '4px 10px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  העלה CSV
+                </span>
+                <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={(e) => { void handleProjectsCsv(e) }} />
+              </label>
+            </div>
+          </div>
           <div
             style={{
               display: 'grid',
@@ -681,7 +771,29 @@ export default function AdminSetupPage() {
 
         {/* ── 4. Workers ─────────────────────────────────────────────────── */}
         <div style={cardStyle}>
-          <SectionTitle>עובדים (אופציונלי)</SectionTitle>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.xl, paddingBottom: theme.spacing.md, borderBottom: `1.5px solid ${theme.colors.borderSubtle}` }}>
+            <h2 style={{ margin: 0, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.semibold, color: theme.colors.textPrimary }}>עובדים (אופציונלי)</h2>
+            <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexShrink: 0 }}>
+              {csvMsgWorkers && (
+                <span style={{ fontSize: theme.typography.fontSize.xs, color: csvMsgWorkers.startsWith('✓') ? theme.colors.success : theme.colors.error }}>
+                  {csvMsgWorkers}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => downloadCsv('תבנית-עובדים.csv', 'שם מלא,טלפון,אימייל,תפקיד\nישראל ישראלי,0501234567,israel@example.com,טכנאי')}
+                style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.primary, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+              >
+                הורד תבנית
+              </button>
+              <label style={{ cursor: 'pointer' }}>
+                <span style={{ fontSize: theme.typography.fontSize.xs, background: theme.colors.primaryMuted, color: theme.colors.primary, border: `1px solid ${theme.colors.primary}`, borderRadius: theme.radius.sm, padding: '4px 10px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  העלה CSV
+                </span>
+                <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={(e) => { void handleWorkersCsv(e) }} />
+              </label>
+            </div>
+          </div>
           <div
             style={{
               display: 'grid',

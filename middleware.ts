@@ -3,18 +3,18 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
 
-/** משתמש "חדש" להפניה ל-onboarding: נרשם ב־30 הימים האחרונים */
-const NEW_USER_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
-
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Public routes: do not block WhatsApp webhook or login screen
+  // Also: /api/superadmin/* and /api/admin/* use x-admin-secret auth, not Supabase cookies
   if (
     pathname.startsWith('/api/webhook/whatsapp') ||
     pathname.startsWith('/api/public/') ||
     pathname.startsWith('/api/worker-auth') ||
     pathname.startsWith('/api/worker/') ||
+    pathname.startsWith('/api/superadmin/') ||
+    pathname.startsWith('/api/admin/') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||
@@ -72,44 +72,18 @@ export async function middleware(req: NextRequest) {
   }
 
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-  if (serviceKey && supabaseUrl && !pathname.startsWith('/api/')) {
+  if (serviceKey && supabaseUrl && !pathname.startsWith('/api/') && !pathname.startsWith('/superadmin') && !pathname.startsWith('/admin/')) {
     try {
       const admin = createClient(supabaseUrl, serviceKey)
       const clientId = await resolveClientIdForUserId(admin, user.id)
 
-      if (!clientId && !pathname.startsWith('/onboarding') && !pathname.startsWith('/login')) {
+      if (!clientId && !pathname.startsWith('/login')) {
         const url = req.nextUrl.clone()
-        url.pathname = '/onboarding'
+        url.pathname = '/login'
         return NextResponse.redirect(url)
       }
-
-      if (
-        clientId &&
-        !pathname.startsWith('/onboarding') &&
-        !pathname.startsWith('/login')
-      ) {
-        // Manual SQL onboarding can leave is_active null/false; any project means workspace exists.
-        const { count, error: cErr } = await admin
-          .from('projects')
-          .select('*', { count: 'exact', head: true })
-          .eq('client_id', clientId)
-
-        if (cErr) {
-          return res
-        }
-
-        const createdMs = user.created_at ? new Date(user.created_at).getTime() : 0
-        const isNewUser =
-          createdMs > 0 && Date.now() - createdMs < NEW_USER_MAX_AGE_MS
-
-        if (isNewUser && (count ?? 0) === 0) {
-          const url = req.nextUrl.clone()
-          url.pathname = '/onboarding'
-          return NextResponse.redirect(url)
-        }
-      }
     } catch {
-      /* ignore onboarding redirect if admin client unavailable */
+      /* ignore redirect if admin client unavailable */
     }
   }
 

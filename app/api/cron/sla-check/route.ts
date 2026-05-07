@@ -33,7 +33,8 @@ async function sendAlert(
   creds: ClientCreds,
   label: string,
   logger: ReturnType<typeof getLogger>,
-  ticketId: string
+  ticketId: string,
+  clientId: string
 ): Promise<'wa' | 'sms' | 'none'> {
   const waCreds = creds.whatsapp_phone_number_id && creds.whatsapp_access_token
     ? { phoneNumberId: creds.whatsapp_phone_number_id, accessToken: creds.whatsapp_access_token }
@@ -41,7 +42,7 @@ async function sendAlert(
 
   if (waCreds) {
     try {
-      await sendWhatsAppTextMessage(phone, message, waCreds, { clientId: '' })
+      await sendWhatsAppTextMessage(phone, message, waCreds, { clientId })
       return 'wa'
     } catch (e) {
       logger.warn('CRON', `${label} WA failed, trying SMS`, { ticketId, err: e instanceof Error ? e.message : String(e) })
@@ -50,7 +51,7 @@ async function sendAlert(
 
   // SMS fallback
   try {
-    await sendManagerSMS(phone, message, creds.sms_sender_name ?? null, null)
+    await sendManagerSMS(phone, message, creds.sms_sender_name ?? null, clientId)
     return 'sms'
   } catch (e) {
     logger.warn('CRON', `${label} SMS also failed`, { ticketId, err: e instanceof Error ? e.message : String(e) })
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
           `תיאור: ${(row.description as string | null)?.slice(0, 80) ?? '—'}\n` +
           `נא לבדוק בלוח הבקרה.`
 
-        const channel = await sendAlert(managerPhone, msg, clientCreds, 'SLA-first', logger, row.id as string)
+        const channel = await sendAlert(managerPhone, msg, clientCreds, 'SLA-first', logger, row.id as string, clientId)
         if (channel !== 'none') stats.wasSent += channel === 'wa' ? 1 : 0, stats.smsSent += channel === 'sms' ? 1 : 0
 
         await admin.from('tickets').update({
@@ -137,7 +138,7 @@ export async function GET(req: NextRequest) {
             `עברו ${Math.floor(openHours)} שעות מפתיחת התקלה ועדיין אין טיפול.\n` +
             `נדרשת התערבות מיידית.`
 
-          const ch = await sendAlert(managerPhone, mgrMsg, clientCreds, 'Escalation-mgr', logger, row.id as string)
+          const ch = await sendAlert(managerPhone, mgrMsg, clientCreds, 'Escalation-mgr', logger, row.id as string, clientId)
           if (ch !== 'none') stats.wasSent += ch === 'wa' ? 1 : 0, stats.smsSent += ch === 'sms' ? 1 : 0
         }
 

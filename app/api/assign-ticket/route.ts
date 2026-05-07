@@ -8,10 +8,6 @@ import { assignWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 
-// ARCHIVED: Old WhatsApp notification
-// import { sendWhatsAppTextWithTemplateFallback } from '@/lib/whatsapp-send'
-// const WORKER_TEMPLATE_NAME = 'worker_assignment_notice'
-
 export async function POST(req: Request) {
   const logger = getLogger()
   const audit = getAuditLogger()
@@ -24,7 +20,6 @@ export async function POST(req: Request) {
     try {
       supabaseAdmin = getSupabaseAdmin()
     } catch (envError) {
-      console.error('❌ Environment configuration error:', envError)
       const error = envError instanceof Error ? envError : new Error(String(envError))
       logger.error('TICKET_API', 'Failed to initialize Supabase admin', error, { requestId })
       return NextResponse.json(
@@ -173,52 +168,29 @@ export async function POST(req: Request) {
       })
 
     if (logError) {
-      console.error('⚠️ Failed to insert assign log:', logError)
+      logger.warn('TICKET_API', 'ticket_logs insert failed (non-blocking)', { requestId, err: logError.message })
     }
 
     if (worker.phone) {
       try {
-        console.log('NOTIFICATION_CHANNEL: SMS (worker assignment)')
-        console.log('Sending worker notification to:', worker.phone)
-
-        // CURRENT CHANNEL: SMS for worker notifications
         const dashboardUrl = getPublicTicketsUrl()
         const smsMessage = `שויכת לתקלה #${ticket.ticket_number} בבניין ${buildingName}: ${ticket.description || 'ללא תיאור'}. לפרטים: ${dashboardUrl}`
         const smsSent = await sendWorkerSMS(worker.phone, smsMessage, smsSenderName, clientId)
         workerSmsSent = smsSent
         if (smsSent) {
-          console.log('worker_sms_sent: Worker SMS OK', worker.phone)
+          logger.info('TICKET_API', 'Worker SMS sent', { requestId, ticket_id, worker_id })
         } else {
-          workerSmsNote =
-            'שליחת SMS לעובד נכשלה (019SMS / פורמט מספר / הרשאות). בדקו לוגים ב-Vercel והגדרות SMS_019_*.'
-          console.error('worker_sms_failed:', worker.phone)
+          workerSmsNote = 'שליחת SMS לעובד נכשלה (019SMS / פורמט מספר / הרשאות). בדקו לוגים ב-Vercel והגדרות SMS_019_*.'
+          logger.warn('TICKET_API', 'Worker SMS failed', { requestId, ticket_id, worker_id })
         }
-
-        // ARCHIVED: Old WhatsApp notification (kept for reference, can be restored later)
-        // Once WhatsApp templates are approved by Meta, uncomment and modify:
-        /*
-        await sendWhatsAppTextWithTemplateFallback(
-          worker.phone,
-          `הוקצתה לך תקלה חדשה.\n\nפרויקט: ${buildingName}\nפנייה: ${ticket.ticket_number}\nתיאור: ${ticket.description || 'ללא תיאור'}`,
-          WORKER_TEMPLATE_NAME,
-          [
-            buildingName,
-            String(ticket.ticket_number),
-            ticket.description || 'ללא תיאור',
-          ],
-          'he'
-        )
-        console.log('✅ worker_whatsapp_archived: Old WhatsApp channel was here')
-        */
       } catch (sendError) {
         workerSmsSent = false
         workerSmsNote = 'שגיאה בשליחת SMS לעובד.'
-        console.error('worker_notification_failed:', sendError)
+        logger.warn('TICKET_API', 'Worker SMS error', { requestId, err: sendError instanceof Error ? sendError.message : String(sendError) })
       }
     } else {
       workerSmsSent = null
       workerSmsNote = 'לעובד אין מספר טלפון במערכת — לא נשלח SMS.'
-      console.log('ℹ️ Worker has no phone number, skipping notification')
     }
 
     return NextResponse.json({
@@ -230,7 +202,6 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
-    console.error('[assign-ticket]', error)
     logger.error('TICKET_API', 'Assign ticket route error', err, { requestId })
     return NextResponse.json(
       { error: 'internal', requestId },
