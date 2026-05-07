@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
   const [clientsRes, projectsRes, residentsRes, ticketsRes] = await Promise.all([
     admin.from('clients').select('id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name'),
-    admin.from('projects').select('id, client_id, name').is('deleted_at', null),
+    admin.from('projects').select('id, client_id'),
     admin.from('residents').select('id, client_id').is('deleted_at', null),
     admin.from('tickets').select('id, client_id, status').not('status', 'eq', 'CLOSED'),
   ])
