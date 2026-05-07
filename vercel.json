@@ -1,4 +1,5 @@
 {
+  "regions": ["hnd1"],
   "crons": [
     { "path": "/api/cron/sla-check", "schedule": "0 8 * * *" },
     { "path": "/api/cron/whatsapp-retry", "schedule": "0 9 * * *" },
