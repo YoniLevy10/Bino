@@ -31,6 +31,7 @@ import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
+import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import { findResidentByPhoneClient, getOrCreateResident } from '@/lib/residents-whatsapp'
 
 export const maxDuration = 60
@@ -1571,6 +1572,22 @@ async function runWhatsAppInboundBackground(
         ticketId: createdTicket.id,
         waFrom: waRecipient,
       }))
+
+    // Predictive alert — fire-and-forget, never blocks the response
+    void checkAndFlagRecurringIssue({
+      supabase: supabaseAdmin,
+      ticketId: createdTicket.id,
+      clientId: webhookClientId,
+      projectId: session.project_id as string,
+      projectName: '',
+      reporterPhone: from,
+      ticketNumber: createdTicket.ticket_number,
+      clientManagerPhone: clientManagerPhone ?? null,
+      smsSenderName: smsSenderName ?? null,
+      waCreds: residentWhatsAppCreds.phoneNumberId && residentWhatsAppCreds.accessToken
+        ? { phoneNumberId: residentWhatsAppCreds.phoneNumberId, accessToken: residentWhatsAppCreds.accessToken }
+        : null,
+    }).catch((e) => console.error('predictive-alert error:', e))
 
     // Immediately reset session after ticket creation confirmation is sent (single-purpose session).
 

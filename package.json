@@ -16,6 +16,7 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.0",
     "@sentry/nextjs": "^10.51.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.101.0",
