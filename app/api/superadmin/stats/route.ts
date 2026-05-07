@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     admin.from('projects').select('id, client_id'),
     admin.from('residents').select('id, client_id').is('deleted_at', null),
     admin.from('tickets').select('id, client_id, status').not('status', 'eq', 'CLOSED'),
-    admin.rpc('get_client_admin_emails') as Promise<{ data: { client_id: string; email: string }[] | null; error: unknown }>,
+    admin.rpc('get_client_admin_emails') as unknown as Promise<{ data: { client_id: string; email: string }[] | null; error: unknown }>,
   ])
 
   if (clientsRes.error) {
