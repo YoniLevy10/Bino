@@ -7,12 +7,11 @@ import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import {
   WHATSAPP_TEMPLATE_KEYS,
   type WhatsAppTemplateKey,
-  type WhatsAppTemplateCategory,
   WHATSAPP_TEMPLATE_LABELS,
   WHATSAPP_TEMPLATE_EDITOR_DEFAULTS,
   WHATSAPP_TEMPLATE_VAR_NAMES,
-  WHATSAPP_TEMPLATE_CATEGORIES,
-  WHATSAPP_TEMPLATE_CATEGORY_LABELS,
+  WHATSAPP_TEMPLATE_JOURNEY,
+  WHATSAPP_TEMPLATE_WHEN_SENT,
 } from '@/lib/whatsapp-template-keys'
 import { interpolateWhatsAppTemplate } from '@/lib/whatsapp-templates'
 import { toast } from '@/lib/error-handler'
@@ -22,7 +21,6 @@ import {
   MobileHeader,
   MobileMenu,
   PageHeader,
-  Card,
   Button,
   LoadingSpinner,
   theme,
@@ -38,14 +36,7 @@ const PREVIEW_SAMPLE: Record<(typeof WHATSAPP_TEMPLATE_VAR_NAMES)[number], strin
   list: '1. מגדלי הים התיכון\n2. בית הכרמל',
 }
 
-const CATEGORY_ORDER: WhatsAppTemplateCategory[] = [
-  'flow',
-  'building',
-  'location',
-  'image',
-  'unsupported',
-  'general',
-]
+const STEP_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#0891b2', '#dc2626']
 
 function insertVarAtCursor(
   el: HTMLTextAreaElement | null,
@@ -53,10 +44,7 @@ function insertVarAtCursor(
   token: string,
   onChange: (next: string) => void
 ) {
-  if (!el) {
-    onChange(value + token)
-    return
-  }
+  if (!el) { onChange(value + token); return }
   const start = el.selectionStart ?? value.length
   const end = el.selectionEnd ?? value.length
   const next = value.slice(0, start) + token + value.slice(end)
@@ -77,12 +65,12 @@ export default function WhatsappTemplatesPage() {
     ...WHATSAPP_TEMPLATE_EDITOR_DEFAULTS,
   }))
   const [savingKey, setSavingKey] = useState<WhatsAppTemplateKey | null>(null)
+  const [savingAll, setSavingAll] = useState(false)
+  const [expandedKeys, setExpandedKeys] = useState<Set<WhatsAppTemplateKey>>(new Set())
   const textareaRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
 
-  const setRef = useCallback((key: WhatsAppTemplateKey) => {
-    return (el: HTMLTextAreaElement | null) => {
-      textareaRefs.current[key] = el
-    }
+  const setRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
+    textareaRefs.current[key] = el
   }, [])
 
   useEffect(() => {
@@ -105,18 +93,14 @@ export default function WhatsappTemplatesPage() {
           .select('template_key, template_text')
           .eq('client_id', cid)
 
-        if (error) {
-          if (!error.message.includes('does not exist') && !error.message.includes('schema cache')) {
-            throw error
-          }
+        if (error && !error.message.includes('does not exist') && !error.message.includes('schema cache')) {
+          throw error
         }
 
         const next = { ...WHATSAPP_TEMPLATE_EDITOR_DEFAULTS }
         for (const row of (data || []) as { template_key: string; template_text: string }[]) {
           const k = row.template_key as WhatsAppTemplateKey
-          if (WHATSAPP_TEMPLATE_KEYS.includes(k)) {
-            next[k] = row.template_text
-          }
+          if (WHATSAPP_TEMPLATE_KEYS.includes(k)) next[k] = row.template_text
         }
         if (!cancelled) setDrafts(next)
       } catch (e) {
@@ -126,9 +110,7 @@ export default function WhatsappTemplatesPage() {
       }
     }
     void load()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   async function saveKey(key: WhatsAppTemplateKey) {
@@ -136,12 +118,7 @@ export default function WhatsappTemplatesPage() {
     setSavingKey(key)
     try {
       const { error } = await supabase.from('whatsapp_templates').upsert(
-        {
-          client_id: clientId,
-          template_key: key,
-          template_text: drafts[key] || '',
-          updated_at: new Date().toISOString(),
-        },
+        { client_id: clientId, template_key: key, template_text: drafts[key] || '', updated_at: new Date().toISOString() },
         { onConflict: 'client_id,template_key' }
       )
       if (error) throw error
@@ -153,6 +130,26 @@ export default function WhatsappTemplatesPage() {
     }
   }
 
+  async function saveAll() {
+    if (!clientId) return
+    setSavingAll(true)
+    try {
+      const rows = WHATSAPP_TEMPLATE_KEYS.map((key) => ({
+        client_id: clientId,
+        template_key: key,
+        template_text: drafts[key] || '',
+        updated_at: new Date().toISOString(),
+      }))
+      const { error } = await supabase.from('whatsapp_templates').upsert(rows, { onConflict: 'client_id,template_key' })
+      if (error) throw error
+      toast.success('כל התבניות נשמרו בהצלחה')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : TM.genericSaveError)
+    } finally {
+      setSavingAll(false)
+    }
+  }
+
   const previews = useMemo(() => {
     const m: Record<WhatsAppTemplateKey, string> = { ...drafts }
     for (const k of WHATSAPP_TEMPLATE_KEYS) {
@@ -160,6 +157,15 @@ export default function WhatsappTemplatesPage() {
     }
     return m
   }, [drafts])
+
+  function toggleExpand(key: WhatsAppTemplateKey) {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   function chip(token: string, key: WhatsAppTemplateKey) {
     return (
@@ -178,24 +184,10 @@ export default function WhatsappTemplatesPage() {
     )
   }
 
-  const keysByCategory = useMemo(() => {
-    const map: Partial<Record<WhatsAppTemplateCategory, WhatsAppTemplateKey[]>> = {}
-    for (const key of WHATSAPP_TEMPLATE_KEYS) {
-      const cat = WHATSAPP_TEMPLATE_CATEGORIES[key]
-      if (!map[cat]) map[cat] = []
-      map[cat]!.push(key)
-    }
-    return map
-  }, [])
-
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader
-          title="תבניות וואטסאפ"
-          subtitle="הודעות אוטומטיות"
-          onMenuClick={() => setMenuOpen(true)}
-        />
+        <MobileHeader title="תבניות וואטסאפ" subtitle="הודעות אוטומטיות" onMenuClick={() => setMenuOpen(true)} />
       )}
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
@@ -203,84 +195,108 @@ export default function WhatsappTemplatesPage() {
         {!isMobile && (
           <PageHeader
             title="תבניות הודעות וואטסאפ"
-            subtitle="עריכת כל הטקסטים שנשלחים לדיירים — אין שום הודעה hardcoded במערכת"
+            subtitle="כל ההודעות שנשלחות לדיירים — מסודרות לפי רצף השיחה"
             actions={
-              <Link href="/settings" style={styles.backLink}>
-                ← חזרה להגדרות
-              </Link>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <Button variant="primary" size="sm" onClick={saveAll} loading={savingAll}>
+                  שמור הכל
+                </Button>
+                <Link href="/settings" style={styles.backLink}>← חזרה להגדרות</Link>
+              </div>
             }
           />
         )}
         {isMobile && (
-          <div style={{ marginBottom: '16px' }}>
-            <Link href="/settings" style={styles.backLink}>
-              ← חזרה להגדרות
-            </Link>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Link href="/settings" style={styles.backLink}>← חזרה להגדרות</Link>
+            <Button variant="primary" size="sm" onClick={saveAll} loading={savingAll}>שמור הכל</Button>
           </div>
         )}
 
         {loading ? (
-          <div style={styles.loading}>
+          <div style={{ padding: 48, display: 'flex', justifyContent: 'center', flexDirection: 'column', gap: 20 }}>
             <PageListSkeleton rows={6} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-              <LoadingSpinner size="md" />
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'center' }}><LoadingSpinner size="md" /></div>
           </div>
         ) : (
-          <div style={styles.sections}>
-            {CATEGORY_ORDER.map((cat) => {
-              const keys = keysByCategory[cat]
-              if (!keys?.length) return null
-              return (
-                <div key={cat}>
-                  <div style={styles.categoryHeader}>{WHATSAPP_TEMPLATE_CATEGORY_LABELS[cat]}</div>
-                  <div style={styles.grid}>
-                    {keys.map((key) => (
-                      <Card key={key} title={WHATSAPP_TEMPLATE_LABELS[key]} noPadding>
-                        <div style={styles.cardInner}>
-                          <div style={styles.readonlyKey}>מפתח מערכת: {key}</div>
-
-                          <div style={styles.chipsRow}>
-                            <span style={styles.chipsLabel}>משתנים:</span>
-                            {WHATSAPP_TEMPLATE_VAR_NAMES.map((v) => chip(`{{${v}}}`, key))}
-                          </div>
-
-                          <label style={styles.lab}>תוכן ההודעה</label>
-                          <textarea
-                            ref={setRef(key)}
-                            dir="rtl"
-                            value={drafts[key] || ''}
-                            onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                            rows={5}
-                            style={styles.textarea}
-                          />
-
-                          <div style={styles.previewBlock}>
-                            <div style={styles.previewLabel}>תצוגה מקדימה</div>
-                            <div style={styles.waChrome}>
-                              <div style={styles.waBubble}>
-                                <p style={styles.waText}>{previews[key]}</p>
-                                <span style={styles.waTime}>14:02</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => saveKey(key)}
-                            loading={savingKey === key}
-                            style={{ alignSelf: 'flex-start' }}
-                          >
-                            שמירה
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
+          <div style={styles.journey}>
+            {WHATSAPP_TEMPLATE_JOURNEY.map((step, si) => (
+              <div key={step.step} style={styles.stepSection}>
+                {/* Step header */}
+                <div style={styles.stepHeader}>
+                  <div style={{ ...styles.stepBadge, background: STEP_COLORS[si] ?? '#6b7280' }}>
+                    {step.step}
+                  </div>
+                  <div>
+                    <div style={styles.stepTitle}>{step.title}</div>
+                    <div style={styles.stepDesc}>{step.description}</div>
                   </div>
                 </div>
-              )
-            })}
+
+                {/* Templates in this step */}
+                <div style={styles.templateList}>
+                  {step.keys.map((key) => {
+                    const isOpen = expandedKeys.has(key)
+                    return (
+                      <div key={key} style={styles.templateCard}>
+                        {/* Card header — always visible, click to expand */}
+                        <button
+                          onClick={() => toggleExpand(key)}
+                          style={styles.templateCardHeader}
+                        >
+                          <div style={{ flex: 1, textAlign: 'right' }}>
+                            <div style={styles.templateLabel}>{WHATSAPP_TEMPLATE_LABELS[key]}</div>
+                            <div style={styles.whenSent}>⚡ {WHATSAPP_TEMPLATE_WHEN_SENT[key]}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                            <code style={styles.keyCode}>{key}</code>
+                            <span style={{ color: theme.colors.textMuted, fontSize: 12, transition: 'transform 0.15s', transform: isOpen ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>▼</span>
+                          </div>
+                        </button>
+
+                        {/* Preview bubble — always visible */}
+                        <div style={styles.previewStrip}>
+                          <div style={styles.waChrome}>
+                            <div style={styles.waBubble}>
+                              <p style={styles.waText}>{previews[key]}</p>
+                              <span style={styles.waTime}>14:02</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Edit panel — only when expanded */}
+                        {isOpen && (
+                          <div style={styles.editPanel}>
+                            <div style={styles.chipsRow}>
+                              <span style={styles.chipsLabel}>הוספת משתנה:</span>
+                              {WHATSAPP_TEMPLATE_VAR_NAMES.map((v) => chip(`{{${v}}}`, key))}
+                            </div>
+                            <textarea
+                              ref={setRef(key)}
+                              dir="rtl"
+                              value={drafts[key] || ''}
+                              onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
+                              rows={6}
+                              style={styles.textarea}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => saveKey(key)}
+                                loading={savingKey === key}
+                              >
+                                שמור תבנית זו
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -289,92 +305,71 @@ export default function WhatsappTemplatesPage() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  content: { padding: '32px 40px', maxWidth: '960px', margin: '0 auto' },
-  backLink: {
-    fontSize: '14px',
-    fontWeight: 600,
-    color: theme.colors.primary,
-    textDecoration: 'none',
+  content: { padding: '32px 40px', maxWidth: 820, margin: '0 auto' },
+  backLink: { fontSize: 14, fontWeight: 600, color: theme.colors.primary, textDecoration: 'none' },
+  journey: { display: 'flex', flexDirection: 'column', gap: 40 },
+
+  stepSection: { display: 'flex', flexDirection: 'column', gap: 12 },
+  stepHeader: { display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 4 },
+  stepBadge: {
+    width: 32, height: 32, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontWeight: 700, fontSize: 15, flexShrink: 0, marginTop: 2,
   },
-  loading: { padding: '48px', display: 'flex', justifyContent: 'center' },
-  sections: { display: 'flex', flexDirection: 'column', gap: '32px' },
-  categoryHeader: {
-    fontSize: '16px',
-    fontWeight: 700,
-    color: theme.colors.textPrimary,
-    marginBottom: '12px',
-    paddingBottom: '8px',
-    borderBottom: `2px solid ${theme.colors.border}`,
-  },
-  grid: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  cardInner: { padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '12px' },
-  readonlyKey: {
-    fontSize: '12px',
-    color: theme.colors.textMuted,
-    fontFamily: 'ui-monospace, monospace',
-  },
-  chipsRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' },
-  chipsLabel: { fontSize: '13px', fontWeight: 600, color: theme.colors.textSecondary },
-  chip: {
-    border: `1px solid ${theme.colors.borderStrong}`,
-    background: theme.colors.muted,
-    borderRadius: theme.radius.full,
-    padding: '4px 10px',
-    fontSize: '12px',
-    cursor: 'pointer',
-    color: theme.colors.primary,
-    fontWeight: 600,
-  },
-  lab: { fontSize: '13px', fontWeight: 600, color: theme.colors.textSecondary },
-  textarea: {
-    width: '100%',
-    boxSizing: 'border-box',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    padding: '12px 14px',
-    fontSize: '15px',
-    lineHeight: 1.5,
-    resize: 'vertical',
-    fontFamily: 'inherit',
-  },
-  previewBlock: { marginTop: '4px' },
-  previewLabel: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: theme.colors.textMuted,
-    marginBottom: '8px',
-  },
-  waChrome: {
-    background: '#ECE5DD',
+  stepTitle: { fontSize: 17, fontWeight: 700, color: theme.colors.textPrimary },
+  stepDesc: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
+
+  templateList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  templateCard: {
+    background: theme.colors.surface,
+    border: `1.5px solid ${theme.colors.border}`,
     borderRadius: theme.radius.lg,
-    padding: '16px 12px',
-    minHeight: '80px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
+    overflow: 'hidden',
+  },
+  templateCardHeader: {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+    padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer',
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    textAlign: 'right',
+  },
+  templateLabel: { fontSize: 14, fontWeight: 600, color: theme.colors.textPrimary },
+  whenSent: { fontSize: 12, color: theme.colors.textMuted, marginTop: 3 },
+  keyCode: {
+    fontSize: 11, color: theme.colors.textMuted, background: theme.colors.muted,
+    padding: '2px 8px', borderRadius: theme.radius.xs, fontFamily: 'monospace',
+    whiteSpace: 'nowrap',
+  },
+
+  previewStrip: { padding: '12px 18px', background: theme.colors.muted },
+  waChrome: {
+    background: '#ECE5DD', borderRadius: theme.radius.md,
+    padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
     border: `1px solid ${theme.colors.border}`,
   },
   waBubble: {
-    maxWidth: '92%',
-    background: '#DCF8C6',
-    borderRadius: '12px 12px 4px 12px',
-    padding: '10px 12px 18px',
-    position: 'relative',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+    maxWidth: '88%', background: '#DCF8C6',
+    borderRadius: '12px 12px 4px 12px', padding: '8px 12px 20px',
+    position: 'relative', boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
   },
-  waText: {
-    margin: 0,
-    fontSize: '15px',
-    lineHeight: 1.45,
-    color: '#111',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
+  waText: { margin: 0, fontSize: 14, lineHeight: 1.45, color: '#111', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
+  waTime: { position: 'absolute', bottom: 5, left: 10, fontSize: 11, color: 'rgba(0,0,0,0.45)' },
+
+  editPanel: {
+    padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12,
+    borderTop: `1.5px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
   },
-  waTime: {
-    position: 'absolute',
-    bottom: '6px',
-    left: '10px',
-    fontSize: '11px',
-    color: 'rgba(0,0,0,0.45)',
+  chipsRow: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  chipsLabel: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary },
+  chip: {
+    border: `1px solid ${theme.colors.borderStrong}`, background: theme.colors.muted,
+    borderRadius: theme.radius.full, padding: '3px 10px', fontSize: 12,
+    cursor: 'pointer', color: theme.colors.primary, fontWeight: 600,
+  },
+  textarea: {
+    width: '100%', boxSizing: 'border-box', borderRadius: theme.radius.md,
+    border: `1.5px solid ${theme.colors.border}`, padding: '12px 14px',
+    fontSize: 15, lineHeight: 1.5, resize: 'vertical', fontFamily: 'inherit',
+    direction: 'rtl',
   },
 }

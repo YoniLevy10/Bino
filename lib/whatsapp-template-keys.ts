@@ -96,6 +96,79 @@ export const WHATSAPP_TEMPLATE_CATEGORY_LABELS: Record<WhatsAppTemplateCategory,
   unsupported: 'סוגי הודעות לא נתמכים',
 }
 
+/** רצף שיחה — שלבים לוגיים לדף התבניות */
+export const WHATSAPP_TEMPLATE_JOURNEY: {
+  step: number
+  title: string
+  description: string
+  keys: WhatsAppTemplateKey[]
+}[] = [
+  {
+    step: 1,
+    title: 'זיהוי בניין',
+    description: 'הדייר שולח הודעה ראשונה — המערכת מנסה לזהות לאיזה בניין הוא שייך',
+    keys: ['welcome', 'qr_invalid', 'project_not_found', 'building_not_found', 'building_multiple_matches', 'selection_invalid'],
+  },
+  {
+    step: 2,
+    title: 'פתיחת תקלה',
+    description: 'בניין זוהה — המערכת מבקשת תיאור ופותחת תקלה',
+    keys: ['session_created', 'resident_prompt', 'duplicate_ticket'],
+  },
+  {
+    step: 3,
+    title: 'אישור ועדכון',
+    description: 'תקלה נפתחה — אישור לדייר ועדכון לעובד',
+    keys: ['ticket_opened', 'pending_approval_note', 'worker_assigned'],
+  },
+  {
+    step: 4,
+    title: 'מעקב וסגירה',
+    description: 'עדכונים לאורך הטיפול וסגירת התקלה',
+    keys: ['no_open_tickets', 'ticket_closed'],
+  },
+  {
+    step: 5,
+    title: 'קבצים מצורפים',
+    description: 'תמונות ומיקומים שהדייר שולח לפני/אחרי פתיחת תקלה',
+    keys: ['image_stashed', 'image_attached', 'image_failed', 'location_stashed', 'location_attached', 'location_error'],
+  },
+  {
+    step: 6,
+    title: 'שגיאות והודעות לא נתמכות',
+    description: 'מקרי קצה: שגיאות טכניות וסוגי הודעות שהמערכת לא מטפלת בהם',
+    keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message'],
+  },
+]
+
+/** הסבר קצר "מתי נשלח?" לכל תבנית */
+export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = {
+  welcome:                 'דייר שלח הודעה ראשונה שלא נראית ככתובת ולא כ-QR — למשל "שלום" או טקסט לא ברור',
+  qr_invalid:              'נסרק QR אך הפורמט שגוי (לא מתחיל ב-BMK)',
+  project_not_found:       'ה-QR תקין אך קוד הפרויקט לא קיים במערכת',
+  building_not_found:      'חיפוש טקסט לא מצא בניין תואם',
+  building_multiple_matches: 'נמצאו 2-3 בניינים תואמים — הדייר צריך לבחור',
+  selection_invalid:       'הדייר הקליד מספר בחירה אך הוא מחוץ לטווח (לא 1, 2 או 3)',
+  session_created:         'בניין זוהה — בקשת תיאור מדייר שלא ידוע עדיין במערכת',
+  resident_prompt:         'דייר מוכר שלח הודעה — מבקשים ממנו לתאר את הבעיה',
+  duplicate_ticket:        'התיאור שהוגש זהה לתקלה פתוחה קיימת של אותו דייר',
+  ticket_opened:           'תקלה נפתחה בהצלחה — נשלח לדייר כאישור',
+  pending_approval_note:   'נוסף בסוף הודעת ticket_opened כשהדייר לא ברשימת הדיירים של הבניין',
+  worker_assigned:         'נשלח לעובד (SMS) כשתקלה משויכת אליו',
+  no_open_tickets:         'דייר שאל "מה הסטטוס?" אך אין לו תקלה פתוחה',
+  ticket_closed:           'המנהלת סגרה תקלה — נשלח לדייר שדיווח עליה',
+  image_stashed:           'דייר שלח תמונה לפני שפתח תקלה — מבקשים תיאור טקסט',
+  image_attached:          'תמונה צורפה בהצלחה לתקלה פתוחה',
+  image_failed:            'שגיאה בהורדה/העלאה של התמונה',
+  location_stashed:        'דייר שלח מיקום לפני שפתח תקלה — מבקשים תיאור טקסט',
+  location_attached:       'מיקום צורף בהצלחה לתקלה פתוחה',
+  location_error:          'שגיאה בקריאת נתוני המיקום שנשלח',
+  technical_error:         'שגיאה טכנית בלתי צפויה (DB, WA API, timeout וכו\')',
+  error_general:           'שגיאות SLA או שגיאות אחרות שלא מטופלות אחרת',
+  redirect_to_text:        'דייר שלח סטיקר / הודעה קולית / איש קשר — מכווינים לטקסט',
+  unsupported_message:     'דייר שלח וידאו / מסמך / סוג הודעה לא ידוע',
+}
+
 /** כותרת קריאה בעברית לכרטיס בעמוד ההגדרות */
 export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
   welcome: 'הודעת פתיחה והנחיות (עזרה כללית)',
