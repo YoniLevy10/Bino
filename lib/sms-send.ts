@@ -29,7 +29,10 @@ export async function sendManagerSMS(
   senderName?: string | null,
   clientId?: string | null
 ): Promise<boolean> {
-  return send019StaffSms(phoneNumber, message, senderName, { channel: 'manager_sms', clientId })
+  const stripped = phoneNumber.replace(/[\s\-+]/g, '')
+  const normalized = stripped.startsWith('0') ? '972' + stripped.slice(1) : stripped
+  console.log('📱 sendManagerSMS normalized:', normalized)
+  return send019StaffSms(normalized, message, senderName, { channel: 'manager_sms', clientId })
 }
 
 export const WHATSAPP_STAFF_NOTIFICATIONS_ARCHIVED = {

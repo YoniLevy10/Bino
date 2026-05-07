@@ -1157,11 +1157,11 @@ async function runWhatsAppInboundBackground(
         .single()
 
       if (sessionInsertError) {
-        console.error('❌ Error creating session (continuing to reply):', sessionInsertError)
-        // Non-fatal: reply to the user even if session state failed to save
-      } else {
-        console.log('✅ Session created:', createdSession.id)
+        console.error('❌ Error creating session:', sessionInsertError)
+        try { await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds) } catch {}
+        return
       }
+      console.log('✅ Session created:', createdSession.id)
 
       console.log('🏗️ Project linked:', project.name)
 
@@ -1219,12 +1219,17 @@ async function runWhatsAppInboundBackground(
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, knownResident.project_id)
           session = await getActiveSession(from, supabaseAdmin, webhookClientId)
           if (session) {
-            try {
-              await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds)
-            } catch (sendError) {
-              console.error('⚠️ Failed to send resident-memory prompt:', sendError)
+            // RESIDENT MEMORY: reuse textBody as ticket description
+            const looksLikeDescription = !isStatusQuestion(textBody) && !isAddressLikeText(textBody) && textBody.trim().length >= 5
+            if (!looksLikeDescription) {
+              try {
+                await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds)
+              } catch (sendError) {
+                console.error('⚠️ Failed to send resident-memory prompt:', sendError)
+              }
+              return
             }
-            return
+            // else: fall through to ticket creation with textBody as description
           }
         }
       }
