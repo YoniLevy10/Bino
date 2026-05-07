@@ -10,6 +10,7 @@ type ClientRow = {
   whatsapp_phone_number_id: string | null
   manager_phone: string | null
   sms_sender_name: string | null
+  admin_email: string | null
   buildings_count: number
   residents_count: number
   open_tickets_count: number
@@ -253,7 +254,7 @@ export default function SuperAdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['שם לקוח', 'תכנית', 'WA Phone ID', 'מנהל (טלפון)', 'SMS שולח', 'בניינים', 'דיירים', 'קריאות פתוחות', ''].map((h) => (
+                    {['שם לקוח', 'מייל אדמין', 'תכנית', 'WA Phone ID', 'מנהל (טלפון)', 'SMS שולח', 'בניינים', 'דיירים', 'קריאות פתוחות', ''].map((h) => (
                       <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -264,6 +265,9 @@ export default function SuperAdminPage() {
                       {/* Data row */}
                       <tr key={c.id} style={{ background: editingId === c.id ? theme.colors.primaryMuted : 'transparent' }}>
                         <td style={{ ...tdStyle, fontWeight: theme.typography.fontWeight.semibold }}>{c.name}</td>
+                        <td style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs, direction: 'ltr' }}>
+                          {c.admin_email ?? <span style={{ color: theme.colors.textMuted }}>—</span>}
+                        </td>
                         <td style={tdStyle}>
                           <span style={{ background: PLAN_COLORS[c.plan_tier] ?? '#6b7280', color: '#fff', borderRadius: theme.radius.xs, padding: '2px 8px', fontSize: theme.typography.fontSize.xs, fontWeight: 600 }}>
                             {PLAN_LABELS[c.plan_tier] ?? c.plan_tier}
@@ -301,7 +305,7 @@ export default function SuperAdminPage() {
                       {/* Inline edit row */}
                       {editingId === c.id && editState && (
                         <tr key={`${c.id}-edit`}>
-                          <td colSpan={9} style={{ ...tdStyle, background: theme.colors.muted, padding: theme.spacing.xl }}>
+                          <td colSpan={10} style={{ ...tdStyle, background: theme.colors.muted, padding: theme.spacing.xl }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
                               <div>
                                 <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>שם לקוח</label>
