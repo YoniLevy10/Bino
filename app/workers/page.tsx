@@ -11,7 +11,7 @@
  *  - הסרה/ארכיב → soft-delete (deleted_at)
  *  - לחיצה על עובד → Drawer עם פרטים + תקלות שמשויכות אליו
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -122,29 +122,21 @@ export default function WorkersPage() {
     setWorkers((data as WorkerRow[]) || [])
   }
 
-  const initializePage = useCallback(async () => {
-    setLoading(true)
-    await asyncHandler(
-      async () => {
-        const fetchedClientId = await loadClientId()
-        await loadWorkers(fetchedClientId)
-        return true
-      },
-      { context: 'טעינת עובדים', showErrorToast: true }
-    )
-    setLoading(false)
-  }, [])
-
   useEffect(() => {
-    const check = () => setIsMobile(getIsMobileViewport())
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  useEffect(() => {
-    void initializePage()
-  }, [initializePage])
+    const initialize = async () => {
+      setLoading(true)
+      await asyncHandler(
+        async () => {
+          const fetchedClientId = await loadClientId()
+          await loadWorkers(fetchedClientId)
+          return true
+        },
+        { context: 'טעינת עובדים', showErrorToast: true }
+      )
+      setLoading(false)
+    }
+    void initialize()
+  }, [clientId])
 
   function openCreateDrawer() {
     setEditingWorker(null)

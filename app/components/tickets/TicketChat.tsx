@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button, theme } from '../ui'
 
@@ -25,7 +25,7 @@ export function TicketChat({ ticketId, clientId }: TicketChatProps) {
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const load = useCallback(async () => {
+  const load = async () => {
     if (!ticketId) {
       setMessages([])
       return
@@ -42,11 +42,11 @@ export function TicketChat({ ticketId, clientId }: TicketChatProps) {
       setMessages([])
     }
     setLoading(false)
-  }, [ticketId])
+  }
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [ticketId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

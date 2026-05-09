@@ -11,7 +11,7 @@
  *  - ארכיב/הסרה → PATCH is_active=false
  *  - "קוד QR" → מנווט ל-/qr
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -145,33 +145,36 @@ export default function ProjectsPage() {
     )
   }
 
-  const initializePage = useCallback(async () => {
-    setLoading(true)
-    await asyncHandler(
-      async () => {
-        const fetchedClientId = await loadClientId()
-        const [workersResult, projectsResult] = await Promise.all([
-          supabase
-            .from('workers')
-            .select('id, full_name')
-            .eq('client_id', fetchedClientId)
-            .is('deleted_at', null)
-            .order('full_name', { ascending: true }),
-          supabase
-            .from('projects')
-            .select('*')
-            .eq('client_id', fetchedClientId)
-            .order('created_at', { ascending: false }),
-        ])
-        if (workersResult.error) throw workersResult.error
-        if (projectsResult.error) throw projectsResult.error
-        setWorkers((workersResult.data as WorkerRow[]) || [])
-        setProjects((projectsResult.data as ProjectRow[]) || [])
-        return true
-      },
-      { context: 'טעינת פרויקטים', showErrorToast: true }
-    )
-    setLoading(false)
+  useEffect(() => {
+    const initialize = async () => {
+      setLoading(true)
+      await asyncHandler(
+        async () => {
+          const fetchedClientId = await loadClientId()
+          const [workersResult, projectsResult] = await Promise.all([
+            supabase
+              .from('workers')
+              .select('id, full_name')
+              .eq('client_id', fetchedClientId)
+              .is('deleted_at', null)
+              .order('full_name', { ascending: true }),
+            supabase
+              .from('projects')
+              .select('*')
+              .eq('client_id', fetchedClientId)
+              .order('created_at', { ascending: false }),
+          ])
+          if (workersResult.error) throw workersResult.error
+          if (projectsResult.error) throw projectsResult.error
+          setWorkers((workersResult.data as WorkerRow[]) || [])
+          setProjects((projectsResult.data as ProjectRow[]) || [])
+          return true
+        },
+        { context: 'טעינת פרויקטים', showErrorToast: true }
+      )
+      setLoading(false)
+    }
+    void initialize()
   }, [])
 
   useEffect(() => {
@@ -180,10 +183,6 @@ export default function ProjectsPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
-
-  useEffect(() => {
-    void initializePage()
-  }, [initializePage])
 
   function openCreateDrawer() {
     setEditingProject(null)

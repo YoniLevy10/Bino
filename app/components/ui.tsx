@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { type ReactNode, type CSSProperties, useEffect, useState, lazy, Suspense } from 'react'
+import { type ReactNode, type CSSProperties, useEffect, useLayoutEffect, useState, lazy, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
@@ -264,8 +264,12 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   const [userEmail, setUserEmail] = useState('')
   const [userInitials, setUserInitials] = useState('?')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const supabaseClient = createClient()
     supabaseClient.auth.getUser().then(({ data }) => {
       const email = data.user?.email ?? ''
@@ -690,7 +694,8 @@ export function AppShell({
   const [mounted, setMounted] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setMounted(true)
   }, [])
 

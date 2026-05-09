@@ -6,7 +6,7 @@ export function digitsForWaMeLink(raw: string | null | undefined): string | null
   if (raw == null) return null
   const s = String(raw).trim()
   if (!s) return null
-  let d = s.replace(/\D/g, '')
+  const d = s.replace(/\D/g, '')
   if (!d) return null
   if (d.startsWith('972')) return d
   if (d.startsWith('0')) return `972${d.slice(1)}`

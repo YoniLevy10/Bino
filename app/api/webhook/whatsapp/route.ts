@@ -1055,7 +1055,7 @@ async function runWhatsAppInboundBackground(
       return
     }
 
-    let ticketPriority = resolveTicketPriorityFromResidentMessage(textBody)
+    const ticketPriority = resolveTicketPriorityFromResidentMessage(textBody)
 
     // סשן פעיל = אחרי סריקת QR או אחרי בחירת בניין בחיפוש (1/2/3 / התאמה אוטומטית)
     let session = await getActiveSession(from, supabaseAdmin, webhookClientId)
