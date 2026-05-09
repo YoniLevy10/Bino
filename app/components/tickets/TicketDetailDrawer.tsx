@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Drawer, Button, theme } from '../ui'
 import { TicketChat } from './TicketChat'
 
@@ -64,6 +64,8 @@ interface TicketDetailDrawerProps {
   getImageUrl: (attachment: AttachmentRow) => string
 }
 
+type Tab = 'details' | 'chat'
+
 export function TicketDetailDrawer({
   selectedTicket,
   isMobile,
@@ -84,6 +86,8 @@ export function TicketDetailDrawer({
   onCloseTicket,
   getImageUrl,
 }: TicketDetailDrawerProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('details')
+
   function formatLogTitle(actionType: string) {
     switch (actionType) {
       case 'TICKET_CREATED':
@@ -111,152 +115,174 @@ export function TicketDetailDrawer({
     >
       {selectedTicket && (
         <div style={styles.drawerContent}>
-          <div style={styles.drawerSection}>
-            <div style={styles.drawerLabel}>סטטוס</div>
-            <select
-              className="app-select-input"
-              value={draftStatus}
-              onChange={(e) => onStatusChange(e.target.value)}
-              style={styles.drawerSelect}
+          {/* Tabs */}
+          <div style={styles.tabBar}>
+            <button
+              style={{ ...styles.tab, ...(activeTab === 'details' ? styles.tabActive : styles.tabInactive) }}
+              onClick={() => setActiveTab('details')}
             >
-              {editableStatusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={styles.drawerSection}>
-            <div style={styles.drawerLabel}>עובד משויך</div>
-            <select
-              className="app-select-input"
-              value={draftWorkerId}
-              onChange={(e) => onWorkerChange(e.target.value)}
-              style={styles.drawerSelect}
+              פרטים
+            </button>
+            <button
+              style={{ ...styles.tab, ...(activeTab === 'chat' ? styles.tabActive : styles.tabInactive) }}
+              onClick={() => setActiveTab('chat')}
             >
-              <option value="">לא משויך</option>
-              {Object.entries(workersMap).map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
+              צ׳אט פנימי
+            </button>
           </div>
 
-          <div style={styles.drawerSection}>
-            <div style={styles.drawerLabel}>תיאור</div>
-            <textarea
-              value={draftDescription}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-              style={styles.drawerTextarea}
-              rows={4}
-            />
-          </div>
-
-          <div style={styles.drawerSection}>
-            <div style={styles.drawerLabel}>טלפון מדווח</div>
-            <a 
-              href={`tel:${selectedTicket.reporter_phone}`}
-              style={styles.phoneLink}
-            >
-              {selectedTicket.reporter_phone}
-            </a>
-          </div>
-
-          <div style={styles.drawerSection}>
-            <div style={styles.drawerLabel}>נוצר</div>
-            <div style={styles.drawerValue}>
-              {new Date(selectedTicket.created_at).toLocaleDateString('he-IL', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </div>
-          </div>
-
-          {/* Attachments */}
-          {selectedTicketAttachments.length > 0 && (
-            <div style={styles.drawerSection}>
-              <div style={styles.drawerLabel}>קבצים מצורפים</div>
-              <div style={styles.attachmentGrid}>
-                {selectedTicketAttachments.map((attachment) => (
-                  <button
-                    key={attachment.id}
-                    onClick={() => onSelectImage(getImageUrl(attachment))}
-                    style={styles.attachmentThumb}
-                  >
-                    {attachment.mime_type.startsWith('image/') ? (
-                      <img
-                        src={getImageUrl(attachment)}
-                        alt={attachment.file_name}
-                        style={styles.attachmentImg}
-                        crossOrigin="anonymous"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <div style={styles.attachmentFile}>{attachment.file_name}</div>
-                    )}
-                  </button>
-                ))}
+          {activeTab === 'details' && (
+            <>
+              <div style={styles.drawerSection}>
+                <div style={styles.drawerLabel}>סטטוס</div>
+                <select
+                  className="app-select-input"
+                  value={draftStatus}
+                  onChange={(e) => onStatusChange(e.target.value)}
+                  style={styles.drawerSelect}
+                >
+                  {editableStatusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
+
+              <div style={styles.drawerSection}>
+                <div style={styles.drawerLabel}>עובד משויך</div>
+                <select
+                  className="app-select-input"
+                  value={draftWorkerId}
+                  onChange={(e) => onWorkerChange(e.target.value)}
+                  style={styles.drawerSelect}
+                >
+                  <option value="">לא משויך</option>
+                  {Object.entries(workersMap).map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.drawerSection}>
+                <div style={styles.drawerLabel}>תיאור</div>
+                <textarea
+                  value={draftDescription}
+                  onChange={(e) => onDescriptionChange(e.target.value)}
+                  style={styles.drawerTextarea}
+                  rows={4}
+                />
+              </div>
+
+              <div style={styles.drawerSection}>
+                <div style={styles.drawerLabel}>טלפון מדווח</div>
+                <a
+                  href={`tel:${selectedTicket.reporter_phone}`}
+                  style={styles.phoneLink}
+                >
+                  {selectedTicket.reporter_phone}
+                </a>
+              </div>
+
+              <div style={styles.drawerSection}>
+                <div style={styles.drawerLabel}>נוצר</div>
+                <div style={styles.drawerValue}>
+                  {new Date(selectedTicket.created_at).toLocaleDateString('he-IL', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </div>
+              </div>
+
+              {/* Attachments */}
+              {selectedTicketAttachments.length > 0 && (
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>קבצים מצורפים</div>
+                  <div style={styles.attachmentGrid}>
+                    {selectedTicketAttachments.map((attachment) => (
+                      <button
+                        key={attachment.id}
+                        onClick={() => onSelectImage(getImageUrl(attachment))}
+                        style={styles.attachmentThumb}
+                      >
+                        {attachment.mime_type.startsWith('image/') ? (
+                          <img
+                            src={getImageUrl(attachment)}
+                            alt={attachment.file_name}
+                            style={styles.attachmentImg}
+                            crossOrigin="anonymous"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div style={styles.attachmentFile}>{attachment.file_name}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={styles.drawerActions}>
+                <Button
+                  variant="primary"
+                  onClick={onSave}
+                  loading={savingTicket}
+                  style={{ width: '100%' }}
+                >
+                  שמירה
+                </Button>
+                {selectedTicket.status !== 'CLOSED' && (
+                  <Button
+                    variant="danger"
+                    onClick={onCloseTicket}
+                    style={{ width: '100%' }}
+                  >
+                    סגירת תקלה
+                  </Button>
+                )}
+              </div>
+
+              {/* History */}
+              <div style={styles.drawerSection}>
+                <div style={styles.drawerLabel}>היסטוריה</div>
+                {drawerLoading ? (
+                  <div style={styles.loadingState}>טוען...</div>
+                ) : ticketLogs.length === 0 ? (
+                  <div style={styles.emptyLogs}>אין היסטוריה</div>
+                ) : (
+                  <div style={styles.logsList}>
+                    {ticketLogs.map((log) => (
+                      <div key={log.id} style={styles.logItem}>
+                        <div style={styles.logHeader}>
+                          <span style={styles.logAction}>{formatLogTitle(log.action_type)}</span>
+                          <span style={styles.logTime}>
+                            {new Date(log.created_at).toLocaleDateString('he-IL', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
-          {/* Actions */}
-          <div style={styles.drawerActions}>
-            <Button
-              variant="primary"
-              onClick={onSave}
-              loading={savingTicket}
-              style={{ width: '100%' }}
-            >
-              שמירה
-            </Button>
-            {selectedTicket.status !== 'CLOSED' && (
-              <Button
-                variant="danger"
-                onClick={onCloseTicket}
-                style={{ width: '100%' }}
-              >
-                סגירת תקלה
-              </Button>
-            )}
-          </div>
-
-          {/* History */}
-          <div style={styles.drawerSection}>
-            <div style={styles.drawerLabel}>היסטוריה</div>
-            {drawerLoading ? (
-              <div style={styles.loadingState}>טוען...</div>
-            ) : ticketLogs.length === 0 ? (
-              <div style={styles.emptyLogs}>אין היסטוריה</div>
-            ) : (
-              <div style={styles.logsList}>
-                {ticketLogs.map((log) => (
-                  <div key={log.id} style={styles.logItem}>
-                    <div style={styles.logHeader}>
-                      <span style={styles.logAction}>{formatLogTitle(log.action_type)}</span>
-                      <span style={styles.logTime}>
-                        {new Date(log.created_at).toLocaleDateString('he-IL', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                    {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <TicketChat ticketId={selectedTicket.id} clientId={selectedTicket.client_id ?? null} />
+          {activeTab === 'chat' && (
+            <TicketChat ticketId={selectedTicket.id} clientId={selectedTicket.client_id ?? null} />
+          )}
         </div>
       )}
     </Drawer>
@@ -268,6 +294,33 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+  },
+  tabBar: {
+    display: 'flex',
+    gap: '4px',
+    padding: '4px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.md,
+  },
+  tab: {
+    flex: 1,
+    padding: '8px 0',
+    fontSize: '14px',
+    fontWeight: 500,
+    border: 'none',
+    borderRadius: theme.radius.sm,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    fontFamily: 'inherit',
+  },
+  tabActive: {
+    background: theme.colors.surface,
+    color: theme.colors.primary,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  },
+  tabInactive: {
+    background: 'transparent',
+    color: theme.colors.textMuted,
   },
   drawerSection: {
     display: 'flex',

@@ -179,6 +179,25 @@ export async function PATCH(req: NextRequest) {
     const digits = normalizeWhatsAppPhoneDigits((row as { reporter_phone_normalized: string }).reporter_phone_normalized)
     const phone = formatPhoneForResident(digits)
 
+    // Check if resident with this phone already exists
+    const { data: existing } = await supabase
+      .from('residents')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('phone', phone)
+      .maybeSingle()
+
+    if (existing) {
+      logger.warn('RESIDENTS_API', 'Resident with phone already exists - auto-rejecting pending request', { requestId, id, clientId, phone })
+      await supabase
+        .from('pending_resident_join_requests')
+        .update({ status: 'rejected', resolved_at: now, resolved_by: 'dashboard_auto_duplicate' })
+        .eq('id', id)
+        .eq('client_id', clientId)
+      audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, 'Resident with this phone already exists - auto-rejected')
+      return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת', requestId }, { status: 400 })
+    }
+
     const { error: insErr } = await supabase.from('residents').insert({
       project_id: (row as { project_id: string }).project_id,
       client_id: clientId,
@@ -189,6 +208,11 @@ export async function PATCH(req: NextRequest) {
     })
 
     if (insErr) {
+      if (insErr.message?.includes('idx_residents_client_phone_unique')) {
+        logger.warn('RESIDENTS_API', 'Duplicate resident during insert', { requestId, id, clientId, phone, error: insErr.message })
+        audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, 'Duplicate phone detected during insert')
+        return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת', requestId }, { status: 400 })
+      }
       logger.error('RESIDENTS_API', 'Insert resident failed', new Error(insErr.message), { requestId, id, clientId })
       audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, insErr.message)
       return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
