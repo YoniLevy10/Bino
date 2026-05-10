@@ -101,11 +101,14 @@ export async function send019StaffSms(
     return false
   }
 
-  const from = String(senderPreferred ?? SMS_019_SENDER).replace(/[\s\-+]/g, '') || SMS_019_SENDER
+  const source = String(senderPreferred ?? SMS_019_SENDER)
+    .trim()
+    .replace(/[^A-Za-z0-9]/g, '')
+    .slice(0, 11) || 'Bamakor'
 
   console.log('📱 SMS_SEND_START', { channel: ctx.channel, normalizedPhone, messageLength: message.length })
 
-  return send019SmsWithRetries(normalizedPhone, message, from, ctx)
+  return send019SmsWithRetries(normalizedPhone, message, source, ctx)
 }
 
 function get019SmsEnvPresent(): boolean {
