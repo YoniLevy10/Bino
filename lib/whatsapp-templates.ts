@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
-import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
+import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_VAR_NAMES } from '@/lib/whatsapp-template-keys'
 
 const VAR_NAMES = ['project_name', 'ticket_number', 'description', 'reporter_name', 'building_line', 'list'] as const
 
@@ -81,6 +81,57 @@ export async function resolveWhatsAppTemplateMessage(
   }
 
   return interpolateWhatsAppTemplate(raw, vars)
+}
+
+/** החלפת משתני {{...}} בטקסט הודעת SMS */
+export function interpolateSmsTemplate(
+  text: string,
+  vars: Partial<Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string>> = {}
+): string {
+  let out = text
+  for (const name of SMS_TEMPLATE_VAR_NAMES) {
+    const val = vars[name] ?? ''
+    out = out.split(`{{${name}}}`).join(val)
+  }
+  return out
+}
+
+/** טוען תבנית SMS מה-DB עם cache של 60 שניות. Falls back to defaultText. */
+export async function resolveSmsTemplateMessage(
+  admin: SupabaseClient,
+  clientId: string,
+  templateKey: string,
+  fallbackText: string,
+  vars: Partial<Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string>> = {}
+): Promise<string> {
+  const cacheKey = `${clientId}:${templateKey}`
+  const now = Date.now()
+  const hit = templateTextCache.get(cacheKey)
+  if (hit && hit.expiresAt > now) {
+    return interpolateSmsTemplate(hit.text, vars)
+  }
+
+  try {
+    const { data, error } = await admin
+      .from('whatsapp_templates')
+      .select('template_text')
+      .eq('client_id', clientId)
+      .eq('template_key', templateKey)
+      .maybeSingle()
+
+    if (error) console.warn('[sms_templates]', error.message)
+
+    const fromDb = (data as { template_text?: string } | null)?.template_text
+    if (fromDb && String(fromDb).trim()) {
+      const text = String(fromDb)
+      templateTextCache.set(cacheKey, { text, expiresAt: now + TEMPLATE_CACHE_TTL_MS })
+      return interpolateSmsTemplate(text, vars)
+    }
+  } catch (err) {
+    console.warn('[sms_templates] fetch failed, using default:', err instanceof Error ? err.message : String(err))
+  }
+
+  return interpolateSmsTemplate(fallbackText, vars)
 }
 
 /**

@@ -16,8 +16,8 @@ import {
 } from '@/lib/whatsapp-intent'
 import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
-import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
-import { resolveWhatsAppTemplateMessage } from '@/lib/whatsapp-templates'
+import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
+import { resolveWhatsAppTemplateMessage, resolveSmsTemplateMessage } from '@/lib/whatsapp-templates'
 import { sendManagerSMS, sendWorkerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
 import {
   downloadWhatsAppMedia,
@@ -1384,7 +1384,20 @@ async function runWhatsAppInboundBackground(
         logger.warn('WEBHOOK', 'fetch project for notification failed', { err: projectNotificationError.message })
       } else if (projectForNotification) {
         const buildingLine = buildingNumber ? `בניין: ${buildingNumber}\n` : ''
-        const smsMessage = `נפתחה תקלה חדשה\nפרויקט: ${projectForNotification.name}\n${buildingLine}תקלה: #${createdTicket.ticket_number}\nתיאור: ${ticketDescription || 'ללא פירוט'}\nמדווח: ${displayReporterForExternalMessage(waRecipient)}\nכניסה למערכת:\n${getPublicTicketsUrl()}\n${clientName}`
+        const smsMessage = await resolveSmsTemplateMessage(
+          supabaseAdmin, webhookClientId,
+          'sms_manager_new_ticket',
+          SMS_TEMPLATE_EDITOR_DEFAULTS.sms_manager_new_ticket,
+          {
+            project_name: projectForNotification.name,
+            building_line: buildingLine,
+            ticket_number: String(createdTicket.ticket_number),
+            description: ticketDescription || 'ללא פירוט',
+            reporter_name: displayReporterForExternalMessage(waRecipient),
+            dashboard_url: getPublicTicketsUrl(),
+            client_name: clientName,
+          }
+        )
 
         const managerDestination = clientManagerPhone || projectForNotification.manager_phone || getManagerPhoneFromEnv()
 
@@ -1405,7 +1418,19 @@ async function runWhatsAppInboundBackground(
             .maybeSingle()
 
           if (workerRow?.phone) {
-            const workerMsg = `תקלה חדשה ב${projectForNotification.name}\n#${createdTicket.ticket_number}\n${ticketDescription || 'ללא פירוט'}\nמדווח: ${displayReporterForExternalMessage(waRecipient)}\n${getPublicTicketsUrl()}\n${clientName}`
+            const workerMsg = await resolveSmsTemplateMessage(
+              supabaseAdmin, webhookClientId,
+              'sms_worker_new_ticket',
+              SMS_TEMPLATE_EDITOR_DEFAULTS.sms_worker_new_ticket,
+              {
+                project_name: projectForNotification.name,
+                ticket_number: String(createdTicket.ticket_number),
+                description: ticketDescription || 'ללא פירוט',
+                reporter_name: displayReporterForExternalMessage(waRecipient),
+                dashboard_url: getPublicTicketsUrl(),
+                client_name: clientName,
+              }
+            )
             const wOk = await sendWorkerSMS(workerRow.phone, workerMsg, smsSenderName, webhookClientId)
             if (!wOk) {
               logger.warn('WEBHOOK', 'worker SMS failed', { workerId: projectForNotification.assigned_worker_id })

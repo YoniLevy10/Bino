@@ -197,6 +197,44 @@ export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
   pending_approval_note: 'הערת אישור מנהלת (נוספת לסוף אישור תקלה)',
 }
 
+// ─────────────────────────────────────────────────────────────
+// SMS Templates (stored in same whatsapp_templates table)
+// ─────────────────────────────────────────────────────────────
+
+export const SMS_TEMPLATE_KEYS = [
+  'sms_manager_new_ticket',
+  'sms_worker_new_ticket',
+] as const
+
+export type SmsTemplateKey = (typeof SMS_TEMPLATE_KEYS)[number]
+
+export const SMS_TEMPLATE_VAR_NAMES = [
+  'project_name',
+  'ticket_number',
+  'description',
+  'reporter_name',
+  'building_line',
+  'dashboard_url',
+  'client_name',
+] as const
+
+export const SMS_TEMPLATE_LABELS: Record<SmsTemplateKey, string> = {
+  sms_manager_new_ticket: 'SMS למנהל/ת — תקלה חדשה',
+  sms_worker_new_ticket: 'SMS לעובד — תקלה חדשה',
+}
+
+export const SMS_TEMPLATE_WHEN_SENT: Record<SmsTemplateKey, string> = {
+  sms_manager_new_ticket: 'נשלח למנהל/ת כשנפתחת תקלה חדשה דרך וואטסאפ',
+  sms_worker_new_ticket: 'נשלח לעובד המשויך לפרויקט כשנפתחת תקלה חדשה',
+}
+
+export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
+  sms_manager_new_ticket:
+    'נפתחה תקלה חדשה\nפרויקט: {{project_name}}\n{{building_line}}תקלה: #{{ticket_number}}\nתיאור: {{description}}\nמדווח: {{reporter_name}}\nכניסה למערכת:\n{{dashboard_url}}\n{{client_name}}',
+  sms_worker_new_ticket:
+    'תקלה חדשה ב{{project_name}}\n#{{ticket_number}}\n{{description}}\nמדווח: {{reporter_name}}\n{{dashboard_url}}\n{{client_name}}',
+}
+
 /** טקסט ברירת מחדל לטעינה ראשונית בעורך (כשאין שורה ב-DB) */
 export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, string> = {
   welcome:
