@@ -1347,9 +1347,6 @@ async function runWhatsAppInboundBackground(
       ticketNumber: createdTicket.ticket_number,
       clientManagerPhone: clientManagerPhone ?? null,
       smsSenderName: smsSenderName ?? null,
-      waCreds: residentWhatsAppCreds.phoneNumberId && residentWhatsAppCreds.accessToken
-        ? { phoneNumberId: residentWhatsAppCreds.phoneNumberId, accessToken: residentWhatsAppCreds.accessToken }
-        : null,
     }).catch((e) => logger.warn('WEBHOOK', 'predictive-alert error', { err: e instanceof Error ? e.message : String(e) }))
 
     const { error: logError } = await supabaseAdmin

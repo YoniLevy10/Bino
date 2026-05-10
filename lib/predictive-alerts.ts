@@ -1,6 +1,5 @@
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { sendManagerSMS } from '@/lib/sms-send'
-import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 
 const RECURRING_THRESHOLD = 3
 const RECURRING_WINDOW_DAYS = 30
@@ -20,11 +19,10 @@ export async function checkAndFlagRecurringIssue(params: {
   ticketNumber: number | string
   clientManagerPhone: string | null
   smsSenderName: string | null
-  waCreds?: { phoneNumberId: string; accessToken: string } | null
 }): Promise<void> {
   const {
     supabase, ticketId, clientId, projectId, projectName,
-    reporterPhone, ticketNumber, clientManagerPhone, smsSenderName, waCreds,
+    reporterPhone, ticketNumber, clientManagerPhone, smsSenderName,
   } = params
 
   const since = new Date(Date.now() - RECURRING_WINDOW_DAYS * 86_400_000).toISOString()
@@ -51,13 +49,6 @@ export async function checkAndFlagRecurringIssue(params: {
     `אותו דייר (${reporterPhone}) פתח ${count} תקלות ב-${RECURRING_WINDOW_DAYS} ימים אחרונים.\n` +
     `תקלה אחרונה: #${ticketNumber}\n` +
     `מומלץ לבדוק אם יש בעיה מבנית.`
-
-  if (waCreds) {
-    try {
-      await sendWhatsAppTextMessage(clientManagerPhone, msg, waCreds, { clientId })
-      return
-    } catch { /* fall through to SMS */ }
-  }
 
   try {
     await sendManagerSMS(clientManagerPhone, msg, smsSenderName, clientId)
