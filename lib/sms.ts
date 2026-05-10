@@ -1,10 +1,8 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
-  effective019SmsSource,
   normalizePhone019,
   post019SmsOnce,
   SMS_019_SENDER,
-  SMS_019_SOURCE_MAX,
 } from '@/lib/sms-019-core'
 
 const RETRIES = 3
@@ -19,47 +17,22 @@ export type Send019SmsRetryContext = {
   channel: string
 }
 
-/** Exported for tests / advanced callers — one 10s attempt. */
-export async function try019SmsOnce(
-  normalizedPhone: string,
-  message: string,
-  senderPreferred: string | null | undefined
-): Promise<{ ok: boolean; error: string }> {
-  const source = effective019SmsSource(senderPreferred ?? SMS_019_SENDER)
-  const r = await post019SmsOnce(normalizedPhone, message, source)
-  return { ok: r.ok, error: r.error || (r.ok ? '' : 'unknown') }
-}
-
 /**
  * 019SMS: up to 3 attempts, 2s backoff, 10s timeout per attempt.
- * Logs to failed_notifications after final failure when DB is configured.
+ * Logs to failed_notifications after final failure.
  */
 export async function send019SmsWithRetries(
   normalizedPhone: string,
   message: string,
-  senderPreferred: string | null | undefined,
+  from: string,
   ctx: Send019SmsRetryContext
 ): Promise<boolean> {
-  const source = effective019SmsSource(senderPreferred ?? SMS_019_SENDER)
-  const strippedPreferred = String(senderPreferred ?? '')
-    .trim()
-    .replace(/[^A-Za-z0-9]/g, '')
-    .slice(0, SMS_019_SOURCE_MAX)
-  if (String(senderPreferred ?? '').trim() && strippedPreferred !== source) {
-    console.log('📱 SMS_SOURCE_COERCED: 019SMS source must be Latin letters/digits (3–11); using effective value', {
-      requested: senderPreferred,
-      effective: source,
-    })
-  }
-
   let lastErr = 'unknown'
 
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
-    const result = await post019SmsOnce(normalizedPhone, message, source)
+    const result = await post019SmsOnce(normalizedPhone, message, from)
     if (result.ok) {
-      if (result.shipmentId) {
-        console.log('✅ SMS_019_SENT', { channel: ctx.channel, shipmentId: result.shipmentId })
-      }
+      console.log('✅ SMS_019_SENT', { channel: ctx.channel, destination: normalizedPhone })
       return true
     }
     lastErr = result.error
@@ -118,27 +91,23 @@ export async function send019StaffSms(
   }
 
   if (!get019SmsEnvPresent()) {
-    console.error('❌ SMS_SEND_FAILURE: 019SMS token/username not configured')
+    console.error('❌ SMS_SEND_FAILURE: 019SMS credentials not configured (SMS_019_USERNAME / SMS_019_PASSWORD)')
     return false
   }
 
   const normalizedPhone = normalizePhone019(phoneNumber)
   if (!normalizedPhone) {
-    console.error('❌ SMS_SEND_FAILURE: phoneNumber could not be normalized to 019SMS format', {
-      originalPhone: phoneNumber,
-    })
+    console.error('❌ SMS_SEND_FAILURE: phoneNumber could not be normalized', { originalPhone: phoneNumber })
     return false
   }
 
-  console.log('📱 SMS_SEND_START', {
-    channel: ctx.channel,
-    normalizedPhone,
-    messageLength: message.length,
-  })
+  const from = String(senderPreferred ?? SMS_019_SENDER).replace(/[\s\-+]/g, '') || SMS_019_SENDER
 
-  return send019SmsWithRetries(normalizedPhone, message, senderPreferred ?? SMS_019_SENDER, ctx)
+  console.log('📱 SMS_SEND_START', { channel: ctx.channel, normalizedPhone, messageLength: message.length })
+
+  return send019SmsWithRetries(normalizedPhone, message, from, ctx)
 }
 
 function get019SmsEnvPresent(): boolean {
-  return !!(process.env.SMS_019_API_TOKEN && process.env.SMS_019_USERNAME)
+  return !!(process.env.SMS_019_USERNAME && process.env.SMS_019_PASSWORD)
 }
