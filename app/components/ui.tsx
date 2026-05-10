@@ -779,9 +779,9 @@ function BackToTop() {
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       style={{
         position: 'fixed',
-        bottom: '28px',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
         left: '28px',
-        zIndex: 500,
+        zIndex: 96,
         width: '44px',
         height: '44px',
         borderRadius: theme.radius.full,

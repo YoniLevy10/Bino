@@ -74,7 +74,11 @@ export const ToastContainer = () => {
   };
 
   return (
-    <div className="fixed bottom-4 end-4 z-50 space-y-2 max-w-sm" dir="rtl">
+    <div
+      className="fixed end-4 z-[200] space-y-2 max-w-sm"
+      style={{ bottom: 'calc(74px + env(safe-area-inset-bottom, 0px))' }}
+      dir="rtl"
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}

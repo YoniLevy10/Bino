@@ -10,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 export function InstallPromptBanner() {
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
+  const [updatePending, setUpdatePending] = useState(false)
 
   useEffect(() => {
     // Don't show if already installed as PWA
@@ -21,8 +22,13 @@ export function InstallPromptBanner() {
       e.preventDefault()
       setPrompt(e as BeforeInstallPromptEvent)
     }
+    const updateHandler = () => setUpdatePending(true)
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    window.addEventListener('sw-update-waiting', updateHandler)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      window.removeEventListener('sw-update-waiting', updateHandler)
+    }
   }, [])
 
   async function install() {
@@ -47,7 +53,9 @@ export function InstallPromptBanner() {
     <div
       style={{
         position: 'fixed',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+        bottom: updatePending
+          ? 'calc(env(safe-area-inset-bottom, 0px) + 72px + 60px)'
+          : 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
         right: '16px',
         left: '16px',
         zIndex: 9998,
