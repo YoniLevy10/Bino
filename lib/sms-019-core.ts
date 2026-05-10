@@ -118,6 +118,7 @@ export async function post019SmsOnce(
       headers: {
         'Content-Type': 'application/xml',
         Authorization: `Bearer ${env.token}`,
+        'User-Agent': 'Bamakor/1.0 (+https://bamakor.com)',
       },
       body: payload,
     },
