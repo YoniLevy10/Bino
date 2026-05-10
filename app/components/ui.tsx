@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, type CSSProperties, useEffect, useLayoutEffect, useState, lazy, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { ClientBrandingProvider, useClientBranding } from './ClientBrandingContext'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -288,18 +289,31 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   if (hidden) return null
   if (!mounted) return <aside style={{ display: 'none' }} aria-hidden="true" />
 
+  const { displayName, logoUrl } = useClientBranding()
+
   return (
     <aside style={sidebarStyles.container}>
       <div style={sidebarStyles.brand}>
-        <Image
-          src="/apple-icon.png"
-          alt="Bamakor"
-          width={40}
-          height={40}
-          style={{ borderRadius: theme.radius.md, flexShrink: 0 }}
-        />
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={displayName}
+            width={40}
+            height={40}
+            style={{ borderRadius: theme.radius.md, flexShrink: 0, objectFit: 'contain' }}
+          />
+        ) : (
+          <Image
+            src="/apple-icon.png"
+            alt={displayName}
+            width={40}
+            height={40}
+            style={{ borderRadius: theme.radius.md, flexShrink: 0 }}
+          />
+        )}
         <div style={sidebarStyles.brandText}>
-          <div style={sidebarStyles.title}>במקור</div>
+          <div style={sidebarStyles.title}>{displayName}</div>
           <div style={sidebarStyles.subtitle}>ניהול אחזקה</div>
         </div>
       </div>
@@ -716,33 +730,35 @@ export function AppShell({
   const bottomNav = mobile && showMobileBottomNavForPath(pathname)
 
   return (
-    <div
-      dir="rtl"
-      style={{ display: 'flex', minHeight: '100vh', background: theme.colors.background }}
-      suppressHydrationWarning
-    >
-      <Sidebar hidden={mobile} />
-      <main
+    <ClientBrandingProvider>
+      <div
         dir="rtl"
-        data-app-main
-        style={{
-          flex: 1,
-          marginInlineStart: mobile ? 0 : '240px',
-          minWidth: 0,
-          textAlign: 'right',
-          paddingBottom: bottomNav ? 'calc(58px + env(safe-area-inset-bottom, 0px))' : undefined,
-        }}
+        style={{ display: 'flex', minHeight: '100vh', background: theme.colors.background }}
+        suppressHydrationWarning
       >
-        {children}
-      </main>
-      {bottomNav ? <MobileBottomNav /> : null}
-      <BackToTop />
-      {mounted && (
-        <Suspense fallback={null}>
-          <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-        </Suspense>
-      )}
-    </div>
+        <Sidebar hidden={mobile} />
+        <main
+          dir="rtl"
+          data-app-main
+          style={{
+            flex: 1,
+            marginInlineStart: mobile ? 0 : '240px',
+            minWidth: 0,
+            textAlign: 'right',
+            paddingBottom: bottomNav ? 'calc(58px + env(safe-area-inset-bottom, 0px))' : undefined,
+          }}
+        >
+          {children}
+        </main>
+        {bottomNav ? <MobileBottomNav /> : null}
+        <BackToTop />
+        {mounted && (
+          <Suspense fallback={null}>
+            <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+          </Suspense>
+        )}
+      </div>
+    </ClientBrandingProvider>
   )
 }
 
@@ -883,6 +899,7 @@ export function MobileMenu({
   onClose: () => void
 }) {
   const pathname = usePathname()
+  const { displayName, logoUrl } = useClientBranding()
 
   if (!open) return null
 
@@ -892,14 +909,25 @@ export function MobileMenu({
       <div style={mobileMenuStyles.panel}>
         <div style={mobileMenuStyles.header}>
           <div style={mobileMenuStyles.brand}>
-            <Image
-              src="/apple-icon.png"
-              alt="Bamakor"
-              width={36}
-              height={36}
-              style={{ borderRadius: theme.radius.sm }}
-            />
-            <span style={mobileMenuStyles.brandName}>Bamakor</span>
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={displayName}
+                width={36}
+                height={36}
+                style={{ borderRadius: theme.radius.sm, objectFit: 'contain' }}
+              />
+            ) : (
+              <Image
+                src="/apple-icon.png"
+                alt={displayName}
+                width={36}
+                height={36}
+                style={{ borderRadius: theme.radius.sm }}
+              />
+            )}
+            <span style={mobileMenuStyles.brandName}>{displayName}</span>
           </div>
           <button onClick={onClose} style={mobileMenuStyles.closeButton} aria-label="סגירת תפריט">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
