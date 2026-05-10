@@ -88,6 +88,7 @@ function SettingsPageInner() {
   const [savingNotifications, setSavingNotifications] = useState(false)
   const [savingWhatsapp, setSavingWhatsapp] = useState(false)
   const [testingWa, setTestingWa] = useState(false)
+  const [testingSms, setTestingSms] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
 
   // Team tab state
@@ -280,6 +281,21 @@ function SettingsPageInner() {
     } finally {
       setPushEnabling(false)
     }
+  }
+
+  async function testSms() {
+    setTestingSms(true)
+    await asyncHandler(
+      async () => {
+        const res = await fetchWithTimeout('/api/settings/test-sms', { method: 'POST' })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
+        toast.success('SMS ניסיון נשלח בהצלחה')
+        return true
+      },
+      { context: 'בדיקת SMS נכשלה', showErrorToast: true }
+    )
+    setTestingSms(false)
   }
 
   async function testWhatsapp() {
@@ -499,6 +515,9 @@ function SettingsPageInner() {
                     </Button>
                   </div>
                   <div style={styles.drawerActions}>
+                    <Button variant="secondary" type="button" onClick={testSms} loading={testingSms}>
+                      בדוק SMS
+                    </Button>
                     <Button variant="primary" onClick={saveNotifications} loading={savingNotifications}>
                       שמור שינויים
                     </Button>
