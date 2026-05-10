@@ -154,10 +154,10 @@ test.describe('/admin/setup — ויזארד הקמת לקוח', () => {
   test('Enter בשדה סיסמה מפעיל כניסה', async ({ page }) => {
     await page.goto('/admin/setup')
     const field = page.locator('input[type="password"]')
-    await field.fill('wrong-secret')
+    await field.fill('any-secret')
     await field.press('Enter')
-    // קוד לא נכון → עדיין לא עובר לטופס המלא (API יחזיר 401 בבקשה)
-    await expect(field).toBeVisible()
+    // כל ערך לא ריק פותח את הטופס — האימות מול ה-API קורה בהגשה
+    await expect(page.locator('text=פרטי חברה').first()).toBeVisible({ timeout: 5_000 })
   })
 
   test('אחרי הקלדת secret — טופס מלא מוצג (שם חברה, אימייל)', async ({ page }) => {
@@ -245,8 +245,9 @@ test.describe('/admin/setup — ויזארד הקמת לקוח', () => {
     await page.locator('input[type="password"]').fill('test-secret')
     await page.locator('button').filter({ hasText: /כניסה/i }).click()
 
-    // מלא שדות בסיסיים
-    await page.locator('input[placeholder*="חברה"]').first().fill('חברת טסט')
+    // מלא שדות בסיסיים — ממתינים לטופס להופיע לאחר הפתיחה
+    await expect(page.locator('text=פרטי חברה').first()).toBeVisible({ timeout: 5_000 })
+    await page.locator('input[placeholder*="ועד"]').first().fill('חברת טסט')
     await page.locator('input[type="email"]').first().fill('test@test.com')
     await page.locator('input[placeholder="שם הפרויקט"]').first().fill('פרויקט ראשון')
     await page.locator('input[placeholder="PROJ1"]').first().fill('P1')
@@ -332,7 +333,7 @@ test.describe('API routes — session נדרש', () => {
     { method: 'PATCH', path: '/api/close-ticket' },
     { method: 'PATCH', path: '/api/assign-ticket' },
     { method: 'POST', path: '/api/merge-ticket' },
-    { method: 'GET', path: '/api/billing' },
+    { method: 'GET', path: '/api/billing/summary' },
   ]
 
   for (const { method, path } of routes) {
@@ -465,7 +466,7 @@ test.describe('/onboarding — redirect', () => {
 test.describe('/worker — ציבורי עם token', () => {
   test('/worker ללא token — מציג הודעה ולא מקריס', async ({ page }) => {
     await page.goto('/worker')
-    await page.waitForLoadState('domcontentloaded')
+    await page.waitForLoadState('networkidle', { timeout: 12_000 })
     const body = await page.locator('body').innerText()
     expect(body.length).toBeGreaterThan(5)
   })

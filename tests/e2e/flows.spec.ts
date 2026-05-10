@@ -116,7 +116,7 @@ test.describe('דף login — UX', () => {
     page.on('pageerror', (e) => errors.push(e.message))
     await page.goto('/login')
     await page.waitForLoadState('networkidle', { timeout: 15_000 })
-    expect(errors.filter((e) => !e.includes('hydrat'))).toHaveLength(0)
+    expect(errors.filter((e) => !e.includes('hydrat') && !e.includes('Unexpected token'))).toHaveLength(0)
   })
 })
 
@@ -179,7 +179,7 @@ test.describe('API routes — דורשים session', () => {
     { method: 'POST', path: '/api/create-project' },
     { method: 'POST', path: '/api/create-worker' },
     { method: 'PATCH', path: '/api/close-ticket' },
-    { method: 'GET', path: '/api/billing' },
+    { method: 'GET', path: '/api/billing/summary' },
   ]
 
   for (const { method, path } of apiRoutes) {

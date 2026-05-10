@@ -15,10 +15,12 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/worker/') ||
     pathname.startsWith('/api/superadmin/') ||
     pathname.startsWith('/api/admin/') ||
+    pathname === '/api/health' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||
     pathname.startsWith('/report') ||
+    pathname.startsWith('/admin/') ||
     pathname === '/worker' ||
     pathname.startsWith('/worker/') ||
     pathname === '/offline.html'
@@ -65,6 +67,9 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirectTo', pathname)
