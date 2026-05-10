@@ -4,7 +4,7 @@
 דיירים מדווחים דרך **טופס ציבורי** (`/report`) או **WhatsApp** (סריקת QR לפרויקט).  
 בעל העסק מנהל תקלות, עובדים, דיירים, ומקבל סיכומים ודוחות.
 
-**סטאק טכני:** Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + RLS) · Vercel · Zod · Vitest · Playwright · Sentry
+**סטאק טכני:** Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + RLS) · Vercel · Zod · Vitest · Playwright · Sentry · Vercel Analytics · Vercel Speed Insights
 
 ---
 
@@ -109,6 +109,8 @@ npm run dev
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push (אופציונלי) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | זהה ל-VAPID_PUBLIC_KEY |
 | `NEXT_PUBLIC_SENTRY_DSN` | DSN מ-Sentry.io (ניטור שגיאות, אופציונלי) |
+| `SMS_019_API_TOKEN` / `SMS_019_USERNAME` | אישורי 019SMS לשליחת SMS לפועלים ומנהלים |
+| `MANAGER_PHONE` | מספר טלפון ברירת מחדל למנהל (override per-project) |
 
 ---
 

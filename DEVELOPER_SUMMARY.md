@@ -2,7 +2,35 @@
 
 מסמך זה מתאר את המערכת כפי שהיא בקוד ב־branch **main** (מאי 2026). יש לעדכן אותו כשמתווספים מודולים או מדיניות RLS משמעותית.
 
-**עדכון אחרון (מאי 2026) — Sprint "Foundation Hardening + Admin Tooling":**
+**עדכון אחרון — 10 מאי 2026 — Sprint "Pre-Launch Polish + Analytics":**
+
+- **תיקון כפל דייר מוואטסאפ (`/api/pending-residents` PATCH):** הוספת pre-check לפני INSERT, auto-reject של הבקשה הממתינה כשמספר הטלפון כבר קיים, ו-handling ספציפי של `idx_residents_client_phone_unique` (מחזיר 400 במקום 500).
+- **תיקון SMS לפועלים (`lib/sms-send.ts`):** `sendWorkerSMS` לא נרמל את מספר הטלפון לפני שליחה (בניגוד ל-`sendManagerSMS`). תוקן: strip של `+`/רווחים, המרת `05x` ל-`972x`.
+- **TicketChat tabs (`TicketDetailDrawer`):** הצ'אט הפנימי עבר ל-tab נפרד "פרטים / צ'אט פנימי" כדי שיהיה נגיש מיד בלי גלילה.
+- **Vercel Analytics:** `@vercel/analytics` הותקן; `<Analytics />` נוסף ל-`app/layout.tsx` לצד `<SpeedInsights />`.
+- **E2E tests — 123/123 ✅:** כל הטסטים עברו לירוק. תוקנו: middleware מחזיר 401 JSON ל-API routes במקום redirect ל-login; `/admin/setup` ו-`/api/health` עקפים ב-middleware; טסטים של dashboard ומובייל עוצבו מחדש לבדיקת ה-login redirect.
+
+---
+
+**Speed Insights (Desktop · 10 מאי 2026) — נדרש שיפור:**
+
+| מדד | ציון | סטטוס |
+|-----|------|--------|
+| TTFB | 3.21s | 🔴 גרוע |
+| FCP | 3.73s | 🔴 גרוע |
+| LCP | 4.32s | 🔴 גרוע |
+| INP | 80ms | 🟢 טוב |
+| CLS | 0.01 | 🟢 מצוין |
+| FID | 4ms | 🟢 טוב |
+| **RES** | **71** | **🟡 Needs Improvement** |
+
+**עמודים בעייתיים:** `/superadmin` (58), `/` (63), `/settings` (65). 
+**סיבה עיקרית:** TTFB גבוה — Supabase queries בכל SSR + Vercel cold starts.  
+**פעולות מומלצות לשיפור ביצועים:** הוספת `Cache-Control` לתשובות API שלא משתנות לעתים קרובות; שקלול React Server Components להפחתת JS ב-client; הגדרת Vercel ISR על דפי dashboard סטטיים; בחינת Edge Runtime ל-middleware.
+
+---
+
+**עדכון קודם (מאי 2026) — Sprint "Foundation Hardening + Admin Tooling":**
 
 - **ויזארד הקמת לקוח חדש (`/admin/setup`):** טופס פנימי מאובטח (ADMIN_SETUP_SECRET) — מקים clients → organizations → auth invite → organization_users → projects → workers בלחיצה אחת. API: `POST /api/admin/setup-client`. מחזיר קישורי QR מוכנים לכל פרויקט.
 - **Sentry:** `sentry.{client,server,edge}.config.ts` + `withSentryConfig` ב-next.config.ts. פעיל רק ב-production. DSN מ-`NEXT_PUBLIC_SENTRY_DSN`.
