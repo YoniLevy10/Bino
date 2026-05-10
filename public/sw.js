@@ -1,5 +1,5 @@
-/* Bamakor PWA — v2: network-first HTML, cache-first static, offline fallback */
-const CACHE_VERSION = 'bamakor-v2'
+/* Bamakor PWA — v3: network-first HTML, cache-first static, offline fallback, update notifications */
+const CACHE_VERSION = 'bamakor-v3'
 const STATIC_CACHE = `bamakor-static-${CACHE_VERSION}`
 const HTML_CACHE = `bamakor-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png']
@@ -9,7 +9,7 @@ self.addEventListener('install', (event) => {
     caches
       .open(STATIC_CACHE)
       .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+    // No skipWaiting() — let the app decide when to activate (shows update banner)
   )
 })
 
@@ -24,6 +24,13 @@ self.addEventListener('activate', (event) => {
       )
       .then(() => self.clients.claim())
   )
+})
+
+// When the app sends SKIP_WAITING, activate this SW immediately
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 function isSameOrigin(url) {

@@ -80,6 +80,15 @@ body {
   width: 100%;
   line-height: 1.5;
   letter-spacing: -0.011em;
+  /* Prevent rubber-band scroll from propagating up */
+  overscroll-behavior: none;
+}
+
+/* Prevent 300ms tap delay and text selection on interactive elements */
+button, a, [role="button"], [role="tab"], label {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Smooth scrolling */

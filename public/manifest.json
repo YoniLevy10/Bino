@@ -1,15 +1,42 @@
 {
   "name": "במקור",
   "short_name": "במקור",
-  "description": "מערכת ניהול תקלות לבניינים",
+  "description": "מערכת ניהול תקלות ואחזקה לבניינים",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "dir": "rtl",
   "lang": "he",
+  "categories": ["productivity", "business"],
   "icons": [
     { "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "/apple-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+    { "src": "/apple-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "טיקט חדש",
+      "short_name": "טיקט חדש",
+      "description": "פתח טיקט תקלה חדש",
+      "url": "/tickets",
+      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "כל הטיקטים",
+      "short_name": "טיקטים",
+      "description": "הצג את כל הטיקטים הפתוחים",
+      "url": "/tickets",
+      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "עובדים",
+      "short_name": "עובדים",
+      "description": "ניהול עובדים",
+      "url": "/workers",
+      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+    }
   ]
 }

@@ -3,6 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "./components/ToastContainer";
 import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
+import { UpdateNotification } from "./components/UpdateNotification";
+import { OfflineIndicator } from "./components/OfflineIndicator";
+import { InstallPromptBanner } from "./components/InstallPromptBanner";
 import { initializeLogger, LogLevel } from "@/lib/logging";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -101,6 +104,9 @@ export default function RootLayout({
     >
       <body className="min-h-screen flex flex-col bg-background text-foreground" dir="rtl">
         <RegisterServiceWorker />
+        <OfflineIndicator />
+        <InstallPromptBanner />
+        <UpdateNotification />
         {children}
         <ToastContainer />
         <SpeedInsights />
