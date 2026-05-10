@@ -1,11 +1,9 @@
 /**
- * הרץ מקומית: node scripts/test-sms.mjs
- * מוודא שה-credentials עובדים ללא Vercel באמצע
+ * הרץ מקומית: node scripts/test-sms.mjs [מספר_טלפון]
+ * בודק ישירות מול 019sms.co.il/api (XML) ללא Vercel באמצע
  */
-import { config } from 'dotenv'
 import { readFileSync } from 'fs'
 
-// טוען .env.local
 try {
   const env = readFileSync('.env.local', 'utf8')
   env.split('\n').forEach(line => {
@@ -16,48 +14,64 @@ try {
 
 const USERNAME = process.env.SMS_019_USERNAME
 const PASSWORD = process.env.SMS_019_PASSWORD
-const TO       = process.argv[2] || process.env.MANAGER_PHONE || '972548102688'
 const FROM     = process.env.SMS_019_SENDER || '972559899132'
+const TO       = process.argv[2] || process.env.MANAGER_PHONE || '972548102688'
 
 if (!USERNAME || !PASSWORD) {
   console.error('❌ חסרים SMS_019_USERNAME / SMS_019_PASSWORD ב-.env.local')
   process.exit(1)
 }
 
-console.log('📱 שולח SMS ניסיון...')
-console.log('   Endpoint: https://api.019sms.co.il/Send')
-console.log('   To:', TO)
-console.log('   From:', FROM)
-console.log('   Username:', USERNAME)
+const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<sms>
+    <user>
+        <username>${USERNAME}</username>
+        <password>${PASSWORD}</password>
+    </user>
+    <source>${FROM}</source>
+    <destinations>
+        <phone>${TO}</phone>
+    </destinations>
+    <message>הודעת בדיקה מ-Bamakor ✅</message>
+</sms>`
 
-const body = new URLSearchParams({
-  UserName: USERNAME,
-  Password: PASSWORD,
-  To: TO,
-  From: FROM,
-  Text: 'הודעת בדיקה מ-Bamakor (מקומי)',
-})
+console.log('📱 שולח SMS ניסיון...')
+console.log('   Endpoint: https://019sms.co.il/api')
+console.log('   To:', TO)
+console.log('   From (source):', FROM)
+console.log('   Username:', USERNAME)
+console.log()
 
 try {
-  const res = await fetch('https://api.019sms.co.il/Send', {
+  const res = await fetch('https://019sms.co.il/api', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'Bamakor/1.0',
+      'Content-Type': 'application/xml; charset=UTF-8',
+      'User-Agent': 'Bamakor/1.0 (+https://bamakor.com)',
     },
-    body: body.toString(),
+    body: xml,
   })
 
   const text = await res.text()
-  console.log('\n📨 Status:', res.status)
-  console.log('📨 Response:', text.slice(0, 300))
+  console.log('📨 HTTP Status:', res.status)
+  console.log('📨 Response:', text.slice(0, 500))
 
-  if (text.trim() === 'OK') {
-    console.log('\n✅ SMS נשלח בהצלחה! הבעיה היא ב-Vercel IP, לא ב-credentials.')
+  const statusMatch = text.match(/<status>(\d+)<\/status>/)
+  const msgMatch = text.match(/<message>(.+?)<\/message>/)
+  const apiStatus = statusMatch ? parseInt(statusMatch[1]) : -1
+  const apiMsg = msgMatch ? msgMatch[1] : ''
+
+  if (apiStatus === 0) {
+    console.log('\n✅ SMS נשלח בהצלחה!')
+  } else if (apiStatus === 515) {
+    console.log('\n❌ שגיאה 515: שם השולח לא מאומת ב-019SMS.')
+    console.log('   פתרון: כנס לחשבון 019SMS ← הגדרות ← Sender Names והוסף את:', FROM)
+  } else if (apiStatus === 1) {
+    console.log('\n❌ שגיאה 1: בעיה בפרמוט ה-XML (בדוק username/password)')
   } else if (res.status === 403) {
-    console.log('\n❌ 403 גם מקומית — ייתכן שה-credentials שגויים או ה-endpoint שגוי.')
+    console.log('\n❌ 403: הבקשה נחסמה על ידי WAF')
   } else {
-    console.log('\n⚠️  תשובה לא צפויה — בדוק את הפרטים למעלה.')
+    console.log('\n⚠️ תגובה לא צפויה — apiStatus:', apiStatus, apiMsg)
   }
 } catch (e) {
   console.error('\n❌ שגיאת רשת:', e.message)
