@@ -88,6 +88,35 @@ type TicketWithProjects = TicketRow & {
   projects?: Array<{ project_code: string; name: string }> | { project_code: string; name: string }
 }
 
+const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v1'
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+
+type DashboardCache = {
+  tickets: TicketRow[]
+  projects: ProjectRow[]
+  workersMap: Record<string, string>
+  residentsCount: number | null
+  workersCount: number | null
+  recentActivity: unknown[]
+  savedAt: number
+}
+
+function readDashboardCache(): DashboardCache | null {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as DashboardCache
+    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
+    return parsed
+  } catch { return null }
+}
+
+function writeDashboardCache(data: Omit<DashboardCache, 'savedAt'>) {
+  try {
+    localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ ...data, savedAt: Date.now() }))
+  } catch { /* storage full or unavailable */ }
+}
+
 export default function DashboardPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
@@ -201,33 +230,34 @@ export default function DashboardPage() {
           closed_at: row.closed_at,
         }))
 
-        setTickets(formatted)
-        setProjects(projectsResult.data || [])
-
         const map: Record<string, string> = {}
         workersResult.data?.forEach((worker: { id: string; full_name: string }) => {
           map[worker.id] = worker.full_name
         })
-        setWorkersMap(map)
-        setResidentsCount(resCountResult.count ?? null)
-        setWorkersCount(wCountResult.count ?? null)
+        const resCount = resCountResult.count ?? null
+        const wCount = wCountResult.count ?? null
 
         const fromLogs = buildActivityFromLogs(logsResult.data, logsResult.error)
-        if (fromLogs.length > 0) {
-          setRecentActivity(fromLogs)
-        } else {
-          setRecentActivity(
-            formatted.slice(0, 5).map((ticket) => ({
+        const activity = fromLogs.length > 0
+          ? fromLogs
+          : formatted.slice(0, 5).map((ticket) => ({
               id: ticket.id,
-              type:
-                ticket.status === 'CLOSED' ? 'closed' : ticket.status === 'NEW' ? 'created' : 'updated',
+              type: (ticket.status === 'CLOSED' ? 'closed' : ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
               ticket_number: ticket.ticket_number,
               project_label: ticket.project_name || ticket.project_code || '',
               description: ticket.description,
               time: formatRelativeTime(ticket.created_at),
             }))
-          )
-        }
+
+        setTickets(formatted)
+        setProjects(projectsResult.data || [])
+        setWorkersMap(map)
+        setResidentsCount(resCount)
+        setWorkersCount(wCount)
+        setRecentActivity(activity)
+
+        writeDashboardCache({ tickets: formatted, projects: projectsResult.data || [], workersMap: map, residentsCount: resCount, workersCount: wCount, recentActivity: activity })
+
         return true
       },
       { context: 'טעינת הדשבורד', showErrorToast: true }
@@ -236,6 +266,16 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    const cached = readDashboardCache()
+    if (cached) {
+      setTickets(cached.tickets)
+      setProjects(cached.projects)
+      setWorkersMap(cached.workersMap)
+      setResidentsCount(cached.residentsCount)
+      setWorkersCount(cached.workersCount)
+      setRecentActivity(cached.recentActivity as ActivityItem[])
+      setLoading(false)
+    }
     void loadData()
   }, [loadData])
 

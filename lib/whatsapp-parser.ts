@@ -10,44 +10,45 @@ export type ParsedWhatsAppMessage = {
 
 /**
  * Heuristic: does this message look like a building / address lookup (not a greeting)?
- * Used to decide whether to fuzzy-search projects by free text.
+ * Supports both Hebrew and English addresses.
  */
 export function isAddressLikeText(text: string): boolean {
   const t = text.trim()
-  // Allow short building hints (e.g. "חלץ") so search can offer numbered picks
   if (t.length < 2) return false
 
+  // Any digit → likely a street number or building number
   if (/\d/.test(t)) return true
 
-  const addressCues = [
-    'רחוב',
-    'רח׳',
-    'כתובת',
-    'בניין',
-    'בנין',
-    'בניי', // common typo
-    'דירה',
-    'קומה',
-    'כניסה',
-    'שדרה',
-    'שד׳',
-    'מגרש',
-    'יישוב',
-    'שכונה',
-    'פינת',
-    'מספר',
+  // Hebrew address cues
+  const hebrewAddressCues = [
+    'רחוב', 'רח׳', 'כתובת',
+    'בניין', 'בנין', 'בניי',
+    'דירה', 'קומה', 'כניסה',
+    'שדרה', 'שד׳', 'מגרש',
+    'יישוב', 'שכונה',
+    'פינת', 'מספר',
   ]
-  if (addressCues.some((cue) => t.includes(cue))) return true
+  if (hebrewAddressCues.some((cue) => t.includes(cue))) return true
 
-  // Short Hebrew-only token (e.g. building nickname "חלץ") — eligible for project text search
-  if (/^[\u0590-\u05FF]{3,40}$/.test(t)) {
-    return true
-  }
+  // English address cues (case-insensitive)
+  const tLower = t.toLowerCase()
+  const englishAddressCues = [
+    'street', ' st ', 'avenue', ' ave', 'blvd', 'boulevard',
+    'road', ' rd ', 'lane', 'drive', ' dr ', 'court', 'place',
+    'building', 'floor', 'apt ', 'apartment', 'unit ', 'entrance',
+  ]
+  if (englishAddressCues.some((cue) => tLower.includes(cue))) return true
 
-  // Street-style without digits: typically *two* tokens (e.g. "הרצל כהן").
-  // Three+ Hebrew words without cues/digits are usually a problem description ("דלת לא נסגרת"), not an address search.
-  const hebrewWord = /[\u0590-\u05FF]{2,}/
+  // Short Hebrew-only token (e.g. building nickname)
+  if (/^[֐-׿]{3,40}$/.test(t)) return true
+
+  // Short Latin-only token — could be an English building/street name
+  if (/^[A-Za-z]{3,30}$/.test(t)) return true
+
   const words = t.split(/\s+/).filter(Boolean)
+
+  // Two Hebrew words — street name without number (e.g. "הרצל כהן")
+  const hebrewWord = /[֐-׿]{2,}/
   if (
     words.length === 2 &&
     t.length >= 12 &&
@@ -55,6 +56,10 @@ export function isAddressLikeText(text: string): boolean {
   ) {
     return true
   }
+
+  // Two Latin words — English street name (e.g. "Ben Gurion")
+  const latinWord = /^[A-Za-z]{2,}$/
+  if (words.length === 2 && words.every((w) => latinWord.test(w))) return true
 
   return false
 }
@@ -87,7 +92,6 @@ export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessa
     messageId: typeof mid === 'string' && mid.length > 0 ? mid : undefined,
   }
 
-  // Extract media information if present
   if (message?.type === 'image' && (message?.image as Record<string, unknown>)?.id) {
     result.mediaId = String((message.image as Record<string, unknown>).id)
     result.mediaType = 'image'

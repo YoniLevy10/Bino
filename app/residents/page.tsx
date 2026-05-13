@@ -63,6 +63,15 @@ type ResidentRow = {
   notes?: string | null
 }
 
+function normalizeResidentPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return ''
+  if (digits.startsWith('972')) return `+${digits}`
+  if (digits.startsWith('0')) return `+972${digits.slice(1)}`
+  if (digits.length === 9 && digits.startsWith('5')) return `+972${digits}`
+  return `+${digits}`
+}
+
 function isResidentsTableMissingError(err: { message?: string } | null): boolean {
   if (!err?.message) return false
   const m = err.message.toLowerCase()
@@ -298,7 +307,7 @@ export default function ResidentsPage() {
             project_id: projectId,
             client_id: clientId,
             full_name: fullName,
-            phone: addPhone.trim() || null,
+            phone: normalizeResidentPhone(addPhone) || null,
             apartment_number: addApartment.trim() || null,
             notes: addNotes.trim() || null,
           }),
@@ -328,7 +337,7 @@ export default function ResidentsPage() {
           project_id: projectId,
           client_id: clientId,
           full_name: fullName,
-          phone: addPhone.trim() || null,
+          phone: normalizeResidentPhone(addPhone) || null,
           apartment_number: addApartment.trim() || null,
           notes: addNotes.trim() || null,
         })

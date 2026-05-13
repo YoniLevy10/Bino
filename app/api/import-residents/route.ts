@@ -23,6 +23,16 @@ function normalizeProjectCode(v: unknown): string {
   return normalizeString(v).toUpperCase()
 }
 
+/** Normalize phone to +972XXXXXXXXX format for consistent dedup */
+function normalizePhone(raw: unknown): string {
+  const digits = String(raw ?? '').replace(/\D/g, '')
+  if (!digits) return ''
+  if (digits.startsWith('972')) return `+${digits}`
+  if (digits.startsWith('0')) return `+972${digits.slice(1)}`
+  if (digits.length === 9 && digits.startsWith('5')) return `+972${digits}`
+  return `+${digits}`
+}
+
 export async function POST(req: Request) {
   const logger = getLogger()
   const audit = getAuditLogger()
@@ -93,11 +103,12 @@ export async function POST(req: Request) {
         return
       }
 
+      const normalizedPhone = normalizePhone(r.phone)
       toInsert.push({
         project_id: match.id,
         client_id: bamakorClientId,
         full_name: fullName,
-        phone: normalizeString(r.phone) || null,
+        phone: normalizedPhone || null,
         apartment_number: normalizeString(r.apartment_number) || null,
         notes: sanitizeString(r.notes) || normalizeString(r.notes) || null,
       })
@@ -105,15 +116,46 @@ export async function POST(req: Request) {
 
     if (toInsert.length === 0) {
       return NextResponse.json(
-        { inserted: 0, failed: errors.length, errors },
+        { inserted: 0, skipped: 0, failed: errors.length, errors },
         { status: 200 }
       )
     }
 
-    // Bulk insert
+    // Load existing phones per project to deduplicate
+    const projectIds = [...new Set(toInsert.map((r) => r.project_id))]
+    const { data: existingRows } = await supabase
+      .from('residents')
+      .select('project_id, phone')
+      .eq('client_id', bamakorClientId)
+      .in('project_id', projectIds)
+      .is('deleted_at', null)
+
+    const existingKeys = new Set(
+      ((existingRows ?? []) as { project_id: string; phone: string | null }[])
+        .filter((r) => r.phone)
+        .map((r) => `${r.project_id}:${r.phone}`)
+    )
+
+    const deduped: typeof toInsert = []
+    let skipped = 0
+    for (const row of toInsert) {
+      const key = row.phone ? `${row.project_id}:${row.phone}` : null
+      if (key && existingKeys.has(key)) { skipped++; continue }
+      if (key) existingKeys.add(key)
+      deduped.push(row)
+    }
+
+    if (deduped.length === 0) {
+      return NextResponse.json(
+        { inserted: 0, skipped, failed: errors.length, errors },
+        { status: 200 }
+      )
+    }
+
+    // Bulk insert deduplicated rows
     const { data: insertedRows, error: insErr } = await supabase
       .from('residents')
-      .insert(toInsert)
+      .insert(deduped)
       .select('id, project_id, client_id, full_name, phone, apartment_number, notes')
 
     if (insErr) {
@@ -123,7 +165,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      inserted: (insertedRows as unknown[] | null)?.length ?? toInsert.length,
+      inserted: (insertedRows as unknown[] | null)?.length ?? deduped.length,
+      skipped,
       failed: errors.length,
       errors,
       residents: insertedRows,
