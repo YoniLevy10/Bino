@@ -89,7 +89,7 @@ export async function resolveClientIdByWhatsAppPhoneNumberId(
 ): Promise<{ clientId: string; row: Record<string, unknown> } | null> {
   const { data: rows, error } = await admin
     .from('clients')
-    .select('id, name, sms_sender_name, whatsapp_phone_number_id, whatsapp_access_token, manager_phone')
+    .select('id, name, sms_sender_name, whatsapp_phone_number_id, whatsapp_access_token, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close')
     .eq('whatsapp_phone_number_id', phoneNumberId)
     .limit(2)
 
@@ -98,7 +98,7 @@ export async function resolveClientIdByWhatsAppPhoneNumberId(
     if (process.env.NODE_ENV === 'development' && fallback) {
       const { data: one } = await admin
         .from('clients')
-        .select('id, name, sms_sender_name, whatsapp_phone_number_id, whatsapp_access_token, manager_phone')
+        .select('id, name, sms_sender_name, whatsapp_phone_number_id, whatsapp_access_token, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close')
         .eq('id', fallback)
         .maybeSingle()
       if (one) return { clientId: fallback, row: one as Record<string, unknown> }

@@ -540,6 +540,9 @@ async function runWhatsAppInboundBackground(
       whatsapp_phone_number_id?: string | null
       whatsapp_access_token?: string | null
       manager_phone?: string | null
+      default_worker_phone?: string | null
+      sms_on_ticket_open?: boolean | null
+      sms_on_ticket_close?: boolean | null
     } | null
 
     if (tenantPreResolved) {
@@ -576,6 +579,8 @@ async function runWhatsAppInboundBackground(
     const clientName = (waClient as { name?: string | null } | null)?.name || 'המערכת'
     const smsSenderName = (waClient as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
     const clientManagerPhone = (waClient as { manager_phone?: string | null } | null)?.manager_phone || null
+    const clientDefaultWorkerPhone = (waClient as { default_worker_phone?: string | null } | null)?.default_worker_phone?.trim() || null
+    const smsOnTicketOpen = (waClient as { sms_on_ticket_open?: boolean | null } | null)?.sms_on_ticket_open !== false
 
     type WaTemplateVars = Partial<
       Record<'project_name' | 'ticket_number' | 'description' | 'reporter_name' | 'building_line' | 'list', string>
@@ -1396,41 +1401,44 @@ async function runWhatsAppInboundBackground(
           }
         )
 
-        const managerDestination = clientManagerPhone || projectForNotification.manager_phone || getManagerPhoneFromEnv()
+        if (smsOnTicketOpen) {
+          const managerDestination = clientManagerPhone || projectForNotification.manager_phone || getManagerPhoneFromEnv()
 
-        if (managerDestination) {
-          const smsSent = await sendManagerSMS(managerDestination, smsMessage, smsSenderName, webhookClientId)
-          if (!smsSent) {
-            logger.warn('WEBHOOK', 'manager SMS failed', { ticketNumber: createdTicket.ticket_number })
+          if (managerDestination) {
+            const smsSent = await sendManagerSMS(managerDestination, smsMessage, smsSenderName, webhookClientId)
+            if (!smsSent) {
+              logger.warn('WEBHOOK', 'manager SMS failed', { ticketNumber: createdTicket.ticket_number })
+            }
           }
-        }
 
-        if (projectForNotification.assigned_worker_id) {
-          const { data: workerRow } = await supabaseAdmin
-            .from('workers')
-            .select('phone, full_name')
-            .eq('id', projectForNotification.assigned_worker_id)
-            .eq('client_id', webhookClientId)
-            .is('deleted_at', null)
-            .maybeSingle()
+          if (projectForNotification.assigned_worker_id) {
+            const { data: workerRow } = await supabaseAdmin
+              .from('workers')
+              .select('phone, full_name')
+              .eq('id', projectForNotification.assigned_worker_id)
+              .eq('client_id', webhookClientId)
+              .is('deleted_at', null)
+              .maybeSingle()
 
-          if (workerRow?.phone) {
-            const workerMsg = await resolveSmsTemplateMessage(
-              supabaseAdmin, webhookClientId,
-              'sms_worker_new_ticket',
-              SMS_TEMPLATE_EDITOR_DEFAULTS.sms_worker_new_ticket,
-              {
-                project_name: projectForNotification.name,
-                ticket_number: String(createdTicket.ticket_number),
-                description: ticketDescription || 'ללא פירוט',
-                reporter_name: displayReporterForExternalMessage(waRecipient),
-                dashboard_url: getPublicTicketsUrl(),
-                client_name: clientName,
+            const workerPhone = workerRow?.phone?.trim() || clientDefaultWorkerPhone
+            if (workerPhone) {
+              const workerMsg = await resolveSmsTemplateMessage(
+                supabaseAdmin, webhookClientId,
+                'sms_worker_new_ticket',
+                SMS_TEMPLATE_EDITOR_DEFAULTS.sms_worker_new_ticket,
+                {
+                  project_name: projectForNotification.name,
+                  ticket_number: String(createdTicket.ticket_number),
+                  description: ticketDescription || 'ללא פירוט',
+                  reporter_name: displayReporterForExternalMessage(waRecipient),
+                  dashboard_url: getPublicTicketsUrl(),
+                  client_name: clientName,
+                }
+              )
+              const wOk = await sendWorkerSMS(workerPhone, workerMsg, smsSenderName, webhookClientId)
+              if (!wOk) {
+                logger.warn('WEBHOOK', 'worker SMS failed', { workerId: projectForNotification.assigned_worker_id })
               }
-            )
-            const wOk = await sendWorkerSMS(workerRow.phone, workerMsg, smsSenderName, webhookClientId)
-            if (!wOk) {
-              logger.warn('WEBHOOK', 'worker SMS failed', { workerId: projectForNotification.assigned_worker_id })
             }
           }
         }

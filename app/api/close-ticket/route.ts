@@ -6,6 +6,9 @@ import { notifyReporterTicketClosed } from '@/lib/reporter-ticket-closed-notify'
 import { ticketIdBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
+import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
+import { resolveSmsTemplateMessage } from '@/lib/whatsapp-templates'
+import { SMS_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -109,11 +112,37 @@ export async function POST(req: Request) {
 
     type TicketWithProject = {
       reporter_phone?: string | null
+      project_id?: string | null
       projects?: { name?: string | null } | { name?: string | null }[] | null
     }
     const trow = ticket as TicketWithProject
     const proj = trow.projects
     const projectName = Array.isArray(proj) ? proj[0]?.name : proj?.name
+
+    // Send manager SMS on close if enabled in client settings
+    try {
+      const { data: clientRow } = await supabaseAdmin
+        .from('clients')
+        .select('sms_on_ticket_close, manager_phone, sms_sender_name')
+        .eq('id', clientId)
+        .maybeSingle()
+      const smsOnClose = (clientRow as { sms_on_ticket_close?: boolean | null } | null)?.sms_on_ticket_close !== false
+      if (smsOnClose) {
+        const managerPhone = (clientRow as { manager_phone?: string | null } | null)?.manager_phone?.trim() || getManagerPhoneFromEnv()
+        const smsSenderName = (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
+        if (managerPhone) {
+          const smsMsg = await resolveSmsTemplateMessage(
+            supabaseAdmin, clientId,
+            'sms_manager_ticket_closed',
+            SMS_TEMPLATE_EDITOR_DEFAULTS.sms_manager_ticket_closed,
+            { project_name: projectName || 'הבניין', ticket_number: String(ticket_id) }
+          )
+          await sendManagerSMS(managerPhone, smsMsg, smsSenderName, clientId)
+        }
+      }
+    } catch (smsErr) {
+      logger.warn('TICKET_API', 'Manager SMS on close failed', { requestId, ticket_id, err: String(smsErr) })
+    }
 
     const notify = await notifyReporterTicketClosed(supabaseAdmin, clientId, {
       reporterPhone: trow.reporter_phone,

@@ -204,6 +204,7 @@ export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
 export const SMS_TEMPLATE_KEYS = [
   'sms_manager_new_ticket',
   'sms_worker_new_ticket',
+  'sms_manager_ticket_closed',
 ] as const
 
 export type SmsTemplateKey = (typeof SMS_TEMPLATE_KEYS)[number]
@@ -221,11 +222,13 @@ export const SMS_TEMPLATE_VAR_NAMES = [
 export const SMS_TEMPLATE_LABELS: Record<SmsTemplateKey, string> = {
   sms_manager_new_ticket: 'SMS למנהל/ת — תקלה חדשה',
   sms_worker_new_ticket: 'SMS לעובד — תקלה חדשה',
+  sms_manager_ticket_closed: 'SMS למנהל/ת — תקלה נסגרה',
 }
 
 export const SMS_TEMPLATE_WHEN_SENT: Record<SmsTemplateKey, string> = {
   sms_manager_new_ticket: 'נשלח למנהל/ת כשנפתחת תקלה חדשה דרך וואטסאפ',
   sms_worker_new_ticket: 'נשלח לעובד המשויך לפרויקט כשנפתחת תקלה חדשה',
+  sms_manager_ticket_closed: 'נשלח למנהל/ת כשתקלה נסגרת מהדשבורד',
 }
 
 export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
@@ -233,6 +236,8 @@ export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
     'נפתחה תקלה חדשה\nפרויקט: {{project_name}}\n{{building_line}}תקלה: #{{ticket_number}}\nתיאור: {{description}}\nמדווח: {{reporter_name}}\nכניסה למערכת:\n{{dashboard_url}}\n{{client_name}}',
   sms_worker_new_ticket:
     'תקלה חדשה ב{{project_name}}\n#{{ticket_number}}\n{{description}}\nמדווח: {{reporter_name}}\n{{dashboard_url}}\n{{client_name}}',
+  sms_manager_ticket_closed:
+    'תקלה #{{ticket_number}} נסגרה\nפרויקט: {{project_name}}',
 }
 
 /** טקסט ברירת מחדל לטעינה ראשונית בעורך (כשאין שורה ב-DB) */
