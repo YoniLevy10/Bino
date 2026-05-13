@@ -175,7 +175,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true, status: 'rejected', requestId })
     }
 
-    const fullName = sanitizeString(parsed.data.full_name) || 'דייר (אושר מהוואטסאפ)'
+    const fullName = sanitizeString(parsed.data.full_name)
+    if (!fullName) {
+      return NextResponse.json({ error: 'נדרש שם מלא לאישור דייר', requestId }, { status: 400 })
+    }
+    const apartmentNumber = sanitizeString(parsed.data.apartment_number) || null
     const digits = normalizeWhatsAppPhoneDigits((row as { reporter_phone_normalized: string }).reporter_phone_normalized)
     const phone = formatPhoneForResident(digits)
 
@@ -203,7 +207,7 @@ export async function PATCH(req: NextRequest) {
       client_id: clientId,
       full_name: fullName,
       phone,
-      apartment_number: null,
+      apartment_number: apartmentNumber,
       notes: 'נוסף לאחר אישור בקשת הצטרפות מוואטסאפ',
     })
 

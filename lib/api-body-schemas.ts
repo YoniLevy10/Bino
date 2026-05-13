@@ -91,6 +91,7 @@ export const pendingResidentsApproveBodySchema = z.object({
   id: z.string().uuid(),
   action: z.enum(['approve', 'reject']),
   full_name: z.string().max(200).optional(),
+  apartment_number: z.string().max(20).optional(),
 })
 
 export const pushSubscribeBodySchema = z.object({

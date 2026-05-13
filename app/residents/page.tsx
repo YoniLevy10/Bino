@@ -149,6 +149,7 @@ export default function ResidentsPage() {
   const [pendingLoading, setPendingLoading] = useState(false)
   const [pendingBadge, setPendingBadge] = useState(0)
   const [pendingNames, setPendingNames] = useState<Record<string, string>>({})
+  const [pendingApartments, setPendingApartments] = useState<Record<string, string>>({})
   const [pendingBusyId, setPendingBusyId] = useState<string | null>(null)
 
   async function loadPending() {
@@ -377,11 +378,17 @@ export default function ResidentsPage() {
   }, []) // mount only
 
   useEffect(() => {
-    if (mainTab === 'pending') {
-      void loadPending()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPending is stable enough for tab refresh
+    if (mainTab === 'pending') void loadPending()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab])
+
+  // Refresh pending badge whenever the browser tab regains focus
+  useEffect(() => {
+    const onFocus = () => void loadPending()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function displayPendingPhone(digits: string) {
     const d = digits.replace(/\D/g, '')
@@ -400,6 +407,7 @@ export default function ResidentsPage() {
           id,
           action: 'approve',
           full_name: pendingNames[id]?.trim() || undefined,
+          apartment_number: pendingApartments[id]?.trim() || undefined,
         }),
       })
       const data = await res.json()
@@ -435,11 +443,25 @@ export default function ResidentsPage() {
 
   const projectName = useMemo(() => {
     const m: Record<string, string> = {}
-    projects.forEach((p) => {
-      m[p.id] = p.name
-    })
+    projects.forEach((p) => { m[p.id] = p.name })
     return m
   }, [projects])
+
+  // For each pending item: if its phone already exists in the residents list (any project), return info
+  const pendingConflictMap = useMemo(() => {
+    const result: Record<string, { residentName: string; projectName: string }> = {}
+    for (const p of pendingItems) {
+      const pDigits = p.reporter_phone_normalized.replace(/\D/g, '')
+      const match = residents.find((r) => (r.phone || '').replace(/\D/g, '') === pDigits)
+      if (match) {
+        result[p.id] = {
+          residentName: match.full_name,
+          projectName: projectName[match.project_id] || '',
+        }
+      }
+    }
+    return result
+  }, [pendingItems, residents, projectName])
 
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase()
@@ -622,17 +644,23 @@ export default function ResidentsPage() {
                 <p style={styles.empty}>אין בקשות ממתינות.</p>
               ) : (
                 <div style={styles.pendingList}>
-                  {pendingItems.map((p) => (
+                  {pendingItems.map((p) => {
+                    const conflict = pendingConflictMap[p.id]
+                    const hasName = !!pendingNames[p.id]?.trim()
+                    return (
                     <div key={p.id} style={styles.pendingCard}>
+                      {conflict && (
+                        <div style={styles.pendingConflict}>
+                          טלפון זה רשום כבר כדייר &quot;{conflict.residentName}&quot; בבניין {conflict.projectName}
+                        </div>
+                      )}
                       <div style={styles.pendingRow}>
                         <span style={styles.pendingLabel}>טלפון</span>
                         <span>{displayPendingPhone(p.reporter_phone_normalized)}</span>
                       </div>
                       <div style={styles.pendingRow}>
                         <span style={styles.pendingLabel}>פרויקט</span>
-                        <span>
-                          {p.project_name}
-                        </span>
+                        <span>{p.project_name}</span>
                       </div>
                       {p.ticket_number != null && (
                         <div style={styles.pendingRow}>
@@ -640,19 +668,30 @@ export default function ResidentsPage() {
                           <span>#{p.ticket_number}</span>
                         </div>
                       )}
-                      <label style={styles.pendingNameLab}>שם דייר (לאישור)</label>
+                      <label style={styles.pendingNameLab}>
+                        שם דייר <span style={{ color: theme.colors.error }}>*</span>
+                      </label>
                       <input
                         value={pendingNames[p.id] || ''}
-                        onChange={(e) =>
-                          setPendingNames((prev) => ({ ...prev, [p.id]: e.target.value }))
-                        }
-                        placeholder="שם מלא"
+                        onChange={(e) => setPendingNames((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                        placeholder="שם מלא (חובה)"
+                        style={{
+                          ...styles.pendingInput,
+                          borderColor: !hasName ? theme.colors.error : theme.colors.border,
+                        }}
+                      />
+                      <label style={styles.pendingNameLab}>דירה (אופציונלי)</label>
+                      <input
+                        value={pendingApartments[p.id] || ''}
+                        onChange={(e) => setPendingApartments((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                        placeholder="מספר דירה"
                         style={styles.pendingInput}
                       />
                       <div style={styles.pendingActions}>
                         <Button
                           variant="primary"
                           size="sm"
+                          disabled={!hasName}
                           loading={pendingBusyId === p.id}
                           onClick={() => approvePending(p.id)}
                         >
@@ -668,7 +707,8 @@ export default function ResidentsPage() {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -899,6 +939,16 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.muted,
+  },
+  pendingConflict: {
+    marginBottom: '12px',
+    padding: '10px 14px',
+    borderRadius: theme.radius.sm,
+    background: theme.colors.warningMuted,
+    border: `1px solid ${theme.colors.warning}`,
+    fontSize: '13px',
+    color: theme.colors.textPrimary,
+    fontWeight: 500,
   },
   pendingRow: { display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px', fontSize: '14px' },
   pendingLabel: { color: theme.colors.textMuted, fontWeight: 600 },
