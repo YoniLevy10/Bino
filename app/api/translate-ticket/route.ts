@@ -5,16 +5,16 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
 
-type MyMemoryResponse = {
-  responseData?: { translatedText?: string }
-  responseStatus?: number
-}
-
-function detectLangPair(text: string): string {
-  if (/[Ѐ-ӿ]/.test(text)) return 'ru|he'   // Cyrillic → Russian
-  if (/[؀-ۿ]/.test(text)) return 'ar|he'   // Arabic
-  if (/[一-鿿]/.test(text)) return 'zh|he'   // Chinese
-  return 'en|he'                                       // default: English
+async function googleTranslate(text: string): Promise<string> {
+  const url =
+    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=` +
+    encodeURIComponent(text)
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+  if (!res.ok) throw new Error(`Google Translate HTTP ${res.status}`)
+  // Response: [ [ ["translated","original",...], ... ], null, "detected_lang" ]
+  const data = (await res.json()) as unknown[][]
+  const segments = data[0] as unknown[][]
+  return segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
 }
 
 export async function POST(req: Request) {
@@ -48,13 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'טקסט ריק', requestId }, { status: 400 })
     }
 
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${detectLangPair(text)}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-    if (!res.ok) {
-      return NextResponse.json({ error: 'שגיאת תרגום — נסו שוב', requestId }, { status: 502 })
-    }
-    const data = (await res.json()) as MyMemoryResponse
-    const translation = data?.responseData?.translatedText?.trim() ?? ''
+    const translation = await googleTranslate(text)
 
     if (!translation) {
       return NextResponse.json({ error: 'לא התקבל תרגום', requestId }, { status: 502 })
