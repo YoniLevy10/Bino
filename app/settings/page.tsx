@@ -472,9 +472,14 @@ function SettingsPageInner() {
                       dir="ltr"
                     />
                     <p style={styles.fieldHint}>
-                      מה שיופיע לנמען בשדה &quot;מאת&quot; בהודעת SMS. חייב להיות אותיות לטיניות/ספרות בלבד, 3–11 תווים.
-                      אם ריק — המערכת תשתמש בברירת המחדל הגלובלית מ-<code>SMS_019_SENDER</code>.
+                      מה שיופיע לנמען בשדה &quot;מאת&quot; בהודעת SMS. <strong>חייב להיות אותיות לטיניות/ספרות בלבד</strong>, 3–11 תווים (לדוגמה: Bamakor).
+                      תווים בעברית יימחקו אוטומטית — אם ריק תישלח עם שולח &quot;Bamakor&quot;.
                     </p>
+                    {smsSenderName && /[^\x00-\x7F]/.test(smsSenderName) && (
+                      <p style={{ ...styles.fieldHint, color: theme.colors.warning, fontWeight: 600 }}>
+                        ⚠️ השם מכיל תווים לא תקינים — לאחר שמירה ישלח SMS עם שולח &quot;Bamakor&quot;
+                      </p>
+                    )}
                   </div>
                   <label style={styles.checkboxLabel}>
                     <input

@@ -692,14 +692,11 @@ async function runWhatsAppInboundBackground(
       } catch { /* WA send failure is non-fatal */ }
     }
 
+    // Location messages: archived — redirect resident to describe in text
     if (messageType === 'location') {
-      if (waLocation) {
-        await handleInboundLocation(waLocation)
-      } else {
-        try {
-          await sendWa(waRecipient, 'location_error', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-      }
+      try {
+        await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
+      } catch { /* WA send failure is non-fatal */ }
       return
     }
 
