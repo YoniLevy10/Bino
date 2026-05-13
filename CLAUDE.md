@@ -102,3 +102,38 @@ Reference: `app/api/webhook/whatsapp/route.ts`
 | Server-side (external APIs) | `lib/fetch-timeout.ts` | **Returns `null`** |
 
 Do NOT use raw `fetch()` directly anywhere in the codebase.
+
+---
+
+## Vercel Environment Variables
+
+All vars are set in Vercel Dashboard → Settings → Environment Variables.
+Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API if needed.
+
+### Currently configured (production)
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key (server only) |
+| `NEXT_PUBLIC_APP_URL` | `https://bamakor.vercel.app` |
+| `SMS_019_USERNAME` | 019SMS API username |
+| `SMS_019_PASSWORD` | 019SMS API password |
+| `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |
+| `WHATSAPP_VERIFY_TOKEN` | Meta webhook verification token |
+| `WHATSAPP_ACCESS_TOKEN` | Meta API access token (also stored in DB) |
+| `WHATSAPP_PHONE_NUMBER_ID` | Meta phone number ID (also stored in DB) |
+| `VAPID_PUBLIC_KEY` | Web push server public key |
+| `VAPID_PRIVATE_KEY` | Web push server private key |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web push browser key (same as public) |
+| `VAPID_SUBJECT` | `mailto:levyyoni5@gmail.com` |
+| `CRON_SECRET` | Cron job auth secret |
+| `ADMIN_SETUP_SECRET` | Superadmin routes secret |
+| `BAMAKOR_CLIENT_ID` | Dev fallback client ID |
+
+### Still missing
+
+| Variable | How to get |
+|----------|-----------|
+| `WHATSAPP_APP_SECRET` | Meta Developer Console → App → Settings → Basic → App Secret |
