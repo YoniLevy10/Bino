@@ -166,28 +166,20 @@ function SettingsPageInner() {
     setSavingNotifications(true)
     await asyncHandler(
       async () => {
-        const payloadWithWorker = {
+        const payload = {
           manager_phone: managerPhone.trim() || null,
           default_worker_phone: defaultWorkerPhone.trim() || null,
           sms_sender_name: smsSenderName.trim() || null,
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
         }
-        const payloadBase = {
-          manager_phone: managerPhone.trim() || null,
-          sms_sender_name: smsSenderName.trim() || null,
-          sms_on_ticket_open: smsOnOpen,
-          sms_on_ticket_close: smsOnClose,
-        }
-        let { error } = await supabase.from('clients').update(payloadWithWorker).eq('id', clientId)
-        const colMissing =
-          error &&
-          (error.code === '42703' ||
-            (error.message || '').toLowerCase().includes('default_worker_phone'))
-        if (error && colMissing) {
-          ;({ error } = await supabase.from('clients').update(payloadBase).eq('id', clientId))
-        }
-        if (error) throw error
+        const res = await fetchWithTimeout('/api/settings/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
         toast.success(TM.settingsSaved)
         await load()
         return true
@@ -209,16 +201,13 @@ function SettingsPageInner() {
         if (waAccessToken.trim()) {
           payload.whatsapp_access_token = waAccessToken.trim()
         }
-        let { error } = await supabase.from('clients').update(payload).eq('id', clientId)
-        const colMissing =
-          error &&
-          (error.code === '42703' ||
-            String(error.message || '').toLowerCase().includes('whatsapp_business_phone'))
-        if (error && colMissing) {
-          const { whatsapp_business_phone: _omit, ...rest } = payload
-          ;({ error } = await supabase.from('clients').update(rest).eq('id', clientId))
-        }
-        if (error) throw error
+        const res = await fetchWithTimeout('/api/settings/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
         toast.success(TM.settingsSaved)
         await load()
         return true
