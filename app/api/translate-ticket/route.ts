@@ -10,6 +10,13 @@ type MyMemoryResponse = {
   responseStatus?: number
 }
 
+function detectLangPair(text: string): string {
+  if (/[Ѐ-ӿ]/.test(text)) return 'ru|he'   // Cyrillic → Russian
+  if (/[؀-ۿ]/.test(text)) return 'ar|he'   // Arabic
+  if (/[一-鿿]/.test(text)) return 'zh|he'   // Chinese
+  return 'en|he'                                       // default: English
+}
+
 export async function POST(req: Request) {
   const logger = getLogger()
   const requestId = `translate-${Date.now()}`
@@ -41,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'טקסט ריק', requestId }, { status: 400 })
     }
 
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|he`
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${detectLangPair(text)}`
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) {
       return NextResponse.json({ error: 'שגיאת תרגום — נסו שוב', requestId }, { status: 502 })

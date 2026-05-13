@@ -93,6 +93,13 @@ export default function WorkersPage() {
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  useEffect(() => {
+    const check = () => setIsMobile(getIsMobileViewport())
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingWorker, setEditingWorker] = useState<WorkerRow | null>(null)
   const [form, setForm] = useState<WorkerForm>(emptyForm)
