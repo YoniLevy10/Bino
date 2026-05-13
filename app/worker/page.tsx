@@ -312,13 +312,11 @@ function WorkerPageInner() {
   }
 
   return (
-    <AppShell>
+    <AppShell isMobile={isMobile}>
       {isMobile && (
-        <>
-          <MobileHeader title="מסך עובד" onMenuClick={() => setMenuOpen(true)} />
-          <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-        </>
+        <MobileHeader title="מסך עובד" onMenuClick={() => setMenuOpen(true)} />
       )}
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={styles.page}>
         <PageHeader title="מסך עובד" subtitle="בחרו עובד ועדכנו תקלות פתוחות" />

@@ -6,8 +6,6 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
 
-const client = new Anthropic()
-
 export async function POST(req: Request) {
   const logger = getLogger()
   const requestId = `translate-${Date.now()}`
@@ -28,6 +26,11 @@ export async function POST(req: Request) {
       })
     }
 
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'שרת התרגום לא זמין', requestId }, { status: 503 })
+    }
+
     const rawBody = await req.json()
     const validated = translateTicketBodySchema.safeParse(rawBody)
     if (!validated.success) {
@@ -39,6 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'טקסט ריק', requestId }, { status: 400 })
     }
 
+    const client = new Anthropic({ apiKey })
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
