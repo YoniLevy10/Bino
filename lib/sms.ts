@@ -106,7 +106,7 @@ export async function send019StaffSms(
   const normalizedSource = normalizePhone019(rawSource)
   const source = normalizedSource
     || rawSource.replace(/[^A-Za-z0-9]/g, '').slice(0, 11)
-    || 'Bamakor'
+    || '972559899132'
 
   console.log('📱 SMS_SEND_START', { channel: ctx.channel, normalizedPhone, messageLength: message.length })
 

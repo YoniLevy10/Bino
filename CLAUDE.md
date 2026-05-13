@@ -33,7 +33,7 @@ Every protected API route MUST follow this order — no exceptions:
 ## SMS Rules (019SMS)
 
 - **No emoji in messages.** 019SMS returns HTTP 200 but a non-zero XML status for emoji — triggers all 3 retries and ultimate failure. Use plain Hebrew + ASCII only.
-- **Sender name must be Latin alphanumeric**, max 11 chars. Hebrew chars are silently stripped → fallback to "Bamakor". Show a UI warning if user enters a Hebrew sender name.
+- **019SMS only accepts phone numbers as sender** (`972xxxxxxxxx`), NOT alphanumeric names like "Bamakor". Alphabetic senders return HTTP 200 but XML status 515 — silent failure, all 3 retries fire, SMS never sent. The hardcoded fallback sender is `'972559899132'` in `lib/sms.ts` and `lib/sms-019-core.ts`. Do NOT change this to any name string. Keep `sms_sender_name = null` in DB unless you have a registered alphanumeric sender ID from 019SMS.
 - **Retry config** (`lib/sms.ts`): 3 attempts, 2 s backoff, 10 s timeout each. After all 3 fail, inserts to `failed_notifications`.
 - **Phone format**: `972xxxxxxxxx` (9 digits after 972). `normalizePhone019()` in `lib/sms-019-core.ts` converts `05x`, `+972`, etc.
 

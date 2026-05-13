@@ -5,7 +5,7 @@ import { fetchWithTimeout } from '@/lib/fetch-timeout'
 export const SMS_019_ENDPOINT = 'https://019sms.co.il/api'
 const SMS_019_USERNAME = process.env.SMS_019_USERNAME
 const SMS_019_PASSWORD = process.env.SMS_019_PASSWORD
-export const SMS_019_SENDER = process.env.SMS_019_SENDER || ''
+export const SMS_019_SENDER = process.env.SMS_019_SENDER || '972559899132'
 
 /** נרמול מספר טלפון לפורמט 019SMS: 972xxxxxxxxx */
 export function normalizePhone019(phoneNumber: string): string {
