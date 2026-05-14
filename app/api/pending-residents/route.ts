@@ -183,12 +183,14 @@ export async function PATCH(req: NextRequest) {
     const digits = normalizeWhatsAppPhoneDigits((row as { reporter_phone_normalized: string }).reporter_phone_normalized)
     const phone = formatPhoneForResident(digits)
 
-    // Check if resident with this phone already exists
+    // Check if resident with this phone already exists (exclude soft-deleted)
+    const phoneDigits = phone.replace(/^\+/, '')
     const { data: existing } = await supabase
       .from('residents')
       .select('id')
       .eq('client_id', clientId)
-      .eq('phone', phone)
+      .in('phone', [phoneDigits, `+${phoneDigits}`])
+      .is('deleted_at', null)
       .maybeSingle()
 
     if (existing) {
