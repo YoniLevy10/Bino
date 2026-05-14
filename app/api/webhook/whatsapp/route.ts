@@ -1271,7 +1271,7 @@ async function runWhatsAppInboundBackground(
     // Session is only used to bridge: (project identified) -> (ticket description) -> ticket created.
 
     if (session.project_id) {
-      const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 5, supabaseAdmin)
+      const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 1, supabaseAdmin)
       if (dupTicket) {
         await supabaseAdmin
           .from('sessions')
