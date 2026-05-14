@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
     const clientName = (clientRow as { name?: string | null } | null)?.name || 'המערכת'
     const smsSenderName =
-      (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || 'Bamakor'
+      (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
 
     const { data: worker, error: workerError } = await supabaseAdmin
       .from('workers')
