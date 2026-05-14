@@ -321,11 +321,23 @@ export default function SummaryPage() {
       'תקלות פעילות': w.assigned_tickets,
     }))
 
+    const wsKpi = XLSX.utils.json_to_sheet(kpiRows)
+    wsKpi['!cols'] = [{ wch: 28 }, { wch: 12 }]
+    wsKpi['!freeze'] = { xSplit: 0, ySplit: 1 }
+
+    const wsProjects = XLSX.utils.json_to_sheet(projectRows)
+    wsProjects['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
+    wsProjects['!freeze'] = { xSplit: 0, ySplit: 1 }
+
+    const wsWorkers = XLSX.utils.json_to_sheet(workerRows)
+    wsWorkers['!cols'] = [{ wch: 24 }, { wch: 16 }]
+    wsWorkers['!freeze'] = { xSplit: 0, ySplit: 1 }
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ טווח: range.label, הופק_בתאריך: new Date().toLocaleString('he-IL') }]), 'Meta')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kpiRows), 'KPIs')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(projectRows), 'Projects')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(workerRows), 'Workers')
+    XLSX.utils.book_append_sheet(wb, wsKpi, 'KPIs')
+    XLSX.utils.book_append_sheet(wb, wsProjects, 'Projects')
+    XLSX.utils.book_append_sheet(wb, wsWorkers, 'Workers')
 
     const safeName =
       period === 'custom'

@@ -345,6 +345,19 @@ export default function TicketsPage() {
     }))
 
     const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 22 },
+      { wch: 8 },
+      { wch: 40 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 15 },
+    ]
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 }
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'תקלות')
     const day = new Date().toISOString().slice(0, 10)

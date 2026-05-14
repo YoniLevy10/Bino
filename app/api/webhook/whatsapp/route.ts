@@ -32,6 +32,7 @@ import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMes
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import { findResidentByPhoneClient, getOrCreateResident } from '@/lib/residents-whatsapp'
+import { fetchWithTimeout as fetchTimeout } from '@/lib/fetch-timeout'
 
 export const maxDuration = 60
 
@@ -1186,7 +1187,26 @@ async function runWhatsAppInboundBackground(
         return
       }
 
-      const searchResults = await searchProjectsByBuilding(textBody, supabaseAdmin, webhookClientId)
+      let searchResults = await searchProjectsByBuilding(textBody, supabaseAdmin, webhookClientId)
+
+      if (searchResults.length === 0) {
+        // Try translating English input to Hebrew and search again
+        try {
+          const trUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=${encodeURIComponent(textBody)}`
+          const trRes = await fetchTimeout(trUrl, {}, 5000)
+          if (trRes) {
+            const trJson = await trRes.json() as unknown[][]
+            const segments = trJson[0] as unknown[][]
+            const hebrew = segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
+            if (hebrew && hebrew !== textBody) {
+              const translatedResults = await searchProjectsByBuilding(hebrew, supabaseAdmin, webhookClientId)
+              if (translatedResults.length > 0) {
+                searchResults = translatedResults
+              }
+            }
+          }
+        } catch { /* translation failure is non-fatal */ }
+      }
 
       if (searchResults.length === 0) {
         try {
