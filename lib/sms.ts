@@ -102,11 +102,8 @@ export async function send019StaffSms(
   }
 
   const rawSource = String(senderPreferred ?? SMS_019_SENDER).trim()
-  // Phone numbers (972xxxxxxxxx or 05x) pass through normalized; alphanumeric names max 11 chars
-  const normalizedSource = normalizePhone019(rawSource)
-  const source = normalizedSource
-    || rawSource.replace(/[^A-Za-z0-9]/g, '').slice(0, 11)
-    || '972559899132'
+  // 019SMS only accepts registered phone numbers as sender — never alphanumeric
+  const source = normalizePhone019(rawSource) || '972559899132'
 
   console.log('📱 SMS_SEND_START', { channel: ctx.channel, normalizedPhone, messageLength: message.length })
 

@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       const accessToken = client.whatsapp_access_token as string
       const clientId = client.id as string
       const clientName = (client.name as string | null) || 'לקוח'
-      const senderName = (client.sms_sender_name as string | null) || 'במקור'
+      const senderName = (client.sms_sender_name as string | null) || null
 
       let tokenStatus: 'ok' | 'expired' | 'error' = 'error'
 
