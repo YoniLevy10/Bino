@@ -1,5 +1,68 @@
 # Changelog — bamakor-dashboard
 
+## [Unreleased] — 2026-05-14
+
+### Worker Email Required + Dedicated Login Page
+
+- `lib/api-body-schemas.ts` — `email` on `createWorkerBodySchema` changed from optional union to `z.string().email()` (required).
+- `app/api/create-worker/route.ts` — server-side guard returns 400 when email is blank after sanitization.
+- `app/workers/page.tsx` — email label shows `אימייל *` for new workers; `validateForm()` rejects empty email only on create (editing existing workers is unaffected).
+- `app/api/worker-auth/route.ts` — added IP-based rate limiting (20 req/min via `checkIpPostRouteLimit`) to the existing POST email-login endpoint.
+- `app/worker-login/page.tsx` — new standalone RTL Hebrew page (no AppShell). Worker enters email → POST `/api/worker-auth` → redirected to `/worker?token=<access_token>`.
+
+---
+
+### English Address Translation Fallback in WhatsApp
+
+- `app/api/webhook/whatsapp/route.ts` — after `searchProjectsByBuilding()` returns 0 results for an address-like message, the text is translated to Hebrew via Google Translate gtx (5 s timeout, non-fatal). If the translated text yields results, flow continues normally instead of sending `building_not_found`. Allows residents to type addresses in English.
+
+---
+
+### Excel Export Formatting
+
+- `app/tickets/page.tsx` — `exportToExcel()` now sets `ws['!cols']` (10 column widths) and `ws['!freeze'] = { xSplit: 0, ySplit: 1 }` (freeze header row).
+- `app/summary/page.tsx` — `exportSummaryToExcel()` applies column widths and freeze panes to the KPIs, Projects, and Workers sheets individually.
+
+---
+
+### Bug Fix: Settings Not Saving (RLS Silent No-Op)
+
+- `app/api/settings/update/route.ts` — **new route**. All settings writes (phones, SMS toggles, WhatsApp credentials) go through this server-side endpoint using `getSupabaseAdmin()`. The browser `supabase` client was silently dropping writes to `clients` due to RLS.
+- `app/settings/page.tsx` — `saveNotifications()` and `saveWhatsapp()` replaced direct `supabase.from('clients').update()` calls with `fetchWithTimeout('/api/settings/update', ...)`.
+
+---
+
+### Bug Fix: Test-SMS 502 (Emoji Rejection)
+
+- `app/api/settings/test-sms/route.ts` — removed emoji from test message body. 019SMS returns HTTP 200 + non-zero XML status for emoji → all 3 retries fire → 502. Message now uses plain Hebrew + ASCII only.
+
+---
+
+### Bug Fix: SMS Sender Name Breaking All SMS (Status 515)
+
+- `lib/sms-019-core.ts` and `lib/sms.ts` — reverted sender fallback from `'Bamakor'` back to `'972559899132'`. 019SMS rejects non-numeric sender IDs with XML status 515 (HTTP 200, silent retry loop). Only registered phone numbers are accepted as sender.
+- DB: `sms_sender_name` set to `null` so the phone-number fallback is used for all tenants.
+
+---
+
+### Bug Fix: Pending Resident Auto-Rejected by Deleted Residents
+
+- `app/api/pending-residents/route.ts` — duplicate-phone check now includes `.is('deleted_at', null)` and queries both `+972...` and `972...` phone formats. Previously, soft-deleted residents were matching and causing new requests to be auto-rejected.
+
+---
+
+### Change: Duplicate Ticket Window Reduced to 1 Minute
+
+- `app/api/webhook/whatsapp/route.ts` — `findOpenTicketForReporterInWindow` call changed from 5-minute to 1-minute window. Prevents creating duplicate tickets for rapid follow-up messages within the same conversation.
+
+---
+
+### New: CLAUDE.md — Codebase Constraints Documentation
+
+- `CLAUDE.md` — added to project root. Documents: standard API route pattern, Supabase client rules (RLS), SMS constraints (no emoji, phone-number sender only), translation endpoint, mobile viewport wiring, tenant-resolution SELECT completeness, settings save pattern, WhatsApp location archived, fetch helpers, and Vercel env var inventory.
+
+---
+
 ## [Unreleased] — 2026-05-07
 
 ### Superadmin Page (`/superadmin`)
