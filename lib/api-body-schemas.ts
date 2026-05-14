@@ -114,3 +114,11 @@ export const settingsTestWhatsAppBodySchema = z
 export const importResidentsBodySchema = z.object({
   rows: z.array(z.record(z.string(), z.unknown())).min(1).max(5000),
 })
+
+export const createResidentBodySchema = z.object({
+  project_id: z.string().uuid(),
+  full_name: z.string().min(1).max(200),
+  phone: z.string().max(40).nullable().optional(),
+  apartment_number: z.string().max(20).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+})

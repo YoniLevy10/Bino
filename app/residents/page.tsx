@@ -332,27 +332,26 @@ export default function ResidentsPage() {
         return
       }
 
-      const insertRes = await supabase
-        .from('residents')
-        .insert({
+      const insertRes = await fetchWithTimeout('/api/create-resident', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           project_id: projectId,
-          client_id: clientId,
           full_name: fullName,
-          phone: normalizeResidentPhone(addPhone) || null,
+          phone: addPhone.trim() || null,
           apartment_number: addApartment.trim() || null,
           notes: addNotes.trim() || null,
-        })
-        .select('id, project_id, client_id, full_name, phone, apartment_number, notes')
-        .single()
-
-      if (insertRes.error) {
-        const msg = insertRes.error.message || TM.genericSaveError
+        }),
+      })
+      const insertData = await insertRes.json()
+      if (!insertRes.ok) {
+        const msg = insertData?.error || TM.genericSaveError
         setAddError(msg)
         toast.error(msg)
         return
       }
 
-      setResidents((prev) => [insertRes.data as ResidentRow, ...prev])
+      setResidents((prev) => [insertData.resident as ResidentRow, ...prev])
       closeResidentModal()
       toast.success(TM.residentAdded)
     } catch (err) {

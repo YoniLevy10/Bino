@@ -31,6 +31,32 @@ import {
   theme
 } from '../components/ui'
 
+const CACHE_KEY = 'bamakor_summary_v1'
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+type SummaryCache = {
+  tickets: TicketRow[]
+  projects: ProjectRow[]
+  workers: WorkerRow[]
+  savedAt: number
+}
+
+function readSummaryCache(clientId: string): SummaryCache | null {
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY}_${clientId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SummaryCache
+    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
+    return parsed
+  } catch { return null }
+}
+
+function writeSummaryCache(clientId: string, data: Omit<SummaryCache, 'savedAt'>) {
+  try {
+    localStorage.setItem(`${CACHE_KEY}_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
+  } catch {}
+}
+
 type TicketRow = {
   id: string
   ticket_number: number
@@ -93,7 +119,20 @@ export default function SummaryPage() {
   }, [])
 
   useEffect(() => {
-    loadData()
+    async function init() {
+      try {
+        const clientId = await resolveBamakorClientIdForBrowser()
+        const cached = readSummaryCache(clientId)
+        if (cached) {
+          setTickets(cached.tickets)
+          setProjects(cached.projects)
+          setWorkers(cached.workers)
+          setLoading(false)
+        }
+      } catch {}
+      loadData()
+    }
+    void init()
   }, [])
 
   async function loadData() {
@@ -144,9 +183,12 @@ export default function SummaryPage() {
         closed_at: row.closed_at,
       }))
 
+      const freshProjects = (projectsData as ProjectRow[]) || []
+      const freshWorkers = (workersData as WorkerRow[]) || []
       setTickets(formattedTickets)
-      setProjects((projectsData as ProjectRow[]) || [])
-      setWorkers((workersData as WorkerRow[]) || [])
+      setProjects(freshProjects)
+      setWorkers(freshWorkers)
+      writeSummaryCache(clientId, { tickets: formattedTickets, projects: freshProjects, workers: freshWorkers })
     } catch (err) {
       console.error('Failed to load summary:', err)
     }
