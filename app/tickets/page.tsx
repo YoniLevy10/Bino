@@ -124,6 +124,34 @@ const priorityOptions = [
   { label: 'נמוכה', value: 'LOW' },
 ]
 
+const TICKETS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+type TicketsCache = {
+  tickets: TicketRow[]
+  workers: WorkerRow[]
+  projects: ProjectRow[]
+  ticketsTruncated: boolean
+  savedAt: number
+}
+
+function readTicketsCache(clientId: string): TicketsCache | null {
+  try {
+    const key = `bamakor_tickets_v1_${clientId}`
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as TicketsCache
+    if (Date.now() - parsed.savedAt > TICKETS_CACHE_TTL_MS) return null
+    return parsed
+  } catch { return null }
+}
+
+function writeTicketsCache(clientId: string, data: Omit<TicketsCache, 'savedAt'>) {
+  try {
+    const key = `bamakor_tickets_v1_${clientId}`
+    localStorage.setItem(key, JSON.stringify({ ...data, savedAt: Date.now() }))
+  } catch { /* storage full or unavailable */ }
+}
+
 const TICKETS_LIST_SELECT = `
   id, ticket_number, client_id, project_id, reporter_phone, reporter_name,
   description, status, priority, assigned_worker_id, building_number,
@@ -236,6 +264,12 @@ export default function TicketsPage() {
         setTicketsTruncated(normalizedTickets.length >= 300)
         setWorkers((workersResult.data as WorkerRow[]) || [])
         setProjects((projectsResult.data as ProjectRow[]) || [])
+        writeTicketsCache(clientId, {
+          tickets: normalizedTickets,
+          workers: (workersResult.data as WorkerRow[]) || [],
+          projects: (projectsResult.data as ProjectRow[]) || [],
+          ticketsTruncated: normalizedTickets.length >= 300,
+        })
         return true
       },
       { context: 'טעינת תקלות', showErrorToast: true }
@@ -244,7 +278,18 @@ export default function TicketsPage() {
   }, [])
 
   useEffect(() => {
-    void fetchData()
+    void (async () => {
+      const clientId = await resolveBamakorClientIdForBrowser()
+      const cached = readTicketsCache(clientId)
+      if (cached) {
+        setTickets(cached.tickets)
+        setWorkers(cached.workers)
+        setProjects(cached.projects)
+        setTicketsTruncated(cached.ticketsTruncated)
+        setLoading(false)
+      }
+      void fetchData()
+    })()
     const interval = setInterval(() => void fetchData(), 10 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchData])
