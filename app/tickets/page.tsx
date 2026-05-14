@@ -57,6 +57,7 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageListSkeleton } from '../components/page-skeleton'
+import { TicketChat } from '../components/tickets/TicketChat'
 
 type TicketRow = {
   id: string
@@ -195,6 +196,7 @@ export default function TicketsPage() {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
+  const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'chat'>('details')
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -225,8 +227,8 @@ export default function TicketsPage() {
     }
   }, [projectFilter, workerFilter, statusFilter, priorityFilter])
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
@@ -274,7 +276,7 @@ export default function TicketsPage() {
       },
       { context: 'טעינת תקלות', showErrorToast: true }
     )
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -287,11 +289,22 @@ export default function TicketsPage() {
         setProjects(cached.projects)
         setTicketsTruncated(cached.ticketsTruncated)
         setLoading(false)
+        void fetchData(true)
+      } else {
+        void fetchData()
       }
-      void fetchData()
     })()
-    const interval = setInterval(() => void fetchData(), 10 * 60 * 1000)
+    const interval = setInterval(() => void fetchData(true), 10 * 60 * 1000)
     return () => clearInterval(interval)
+  }, [fetchData])
+
+  // Visibility API — silent refresh when returning to tab
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void fetchData(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [fetchData])
 
   const stats = useMemo(() => {
@@ -549,6 +562,7 @@ export default function TicketsPage() {
     setSelectedTicketAttachments([])
     setDescriptionTranslation('')
     setMergeCandidates([])
+    setActiveDetailTab('details')
   }
 
   async function saveTicketChanges() {
@@ -950,6 +964,27 @@ export default function TicketsPage() {
       >
         {selectedTicket && (
           <div style={styles.drawerContent}>
+            {/* Tabs */}
+            <div style={styles.tabBar}>
+              <button
+                style={{ ...styles.tab, ...(activeDetailTab === 'details' ? styles.tabActive : styles.tabInactive) }}
+                onClick={() => setActiveDetailTab('details')}
+              >
+                פרטים
+              </button>
+              <button
+                style={{ ...styles.tab, ...(activeDetailTab === 'chat' ? styles.tabActive : styles.tabInactive) }}
+                onClick={() => setActiveDetailTab('chat')}
+              >
+                צ׳אט פנימי
+              </button>
+            </div>
+
+            {activeDetailTab === 'chat' && (
+              <TicketChat ticketId={selectedTicket.id} clientId={tenantClientId || selectedTicket.client_id || null} />
+            )}
+
+            {activeDetailTab === 'details' && (<>
             <div style={styles.formGroup}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <label style={styles.formLabel}>תיאור</label>
@@ -1109,6 +1144,7 @@ export default function TicketsPage() {
                 שמירה
               </Button>
             </div>
+            </>)}
           </div>
         )}
       </Drawer>
@@ -1324,6 +1360,33 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+  },
+  tabBar: {
+    display: 'flex',
+    gap: '4px',
+    padding: '4px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.md,
+  },
+  tab: {
+    flex: 1,
+    padding: '8px 0',
+    fontSize: '14px',
+    fontWeight: 500,
+    border: 'none',
+    borderRadius: theme.radius.sm,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    fontFamily: 'inherit',
+  },
+  tabActive: {
+    background: theme.colors.surface,
+    color: theme.colors.primary,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  },
+  tabInactive: {
+    background: 'transparent',
+    color: theme.colors.textMuted,
   },
   formGroup: {
     display: 'flex',

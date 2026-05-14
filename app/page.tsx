@@ -165,8 +165,8 @@ export default function DashboardPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
@@ -262,7 +262,7 @@ export default function DashboardPage() {
       },
       { context: 'טעינת הדשבורד', showErrorToast: true }
     )
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -275,19 +275,30 @@ export default function DashboardPage() {
       setWorkersCount(cached.workersCount)
       setRecentActivity(cached.recentActivity as ActivityItem[])
       setLoading(false)
+      void loadData(true)
+    } else {
+      void loadData()
     }
-    void loadData()
   }, [loadData])
 
-  // Supabase Realtime — refresh tickets when any change arrives
+  // Supabase Realtime — silent refresh when DB changes
   useEffect(() => {
     const channel = supabase
       .channel('dashboard-tickets-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        void loadData()
+        void loadData(true)
       })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
+  }, [loadData])
+
+  // Visibility API — silent refresh when returning to tab
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadData(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [loadData])
 
   function buildActivityFromLogs(

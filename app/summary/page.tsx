@@ -13,7 +13,7 @@
  *  - שינוי חודש/פרויקט → מחשב מחדש את הדוח
  */
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -118,25 +118,8 @@ export default function SummaryPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  useEffect(() => {
-    async function init() {
-      try {
-        const clientId = await resolveBamakorClientIdForBrowser()
-        const cached = readSummaryCache(clientId)
-        if (cached) {
-          setTickets(cached.tickets)
-          setProjects(cached.projects)
-          setWorkers(cached.workers)
-          setLoading(false)
-        }
-      } catch {}
-      loadData()
-    }
-    void init()
-  }, [])
-
-  async function loadData() {
-    setLoading(true)
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const clientId = await resolveBamakorClientIdForBrowser()
       const [
@@ -192,8 +175,37 @@ export default function SummaryPage() {
     } catch (err) {
       console.error('Failed to load summary:', err)
     }
-    setLoading(false)
-  }
+    if (!silent) setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const clientId = await resolveBamakorClientIdForBrowser()
+        const cached = readSummaryCache(clientId)
+        if (cached) {
+          setTickets(cached.tickets)
+          setProjects(cached.projects)
+          setWorkers(cached.workers)
+          setLoading(false)
+          void loadData(true)
+        } else {
+          void loadData()
+        }
+      } catch {
+        void loadData()
+      }
+    })()
+  }, [loadData])
+
+  // Visibility API — silent refresh when returning to tab
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadData(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadData])
 
   function startOfDay(d: Date) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate())

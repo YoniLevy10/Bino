@@ -31,7 +31,9 @@ type Ticket = {
   description: string | null
   status: string
   created_at: string
+  project_name?: string | null
 }
+type ChatMessage = { id: string; sender_name: string; body: string; created_at: string }
 type TokenSession = { token: string; workerId: string; clientId: string; fullName: string }
 
 function WorkerPageInner() {
@@ -51,6 +53,11 @@ function WorkerPageInner() {
   const [emailInput, setEmailInput] = useState('')
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [expandedChatId, setExpandedChatId] = useState<string | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatBody, setChatBody] = useState('')
+  const [chatSending, setChatSending] = useState(false)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -145,8 +152,12 @@ function WorkerPageInner() {
     try {
       const res = await fetchWithTimeout(`/api/worker/tickets?token=${encodeURIComponent(token)}`)
       if (!res.ok) { setTickets([]); return }
-      const data = (await res.json()) as { tickets?: Ticket[] }
-      setTickets(data.tickets || [])
+      const data = (await res.json()) as { tickets?: (Ticket & { projects?: { name?: string | null } | { name?: string | null }[] | null })[] }
+      const normalized = (data.tickets || []).map((t) => {
+        const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects
+        return { ...t, project_name: proj?.name || null }
+      })
+      setTickets(normalized)
     } catch { setTickets([]) }
     finally { setLoadingTickets(false) }
   }, [])
@@ -162,6 +173,42 @@ function WorkerPageInner() {
     if (tokenSession) return tokenSession.fullName
     return workers.find((w) => w.id === workerId)?.full_name || ''
   }, [workers, workerId, tokenSession])
+
+  async function openChat(ticketId: string) {
+    if (expandedChatId === ticketId) { setExpandedChatId(null); return }
+    setExpandedChatId(ticketId)
+    setChatMessages([])
+    setChatBody('')
+    if (!tokenSession) return
+    setChatLoading(true)
+    try {
+      const res = await fetchWithTimeout(`/api/worker/chat?token=${encodeURIComponent(tokenSession.token)}&ticket_id=${encodeURIComponent(ticketId)}`)
+      if (!res.ok) { setChatMessages([]); return }
+      const data = (await res.json()) as { messages?: ChatMessage[] }
+      setChatMessages(data.messages || [])
+    } catch { setChatMessages([]) }
+    finally { setChatLoading(false) }
+  }
+
+  async function sendChat(ticketId: string) {
+    if (!tokenSession || !chatBody.trim()) return
+    setChatSending(true)
+    try {
+      const res = await fetchWithTimeout('/api/worker/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenSession.token, ticket_id: ticketId, body: chatBody.trim() }),
+      })
+      if (!res.ok) { toast.error('שליחה נכשלה'); return }
+      setChatBody('')
+      const refreshRes = await fetchWithTimeout(`/api/worker/chat?token=${encodeURIComponent(tokenSession.token)}&ticket_id=${encodeURIComponent(ticketId)}`)
+      if (refreshRes.ok) {
+        const data = (await refreshRes.json()) as { messages?: ChatMessage[] }
+        setChatMessages(data.messages || [])
+      }
+    } catch { toast.error('שליחה נכשלה') }
+    finally { setChatSending(false) }
+  }
 
   async function loginByEmail(e: React.FormEvent) {
     e.preventDefault()
@@ -285,7 +332,13 @@ function WorkerPageInner() {
                   <span style={styles.tn}>#{t.ticket_number}</span>
                   <StatusBadge status={t.status} size="sm" />
                 </div>
+                {t.project_name && (
+                  <div style={styles.buildingTag}>{t.project_name}</div>
+                )}
                 <p style={styles.desc}>{t.description || '—'}</p>
+                <div style={styles.ticketMeta}>
+                  {new Date(t.created_at).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </div>
                 <div style={styles.actions}>
                   <Button variant="secondary" size="sm"
                     disabled={!!busyKey} loading={busyKey === `${t.id}:IN_PROGRESS`}
@@ -297,7 +350,48 @@ function WorkerPageInner() {
                     onClick={() => setTicketStatus(t.id, 'CLOSED')}>
                     הושלם
                   </Button>
+                  <Button variant="secondary" size="sm"
+                    onClick={() => void openChat(t.id)}>
+                    {expandedChatId === t.id ? 'סגור צ׳אט' : 'צ׳אט'}
+                  </Button>
                 </div>
+
+                {expandedChatId === t.id && (
+                  <div style={styles.chatBox}>
+                    {chatLoading ? (
+                      <div style={styles.chatLoading}><LoadingSpinner /></div>
+                    ) : chatMessages.length === 0 ? (
+                      <p style={styles.chatEmpty}>אין הודעות עדיין — שלח הודעה ראשונה</p>
+                    ) : (
+                      <div style={styles.chatMessages}>
+                        {chatMessages.map((m) => (
+                          <div key={m.id} style={m.sender_name === tokenSession?.fullName ? styles.chatMine : styles.chatOther}>
+                            <div style={styles.chatSender}>{m.sender_name}</div>
+                            <div style={styles.chatBody}>{m.body}</div>
+                            <div style={styles.chatTime}>
+                              {new Date(m.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={styles.chatInput}>
+                      <textarea
+                        value={chatBody}
+                        onChange={(e) => setChatBody(e.target.value)}
+                        placeholder="כתוב הודעה..."
+                        style={styles.chatTextarea}
+                        rows={2}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendChat(t.id) }
+                        }}
+                      />
+                      <Button variant="primary" size="sm" loading={chatSending} onClick={() => void sendChat(t.id)}>
+                        שלח
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -426,8 +520,40 @@ const styles: Record<string, CSSProperties> = {
   },
   ticketHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
   tn: { fontWeight: 700, color: theme.colors.primary, fontSize: '15px' },
-  desc: { fontSize: '14px', margin: '0 0 14px', lineHeight: 1.5, color: theme.colors.textPrimary },
+  desc: { fontSize: '14px', margin: '0 0 8px', lineHeight: 1.5, color: theme.colors.textPrimary },
+  buildingTag: {
+    display: 'inline-block', fontSize: '11px', fontWeight: 600,
+    color: theme.colors.textMuted, background: theme.colors.muted,
+    padding: '2px 8px', borderRadius: '6px', marginBottom: '8px',
+  },
+  ticketMeta: { fontSize: '12px', color: theme.colors.textMuted, marginBottom: '12px' },
   actions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  chatBox: {
+    marginTop: '14px', paddingTop: '14px',
+    borderTop: `1px solid ${theme.colors.border}`,
+    display: 'flex', flexDirection: 'column', gap: '10px',
+  },
+  chatLoading: { display: 'flex', justifyContent: 'center', padding: '12px' },
+  chatEmpty: { fontSize: '13px', color: theme.colors.textMuted, margin: 0, textAlign: 'center' as const },
+  chatMessages: { display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' as const },
+  chatMine: {
+    alignSelf: 'flex-end', background: theme.colors.primaryMuted,
+    borderRadius: '12px 12px 4px 12px', padding: '8px 12px', maxWidth: '80%',
+  },
+  chatOther: {
+    alignSelf: 'flex-start', background: theme.colors.muted,
+    borderRadius: '12px 12px 12px 4px', padding: '8px 12px', maxWidth: '80%',
+  },
+  chatSender: { fontSize: '11px', fontWeight: 600, color: theme.colors.textMuted, marginBottom: '3px' },
+  chatBody: { fontSize: '14px', color: theme.colors.textPrimary, lineHeight: 1.4 },
+  chatTime: { fontSize: '10px', color: theme.colors.textMuted, marginTop: '4px', textAlign: 'end' as const },
+  chatInput: { display: 'flex', gap: '8px', alignItems: 'flex-end' },
+  chatTextarea: {
+    flex: 1, padding: '10px 12px', fontSize: '14px',
+    borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface, color: theme.colors.textPrimary,
+    resize: 'none' as const, fontFamily: 'inherit', lineHeight: 1.4,
+  },
   emailInput: {
     width: '100%', padding: '14px 16px', fontSize: '16px',
     borderRadius: '12px', border: `1.5px solid ${theme.colors.border}`,

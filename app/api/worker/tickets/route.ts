@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const admin = getSupabaseAdmin()
     const { data: tickets, error } = await admin
       .from('tickets')
-      .select('id, ticket_number, description, status, created_at')
+      .select('id, ticket_number, description, status, created_at, projects(name)')
       .eq('client_id', worker.client_id)
       .eq('assigned_worker_id', worker.id)
       .is('deleted_at', null)
