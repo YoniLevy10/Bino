@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
+import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { z } from 'zod'
 
 /** Field worker deep link: validate access_token without Google session. */
@@ -38,6 +39,13 @@ const emailLoginSchema = z.object({ email: z.string().email() })
 /** Email login: look up worker by email and return their access token for deep-link auth. */
 export async function POST(req: NextRequest) {
   try {
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
+    const admin = getSupabaseAdmin()
+    const rl = await checkIpPostRouteLimit(admin, ip, 'worker-auth')
+    if (rl.isLimited) {
+      return NextResponse.json({ error: 'יותר מדי נסיונות. נסו שוב בעוד דקה.' }, { status: 429 })
+    }
+
     let body: unknown
     try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON לא תקין' }, { status: 400 }) }
 
@@ -47,7 +55,6 @@ export async function POST(req: NextRequest) {
     }
     const email = parsed.data.email.toLowerCase().trim()
 
-    const admin = getSupabaseAdmin()
     const { data, error } = await admin
       .from('workers')
       .select('id, client_id, full_name, access_token, is_active')

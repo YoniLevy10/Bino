@@ -242,6 +242,7 @@ export default function WorkersPage() {
     if (nameError) return 'נא למלא שם מלא'
     const phoneError = validatePhoneNumber(form.phone, 'טלפון')
     if (phoneError) return 'נא להזין מספר טלפון תקין (לפחות 10 ספרות)'
+    if (!editingWorker && !form.email.trim()) return 'נדרש אימייל לעובד חדש'
     if (form.email) {
       const emailError = validateEmail(form.email, 'אימייל')
       if (emailError) return 'כתובת אימייל לא תקינה'
@@ -565,7 +566,7 @@ export default function WorkersPage() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.formLabel}>אימייל</label>
+            <label style={styles.formLabel}>{editingWorker ? 'אימייל' : 'אימייל *'}</label>
             <input
               type="email"
               value={form.email}
