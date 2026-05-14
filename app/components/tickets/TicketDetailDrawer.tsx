@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Drawer, Button, theme } from '../ui'
 import { TicketChat } from './TicketChat'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 interface TicketRow {
   id: string
@@ -87,6 +88,28 @@ export function TicketDetailDrawer({
   getImageUrl,
 }: TicketDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details')
+  const [translating, setTranslating] = useState(false)
+  const [translation, setTranslation] = useState('')
+
+  async function translateDescription() {
+    const text = selectedTicket?.description
+    if (!text) return
+    setTranslating(true)
+    try {
+      const res = await fetchWithTimeout('/api/translate-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      const json = await res.json() as { translation?: string; error?: string }
+      if (!res.ok) throw new Error(json.error || 'תרגום נכשל')
+      setTranslation(json.translation || '')
+    } catch {
+      setTranslation('')
+    } finally {
+      setTranslating(false)
+    }
+  }
 
   function formatLogTitle(actionType: string) {
     switch (actionType) {
@@ -167,13 +190,24 @@ export function TicketDetailDrawer({
               </div>
 
               <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>תיאור</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={styles.drawerLabel}>תיאור</div>
+                  <Button variant="secondary" size="sm" type="button" loading={translating} onClick={translateDescription}>
+                    תרגם לעברית
+                  </Button>
+                </div>
                 <textarea
                   value={draftDescription}
                   onChange={(e) => onDescriptionChange(e.target.value)}
                   style={styles.drawerTextarea}
                   rows={4}
                 />
+                {translation && (
+                  <div style={styles.translationBox}>
+                    <div style={styles.translationLabel}>תרגום</div>
+                    {translation}
+                  </div>
+                )}
               </div>
 
               <div style={styles.drawerSection}>
@@ -450,5 +484,22 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     color: theme.colors.textMuted,
     padding: '16px 0',
+  },
+  translationBox: {
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+    borderInlineStart: `3px solid ${theme.colors.primary}`,
+    fontSize: '14px',
+    color: theme.colors.textPrimary,
+    lineHeight: 1.5,
+  },
+  translationLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: theme.colors.textMuted,
+    marginBottom: '6px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
   },
 }
