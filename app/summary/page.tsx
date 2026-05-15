@@ -14,7 +14,7 @@
  */
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import * as XLSX from 'xlsx'
+import { XLSXStyle as XLSX, applyHeaderStyle, applyDataStyles } from '@/lib/excel-style'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -378,14 +378,23 @@ export default function SummaryPage() {
     const wsKpi = XLSX.utils.json_to_sheet(kpiRows)
     wsKpi['!cols'] = [{ wch: 28 }, { wch: 12 }]
     wsKpi['!freeze'] = { xSplit: 0, ySplit: 1 }
+    wsKpi['!autofilter'] = { ref: wsKpi['!ref'] as string }
+    applyHeaderStyle(wsKpi, 2)
+    applyDataStyles(wsKpi, kpiRows.length, 2)
 
     const wsProjects = XLSX.utils.json_to_sheet(projectRows)
     wsProjects['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
     wsProjects['!freeze'] = { xSplit: 0, ySplit: 1 }
+    wsProjects['!autofilter'] = { ref: wsProjects['!ref'] as string }
+    applyHeaderStyle(wsProjects, 5)
+    applyDataStyles(wsProjects, projectRows.length, 5)
 
     const wsWorkers = XLSX.utils.json_to_sheet(workerRows)
     wsWorkers['!cols'] = [{ wch: 24 }, { wch: 16 }]
     wsWorkers['!freeze'] = { xSplit: 0, ySplit: 1 }
+    wsWorkers['!autofilter'] = { ref: wsWorkers['!ref'] as string }
+    applyHeaderStyle(wsWorkers, 2)
+    applyDataStyles(wsWorkers, workerRows.length, 2)
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ טווח: range.label, הופק_בתאריך: new Date().toLocaleString('he-IL') }]), 'Meta')

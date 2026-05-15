@@ -26,7 +26,7 @@
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import * as XLSX from 'xlsx'
+import { XLSXStyle as XLSX, applyHeaderStyle, applyDataStyles, setCellStyle, STATUS_STYLES, PRIORITY_STYLES } from '@/lib/excel-style'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -390,32 +390,36 @@ export default function TicketsPage() {
   function exportToExcel() {
     const list = filteredTickets
     const rows = list.map((t) => ({
-      'מספר תקלה': t.ticket_number,
+      '#': t.ticket_number,
       'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
       'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
-      בניין: t.project_name || t.project_code || '',
-      דירה: t.building_number || '',
-      תיאור: t.description || '',
-      עדיפות: priorityLabelHe[(t.priority || 'MEDIUM').toUpperCase()] || (t.priority || ''),
-      סטטוס: statusLabelHe[t.status] || t.status,
+      'בניין': t.project_name || t.project_code || '',
+      'דירה': t.building_number || '',
+      'תיאור': t.description || '',
+      'עדיפות': priorityLabelHe[(t.priority || 'MEDIUM').toUpperCase()] || (t.priority || ''),
+      'סטטוס': statusLabelHe[t.status] || t.status,
       'עובד משויך': getWorkerName(t.assigned_worker_id),
-      'זמן טיפול (ימים)': treatmentDaysForExport(t),
+      'ימי טיפול': treatmentDaysForExport(t),
     }))
 
     const ws = XLSX.utils.json_to_sheet(rows)
-    ws['!cols'] = [
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 22 },
-      { wch: 8 },
-      { wch: 40 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 18 },
-      { wch: 15 },
-    ]
+    const COLS = 10
+    ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 7 }, { wch: 42 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 10 }]
     ws['!freeze'] = { xSplit: 0, ySplit: 1 }
+    ws['!autofilter'] = { ref: ws['!ref'] as string }
+
+    applyHeaderStyle(ws, COLS)
+    applyDataStyles(ws, list.length, COLS)
+
+    // צבע עמודת סטטוס (7) ועדיפות (6)
+    list.forEach((t, i) => {
+      const r = i + 1
+      const sStyle = STATUS_STYLES[t.status]
+      const pStyle = PRIORITY_STYLES[(t.priority || 'MEDIUM').toUpperCase()]
+      if (sStyle) setCellStyle(ws, r, 7, sStyle)
+      if (pStyle) setCellStyle(ws, r, 6, pStyle)
+    })
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'תקלות')
     const day = new Date().toISOString().slice(0, 10)

@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
-import * as XLSX from 'xlsx'
+import { XLSXStyle as XLSX, applyHeaderStyle, applyDataStyles } from '@/lib/excel-style'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -508,6 +508,7 @@ export default function ResidentsPage() {
   }
 
   function exportCsv() {
+    const COLS = 5
     const rows = sorted.map((r) => ({
       'שם מלא': r.full_name,
       'טלפון': r.phone || '',
@@ -516,6 +517,11 @@ export default function ResidentsPage() {
       'הערות': r.notes || '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 8 }, { wch: 22 }, { wch: 36 }]
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 }
+    ws['!autofilter'] = { ref: ws['!ref'] as string }
+    applyHeaderStyle(ws, COLS)
+    applyDataStyles(ws, rows.length, COLS)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'דיירים')
     XLSX.writeFile(wb, 'דיירים.xlsx')
