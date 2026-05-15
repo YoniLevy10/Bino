@@ -60,6 +60,7 @@ export const createProjectBodySchema = z.object({
   name: z.string().min(1).max(200),
   project_code: z.string().min(1).max(40),
   address: z.string().max(500).nullable().optional(),
+  address_en: z.string().max(500).nullable().optional(),
   qr_identifier: z.string().max(200).nullable().optional(),
   is_active: z.boolean().optional(),
   assigned_worker_id: z.union([z.string().uuid(), z.literal(''), z.null()]).optional(),

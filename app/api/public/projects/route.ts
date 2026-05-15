@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     const { data: rows, error } = await admin
       .from('projects')
-      .select('id, name, project_code, client_id, address')
+      .select('id, name, project_code, client_id, address, address_en')
       .eq('client_id', clientId)
       .eq('is_active', true)
       .order('project_code', { ascending: true })
@@ -67,12 +67,14 @@ export async function GET(req: NextRequest) {
       project_code: string
       client_id: string
       address?: string | null
+      address_en?: string | null
     }[]
 
     const filtered = list.filter(
       (p) =>
         (p.name || '').toLowerCase().includes(q) ||
         (p.address || '').toLowerCase().includes(q) ||
+        (p.address_en || '').toLowerCase().includes(q) ||
         (p.project_code || '').toLowerCase().includes(q)
     )
 

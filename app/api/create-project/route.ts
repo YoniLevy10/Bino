@@ -87,6 +87,7 @@ export async function POST(req: Request) {
       name: sanitizeString(d.name),
       project_code: sanitizeString(d.project_code).toUpperCase(),
       address: d.address ? sanitizeString(d.address) || null : null,
+      address_en: d.address_en ? sanitizeString(d.address_en) || null : null,
       qr_identifier: d.qr_identifier ? sanitizeString(d.qr_identifier) || null : null,
       is_active: d.is_active !== false,
       client_id: clientId,

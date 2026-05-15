@@ -43,6 +43,7 @@ type ProjectRow = {
   name: string
   project_code: string
   address: string | null
+  address_en: string | null
   qr_identifier: string | null
   is_active: boolean
   created_at: string
@@ -56,6 +57,7 @@ type ProjectForm = {
   name: string
   project_code: string
   address: string
+  address_en: string
   qr_identifier: string
   is_active: boolean
   assigned_worker_id: string
@@ -72,6 +74,7 @@ const emptyForm: ProjectForm = {
   name: '',
   project_code: '',
   address: '',
+  address_en: '',
   qr_identifier: '',
   is_active: true,
   assigned_worker_id: '',
@@ -196,6 +199,7 @@ export default function ProjectsPage() {
       name: project.name || '',
       project_code: project.project_code || '',
       address: project.address || '',
+      address_en: project.address_en || '',
       qr_identifier: project.qr_identifier || '',
       is_active: project.is_active,
       assigned_worker_id: project.assigned_worker_id || '',
@@ -271,6 +275,7 @@ export default function ProjectsPage() {
           name: form.name.trim(),
           project_code: form.project_code.trim().toUpperCase(),
           address: form.address.trim() || null,
+          address_en: form.address_en.trim() || null,
           qr_identifier: form.qr_identifier.trim() || null,
           is_active: form.is_active,
           client_id: editingProject?.client_id || clientId,
@@ -292,6 +297,7 @@ export default function ProjectsPage() {
               name: payload.name,
               project_code: payload.project_code,
               address: payload.address,
+              address_en: payload.address_en,
               qr_identifier: payload.qr_identifier,
               is_active: payload.is_active,
               assigned_worker_id: payload.assigned_worker_id,
@@ -488,7 +494,14 @@ export default function ProjectsPage() {
                   <div style={styles.projectMeta}>
                     <div style={styles.metaItem}>
                       <span style={styles.metaLabel}>כתובת</span>
-                      <span style={styles.metaValue}>{project.address || '-'}</span>
+                      <span style={styles.metaValue}>
+                        {project.address || '-'}
+                        {project.address_en && (
+                          <span style={{ display: 'block', direction: 'ltr', fontSize: '12px', color: '#6B7280' }}>
+                            {project.address_en}
+                          </span>
+                        )}
+                      </span>
                     </div>
                     <div style={styles.metaItem}>
                       <span style={styles.metaLabel}>קוד התחלה</span>
@@ -567,13 +580,24 @@ export default function ProjectsPage() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.formLabel}>כתובת</label>
+            <label style={styles.formLabel}>כתובת (עברית)</label>
             <input
               value={form.address}
               onChange={(e) => updateForm('address', e.target.value)}
               placeholder="מיקום"
               style={styles.input}
             />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>כתובת (אנגלית)</label>
+            <input
+              value={form.address_en}
+              onChange={(e) => updateForm('address_en', e.target.value)}
+              placeholder="English address (for WhatsApp recognition)"
+              style={{ ...styles.input, direction: 'ltr' }}
+            />
+            <span style={styles.formHint}>אם דיירים שולחים כתובת באנגלית ב-WhatsApp — מלאו כאן</span>
           </div>
 
           <div style={styles.formGroup}>
@@ -654,6 +678,12 @@ export default function ProjectsPage() {
                 <span style={styles.detailLabel}>כתובת</span>
                 <span style={styles.detailValue}>{selectedProject.address || '-'}</span>
               </div>
+              {selectedProject.address_en && (
+                <div style={styles.detailRow}>
+                  <span style={styles.detailLabel}>כתובת (EN)</span>
+                  <span style={{ ...styles.detailValue, direction: 'ltr', textAlign: 'left' }}>{selectedProject.address_en}</span>
+                </div>
+              )}
               <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>קוד התחלה</span>
                 <span style={styles.detailCode}>
