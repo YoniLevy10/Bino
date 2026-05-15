@@ -14,7 +14,6 @@
  */
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { XLSXStyle as XLSX, applyHeaderStyle, applyDataStyles } from '@/lib/excel-style'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -351,7 +350,8 @@ export default function SummaryPage() {
     })
   }
 
-  function exportSummaryToExcel() {
+  async function exportSummaryToExcel() {
+    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
     const range = activeRange
     if (!range) return
 

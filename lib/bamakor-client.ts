@@ -8,6 +8,25 @@ import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
  * Fallback לפיתוח: NEXT_PUBLIC_BAMAKOR_CLIENT_ID רק כש־NODE_ENV=development
  * ורק אם אין שיוך ארגון (אחרי ניסיון getUser + שרשרת org).
  */
+const CID_CACHE_KEY = 'bamakor_cid_v1'
+const CID_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+function readCidCache(userId: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(CID_CACHE_KEY)
+    if (!raw) return null
+    const { cid, uid, ts } = JSON.parse(raw) as { cid: string; uid: string; ts: number }
+    if (uid === userId && cid && Date.now() - ts < CID_CACHE_TTL) return cid
+  } catch {}
+  return null
+}
+
+function writeCidCache(userId: string, cid: string) {
+  try {
+    sessionStorage.setItem(CID_CACHE_KEY, JSON.stringify({ cid, uid: userId, ts: Date.now() }))
+  } catch {}
+}
+
 export async function resolveBamakorClientIdForBrowser(): Promise<string> {
   const firstUserRes = await supabase.auth.getUser()
   let user = firstUserRes.data.user
@@ -28,8 +47,13 @@ export async function resolveBamakorClientIdForBrowser(): Promise<string> {
     throw new Error('נדרשת התחברות')
   }
 
+  // Cache hit — skip the 2 DB queries (organization_users + organizations)
+  const cached = readCidCache(user.id)
+  if (cached) return cached
+
   const resolved = await resolveClientIdForUserId(supabase, user.id)
   if (resolved) {
+    writeCidCache(user.id, resolved)
     return resolved
   }
 

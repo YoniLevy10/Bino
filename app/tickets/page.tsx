@@ -26,7 +26,6 @@
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { XLSXStyle as XLSX, applyHeaderStyle, applyDataStyles, setCellStyle, STATUS_STYLES, PRIORITY_STYLES } from '@/lib/excel-style'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -387,7 +386,9 @@ export default function TicketsPage() {
     return days < 1 ? '<1' : days.toFixed(1)
   }
 
-  function exportToExcel() {
+  async function exportToExcel() {
+    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles, setCellStyle, STATUS_STYLES, PRIORITY_STYLES } =
+      await import('@/lib/excel-style')
     const list = filteredTickets
     const rows = list.map((t) => ({
       '#': t.ticket_number,

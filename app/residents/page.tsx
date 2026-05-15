@@ -14,7 +14,6 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
-import { XLSXStyle as XLSX, applyHeaderStyle, applyDataStyles } from '@/lib/excel-style'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -507,7 +506,8 @@ export default function ResidentsPage() {
     navigator.clipboard.writeText(phone).then(() => toast.success('טלפון הועתק')).catch(() => {})
   }
 
-  function exportCsv() {
+  async function exportCsv() {
+    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
     const COLS = 5
     const rows = sorted.map((r) => ({
       'שם מלא': r.full_name,
