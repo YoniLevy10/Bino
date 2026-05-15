@@ -1,9 +1,7 @@
 {
   "regions": ["fra1"],
   "crons": [
-    { "path": "/api/cron/whatsapp-retry",          "schedule": "0 9 * * *" },
-    { "path": "/api/cron/health-check",            "schedule": "0 10 * * *" },
-    { "path": "/api/cron/cleanup-webhooks",        "schedule": "0 3 * * 0" },
-    { "path": "/api/cron/preventive-maintenance",  "schedule": "0 8 * * 1" }
+    { "path": "/api/cron/whatsapp-retry",   "schedule": "0 9 * * *" },
+    { "path": "/api/cron/cleanup-webhooks", "schedule": "0 3 * * 0" }
   ]
 }
