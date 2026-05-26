@@ -66,7 +66,9 @@
 html {
   position: relative;
   width: 100%;
+  min-height: 100%;
   background: var(--background);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -78,25 +80,24 @@ body {
   font-feature-settings: 'ss01' 1, 'cv01' 1;
   position: relative;
   width: 100%;
+  min-height: 100dvh;
   line-height: 1.5;
   letter-spacing: -0.011em;
-  /* Prevent rubber-band scroll from propagating up */
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Prevent 300ms tap delay and text selection on interactive elements */
 button, a, [role="button"], [role="tab"], label {
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Smooth scrolling */
 * {
   scroll-behavior: smooth;
 }
 
-/* Apple-style scrollbars - nearly invisible */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -115,13 +116,11 @@ button, a, [role="button"], [role="tab"], label {
   background: rgba(0, 0, 0, 0.25);
 }
 
-/* Selection color */
 ::selection {
   background: rgba(0, 102, 255, 0.2);
   color: inherit;
 }
 
-/* Select optimization for mobile */
 select {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -139,7 +138,6 @@ select {
   padding-left: 40px;
 }
 
-/* Input optimization */
 input[type="text"],
 input[type="email"],
 input[type="tel"],
@@ -150,285 +148,18 @@ textarea {
   font-size: 16px;
 }
 
-/* Prevent zoom on input focus for iOS */
-@media (max-width: 768px) {
-  input[type="text"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="search"],
-  input[type="number"],
-  input[type="password"],
-  textarea,
-  select {
-    font-size: 16px !important;
-  }
-}
-
-/* Focus styles - Apple blue ring */
-input:focus,
-textarea:focus,
-select:focus,
-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
-}
-
-/* ============================================================================
-   ANIMATIONS
-   ========================================================================== */
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOutRight {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.skeleton-shimmer {
-  background: linear-gradient(90deg, #F5F5F7 25%, #E8E8ED 50%, #F5F5F7 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* ============================================================================
-   UTILITY CLASSES
-   ========================================================================== */
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Micro-interactions for cards */
-[data-ui="card"] {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-ui="card"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-}
-
-/* Button hover effects */
-[data-ui="button"] {
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-ui="button"]:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-[data-ui="button"]:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-/* ============================================================================
-   MOBILE UX — max-width 768px only (desktop unchanged)
-   ========================================================================== */
-
-@keyframes slideUpSheet {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (max-width: 768px) {
   html,
   body {
     overflow-x: hidden;
-  }
-
-  [data-app-main] {
-    min-width: 0;
+    width: 100%;
     max-width: 100vw;
   }
 
-  /* Touch targets — design-system buttons */
-  [data-ui="button"] {
-    min-height: 44px !important;
-    height: auto !important;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    box-sizing: border-box;
+  body {
+    position: relative;
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-
-  [data-ui="button"][data-size="sm"] {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-  }
-
-  /* Full-width search row on small screens */
-  .app-search-input-root {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-
-  .app-search-input-root input {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  /* Native selects in forms */
-  .app-select-input {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box;
-  }
-
-  /* Filter / tab button rows */
-  .app-filter-tabs button,
-  .app-error-log-tabs button {
-    min-height: 44px;
-    padding: 10px 16px;
-    box-sizing: border-box;
-  }
-
-  /* Cards fill viewport width */
-  [data-ui="card"] {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  /* Optional KPI / tappable stat cards */
-  [data-ui="kpi-card"] {
-    min-height: 44px;
-    box-sizing: border-box;
-  }
-
-  /* Bottom-sheet modals (class on modal panel) */
-  .app-modal-sheet-root {
-    top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    transform: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: min(92dvh, 100svh - env(safe-area-inset-top, 0px)) !important;
-    border-radius: 16px 16px 0 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-  }
-
-  .app-modal-sheet-root .app-modal-sheet-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .app-modal-close {
-    min-width: 44px !important;
-    min-height: 44px !important;
-    width: 44px !important;
-    height: 44px !important;
-    box-sizing: border-box;
-  }
-
-  /* Drawer bottom sheet (data attribute set by Drawer when mobile) */
-  [data-drawer-panel="mobile"] {
-    animation: slideUpSheet 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  }
-
-  [data-drawer-close] {
-    min-width: 44px !important;
-    min-height: 44px !important;
-    width: 44px !important;
-    height: 44px !important;
-    box-sizing: border-box;
-  }
-
-  .app-import-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-@keyframes bamakor-skeleton-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-
-.bamakor-skeleton-bar,
-.bamakor-skeleton-row .bamakor-skeleton-bar {
-  animation: bamakor-skeleton-pulse 1.2s ease-in-out infinite;
 }
