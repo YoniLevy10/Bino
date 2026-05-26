@@ -4,18 +4,28 @@ import { sanitizeId } from '@/lib/api-validation'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { z } from 'zod'
 
+function getRequestIp(req: NextRequest): string {
+  return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
+}
+
 /** Field worker deep link: validate access_token without Google session. */
 export async function GET(req: NextRequest) {
   try {
+    const ip = getRequestIp(req)
+    const admin = getSupabaseAdmin()
+    const rl = await checkIpPostRouteLimit(admin, ip, 'worker-auth-token')
+    if (rl.isLimited) {
+      return NextResponse.json({ error: 'יותר מדי נסיונות. נסו שוב בעוד דקה.' }, { status: 429 })
+    }
+
     const token = sanitizeId(req.nextUrl.searchParams.get('token'))
     if (!token) {
       return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
     }
 
-    const admin = getSupabaseAdmin()
     const { data, error } = await admin
       .from('workers')
-      .select('id, client_id, full_name, is_active')
+      .select('id, full_name, is_active')
       .eq('access_token', token)
       .is('deleted_at', null)
       .maybeSingle()
@@ -26,7 +36,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       worker_id: data.id,
-      client_id: data.client_id,
       full_name: data.full_name,
     })
   } catch {
@@ -36,12 +45,16 @@ export async function GET(req: NextRequest) {
 
 const emailLoginSchema = z.object({ email: z.string().email() })
 
-/** Email login: look up worker by email and return their access token for deep-link auth. */
+/**
+ * Disabled by default: returning a worker access token by email alone is unsafe.
+ * Keep this endpoint as a controlled placeholder so old UI calls fail safely
+ * instead of leaking tokens. Future safe flow should use magic link/OTP.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
+    const ip = getRequestIp(req)
     const admin = getSupabaseAdmin()
-    const rl = await checkIpPostRouteLimit(admin, ip, 'worker-auth')
+    const rl = await checkIpPostRouteLimit(admin, ip, 'worker-auth-email')
     if (rl.isLimited) {
       return NextResponse.json({ error: 'יותר מדי נסיונות. נסו שוב בעוד דקה.' }, { status: 429 })
     }
@@ -53,27 +66,11 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: 'אימייל לא תקין' }, { status: 400 })
     }
-    const email = parsed.data.email.toLowerCase().trim()
 
-    const { data, error } = await admin
-      .from('workers')
-      .select('id, client_id, full_name, access_token, is_active')
-      .ilike('email', email)
-      .is('deleted_at', null)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle()
-
-    if (error || !data || !data.access_token) {
-      return NextResponse.json({ error: 'לא נמצא עובד עם אימייל זה' }, { status: 404 })
-    }
-
-    return NextResponse.json({
-      worker_id: data.id,
-      client_id: data.client_id,
-      full_name: data.full_name,
-      token: data.access_token,
-    })
+    return NextResponse.json(
+      { error: 'כניסת עובד דרך אימייל בלבד אינה פעילה מטעמי אבטחה. יש להשתמש בקישור עובד אישי.' },
+      { status: 403 }
+    )
   } catch {
     return NextResponse.json({ error: 'שגיאה פנימית' }, { status: 500 })
   }
