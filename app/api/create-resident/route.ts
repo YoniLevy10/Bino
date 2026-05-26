@@ -5,16 +5,7 @@ import { createResidentBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-
-function normalizePhone(raw: string | null | undefined): string {
-  if (!raw) return ''
-  const digits = raw.replace(/\D/g, '')
-  if (!digits) return ''
-  if (digits.startsWith('972')) return `+${digits}`
-  if (digits.startsWith('0')) return `+972${digits.slice(1)}`
-  if (digits.length === 9 && digits.startsWith('5')) return `+972${digits}`
-  return `+${digits}`
-}
+import { normalizePhone } from '@/lib/residents-whatsapp'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -40,7 +31,7 @@ export async function POST(req: Request) {
 
     const validated = createResidentBodySchema.safeParse(rawBody)
     if (!validated.success) {
-      return NextResponse.json({ error: validated.error.flatten() }, { status: 400 })
+      return NextResponse.json({ error: validated.error.flatten(), requestId }, { status: 400 })
     }
 
     const body = validated.data
@@ -54,25 +45,35 @@ export async function POST(req: Request) {
       .select('id')
       .eq('id', body.project_id)
       .eq('client_id', clientId)
+      .is('is_active', true)
       .maybeSingle()
 
     if (projErr || !projectCheck) {
       return NextResponse.json({ error: 'בניין לא תקף', requestId }, { status: 403 })
     }
 
-    const normalizedPhone = normalizePhone(body.phone)
-    const phoneDigits = (normalizedPhone || body.phone || '').replace(/^\+/, '')
-    if (phoneDigits) {
-      const { data: existing } = await supabase
+    const normalizedDigits = body.phone ? normalizePhone(body.phone) : ''
+    if (normalizedDigits && normalizedDigits.length < 10) {
+      return NextResponse.json({ error: 'מספר טלפון לא תקין', requestId }, { status: 400 })
+    }
+
+    if (normalizedDigits) {
+      const { data: existing, error: existingErr } = await supabase
         .from('residents')
         .select('id')
         .eq('client_id', clientId)
-        .in('phone', [phoneDigits, `+${phoneDigits}`])
+        .eq('project_id', body.project_id)
+        .eq('normalized_phone', normalizedDigits)
         .is('deleted_at', null)
         .maybeSingle()
 
+      if (existingErr) {
+        logger.error('RESIDENTS_API', 'Duplicate resident lookup failed', new Error(existingErr.message), { requestId, clientId })
+        return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      }
+
       if (existing) {
-        return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת' }, { status: 400 })
+        return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים בבניין הזה', requestId }, { status: 400 })
       }
     }
 
@@ -82,11 +83,12 @@ export async function POST(req: Request) {
         project_id: body.project_id,
         client_id: clientId,
         full_name: fullName,
-        phone: normalizedPhone || null,
+        phone: normalizedDigits ? `+${normalizedDigits}` : null,
+        normalized_phone: normalizedDigits || null,
         apartment_number: sanitizeString(body.apartment_number) || null,
         notes: sanitizeString(body.notes) || null,
       })
-      .select('id, project_id, client_id, full_name, phone, apartment_number, notes')
+      .select('id, project_id, client_id, full_name, phone, normalized_phone, apartment_number, notes')
       .single()
 
     if (insErr) {
