@@ -4,52 +4,68 @@ export type ResidentRow = {
   id: string
   project_id: string
   phone: string | null
+  normalized_phone?: string | null
   client_id: string | null
   full_name: string
   apartment_number?: string | null
 }
 
-/** Lookup by WhatsApp-normalized DB phone key (`whatsappDbPhoneKey`) + tenant.
- * Handles both formats: '972...' and '+972...' since residents may be imported with either. */
+export function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+
+  if (digits.startsWith('972')) {
+    return digits
+  }
+
+  if (digits.startsWith('0')) {
+    return `972${digits.slice(1)}`
+  }
+
+  return digits
+}
+
 export async function findResidentByPhoneClient(
   supabase: SupabaseClient,
   clientId: string,
-  dbPhone: string
+  dbPhone: string,
+  projectId?: string
 ): Promise<ResidentRow | null> {
-  const digits = dbPhone.replace(/^\+/, '')
-  const withPlus = `+${digits}`
+  const normalized = normalizePhone(dbPhone)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('residents')
-    .select('id, project_id, phone, client_id, full_name, apartment_number')
+    .select('id, project_id, phone, normalized_phone, client_id, full_name, apartment_number')
     .eq('client_id', clientId)
-    .in('phone', [digits, withPlus])
+    .eq('normalized_phone', normalized)
     .is('deleted_at', null)
-    .maybeSingle()
+
+  if (projectId) {
+    query = query.eq('project_id', projectId)
+  }
+
+  const { data, error } = await query.maybeSingle()
 
   if (error || !data) return null
   return data as ResidentRow
 }
 
-/**
- * Resident memory for WhatsApp: return existing row or insert minimal resident after building is known.
- */
 export async function getOrCreateResident(
   supabase: SupabaseClient,
   clientId: string,
   dbPhone: string,
   projectId: string
 ): Promise<ResidentRow | null> {
-  const existing = await findResidentByPhoneClient(supabase, clientId, dbPhone)
+  const normalized = normalizePhone(dbPhone)
+
+  const existing = await findResidentByPhoneClient(
+    supabase,
+    clientId,
+    dbPhone,
+    projectId
+  )
+
   if (existing) {
-    if (existing.project_id !== projectId) {
-      await supabase
-        .from('residents')
-        .update({ project_id: projectId, updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
-        .is('deleted_at', null)
-    }
-    return { ...existing, project_id: projectId }
+    return existing
   }
 
   const { data: created, error } = await supabase
@@ -58,14 +74,16 @@ export async function getOrCreateResident(
       client_id: clientId,
       project_id: projectId,
       phone: dbPhone,
+      normalized_phone: normalized,
       full_name: 'דייר WhatsApp',
     })
-    .select('id, project_id, phone, client_id, full_name, apartment_number')
+    .select('id, project_id, phone, normalized_phone, client_id, full_name, apartment_number')
     .single()
 
   if (error || !created) {
     console.error('⚠️ getOrCreateResident insert failed:', error)
     return null
   }
+
   return created as ResidentRow
 }
