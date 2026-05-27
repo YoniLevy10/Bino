@@ -624,20 +624,17 @@ export default function DashboardPage() {
               ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch' } : {}),
             }}
           >
-            <div style={styles.heroText}>
-              <h1 style={styles.heroTitle} suppressHydrationWarning>
-                {getGreeting()}
-              </h1>
-              <p style={styles.heroDate} suppressHydrationWarning>
-                {formatDate()}
-              </p>
-              {openTicketsCount > 0 && (
-                <p style={styles.heroStatus}>
-                  <span style={styles.statusDot} />
-                  {openTicketsCount} תקלות פתוחות דורשות טיפול
-                </p>
-              )}
-            </div>
+         <div style={styles.heroText}>
+  <h1 style={styles.heroTitle} suppressHydrationWarning>
+    {getGreeting()}
+  </h1>
+  {openTicketsCount > 0 && (
+    <p style={styles.heroStatus}>
+      <span style={styles.statusDot} />
+      {openTicketsCount} תקלות פתוחות דורשות טיפול
+    </p>
+  )}
+</div>
             <div style={styles.heroActions}>
               <Button variant="primary" size="lg" onClick={() => setShowAddTicketModal(true)}>
                 תקלה חדשה
