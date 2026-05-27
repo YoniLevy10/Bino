@@ -58,6 +58,8 @@ type ResidentRow = {
   client_id?: string | null
   full_name: string
   phone: string | null
+  email?: string | null
+  is_renter?: boolean
   apartment_number: string | null
   notes?: string | null
 }
@@ -101,6 +103,8 @@ export default function ResidentsPage() {
   const [addProjectId, setAddProjectId] = useState('')
   const [addFullName, setAddFullName] = useState('')
   const [addPhone, setAddPhone] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addIsRenter, setAddIsRenter] = useState(false)
   const [addApartment, setAddApartment] = useState('')
   const [addNotes, setAddNotes] = useState('')
 
@@ -176,7 +180,7 @@ export default function ResidentsPage() {
       const [pRes, rRes, pendingRes] = await Promise.all([
         withClientId(supabase.from('projects').select('id, name, project_code, client_id'), tenantId).order('name'),
         withClientId(
-          supabase.from('residents').select('id, project_id, client_id, full_name, phone, apartment_number, notes'),
+          supabase.from('residents').select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
           tenantId
         )
           .is('deleted_at', null)
@@ -223,6 +227,8 @@ export default function ResidentsPage() {
     setAddError('')
     setAddFullName('')
     setAddPhone('')
+    setAddEmail('')
+    setAddIsRenter(false)
     setAddApartment('')
     setAddNotes('')
     setAddProjectId(projectFilter !== 'ALL' ? projectFilter : '')
@@ -235,6 +241,8 @@ export default function ResidentsPage() {
     setAddProjectId(r.project_id)
     setAddFullName(r.full_name)
     setAddPhone(r.phone?.trim() || '')
+    setAddEmail(r.email?.trim() || '')
+    setAddIsRenter(r.is_renter ?? false)
     setAddApartment(r.apartment_number?.trim() || '')
     setAddNotes(r.notes?.trim() || '')
     setAddOpen(true)
@@ -308,13 +316,15 @@ export default function ResidentsPage() {
             client_id: clientId,
             full_name: fullName,
             phone: normalizeResidentPhone(addPhone) || null,
+            email: addEmail.trim() || null,
+            is_renter: addIsRenter ?? false,
             apartment_number: addApartment.trim() || null,
             notes: addNotes.trim() || null,
           }),
           scoped
         )
           .eq('id', editResidentId)
-          .select('id, project_id, client_id, full_name, phone, apartment_number, notes')
+          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes')
           .single()
 
         if (updateRes.error) {
@@ -338,6 +348,8 @@ export default function ResidentsPage() {
           project_id: projectId,
           full_name: fullName,
           phone: addPhone.trim() || null,
+          email: addEmail.trim() || null,
+          is_renter: addIsRenter ?? false,
           apartment_number: addApartment.trim() || null,
           notes: addNotes.trim() || null,
         }),
@@ -469,6 +481,7 @@ export default function ResidentsPage() {
         !q ||
         r.full_name.toLowerCase().includes(q) ||
         (r.phone || '').includes(q) ||
+        (r.email || '').toLowerCase().includes(q) ||
         (r.apartment_number || '').toLowerCase().includes(q) ||
         (r.notes || '').toLowerCase().includes(q)
       return byProject && text
@@ -512,12 +525,14 @@ export default function ResidentsPage() {
     const rows = sorted.map((r) => ({
       'שם מלא': r.full_name,
       'טלפון': r.phone || '',
+      'אימייל': r.email || '',
+      'שוכר': r.is_renter ? 'כן' : '',
       'דירה': r.apartment_number || '',
       'בניין': projectName[r.project_id] || '',
       'הערות': r.notes || '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
-    ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 8 }, { wch: 22 }, { wch: 36 }]
+    ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 22 }, { wch: 36 }]
     ws['!freeze'] = { xSplit: 0, ySplit: 1 }
     ws['!autofilter'] = { ref: ws['!ref'] as string }
     applyHeaderStyle(ws, COLS)
@@ -723,7 +738,7 @@ export default function ResidentsPage() {
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
-              placeholder="חיפוש לפי שם, טלפון, דירה, הערות..."
+              placeholder="חיפוש לפי שם, טלפון, אימייל, דירה, הערות..."
               style={{ flex: 1, maxWidth: '360px' }}
             />
             <select
@@ -783,9 +798,10 @@ export default function ResidentsPage() {
                   {sorted.map((r) => (
                     <div key={r.id} style={{ background: selectedIds.has(r.id) ? theme.colors.primaryMuted : theme.colors.surface, border: `1px solid ${selectedIds.has(r.id) ? theme.colors.primary : theme.colors.border}`, borderRadius: theme.radius.md, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} aria-label={`בחר ${r.full_name}`} />
                           <span style={{ fontWeight: 600, fontSize: '15px', color: theme.colors.textPrimary }}>{r.full_name}</span>
+                          {r.is_renter === true && <span style={styles.renterBadge}>שוכר</span>}
                         </div>
                         <Button variant="secondary" size="sm" type="button" onClick={() => openEdit(r)}>עריכה</Button>
                       </div>
@@ -793,6 +809,12 @@ export default function ResidentsPage() {
                         <button type="button" onClick={() => copyPhone(r.phone!)} title="לחץ להעתקה" style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: '14px', padding: 0, direction: 'ltr', textAlign: 'right', alignSelf: 'flex-start' }}>
                           {r.phone}
                         </button>
+                      )}
+                      {r.email && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: theme.colors.textSecondary, direction: 'ltr', alignSelf: 'flex-start' }}>
+                          <span>✉</span>
+                          <span>{r.email}</span>
+                        </div>
                       )}
                       <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: theme.colors.textSecondary }}>
                         {r.apartment_number && <span>דירה {r.apartment_number}</span>}
@@ -835,17 +857,33 @@ export default function ResidentsPage() {
                           aria-label={`בחר ${r.full_name}`}
                         />
                       </td>
-                      <td style={styles.td}>{r.full_name}</td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>{r.full_name}</span>
+                          {r.is_renter === true && <span style={styles.renterBadge}>שוכר</span>}
+                        </div>
+                      </td>
                       <td style={styles.td}>
                         {r.phone ? (
-                          <button
-                            type="button"
-                            title="לחץ להעתקה"
-                            onClick={() => copyPhone(r.phone!)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: 'inherit', padding: 0, direction: 'ltr', display: 'inline-block' }}
-                          >
-                            {r.phone}
-                          </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                            <button
+                              type="button"
+                              title="לחץ להעתקה"
+                              onClick={() => copyPhone(r.phone!)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: 'inherit', padding: 0, direction: 'ltr', display: 'inline-block' }}
+                            >
+                              {r.phone}
+                            </button>
+                            {r.email && (
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '12px', direction: 'ltr' }}>
+                                ✉ {r.email}
+                              </span>
+                            )}
+                          </div>
+                        ) : r.email ? (
+                          <span style={{ color: theme.colors.textSecondary, fontSize: '12px', direction: 'ltr' }}>
+                            ✉ {r.email}
+                          </span>
                         ) : '—'}
                       </td>
                       <td style={styles.td}>{r.apartment_number || '—'}</td>
@@ -887,6 +925,8 @@ export default function ResidentsPage() {
         projectId={addProjectId}
         fullName={addFullName}
         phone={addPhone}
+        email={addEmail}
+        isRenter={addIsRenter}
         apartmentNumber={addApartment}
         notes={addNotes}
         error={addError}
@@ -897,6 +937,8 @@ export default function ResidentsPage() {
         onProjectIdChange={setAddProjectId}
         onFullNameChange={setAddFullName}
         onPhoneChange={setAddPhone}
+        onEmailChange={setAddEmail}
+        onIsRenterChange={setAddIsRenter}
         onApartmentNumberChange={setAddApartment}
         onNotesChange={setAddNotes}
         onSubmit={submitAdd}
@@ -924,6 +966,16 @@ const styles: Record<string, CSSProperties> = {
     gap: '10px',
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  renterBadge: {
+    background: theme.colors.warningMuted,
+    color: theme.colors.warning,
+    border: `1px solid ${theme.colors.warning}`,
+    borderRadius: '999px',
+    fontSize: '11px',
+    fontWeight: 600,
+    padding: '2px 8px',
+    lineHeight: 1.4,
   },
   pendingBadge: {
     background: theme.colors.warning,
