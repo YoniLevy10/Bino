@@ -121,6 +121,8 @@ export const createResidentBodySchema = z.object({
   project_id: z.string().uuid(),
   full_name: z.string().min(1).max(200),
   phone: z.string().max(40).nullable().optional(),
+  email: z.union([z.string().email().max(320), z.literal('')]).nullable().optional(),
+  is_renter: z.boolean().optional(),
   apartment_number: z.string().max(20).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
