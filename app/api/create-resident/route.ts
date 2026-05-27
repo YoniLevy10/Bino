@@ -85,10 +85,12 @@ export async function POST(req: Request) {
         full_name: fullName,
         phone: normalizedDigits ? `+${normalizedDigits}` : null,
         normalized_phone: normalizedDigits || null,
+        email: sanitizeString(body.email) || null,
+        is_renter: body.is_renter ?? false,
         apartment_number: sanitizeString(body.apartment_number) || null,
         notes: sanitizeString(body.notes) || null,
       })
-      .select('id, project_id, client_id, full_name, phone, normalized_phone, apartment_number, notes')
+      .select('id, project_id, client_id, full_name, phone, normalized_phone, email, is_renter, apartment_number, notes')
       .single()
 
     if (insErr) {
