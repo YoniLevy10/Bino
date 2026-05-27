@@ -13,6 +13,8 @@ type AddResidentModalProps = {
   projectId: string
   fullName: string
   phone: string
+  email: string
+  isRenter: boolean
   apartmentNumber: string
   notes: string
   error: string
@@ -25,6 +27,8 @@ type AddResidentModalProps = {
   onProjectIdChange: (value: string) => void
   onFullNameChange: (value: string) => void
   onPhoneChange: (value: string) => void
+  onEmailChange: (value: string) => void
+  onIsRenterChange: (value: boolean) => void
   onApartmentNumberChange: (value: string) => void
   onNotesChange: (value: string) => void
   onSubmit: (e: React.FormEvent) => void
@@ -38,6 +42,8 @@ export function AddResidentModal({
   projectId,
   fullName,
   phone,
+  email,
+  isRenter,
   apartmentNumber,
   notes,
   error,
@@ -48,6 +54,8 @@ export function AddResidentModal({
   onProjectIdChange,
   onFullNameChange,
   onPhoneChange,
+  onEmailChange,
+  onIsRenterChange,
   onApartmentNumberChange,
   onNotesChange,
   onSubmit,
@@ -137,6 +145,27 @@ export function AddResidentModal({
               style={styles.formInput}
             />
           </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>אימייל (אופציונלי)</label>
+            <input
+              type="email"
+              value={email ?? ''}
+              onChange={(e) => onEmailChange(e.target.value)}
+              placeholder="example@gmail.com"
+              style={styles.formInput}
+              dir="ltr"
+            />
+          </div>
+
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={isRenter ?? false}
+              onChange={(e) => onIsRenterChange(e.target.checked)}
+            />
+            <span style={styles.formLabel}>דירה מושכרת</span>
+          </label>
 
           <div style={styles.formGroup}>
             <label style={styles.formLabel}>מספר דירה (אופציונלי)</label>
@@ -253,6 +282,16 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 500,
     color: theme.colors.textSecondary,
   },
+  checkboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 12px',
+    background: theme.colors.surfaceElevated,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.md,
+    cursor: 'pointer',
+  },
   formSelect: {
     width: '100%',
     boxSizing: 'border-box',
@@ -316,4 +355,3 @@ const styles: Record<string, CSSProperties> = {
     marginInlineStart: 'auto',
   },
 }
-
