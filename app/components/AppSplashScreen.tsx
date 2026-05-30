@@ -60,7 +60,7 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
 
   if (!visible) return null
 
-  const title = branding.displayName || 'במקור'
+  const title = 'BAMAKOR'
 
   return (
     <div
