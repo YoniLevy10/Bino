@@ -10,6 +10,14 @@ export type ResidentRow = {
   apartment_number?: string | null
 }
 
+/** Prefix for `resident_prompt` — "שלום יוני, " or "שלום, " when name unknown. */
+export function residentPromptGreetingPrefix(fullName: string | null | undefined): string {
+  const trimmed = (fullName ?? '').trim()
+  if (!trimmed || trimmed === 'דייר WhatsApp') return 'שלום, '
+  const first = trimmed.split(/\s+/)[0] ?? trimmed
+  return `שלום ${first}, `
+}
+
 export function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, '')
 

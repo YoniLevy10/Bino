@@ -31,7 +31,11 @@ import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
-import { findResidentByPhoneClient, getOrCreateResident } from '@/lib/residents-whatsapp'
+import {
+  findResidentByPhoneClient,
+  getOrCreateResident,
+  residentPromptGreetingPrefix,
+} from '@/lib/residents-whatsapp'
 import { fetchWithTimeout as fetchTimeout } from '@/lib/fetch-timeout'
 
 export const maxDuration = 60
@@ -1094,7 +1098,9 @@ async function runWhatsAppInboundBackground(
             const looksLikeDescription = !isStatusQuestion(textBody) && !isAddressLikeText(textBody) && textBody.trim().length >= 5
             if (!looksLikeDescription) {
               try {
-                await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds)
+                await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
+                  reporter_name: residentPromptGreetingPrefix(knownResident.full_name),
+                })
               } catch { /* WA send failure is non-fatal */ }
               return
             }

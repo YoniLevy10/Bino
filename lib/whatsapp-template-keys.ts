@@ -150,7 +150,7 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   building_multiple_matches: 'נמצאו 2-3 בניינים תואמים — הדייר צריך לבחור',
   selection_invalid:       'הדייר הקליד מספר בחירה אך הוא מחוץ לטווח (לא 1, 2 או 3)',
   session_created:         'בניין זוהה — בקשת תיאור מדייר שלא ידוע עדיין במערכת',
-  resident_prompt:         'דייר מוכר שלח הודעה — מבקשים ממנו לתאר את הבעיה',
+  resident_prompt:         'דייר מוכר שלח "שלום" או טקסט קצר — ברכה עם שם + בקשת תיאור תקלה',
   duplicate_ticket:        'התיאור שהוגש זהה לתקלה פתוחה קיימת של אותו דייר',
   ticket_opened:           'תקלה נפתחה בהצלחה — נשלח לדייר כאישור',
   pending_approval_note:   'נוסף בסוף הודעת ticket_opened כשהדייר לא ברשימת הדיירים של הבניין',
@@ -305,7 +305,7 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
   session_created:
     'ברוכים הבאים! כתבו בקצרה את הבעיה ב{{project_name}}{{building_line}} 📝',
   resident_prompt:
-    'מה הבעיה? כתבו בקצרה את תיאור התקלה 📝',
+    '{{reporter_name}}מה הבעיה? כתבו בקצרה את תיאור התקלה 📝',
   duplicate_ticket:
     'קיבלנו כבר את הדיווח שלך, מספר תקלה: {{ticket_number}}. נעדכן אותך בהתקדמות.',
   no_open_tickets:
