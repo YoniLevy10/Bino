@@ -7,6 +7,7 @@ import { UpdateNotification } from "./components/UpdateNotification";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { InstallPromptBanner } from "./components/InstallPromptBanner";
 import { initializeLogger, LogLevel } from "@/lib/logging";
+import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -108,7 +109,9 @@ export default function RootLayout({
         <OfflineIndicator />
         <InstallPromptBanner />
         <UpdateNotification />
-        {children}
+        <AppProviders>
+          {children}
+        </AppProviders>
         <WorkTimer />
         <ToastContainer />
         <SpeedInsights />

@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
+import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import {
   AppShell,
   MobileHeader,
@@ -30,7 +31,7 @@ import {
   theme
 } from '../components/ui'
 
-const CACHE_KEY = 'bamakor_summary_v1'
+const CACHE_KEY = 'bamakor_summary_v2'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 type SummaryCache = {
@@ -181,7 +182,7 @@ export default function SummaryPage() {
     void (async () => {
       try {
         const clientId = await resolveBamakorClientIdForBrowser()
-        const cached = readSummaryCache(clientId)
+        const cached = shouldSkipStalePageCache() ? null : readSummaryCache(clientId)
         if (cached) {
           setTickets(cached.tickets)
           setProjects(cached.projects)

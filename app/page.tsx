@@ -38,7 +38,9 @@ import {
 import { TicketDetailDrawer } from './components/tickets/TicketDetailDrawer'
 import { AddTicketModal } from './components/tickets/AddTicketModal'
 import { PageKpiSkeleton, PageListSkeleton } from './components/page-skeleton'
+import { ImageLightbox } from './components/shared/ImageLightbox'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 
 type TicketRow = {
   id: string
@@ -88,7 +90,7 @@ type TicketWithProjects = TicketRow & {
   projects?: Array<{ project_code: string; name: string }> | { project_code: string; name: string }
 }
 
-const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v1'
+const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v2'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
 
 type DashboardCache = {
@@ -266,7 +268,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const cached = readDashboardCache()
+    const cached = shouldSkipStalePageCache() ? null : readDashboardCache()
     if (cached) {
       setTickets(cached.tickets)
       setProjects(cached.projects)
@@ -824,12 +826,7 @@ export default function DashboardPage() {
         onSubmit={handleCreateTicket}
       />
 
-      {/* Image Lightbox */}
-      {selectedImageUrl && (
-        <div style={styles.lightboxOverlay} onClick={() => setSelectedImageUrl(null)}>
-          <img src={selectedImageUrl} alt="Attachment" style={styles.lightboxImage} />
-        </div>
-      )}
+      <ImageLightbox imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </AppShell>
   )
 }
@@ -885,6 +882,4 @@ const styles: Record<string, CSSProperties> = {
   workerName: { color: theme.colors.textSecondary },
   ageText: { color: theme.colors.textMuted, fontSize: '13px' },
   emptyText: { textAlign: 'center', color: theme.colors.textMuted, padding: '32px 0' },
-  lightboxOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, cursor: 'pointer' },
-  lightboxImage: { maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: theme.radius.lg },
 }

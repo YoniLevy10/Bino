@@ -24,6 +24,7 @@ import {
   LoadingSpinner,
   theme,
 } from '../components/ui'
+import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageListSkeleton } from '../components/page-skeleton'
 
@@ -499,22 +500,34 @@ function SettingsPageInner() {
                     <p style={styles.formHint}>
                       קבלת התראה כשנפתחת תקלה חדשה. נדרשים מפתחות VAPID בשרת (ציבורי גם ב־NEXT_PUBLIC).
                     </p>
-                    <Button
+                    <LoadingButton
                       variant="secondary"
                       type="button"
-                      onClick={() => void enablePushNotifications()}
+                      onClick={enablePushNotifications}
                       loading={pushEnabling}
+                      loadingText="מפעיל..."
                     >
                       הפעל התראות
-                    </Button>
+                    </LoadingButton>
                   </div>
                   <div style={styles.drawerActions}>
-                    <Button variant="secondary" type="button" onClick={testSms} loading={testingSms}>
+                    <LoadingButton
+                      variant="secondary"
+                      type="button"
+                      onClick={testSms}
+                      loading={testingSms}
+                      loadingText="שולח..."
+                    >
                       בדוק SMS
-                    </Button>
-                    <Button variant="primary" onClick={saveNotifications} loading={savingNotifications}>
+                    </LoadingButton>
+                    <LoadingButton
+                      variant="primary"
+                      onClick={saveNotifications}
+                      loading={savingNotifications}
+                      loadingText="שומר..."
+                    >
                       שמור שינויים
-                    </Button>
+                    </LoadingButton>
                   </div>
                 </div>
               </Card>
@@ -566,12 +579,23 @@ function SettingsPageInner() {
                     </div>
                   </div>
                   <div style={styles.drawerActions}>
-                    <Button variant="secondary" type="button" onClick={testWhatsapp} loading={testingWa}>
+                    <LoadingButton
+                      variant="secondary"
+                      type="button"
+                      onClick={testWhatsapp}
+                      loading={testingWa}
+                      loadingText="בודק..."
+                    >
                       בדוק חיבור
-                    </Button>
-                    <Button variant="primary" onClick={saveWhatsapp} loading={savingWhatsapp}>
+                    </LoadingButton>
+                    <LoadingButton
+                      variant="primary"
+                      onClick={saveWhatsapp}
+                      loading={savingWhatsapp}
+                      loadingText="שומר..."
+                    >
                       שמור שינויים
-                    </Button>
+                    </LoadingButton>
                   </div>
                 </div>
               </Card>

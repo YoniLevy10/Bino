@@ -5,7 +5,9 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, type CSSProperties, useEffect, useLayoutEffect, useState, lazy, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { ClientBrandingProvider, useClientBranding } from './ClientBrandingContext'
+import { useClientBranding } from './ClientBrandingContext'
+import { AppSplashScreen } from './AppSplashScreen'
+import { shouldShowAppSplash } from '@/lib/app-splash-session'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -704,6 +706,17 @@ export function AppShell({
   children: ReactNode
   isMobile?: boolean
 }) {
+  return <AppShellInner isMobile={isMobile}>{children}</AppShellInner>
+}
+
+function AppShellInner({
+  children,
+  isMobile,
+}: {
+  children: ReactNode
+  isMobile?: boolean
+}) {
+  const { isBootstrapped } = useClientBranding()
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -724,13 +737,14 @@ export function AppShell({
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Hydration safety: do not let `isMobile` (client-only) change SSR markup.
-  // We keep a stable default until after mount.
   const mobile = mounted ? !!isMobile : false
   const bottomNav = mobile && showMobileBottomNavForPath(pathname)
 
+  const showSplash = mounted && shouldShowAppSplash()
+
   return (
-    <ClientBrandingProvider>
+    <>
+      {showSplash ? <AppSplashScreen ready={isBootstrapped} /> : null}
       <div
         dir="rtl"
         style={{ display: 'flex', minHeight: '100vh', background: theme.colors.background }}
@@ -758,7 +772,7 @@ export function AppShell({
           </Suspense>
         )}
       </div>
-    </ClientBrandingProvider>
+    </>
   )
 }
 

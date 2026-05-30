@@ -163,3 +163,69 @@ textarea {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+@keyframes bamakor-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes bamakor-splash-logo-in {
+  from { opacity: 0; transform: scale(0.72) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes bamakor-splash-text-in {
+  from { opacity: 0; letter-spacing: 0.42em; }
+  to { opacity: 1; letter-spacing: 0.28em; }
+}
+
+@keyframes bamakor-splash-out {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+
+@keyframes bamakor-splash-glow {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.12); }
+}
+
+.bamakor-splash-logo {
+  opacity: 0;
+  animation: bamakor-splash-logo-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+}
+
+.bamakor-splash-tagline {
+  opacity: 0;
+  animation: bamakor-splash-text-in 0.5s ease-out 0.55s forwards;
+}
+
+.bamakor-splash-exit {
+  animation: bamakor-splash-out 0.35s ease-in 0.1s forwards;
+  animation-play-state: paused;
+}
+
+.bamakor-splash-exit[data-ready='true'] {
+  animation-delay: 0s;
+  animation-play-state: running;
+}
+
+.bamakor-splash-glow {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 9999px;
+  background: rgba(0, 102, 255, 0.08);
+  filter: blur(64px);
+  pointer-events: none;
+  animation: bamakor-splash-glow 3s ease-in-out infinite;
+}
+
+.bamakor-skeleton-bar,
+.bamakor-skeleton-row .bamakor-skeleton-bar {
+  animation: bamakor-skeleton-pulse 1.2s ease-in-out infinite;
+}

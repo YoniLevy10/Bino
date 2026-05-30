@@ -28,10 +28,18 @@ function writeBrandingCache(clientId: string, branding: ClientBranding) {
   } catch {}
 }
 
-const ClientBrandingContext = createContext<ClientBranding>(DEFAULT_BRANDING)
+type ClientBrandingContextValue = ClientBranding & {
+  isBootstrapped: boolean
+}
+
+const ClientBrandingContext = createContext<ClientBrandingContextValue>({
+  ...DEFAULT_BRANDING,
+  isBootstrapped: false,
+})
 
 export function ClientBrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<ClientBranding>(DEFAULT_BRANDING)
+  const [isBootstrapped, setIsBootstrapped] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -59,6 +67,8 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // keep default branding on any error
+      } finally {
+        if (!cancelled) setIsBootstrapped(true)
       }
     }
     void load()
@@ -66,12 +76,12 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <ClientBrandingContext.Provider value={branding}>
+    <ClientBrandingContext.Provider value={{ ...branding, isBootstrapped }}>
       {children}
     </ClientBrandingContext.Provider>
   )
 }
 
-export function useClientBranding(): ClientBranding {
+export function useClientBranding(): ClientBrandingContextValue {
   return useContext(ClientBrandingContext)
 }

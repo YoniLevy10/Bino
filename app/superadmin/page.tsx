@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
+import { LoadingButton } from '../components/LoadingButton'
+import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
 
 type Project = { id: string; name: string; project_code: string }
 
@@ -54,6 +56,21 @@ const inputStyle: CSSProperties = {
   direction: 'ltr',
 }
 
+function AdminQuickLinks() {
+  const linkStyle: CSSProperties = {
+    color: theme.colors.primary,
+    textDecoration: 'none',
+    fontSize: theme.typography.fontSize.xs,
+  }
+  return (
+    <div style={{ marginTop: theme.spacing.lg, textAlign: 'center' }}>
+      <a href="/superadmin" style={linkStyle}>Super Admin</a>
+      <span style={{ color: theme.colors.textMuted, margin: '0 6px' }}>·</span>
+      <a href="/admin/setup" style={linkStyle}>הקמת לקוח</a>
+    </div>
+  )
+}
+
 function CopyButton({ text, label }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false)
   function copy() {
@@ -90,11 +107,10 @@ export default function SuperAdminPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  function handleUnlock() {
-    if (!secret.trim()) { setUnlockError('הכנס קוד גישה'); return }
-    setUnlocked(true)
-    setUnlockError('')
-  }
+  const verifySecret = useCallback(async (s: string) => {
+    const res = await fetch('/api/superadmin/stats', { headers: { 'x-admin-secret': s } })
+    return res.ok
+  }, [])
 
   const loadClients = useCallback(async (s: string) => {
     setLoading(true)
@@ -114,6 +130,35 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (unlocked) void loadClients(secret)
   }, [unlocked]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const stored = readAdminSecret()
+    if (!stored) return
+    setSecret(stored)
+    void verifySecret(stored).then((ok) => {
+      if (ok) {
+        setUnlocked(true)
+        setUnlockError('')
+      }
+    })
+  }, [verifySecret])
+
+  async function handleUnlock() {
+    if (!secret.trim()) {
+      setUnlockError('הכנס קוד גישה')
+      return
+    }
+    const trimmed = secret.trim()
+    const ok = await verifySecret(trimmed)
+    if (!ok) {
+      setUnlockError('קוד גישה שגוי')
+      return
+    }
+    writeAdminSecret(trimmed)
+    setSecret(trimmed)
+    setUnlocked(true)
+    setUnlockError('')
+  }
 
   function toggleExpand(id: string) {
     setExpandedId((prev) => prev === id ? null : id)
@@ -239,12 +284,13 @@ export default function SuperAdminPage() {
             />
           </div>
           {unlockError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md }}>{unlockError}</p>}
-          <button
+          <LoadingButton
             onClick={handleUnlock}
-            style={{ width: '100%', padding: '12px', background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, fontSize: theme.typography.fontSize.base, fontWeight: theme.typography.fontWeight.semibold, cursor: 'pointer' }}
+            style={{ width: '100%' }}
           >
             כניסה
-          </button>
+          </LoadingButton>
+          <AdminQuickLinks />
         </div>
       </div>
     )
@@ -448,13 +494,14 @@ export default function SuperAdminPage() {
                                   </div>
                                   {saveError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{saveError}</p>}
                                   <div style={{ display: 'flex', gap: theme.spacing.md }}>
-                                    <button
-                                      onClick={() => void saveEdit()}
-                                      disabled={saving}
-                                      style={{ background: saving ? theme.colors.textMuted : theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '8px 20px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold }}
+                                    <LoadingButton
+                                      onClick={saveEdit}
+                                      loading={saving}
+                                      loadingText="שומר..."
+                                      size="sm"
                                     >
-                                      {saving ? 'שומר...' : 'שמור'}
-                                    </button>
+                                      שמור
+                                    </LoadingButton>
                                     <button onClick={cancelEdit} style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}>
                                       ביטול
                                     </button>

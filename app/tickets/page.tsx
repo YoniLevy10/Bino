@@ -55,7 +55,9 @@ import {
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageListSkeleton } from '../components/page-skeleton'
+import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketChat } from '../components/tickets/TicketChat'
 
 type TicketRow = {
@@ -136,7 +138,7 @@ type TicketsCache = {
 
 function readTicketsCache(clientId: string): TicketsCache | null {
   try {
-    const key = `bamakor_tickets_v1_${clientId}`
+    const key = `bamakor_tickets_v2_${clientId}`
     const raw = localStorage.getItem(key)
     if (!raw) return null
     const parsed = JSON.parse(raw) as TicketsCache
@@ -147,7 +149,7 @@ function readTicketsCache(clientId: string): TicketsCache | null {
 
 function writeTicketsCache(clientId: string, data: Omit<TicketsCache, 'savedAt'>) {
   try {
-    const key = `bamakor_tickets_v1_${clientId}`
+    const key = `bamakor_tickets_v2_${clientId}`
     localStorage.setItem(key, JSON.stringify({ ...data, savedAt: Date.now() }))
   } catch { /* storage full or unavailable */ }
 }
@@ -281,7 +283,7 @@ export default function TicketsPage() {
   useEffect(() => {
     void (async () => {
       const clientId = await resolveBamakorClientIdForBrowser()
-      const cached = readTicketsCache(clientId)
+      const cached = shouldSkipStalePageCache() ? null : readTicketsCache(clientId)
       if (cached) {
         setTickets(cached.tickets)
         setWorkers(cached.workers)
@@ -1224,55 +1226,7 @@ export default function TicketsPage() {
         </form>
       </Drawer>
 
-      {/* Image Lightbox */}
-      {lightboxImage && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0, 0, 0, 0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-          onClick={() => setLightboxImage(null)}
-        >
-          <button
-            onClick={() => setLightboxImage(null)}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '44px',
-              height: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#fff',
-              fontSize: '24px',
-            }}
-          >
-            &times;
-          </button>
-          <img
-            src={lightboxImage}
-            alt="Attachment"
-            style={{
-              maxWidth: '90vw',
-              maxHeight: '90vh',
-              objectFit: 'contain',
-              borderRadius: '8px',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />
     </AppShell>
   )
 }

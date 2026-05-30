@@ -14,8 +14,10 @@
  */
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { theme, Button, Card } from '../../components/ui'
+import { LoadingButton } from '../../components/LoadingButton'
+import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ProjectInput = { name: string; project_code: string; address: string }
@@ -78,6 +80,21 @@ function downloadCsv(filename: string, content: string) {
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
+}
+
+function AdminQuickLinks() {
+  const linkStyle: CSSProperties = {
+    color: theme.colors.primary,
+    textDecoration: 'none',
+    fontSize: theme.typography.fontSize.xs,
+  }
+  return (
+    <div style={{ marginTop: theme.spacing.lg, textAlign: 'center' }}>
+      <a href="/superadmin" style={linkStyle}>Super Admin</a>
+      <span style={{ color: theme.colors.textMuted, margin: '0 6px' }}>·</span>
+      <a href="/admin/setup" style={linkStyle}>הקמת לקוח</a>
+    </div>
+  )
 }
 
 // ─── Small UI primitives ──────────────────────────────────────────────────────
@@ -211,11 +228,19 @@ export default function AdminSetupPage() {
   const [csvMsgWorkers, setCsvMsgWorkers] = useState('')
 
   // ── Unlock ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const stored = readAdminSecret()
+    if (!stored) return
+    setSecret(stored)
+    setUnlocked(true)
+  }, [])
+
   function handleUnlock() {
     if (!secret.trim()) {
       setUnlockError('הכנס קוד גישה')
       return
     }
+    writeAdminSecret(secret.trim())
     setUnlocked(true)
     setUnlockError('')
   }
@@ -409,22 +434,10 @@ export default function AdminSetupPage() {
                 {unlockError}
               </p>
             )}
-            <button
-              onClick={handleUnlock}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: theme.colors.primary,
-                color: '#fff',
-                border: 'none',
-                borderRadius: theme.radius.md,
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.semibold,
-                cursor: 'pointer',
-              }}
-            >
+            <LoadingButton onClick={handleUnlock} style={{ width: '100%' }}>
               כניסה
-            </button>
+            </LoadingButton>
+            <AdminQuickLinks />
           </div>
         </div>
       </div>
@@ -892,24 +905,18 @@ export default function AdminSetupPage() {
 
         {/* ── Submit ─────────────────────────────────────────────────────── */}
         <div style={{ textAlign: 'center', marginBottom: theme.spacing.xxxl }}>
-          <button
+          <LoadingButton
             onClick={handleSubmit}
-            disabled={loading}
+            loading={loading}
+            loadingText="מקים לקוח..."
+            size="lg"
             style={{
-              background: loading ? theme.colors.textMuted : theme.colors.primary,
-              color: '#fff',
-              border: 'none',
-              borderRadius: theme.radius.lg,
               padding: '16px 48px',
-              fontSize: theme.typography.fontSize.lg,
-              fontWeight: theme.typography.fontWeight.semibold,
-              cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: loading ? 'none' : theme.shadows.md,
-              transition: 'all 0.2s',
             }}
           >
-            {loading ? 'מקים לקוח...' : 'הקם לקוח'}
-          </button>
+            הקם לקוח
+          </LoadingButton>
         </div>
       </div>
     </div>
