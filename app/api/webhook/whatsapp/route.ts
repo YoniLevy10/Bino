@@ -11,6 +11,7 @@ import {
 import { webhookDedupeMessageId } from '@/lib/whatsapp-webhook-dedupe'
 import {
   isStatusQuestion,
+  looksLikeTicketDescription,
   resolveTicketPriorityFromResidentMessage,
   statusLabelHe,
 } from '@/lib/whatsapp-intent'
@@ -1094,9 +1095,7 @@ async function runWhatsAppInboundBackground(
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, knownResident.project_id)
           session = await getActiveSession(from, supabaseAdmin, webhookClientId)
           if (session) {
-            // RESIDENT MEMORY: reuse textBody as ticket description
-            const looksLikeDescription = !isStatusQuestion(textBody) && !isAddressLikeText(textBody) && textBody.trim().length >= 5
-            if (!looksLikeDescription) {
+            if (!looksLikeTicketDescription(textBody)) {
               try {
                 await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
                   reporter_name: residentPromptGreetingPrefix(knownResident.full_name),
@@ -1295,6 +1294,20 @@ async function runWhatsAppInboundBackground(
 
     // Product rule: never keep active_ticket_id for text follow-ups.
     // Session is only used to bridge: (project identified) -> (ticket description) -> ticket created.
+
+    if (!looksLikeTicketDescription(textBody)) {
+      const known = await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from)
+      try {
+        await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
+          reporter_name: residentPromptGreetingPrefix(known?.full_name),
+        })
+      } catch { /* WA send failure is non-fatal */ }
+      await supabaseAdmin
+        .from('sessions')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', session.id)
+      return
+    }
 
     if (session.project_id) {
       const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 30, supabaseAdmin)

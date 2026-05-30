@@ -54,6 +54,7 @@ export function resolveTicketPriorityFromResidentMessage(text: string): 'LOW' | 
 export function isStatusQuestion(text: string): boolean {
   const t = text.trim()
   if (/^(סטטוס|מה\s*קורה|עדכון)(\s*[?؟]*)?$/i.test(t.replace(/\u200f/g, ''))) return true
+  if (/^מה\s*(ה)?סטטוס(\s*[?؟]*)?$/i.test(t.replace(/\u200f/g, ''))) return true
   if (t.length > 120) return false
   if (/עדכון\s*[?؟]?$/i.test(t)) return true
   if (/מתי\s*(יהיה\s*)?(טיפול|יטפלו|תטפלו|מגיע)/i.test(t)) return true
@@ -110,6 +111,17 @@ export function isEmojiOnlyOrShortAck(text: string): boolean {
   // Emoji / symbols only (no letters or digits in any script)
   if (!/[\p{L}\p{N}]/u.test(withoutSpace) && /[^\s]/.test(withoutSpace)) return true
   return false
+}
+
+/** True when free text should open a ticket (not greeting, status, etc.). */
+export function looksLikeTicketDescription(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length < 5) return false
+  if (isStatusQuestion(t)) return false
+  if (isGreetingSmallTalk(t)) return false
+  if (isEmojiOnlyOrShortAck(t)) return false
+  if (looksLikePhoneOrNameLine(t)) return false
+  return true
 }
 
 export function statusLabelHe(status: string): string {
