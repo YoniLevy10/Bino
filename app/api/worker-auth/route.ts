@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await admin
       .from('workers')
-      .select('id, full_name, is_active')
+      .select('id, client_id, full_name, is_active')
       .eq('access_token', token)
       .is('deleted_at', null)
       .maybeSingle()
@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       worker_id: data.id,
+      client_id: data.client_id,
       full_name: data.full_name,
     })
   } catch {

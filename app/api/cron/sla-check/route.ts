@@ -5,6 +5,11 @@ import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 import { sendManagerSMS } from '@/lib/sms-send'
 import { getLogger } from '@/lib/logging'
 
+/** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
+const MAX_FIRST_ALERTS_PER_RUN = 10
+/** Ignore very old open tickets that pre-date SLA tracking. */
+const SLA_TICKET_MAX_AGE_DAYS = 90
+
 function hoursAgo(ts: string): number {
   const t = new Date(ts).getTime()
   if (!Number.isFinite(t)) return 0
@@ -27,35 +32,21 @@ async function getClientCreds(admin: ReturnType<typeof getSupabaseAdmin>, client
   return data as ClientCreds | null
 }
 
-async function sendAlert(
+async function sendManagerSlaSms(
   phone: string,
   message: string,
-  creds: ClientCreds,
+  smsSenderName: string | null,
   label: string,
   logger: ReturnType<typeof getLogger>,
   ticketId: string,
   clientId: string
-): Promise<'wa' | 'sms' | 'none'> {
-  const waCreds = creds.whatsapp_phone_number_id && creds.whatsapp_access_token
-    ? { phoneNumberId: creds.whatsapp_phone_number_id, accessToken: creds.whatsapp_access_token }
-    : null
-
-  if (waCreds) {
-    try {
-      await sendWhatsAppTextMessage(phone, message, waCreds, { clientId })
-      return 'wa'
-    } catch (e) {
-      logger.warn('CRON', `${label} WA failed, trying SMS`, { ticketId, err: e instanceof Error ? e.message : String(e) })
-    }
-  }
-
-  // SMS fallback
+): Promise<boolean> {
   try {
-    await sendManagerSMS(phone, message, creds.sms_sender_name ?? null, clientId)
-    return 'sms'
+    await sendManagerSMS(phone, message, smsSenderName, clientId)
+    return true
   } catch (e) {
-    logger.warn('CRON', `${label} SMS also failed`, { ticketId, err: e instanceof Error ? e.message : String(e) })
-    return 'none'
+    logger.warn('CRON', `${label} SMS failed`, { ticketId, err: e instanceof Error ? e.message : String(e) })
+    return false
   }
 }
 
@@ -67,20 +58,22 @@ export async function GET(req: NextRequest) {
 
   try {
     const admin = getSupabaseAdmin()
+    const minCreatedAt = new Date(Date.now() - SLA_TICKET_MAX_AGE_DAYS * 86_400_000).toISOString()
 
-    // Fetch all open, non-deleted tickets
+    // Fetch open, non-deleted tickets within SLA tracking window
     const { data: tickets, error } = await admin
       .from('tickets')
       .select('id, ticket_number, created_at, project_id, client_id, reporter_phone, sla_alerted, sla_alerted_at, escalated_at, description')
       .is('deleted_at', null)
       .neq('status', 'CLOSED')
+      .gte('created_at', minCreatedAt)
 
     if (error) {
       logger.error('CRON', 'sla-check tickets query failed', new Error(error.message))
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const stats = { firstAlerts: 0, escalations: 0, wasSent: 0, smsSent: 0 }
+    const stats = { firstAlerts: 0, escalations: 0, smsSent: 0, capped: false }
 
     for (const row of tickets ?? []) {
       const pid = row.project_id as string | null
@@ -111,16 +104,29 @@ export async function GET(req: NextRequest) {
       const ticketNum = String(row.ticket_number)
       const reporterPhone = (row.reporter_phone as string | null)?.trim() || null
 
-      // ── 1. FIRST SLA ALERT ──────────────────────────────────────────────────
+      // ── 1. FIRST SLA ALERT (SMS to manager only — no emoji, capped per run) ──
       if (!alerted && openHours >= slaH && managerPhone) {
-        const msg =
-          `⏰ התראת SLA — תקלה #${ticketNum} בפרויקט ${projectName}\n` +
-          `פתוחה כבר ${Math.floor(openHours)} שעות ללא טיפול.\n` +
-          `תיאור: ${(row.description as string | null)?.slice(0, 80) ?? '—'}\n` +
-          `נא לבדוק בלוח הבקרה.`
+        if (stats.firstAlerts >= MAX_FIRST_ALERTS_PER_RUN) {
+          stats.capped = true
+          continue
+        }
 
-        const channel = await sendAlert(managerPhone, msg, clientCreds, 'SLA-first', logger, row.id as string, clientId)
-        if (channel !== 'none') stats.wasSent += channel === 'wa' ? 1 : 0, stats.smsSent += channel === 'sms' ? 1 : 0
+        const msg =
+          `SLA: ticket #${ticketNum} at ${projectName}\n` +
+          `Open ${Math.floor(openHours)} hours without action.\n` +
+          `${(row.description as string | null)?.slice(0, 80) ?? '-'}\n` +
+          `Check the dashboard.`
+
+        const sent = await sendManagerSlaSms(
+          managerPhone,
+          msg,
+          clientCreds.sms_sender_name ?? null,
+          'SLA-first',
+          logger,
+          row.id as string,
+          clientId
+        )
+        if (sent) stats.smsSent++
 
         await admin.from('tickets').update({
           sla_alerted: true,
@@ -131,23 +137,30 @@ export async function GET(req: NextRequest) {
 
       // ── 2. ESCALATION — 24h after first alert ───────────────────────────────
       if (alerted && alertedAt && !escalatedAt && hoursAgo(alertedAt) >= 24) {
-        // SMS to manager
         if (managerPhone) {
           const mgrMsg =
-            `🚨 הסלמה — תקלה #${ticketNum} בפרויקט ${projectName}\n` +
-            `עברו ${Math.floor(openHours)} שעות מפתיחת התקלה ועדיין אין טיפול.\n` +
-            `נדרשת התערבות מיידית.`
+            `Escalation: ticket #${ticketNum} at ${projectName}\n` +
+            `Open ${Math.floor(openHours)} hours with no resolution.\n` +
+            `Immediate action required.`
 
-          const ch = await sendAlert(managerPhone, mgrMsg, clientCreds, 'Escalation-mgr', logger, row.id as string, clientId)
-          if (ch !== 'none') stats.wasSent += ch === 'wa' ? 1 : 0, stats.smsSent += ch === 'sms' ? 1 : 0
+          const sent = await sendManagerSlaSms(
+            managerPhone,
+            mgrMsg,
+            clientCreds.sms_sender_name ?? null,
+            'Escalation-mgr',
+            logger,
+            row.id as string,
+            clientId
+          )
+          if (sent) stats.smsSent++
         }
 
-        // WhatsApp to resident
+        // WhatsApp to resident (plain text, no emoji)
         if (reporterPhone && clientCreds.whatsapp_phone_number_id && clientCreds.whatsapp_access_token) {
           try {
             const residentMsg =
-              `שלום! הפנייה שלך #${ticketNum} בנושא "${(row.description as string | null)?.slice(0, 60) ?? '—'}" עדיין בטיפול.\n` +
-              `אנחנו מטפלים בה — תודה על הסבלנות 🙏`
+              `שלום, הפנייה שלך #${ticketNum} בנושא "${(row.description as string | null)?.slice(0, 60) ?? '-'}" עדיין בטיפול.\n` +
+              `אנחנו מטפלים בה. תודה על הסבלנות.`
             await sendWhatsAppTextMessage(
               reporterPhone,
               residentMsg,

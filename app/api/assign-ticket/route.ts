@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sendWorkerSMS } from '@/lib/sms-send'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-import { getPublicTicketsUrl } from '@/lib/public-app-url'
+import { getWorkerPortalUrl } from '@/lib/public-app-url'
 import { assignWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
     const { data: worker, error: workerError } = await supabaseAdmin
       .from('workers')
-      .select('id, full_name, phone, role, is_active')
+      .select('id, full_name, phone, role, is_active, access_token')
       .eq('id', worker_id)
       .eq('client_id', clientId)
       .is('deleted_at', null)
@@ -173,8 +173,11 @@ export async function POST(req: Request) {
 
     if (worker.phone) {
       try {
-        const dashboardUrl = getPublicTicketsUrl()
-        const smsMessage = `שויכת לתקלה #${ticket.ticket_number} בבניין ${buildingName}: ${ticket.description || 'ללא תיאור'}. לפרטים: ${dashboardUrl}`
+        const workerToken = (worker as { access_token?: string | null }).access_token?.trim()
+        const portalUrl = workerToken ? getWorkerPortalUrl(workerToken) : null
+        const smsMessage = portalUrl
+          ? `שויכת לתקלה #${ticket.ticket_number} ב${buildingName}: ${ticket.description || 'ללא תיאור'}. האזור האישי: ${portalUrl}`
+          : `שויכת לתקלה #${ticket.ticket_number} ב${buildingName}: ${ticket.description || 'ללא תיאור'}. בקשו מהמשרד קישור לאזור האישי.`
         const smsSent = await sendWorkerSMS(worker.phone, smsMessage, smsSenderName, clientId)
         workerSmsSent = smsSent
         if (smsSent) {

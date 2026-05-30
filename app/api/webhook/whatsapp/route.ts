@@ -28,7 +28,7 @@ import {
 import { getLogger } from '@/lib/logging'
 import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
 import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
-import { getPublicTicketsUrl } from '@/lib/public-app-url'
+import { getPublicTicketsUrl, getWorkerPortalUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
@@ -1450,7 +1450,7 @@ async function runWhatsAppInboundBackground(
           if (projectForNotification.assigned_worker_id) {
             const { data: workerRow } = await supabaseAdmin
               .from('workers')
-              .select('phone, full_name')
+              .select('phone, full_name, access_token')
               .eq('id', projectForNotification.assigned_worker_id)
               .eq('client_id', webhookClientId)
               .is('deleted_at', null)
@@ -1458,6 +1458,8 @@ async function runWhatsAppInboundBackground(
 
             const workerPhone = workerRow?.phone?.trim() || clientDefaultWorkerPhone
             if (workerPhone) {
+              const workerToken = (workerRow as { access_token?: string | null } | null)?.access_token?.trim()
+              const workerPortalUrl = workerToken ? getWorkerPortalUrl(workerToken) : getPublicTicketsUrl()
               const workerMsg = await resolveSmsTemplateMessage(
                 supabaseAdmin, webhookClientId,
                 'sms_worker_new_ticket',
@@ -1467,7 +1469,7 @@ async function runWhatsAppInboundBackground(
                   ticket_number: String(createdTicket.ticket_number),
                   description: ticketDescription || 'ללא פירוט',
                   reporter_name: displayReporterForExternalMessage(waRecipient),
-                  dashboard_url: getPublicTicketsUrl(),
+                  dashboard_url: workerPortalUrl,
                   client_name: clientName,
                 }
               )

@@ -50,9 +50,6 @@ function WorkerPageInner() {
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [emailInput, setEmailInput] = useState('')
-  const [emailLoading, setEmailLoading] = useState(false)
-  const [emailError, setEmailError] = useState('')
   const [expandedChatId, setExpandedChatId] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatLoading, setChatLoading] = useState(false)
@@ -210,32 +207,6 @@ function WorkerPageInner() {
     finally { setChatSending(false) }
   }
 
-  async function loginByEmail(e: React.FormEvent) {
-    e.preventDefault()
-    const email = emailInput.trim()
-    if (!email) return
-    setEmailLoading(true)
-    setEmailError('')
-    try {
-      const res = await fetchWithTimeout('/api/worker-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      const data = (await res.json()) as { token?: string; worker_id?: string; client_id?: string; full_name?: string; error?: string }
-      if (!res.ok || !data.token) {
-        setEmailError(data.error || 'לא נמצא עובד עם אימייל זה')
-        return
-      }
-      sessionStorage.setItem(WORKER_TOKEN_KEY, data.token)
-      setTokenSession({ token: data.token, workerId: data.worker_id!, clientId: data.client_id!, fullName: data.full_name || '' })
-    } catch {
-      setEmailError('שגיאת חיבור — נסה שוב')
-    } finally {
-      setEmailLoading(false)
-    }
-  }
-
   async function setTicketStatus(ticketId: string, status: 'IN_PROGRESS' | 'CLOSED') {
     if (tokenSession) {
       setBusyKey(`${ticketId}:${status}`)
@@ -279,32 +250,16 @@ function WorkerPageInner() {
     )
   }
 
-  // No token and no admin clientId → show email login or "no access"
+  // No token and no admin session → explain personal link (email login disabled)
   if (!tokenSession && !clientId) {
     return (
       <div style={standaloneShell} dir="rtl">
         <div style={styles.standaloneHeader}>
-          <h1 style={styles.standaloneTitle}>כניסת עובד</h1>
-          <p style={styles.standaloneSub}>הזינו את האימייל שלכם כדי לראות את התקלות שלכם</p>
-        </div>
-        <form onSubmit={(e) => void loginByEmail(e)} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <input
-            type="email"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            placeholder="your@email.com"
-            required
-            dir="ltr"
-            style={styles.emailInput}
-          />
-          {emailError && <p style={styles.emailError}>{emailError}</p>}
-          <Button variant="primary" type="submit" loading={emailLoading}>
-            כניסה
-          </Button>
-          <p style={{ fontSize: '13px', color: theme.colors.textMuted, textAlign: 'center', margin: 0 }}>
-            אין לכם אימייל במערכת? בקשו מהמנהל קישור גישה אישי.
+          <h1 style={styles.standaloneTitle}>אזור אישי לעובדי שטח</h1>
+          <p style={styles.standaloneSub}>
+            פתחו את הקישור האישי שנשלח אליכם (SMS / WhatsApp). אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; בדף העובדים.
           </p>
-        </form>
+        </div>
       </div>
     )
   }
@@ -314,7 +269,7 @@ function WorkerPageInner() {
       <div style={standaloneShell} dir="rtl">
         <div style={styles.standaloneHeader}>
           <h1 style={styles.standaloneTitle}>שלום, {selectedName || 'עובד'}</h1>
-          <p style={styles.standaloneSub}>תקלות פתוחות המשויכות אליך</p>
+          <p style={styles.standaloneSub}>האזור האישי שלך — תקלות פתוחות שמשויכות אליך</p>
         </div>
 
         {loadingTickets ? (
@@ -553,17 +508,6 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface, color: theme.colors.textPrimary,
     resize: 'none' as const, fontFamily: 'inherit', lineHeight: 1.4,
-  },
-  emailInput: {
-    width: '100%', padding: '14px 16px', fontSize: '16px',
-    borderRadius: '12px', border: `1.5px solid ${theme.colors.border}`,
-    background: theme.colors.surface, color: theme.colors.textPrimary,
-    boxSizing: 'border-box' as const,
-  },
-  emailError: {
-    fontSize: '13px', color: theme.colors.error, margin: 0,
-    padding: '8px 12px', background: theme.colors.errorMuted,
-    borderRadius: '8px',
   },
   emptyState: {
     textAlign: 'center', padding: '60px 20px',

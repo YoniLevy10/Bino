@@ -9,7 +9,8 @@
 ## משתני סביבה ב־Vercel
 
 - [ ] כל משתני הסביבה הנדרשים מוגדרים (ראו `.env.example`)
-- [ ] `WHATSAPP_APP_SECRET` מוגדר (חתימת webhook)
+- [ ] `WHATSAPP_APP_SECRET` מוגדר (חתימת webhook) — בדיקה: `GET /api/health` מחזיר `envWarnings: []`
+- [ ] `HEALTH_CHECK_SMS_ALERTS` — **לא** להגדיר בפרודקshן (ברירת מחדל: health-check רק ל-`system_logs`, בלי SMS)
 - [ ] `WHATSAPP_VERIFY_TOKEN` מוגדר (אימות webhook)
 - [ ] `WHATSAPP_ACCESS_TOKEN` / מזהים ב־Supabase `clients` כנדרש לארכיטקטורה שלכם
 - [ ] `SMS_API_KEY`, `SMS_SENDER_DEFAULT` או שווה ערך ל־019SMS / ספק SMS
@@ -33,7 +34,8 @@
 ## ניטור
 
 - [ ] בדיקת **GET `/api/health`** (readiness) מחזירה `status: ok` עם DB מחובר
-- [ ] Cron **`/api/cron/health-check`** רץ ומוזן ל־`system_logs` (ראו `vercel.json`)
+- [ ] Cron **`/api/cron/health-check`** רץ יומית (06:00 UTC) — לוגים ב-`system_logs` בלבד
+- [ ] Cron **`/api/cron/sla-check`** רץ יומית (07:00 UTC) — SMS למנהל, מקס 10 התראות לריצה
 
 ## דורש החלטה / גרסה הבאה
 

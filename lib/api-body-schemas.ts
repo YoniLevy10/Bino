@@ -126,3 +126,8 @@ export const createResidentBodySchema = z.object({
   apartment_number: z.string().max(20).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
+
+/** שליחת קישור לאזור האישי של עובד שטח ב-SMS. */
+export const sendWorkerPortalLinkBodySchema = z.object({
+  worker_id: z.string().uuid(),
+})

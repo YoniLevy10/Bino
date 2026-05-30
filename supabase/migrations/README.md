@@ -32,10 +32,32 @@
 ## הרצה
 
 ```bash
-supabase db push
+npx supabase link --project-ref YOUR_REF
+npm run db:migration:list
+npx supabase db push --linked
 ```
 
 או ב-Supabase Dashboard → SQL: הדבק לפי סדר (או את כל הקבצים ברצף).
+
+### סנכרון היסטוריית migrations (remote ↔ repo)
+
+אם `db push` מדווח על גרסאות remote שלא ב-repo:
+
+```bash
+npx supabase migration list --linked
+npx supabase migration repair --status reverted <version> ...   # לפי הודעת CLI
+npx supabase db pull --linked                                   # משיכת סכמה
+```
+
+מיגרציות שכבר הוחלו ידנית (למשל `037_bamakor_reset_client_tickets.sql`) — אין צורך להריץ שוב.
+
+### TypeScript types מה-DB
+
+```bash
+npm run db:types
+```
+
+יוצר `lib/database.types.ts` (לא נדרש ל-runtime; לשימוש הדרגתי ב-TypeScript).
 
 ## הערות
 

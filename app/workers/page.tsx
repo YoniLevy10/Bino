@@ -88,6 +88,7 @@ export default function WorkersPage() {
   const [clientId, setClientId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [sendingPortalLinkId, setSendingPortalLinkId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [isMobile, setIsMobile] = useState(false)
@@ -384,6 +385,32 @@ export default function WorkersPage() {
     )
   }
 
+  async function sendWorkerPortalLink(worker: WorkerRow, e?: React.MouseEvent) {
+    e?.stopPropagation()
+    if (!worker.phone?.trim()) {
+      toast.error('לעובד אין מספר טלפון')
+      return
+    }
+    setSendingPortalLinkId(worker.id)
+    try {
+      const res = await fetchWithTimeout('/api/workers/send-portal-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ worker_id: worker.id }),
+      })
+      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast.error(json.error || 'שליחת SMS נכשלה')
+        return
+      }
+      toast.success(`קישור נשלח ב-SMS ל-${worker.full_name}`)
+    } catch {
+      toast.error('שגיאת חיבור — נסו שוב')
+    } finally {
+      setSendingPortalLinkId(null)
+    }
+  }
+
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
@@ -521,6 +548,14 @@ export default function WorkersPage() {
                     </Button>
                     <Button variant="secondary" size="sm" onClick={(e) => copyWorkerFieldLink(worker, e)}>
                       העתק קישור
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={sendingPortalLinkId === worker.id}
+                      onClick={(e) => void sendWorkerPortalLink(worker, e)}
+                    >
+                      שלח קישור ב-SMS
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => toggleWorkerStatus(worker)}>
                       {worker.is_active ? 'השבתה' : 'הפעלה'}
@@ -682,6 +717,13 @@ export default function WorkersPage() {
             <div style={styles.drawerActions}>
               <Button variant="secondary" onClick={() => copyWorkerFieldLink(selectedWorker)}>
                 העתק קישור
+              </Button>
+              <Button
+                variant="secondary"
+                loading={sendingPortalLinkId === selectedWorker.id}
+                onClick={() => void sendWorkerPortalLink(selectedWorker)}
+              >
+                שלח קישור ב-SMS
               </Button>
               <Button variant="secondary" onClick={() => openEditDrawer(selectedWorker)}>
                 עריכת עובד

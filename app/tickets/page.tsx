@@ -295,8 +295,17 @@ export default function TicketsPage() {
         void fetchData()
       }
     })()
-    const interval = setInterval(() => void fetchData(true), 10 * 60 * 1000)
-    return () => clearInterval(interval)
+  }, [fetchData])
+
+  // Supabase Realtime — silent refresh when tickets change
+  useEffect(() => {
+    const channel = supabase
+      .channel('tickets-page-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
+        void fetchData(true)
+      })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
   }, [fetchData])
 
   // Visibility API — silent refresh when returning to tab

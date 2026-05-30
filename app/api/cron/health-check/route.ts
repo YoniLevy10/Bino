@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
+import { isHealthCheckSmsAlertsEnabled } from '@/lib/env-readiness'
 
 /**
  * Periodic probe: pings DB + validates WhatsApp tokens + appends system_logs (Vercel cron).
@@ -80,10 +81,10 @@ export async function GET(req: NextRequest) {
         const isExpired = tokenStatus === 'expired'
         const logMsg = isExpired ? 'whatsapp_token_expired' : 'whatsapp_token_check_failed'
         const alertMsg = isExpired
-          ? `🚨 ALERT: ה-WhatsApp token של ${clientName} פג תוקף! כל ההודעות נכשלות. יש לעדכן whatsapp_access_token ב-Supabase מיד.`
-          : `⚠️ ALERT: לא ניתן לאמת את ה-WhatsApp token של ${clientName}. ייתכן שפג תוקפו.`
+          ? `ALERT: WhatsApp token of ${clientName} expired. Update whatsapp_access_token in Supabase.`
+          : `ALERT: Could not verify WhatsApp token for ${clientName}. It may have expired.`
 
-        console.error(`🚨 HEALTH_CHECK: ${logMsg}`, { clientId, clientName })
+        console.error(`HEALTH_CHECK: ${logMsg}`, { clientId, clientName })
 
         await admin.from('system_logs').insert({
           level: 'error',
@@ -92,12 +93,14 @@ export async function GET(req: NextRequest) {
           payload: { ts, client_id: clientId, client_name: clientName },
         })
 
-        // SMS alert to admin — use client manager_phone or global env fallback
-        const dest = (client.manager_phone as string | null) || getManagerPhoneFromEnv()
-        if (dest) {
-          await sendManagerSMS(dest, alertMsg, senderName, clientId).catch((e) => {
-            console.error('health-check: SMS alert failed:', e)
-          })
+        // SMS only when explicitly enabled — default is log-only (no manager spam)
+        if (isHealthCheckSmsAlertsEnabled()) {
+          const dest = (client.manager_phone as string | null) || getManagerPhoneFromEnv()
+          if (dest) {
+            await sendManagerSMS(dest, alertMsg, senderName, clientId).catch((e) => {
+              console.error('health-check: SMS alert failed:', e)
+            })
+          }
         }
       }
     }
