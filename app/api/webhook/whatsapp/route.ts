@@ -423,14 +423,14 @@ async function attachPendingWhatsAppImageToTicketIfAny(
   return !!ok
 }
 
-/** Same reporter + tenant, non-closed ticket opened within the last N minutes (duplicate guard). */
+/** Same reporter + tenant, non-closed ticket opened within the last N seconds (duplicate guard). */
 async function findOpenTicketForReporterInWindow(
   from: string,
   clientId: string,
-  windowMinutes: number,
+  windowSeconds: number,
   supabaseAdmin: SupabaseClient
 ): Promise<{ id: string; ticket_number: number; description: string | null; status: string } | null> {
-  const sinceIso = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString()
+  const sinceIso = new Date(Date.now() - windowSeconds * 1000).toISOString()
   const { data, error } = await supabaseAdmin
     .from('tickets')
     .select('id, ticket_number, description, status')
@@ -1297,7 +1297,7 @@ async function runWhatsAppInboundBackground(
     // Session is only used to bridge: (project identified) -> (ticket description) -> ticket created.
 
     if (session.project_id) {
-      const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 1, supabaseAdmin)
+      const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 30, supabaseAdmin)
       if (dupTicket) {
         await supabaseAdmin
           .from('sessions')
