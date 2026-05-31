@@ -42,6 +42,26 @@ export const TICKET_STATUSES_IN_TREATMENT: readonly TicketStatus[] = [
   'PROFESSIONAL_ESCORT',
 ]
 
+/** Statuses a field worker may set from /worker (not NEW — office-only). */
+export const WORKER_SETTABLE_STATUSES: readonly TicketStatus[] = [
+  'ASSIGNED',
+  'IN_PROGRESS',
+  'WAITING_PARTS',
+  'SITE_TOUR',
+  'PROFESSIONAL_ESCORT',
+  'CLOSED',
+]
+
+export const WORKER_STATUS_SELECT_OPTIONS: { value: TicketStatus; label: string }[] =
+  WORKER_SETTABLE_STATUSES.map((value) => ({
+    value,
+    label: LABELS_HE[value],
+  }))
+
+export function isWorkerSettableStatus(value: string): value is TicketStatus {
+  return (WORKER_SETTABLE_STATUSES as readonly string[]).includes(value)
+}
+
 export function isTicketStatus(value: string): value is TicketStatus {
   return (TICKET_STATUSES as readonly string[]).includes(value)
 }

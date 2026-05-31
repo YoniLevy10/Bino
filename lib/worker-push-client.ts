@@ -1,4 +1,7 @@
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { ensureServiceWorkerReady, isStandaloneWorkerPwa } from '@/lib/service-worker-register'
+
+const PUSH_FETCH_TIMEOUT_MS = 30_000
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -17,6 +20,7 @@ export function isWorkerPushSupported(): boolean {
 export async function getWorkerPushSubscription(): Promise<PushSubscription | null> {
   if (!isWorkerPushSupported()) return null
   try {
+    await ensureServiceWorkerReady()
     const reg = await navigator.serviceWorker.ready
     return reg.pushManager.getSubscription()
   } catch {
@@ -66,12 +70,12 @@ export async function isWorkerPushFullyEnabled(): Promise<boolean> {
     return false
   }
   if (Notification.permission !== 'granted') return false
-  if (hasWorkerPushEnabledFlag()) return true
   const sub = await getWorkerPushSubscription()
   if (sub) {
     markWorkerPushEnabled()
     return true
   }
+  clearWorkerPushEnabled()
   return false
 }
 
@@ -102,32 +106,57 @@ export async function subscribeWorkerPush(token: string): Promise<{ ok: boolean;
   const vapid = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim()
   if (!vapid) return { ok: false, error: 'התראות לא מוגדרות בשרת' }
   if (!isWorkerPushSupported()) {
-    return { ok: false, error: 'הדפדפן לא תומך בהתראות — הוסיפו את האפליקציה למסך הבית' }
+    return {
+      ok: false,
+      error: isStandaloneWorkerPwa()
+        ? 'הדפדפן לא תומך בהתראות'
+        : 'הוסיפו את האפליקציה למסך הבית ואז הפעילו התראות',
+    }
+  }
+
+  try {
+    await ensureServiceWorkerReady()
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'הפעלת האפליקציה נכשלה' }
   }
 
   const perm = await Notification.requestPermission()
   if (perm !== 'granted') {
+    clearWorkerPushEnabled()
     return { ok: false, error: 'יש לאשר התראות כדי לקבל שיבוצים' }
   }
 
-  const reg = await navigator.serviceWorker.ready
-  let sub = await reg.pushManager.getSubscription()
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapid),
-    })
-  }
+  try {
+    const reg = await navigator.serviceWorker.ready
+    let sub = await reg.pushManager.getSubscription()
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapid),
+      })
+    }
 
-  const res = await fetchWithTimeout('/api/worker/push/subscribe', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, subscription: sub.toJSON() }),
-  })
-  const json = (await res.json().catch(() => ({}))) as { error?: string }
-  if (!res.ok) return { ok: false, error: json.error || 'שמירה נכשלה' }
-  markWorkerPushEnabled()
-  return { ok: true }
+    const res = await fetchWithTimeout(
+      '/api/worker/push/subscribe',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, subscription: sub.toJSON() }),
+      },
+      PUSH_FETCH_TIMEOUT_MS
+    )
+    const json = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      clearWorkerPushEnabled()
+      return { ok: false, error: json.error || 'שמירה בשרת נכשלה' }
+    }
+
+    markWorkerPushEnabled()
+    return { ok: true }
+  } catch (e) {
+    clearWorkerPushEnabled()
+    return { ok: false, error: e instanceof Error ? e.message : 'הפעלה נכשלה' }
+  }
 }
 
 /** Re-sync existing subscription to server after PWA relaunch. */

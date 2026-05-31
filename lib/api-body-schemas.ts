@@ -113,6 +113,20 @@ export const workerPushSubscribeBodySchema = z.object({
   subscription: pushSubscribeBodySchema.shape.subscription,
 })
 
+/** Worker PATCH ticket status from token portal. */
+export const workerUpdateTicketBodySchema = z.object({
+  token: z.string().uuid(),
+  ticket_id: z.string().uuid(),
+  status: z.enum([
+    'ASSIGNED',
+    'IN_PROGRESS',
+    'WAITING_PARTS',
+    'SITE_TOUR',
+    'PROFESSIONAL_ESCORT',
+    'CLOSED',
+  ]),
+})
+
 export const settingsTestWhatsAppBodySchema = z
   .object({
     to: z.string().min(4).max(40).optional(),

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { WorkerServiceWorkerRegister } from '../components/worker/WorkerServiceWorkerRegister'
 
 export const viewport: Viewport = {
   themeColor: '#2563eb',
@@ -21,5 +22,10 @@ export const metadata: Metadata = {
 }
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return (
+    <>
+      <WorkerServiceWorkerRegister />
+      {children}
+    </>
+  )
 }

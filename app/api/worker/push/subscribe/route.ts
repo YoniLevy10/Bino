@@ -38,19 +38,21 @@ export async function POST(req: Request) {
 
     const subscription = parsed.data.subscription as Record<string, unknown>
 
-    const { error } = await admin
+    await admin
       .from('worker_push_subscriptions')
-      .upsert(
-        {
-          worker_id: worker.id,
-          client_id: worker.client_id,
-          subscription,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'worker_id,client_id' }
-      )
+      .delete()
+      .eq('worker_id', worker.id)
+      .eq('client_id', worker.client_id)
+
+    const { error } = await admin.from('worker_push_subscriptions').insert({
+      worker_id: worker.id,
+      client_id: worker.client_id,
+      subscription,
+      updated_at: new Date().toISOString(),
+    })
 
     if (error) {
+      console.error('[worker/push/subscribe]', error.message, error.code)
       return NextResponse.json({ error: 'שמירה נכשלה' }, { status: 500 })
     }
 

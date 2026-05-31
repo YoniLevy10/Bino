@@ -2,7 +2,8 @@
 
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, PriorityDot, StatusBadge, theme } from '../ui'
-import { isTicketInTreatment, ticketStatusLabelHe } from '@/lib/ticket-status'
+import { WORKER_STATUS_SELECT_OPTIONS, isTicketStatus, ticketStatusLabelHe } from '@/lib/ticket-status'
+import type { TicketStatus } from '@/lib/ticket-status'
 import { formatRelativeTimeHe } from '@/lib/relative-time-he'
 import { googleMapsHref, telHref, wazeHref, whatsAppHref } from '@/lib/contact-links'
 import { toast } from '@/lib/error-handler'
@@ -39,8 +40,7 @@ type WorkerTicketCardProps = {
   translation: string | null
   translating: boolean
   onTranslate: () => void
-  onInProgress: () => void
-  onCloseRequest: () => void
+  onStatusChange: (status: TicketStatus) => void
   onToggleChat: () => void
   chatSlot?: ReactNode
   attachments?: WorkerAttachment[]
@@ -66,8 +66,7 @@ export function WorkerTicketCard({
   translation,
   translating,
   onTranslate,
-  onInProgress,
-  onCloseRequest,
+  onStatusChange,
   onToggleChat,
   chatSlot,
   attachments = [],
@@ -82,7 +81,13 @@ export function WorkerTicketCard({
   const priority = ticket.priority || 'MEDIUM'
   const relativeWhen = formatRelativeTimeHe(ticket.created_at)
   const loc = locationLine(ticket)
-  const canMarkInProgress = !isTicketInTreatment(ticket.status)
+  const statusOptions = (() => {
+    const opts = [...WORKER_STATUS_SELECT_OPTIONS]
+    if (isTicketStatus(ticket.status) && !opts.some((o) => o.value === ticket.status)) {
+      opts.unshift({ value: ticket.status, label: ticketStatusLabelHe(ticket.status) })
+    }
+    return opts
+  })()
   const tel = telHref(ticket.reporter_phone)
   const wa = whatsAppHref(
     ticket.reporter_phone,
@@ -231,26 +236,21 @@ export function WorkerTicketCard({
       </div>
 
       <div style={styles.actions}>
-        {canMarkInProgress ? (
-          <Button
-            variant="secondary"
-            size="sm"
+        <label style={styles.statusLabel(colors)}>
+          <span style={styles.statusLabelText(colors)}>סטטוס</span>
+          <select
+            value={ticket.status}
             disabled={!!busyKey}
-            loading={busyKey === `${ticket.id}:IN_PROGRESS`}
-            onClick={onInProgress}
+            onChange={(e) => onStatusChange(e.target.value as TicketStatus)}
+            style={styles.statusSelect(colors)}
           >
-            בטיפול
-          </Button>
-        ) : null}
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!!busyKey}
-          loading={busyKey === `${ticket.id}:CLOSED`}
-          onClick={onCloseRequest}
-        >
-          סיום
-        </Button>
+            {statusOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <Button variant="secondary" size="sm" onClick={onToggleChat}>
           {expandedChat ? 'סגור צ׳אט' : 'צ׳אט'}
         </Button>
@@ -460,7 +460,29 @@ const styles = {
     height: '100%',
     objectFit: 'cover',
   } as CSSProperties,
-  actions: { display: 'flex', gap: '6px', flexWrap: 'wrap' } as CSSProperties,
+  actions: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' } as CSSProperties,
+  statusLabel: (c: typeof theme.colors): CSSProperties => ({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    flex: 1,
+    minWidth: '140px',
+  }),
+  statusLabelText: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '10px',
+    fontWeight: 700,
+    color: c.textMuted,
+  }),
+  statusSelect: (c: typeof theme.colors): CSSProperties => ({
+    width: '100%',
+    padding: '10px 12px',
+    fontSize: '14px',
+    borderRadius: '10px',
+    border: `1px solid ${c.border}`,
+    background: c.surface,
+    color: c.textPrimary,
+    fontWeight: 600,
+  }),
   chatWrap: (c: typeof theme.colors): CSSProperties => ({
     marginTop: '8px',
     paddingTop: '8px',

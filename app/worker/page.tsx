@@ -33,7 +33,7 @@ import {
   writeWorkerToken,
 } from '@/lib/worker-portal-storage'
 import { readWorkerTicketsCache, writeWorkerTicketsCache } from '@/lib/worker-offline-cache'
-import { isTicketInTreatment } from '@/lib/ticket-status'
+import { isTicketInTreatment, WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
 import { readWorkerDarkMode, workerDarkColors, writeWorkerDarkMode } from '@/lib/worker-theme'
 
 type Worker = { id: string; full_name: string }
@@ -432,7 +432,15 @@ function WorkerPageInner() {
     }
   }
 
-  async function setTicketStatus(ticketId: string, status: 'IN_PROGRESS' | 'CLOSED') {
+  function handleWorkerStatusChange(ticketId: string, status: TicketStatus) {
+    if (status === 'CLOSED') {
+      setConfirmCloseId(ticketId)
+      return
+    }
+    void setTicketStatus(ticketId, status)
+  }
+
+  async function setTicketStatus(ticketId: string, status: TicketStatus) {
     if (tokenSession) {
       setBusyKey(`${ticketId}:${status}`)
       try {
@@ -544,8 +552,7 @@ function WorkerPageInner() {
                   translation={translations[t.id] ?? null}
                   translating={translatingId === t.id}
                   onTranslate={() => void translateTicket(t.id, t.description || '')}
-                  onInProgress={() => void setTicketStatus(t.id, 'IN_PROGRESS')}
-                  onCloseRequest={() => setConfirmCloseId(t.id)}
+                  onStatusChange={(status) => handleWorkerStatusChange(t.id, status)}
                   onToggleChat={() => void openChat(t.id)}
                   attachments={attachmentsByTicket[t.id]}
                   attachmentsLoading={attachmentsLoadingId === t.id}
@@ -692,18 +699,16 @@ function WorkerPageInner() {
                             <StatusBadge status={t.status} size="sm" />
                           </div>
                           <p style={styles.desc}>{t.description || '—'}</p>
-                          <div style={styles.actions}>
-                            <Button variant="secondary" size="sm"
-                              disabled={!!busyKey} loading={busyKey === `${t.id}:IN_PROGRESS`}
-                              onClick={() => setTicketStatus(t.id, 'IN_PROGRESS')}>
-                              בטיפול
-                            </Button>
-                            <Button variant="primary" size="sm"
-                              disabled={!!busyKey} loading={busyKey === `${t.id}:CLOSED`}
-                              onClick={() => setTicketStatus(t.id, 'CLOSED')}>
-                              הושלם
-                            </Button>
-                          </div>
+                          <select
+                            value={t.status}
+                            disabled={!!busyKey}
+                            onChange={(e) => handleWorkerStatusChange(t.id, e.target.value as TicketStatus)}
+                            style={{ ...styles.select, marginTop: '8px' }}
+                          >
+                            {WORKER_STATUS_SELECT_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
                         </div>
                       ))}
                     </div>
