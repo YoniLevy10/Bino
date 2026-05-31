@@ -160,14 +160,14 @@ export const WHATSAPP_ARCHIVED_TEMPLATE_KEYS = [
 
 /** הסבר קצר "מתי נשלח?" לכל תבנית */
 export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = {
-  welcome:                 'דייר שלח הודעה ראשונה שלא נראית ככתובת ולא כ-QR — למשל "שלום" או טקסט לא ברור',
+  welcome:                 'דייר חדש — ברכה קצרה ("שלום") או הודעה לא ברורה לפני זיהוי בניין',
   qr_invalid:              'נסרק QR אך הפורמט שגוי (לא מתחיל ב-BMK)',
   project_not_found:       'ה-QR תקין אך קוד הפרויקט לא קיים במערכת',
-  building_not_found:      'חיפוש טקסט לא מצא בניין תואם',
+  building_not_found:      'דייר חדש — נשלח כשהטקסט לא נראה ככתובת בניין (לא ברכה קצרה)',
   building_multiple_matches: 'נמצאו 2-3 בניינים תואמים — הדייר צריך לבחור',
   selection_invalid:       'הדייר הקליד מספר בחירה אך הוא מחוץ לטווח (לא 1, 2 או 3)',
-  session_created:         'בניין זוהה — בקשת תיאור מדייר שלא ידוע עדיין במערכת',
-  resident_prompt:         'דייר מוכר שלח "שלום" או טקסט קצר — ברכה עם שם + בקשת תיאור תקלה',
+  session_created:         'דייר חדש — אחרי QR/כתובת/בחירה מרשימה: בקשת תיאור ({{project_name}})',
+  resident_prompt:         'דייר מוכר — ברכה אוטומטית ב-{{reporter_name}} + בקשת תיאור (לא חיפוש בניין)',
   duplicate_ticket:        'התיאור שהוגש זהה לתקלה פתוחה קיימת של אותו דייר',
   ticket_opened:           'תקלה נפתחה בהצלחה — נשלח לדייר כאישור',
   pending_approval_note:   'נוסף בסוף הודעת ticket_opened כשהדייר לא ברשימת הדיירים של הבניין',
@@ -331,7 +331,8 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
     'קיבלנו כבר את הדיווח שלך, מספר תקלה: {{ticket_number}}. נעדכן אותך בהתקדמות.',
   no_open_tickets:
     'לא מצאנו תקלה פתוחה המקושרת למספר שלך במערכת. לפתיחת פנייה כתבו את הבניין או סרקו את קוד ה־QR.',
-  ticket_status_list: '{{list}}',
+  ticket_status_list:
+    'התקלות הפתוחות שלך:\n\n{{list}}',
   sla_escalation_resident:
     'שלום, הפנייה שלך #{{ticket_number}} בנושא "{{description}}" עדיין בטיפול.\n' +
     'אנחנו מטפלים בה. תודה על הסבלנות.',

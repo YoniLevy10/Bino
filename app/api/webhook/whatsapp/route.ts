@@ -11,6 +11,7 @@ import {
 } from '@/lib/whatsapp-parser'
 import { webhookDedupeMessageId } from '@/lib/whatsapp-webhook-dedupe'
 import {
+  isGreetingSmallTalk,
   isStatusQuestion,
   looksLikeTicketDescription,
   resolveTicketPriorityFromResidentMessage,
@@ -1194,6 +1195,12 @@ async function runWhatsAppInboundBackground(
       const addressLike = isAddressLikeText(textBody)
 
       if (!addressLike) {
+        if (isGreetingSmallTalk(textBody)) {
+          try {
+            await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
         try {
           await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
         } catch { /* WA send failure is non-fatal */ }

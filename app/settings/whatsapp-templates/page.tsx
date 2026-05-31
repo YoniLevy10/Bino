@@ -20,6 +20,8 @@ import {
   SMS_TEMPLATE_WHEN_SENT,
 } from '@/lib/whatsapp-template-keys'
 import { interpolateWhatsAppTemplate, interpolateSmsTemplate } from '@/lib/whatsapp-templates'
+import { whatsAppTemplatePreviewVars } from '@/lib/whatsapp-template-preview'
+import { ResidentWhatsAppFlowGuide } from '../../components/settings/ResidentWhatsAppFlowGuide'
 import {
   splitBilingualTemplate,
   joinBilingualTemplate,
@@ -37,15 +39,6 @@ import {
   theme,
 } from '../../components/ui'
 import { PageListSkeleton } from '../../components/page-skeleton'
-
-const PREVIEW_SAMPLE: Record<(typeof WHATSAPP_TEMPLATE_VAR_NAMES)[number], string> = {
-  project_name: 'מגדלי הים התיכון',
-  ticket_number: '128',
-  description: 'נזילה מהצנרת בחדר האמבטיה',
-  reporter_name: 'ישראל ישראלי',
-  building_line: '\nבניין: ב׳',
-  list: '1. מגדלי הים התיכון\n2. בית הכרמל',
-}
 
 const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string> = {
   project_name: 'מגדלי הים התיכון',
@@ -260,10 +253,11 @@ export default function WhatsappTemplatesPage() {
   const previewPairs = useMemo(() => {
     const m = {} as Record<WhatsAppTemplateKey, BilingualTemplateParts>
     for (const k of WHATSAPP_TEMPLATE_KEYS) {
+      const vars = whatsAppTemplatePreviewVars(k)
       const { he, en } = splitBilingualTemplate(drafts[k] || '')
       m[k] = {
-        he: interpolateWhatsAppTemplate(he, PREVIEW_SAMPLE),
-        en: en ? interpolateWhatsAppTemplate(en, PREVIEW_SAMPLE) : '',
+        he: interpolateWhatsAppTemplate(he, vars),
+        en: en ? interpolateWhatsAppTemplate(en, vars) : '',
       }
     }
     return m
@@ -365,6 +359,8 @@ export default function WhatsappTemplatesPage() {
           בתבניות WhatsApp: עברית ואנגלית בשדות נפרדים — בוואטסאפ נשלחות כהודעה אחת (עברית ואז אנגלית).
           תבניות ישנות מהמסד שלא ברשימה הסטנדרטית מוצגות בסוף העמוד.
         </p>
+
+        {!loading ? <ResidentWhatsAppFlowGuide /> : null}
 
         {loading ? (
           <div style={{ padding: 48, display: 'flex', justifyContent: 'center', flexDirection: 'column', gap: 20 }}>
@@ -511,6 +507,12 @@ export default function WhatsappTemplatesPage() {
                               <span style={styles.chipsLabel}>הוספת משתנה (לשדה בפוקוס):</span>
                               {WHATSAPP_TEMPLATE_VAR_NAMES.map((v) => chip(`{{${v}}}`, key))}
                             </div>
+                            {key === 'resident_prompt' ? (
+                              <p style={styles.varHint}>
+                                {'{{reporter_name}}'} מתמלא אוטומטית: &quot;שלום יוני, &quot; לדייר מוכר, או &quot;שלום, &quot; בלי שם.
+                                התצוגה המקדימה למעלה משקפת את זה.
+                              </p>
+                            ) : null}
                             <div style={styles.bilingualBlock}>
                               <label style={styles.langLabel}>עברית</label>
                               <textarea
@@ -707,4 +709,13 @@ const styles: Record<string, CSSProperties> = {
   bilingualBlock: { display: 'flex', flexDirection: 'column', gap: 6 },
   langLabel: { fontSize: 13, fontWeight: 700, color: theme.colors.textPrimary, textAlign: 'right' },
   langLabelEn: { fontSize: 13, fontWeight: 700, color: theme.colors.textSecondary, textAlign: 'left' },
+  varHint: {
+    fontSize: 12,
+    lineHeight: 1.45,
+    margin: 0,
+    padding: '8px 10px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.infoMuted,
+    color: theme.colors.textSecondary,
+  },
 }
