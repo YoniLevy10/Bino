@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
 
     const portalUrl = getWorkerPortalUrl(token)
-    const smsMessage = `שלום ${worker.full_name}, האזור האישי שלך לתקלות: ${portalUrl} — ${clientName}`
+    const smsMessage = `שלום ${worker.full_name}, האזור האישי: ${portalUrl}. לאחר הפתיחה הוסיפו למסך הבית. ${clientName}`
 
     const sent = await sendWorkerSMS(phone, smsMessage, smsSenderName, clientId)
     if (!sent) {

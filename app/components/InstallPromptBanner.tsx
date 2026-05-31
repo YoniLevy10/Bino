@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -8,6 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPromptBanner() {
+  const pathname = usePathname()
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [updatePending, setUpdatePending] = useState(false)
@@ -47,6 +49,7 @@ export function InstallPromptBanner() {
     setDismissed(true)
   }
 
+  if (pathname?.startsWith('/worker')) return null
   if (!prompt || dismissed) return null
 
   return (

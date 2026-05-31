@@ -21,8 +21,13 @@ import {
   MobileBottomNav,
 } from '../components/ui'
 import { PageListSkeleton } from '../components/page-skeleton'
-
-const WORKER_TOKEN_KEY = 'bamakor_worker_token'
+import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
+import {
+  clearWorkerToken,
+  normalizeWorkerToken,
+  readWorkerToken,
+  writeWorkerToken,
+} from '@/lib/worker-portal-storage'
 
 type Worker = { id: string; full_name: string }
 type Ticket = {
@@ -66,12 +71,11 @@ function WorkerPageInner() {
   useEffect(() => {
     void (async () => {
       const fromUrl = searchParams.get('token')?.trim()
-      const fromStore = typeof window !== 'undefined' ? sessionStorage.getItem(WORKER_TOKEN_KEY) : null
-      const raw = fromUrl || fromStore || ''
-      const token = /^[a-f0-9-]{36}$/i.test(raw) ? raw.toLowerCase() : ''
+      const fromStore = readWorkerToken()
+      const token = normalizeWorkerToken(fromUrl) ?? fromStore
 
       if (fromUrl && token) {
-        sessionStorage.setItem(WORKER_TOKEN_KEY, token)
+        writeWorkerToken(token)
         window.history.replaceState(null, '', '/worker')
       }
 
@@ -84,21 +88,22 @@ function WorkerPageInner() {
       try {
         const res = await fetchWithTimeout(`/api/worker-auth?token=${encodeURIComponent(token)}`)
         if (!res.ok) {
-          sessionStorage.removeItem(WORKER_TOKEN_KEY)
+          clearWorkerToken()
           setTokenSession(null)
           setTokenChecked(true)
           return
         }
         const data = (await res.json()) as { worker_id?: string; client_id?: string; full_name?: string }
         if (!data.worker_id || !data.client_id) {
-          sessionStorage.removeItem(WORKER_TOKEN_KEY)
+          clearWorkerToken()
           setTokenSession(null)
           setTokenChecked(true)
           return
         }
+        writeWorkerToken(token)
         setTokenSession({ token, workerId: data.worker_id, clientId: data.client_id, fullName: data.full_name || '' })
       } catch {
-        sessionStorage.removeItem(WORKER_TOKEN_KEY)
+        clearWorkerToken()
         setTokenSession(null)
       } finally {
         setTokenChecked(true)
@@ -351,11 +356,10 @@ function WorkerPageInner() {
             ))}
           </div>
         )}
+        <WorkerInstallPrompt workerName={selectedName || undefined} />
       </div>
     )
   }
-
-  // Admin dashboard view: uses AppShell like all other admin pages
   if (!tokenChecked || !sessionResolved) {
     return <PageListSkeleton />
   }
@@ -440,7 +444,7 @@ function WorkerPageInner() {
 const standaloneShell: CSSProperties = {
   minHeight: '100vh',
   background: theme.colors.background,
-  padding: '24px 16px calc(32px + env(safe-area-inset-bottom, 0px))',
+  padding: '24px 16px calc(100px + env(safe-area-inset-bottom, 0px))',
   paddingTop: 'calc(24px + env(safe-area-inset-top, 0px))',
   boxSizing: 'border-box',
 }
