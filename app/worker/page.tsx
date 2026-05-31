@@ -32,7 +32,7 @@ import {
   readWorkerToken,
   writeWorkerToken,
 } from '@/lib/worker-portal-storage'
-import { readWorkerTicketsCache, writeWorkerTicketsCache } from '@/lib/worker-offline-cache'
+import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker-offline-cache'
 import { isTicketInTreatment, WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
 import { readWorkerDarkMode, workerDarkColors, writeWorkerDarkMode } from '@/lib/worker-theme'
 
@@ -61,22 +61,24 @@ type ChatMessage = { id: string; sender_name: string; body: string; created_at: 
 type TokenSession = { token: string; workerId: string; clientId: string; fullName: string }
 
 function normalizeApiTickets(raw: ApiTicketRow[]): Ticket[] {
-  return raw.map((t) => {
-    const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects
-    return {
-      id: t.id,
-      ticket_number: t.ticket_number,
-      description: t.description,
-      status: t.status,
-      created_at: t.created_at,
-      priority: t.priority ?? null,
-      reporter_phone: t.reporter_phone ?? null,
-      reporter_name: t.reporter_name ?? null,
-      building_number: t.building_number ?? null,
-      project_name: proj?.name || null,
-      project_address: proj?.address || null,
-    }
-  })
+  return filterOpenWorkerTickets(
+    raw.map((t) => {
+      const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects
+      return {
+        id: t.id,
+        ticket_number: t.ticket_number,
+        description: t.description,
+        status: t.status,
+        created_at: t.created_at,
+        priority: t.priority ?? null,
+        reporter_phone: t.reporter_phone ?? null,
+        reporter_name: t.reporter_name ?? null,
+        building_number: t.building_number ?? null,
+        project_name: proj?.name || null,
+        project_address: proj?.address || null,
+      }
+    })
+  )
 }
 
 function filterWorkerTickets(list: Ticket[], filter: WorkerTicketFilter): Ticket[] {
@@ -214,7 +216,7 @@ function WorkerPageInner() {
         .eq('client_id', clientId).eq('assigned_worker_id', wid)
         .is('deleted_at', null).neq('status', 'CLOSED').order('created_at', { ascending: false })
       if (error) throw error
-      setTickets((data as Ticket[]) || [])
+      setTickets(filterOpenWorkerTickets((data as Ticket[]) || []))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינת תקלות נכשלה')
     } finally { setLoadingTickets(false) }
@@ -296,10 +298,34 @@ function WorkerPageInner() {
     return workers.find((w) => w.id === workerId)?.full_name || ''
   }, [workers, workerId, tokenSession])
 
+  const openTickets = useMemo(() => filterOpenWorkerTickets(tickets), [tickets])
+
   const filteredTickets = useMemo(
-    () => filterWorkerTickets(tickets, ticketFilter),
-    [tickets, ticketFilter]
+    () => filterWorkerTickets(openTickets, ticketFilter),
+    [openTickets, ticketFilter]
   )
+
+  function removeClosedTicketFromView(ticketId: string) {
+    setTickets((prev) => {
+      const next = prev.filter((t) => t.id !== ticketId)
+      writeWorkerTicketsCache(next)
+      return next
+    })
+    setActiveTicketId((current) => (current === ticketId ? null : current))
+    setExpandedChatId((current) => (current === ticketId ? null : current))
+    setTranslations((prev) => {
+      if (!(ticketId in prev)) return prev
+      const next = { ...prev }
+      delete next[ticketId]
+      return next
+    })
+    setAttachmentsByTicket((prev) => {
+      if (!(ticketId in prev)) return prev
+      const next = { ...prev }
+      delete next[ticketId]
+      return next
+    })
+  }
 
   function toggleDarkMode() {
     const next = !darkMode
@@ -456,6 +482,9 @@ function WorkerPageInner() {
         })
         const json = (await res.json().catch(() => ({}))) as { error?: string; details?: unknown }
         if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
+        if (status === 'CLOSED') {
+          removeClosedTicketFromView(ticketId)
+        }
         toast.success(status === 'CLOSED' ? TM.ticketClosed : TM.ticketUpdated)
         await loadTicketsToken(tokenSession.token)
       } catch (e) {
@@ -473,6 +502,9 @@ function WorkerPageInner() {
       const { error } = await supabase.from('tickets').update(payload)
         .eq('id', ticketId).eq('client_id', clientId).is('deleted_at', null)
       if (error) throw error
+      if (status === 'CLOSED') {
+        removeClosedTicketFromView(ticketId)
+      }
       toast.success(status === 'CLOSED' ? TM.ticketClosed : TM.ticketUpdated)
       await loadTicketsDashboard(workerId)
     } catch (e) {
@@ -515,14 +547,14 @@ function WorkerPageInner() {
         <WorkerPushOnboarding
           token={tokenSession.token}
           colors={palette}
-          openTicketCount={tickets.length}
+          openTicketCount={openTickets.length}
           onEnabled={() => setPushEnabled(true)}
         />
 
         <WorkerPortalToolbar
           colors={palette}
           filter={ticketFilter}
-          ticketCount={tickets.length}
+          ticketCount={openTickets.length}
           filteredCount={filteredTickets.length}
           refreshing={refreshing}
           usingCache={usingCache}
@@ -541,7 +573,7 @@ function WorkerPageInner() {
             <div style={styles.emptyState}>
               <div style={{ ...styles.emptyIcon, background: palette.successMuted, color: palette.success }}>✓</div>
               <p style={{ ...styles.emptyText, color: palette.textMuted }}>
-                {tickets.length === 0 ? 'הכל מטופל' : 'אין תקלות בסינון זה'}
+                {openTickets.length === 0 ? 'הכל מטופל' : 'אין תקלות בסינון זה'}
               </p>
             </div>
           ) : (
@@ -694,11 +726,11 @@ function WorkerPageInner() {
                 <div style={styles.pad}>
                   {loadingTickets ? (
                     <div style={styles.center}><LoadingSpinner /></div>
-                  ) : tickets.length === 0 ? (
+                  ) : openTickets.length === 0 ? (
                     <p style={styles.muted}>אין תקלות פתוחות משויכות.</p>
                   ) : (
                     <div style={styles.ticketList}>
-                      {tickets.map((t) => (
+                      {openTickets.map((t) => (
                         <div key={t.id} style={styles.ticket}>
                           <div style={styles.ticketHead}>
                             <span style={styles.tn}>#{t.ticket_number}</span>

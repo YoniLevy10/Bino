@@ -6,6 +6,15 @@ export type CachedWorkerTickets = {
   tickets: unknown[]
 }
 
+function isOpenWorkerTicket(row: unknown): boolean {
+  const status = (row as { status?: string | null } | null)?.status
+  return status !== 'CLOSED'
+}
+
+export function filterOpenWorkerTickets<T extends { status: string }>(tickets: T[]): T[] {
+  return tickets.filter((t) => t.status !== 'CLOSED')
+}
+
 export function readWorkerTicketsCache(): CachedWorkerTickets | null {
   if (typeof window === 'undefined') return null
   try {
@@ -13,7 +22,10 @@ export function readWorkerTicketsCache(): CachedWorkerTickets | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as CachedWorkerTickets
     if (!parsed?.fetchedAt || !Array.isArray(parsed.tickets)) return null
-    return parsed
+    return {
+      ...parsed,
+      tickets: parsed.tickets.filter(isOpenWorkerTicket),
+    }
   } catch {
     return null
   }
@@ -22,7 +34,8 @@ export function readWorkerTicketsCache(): CachedWorkerTickets | null {
 export function writeWorkerTicketsCache(tickets: unknown[]): void {
   if (typeof window === 'undefined') return
   try {
-    const payload: CachedWorkerTickets = { fetchedAt: new Date().toISOString(), tickets }
+    const openTickets = tickets.filter(isOpenWorkerTicket)
+    const payload: CachedWorkerTickets = { fetchedAt: new Date().toISOString(), tickets: openTickets }
     localStorage.setItem(WORKER_TICKETS_CACHE_KEY, JSON.stringify(payload))
   } catch {
     /* quota / private mode */
