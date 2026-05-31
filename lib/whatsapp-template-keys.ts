@@ -129,17 +129,24 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
   },
   {
     step: 5,
-    title: 'קבצים מצורפים',
-    description: 'תמונות ומיקומים שהדייר שולח לפני/אחרי פתיחת תקלה',
-    keys: ['image_stashed', 'image_attached', 'image_failed', 'location_stashed', 'location_attached', 'location_error'],
+    title: 'תמונות (לפני/אחרי תקלה)',
+    description: 'תמונה לפני פתיחת תקלה נשמרת זמנית; אחרי תיאור טקסט — צורפת לתקלה',
+    keys: ['image_stashed', 'image_attached', 'image_failed'],
   },
   {
     step: 6,
     title: 'שגיאות והודעות לא נתמכות',
-    description: 'מקרי קצה: שגיאות טכניות וסוגי הודעות שהמערכת לא מטפלת בהם',
+    description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, וידאו/מסמך',
     keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message'],
   },
 ]
+
+/** לא בשימוש ב-webhook (מיקום מפנה ל-redirect_to_text) — נשאר לעריכה/תאימות עתידית */
+export const WHATSAPP_ARCHIVED_TEMPLATE_KEYS = [
+  'location_attached',
+  'location_stashed',
+  'location_error',
+] as const satisfies readonly WhatsAppTemplateKey[]
 
 /** הסבר קצר "מתי נשלח?" לכל תבנית */
 export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = {
@@ -160,9 +167,9 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   image_stashed:           'דייר שלח תמונה לפני שפתח תקלה — מבקשים תיאור טקסט',
   image_attached:          'תמונה צורפה בהצלחה לתקלה פתוחה',
   image_failed:            'שגיאה בהורדה/העלאה של התמונה',
-  location_stashed:        'דייר שלח מיקום לפני שפתח תקלה — מבקשים תיאור טקסט',
-  location_attached:       'מיקום צורף בהצלחה לתקלה פתוחה',
-  location_error:          'שגיאה בקריאת נתוני המיקום שנשלח',
+  location_stashed:        'לא בשימוש — מיקום לפני תקלה (הזרימה שולחת redirect_to_text)',
+  location_attached:       'לא בשימוש — מיקום בזמן תקלה פתוחה (הזרימה שולחת redirect_to_text)',
+  location_error:          'לא בשימוש — שגיאת מיקום (הזרימה שולחת redirect_to_text)',
   technical_error:         'שגיאה טכנית בלתי צפויה (DB, WA API, timeout וכו\')',
   error_general:           'שגיאות SLA או שגיאות אחרות שלא מטופלות אחרת',
   redirect_to_text:        'דייר שלח סטיקר / הודעה קולית / איש קשר — מכווינים לטקסט',
