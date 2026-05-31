@@ -131,6 +131,7 @@ export default function DashboardPage() {
   const [ticketLogs, setTicketLogs] = useState<TicketLog[]>([])
   const [drawerLoading, setDrawerLoading] = useState(false)
   const [savingTicket, setSavingTicket] = useState(false)
+  const [closingTicketId, setClosingTicketId] = useState<string | null>(null)
   const [draftDescription, setDraftDescription] = useState('')
   const [draftStatus, setDraftStatus] = useState('NEW')
   const [draftWorkerId, setDraftWorkerId] = useState('')
@@ -533,24 +534,29 @@ export default function DashboardPage() {
     setSavingTicket(false)
   }
 
+  async function performCloseTicket(ticketId: string) {
+    const response = await fetchWithTimeout('/api/close-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket_id: ticketId }),
+    })
+    const closeBody = (await response.json().catch(() => ({}))) as ReporterClosedNotifyApiBody & {
+      error?: string
+    }
+    if (!response.ok) {
+      throw new Error(closeBody.error || TM.genericSaveError)
+    }
+    toast.success(TM.ticketClosed)
+    toastReporterClosedNotifySummary(closeBody)
+    return closeBody
+  }
+
   async function handleCloseTicket() {
     if (!selectedTicket) return
     setSavingTicket(true)
     await asyncHandler(
       async () => {
-        const response = await fetchWithTimeout('/api/close-ticket', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ticket_id: selectedTicket.id }),
-        })
-        const closeBody = (await response.json().catch(() => ({}))) as ReporterClosedNotifyApiBody & {
-          error?: string
-        }
-        if (!response.ok) {
-          throw new Error(closeBody.error || TM.genericSaveError)
-        }
-        toast.success(TM.ticketClosed)
-        toastReporterClosedNotifySummary(closeBody)
+        await performCloseTicket(selectedTicket.id)
         await loadData()
         closeDrawer()
         return true
@@ -558,6 +564,22 @@ export default function DashboardPage() {
       { context: 'סגירת התקלה', showErrorToast: true }
     )
     setSavingTicket(false)
+  }
+
+  async function quickCloseTicket(ticket: TicketRow, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (ticket.status === 'CLOSED' || closingTicketId) return
+    setClosingTicketId(ticket.id)
+    await asyncHandler(
+      async () => {
+        await performCloseTicket(ticket.id)
+        if (selectedTicket?.id === ticket.id) closeDrawer()
+        await loadData()
+        return true
+      },
+      { context: 'סגירת התקלה', showErrorToast: true }
+    )
+    setClosingTicketId(null)
   }
 
   async function handleCreateTicket(e: React.FormEvent) {
@@ -756,6 +778,7 @@ export default function DashboardPage() {
                       <th style={styles.th}>סטטוס</th>
                       <th style={styles.th}>משויך</th>
                       <th style={styles.th}>גיל</th>
+                      <th style={styles.th}>סגירה</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -775,6 +798,21 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td style={styles.td}><span style={styles.ageText}>{formatRelativeTime(ticket.created_at)}</span></td>
+                        <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+                          {ticket.status !== 'CLOSED' ? (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              loading={closingTicketId === ticket.id}
+                              disabled={!!closingTicketId && closingTicketId !== ticket.id}
+                              onClick={(e) => void quickCloseTicket(ticket, e)}
+                            >
+                              סגור
+                            </Button>
+                          ) : (
+                            <span style={styles.ageText}>—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

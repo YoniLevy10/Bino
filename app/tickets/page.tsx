@@ -178,6 +178,7 @@ export default function TicketsPage() {
   const [draftStatus, setDraftStatus] = useState<string>('')
   const [draftWorkerId, setDraftWorkerId] = useState<string>('')
   const [savingTicket, setSavingTicket] = useState(false)
+  const [closingTicketId, setClosingTicketId] = useState<string | null>(null)
   const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<AttachmentRow[]>([])
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [loadingAttachments, setLoadingAttachments] = useState(false)
@@ -663,6 +664,50 @@ export default function TicketsPage() {
     setSavingTicket(false)
   }
 
+  async function performCloseTicket(ticketId: string) {
+    const response = await fetchWithTimeout('/api/close-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket_id: ticketId }),
+    })
+    const closeBody = (await response.json().catch(() => ({}))) as ReporterClosedNotifyApiBody & {
+      error?: string
+    }
+    if (!response.ok) {
+      throw new Error(closeBody.error || TM.genericSaveError)
+    }
+    toast.success(TM.ticketClosed)
+    toastReporterClosedNotifySummary(closeBody)
+    return closeBody
+  }
+
+  async function handleCloseTicket() {
+    if (!selectedTicket) return
+    setSavingTicket(true)
+    try {
+      await performCloseTicket(selectedTicket.id)
+      await fetchData()
+      closeDrawer()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : TM.genericSaveError)
+    }
+    setSavingTicket(false)
+  }
+
+  async function quickCloseTicket(ticket: TicketRow, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (ticket.status === 'CLOSED' || closingTicketId) return
+    setClosingTicketId(ticket.id)
+    try {
+      await performCloseTicket(ticket.id)
+      if (selectedTicket?.id === ticket.id) closeDrawer()
+      await fetchData()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : TM.genericSaveError)
+    }
+    setClosingTicketId(null)
+  }
+
   async function handleCreateTicket(e: React.FormEvent) {
     e.preventDefault()
     if (!addTicketForm.project_code) {
@@ -929,6 +974,7 @@ export default function TicketsPage() {
                     <th style={styles.th}>סטטוס</th>
                     <th style={styles.th}>משויך</th>
                     <th style={styles.th}>גיל</th>
+                    <th style={styles.th}>סגירה</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -960,6 +1006,21 @@ export default function TicketsPage() {
                       </td>
                       <td style={styles.td}>
                         <span style={styles.ageText}>{getTicketAge(ticket.created_at)}</span>
+                      </td>
+                      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+                        {ticket.status !== 'CLOSED' ? (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            loading={closingTicketId === ticket.id}
+                            disabled={!!closingTicketId && closingTicketId !== ticket.id}
+                            onClick={(e) => void quickCloseTicket(ticket, e)}
+                          >
+                            סגור
+                          </Button>
+                        ) : (
+                          <span style={styles.ageText}>—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1156,6 +1217,11 @@ export default function TicketsPage() {
               <Button variant="secondary" onClick={closeDrawer}>
                 ביטול
               </Button>
+              {selectedTicket.status !== 'CLOSED' && (
+                <Button variant="danger" onClick={() => void handleCloseTicket()} loading={savingTicket}>
+                  סגירת תקלה
+                </Button>
+              )}
               <Button variant="primary" onClick={saveTicketChanges} loading={savingTicket}>
                 שמירה
               </Button>
