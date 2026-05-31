@@ -1,5 +1,5 @@
-/* Bamakor PWA — v3: network-first HTML, cache-first static, offline fallback, update notifications */
-const CACHE_VERSION = 'bamakor-v3'
+/* Bamakor PWA — v4: push + app badge for worker assignments */
+const CACHE_VERSION = 'bamakor-v4'
 const STATIC_CACHE = `bamakor-static-${CACHE_VERSION}`
 const HTML_CACHE = `bamakor-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png']
@@ -103,9 +103,11 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let title = 'במקור'
+  let title = 'במקור — אזור עובד'
   let body = ''
-  let url = '/'
+  let url = '/worker'
+  let badge = 1
+  let tag = 'worker-assign'
   try {
     const text = event.data?.text()
     if (text) {
@@ -113,31 +115,61 @@ self.addEventListener('push', (event) => {
       title = j.title || title
       body = j.body || ''
       url = j.url || url
+      if (typeof j.badge === 'number' && j.badge > 0) badge = j.badge
+      if (j.tag) tag = String(j.tag)
     }
   } catch {
     /* ignore */
   }
+
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      data: { url },
-      icon: '/apple-icon.png',
-      badge: '/apple-icon.png',
-      lang: 'he',
-      dir: 'rtl',
-    })
+    (async () => {
+      try {
+        if (self.registration.setAppBadge) {
+          await self.registration.setAppBadge(badge)
+        } else if (typeof navigator !== 'undefined' && navigator.setAppBadge) {
+          await navigator.setAppBadge(badge)
+        }
+      } catch {
+        /* badge API not supported on this device */
+      }
+
+      await self.registration.showNotification(title, {
+        body,
+        data: { url, badge },
+        tag,
+        renotify: true,
+        icon: '/apple-icon.png',
+        badge: '/apple-icon.png',
+        lang: 'he',
+        dir: 'rtl',
+        vibrate: [200, 100, 200],
+      })
+    })()
   )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = event.notification?.data?.url || '/'
+  const target = event.notification?.data?.url || '/worker'
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const c of clientList) {
-        if (c.url && 'focus' in c) return c.focus()
+    (async () => {
+      try {
+        if (self.registration.clearAppBadge) {
+          await self.registration.clearAppBadge()
+        }
+      } catch {
+        /* ignore */
       }
-      if (self.clients.openWindow) return self.clients.openWindow(target)
-    })
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const c of clientList) {
+        if (c.url && c.url.includes('/worker') && 'focus' in c) {
+          await c.focus()
+          c.postMessage({ type: 'WORKER_PUSH_OPEN' })
+          return
+        }
+      }
+      if (self.clients.openWindow) await self.clients.openWindow(target)
+    })()
   )
 })

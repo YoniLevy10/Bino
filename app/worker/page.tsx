@@ -22,12 +22,19 @@ import {
 } from '../components/ui'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
+import { WorkerTicketCard, type WorkerAttachment } from '../components/worker/WorkerTicketCard'
+import { WorkerPortalToolbar, type WorkerTicketFilter } from '../components/worker/WorkerPortalToolbar'
+import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
+import { clearWorkerAppBadge, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
   clearWorkerToken,
   normalizeWorkerToken,
   readWorkerToken,
   writeWorkerToken,
 } from '@/lib/worker-portal-storage'
+import { readWorkerTicketsCache, writeWorkerTicketsCache } from '@/lib/worker-offline-cache'
+import { isTicketInTreatment } from '@/lib/ticket-status'
+import { readWorkerDarkMode, workerDarkColors, writeWorkerDarkMode } from '@/lib/worker-theme'
 
 type Worker = { id: string; full_name: string }
 type Ticket = {
@@ -36,10 +43,47 @@ type Ticket = {
   description: string | null
   status: string
   created_at: string
+  priority?: string | null
+  reporter_phone?: string | null
+  reporter_name?: string | null
+  building_number?: string | null
   project_name?: string | null
+  project_address?: string | null
+}
+type ApiTicketRow = Ticket & {
+  projects?: { name?: string | null; address?: string | null; address_en?: string | null } | Array<{
+    name?: string | null
+    address?: string | null
+    address_en?: string | null
+  }> | null
 }
 type ChatMessage = { id: string; sender_name: string; body: string; created_at: string }
 type TokenSession = { token: string; workerId: string; clientId: string; fullName: string }
+
+function normalizeApiTickets(raw: ApiTicketRow[]): Ticket[] {
+  return raw.map((t) => {
+    const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects
+    return {
+      id: t.id,
+      ticket_number: t.ticket_number,
+      description: t.description,
+      status: t.status,
+      created_at: t.created_at,
+      priority: t.priority ?? null,
+      reporter_phone: t.reporter_phone ?? null,
+      reporter_name: t.reporter_name ?? null,
+      building_number: t.building_number ?? null,
+      project_name: proj?.name || null,
+      project_address: proj?.address || null,
+    }
+  })
+}
+
+function filterWorkerTickets(list: Ticket[], filter: WorkerTicketFilter): Ticket[] {
+  if (filter === 'ALL') return list
+  if (filter === 'NEW') return list.filter((t) => t.status === 'NEW' || t.status === 'ASSIGNED')
+  return list.filter((t) => isTicketInTreatment(t.status))
+}
 
 function WorkerPageInner() {
   const searchParams = useSearchParams()
@@ -60,6 +104,24 @@ function WorkerPageInner() {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatBody, setChatBody] = useState('')
   const [chatSending, setChatSending] = useState(false)
+  const [translations, setTranslations] = useState<Record<string, string>>({})
+  const [translatingId, setTranslatingId] = useState<string | null>(null)
+  const [ticketFilter, setTicketFilter] = useState<WorkerTicketFilter>('ALL')
+  const [refreshing, setRefreshing] = useState(false)
+  const [usingCache, setUsingCache] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
+  const [activeTicketId, setActiveTicketId] = useState<string | null>(null)
+  const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
+  const [attachmentsByTicket, setAttachmentsByTicket] = useState<Record<string, WorkerAttachment[]>>({})
+  const [attachmentsLoadingId, setAttachmentsLoadingId] = useState<string | null>(null)
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null)
+  const [pushEnabling, setPushEnabling] = useState(false)
+
+  const palette = darkMode ? workerDarkColors : theme.colors
+
+  useEffect(() => {
+    setDarkMode(readWorkerDarkMode())
+  }, [])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -149,20 +211,69 @@ function WorkerPageInner() {
     } finally { setLoadingTickets(false) }
   }, [clientId])
 
-  const loadTicketsToken = useCallback(async (token: string) => {
-    setLoadingTickets(true)
+  const loadTicketsToken = useCallback(async (token: string, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoadingTickets(true)
+    else setRefreshing(true)
     try {
       const res = await fetchWithTimeout(`/api/worker/tickets?token=${encodeURIComponent(token)}`)
-      if (!res.ok) { setTickets([]); return }
-      const data = (await res.json()) as { tickets?: (Ticket & { projects?: { name?: string | null } | { name?: string | null }[] | null })[] }
-      const normalized = (data.tickets || []).map((t) => {
-        const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects
-        return { ...t, project_name: proj?.name || null }
-      })
+      if (!res.ok) {
+        const cached = readWorkerTicketsCache()
+        if (cached?.tickets?.length) {
+          setTickets(normalizeApiTickets(cached.tickets as ApiTicketRow[]))
+          setUsingCache(true)
+        } else {
+          setTickets([])
+        }
+        return
+      }
+      const data = (await res.json()) as { tickets?: ApiTicketRow[] }
+      const normalized = normalizeApiTickets(data.tickets || [])
       setTickets(normalized)
-    } catch { setTickets([]) }
-    finally { setLoadingTickets(false) }
+      writeWorkerTicketsCache(normalized)
+      setUsingCache(false)
+    } catch {
+      const cached = readWorkerTicketsCache()
+      if (cached?.tickets?.length) {
+        setTickets(normalizeApiTickets(cached.tickets as ApiTicketRow[]))
+        setUsingCache(true)
+      } else {
+        setTickets([])
+      }
+    } finally {
+      if (!opts?.silent) setLoadingTickets(false)
+      else setRefreshing(false)
+    }
   }, [])
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (tokenSession) void loadTicketsToken(tokenSession.token, { silent: true })
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [tokenSession, loadTicketsToken])
+
+  const loadAttachments = useCallback(async (token: string, ticketId: string) => {
+    setAttachmentsLoadingId(ticketId)
+    try {
+      const res = await fetchWithTimeout(
+        `/api/worker/attachments?token=${encodeURIComponent(token)}&ticket_id=${encodeURIComponent(ticketId)}`
+      )
+      if (!res.ok) return
+      const data = (await res.json()) as { attachments?: WorkerAttachment[] }
+      setAttachmentsByTicket((prev) => ({ ...prev, [ticketId]: data.attachments || [] }))
+    } catch {
+      /* ignore */
+    } finally {
+      setAttachmentsLoadingId(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!tokenSession || !activeTicketId) return
+    if (attachmentsByTicket[activeTicketId]) return
+    void loadAttachments(tokenSession.token, activeTicketId)
+  }, [tokenSession, activeTicketId, attachmentsByTicket, loadAttachments])
 
   useEffect(() => { void loadWorkers() }, [loadWorkers])
 
@@ -176,7 +287,86 @@ function WorkerPageInner() {
     return workers.find((w) => w.id === workerId)?.full_name || ''
   }, [workers, workerId, tokenSession])
 
+  const filteredTickets = useMemo(
+    () => filterWorkerTickets(tickets, ticketFilter),
+    [tickets, ticketFilter]
+  )
+
+  function toggleDarkMode() {
+    const next = !darkMode
+    setDarkMode(next)
+    writeWorkerDarkMode(next)
+  }
+
+  function activateTicket(ticketId: string) {
+    setActiveTicketId(ticketId)
+    if (expandedChatId && expandedChatId !== ticketId) setExpandedChatId(null)
+  }
+
+  async function uploadWorkerPhoto(ticketId: string, file: File) {
+    if (!tokenSession) return
+    setUploadingPhotoId(ticketId)
+    try {
+      const formData = new FormData()
+      formData.append('token', tokenSession.token)
+      formData.append('ticket_id', ticketId)
+      formData.append('file', file)
+      const res = await fetchWithTimeout('/api/worker/attachments', { method: 'POST', body: formData })
+      const json = (await res.json()) as { error?: string; attachment?: WorkerAttachment }
+      if (!res.ok) throw new Error(json.error || 'העלאה נכשלה')
+      if (json.attachment) {
+        setAttachmentsByTicket((prev) => ({
+          ...prev,
+          [ticketId]: [json.attachment as WorkerAttachment, ...(prev[ticketId] || [])],
+        }))
+      }
+      toast.success('תמונה הועלתה')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'העלאה נכשלה')
+    } finally {
+      setUploadingPhotoId(null)
+    }
+  }
+
+  async function confirmCloseTicket() {
+    if (!confirmCloseId) return
+    const id = confirmCloseId
+    setConfirmCloseId(null)
+    await setTicketStatus(id, 'CLOSED')
+    setActiveTicketId(null)
+    setExpandedChatId(null)
+  }
+
+  async function enablePush() {
+    if (!tokenSession) return
+    setPushEnabling(true)
+    try {
+      const result = await subscribeWorkerPush(tokenSession.token)
+      if (result.ok) toast.success('התראות שיבוץ הופעלו')
+      else toast.error(result.error || 'הפעלה נכשלה')
+    } finally {
+      setPushEnabling(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!tokenSession || loadingTickets) return
+    void clearWorkerAppBadge()
+  }, [tokenSession, loadingTickets, tickets.length])
+
+  useEffect(() => {
+    if (!tokenSession || !('serviceWorker' in navigator)) return
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'WORKER_PUSH_OPEN') {
+        void loadTicketsToken(tokenSession.token, { silent: true })
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg)
+  }, [tokenSession, loadTicketsToken])
+
   async function openChat(ticketId: string) {
+    activateTicket(ticketId)
     if (expandedChatId === ticketId) { setExpandedChatId(null); return }
     setExpandedChatId(ticketId)
     setChatMessages([])
@@ -210,6 +400,25 @@ function WorkerPageInner() {
       }
     } catch { toast.error('שליחה נכשלה') }
     finally { setChatSending(false) }
+  }
+
+  async function translateTicket(ticketId: string, text: string) {
+    if (!tokenSession || !text.trim()) return
+    setTranslatingId(ticketId)
+    try {
+      const res = await fetchWithTimeout('/api/worker/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenSession.token, text: text.trim() }),
+      })
+      const json = (await res.json()) as { translation?: string; error?: string }
+      if (!res.ok) throw new Error(json.error || 'תרגום נכשל')
+      setTranslations((prev) => ({ ...prev, [ticketId]: json.translation || '' }))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'תרגום נכשל')
+    } finally {
+      setTranslatingId(null)
+    }
   }
 
   async function setTicketStatus(ticketId: string, status: 'IN_PROGRESS' | 'CLOSED') {
@@ -271,91 +480,145 @@ function WorkerPageInner() {
 
   if (tokenSession) {
     return (
-      <div style={standaloneShell} dir="rtl">
-        <div style={styles.standaloneHeader}>
-          <h1 style={styles.standaloneTitle}>שלום, {selectedName || 'עובד'}</h1>
-          <p style={styles.standaloneSub}>האזור האישי שלך — תקלות פתוחות שמשויכות אליך</p>
+      <div style={{ ...standaloneShell, background: palette.background }} dir="rtl">
+        <header style={{ ...styles.standaloneHeader, background: palette.surface, borderColor: palette.border }}>
+          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>
+            שלום {selectedName || 'עובד'}
+          </h1>
+        </header>
+
+        <WorkerPushOnboarding token={tokenSession.token} colors={palette} openTicketCount={tickets.length} />
+
+        <WorkerPortalToolbar
+          colors={palette}
+          filter={ticketFilter}
+          ticketCount={tickets.length}
+          filteredCount={filteredTickets.length}
+          refreshing={refreshing}
+          usingCache={usingCache}
+          darkMode={darkMode}
+          onFilterChange={setTicketFilter}
+          onRefresh={() => void loadTicketsToken(tokenSession.token, { silent: true })}
+          onToggleDark={toggleDarkMode}
+          onEnablePush={() => void enablePush()}
+          pushEnabling={pushEnabling}
+        />
+
+        <div style={styles.scrollArea}>
+          {loadingTickets ? (
+            <div style={styles.center}><LoadingSpinner /></div>
+          ) : filteredTickets.length === 0 ? (
+            <div style={styles.emptyState}>
+              <div style={{ ...styles.emptyIcon, background: palette.successMuted, color: palette.success }}>✓</div>
+              <p style={{ ...styles.emptyText, color: palette.textMuted }}>
+                {tickets.length === 0 ? 'הכל מטופל' : 'אין תקלות בסינון זה'}
+              </p>
+            </div>
+          ) : (
+            <div style={styles.tokenTicketList}>
+              {filteredTickets.map((t) => (
+                <WorkerTicketCard
+                  key={t.id}
+                  ticket={t}
+                  colors={palette}
+                  isActive={activeTicketId === t.id}
+                  onActivate={() => activateTicket(t.id)}
+                  busyKey={busyKey}
+                  expandedChat={expandedChatId === t.id}
+                  translation={translations[t.id] ?? null}
+                  translating={translatingId === t.id}
+                  onTranslate={() => void translateTicket(t.id, t.description || '')}
+                  onInProgress={() => void setTicketStatus(t.id, 'IN_PROGRESS')}
+                  onCloseRequest={() => setConfirmCloseId(t.id)}
+                  onToggleChat={() => void openChat(t.id)}
+                  attachments={attachmentsByTicket[t.id]}
+                  attachmentsLoading={attachmentsLoadingId === t.id}
+                  onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
+                  uploadingPhoto={uploadingPhotoId === t.id}
+                  chatSlot={
+                    <>
+                      {chatLoading && expandedChatId === t.id ? (
+                        <div style={styles.chatLoading}><LoadingSpinner /></div>
+                      ) : chatMessages.length === 0 && expandedChatId === t.id ? (
+                        <p style={{ ...styles.chatEmpty, color: palette.textMuted }}>אין הודעות</p>
+                      ) : expandedChatId === t.id ? (
+                        <div style={styles.chatMessages}>
+                          {chatMessages.map((m) => (
+                            <div
+                              key={m.id}
+                              style={
+                                m.sender_name === tokenSession.fullName
+                                  ? { ...styles.chatMine, background: palette.primaryMuted }
+                                  : { ...styles.chatOther, background: palette.muted }
+                              }
+                            >
+                              <div style={{ ...styles.chatSender, color: palette.textMuted }}>{m.sender_name}</div>
+                              <div style={{ ...styles.chatBody, color: palette.textPrimary }}>{m.body}</div>
+                              <div style={{ ...styles.chatTime, color: palette.textMuted }}>
+                                {new Date(m.created_at).toLocaleTimeString('he-IL', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {expandedChatId === t.id ? (
+                        <div style={styles.chatInput}>
+                          <textarea
+                            value={chatBody}
+                            onChange={(e) => setChatBody(e.target.value)}
+                            placeholder="הודעה…"
+                            style={{
+                              ...styles.chatTextarea,
+                              borderColor: palette.border,
+                              background: palette.surface,
+                              color: palette.textPrimary,
+                            }}
+                            rows={2}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                void sendChat(t.id)
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={chatSending}
+                            onClick={() => void sendChat(t.id)}
+                          >
+                            שלח
+                          </Button>
+                        </div>
+                      ) : null}
+                    </>
+                  }
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {loadingTickets ? (
-          <div style={styles.center}><LoadingSpinner /></div>
-        ) : tickets.length === 0 ? (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>✓</div>
-            <p style={styles.emptyText}>אין תקלות פתוחות כרגע</p>
-          </div>
-        ) : (
-          <div style={styles.tokenTicketList}>
-            {tickets.map((t) => (
-              <div key={t.id} style={styles.tokenTicket}>
-                <div style={styles.ticketHead}>
-                  <span style={styles.tn}>#{t.ticket_number}</span>
-                  <StatusBadge status={t.status} size="sm" />
-                </div>
-                {t.project_name && (
-                  <div style={styles.buildingTag}>{t.project_name}</div>
-                )}
-                <p style={styles.desc}>{t.description || '—'}</p>
-                <div style={styles.ticketMeta}>
-                  {new Date(t.created_at).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </div>
-                <div style={styles.actions}>
-                  <Button variant="secondary" size="sm"
-                    disabled={!!busyKey} loading={busyKey === `${t.id}:IN_PROGRESS`}
-                    onClick={() => setTicketStatus(t.id, 'IN_PROGRESS')}>
-                    בטיפול
-                  </Button>
-                  <Button variant="primary" size="sm"
-                    disabled={!!busyKey} loading={busyKey === `${t.id}:CLOSED`}
-                    onClick={() => setTicketStatus(t.id, 'CLOSED')}>
-                    הושלם
-                  </Button>
-                  <Button variant="secondary" size="sm"
-                    onClick={() => void openChat(t.id)}>
-                    {expandedChatId === t.id ? 'סגור צ׳אט' : 'צ׳אט'}
-                  </Button>
-                </div>
-
-                {expandedChatId === t.id && (
-                  <div style={styles.chatBox}>
-                    {chatLoading ? (
-                      <div style={styles.chatLoading}><LoadingSpinner /></div>
-                    ) : chatMessages.length === 0 ? (
-                      <p style={styles.chatEmpty}>אין הודעות עדיין — שלח הודעה ראשונה</p>
-                    ) : (
-                      <div style={styles.chatMessages}>
-                        {chatMessages.map((m) => (
-                          <div key={m.id} style={m.sender_name === tokenSession?.fullName ? styles.chatMine : styles.chatOther}>
-                            <div style={styles.chatSender}>{m.sender_name}</div>
-                            <div style={styles.chatBody}>{m.body}</div>
-                            <div style={styles.chatTime}>
-                              {new Date(m.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div style={styles.chatInput}>
-                      <textarea
-                        value={chatBody}
-                        onChange={(e) => setChatBody(e.target.value)}
-                        placeholder="כתוב הודעה..."
-                        style={styles.chatTextarea}
-                        rows={2}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendChat(t.id) }
-                        }}
-                      />
-                      <Button variant="primary" size="sm" loading={chatSending} onClick={() => void sendChat(t.id)}>
-                        שלח
-                      </Button>
-                    </div>
-                  </div>
-                )}
+        {confirmCloseId ? (
+          <div style={{ ...styles.confirmOverlay, background: palette.overlay }}>
+            <div style={{ ...styles.confirmBox, background: palette.surface, borderColor: palette.border }}>
+              <p style={{ ...styles.confirmText, color: palette.textPrimary }}>לסגור את התקלה?</p>
+              <div style={styles.confirmActions}>
+                <Button variant="secondary" size="sm" onClick={() => setConfirmCloseId(null)}>
+                  ביטול
+                </Button>
+                <Button variant="primary" size="sm" loading={busyKey === `${confirmCloseId}:CLOSED`} onClick={() => void confirmCloseTicket()}>
+                  אישור סיום
+                </Button>
               </div>
-            ))}
+            </div>
           </div>
-        )}
+        ) : null}
+
+        <WorkerPushSync token={tokenSession.token} />
         <WorkerInstallPrompt workerName={selectedName || undefined} />
       </div>
     )
@@ -442,21 +705,38 @@ function WorkerPageInner() {
 }
 
 const standaloneShell: CSSProperties = {
-  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  height: '100dvh',
+  maxHeight: '100dvh',
+  overflow: 'hidden',
   background: theme.colors.background,
-  padding: '24px 16px calc(100px + env(safe-area-inset-bottom, 0px))',
-  paddingTop: 'calc(24px + env(safe-area-inset-top, 0px))',
+  paddingTop: 'env(safe-area-inset-top, 0px)',
   boxSizing: 'border-box',
 }
 
 const styles: Record<string, CSSProperties> = {
   page: { padding: '24px', maxWidth: '800px' },
-  standaloneHeader: { marginBottom: '24px' },
+  standaloneHeader: {
+    flexShrink: 0,
+    padding: '12px 14px 8px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+  },
+  scrollArea: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    padding: '10px 12px calc(88px + env(safe-area-inset-bottom, 0px))',
+  },
   standaloneTitle: {
-    fontSize: '24px', fontWeight: 700, margin: '0 0 6px',
+    fontSize: '18px',
+    fontWeight: 700,
+    margin: '0 0 2px',
     color: theme.colors.textPrimary,
   },
-  standaloneSub: { fontSize: '14px', color: theme.colors.textMuted, margin: 0 },
+  standaloneSub: { fontSize: '12px', color: theme.colors.textMuted, margin: 0 },
   center: { padding: '40px', display: 'flex', justifyContent: 'center' },
   pad: { padding: '16px' },
   select: {
@@ -466,35 +746,18 @@ const styles: Record<string, CSSProperties> = {
   },
   muted: { color: theme.colors.textMuted, fontSize: '14px', margin: 0 },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  ticket: {
-    padding: '14px', borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`, background: theme.colors.surface,
-  },
-  tokenTicket: {
-    padding: '16px', borderRadius: '14px',
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  },
-  ticketHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
-  tn: { fontWeight: 700, color: theme.colors.primary, fontSize: '15px' },
-  desc: { fontSize: '14px', margin: '0 0 8px', lineHeight: 1.5, color: theme.colors.textPrimary },
-  buildingTag: {
-    display: 'inline-block', fontSize: '11px', fontWeight: 600,
-    color: theme.colors.textMuted, background: theme.colors.muted,
-    padding: '2px 8px', borderRadius: '6px', marginBottom: '8px',
-  },
-  ticketMeta: { fontSize: '12px', color: theme.colors.textMuted, marginBottom: '12px' },
-  actions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-  chatBox: {
-    marginTop: '14px', paddingTop: '14px',
-    borderTop: `1px solid ${theme.colors.border}`,
-    display: 'flex', flexDirection: 'column', gap: '10px',
-  },
+  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '8px' },
   chatLoading: { display: 'flex', justifyContent: 'center', padding: '12px' },
   chatEmpty: { fontSize: '13px', color: theme.colors.textMuted, margin: 0, textAlign: 'center' as const },
-  chatMessages: { display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' as const },
+  chatMessages: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    maxHeight: 'min(36vh, 220px)',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    marginBottom: '8px',
+  },
   chatMine: {
     alignSelf: 'flex-end', background: theme.colors.primaryMuted,
     borderRadius: '12px 12px 4px 12px', padding: '8px 12px', maxWidth: '80%',
@@ -514,16 +777,52 @@ const styles: Record<string, CSSProperties> = {
     resize: 'none' as const, fontFamily: 'inherit', lineHeight: 1.4,
   },
   emptyState: {
-    textAlign: 'center', padding: '60px 20px',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+    textAlign: 'center',
+    padding: '40px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
   },
   emptyIcon: {
-    width: '56px', height: '56px', borderRadius: '50%',
-    background: theme.colors.successMuted, color: theme.colors.success,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '24px', fontWeight: 700,
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    background: theme.colors.successMuted,
+    color: theme.colors.success,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    fontWeight: 700,
   },
-  emptyText: { fontSize: '16px', color: theme.colors.textMuted, margin: 0 },
+  emptyText: { fontSize: '14px', color: theme.colors.textMuted, margin: 0 },
+  confirmOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+  },
+  confirmBox: {
+    width: '100%',
+    maxWidth: '320px',
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    padding: '16px',
+  },
+  confirmText: { margin: '0 0 14px', fontSize: '15px', fontWeight: 600, textAlign: 'center' as const },
+  confirmActions: { display: 'flex', gap: '8px', justifyContent: 'center' },
+  ticket: {
+    padding: '14px', borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`, background: theme.colors.surface,
+  },
+  ticketHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
+  tn: { fontWeight: 700, color: theme.colors.primary, fontSize: '15px' },
+  desc: { fontSize: '14px', margin: '0 0 8px', lineHeight: 1.5, color: theme.colors.textPrimary },
+  actions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
 }
 
 export default function WorkerPage() {

@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-
-async function resolveWorkerFromToken(token: string | null) {
-  if (!token) return null
-  const admin = getSupabaseAdmin()
-  const { data, error } = await admin
-    .from('workers')
-    .select('id, client_id, full_name, is_active')
-    .eq('access_token', token)
-    .is('deleted_at', null)
-    .maybeSingle()
-  if (error || !data || !data.is_active) return null
-  return data as { id: string; client_id: string; full_name: string }
-}
+import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,7 +14,9 @@ export async function GET(req: NextRequest) {
     const admin = getSupabaseAdmin()
     const { data: tickets, error } = await admin
       .from('tickets')
-      .select('id, ticket_number, description, status, created_at, projects(name)')
+      .select(
+        'id, ticket_number, description, status, created_at, priority, reporter_phone, reporter_name, building_number, projects(name, address, address_en)'
+      )
       .eq('client_id', worker.client_id)
       .eq('assigned_worker_id', worker.id)
       .is('deleted_at', null)

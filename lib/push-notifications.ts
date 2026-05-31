@@ -10,6 +10,29 @@ function initWebPush() {
   return true
 }
 
+async function sendPushPayload(
+  admin: SupabaseClient | null,
+  table: 'push_subscriptions' | 'worker_push_subscriptions',
+  rows: { subscription: unknown }[],
+  payload: string,
+  onExpired?: (subscription: webpush.PushSubscription) => Promise<void>
+): Promise<void> {
+  await Promise.allSettled(
+    rows.map(async (row) => {
+      const sub = row.subscription
+      if (!sub || typeof sub !== 'object') return
+      try {
+        await webpush.sendNotification(sub as webpush.PushSubscription, payload, { TTL: 86400 })
+      } catch (e) {
+        const status = e && typeof e === 'object' && 'statusCode' in e ? (e as { statusCode?: number }).statusCode : undefined
+        if (status === 404 || status === 410) {
+          await onExpired?.(sub as webpush.PushSubscription)
+        }
+      }
+    })
+  )
+}
+
 /**
  * Notify subscribed dashboard users when a new ticket is opened via POST /api/create-ticket.
  */
@@ -31,16 +54,47 @@ export async function notifyNewTicketPush(
   if (error || !rows?.length) return
 
   const payload = JSON.stringify({ title, body, url: '/tickets' })
+  await sendPushPayload(admin, 'push_subscriptions', rows, payload)
+}
 
-  await Promise.allSettled(
-    rows.map(async (row: { subscription: unknown }) => {
-      const sub = row.subscription
-      if (!sub || typeof sub !== 'object') return
-      try {
-        await webpush.sendNotification(sub as webpush.PushSubscription, payload, { TTL: 3600 })
-      } catch {
-        /* ignore per-device failures */
-      }
-    })
-  )
+/** Notify field worker when a ticket is assigned to them. */
+export async function notifyWorkerAssignedPush(
+  admin: SupabaseClient,
+  workerId: string,
+  clientId: string,
+  ticketNumber: number,
+  description: string | null,
+  ticketId?: string
+): Promise<void> {
+  if (!initWebPush()) return
+
+  const { data: rows, error } = await admin
+    .from('worker_push_subscriptions')
+    .select('subscription')
+    .eq('worker_id', workerId)
+    .eq('client_id', clientId)
+
+  if (error || !rows?.length) return
+
+  const { count: openCount } = await admin
+    .from('tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', clientId)
+    .eq('assigned_worker_id', workerId)
+    .is('deleted_at', null)
+    .neq('status', 'CLOSED')
+
+  const badge = typeof openCount === 'number' && openCount > 0 ? openCount : 1
+  const title = `תקלה #${ticketNumber} שויכה אליך`
+  const body = (description || '').trim().slice(0, 60) || 'תקלה חדשה'
+  const payload = JSON.stringify({
+    title,
+    body,
+    url: '/worker',
+    badge,
+    tag: ticketId ? `worker-assign-${ticketId}` : `worker-assign-${ticketNumber}`,
+  })
+  await sendPushPayload(admin, 'worker_push_subscriptions', rows, payload, async () => {
+    await admin.from('worker_push_subscriptions').delete().eq('worker_id', workerId).eq('client_id', clientId)
+  })
 }

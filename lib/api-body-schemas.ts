@@ -107,6 +107,12 @@ export const pushSubscribeBodySchema = z.object({
   client_id: z.string().uuid().optional(),
 })
 
+/** Worker portal push — authenticated via access token, not Supabase session. */
+export const workerPushSubscribeBodySchema = z.object({
+  token: z.string().uuid(),
+  subscription: pushSubscribeBodySchema.shape.subscription,
+})
+
 export const settingsTestWhatsAppBodySchema = z
   .object({
     to: z.string().min(4).max(40).optional(),

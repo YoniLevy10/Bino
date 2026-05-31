@@ -1,31 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-
-async function resolveWorkerFromToken(token: string | null) {
-  if (!token) return null
-  const admin = getSupabaseAdmin()
-  const { data, error } = await admin
-    .from('workers')
-    .select('id, client_id, full_name, is_active')
-    .eq('access_token', token)
-    .is('deleted_at', null)
-    .maybeSingle()
-  if (error || !data || !data.is_active) return null
-  return data as { id: string; client_id: string; full_name: string }
-}
-
-async function verifyWorkerOwnsTicket(admin: ReturnType<typeof getSupabaseAdmin>, ticketId: string, workerId: string, clientId: string) {
-  const { data } = await admin
-    .from('tickets')
-    .select('id')
-    .eq('id', ticketId)
-    .eq('client_id', clientId)
-    .eq('assigned_worker_id', workerId)
-    .is('deleted_at', null)
-    .maybeSingle()
-  return !!data
-}
+import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-token-auth'
 
 export async function GET(req: NextRequest) {
   try {

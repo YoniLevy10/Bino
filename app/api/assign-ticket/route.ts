@@ -7,6 +7,7 @@ import { getWorkerPortalUrl } from '@/lib/public-app-url'
 import { assignWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
+import { notifyWorkerAssignedPush } from '@/lib/push-notifications'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -194,6 +195,19 @@ export async function POST(req: Request) {
     } else {
       workerSmsSent = null
       workerSmsNote = 'לעובד אין מספר טלפון במערכת — לא נשלח SMS.'
+    }
+
+    try {
+      await notifyWorkerAssignedPush(
+        supabaseAdmin,
+        worker_id,
+        clientId,
+        ticket.ticket_number as number,
+        (ticket.description as string | null) ?? null,
+        ticket_id
+      )
+    } catch {
+      /* non-blocking */
     }
 
     return NextResponse.json({
