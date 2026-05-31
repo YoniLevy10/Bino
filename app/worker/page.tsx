@@ -23,7 +23,8 @@ import {
 import { PageListSkeleton } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import { WorkerTicketCard, type WorkerAttachment } from '../components/worker/WorkerTicketCard'
-import { WorkerPortalToolbar, type WorkerTicketFilter } from '../components/worker/WorkerPortalToolbar'
+import { WorkerPortalToolbar, type WorkerTicketFilter, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
+import { WorkerToursPanel } from '../components/worker/WorkerToursPanel'
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
@@ -109,6 +110,8 @@ function WorkerPageInner() {
   const [translations, setTranslations] = useState<Record<string, string>>({})
   const [translatingId, setTranslatingId] = useState<string | null>(null)
   const [ticketFilter, setTicketFilter] = useState<WorkerTicketFilter>('ALL')
+  const [portalTab, setPortalTab] = useState<WorkerPortalTab>('TICKETS')
+  const [toursRefreshKey, setToursRefreshKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [usingCache, setUsingCache] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
@@ -553,21 +556,35 @@ function WorkerPageInner() {
 
         <WorkerPortalToolbar
           colors={palette}
+          portalTab={portalTab}
           filter={ticketFilter}
           ticketCount={openTickets.length}
           filteredCount={filteredTickets.length}
           refreshing={refreshing}
           usingCache={usingCache}
           darkMode={darkMode}
+          onPortalTabChange={setPortalTab}
           onFilterChange={setTicketFilter}
-          onRefresh={() => void loadTicketsToken(tokenSession.token, { silent: true })}
+          onRefresh={() => {
+            if (portalTab === 'TOURS') {
+              setToursRefreshKey((k) => k + 1)
+              return
+            }
+            void loadTicketsToken(tokenSession.token, { silent: true })
+          }}
           onToggleDark={toggleDarkMode}
           onEnablePush={pushEnabled ? undefined : () => void enablePush()}
           pushEnabling={pushEnabling}
         />
 
         <div style={styles.scrollArea}>
-          {loadingTickets ? (
+          {portalTab === 'TOURS' ? (
+            <WorkerToursPanel
+              token={tokenSession.token}
+              colors={palette}
+              refreshKey={toursRefreshKey}
+            />
+          ) : loadingTickets ? (
             <div style={styles.center}><LoadingSpinner /></div>
           ) : filteredTickets.length === 0 ? (
             <div style={styles.emptyState}>

@@ -606,6 +606,11 @@ async function runWhatsAppInboundBackground(
         WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[templateKey],
         vars
       )
+      logger.info('WEBHOOK', 'WA template send', {
+        requestId,
+        templateKey,
+        to: isWhatsAppTestSender(to) ? '(test)' : `…${to.slice(-4)}`,
+      })
       return sendWhatsAppTextMessage(to, msg, creds, { clientId: webhookClientId })
     }
 
@@ -963,7 +968,9 @@ async function runWhatsAppInboundBackground(
 
       try {
         if (lines.length > 0) {
-          await sendWhatsAppTextMessage(waRecipient, lines.join('\n'), residentWhatsAppCreds, { clientId: webhookClientId })
+          await sendWa(waRecipient, 'ticket_status_list', residentWhatsAppCreds, {
+            list: lines.join('\n'),
+          })
         } else {
           await sendWa(waRecipient, 'no_open_tickets', residentWhatsAppCreds)
         }

@@ -4,6 +4,8 @@ import { verifyCronRequest } from '@/lib/cron-auth'
 import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 import { sendManagerSMS } from '@/lib/sms-send'
 import { getLogger } from '@/lib/logging'
+import { resolveWhatsAppTemplateMessage } from '@/lib/whatsapp-templates'
+import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
 
 /** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
 const MAX_FIRST_ALERTS_PER_RUN = 10
@@ -158,9 +160,17 @@ export async function GET(req: NextRequest) {
         // WhatsApp to resident (plain text, no emoji)
         if (reporterPhone && clientCreds.whatsapp_phone_number_id && clientCreds.whatsapp_access_token) {
           try {
-            const residentMsg =
-              `שלום, הפנייה שלך #${ticketNum} בנושא "${(row.description as string | null)?.slice(0, 60) ?? '-'}" עדיין בטיפול.\n` +
-              `אנחנו מטפלים בה. תודה על הסבלנות.`
+            const descSnippet = ((row.description as string | null) ?? '-').slice(0, 60)
+            const residentMsg = await resolveWhatsAppTemplateMessage(
+              admin,
+              clientId,
+              'sla_escalation_resident',
+              WHATSAPP_TEMPLATE_EDITOR_DEFAULTS.sla_escalation_resident,
+              {
+                ticket_number: String(ticketNum),
+                description: descSnippet,
+              }
+            )
             await sendWhatsAppTextMessage(
               reporterPhone,
               residentMsg,

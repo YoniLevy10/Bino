@@ -129,6 +129,14 @@ export const workerUpdateTicketBodySchema = z.object({
   ]),
 })
 
+/** Worker logs a site tour (no ticket). */
+export const workerLogTourBodySchema = z.object({
+  token: z.string().uuid(),
+  project_id: z.string().uuid(),
+  completed_at: z.string().datetime({ offset: true }).optional(),
+  notes: z.string().max(500).optional(),
+})
+
 export const settingsTestWhatsAppBodySchema = z
   .object({
     to: z.string().min(4).max(40).optional(),

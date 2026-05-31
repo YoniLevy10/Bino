@@ -4,21 +4,29 @@ import type { CSSProperties } from 'react'
 import type { theme } from '../ui'
 
 export type WorkerTicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
+export type WorkerPortalTab = 'TICKETS' | 'TOURS'
 
 type WorkerPortalToolbarProps = {
   colors: typeof theme.colors
+  portalTab: WorkerPortalTab
   filter: WorkerTicketFilter
   ticketCount: number
   filteredCount: number
   refreshing: boolean
   usingCache: boolean
   darkMode: boolean
+  onPortalTabChange: (tab: WorkerPortalTab) => void
   onFilterChange: (f: WorkerTicketFilter) => void
   onRefresh: () => void
   onToggleDark: () => void
   onEnablePush?: () => void
   pushEnabling?: boolean
 }
+
+const PORTAL_TABS: { id: WorkerPortalTab; label: string }[] = [
+  { id: 'TICKETS', label: 'תקלות' },
+  { id: 'TOURS', label: 'סיורים' },
+]
 
 const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
   { id: 'ALL', label: 'הכל' },
@@ -28,12 +36,14 @@ const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
 
 export function WorkerPortalToolbar({
   colors,
+  portalTab,
   filter,
   ticketCount,
   filteredCount,
   refreshing,
   usingCache,
   darkMode,
+  onPortalTabChange,
   onFilterChange,
   onRefresh,
   onToggleDark,
@@ -42,11 +52,26 @@ export function WorkerPortalToolbar({
 }: WorkerPortalToolbarProps) {
   return (
     <div style={styles.wrap(colors)}>
+      <div style={styles.portalTabs}>
+        {PORTAL_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            style={portalTab === t.id ? styles.portalTabActive(colors) : styles.portalTab(colors)}
+            onClick={() => onPortalTabChange(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div style={styles.row}>
         <span style={styles.count(colors)}>
-          {filteredCount === ticketCount
-            ? `${ticketCount} תקלות פתוחות`
-            : `${filteredCount} מתוך ${ticketCount}`}
+          {portalTab === 'TOURS'
+            ? 'רישום סיורים בפרויקטים'
+            : filteredCount === ticketCount
+              ? `${ticketCount} תקלות פתוחות`
+              : `${filteredCount} מתוך ${ticketCount}`}
         </span>
         <div style={styles.actions}>
           {onEnablePush ? (
@@ -83,10 +108,11 @@ export function WorkerPortalToolbar({
         </div>
       </div>
 
-      {usingCache ? (
+      {usingCache && portalTab === 'TICKETS' ? (
         <div style={styles.cacheBanner(colors)}>מציג נתונים שמורים — אין חיבור לרשת</div>
       ) : null}
 
+      {portalTab === 'TICKETS' ? (
       <div style={styles.chips}>
         {FILTERS.map((f) => (
           <button
@@ -99,6 +125,7 @@ export function WorkerPortalToolbar({
           </button>
         ))}
       </div>
+      ) : null}
     </div>
   )
 }
@@ -109,6 +136,33 @@ const styles = {
     padding: '8px 14px 6px',
     borderBottom: `1px solid ${c.border}`,
     background: c.surface,
+  }),
+  portalTabs: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '10px',
+  } as CSSProperties,
+  portalTab: (c: typeof theme.colors): CSSProperties => ({
+    flex: 1,
+    padding: '10px 12px',
+    borderRadius: '10px',
+    border: `1.5px solid ${c.border}`,
+    background: c.muted,
+    color: c.textSecondary,
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  }),
+  portalTabActive: (c: typeof theme.colors): CSSProperties => ({
+    flex: 1,
+    padding: '10px 12px',
+    borderRadius: '10px',
+    border: `1.5px solid ${c.primary}`,
+    background: c.primaryMuted,
+    color: c.primary,
+    fontSize: '14px',
+    fontWeight: 700,
+    cursor: 'pointer',
   }),
   row: {
     display: 'flex',

@@ -12,7 +12,6 @@ import {
   WHATSAPP_TEMPLATE_VAR_NAMES,
   WHATSAPP_TEMPLATE_JOURNEY,
   WHATSAPP_TEMPLATE_WHEN_SENT,
-  WHATSAPP_ARCHIVED_TEMPLATE_KEYS,
   SMS_TEMPLATE_KEYS,
   type SmsTemplateKey,
   SMS_TEMPLATE_LABELS,
@@ -21,6 +20,11 @@ import {
   SMS_TEMPLATE_WHEN_SENT,
 } from '@/lib/whatsapp-template-keys'
 import { interpolateWhatsAppTemplate, interpolateSmsTemplate } from '@/lib/whatsapp-templates'
+import {
+  splitBilingualTemplate,
+  joinBilingualTemplate,
+  type BilingualTemplateParts,
+} from '@/lib/whatsapp-bilingual-template'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
 import {
@@ -53,7 +57,17 @@ const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string
   client_name: 'ועד הבית',
 }
 
-const STEP_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#0891b2', '#dc2626']
+const STEP_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#0d9488', '#0891b2', '#dc2626']
+
+function buildWaBilingualFromDrafts(
+  drafts: Record<WhatsAppTemplateKey, string>
+): Record<WhatsAppTemplateKey, BilingualTemplateParts> {
+  const out = {} as Record<WhatsAppTemplateKey, BilingualTemplateParts>
+  for (const k of WHATSAPP_TEMPLATE_KEYS) {
+    out[k] = splitBilingualTemplate(drafts[k] || '')
+  }
+  return out
+}
 
 function insertVarAtCursor(
   el: HTMLTextAreaElement | null,
@@ -81,6 +95,9 @@ export default function WhatsappTemplatesPage() {
   const [drafts, setDrafts] = useState<Record<WhatsAppTemplateKey, string>>(() => ({
     ...WHATSAPP_TEMPLATE_EDITOR_DEFAULTS,
   }))
+  const [waBilingual, setWaBilingual] = useState<Record<WhatsAppTemplateKey, BilingualTemplateParts>>(() =>
+    buildWaBilingualFromDrafts(WHATSAPP_TEMPLATE_EDITOR_DEFAULTS)
+  )
   const [smsDrafts, setSmsDrafts] = useState<Record<SmsTemplateKey, string>>(() => ({
     ...SMS_TEMPLATE_EDITOR_DEFAULTS,
   }))
@@ -89,11 +106,20 @@ export default function WhatsappTemplatesPage() {
   const [savingAll, setSavingAll] = useState(false)
   const [expandedKeys, setExpandedKeys] = useState<Set<WhatsAppTemplateKey>>(new Set())
   const [smsExpandedKeys, setSmsExpandedKeys] = useState<Set<SmsTemplateKey>>(new Set())
-  const textareaRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
+  const [extraDrafts, setExtraDrafts] = useState<Record<string, string>>({})
+  const [extraExpandedKeys, setExtraExpandedKeys] = useState<Set<string>>(new Set())
+  const [extraSavingKey, setExtraSavingKey] = useState<string | null>(null)
+  const waHeRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
+  const waEnRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
+  const waFocusRef = useRef<Partial<Record<WhatsAppTemplateKey, 'he' | 'en'>>>({})
   const smsTextareaRefs = useRef<Partial<Record<SmsTemplateKey, HTMLTextAreaElement | null>>>({})
 
-  const setRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
-    textareaRefs.current[key] = el
+  const setWaHeRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
+    waHeRefs.current[key] = el
+  }, [])
+
+  const setWaEnRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
+    waEnRefs.current[key] = el
   }, [])
 
   const setSmsRef = useCallback((key: SmsTemplateKey) => (el: HTMLTextAreaElement | null) => {
@@ -126,13 +152,20 @@ export default function WhatsappTemplatesPage() {
 
         const next = { ...WHATSAPP_TEMPLATE_EDITOR_DEFAULTS }
         const smsNext = { ...SMS_TEMPLATE_EDITOR_DEFAULTS }
+        const extras: Record<string, string> = {}
         for (const row of (data || []) as { template_key: string; template_text: string }[]) {
           const k = row.template_key as WhatsAppTemplateKey
           const sk = row.template_key as SmsTemplateKey
           if (WHATSAPP_TEMPLATE_KEYS.includes(k)) next[k] = row.template_text
           else if ((SMS_TEMPLATE_KEYS as readonly string[]).includes(row.template_key)) smsNext[sk] = row.template_text
+          else if (row.template_key?.trim()) extras[row.template_key] = row.template_text
         }
-        if (!cancelled) { setDrafts(next); setSmsDrafts(smsNext) }
+        if (!cancelled) {
+          setDrafts(next)
+          setWaBilingual(buildWaBilingualFromDrafts(next))
+          setSmsDrafts(smsNext)
+          setExtraDrafts(extras)
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
       } finally {
@@ -177,6 +210,28 @@ export default function WhatsappTemplatesPage() {
     }
   }
 
+  async function saveExtraKey(key: string) {
+    if (!clientId) return
+    setExtraSavingKey(key)
+    try {
+      const { error } = await supabase.from('whatsapp_templates').upsert(
+        {
+          client_id: clientId,
+          template_key: key,
+          template_text: extraDrafts[key] || '',
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'client_id,template_key' }
+      )
+      if (error) throw error
+      toast.success(TM.whatsappTemplatesSaved)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : TM.genericSaveError)
+    } finally {
+      setExtraSavingKey(null)
+    }
+  }
+
   async function saveAll() {
     if (!clientId) return
     setSavingAll(true)
@@ -187,7 +242,12 @@ export default function WhatsappTemplatesPage() {
       const smsRows = SMS_TEMPLATE_KEYS.map((key) => ({
         client_id: clientId, template_key: key, template_text: smsDrafts[key] || '', updated_at: new Date().toISOString(),
       }))
-      const { error } = await supabase.from('whatsapp_templates').upsert([...waRows, ...smsRows], { onConflict: 'client_id,template_key' })
+      const extraRows = Object.keys(extraDrafts).map((key) => ({
+        client_id: clientId, template_key: key, template_text: extraDrafts[key] || '', updated_at: new Date().toISOString(),
+      }))
+      const { error } = await supabase
+        .from('whatsapp_templates')
+        .upsert([...waRows, ...smsRows, ...extraRows], { onConflict: 'client_id,template_key' })
       if (error) throw error
       toast.success('כל התבניות נשמרו בהצלחה')
     } catch (e) {
@@ -197,13 +257,26 @@ export default function WhatsappTemplatesPage() {
     }
   }
 
-  const previews = useMemo(() => {
-    const m: Record<WhatsAppTemplateKey, string> = { ...drafts }
+  const previewPairs = useMemo(() => {
+    const m = {} as Record<WhatsAppTemplateKey, BilingualTemplateParts>
     for (const k of WHATSAPP_TEMPLATE_KEYS) {
-      m[k] = interpolateWhatsAppTemplate(drafts[k] || '', PREVIEW_SAMPLE)
+      const { he, en } = splitBilingualTemplate(drafts[k] || '')
+      m[k] = {
+        he: interpolateWhatsAppTemplate(he, PREVIEW_SAMPLE),
+        en: en ? interpolateWhatsAppTemplate(en, PREVIEW_SAMPLE) : '',
+      }
     }
     return m
   }, [drafts])
+
+  function updateWaBilingual(key: WhatsAppTemplateKey, part: 'he' | 'en', value: string) {
+    setWaBilingual((prev) => {
+      const pair = { ...prev[key], [part]: value }
+      const combined = joinBilingualTemplate(pair.he, pair.en)
+      setDrafts((d) => ({ ...d, [key]: combined }))
+      return { ...prev, [key]: pair }
+    })
+  }
 
   const smsPreviews = useMemo(() => {
     const m: Record<SmsTemplateKey, string> = { ...smsDrafts }
@@ -231,15 +304,25 @@ export default function WhatsappTemplatesPage() {
     })
   }
 
+  function toggleExtraExpand(key: string) {
+    setExtraExpandedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   function chip(token: string, key: WhatsAppTemplateKey) {
+    const part = waFocusRef.current[key] ?? 'he'
+    const ref = part === 'he' ? waHeRefs.current[key] : waEnRefs.current[key]
+    const current = waBilingual[key]?.[part] ?? ''
     return (
       <button
         key={token + key}
         type="button"
         onClick={() =>
-          insertVarAtCursor(textareaRefs.current[key] ?? null, drafts[key] || '', token, (next) =>
-            setDrafts((d) => ({ ...d, [key]: next }))
-          )
+          insertVarAtCursor(ref ?? null, current, token, (next) => updateWaBilingual(key, part, next))
         }
         style={styles.chip}
       >
@@ -278,8 +361,9 @@ export default function WhatsappTemplatesPage() {
         )}
 
         <p style={styles.editHint}>
-          ההודעות שנשלחות לדיירים הן הטקסטים השמורים כאן (אחרי שמירה). מיקום GPS לא בשימוש — נשלחת{' '}
-          <code style={styles.inlineCode}>redirect_to_text</code>.
+          כל הודעת WhatsApp/SMS שנשלחת מהמערכת מופיעה כאן. אחרי שמירה — הטקסט השמור הוא מה שנשלח לדיירים.
+          בתבניות WhatsApp: עברית ואנגלית בשדות נפרדים — בוואטסאפ נשלחות כהודעה אחת (עברית ואז אנגלית).
+          תבניות ישנות מהמסד שלא ברשימה הסטנדרטית מוצגות בסוף העמוד.
         </p>
 
         {loading ? (
@@ -406,9 +490,17 @@ export default function WhatsappTemplatesPage() {
                         <div style={styles.previewStrip}>
                           <div style={styles.waChrome}>
                             <div style={styles.waBubble}>
-                              <p style={styles.waText}>{previews[key]}</p>
+                              <p style={styles.waText}>{previewPairs[key].he}</p>
                               <span style={styles.waTime}>14:02</span>
                             </div>
+                            {previewPairs[key].en ? (
+                              <div style={{ ...styles.waBubble, marginTop: 8 }}>
+                                <p style={{ ...styles.waText, direction: 'ltr', textAlign: 'left' }}>
+                                  {previewPairs[key].en}
+                                </p>
+                                <span style={styles.waTime}>14:02</span>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
@@ -416,17 +508,34 @@ export default function WhatsappTemplatesPage() {
                         {isOpen && (
                           <div style={styles.editPanel}>
                             <div style={styles.chipsRow}>
-                              <span style={styles.chipsLabel}>הוספת משתנה:</span>
+                              <span style={styles.chipsLabel}>הוספת משתנה (לשדה בפוקוס):</span>
                               {WHATSAPP_TEMPLATE_VAR_NAMES.map((v) => chip(`{{${v}}}`, key))}
                             </div>
-                            <textarea
-                              ref={setRef(key)}
-                              dir="rtl"
-                              value={drafts[key] || ''}
-                              onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                              rows={6}
-                              style={styles.textarea}
-                            />
+                            <div style={styles.bilingualBlock}>
+                              <label style={styles.langLabel}>עברית</label>
+                              <textarea
+                                ref={setWaHeRef(key)}
+                                dir="rtl"
+                                value={waBilingual[key]?.he ?? ''}
+                                onFocus={() => { waFocusRef.current[key] = 'he' }}
+                                onChange={(e) => updateWaBilingual(key, 'he', e.target.value)}
+                                rows={5}
+                                style={styles.textarea}
+                              />
+                            </div>
+                            <div style={styles.bilingualBlock}>
+                              <label style={styles.langLabelEn}>English (optional)</label>
+                              <textarea
+                                ref={setWaEnRef(key)}
+                                dir="ltr"
+                                value={waBilingual[key]?.en ?? ''}
+                                onFocus={() => { waFocusRef.current[key] = 'en' }}
+                                onChange={(e) => updateWaBilingual(key, 'en', e.target.value)}
+                                rows={4}
+                                placeholder="Sent below the Hebrew text in the same WhatsApp message"
+                                style={{ ...styles.textarea, direction: 'ltr', textAlign: 'left' }}
+                              />
+                            </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                               <Button
                                 variant="primary"
@@ -446,28 +555,61 @@ export default function WhatsappTemplatesPage() {
               </div>
             ))}
 
-            <div style={styles.stepSection}>
-              <div style={styles.stepHeader}>
-                <div style={{ ...styles.stepBadge, background: '#9ca3af' }}>—</div>
-                <div>
-                  <div style={styles.stepTitle}>תבניות מיקום (לא בשימוש ב-webhook)</div>
-                  <div style={styles.stepDesc}>נשמרות לתאימות; דייר ששולח מיקום מקבל redirect_to_text</div>
-                </div>
-              </div>
-              <div style={styles.templateList}>
-                {WHATSAPP_ARCHIVED_TEMPLATE_KEYS.map((key) => (
-                  <div key={key} style={{ ...styles.templateCard, opacity: 0.85 }}>
-                    <div style={styles.templateCardHeader}>
-                      <div style={{ flex: 1, textAlign: 'right' }}>
-                        <div style={styles.templateLabel}>{WHATSAPP_TEMPLATE_LABELS[key]}</div>
-                        <div style={styles.whenSent}>⚡ {WHATSAPP_TEMPLATE_WHEN_SENT[key]}</div>
-                      </div>
-                      <code style={styles.keyCode}>{key}</code>
+            {Object.keys(extraDrafts).length > 0 ? (
+              <div style={styles.stepSection}>
+                <div style={styles.stepHeader}>
+                  <div style={{ ...styles.stepBadge, background: '#64748b' }}>+</div>
+                  <div>
+                    <div style={styles.stepTitle}>תבניות נוספות מהמסד</div>
+                    <div style={styles.stepDesc}>
+                      מפתחות ישנים או מותאמים — נשמרים ב-DB אך לא ברשימה הסטנדרטית. ערכו כאן אם הודעה נשלחת ולא מצאתם אותה למעלה.
                     </div>
                   </div>
-                ))}
+                </div>
+                <div style={styles.templateList}>
+                  {Object.keys(extraDrafts)
+                    .sort()
+                    .map((key) => {
+                      const isOpen = extraExpandedKeys.has(key)
+                      return (
+                        <div key={key} style={styles.templateCard}>
+                          <button onClick={() => toggleExtraExpand(key)} style={styles.templateCardHeader}>
+                            <div style={{ flex: 1, textAlign: 'right' }}>
+                              <div style={styles.templateLabel}>{key}</div>
+                              <div style={styles.whenSent}>מפתח מותאם / legacy</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                              <code style={styles.keyCode}>{key}</code>
+                              <span style={{ color: theme.colors.textMuted, fontSize: 12, transition: 'transform 0.15s', transform: isOpen ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>▼</span>
+                            </div>
+                          </button>
+                          {isOpen ? (
+                            <div style={styles.editPanel}>
+                              <textarea
+                                dir="rtl"
+                                value={extraDrafts[key] || ''}
+                                onChange={(e) => setExtraDrafts((d) => ({ ...d, [key]: e.target.value }))}
+                                rows={6}
+                                style={styles.textarea}
+                              />
+                              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => saveExtraKey(key)}
+                                  loading={extraSavingKey === key}
+                                >
+                                  שמור תבנית זו
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         )}
       </div>
@@ -562,4 +704,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 15, lineHeight: 1.5, resize: 'vertical', fontFamily: 'inherit',
     direction: 'rtl',
   },
+  bilingualBlock: { display: 'flex', flexDirection: 'column', gap: 6 },
+  langLabel: { fontSize: 13, fontWeight: 700, color: theme.colors.textPrimary, textAlign: 'right' },
+  langLabelEn: { fontSize: 13, fontWeight: 700, color: theme.colors.textSecondary, textAlign: 'left' },
 }

@@ -33,6 +33,8 @@ export const WHATSAPP_TEMPLATE_KEYS = [
   'resident_prompt',       // דייר מוכר, בקשת תיאור
   'duplicate_ticket',      // תקלה כפולה
   'no_open_tickets',       // אין תקלות פתוחות (שאלת סטטוס)
+  'ticket_status_list',    // רשימת סטטוס תקלות פתוחות (שאלת סטטוס)
+  'sla_escalation_resident', // SLA — עדכון לדייר שתקלה עדיין בטיפול
   'pending_approval_note', // הערת אישור מנהלת (נוספת לסוף ticket_opened)
 ] as const
 
@@ -84,6 +86,8 @@ export const WHATSAPP_TEMPLATE_CATEGORIES: Record<
   resident_prompt: 'flow',
   duplicate_ticket: 'flow',
   no_open_tickets: 'flow',
+  ticket_status_list: 'flow',
+  sla_escalation_resident: 'flow',
   pending_approval_note: 'flow',
 }
 
@@ -124,24 +128,30 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
   {
     step: 4,
     title: 'מעקב וסגירה',
-    description: 'עדכונים לאורך הטיפול וסגירת התקלה',
-    keys: ['no_open_tickets', 'ticket_closed'],
+    description: 'עדכונים לאורך הטיפול, שאילת סטטוס וסגירת התקלה',
+    keys: ['ticket_status_list', 'no_open_tickets', 'ticket_closed', 'sla_escalation_resident'],
   },
   {
     step: 5,
+    title: 'מיקום GPS',
+    description: 'כשדייר שולח מיקום — לפני או במהלך תקלה',
+    keys: ['location_stashed', 'location_attached', 'location_error'],
+  },
+  {
+    step: 6,
     title: 'תמונות (לפני/אחרי תקלה)',
     description: 'תמונה לפני פתיחת תקלה נשמרת זמנית; אחרי תיאור טקסט — צורפת לתקלה',
     keys: ['image_stashed', 'image_attached', 'image_failed'],
   },
   {
-    step: 6,
+    step: 7,
     title: 'שגיאות והודעות לא נתמכות',
     description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, וידאו/מסמך',
     keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message'],
   },
 ]
 
-/** לא בשימוש ב-webhook (מיקום מפנה ל-redirect_to_text) — נשאר לעריכה/תאימות עתידית */
+/** @deprecated use WHATSAPP_TEMPLATE_JOURNEY step 5 — kept for imports */
 export const WHATSAPP_ARCHIVED_TEMPLATE_KEYS = [
   'location_attached',
   'location_stashed',
@@ -163,13 +173,15 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   pending_approval_note:   'נוסף בסוף הודעת ticket_opened כשהדייר לא ברשימת הדיירים של הבניין',
   worker_assigned:         'נשלח לעובד (SMS) כשתקלה משויכת אליו',
   no_open_tickets:         'דייר שאל "מה הסטטוס?" אך אין לו תקלה פתוחה',
+  ticket_status_list:      'דייר שאל על סטטוס — יש לו תקלות פתוחות ({{list}})',
+  sla_escalation_resident: 'cron SLA — תקלה פתוחה זמן רב, עדכון לדייר שהיא עדיין בטיפול',
   ticket_closed:           'המנהלת סגרה תקלה — נשלח לדייר שדיווח עליה',
   image_stashed:           'דייר שלח תמונה לפני שפתח תקלה — מבקשים תיאור טקסט',
   image_attached:          'תמונה צורפה בהצלחה לתקלה פתוחה',
   image_failed:            'שגיאה בהורדה/העלאה של התמונה',
-  location_stashed:        'לא בשימוש — מיקום לפני תקלה (הזרימה שולחת redirect_to_text)',
-  location_attached:       'לא בשימוש — מיקום בזמן תקלה פתוחה (הזרימה שולחת redirect_to_text)',
-  location_error:          'לא בשימוש — שגיאת מיקום (הזרימה שולחת redirect_to_text)',
+  location_stashed:        'דייר שלח מיקום לפני שפתח תקלה — מבקשים תיאור טקסט',
+  location_attached:       'מיקום צורף לתקלה פתוחה',
+  location_error:          'שגיאה בקריאת המיקום',
   technical_error:         'שגיאה טכנית בלתי צפויה (DB, WA API, timeout וכו\')',
   error_general:           'שגיאות SLA או שגיאות אחרות שלא מטופלות אחרת',
   redirect_to_text:        'דייר שלח סטיקר / הודעה קולית / איש קשר — מכווינים לטקסט',
@@ -201,6 +213,8 @@ export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
   resident_prompt: 'דייר מוכר — בקשת תיאור תקלה',
   duplicate_ticket: 'תקלה כפולה ({{ticket_number}})',
   no_open_tickets: 'אין תקלות פתוחות (תגובה לשאלת סטטוס)',
+  ticket_status_list: 'סטטוס תקלות פתוחות ({{list}})',
+  sla_escalation_resident: 'SLA — עדכון לדייר (תקלה עדיין בטיפול)',
   pending_approval_note: 'הערת אישור מנהלת (נוספת לסוף אישור תקלה)',
 }
 
@@ -317,6 +331,10 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
     'קיבלנו כבר את הדיווח שלך, מספר תקלה: {{ticket_number}}. נעדכן אותך בהתקדמות.',
   no_open_tickets:
     'לא מצאנו תקלה פתוחה המקושרת למספר שלך במערכת. לפתיחת פנייה כתבו את הבניין או סרקו את קוד ה־QR.',
+  ticket_status_list: '{{list}}',
+  sla_escalation_resident:
+    'שלום, הפנייה שלך #{{ticket_number}} בנושא "{{description}}" עדיין בטיפול.\n' +
+    'אנחנו מטפלים בה. תודה על הסבלנות.',
   pending_approval_note:
     '\n\nℹ️ מספר הטלפון שלכם עדיין לא מופיע ברשימת הדיירים של הבניין — הבקשה נשמרה לאישור המנהלת. אחרי האישור תופיעו ברשימה.',
 }
