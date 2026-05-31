@@ -48,9 +48,11 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
         const supabase = createClient()
         const clientId = await resolveBamakorClientIdForBrowser()
 
-        // Show cached branding immediately, fetch fresh in background
         const cached = readBrandingCache(clientId)
-        if (cached && !cancelled) setBranding(cached)
+        if (cached && !cancelled) {
+          setBranding(cached)
+          setIsBootstrapped(true)
+        }
 
         const { data } = await supabase
           .from('clients')

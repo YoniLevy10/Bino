@@ -12,6 +12,7 @@
  *  - ניווט בסרגל → /tickets, /projects, /workers, /residents, /qr, /summary, /settings
  */
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -35,8 +36,14 @@ import {
   LoadingSpinner,
   theme 
 } from './components/ui'
-import { TicketDetailDrawer } from './components/tickets/TicketDetailDrawer'
-import { AddTicketModal } from './components/tickets/AddTicketModal'
+const TicketDetailDrawer = dynamic(
+  () => import('./components/tickets/TicketDetailDrawer').then((m) => ({ default: m.TicketDetailDrawer })),
+  { loading: () => null }
+)
+const AddTicketModal = dynamic(
+  () => import('./components/tickets/AddTicketModal').then((m) => ({ default: m.AddTicketModal })),
+  { loading: () => null }
+)
 import { PageKpiSkeleton, PageListSkeleton } from './components/page-skeleton'
 import { ImageLightbox } from './components/shared/ImageLightbox'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'

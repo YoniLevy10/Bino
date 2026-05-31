@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useClientBranding } from './ClientBrandingContext'
 import { markAppSplashComplete, shouldShowAppSplash } from '@/lib/app-splash-session'
 
-const MIN_VISIBLE_MS = 1200
+/** Keep short so Speed Insights LCP is not blocked on repeat visits. */
+const MIN_VISIBLE_MS = 350
 const DEFAULT_SPLASH_LOGO = '/apple-icon.png'
 
 const splashLogoStyle = {

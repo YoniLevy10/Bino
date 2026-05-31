@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -22,9 +23,17 @@ import {
 } from '../components/ui'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
-import { WorkerTicketCard, type WorkerAttachment } from '../components/worker/WorkerTicketCard'
+import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
 import { WorkerPortalToolbar, type WorkerTicketFilter, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
-import { WorkerToursPanel } from '../components/worker/WorkerToursPanel'
+
+const WorkerTicketCard = dynamic(
+  () => import('../components/worker/WorkerTicketCard').then((m) => ({ default: m.WorkerTicketCard })),
+  { loading: () => null }
+)
+const WorkerToursPanel = dynamic(
+  () => import('../components/worker/WorkerToursPanel').then((m) => ({ default: m.WorkerToursPanel })),
+  { loading: () => null }
+)
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {

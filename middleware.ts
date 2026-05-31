@@ -1,7 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -76,22 +74,6 @@ export async function middleware(req: NextRequest) {
     url.pathname = '/login'
     url.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(url)
-  }
-
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-  if (serviceKey && supabaseUrl && !pathname.startsWith('/api/') && !pathname.startsWith('/superadmin') && !pathname.startsWith('/admin/')) {
-    try {
-      const admin = createClient(supabaseUrl, serviceKey)
-      const clientId = await resolveClientIdForUserId(admin, user.id)
-
-      if (!clientId && !pathname.startsWith('/login')) {
-        const url = req.nextUrl.clone()
-        url.pathname = '/login'
-        return NextResponse.redirect(url)
-      }
-    } catch {
-      /* ignore redirect if admin client unavailable */
-    }
   }
 
   return res

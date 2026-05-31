@@ -19,7 +19,15 @@ export function markAppSplashComplete(): void {
   }
 }
 
-/** Skip localStorage SWR cache on first entry while splash runs. */
+const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v2'
+
+/** Skip localStorage SWR cache only on first entry when there is nothing cached yet. */
 export function shouldSkipStalePageCache(): boolean {
-  return shouldShowAppSplash()
+  if (!shouldShowAppSplash()) return false
+  if (typeof window === 'undefined') return true
+  try {
+    return !localStorage.getItem(DASHBOARD_CACHE_KEY)
+  } catch {
+    return true
+  }
 }
