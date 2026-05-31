@@ -21,7 +21,6 @@ import {
   SMS_TEMPLATE_WHEN_SENT,
 } from '@/lib/whatsapp-template-keys'
 import { interpolateWhatsAppTemplate, interpolateSmsTemplate } from '@/lib/whatsapp-templates'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
 import {
@@ -88,7 +87,6 @@ export default function WhatsappTemplatesPage() {
   const [savingKey, setSavingKey] = useState<WhatsAppTemplateKey | null>(null)
   const [smsSavingKey, setSmsSavingKey] = useState<SmsTemplateKey | null>(null)
   const [savingAll, setSavingAll] = useState(false)
-  const [syncingFlow, setSyncingFlow] = useState(false)
   const [expandedKeys, setExpandedKeys] = useState<Set<WhatsAppTemplateKey>>(new Set())
   const [smsExpandedKeys, setSmsExpandedKeys] = useState<Set<SmsTemplateKey>>(new Set())
   const textareaRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
@@ -199,28 +197,6 @@ export default function WhatsappTemplatesPage() {
     }
   }
 
-  async function syncFlowToWebhook() {
-    if (!clientId) return
-    const ok = window.confirm(
-      'לסנכרן את כל תבניות וואטסאפ ו-SMS לטקסטים שבקוד (זרימת ה-webhook)?\n\n' +
-        'פעולה זו תדרוס התאמות ידניות בעורך. מומלץ אחרי עדכון מערכת או אם ההודעות בפועל לא תואמות לתצוגה מקדימה.'
-    )
-    if (!ok) return
-    setSyncingFlow(true)
-    try {
-      const res = await fetchWithTimeout('/api/settings/sync-whatsapp-templates', { method: 'POST' })
-      const data = (await res.json().catch(() => ({}))) as { error?: string; synced_count?: number }
-      if (!res.ok) throw new Error(data.error || TM.genericSaveError)
-      setDrafts({ ...WHATSAPP_TEMPLATE_EDITOR_DEFAULTS })
-      setSmsDrafts({ ...SMS_TEMPLATE_EDITOR_DEFAULTS })
-      toast.success(`סונכרנו ${data.synced_count ?? ''} תבניות לזרימה הפעילה`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : TM.genericSaveError)
-    } finally {
-      setSyncingFlow(false)
-    }
-  }
-
   const previews = useMemo(() => {
     const m: Record<WhatsAppTemplateKey, string> = { ...drafts }
     for (const k of WHATSAPP_TEMPLATE_KEYS) {
@@ -286,9 +262,6 @@ export default function WhatsappTemplatesPage() {
             subtitle="כל ההודעות שנשלחות לדיירים — מסודרות לפי רצף השיחה"
             actions={
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Button variant="secondary" size="sm" onClick={syncFlowToWebhook} loading={syncingFlow}>
-                  סנכרון לזרימה
-                </Button>
                 <Button variant="primary" size="sm" onClick={saveAll} loading={savingAll}>
                   שמור הכל
                 </Button>
@@ -300,20 +273,14 @@ export default function WhatsappTemplatesPage() {
         {isMobile && (
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <Link href="/settings" style={styles.backLink}>← חזרה להגדרות</Link>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="secondary" size="sm" onClick={syncFlowToWebhook} loading={syncingFlow}>סנכרון לזרימה</Button>
-              <Button variant="primary" size="sm" onClick={saveAll} loading={savingAll}>שמור הכל</Button>
-            </div>
+            <Button variant="primary" size="sm" onClick={saveAll} loading={savingAll}>שמור הכל</Button>
           </div>
         )}
 
-        <div style={styles.syncBanner}>
-          <strong>חשוב:</strong> ההודעות בוואטסאפ בפועל נלקחות מ-DB. אם ערכתם בעבר והן לא תואמות לזרימה — לחצו{' '}
-          <button type="button" onClick={syncFlowToWebhook} disabled={syncingFlow || loading} style={styles.syncBannerLink}>
-            סנכרון לזרימה
-          </button>
-          . מיקום GPS לא בשימוש — נשלחת <code style={styles.inlineCode}>redirect_to_text</code>.
-        </div>
+        <p style={styles.editHint}>
+          ההודעות שנשלחות לדיירים הן הטקסטים השמורים כאן (אחרי שמירה). מיקום GPS לא בשימוש — נשלחת{' '}
+          <code style={styles.inlineCode}>redirect_to_text</code>.
+        </p>
 
         {loading ? (
           <div style={{ padding: 48, display: 'flex', justifyContent: 'center', flexDirection: 'column', gap: 20 }}>
@@ -511,25 +478,11 @@ export default function WhatsappTemplatesPage() {
 const styles: Record<string, CSSProperties> = {
   content: { padding: '32px 40px', maxWidth: 820, margin: '0 auto' },
   backLink: { fontSize: 14, fontWeight: 600, color: theme.colors.primary, textDecoration: 'none' },
-  syncBanner: {
+  editHint: {
     marginBottom: 20,
-    padding: '12px 16px',
-    borderRadius: 10,
-    background: '#fffbeb',
-    border: '1px solid #fcd34d',
     fontSize: 13,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textMuted,
     lineHeight: 1.5,
-  },
-  syncBannerLink: {
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    color: theme.colors.primary,
-    fontWeight: 700,
-    cursor: 'pointer',
-    textDecoration: 'underline',
-    fontSize: 'inherit',
   },
   inlineCode: { fontSize: 12, background: '#f3f4f6', padding: '1px 6px', borderRadius: 4 },
   journey: { display: 'flex', flexDirection: 'column', gap: 40 },

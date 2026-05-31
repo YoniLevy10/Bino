@@ -42,7 +42,7 @@ interface TicketLog {
   created_at: string
 }
 
-const editableStatusOptions = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED'] as const
+import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 
 interface TicketDetailDrawerProps {
   selectedTicket: TicketRow | null
@@ -164,9 +164,9 @@ export function TicketDetailDrawer({
                   onChange={(e) => onStatusChange(e.target.value)}
                   style={styles.drawerSelect}
                 >
-                  {editableStatusOptions.map((status) => (
+                  {TICKET_STATUSES.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {ticketStatusLabelHe(status)}
                     </option>
                   ))}
                 </select>

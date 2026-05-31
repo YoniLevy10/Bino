@@ -5,6 +5,7 @@
 
 import { NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { TICKET_STATUSES } from '@/lib/ticket-status'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 // ============================================================================
@@ -61,7 +62,7 @@ export const ValidationSchemas = {
       phone_number: { type: 'string', required: false, pattern: /^\+?[1-9]\d{1,14}$/ },
     },
     update: {
-      status: { type: 'string', required: false, enum: ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS', 'CLOSED'] },
+      status: { type: 'string', required: false, enum: [...TICKET_STATUSES] },
       assigned_to: { type: 'string', required: false, pattern: /^[a-f0-9-]{36}$|^null$/ },
       priority: { type: 'string', required: false, enum: ['HIGH', 'MEDIUM', 'LOW'] },
       notes: { type: 'string', required: false, maxLength: 2000 },

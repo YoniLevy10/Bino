@@ -1,5 +1,5 @@
 -- Fix 026 seed texts that never matched webhook flow (only when still the old literal).
--- Full sync for all keys: Settings → תבניות וואטסאפ → "סנכרון לזרימה" or POST /api/settings/sync-whatsapp-templates
+-- Full bulk reset: only via SQL/migrations (no UI — avoids overwriting tenant edits).
 
 UPDATE public.whatsapp_templates
 SET template_text =

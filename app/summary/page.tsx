@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
+import { isTicketInTreatment } from '@/lib/ticket-status'
 import {
   AppShell,
   MobileHeader,
@@ -274,7 +275,7 @@ export default function SummaryPage() {
 
   const summary = useMemo(() => {
     const openNow = tickets.filter((t) => t.status === 'NEW').length
-    const assignedNow = tickets.filter((t) => t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS').length
+    const assignedNow = tickets.filter((t) => isTicketInTreatment(t.status)).length
 
     return {
       openedInRange: ticketsInRange.length,
@@ -299,7 +300,7 @@ export default function SummaryPage() {
           project_code: project.project_code,
           total: projectTickets.length,
           open: projectTickets.filter((t) => t.status === 'NEW').length,
-          assigned: projectTickets.filter((t) => t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS').length,
+          assigned: projectTickets.filter((t) => isTicketInTreatment(t.status)).length,
           closed: projectTickets.filter((t) => t.status === 'CLOSED').length,
         }
       })

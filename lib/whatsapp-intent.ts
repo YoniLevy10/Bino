@@ -1,5 +1,7 @@
 /** Lightweight intent detection for WhatsApp resident messages (Hebrew-first). */
 
+import { ticketStatusLabelHe } from '@/lib/ticket-status'
+
 const GREETING_TOKENS = new Set([
   'שלום',
   'היי',
@@ -125,18 +127,5 @@ export function looksLikeTicketDescription(text: string): boolean {
 }
 
 export function statusLabelHe(status: string): string {
-  switch (status) {
-    case 'NEW':
-      return 'חדשה'
-    case 'ASSIGNED':
-      return 'משויכת'
-    case 'IN_PROGRESS':
-      return 'בטיפול'
-    case 'WAITING_PARTS':
-      return 'ממתינה לחלקים'
-    case 'CLOSED':
-      return 'סגורה'
-    default:
-      return status
-  }
+  return ticketStatusLabelHe(status, { feminine: true })
 }

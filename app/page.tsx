@@ -41,6 +41,7 @@ import { PageKpiSkeleton, PageListSkeleton } from './components/page-skeleton'
 import { ImageLightbox } from './components/shared/ImageLightbox'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
+import { isTicketInTreatment } from '@/lib/ticket-status'
 
 type TicketRow = {
   id: string
@@ -354,7 +355,7 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     const total = tickets.length
     const open = tickets.filter((t) => t.status === 'NEW').length
-    const inProgress = tickets.filter((t) => t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS').length
+    const inProgress = tickets.filter((t) => isTicketInTreatment(t.status)).length
     const closed = tickets.filter((t) => t.status === 'CLOSED').length
     return { total, open, inProgress, closed }
   }, [tickets])
@@ -362,7 +363,7 @@ export default function DashboardPage() {
   const filteredTickets = useMemo(() => {
     let filtered = tickets
     if (activeKpi === 'NEW') filtered = tickets.filter((t) => t.status === 'NEW')
-    else if (activeKpi === 'IN_PROGRESS') filtered = tickets.filter((t) => t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS')
+    else if (activeKpi === 'IN_PROGRESS') filtered = tickets.filter((t) => isTicketInTreatment(t.status))
     else if (activeKpi === 'CLOSED') filtered = tickets.filter((t) => t.status === 'CLOSED')
     return filtered.slice(0, 8)
   }, [tickets, activeKpi])

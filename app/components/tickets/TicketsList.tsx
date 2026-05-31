@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Card, StatusBadge, SearchInput, FilterTabs, EmptyState, Button, theme } from '../ui'
 import { toast } from '@/lib/error-handler'
+import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 
 interface TicketRow {
   id: string
@@ -18,8 +19,8 @@ interface TicketRow {
   closed_at: string | null
 }
 
-const statusOptions = ['ALL', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED'] as const
-const editableStatuses = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED'] as const
+const statusOptions = ['ALL', ...TICKET_STATUSES] as const
+const editableStatuses = [...TICKET_STATUSES] as const
 
 interface TicketsListProps {
   tickets: TicketRow[]
@@ -159,7 +160,7 @@ export function TicketsList({
                     }}
                     disabled={updatingTicketId === ticket.id}
                   >
-                    {ticket.status}
+                    {ticketStatusLabelHe(ticket.status)}
                   </button>
                   
                   {openStatusDropdown === ticket.id && (
@@ -176,7 +177,7 @@ export function TicketsList({
                             background: ticket.status === status ? theme.colors.primaryMuted : '#fff',
                           }}
                         >
-                          {status}
+                          {ticketStatusLabelHe(status)}
                         </button>
                       ))}
                     </div>

@@ -6,6 +6,7 @@ import { updateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { logAudit } from '@/lib/audit'
+import { isTicketStatus } from '@/lib/ticket-status'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     }
     if (status !== undefined && status !== null) {
       const s = sanitizeString(status).toUpperCase()
-      if (!['NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS', 'CLOSED'].includes(s)) {
+      if (!isTicketStatus(s)) {
         return NextResponse.json({ error: 'סטטוס לא תקין', requestId }, { status: 400 })
       }
       updatePayload.status = s

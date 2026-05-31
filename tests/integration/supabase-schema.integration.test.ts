@@ -12,6 +12,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { TICKET_STATUSES } from '@/lib/ticket-status'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -188,7 +189,7 @@ describe('6. Soft delete', () => {
 // ג”€ג”€ג”€ 7. Ticket domain values ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 describe('7. Ticket domain values', () => {
   it('all statuses are within valid domain', async () => {
-    const valid = new Set(['NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS', 'CLOSED'])
+    const valid = new Set<string>([...TICKET_STATUSES])
     const { data, error } = await admin.from('tickets').select('status').limit(500)
     expect(error).toBeNull()
     const invalid = [...new Set((data as Array<{status:string}>).map(r=>r.status).filter(s=>!valid.has(s)))]

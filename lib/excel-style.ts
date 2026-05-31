@@ -35,6 +35,8 @@ export const STATUS_STYLES: Record<string, any> = {
   ASSIGNED:      { fill: { patternType: 'solid', fgColor: { rgb: 'DBEAFE' } }, font: { color: { rgb: '1E40AF' }, sz: 10 }, border: BASE_BORDER, alignment: { horizontal: 'center' } },
   IN_PROGRESS:   { fill: { patternType: 'solid', fgColor: { rgb: 'E0F2FE' } }, font: { color: { rgb: '0369A1' }, sz: 10 }, border: BASE_BORDER, alignment: { horizontal: 'center' } },
   WAITING_PARTS: { fill: { patternType: 'solid', fgColor: { rgb: 'F3F4F6' } }, font: { color: { rgb: '4B5563' }, sz: 10 }, border: BASE_BORDER, alignment: { horizontal: 'center' } },
+  SITE_TOUR:     { fill: { patternType: 'solid', fgColor: { rgb: 'E0E7FF' } }, font: { color: { rgb: '4338CA' }, sz: 10 }, border: BASE_BORDER, alignment: { horizontal: 'center' } },
+  PROFESSIONAL_ESCORT: { fill: { patternType: 'solid', fgColor: { rgb: 'F3E8FF' } }, font: { color: { rgb: '7C3AED' }, sz: 10 }, border: BASE_BORDER, alignment: { horizontal: 'center' } },
   CLOSED:        { fill: { patternType: 'solid', fgColor: { rgb: 'DCFCE7' } }, font: { color: { rgb: '15803D' }, bold: true, sz: 10 }, border: BASE_BORDER, alignment: { horizontal: 'center' } },
 }
 

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
-import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_VAR_NAMES, SMS_TEMPLATE_KEYS, WHATSAPP_TEMPLATE_KEYS } from '@/lib/whatsapp-template-keys'
+import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_VAR_NAMES } from '@/lib/whatsapp-template-keys'
 
 const VAR_NAMES = ['project_name', 'ticket_number', 'description', 'reporter_name', 'building_line', 'list'] as const
 
@@ -132,20 +132,6 @@ export async function resolveSmsTemplateMessage(
   }
 
   return interpolateSmsTemplate(fallbackText, vars)
-}
-
-/** Clear in-memory template cache after DB sync (webhook picks up new texts within 60s anyway). */
-export function clearWhatsAppTemplateCache(clientId?: string): void {
-  if (!clientId) {
-    templateTextCache.clear()
-    return
-  }
-  for (const key of WHATSAPP_TEMPLATE_KEYS) {
-    templateTextCache.delete(`${clientId}:${key}`)
-  }
-  for (const key of SMS_TEMPLATE_KEYS) {
-    templateTextCache.delete(`${clientId}:${key}`)
-  }
 }
 
 /**

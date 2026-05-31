@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { isTicketInTreatment } from '@/lib/ticket-status'
 import { resolveClientIdByWhatsAppPhoneNumberId } from '@/lib/tenant-resolution'
 import {
   parseIncomingWhatsAppMessage,
@@ -954,7 +955,7 @@ async function runWhatsAppInboundBackground(
         }) => {
           const w = Array.isArray(row.workers) ? row.workers[0] : row.workers
           let s = `תקלה #${row.ticket_number}: ${statusLabelHe(row.status)}.`
-          if (row.status === 'IN_PROGRESS' && w?.full_name) {
+          if (isTicketInTreatment(row.status) && w?.full_name) {
             s += ` עובד ${w.full_name} מטפל.`
           }
           return s

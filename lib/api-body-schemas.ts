@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TICKET_STATUSES } from '@/lib/ticket-status'
 
 /** שיוך תקלה לעובד (לוח בקרה). */
 export const assignWorkerBodySchema = z.object({
@@ -11,7 +12,7 @@ export const updateTicketBodySchema = z
   .object({
     ticket_id: z.string().uuid(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-    status: z.enum(['NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS', 'CLOSED']).optional(),
+    status: z.enum(TICKET_STATUSES).optional(),
   })
   .refine((v) => v.priority !== undefined || v.status !== undefined, {
     message: 'נדרש status או priority',

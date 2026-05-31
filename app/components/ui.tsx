@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useClientBranding } from './ClientBrandingContext'
 import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
+import { ticketStatusLabelHe } from '@/lib/ticket-status'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -1402,6 +1403,8 @@ export function StatusBadge({
     ASSIGNED: { bg: theme.colors.infoMuted, text: theme.colors.info },
     IN_PROGRESS: { bg: theme.colors.infoMuted, text: theme.colors.info },
     WAITING_PARTS: { bg: theme.colors.warningMuted, text: theme.colors.warning },
+    SITE_TOUR: { bg: '#E0E7FF', text: '#4338CA' },
+    PROFESSIONAL_ESCORT: { bg: '#F3E8FF', text: '#7C3AED' },
     CLOSED: { bg: theme.colors.successMuted, text: theme.colors.success },
     ACTIVE: { bg: theme.colors.successMuted, text: theme.colors.success },
     INACTIVE: { bg: theme.colors.muted, text: theme.colors.textMuted },
@@ -1418,7 +1421,7 @@ export function StatusBadge({
 
   return (
     <span style={{ ...badgeStyles.base, ...sizeStyles[size], background: config.bg, color: config.text }}>
-      {status.replace(/_/g, ' ')}
+      {ticketStatusLabelHe(status) || status.replace(/_/g, ' ')}
     </span>
   )
 }

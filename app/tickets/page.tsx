@@ -59,6 +59,11 @@ import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketChat } from '../components/tickets/TicketChat'
+import {
+  TICKET_STATUS_FILTER_OPTIONS,
+  ticketStatusLabelHe,
+  isTicketInTreatment,
+} from '@/lib/ticket-status'
 
 type TicketRow = {
   id: string
@@ -109,14 +114,7 @@ type ProjectRow = {
   project_code: string
 }
 
-const statusOptions = [
-  { label: 'כל הסטטוסים', value: 'ALL' },
-  { label: 'חדש', value: 'NEW' },
-  { label: 'משויך', value: 'ASSIGNED' },
-  { label: 'בטיפול', value: 'IN_PROGRESS' },
-  { label: 'ממתין לחלקים', value: 'WAITING_PARTS' },
-  { label: 'סגור', value: 'CLOSED' },
-]
+const statusOptions = TICKET_STATUS_FILTER_OPTIONS
 
 const priorityOptions = [
   { label: 'כל העדיפויות', value: 'ALL' },
@@ -323,7 +321,7 @@ export default function TicketsPage() {
   const stats = useMemo(() => {
     const total = tickets.length
     const open = tickets.filter((t) => t.status === 'NEW').length
-    const assigned = tickets.filter((t) => t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS').length
+    const assigned = tickets.filter((t) => isTicketInTreatment(t.status)).length
     const resolved = tickets.filter((t) => t.status === 'CLOSED').length
     return { total, open, assigned, resolved }
   }, [tickets])
@@ -440,13 +438,6 @@ export default function TicketsPage() {
     return worker?.full_name || 'לא ידוע'
   }
 
-  const statusLabelHe: Record<string, string> = {
-    NEW: 'חדש',
-    ASSIGNED: 'משויך',
-    IN_PROGRESS: 'בטיפול',
-    WAITING_PARTS: 'ממתין לחלקים',
-    CLOSED: 'סגור',
-  }
   const priorityLabelHe: Record<string, string> = {
     URGENT: 'דחופה',
     HIGH: 'גבוהה',
@@ -475,7 +466,7 @@ export default function TicketsPage() {
       'דירה': t.building_number || '',
       'תיאור': t.description || '',
       'עדיפות': priorityLabelHe[(t.priority || 'MEDIUM').toUpperCase()] || (t.priority || ''),
-      'סטטוס': statusLabelHe[t.status] || t.status,
+      'סטטוס': ticketStatusLabelHe(t.status),
       'עובד משויך': getWorkerName(t.assigned_worker_id),
       'ימי טיפול': treatmentDaysForExport(t),
     }))
