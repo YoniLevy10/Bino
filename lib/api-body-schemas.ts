@@ -131,3 +131,13 @@ export const createResidentBodySchema = z.object({
 export const sendWorkerPortalLinkBodySchema = z.object({
   worker_id: z.string().uuid(),
 })
+
+/** מחיקת תקלות — נבחרות או כולן (soft delete). */
+export const deleteTicketsBodySchema = z.union([
+  z.object({
+    ticket_ids: z.array(z.string().uuid()).min(1).max(200),
+  }),
+  z.object({
+    delete_all: z.literal(true),
+  }),
+])

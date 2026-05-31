@@ -179,6 +179,8 @@ export default function TicketsPage() {
   const [draftWorkerId, setDraftWorkerId] = useState<string>('')
   const [savingTicket, setSavingTicket] = useState(false)
   const [closingTicketId, setClosingTicketId] = useState<string | null>(null)
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(() => new Set())
+  const [deletingTickets, setDeletingTickets] = useState(false)
   const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<AttachmentRow[]>([])
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [loadingAttachments, setLoadingAttachments] = useState(false)
@@ -368,6 +370,69 @@ export default function TicketsPage() {
       return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesWorker
     })
   }, [tickets, searchTerm, statusFilter, priorityFilter, projectFilter, workerFilter])
+
+  const allFilteredSelected =
+    filteredTickets.length > 0 && filteredTickets.every((t) => selectedTicketIds.has(t.id))
+
+  function toggleTicketSelection(ticketId: string, e: React.MouseEvent | React.ChangeEvent) {
+    e.stopPropagation()
+    setSelectedTicketIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(ticketId)) next.delete(ticketId)
+      else next.add(ticketId)
+      return next
+    })
+  }
+
+  function toggleSelectAllFiltered(e: React.ChangeEvent<HTMLInputElement>) {
+    e.stopPropagation()
+    if (allFilteredSelected) {
+      setSelectedTicketIds(new Set())
+    } else {
+      setSelectedTicketIds(new Set(filteredTickets.map((t) => t.id)))
+    }
+  }
+
+  async function requestDeleteTickets(payload: { ticket_ids: string[] } | { delete_all: true }) {
+    setDeletingTickets(true)
+    try {
+      const res = await fetchWithTimeout('/api/tickets/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = (await res.json().catch(() => ({}))) as { error?: string; deleted_count?: number }
+      if (!res.ok) throw new Error(json.error || 'מחיקה נכשלה')
+      toast.success(`נמחקו ${json.deleted_count ?? 0} תקלות`)
+      setSelectedTicketIds(new Set())
+      const deletedIds = 'ticket_ids' in payload ? payload.ticket_ids : null
+      if (selectedTicket && (deletedIds ? deletedIds.includes(selectedTicket.id) : true)) {
+        closeDrawer()
+      }
+      await fetchData()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'מחיקה נכשלה')
+    }
+    setDeletingTickets(false)
+  }
+
+  async function deleteSelectedTickets() {
+    if (selectedTicketIds.size === 0) return
+    const n = selectedTicketIds.size
+    if (!window.confirm(`למחוק ${n} תקלות שנבחרו? הן יוסרו מהמערכת.`)) return
+    await requestDeleteTickets({ ticket_ids: [...selectedTicketIds] })
+  }
+
+  async function deleteAllTickets() {
+    if (!window.confirm('למחוק את כל התקלות של הארגון? (כולל תקלות שלא מוצגות ברשימה)')) return
+    await requestDeleteTickets({ delete_all: true })
+  }
+
+  async function deleteSingleTicket() {
+    if (!selectedTicket) return
+    if (!window.confirm(`למחוק תקלה #${selectedTicket.ticket_number}?`)) return
+    await requestDeleteTickets({ ticket_ids: [selectedTicket.id] })
+  }
 
   function getWorkerName(workerId?: string | null) {
     if (!workerId) return 'לא משויך'
@@ -836,9 +901,20 @@ export default function TicketsPage() {
             title="תקלות"
             subtitle="ניהול ומעקב אחר תקלות אחזקה"
             actions={
-              <Button variant="primary" onClick={() => setShowAddTicketModal(true)}>
-                תקלה חדשה
-              </Button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={deletingTickets}
+                  disabled={stats.total === 0}
+                  onClick={() => void deleteAllTickets()}
+                >
+                  מחק הכל
+                </Button>
+                <Button variant="primary" onClick={() => setShowAddTicketModal(true)}>
+                  תקלה חדשה
+                </Button>
+              </div>
             }
           />
         )}
@@ -912,6 +988,27 @@ export default function TicketsPage() {
               <Button variant="secondary" size="sm" type="button" onClick={exportToExcel}>
                 ייצוא Excel
               </Button>
+              {selectedTicketIds.size > 0 && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  type="button"
+                  loading={deletingTickets}
+                  onClick={() => void deleteSelectedTickets()}
+                >
+                  מחק נבחרים ({selectedTicketIds.size})
+                </Button>
+              )}
+              <Button
+                variant="danger"
+                size="sm"
+                type="button"
+                loading={deletingTickets}
+                disabled={stats.total === 0}
+                onClick={() => void deleteAllTickets()}
+              >
+                מחק הכל
+              </Button>
               <div style={{
                 ...styles.filterGroup,
                 flexWrap: 'nowrap',
@@ -944,6 +1041,30 @@ export default function TicketsPage() {
             </div>
           )}
 
+          {selectedTicketIds.size > 0 && isMobile && (
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                padding: '12px 16px',
+                borderBottom: `1px solid ${theme.colors.border}`,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Button
+                variant="danger"
+                size="sm"
+                loading={deletingTickets}
+                onClick={() => void deleteSelectedTickets()}
+              >
+                מחק נבחרים ({selectedTicketIds.size})
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setSelectedTicketIds(new Set())}>
+                בטל בחירה
+              </Button>
+            </div>
+          )}
+
           {/* Table */}
           {loading ? (
             <div style={styles.loadingContainer}>
@@ -967,6 +1088,15 @@ export default function TicketsPage() {
               <table style={styles.table}>
                 <thead>
                   <tr>
+                    <th style={{ ...styles.th, width: 44 }}>
+                      <input
+                        type="checkbox"
+                        checked={allFilteredSelected}
+                        onChange={toggleSelectAllFiltered}
+                        aria-label="בחר הכל ברשימה המסוננת"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </th>
                     <th style={styles.th}>#</th>
                     <th style={styles.th}>עדיפות</th>
                     <th style={styles.th}>בניין</th>
@@ -981,9 +1111,22 @@ export default function TicketsPage() {
                   {filteredTickets.map((ticket) => (
                     <tr
                       key={ticket.id}
-                      style={styles.tr}
+                      style={{
+                        ...styles.tr,
+                        ...(selectedTicketIds.has(ticket.id)
+                          ? { background: theme.colors.primaryMuted }
+                          : {}),
+                      }}
                       onClick={() => openTicket(ticket)}
                     >
+                      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedTicketIds.has(ticket.id)}
+                          onChange={(e) => toggleTicketSelection(ticket.id, e)}
+                          aria-label={`בחר תקלה ${ticket.ticket_number}`}
+                        />
+                      </td>
                       <td style={styles.td}>
                         <span style={styles.ticketNumber}>{ticket.ticket_number}</span>
                       </td>
@@ -1216,6 +1359,9 @@ export default function TicketsPage() {
             <div style={styles.drawerActions}>
               <Button variant="secondary" onClick={closeDrawer}>
                 ביטול
+              </Button>
+              <Button variant="danger" onClick={() => void deleteSingleTicket()} loading={deletingTickets}>
+                מחק תקלה
               </Button>
               {selectedTicket.status !== 'CLOSED' && (
                 <Button variant="danger" onClick={() => void handleCloseTicket()} loading={savingTicket}>
