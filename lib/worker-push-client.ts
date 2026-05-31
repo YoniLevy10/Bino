@@ -24,9 +24,55 @@ export async function getWorkerPushSubscription(): Promise<PushSubscription | nu
   }
 }
 
+export const WORKER_PUSH_ENABLED_KEY = 'bamakor_worker_push_enabled'
+
+export function markWorkerPushEnabled(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(WORKER_PUSH_ENABLED_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearWorkerPushEnabled(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(WORKER_PUSH_ENABLED_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function hasWorkerPushEnabledFlag(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return localStorage.getItem(WORKER_PUSH_ENABLED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function isWorkerPushEnabled(): boolean {
   if (!isWorkerPushSupported()) return false
   return Notification.permission === 'granted'
+}
+
+/** True when worker completed push setup — hide onboarding + bell. */
+export async function isWorkerPushFullyEnabled(): Promise<boolean> {
+  if (!isWorkerPushSupported()) return false
+  if (Notification.permission === 'denied') {
+    clearWorkerPushEnabled()
+    return false
+  }
+  if (Notification.permission !== 'granted') return false
+  if (hasWorkerPushEnabledFlag()) return true
+  const sub = await getWorkerPushSubscription()
+  if (sub) {
+    markWorkerPushEnabled()
+    return true
+  }
+  return false
 }
 
 export async function clearWorkerAppBadge(): Promise<void> {
@@ -80,15 +126,17 @@ export async function subscribeWorkerPush(token: string): Promise<{ ok: boolean;
   })
   const json = (await res.json().catch(() => ({}))) as { error?: string }
   if (!res.ok) return { ok: false, error: json.error || 'שמירה נכשלה' }
+  markWorkerPushEnabled()
   return { ok: true }
 }
 
 /** Re-sync existing subscription to server after PWA relaunch. */
-export async function syncWorkerPushIfGranted(token: string): Promise<void> {
-  if (!token || Notification.permission !== 'granted' || !isWorkerPushSupported()) return
+export async function syncWorkerPushIfGranted(token: string): Promise<boolean> {
+  if (!token || Notification.permission !== 'granted' || !isWorkerPushSupported()) return false
   try {
-    await subscribeWorkerPush(token)
+    const result = await subscribeWorkerPush(token)
+    return result.ok
   } catch {
-    /* silent */
+    return false
   }
 }

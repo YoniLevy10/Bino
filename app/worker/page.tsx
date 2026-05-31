@@ -25,7 +25,7 @@ import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import { WorkerTicketCard, type WorkerAttachment } from '../components/worker/WorkerTicketCard'
 import { WorkerPortalToolbar, type WorkerTicketFilter } from '../components/worker/WorkerPortalToolbar'
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
-import { clearWorkerAppBadge, subscribeWorkerPush } from '@/lib/worker-push-client'
+import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
   clearWorkerToken,
   normalizeWorkerToken,
@@ -116,12 +116,21 @@ function WorkerPageInner() {
   const [attachmentsLoadingId, setAttachmentsLoadingId] = useState<string | null>(null)
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null)
   const [pushEnabling, setPushEnabling] = useState(false)
+  const [pushEnabled, setPushEnabled] = useState(false)
 
   const palette = darkMode ? workerDarkColors : theme.colors
 
   useEffect(() => {
     setDarkMode(readWorkerDarkMode())
   }, [])
+
+  useEffect(() => {
+    if (!tokenSession) {
+      setPushEnabled(false)
+      return
+    }
+    void isWorkerPushFullyEnabled().then(setPushEnabled)
+  }, [tokenSession])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -342,8 +351,10 @@ function WorkerPageInner() {
     setPushEnabling(true)
     try {
       const result = await subscribeWorkerPush(tokenSession.token)
-      if (result.ok) toast.success('התראות שיבוץ הופעלו')
-      else toast.error(result.error || 'הפעלה נכשלה')
+      if (result.ok) {
+        setPushEnabled(true)
+        toast.success('התראות שיבוץ הופעלו')
+      } else toast.error(result.error || 'הפעלה נכשלה')
     } finally {
       setPushEnabling(false)
     }
@@ -487,7 +498,12 @@ function WorkerPageInner() {
           </h1>
         </header>
 
-        <WorkerPushOnboarding token={tokenSession.token} colors={palette} openTicketCount={tickets.length} />
+        <WorkerPushOnboarding
+          token={tokenSession.token}
+          colors={palette}
+          openTicketCount={tickets.length}
+          onEnabled={() => setPushEnabled(true)}
+        />
 
         <WorkerPortalToolbar
           colors={palette}
@@ -500,7 +516,7 @@ function WorkerPageInner() {
           onFilterChange={setTicketFilter}
           onRefresh={() => void loadTicketsToken(tokenSession.token, { silent: true })}
           onToggleDark={toggleDarkMode}
-          onEnablePush={() => void enablePush()}
+          onEnablePush={pushEnabled ? undefined : () => void enablePush()}
           pushEnabling={pushEnabling}
         />
 
@@ -618,7 +634,7 @@ function WorkerPageInner() {
           </div>
         ) : null}
 
-        <WorkerPushSync token={tokenSession.token} />
+        <WorkerPushSync token={tokenSession.token} onEnabled={() => setPushEnabled(true)} />
         <WorkerInstallPrompt workerName={selectedName || undefined} />
       </div>
     )

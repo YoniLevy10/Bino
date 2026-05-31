@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { theme } from '../ui'
 import { toast } from '@/lib/error-handler'
 import {
-  getWorkerPushSubscription,
-  isWorkerPushEnabled,
+  isWorkerPushFullyEnabled,
   isWorkerPushSupported,
   subscribeWorkerPush,
 } from '@/lib/worker-push-client'
@@ -14,12 +13,18 @@ type WorkerPushOnboardingProps = {
   token: string
   colors?: typeof theme.colors
   openTicketCount?: number
+  onEnabled?: () => void
 }
 
 /**
- * Prominent prompt — workers must enable push to get assignment alerts + app icon badge.
+ * Prominent prompt — hidden permanently after worker enables push notifications.
  */
-export function WorkerPushOnboarding({ token, colors = theme.colors, openTicketCount = 0 }: WorkerPushOnboardingProps) {
+export function WorkerPushOnboarding({
+  token,
+  colors = theme.colors,
+  openTicketCount = 0,
+  onEnabled,
+}: WorkerPushOnboardingProps) {
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
@@ -27,24 +32,21 @@ export function WorkerPushOnboarding({ token, colors = theme.colors, openTicketC
   const refreshState = useCallback(async () => {
     setChecking(true)
     try {
-      if (!isWorkerPushSupported()) {
-        setVisible(true)
+      const enabled = await isWorkerPushFullyEnabled()
+      if (enabled) {
+        setVisible(false)
+        onEnabled?.()
         return
       }
-      if (!isWorkerPushEnabled()) {
-        setVisible(true)
-        return
-      }
-      const sub = await getWorkerPushSubscription()
-      setVisible(!sub)
+      setVisible(true)
     } finally {
       setChecking(false)
     }
-  }, [])
+  }, [onEnabled])
 
   useEffect(() => {
     void refreshState()
-  }, [refreshState])
+  }, [refreshState, token])
 
   async function enable() {
     setLoading(true)
@@ -56,6 +58,7 @@ export function WorkerPushOnboarding({ token, colors = theme.colors, openTicketC
       }
       toast.success('התראות שיבוץ הופעלו')
       setVisible(false)
+      onEnabled?.()
     } finally {
       setLoading(false)
     }
@@ -112,13 +115,14 @@ export function WorkerPushOnboarding({ token, colors = theme.colors, openTicketC
 }
 
 /** Background sync of push subscription when permission already granted. */
-export function WorkerPushSync({ token }: { token: string }) {
+export function WorkerPushSync({ token, onEnabled }: { token: string; onEnabled?: () => void }) {
   useEffect(() => {
     if (!token) return
     void (async () => {
       const { syncWorkerPushIfGranted } = await import('@/lib/worker-push-client')
-      await syncWorkerPushIfGranted(token)
+      const ok = await syncWorkerPushIfGranted(token)
+      if (ok) onEnabled?.()
     })()
-  }, [token])
+  }, [token, onEnabled])
   return null
 }
