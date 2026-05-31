@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { sendWorkerSMS } from '@/lib/sms-send'
+import { sendWorkerSMSAll } from '@/lib/sms-send'
+import { collectWorkerPhones } from '@/lib/worker-phones'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { getWorkerPortalUrl } from '@/lib/public-app-url'
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
 
     const { data: worker, error: workerError } = await supabaseAdmin
       .from('workers')
-      .select('id, full_name, phone, role, is_active, access_token')
+      .select('id, full_name, phone, extra_phones, role, is_active, access_token')
       .eq('id', worker_id)
       .eq('client_id', clientId)
       .is('deleted_at', null)
@@ -172,17 +173,32 @@ export async function POST(req: Request) {
       logger.warn('TICKET_API', 'ticket_logs insert failed (non-blocking)', { requestId, err: logError.message })
     }
 
-    if (worker.phone) {
+    const workerPhones = collectWorkerPhones(worker as { phone?: string | null; extra_phones?: string[] | null })
+    if (workerPhones.length > 0) {
       try {
         const workerToken = (worker as { access_token?: string | null }).access_token?.trim()
         const portalUrl = workerToken ? getWorkerPortalUrl(workerToken) : null
         const smsMessage = portalUrl
           ? `שויכת לתקלה #${ticket.ticket_number} ב${buildingName}: ${ticket.description || 'ללא תיאור'}. האזור האישי: ${portalUrl}`
           : `שויכת לתקלה #${ticket.ticket_number} ב${buildingName}: ${ticket.description || 'ללא תיאור'}. בקשו מהמשרד קישור לאזור האישי.`
-        const smsSent = await sendWorkerSMS(worker.phone, smsMessage, smsSenderName, clientId)
-        workerSmsSent = smsSent
-        if (smsSent) {
-          logger.info('TICKET_API', 'Worker SMS sent', { requestId, ticket_id, worker_id })
+        const batch = await sendWorkerSMSAll(workerPhones, smsMessage, smsSenderName, clientId)
+        workerSmsSent = batch.ok
+        if (batch.ok) {
+          logger.info('TICKET_API', 'Worker SMS sent', {
+            requestId,
+            ticket_id,
+            worker_id,
+            phone_count: batch.total,
+          })
+        } else if (batch.sent > 0) {
+          workerSmsNote = `SMS נשלח ל-${batch.sent} מתוך ${batch.total} מספרים. בדקו מספרים נוספים והגדרות 019SMS.`
+          logger.warn('TICKET_API', 'Worker SMS partial failure', {
+            requestId,
+            ticket_id,
+            worker_id,
+            sent: batch.sent,
+            total: batch.total,
+          })
         } else {
           workerSmsNote = 'שליחת SMS לעובד נכשלה (019SMS / פורמט מספר / הרשאות). בדקו לוגים ב-Vercel והגדרות SMS_019_*.'
           logger.warn('TICKET_API', 'Worker SMS failed', { requestId, ticket_id, worker_id })

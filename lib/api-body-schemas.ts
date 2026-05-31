@@ -74,6 +74,7 @@ export const deleteProjectBodySchema = z.object({
 export const createWorkerBodySchema = z.object({
   full_name: z.string().min(1).max(200),
   phone: z.string().min(6).max(40),
+  extra_phones: z.array(z.string().min(6).max(40)).max(5).optional(),
   email: z.string().email({ message: 'נדרש אימייל תקין' }),
   role: z.string().max(100).nullable().optional(),
   is_active: z.boolean().optional(),

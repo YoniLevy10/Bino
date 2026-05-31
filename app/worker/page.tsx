@@ -308,6 +308,11 @@ function WorkerPageInner() {
   }
 
   function activateTicket(ticketId: string) {
+    if (activeTicketId === ticketId) {
+      setActiveTicketId(null)
+      if (expandedChatId === ticketId) setExpandedChatId(null)
+      return
+    }
     setActiveTicketId(ticketId)
     if (expandedChatId && expandedChatId !== ticketId) setExpandedChatId(null)
   }

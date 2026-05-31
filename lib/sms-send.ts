@@ -20,6 +20,34 @@ export async function sendWorkerSMS(
   return send019StaffSms(phoneNumber, message, senderName, { channel: 'worker_sms', clientId })
 }
 
+export type WorkerSmsBatchResult = {
+  ok: boolean
+  sent: number
+  total: number
+  phones: string[]
+}
+
+/** Send the same SMS to every distinct worker phone (primary + extras). */
+export async function sendWorkerSMSAll(
+  phones: string[],
+  message: string,
+  senderName?: string | null,
+  clientId?: string | null
+): Promise<WorkerSmsBatchResult> {
+  const unique = [...new Set(phones.map((p) => p.trim()).filter(Boolean))]
+  if (unique.length === 0) {
+    return { ok: false, sent: 0, total: 0, phones: [] }
+  }
+
+  let sent = 0
+  for (const phone of unique) {
+    const success = await sendWorkerSMS(phone, message, senderName, clientId)
+    if (success) sent++
+  }
+
+  return { ok: sent === unique.length, sent, total: unique.length, phones: unique }
+}
+
 /** Send SMS to manager via 019SMS (3 retries, 10s timeout each). */
 export async function sendManagerSMS(
   phoneNumber: string,

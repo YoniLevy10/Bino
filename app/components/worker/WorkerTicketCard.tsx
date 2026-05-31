@@ -108,7 +108,7 @@ export function WorkerTicketCard({
 
   if (!isActive) {
     return (
-      <button type="button" style={styles.compact(colors, priority)} onClick={onActivate}>
+      <button type="button" style={styles.compact(colors, priority)} onClick={onActivate} aria-expanded={false}>
         <div style={styles.compactRow}>
           <PriorityDot priority={priority} />
           <span style={styles.num(colors)}>#{ticket.ticket_number}</span>
@@ -123,21 +123,33 @@ export function WorkerTicketCard({
 
   return (
     <article style={styles.card(colors, priority)}>
-      <div style={styles.topRow}>
-        <PriorityDot priority={priority} />
-        <button type="button" style={styles.numBtn(colors)} onClick={() => void copyTicketNumber()}>
-          #{ticket.ticket_number}
-        </button>
-        <StatusBadge status={ticket.status} size="sm" />
-        <span style={styles.when(colors)} title={new Date(ticket.created_at).toLocaleString('he-IL')}>
-          {relativeWhen}
-        </span>
-      </div>
+      <button
+        type="button"
+        style={styles.collapseHeader(colors)}
+        onClick={onActivate}
+        aria-expanded={true}
+        aria-label="סגור תקלה"
+      >
+        <div style={styles.compactRow}>
+          <PriorityDot priority={priority} />
+          <span style={styles.num(colors)}>#{ticket.ticket_number}</span>
+          <StatusBadge status={ticket.status} size="sm" />
+          <span style={styles.when(colors)} title={new Date(ticket.created_at).toLocaleString('he-IL')}>
+            {relativeWhen}
+          </span>
+          <span style={styles.collapseHint(colors)}>▲</span>
+        </div>
+        {loc ? <div style={styles.compactLoc(colors)}>{loc}</div> : null}
+      </button>
 
-      {loc ? <div style={styles.building(colors)}>{loc}</div> : null}
+      <div style={styles.expandedBody}>
       {ticket.reporter_name ? (
         <div style={styles.reporter(colors)}>דיווח: {ticket.reporter_name}</div>
       ) : null}
+
+      <button type="button" style={styles.numCopyBtn(colors)} onClick={() => void copyTicketNumber()}>
+        העתק מספר #{ticket.ticket_number}
+      </button>
 
       <p style={descOpen ? styles.descOpen(colors) : styles.descClamp(colors)}>{desc}</p>
 
@@ -257,6 +269,7 @@ export function WorkerTicketCard({
       </div>
 
       {expandedChat && chatSlot ? <div style={styles.chatWrap(colors)}>{chatSlot}</div> : null}
+      </div>
     </article>
   )
 }
@@ -307,13 +320,32 @@ const styles = {
     textAlign: 'right',
   }),
   card: (c: typeof theme.colors, priority: string): CSSProperties => ({
-    padding: '10px 12px',
+    padding: 0,
     borderRadius: '12px',
     border: `1px solid ${c.border}`,
     borderInlineStart: `3px solid ${priorityBorder[priority] || c.border}`,
     background: c.surface,
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    overflow: 'hidden',
   }),
+  collapseHeader: (c: typeof theme.colors): CSSProperties => ({
+    display: 'block',
+    width: '100%',
+    textAlign: 'right',
+    padding: '10px 12px',
+    border: 'none',
+    borderBottom: `1px solid ${c.border}`,
+    background: c.muted,
+    cursor: 'pointer',
+  }),
+  collapseHint: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '10px',
+    color: c.textMuted,
+    marginInlineStart: '4px',
+  }),
+  expandedBody: {
+    padding: '10px 12px',
+  } as CSSProperties,
   topRow: {
     display: 'flex',
     alignItems: 'center',
@@ -334,6 +366,18 @@ const styles = {
     border: 'none',
     padding: 0,
     cursor: 'pointer',
+  }),
+  numCopyBtn: (c: typeof theme.colors): CSSProperties => ({
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    marginBottom: '6px',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: c.primary,
+    cursor: 'pointer',
+    textAlign: 'right',
+    width: '100%',
   }),
   when: (c: typeof theme.colors): CSSProperties => ({
     fontSize: '11px',

@@ -37,11 +37,19 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import {
+  collectWorkerPhones,
+  formatWorkerPhonesDisplay,
+  MAX_WORKER_EXTRA_PHONES,
+  sanitizeExtraPhones,
+  workerHasPhone,
+} from '@/lib/worker-phones'
 
 type WorkerRow = {
   id: string
   full_name: string
   phone: string
+  extra_phones?: string[] | null
   email: string | null
   role: string | null
   is_active: boolean
@@ -70,6 +78,7 @@ type RawTicketWithProjects = {
 type WorkerForm = {
   full_name: string
   phone: string
+  extra_phones: string[]
   email: string
   role: string
   is_active: boolean
@@ -78,6 +87,7 @@ type WorkerForm = {
 const emptyForm: WorkerForm = {
   full_name: '',
   phone: '',
+  extra_phones: [],
   email: '',
   role: '',
   is_active: true,
@@ -89,6 +99,7 @@ export default function WorkersPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sendingPortalLinkId, setSendingPortalLinkId] = useState<string | null>(null)
+  const [testingSmsWorkerId, setTestingSmsWorkerId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [isMobile, setIsMobile] = useState(false)
@@ -157,6 +168,7 @@ export default function WorkersPage() {
     setForm({
       full_name: worker.full_name || '',
       phone: worker.phone || '',
+      extra_phones: [...(worker.extra_phones ?? [])],
       email: worker.email || '',
       role: worker.role || '',
       is_active: worker.is_active,
@@ -238,11 +250,41 @@ export default function WorkersPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function updateExtraPhone(index: number, value: string) {
+    setForm((prev) => {
+      const next = [...prev.extra_phones]
+      next[index] = value
+      return { ...prev, extra_phones: next }
+    })
+  }
+
+  function addExtraPhoneField() {
+    setForm((prev) => {
+      if (prev.extra_phones.length >= MAX_WORKER_EXTRA_PHONES) return prev
+      return { ...prev, extra_phones: [...prev.extra_phones, ''] }
+    })
+  }
+
+  function removeExtraPhone(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      extra_phones: prev.extra_phones.filter((_, i) => i !== index),
+    }))
+  }
+
   function validateForm() {
     const nameError = validateRequired(form.full_name, 'שם')
     if (nameError) return 'נא למלא שם מלא'
     const phoneError = validatePhoneNumber(form.phone, 'טלפון')
-    if (phoneError) return 'נא להזין מספר טלפון תקין (לפחות 10 ספרות)'
+    if (phoneError) return 'נא להזין מספר טלפון ראשי תקין (לפחות 10 ספרות)'
+    for (let i = 0; i < form.extra_phones.length; i++) {
+      const extra = form.extra_phones[i]?.trim()
+      if (!extra) continue
+      const extraError = validatePhoneNumber(extra, `טלפון נוסף ${i + 1}`)
+      if (extraError) return 'מספר טלפון נוסף לא תקין (לפחות 10 ספרות)'
+    }
+    const extraSanitized = sanitizeExtraPhones(form.phone, form.extra_phones)
+    if (!extraSanitized.ok) return extraSanitized.error
     if (!editingWorker && !form.email.trim()) return 'נדרש אימייל לעובד חדש'
     if (form.email) {
       const emailError = validateEmail(form.email, 'אימייל')
@@ -262,9 +304,13 @@ export default function WorkersPage() {
     setSaving(true)
     await asyncHandler(
       async () => {
+        const extraSanitized = sanitizeExtraPhones(form.phone, form.extra_phones)
+        if (!extraSanitized.ok) throw new Error(extraSanitized.error)
+
         const payload = {
           full_name: form.full_name.trim(),
           phone: form.phone.trim(),
+          extra_phones: extraSanitized.phones,
           email: form.email.trim() || null,
           role: form.role.trim() || null,
           is_active: form.is_active,
@@ -285,6 +331,7 @@ export default function WorkersPage() {
             body: JSON.stringify({
               full_name: payload.full_name,
               phone: payload.phone,
+              extra_phones: payload.extra_phones,
               email: payload.email,
               role: payload.role,
               is_active: payload.is_active,
@@ -356,6 +403,7 @@ export default function WorkersPage() {
       const matchesSearch = !q ||
         worker.full_name.toLowerCase().includes(q) ||
         worker.phone.toLowerCase().includes(q) ||
+        (worker.extra_phones ?? []).some((p) => p.toLowerCase().includes(q)) ||
         (worker.email || '').toLowerCase().includes(q) ||
         (worker.role || '').toLowerCase().includes(q)
 
@@ -385,9 +433,44 @@ export default function WorkersPage() {
     )
   }
 
+  async function sendWorkerTestSms(worker: WorkerRow, e?: React.MouseEvent) {
+    e?.stopPropagation()
+    if (!workerHasPhone(worker)) {
+      toast.error('לעובד אין מספר טלפון')
+      return
+    }
+    setTestingSmsWorkerId(worker.id)
+    try {
+      const res = await fetchWithTimeout('/api/workers/test-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ worker_id: worker.id }),
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        sent?: number
+        total?: number
+        partial?: boolean
+      }
+      if (!res.ok) {
+        toast.error(json.error || 'שליחת SMS נכשלה')
+        return
+      }
+      if (json.partial) {
+        toast.success(`נשלח ל-${json.sent}/${json.total} מספרים`)
+      } else {
+        toast.success(`הודעת בדיקה נשלחה ל-${json.total || collectWorkerPhones(worker).length} מספרים`)
+      }
+    } catch {
+      toast.error('שגיאת חיבור — נסו שוב')
+    } finally {
+      setTestingSmsWorkerId(null)
+    }
+  }
+
   async function sendWorkerPortalLink(worker: WorkerRow, e?: React.MouseEvent) {
     e?.stopPropagation()
-    if (!worker.phone?.trim()) {
+    if (!workerHasPhone(worker)) {
       toast.error('לעובד אין מספר טלפון')
       return
     }
@@ -398,12 +481,21 @@ export default function WorkersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ worker_id: worker.id }),
       })
-      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        sent?: number
+        total?: number
+        partial?: boolean
+      }
       if (!res.ok) {
         toast.error(json.error || 'שליחת SMS נכשלה')
         return
       }
-      toast.success(`קישור נשלח ב-SMS ל-${worker.full_name}`)
+      if (json.partial) {
+        toast.success(`קישור נשלח ל-${json.sent}/${json.total} מספרים`)
+      } else {
+        toast.success(`קישור נשלח ל-${json.total || collectWorkerPhones(worker).length} מספרים`)
+      }
     } catch {
       toast.error('שגיאת חיבור — נסו שוב')
     } finally {
@@ -504,7 +596,7 @@ export default function WorkersPage() {
           ) : (
             <div style={{
               ...styles.workerGrid,
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+              gridTemplateColumns: isMobile ? '1fr' : undefined,
             }}>
               {filteredWorkers.map((worker) => (
                 <div
@@ -521,7 +613,9 @@ export default function WorkersPage() {
                       <div style={styles.workerName}>{worker.full_name}</div>
                       <div style={styles.workerRole}>{worker.role || 'ללא תפקיד'}</div>
                     </div>
-                    <StatusBadge status={worker.is_active ? 'ACTIVE' : 'INACTIVE'} size="sm" />
+                    <span style={workerStatusBadge(worker.is_active)}>
+                      {worker.is_active ? 'פעיל' : 'לא פעיל'}
+                    </span>
                   </div>
 
                   <div style={styles.workerMeta}>
@@ -529,7 +623,7 @@ export default function WorkersPage() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                       </svg>
-                      <span style={styles.metaText}>{worker.phone}</span>
+                      <span style={styles.metaText}>{formatWorkerPhonesDisplay(worker)}</span>
                     </div>
                     {worker.email && (
                       <div style={styles.metaItem}>
@@ -543,21 +637,31 @@ export default function WorkersPage() {
                   </div>
 
                   <div style={styles.workerActions} onClick={(e) => e.stopPropagation()}>
-                    <Button variant="secondary" size="sm" onClick={() => openEditDrawer(worker)}>
+                    <Button variant="secondary" size="sm" style={styles.actionBtn} onClick={() => openEditDrawer(worker)}>
                       עריכה
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={(e) => copyWorkerFieldLink(worker, e)}>
+                    <Button variant="secondary" size="sm" style={styles.actionBtn} onClick={(e) => copyWorkerFieldLink(worker, e)}>
                       העתק קישור
                     </Button>
                     <Button
                       variant="secondary"
                       size="sm"
+                      style={styles.actionBtn}
                       loading={sendingPortalLinkId === worker.id}
                       onClick={(e) => void sendWorkerPortalLink(worker, e)}
                     >
                       שלח קישור ב-SMS
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => toggleWorkerStatus(worker)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      style={styles.actionBtn}
+                      loading={testingSmsWorkerId === worker.id}
+                      onClick={(e) => void sendWorkerTestSms(worker, e)}
+                    >
+                      ניסיון SMS
+                    </Button>
+                    <Button variant="secondary" size="sm" style={styles.actionBtn} onClick={() => toggleWorkerStatus(worker)}>
                       {worker.is_active ? 'השבתה' : 'הפעלה'}
                     </Button>
                   </div>
@@ -590,14 +694,48 @@ export default function WorkersPage() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.formLabel}>טלפון *</label>
+            <label style={styles.formLabel}>טלפון ראשי *</label>
             <input
               type="tel"
               value={form.phone}
               onChange={(e) => updateForm('phone', e.target.value)}
-              placeholder="מספר טלפון"
+              placeholder="מספר אישי / ראשי"
               style={styles.input}
             />
+          </div>
+
+          <div style={styles.formGroup}>
+            <div style={styles.extraPhonesHeader}>
+              <label style={styles.formLabel}>טלפונים נוספים (SMS)</label>
+              {form.extra_phones.length < MAX_WORKER_EXTRA_PHONES ? (
+                <Button variant="ghost" size="sm" type="button" onClick={addExtraPhoneField}>
+                  + הוסף מספר
+                </Button>
+              ) : null}
+            </div>
+            <p style={styles.formHint}>למשל טלפון עבודה — כל המספרים יקבלו SMS בשיבוץ ובקישור לאזור האישי</p>
+            {form.extra_phones.length === 0 ? (
+              <Button variant="secondary" size="sm" type="button" onClick={addExtraPhoneField}>
+                הוסף טלפון נוסף
+              </Button>
+            ) : (
+              <div style={styles.extraPhoneList}>
+                {form.extra_phones.map((extraPhone, index) => (
+                  <div key={index} style={styles.extraPhoneRow}>
+                    <input
+                      type="tel"
+                      value={extraPhone}
+                      onChange={(e) => updateExtraPhone(index, e.target.value)}
+                      placeholder={`טלפון נוסף ${index + 1}`}
+                      style={{ ...styles.input, flex: 1 }}
+                    />
+                    <Button variant="ghost" size="sm" type="button" onClick={() => removeExtraPhone(index)}>
+                      הסר
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={styles.formGroup}>
@@ -669,11 +807,13 @@ export default function WorkersPage() {
             <div style={styles.detailSection}>
               <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>סטטוס</span>
-                <StatusBadge status={selectedWorker.is_active ? 'ACTIVE' : 'INACTIVE'} />
+                <span style={workerStatusBadge(selectedWorker.is_active)}>
+                  {selectedWorker.is_active ? 'פעיל' : 'לא פעיל'}
+                </span>
               </div>
               <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>טלפון</span>
-                <span style={styles.detailValue}>{selectedWorker.phone}</span>
+                <span style={styles.detailLabel}>טלפונים</span>
+                <span style={styles.detailValue}>{formatWorkerPhonesDisplay(selectedWorker)}</span>
               </div>
               <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>אימייל</span>
@@ -714,18 +854,27 @@ export default function WorkersPage() {
               )}
             </div>
 
-            <div style={styles.drawerActions}>
-              <Button variant="secondary" onClick={() => copyWorkerFieldLink(selectedWorker)}>
+            <div style={styles.drawerActionsGrid}>
+              <Button variant="secondary" style={styles.actionBtn} onClick={() => copyWorkerFieldLink(selectedWorker)}>
                 העתק קישור
               </Button>
               <Button
                 variant="secondary"
+                style={styles.actionBtn}
                 loading={sendingPortalLinkId === selectedWorker.id}
                 onClick={() => void sendWorkerPortalLink(selectedWorker)}
               >
                 שלח קישור ב-SMS
               </Button>
-              <Button variant="secondary" onClick={() => openEditDrawer(selectedWorker)}>
+              <Button
+                variant="secondary"
+                style={styles.actionBtn}
+                loading={testingSmsWorkerId === selectedWorker.id}
+                onClick={() => void sendWorkerTestSms(selectedWorker)}
+              >
+                ניסיון SMS
+              </Button>
+              <Button variant="secondary" style={styles.actionBtn} onClick={() => openEditDrawer(selectedWorker)}>
                 עריכת עובד
               </Button>
             </div>
@@ -735,6 +884,18 @@ export default function WorkersPage() {
     </AppShell>
   )
 }
+
+const workerStatusBadge = (active: boolean): CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 10px',
+  borderRadius: theme.radius.full,
+  fontSize: '11px',
+  fontWeight: 600,
+  flexShrink: 0,
+  background: active ? theme.colors.successMuted : theme.colors.muted,
+  color: active ? theme.colors.success : theme.colors.textMuted,
+})
 
 const styles: Record<string, CSSProperties> = {
   content: {
@@ -764,14 +925,18 @@ const styles: Record<string, CSSProperties> = {
     display: 'grid',
     gap: '20px',
     padding: '24px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
   },
   workerCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.radius.lg,
-    padding: '24px',
+    padding: '20px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
   },
   workerHeader: {
     display: 'flex',
@@ -800,6 +965,9 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '16px',
     fontWeight: 600,
     color: theme.colors.textPrimary,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   workerRole: {
     fontSize: '13px',
@@ -820,10 +988,27 @@ const styles: Record<string, CSSProperties> = {
   metaText: {
     fontSize: '14px',
     color: theme.colors.textSecondary,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   workerActions: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: '8px',
+    marginTop: 'auto',
+  },
+  actionBtn: {
+    width: '100%',
+    justifyContent: 'center',
+  },
+  drawerActionsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '10px',
+    paddingTop: '16px',
+    borderTop: `1px solid ${theme.colors.border}`,
+    marginTop: '8px',
   },
   drawerContent: {
     display: 'flex',
@@ -839,6 +1024,28 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 600,
     color: theme.colors.textSecondary,
+  },
+  formHint: {
+    margin: 0,
+    fontSize: '12px',
+    color: theme.colors.textMuted,
+    lineHeight: 1.4,
+  },
+  extraPhonesHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+  },
+  extraPhoneList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  extraPhoneRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
   },
   input: {
     padding: '12px 14px',

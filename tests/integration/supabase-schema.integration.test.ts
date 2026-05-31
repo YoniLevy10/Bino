@@ -104,7 +104,7 @@ describe('3. Critical columns', () => {
                            'deleted_at', 'merged_into_ticket_id', 'ticket_metadata',
                            'project_id', 'reporter_phone', 'reporter_name',
                            'assigned_worker_id', 'building_number', 'closed_at']],
-    ['workers',           ['id', 'client_id', 'full_name', 'phone', 'is_active', 'deleted_at', 'access_token', 'email', 'role']],
+    ['workers',           ['id', 'client_id', 'full_name', 'phone', 'extra_phones', 'is_active', 'deleted_at', 'access_token', 'email', 'role']],
     ['residents',         ['id', 'client_id', 'phone', 'deleted_at']],
     ['sessions',          ['id', 'client_id', 'phone', 'pending_location']],
     ['ticket_attachments',['id', 'ticket_id', 'file_name', 'file_url', 'mime_type', 'attachment_type', 'whatsapp_media_id']],

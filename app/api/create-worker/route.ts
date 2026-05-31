@@ -6,6 +6,7 @@ import { createWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
+import { sanitizeExtraPhones } from '@/lib/worker-phones'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -124,7 +125,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'אימייל לא תקין', requestId }, { status: 400 })
     }
 
-    const insertPayload = { ...payload, full_name: fullName, phone: phoneStr || null, email: emailStr || null }
+    const extraRaw = body.extra_phones ?? []
+    const extraSanitized = sanitizeExtraPhones(phoneStr, extraRaw)
+    if (!extraSanitized.ok) {
+      return NextResponse.json({ error: extraSanitized.error, requestId }, { status: 400 })
+    }
+
+    const insertPayload = {
+      ...payload,
+      full_name: fullName,
+      phone: phoneStr || null,
+      email: emailStr || null,
+      extra_phones: extraSanitized.phones,
+    }
 
     const { data: created, error: insErr } = await supabase
       .from('workers')

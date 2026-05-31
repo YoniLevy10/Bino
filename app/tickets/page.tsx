@@ -588,6 +588,10 @@ export default function TicketsPage() {
   }
 
   function openTicket(ticket: TicketRow) {
+    if (selectedTicket?.id === ticket.id) {
+      closeDrawer()
+      return
+    }
     setMobileToolsOpen(false)
     setSelectedTicket(ticket)
     setDraftPriority(ticket.priority || 'LOW')
