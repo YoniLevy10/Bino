@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest) {
 
     const parsed = workerUpdateTicketBodySchema.safeParse(rawBody)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
+      return NextResponse.json({ error: 'בקשה לא תקינה', details: parsed.error.flatten() }, { status: 400 })
     }
 
     const token = sanitizeId(parsed.data.token)
@@ -74,7 +74,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
     }
 
-    const payload: Record<string, string | null> = { status }
+    const payload: Record<string, string | null> = {
+      status,
+      updated_at: new Date().toISOString(),
+    }
     if (status === 'CLOSED') {
       payload.closed_at = new Date().toISOString()
     } else {
@@ -91,8 +94,12 @@ export async function PATCH(req: NextRequest) {
       .select('id, status')
       .maybeSingle()
 
-    if (error || !updated) {
-      return NextResponse.json({ error: 'עדכון נכשל' }, { status: 400 })
+    if (error) {
+      console.error('[worker/tickets PATCH]', error.message, error.code, { ticketId, status })
+      return NextResponse.json({ error: 'עדכון נכשל', details: error.message }, { status: 400 })
+    }
+    if (!updated) {
+      return NextResponse.json({ error: 'תקלה לא נמצאה או שאינה משויכת אליך' }, { status: 404 })
     }
 
     return NextResponse.json({ ok: true, ticket: updated })

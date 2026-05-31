@@ -37,21 +37,22 @@ export async function POST(req: Request) {
     }
 
     const subscription = parsed.data.subscription as Record<string, unknown>
-
-    await admin
-      .from('worker_push_subscriptions')
-      .delete()
-      .eq('worker_id', worker.id)
-      .eq('client_id', worker.client_id)
-
-    const { error } = await admin.from('worker_push_subscriptions').insert({
+    const row = {
       worker_id: worker.id,
       client_id: worker.client_id,
       subscription,
       updated_at: new Date().toISOString(),
-    })
+    }
+
+    const { error } = await admin
+      .from('worker_push_subscriptions')
+      .upsert(row, { onConflict: 'worker_id,client_id' })
 
     if (error) {
+      // Parallel subscribe requests — treat existing row as success
+      if (error.code === '23505') {
+        return NextResponse.json({ ok: true })
+      }
       console.error('[worker/push/subscribe]', error.message, error.code)
       return NextResponse.json({ error: 'שמירה נכשלה' }, { status: 500 })
     }

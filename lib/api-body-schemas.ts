@@ -118,6 +118,7 @@ export const workerUpdateTicketBodySchema = z.object({
   token: z.string().uuid(),
   ticket_id: z.string().uuid(),
   status: z.enum([
+    'NEW',
     'ASSIGNED',
     'IN_PROGRESS',
     'WAITING_PARTS',

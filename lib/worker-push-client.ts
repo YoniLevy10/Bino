@@ -3,6 +3,8 @@ import { ensureServiceWorkerReady, isStandaloneWorkerPwa } from '@/lib/service-w
 
 const PUSH_FETCH_TIMEOUT_MS = 30_000
 
+let subscribeInflight: Promise<{ ok: boolean; error?: string }> | null = null
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -101,8 +103,36 @@ export async function setWorkerAppBadge(count: number): Promise<void> {
   }
 }
 
+/** Persist push subscription JSON on server (no permission prompt). */
+export async function registerWorkerPushOnServer(
+  token: string,
+  sub: PushSubscription
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetchWithTimeout(
+    '/api/worker/push/subscribe',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, subscription: sub.toJSON() }),
+    },
+    PUSH_FETCH_TIMEOUT_MS
+  )
+  const json = (await res.json().catch(() => ({}))) as { error?: string }
+  if (!res.ok) return { ok: false, error: json.error || 'שמירה בשרת נכשלה' }
+  return { ok: true }
+}
+
 /** Subscribe + persist worker push on server. Requires notification permission. */
 export async function subscribeWorkerPush(token: string): Promise<{ ok: boolean; error?: string }> {
+  if (subscribeInflight) return subscribeInflight
+
+  subscribeInflight = subscribeWorkerPushInner(token).finally(() => {
+    subscribeInflight = null
+  })
+  return subscribeInflight
+}
+
+async function subscribeWorkerPushInner(token: string): Promise<{ ok: boolean; error?: string }> {
   const vapid = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim()
   if (!vapid) return { ok: false, error: 'התראות לא מוגדרות בשרת' }
   if (!isWorkerPushSupported()) {
@@ -159,11 +189,15 @@ export async function subscribeWorkerPush(token: string): Promise<{ ok: boolean;
   }
 }
 
-/** Re-sync existing subscription to server after PWA relaunch. */
+/** Re-sync existing subscription to server after PWA relaunch (no duplicate calls). */
 export async function syncWorkerPushIfGranted(token: string): Promise<boolean> {
   if (!token || Notification.permission !== 'granted' || !isWorkerPushSupported()) return false
   try {
-    const result = await subscribeWorkerPush(token)
+    const sub = await getWorkerPushSubscription()
+    if (!sub) return false
+    if (hasWorkerPushEnabledFlag()) return true
+    const result = await registerWorkerPushOnServer(token, sub)
+    if (result.ok) markWorkerPushEnabled()
     return result.ok
   } catch {
     return false

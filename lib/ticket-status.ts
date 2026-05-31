@@ -44,6 +44,7 @@ export const TICKET_STATUSES_IN_TREATMENT: readonly TicketStatus[] = [
 
 /** Statuses a field worker may set from /worker (not NEW — office-only). */
 export const WORKER_SETTABLE_STATUSES: readonly TicketStatus[] = [
+  'NEW',
   'ASSIGNED',
   'IN_PROGRESS',
   'WAITING_PARTS',

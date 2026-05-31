@@ -449,7 +449,8 @@ function WorkerPageInner() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: tokenSession.token, ticket_id: ticketId, status }),
         })
-        if (!res.ok) throw new Error('עדכון נכשל')
+        const json = (await res.json().catch(() => ({}))) as { error?: string; details?: unknown }
+        if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
         toast.success(status === 'CLOSED' ? TM.ticketClosed : TM.ticketUpdated)
         await loadTicketsToken(tokenSession.token)
       } catch (e) {
