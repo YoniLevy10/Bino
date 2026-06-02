@@ -6,9 +6,12 @@ import { LoadingButton } from '../components/LoadingButton'
 import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
 import {
   allNavFeatureOptions,
+  describeClientNavFeaturesMode,
   parseEnabledNavFeaturesFromDb,
   PREMIUM_NAV_FEATURE_IDS,
   REQUIRED_NAV_FEATURE_IDS,
+  SETUP_PACKAGE_NAV_FEATURE_IDS,
+  type ClientNavFeaturesMode,
 } from '@/lib/client-nav-features'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 
@@ -96,6 +99,32 @@ const PLAN_COLORS: Record<string, string> = {
   pro: '#2563eb',
   business: '#7c3aed',
   enterprise: '#b45309',
+}
+
+const NAV_FEATURES_MODE_BADGE: Record<ClientNavFeaturesMode, { label: string; bg: string }> = {
+  legacy_unlimited: { label: 'לגסי · הכל', bg: '#6b7280' },
+  setup_package: { label: 'חבילת הקמה', bg: '#b45309' },
+  custom_restricted: { label: 'מותאם', bg: '#7c3aed' },
+}
+
+function NavFeaturesModeBadge({ mode }: { mode: ClientNavFeaturesMode }) {
+  const badge = NAV_FEATURES_MODE_BADGE[mode]
+  return (
+    <span
+      style={{
+        background: badge.bg,
+        color: '#fff',
+        borderRadius: theme.radius.xs,
+        padding: '1px 6px',
+        fontSize: 10,
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      }}
+      title="מצב הרשאות לשוניות"
+    >
+      {badge.label}
+    </span>
+  )
 }
 
 const inputStyle: CSSProperties = {
@@ -287,10 +316,8 @@ export default function SuperAdminPage() {
     })
   }
 
-  function applyPremiumBlockedPreset() {
-    setFeaturesDraft(
-      DEFAULT_SIDEBAR_NAV_ORDER.filter((id) => !PREMIUM_NAV_FEATURE_IDS.includes(id))
-    )
+  function applySetupPackagePreset() {
+    setFeaturesDraft([...SETUP_PACKAGE_NAV_FEATURE_IDS])
   }
 
   function applyAllFeaturesPreset() {
@@ -749,8 +776,9 @@ export default function SuperAdminPage() {
 
                         {/* Name + copy ID */}
                         <td style={{ ...tdStyle, fontWeight: theme.typography.fontWeight.semibold, whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                             {c.name}
+                            <NavFeaturesModeBadge mode={describeClientNavFeaturesMode(c.enabled_nav_features)} />
                             <CopyButton text={c.id} label="Client ID" />
                           </div>
                         </td>
@@ -883,18 +911,19 @@ export default function SuperAdminPage() {
                                   לשוניות ופיצ&apos;רים פעילים
                                 </div>
                                 <p style={{ margin: `0 0 ${theme.spacing.lg}`, fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                                  בטלי סימון מלשוניות שלא שולמו — הלקוחה לא תראה אותן ולא תגיע לדפים (יומן, שעון עובדים וכו&apos;).
+                                  ברירת מחדל: חבילת הקמה (ליבה). תוספים (יומן, שעון, חיוב…) — סמן ושמור אחרי תשלום.
+                                  &quot;לגסי · כל הלשוניות&quot; רק ללקוח ששילם על הכל (NULL ב-DB).
                                   לוח בקרה ותקלות תמיד פעילים.
                                 </p>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
-                                  <button type="button" onClick={applyPremiumBlockedPreset} style={{ background: theme.colors.warningMuted, border: `1px solid ${theme.colors.warning}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs, color: theme.colors.textPrimary }}>
-                                    חסום פיצ&apos;רים בתשלום
+                                  <button type="button" onClick={applySetupPackagePreset} style={{ background: theme.colors.warningMuted, border: `1px solid ${theme.colors.warning}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs, color: theme.colors.textPrimary }}>
+                                    חבילת הקמה (ליבה)
                                   </button>
                                   <button type="button" onClick={applyAllFeaturesPreset} style={{ background: theme.colors.muted, border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs }}>
-                                    הפעל הכל
+                                    סמן הכל (לשמירה)
                                   </button>
-                                  <button type="button" onClick={() => void clearFeatureRestrictions(c.id)} style={{ background: theme.colors.muted, border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs }}>
-                                    ברירת מחדל (ללא הגבלה)
+                                  <button type="button" onClick={() => void clearFeatureRestrictions(c.id)} style={{ background: theme.colors.muted, border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs }} title="רק ללקוחות ותיקים — לא משנה נתונים">
+                                    לגסי · כל הלשוניות
                                   </button>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>

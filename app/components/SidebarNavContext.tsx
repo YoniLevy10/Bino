@@ -56,7 +56,7 @@ type NavCachePayload = {
 
 function readNavCache(clientId: string): NavCachePayload | null {
   try {
-    const raw = localStorage.getItem(`bamakor_nav_v3_${clientId}`)
+    const raw = localStorage.getItem(`bamakor_nav_v4_${clientId}`)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { orderIds: unknown; enabledFeatures?: unknown; ts: number }
     if (Date.now() - parsed.ts >= NAV_CACHE_TTL) return null
@@ -72,7 +72,7 @@ function readNavCache(clientId: string): NavCachePayload | null {
 
 function writeNavCache(clientId: string, payload: NavCachePayload) {
   try {
-    localStorage.setItem(`bamakor_nav_v3_${clientId}`, JSON.stringify({ ...payload, ts: Date.now() }))
+    localStorage.setItem(`bamakor_nav_v4_${clientId}`, JSON.stringify({ ...payload, ts: Date.now() }))
   } catch {}
 }
 

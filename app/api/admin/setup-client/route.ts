@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
+import { getSetupPackageNavFeatures } from '@/lib/client-nav-features'
 import { normalizeTier } from '@/lib/plan-limits'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -90,6 +91,8 @@ export async function POST(req: Request) {
         whatsapp_phone_number_id: d.whatsapp_phone_number_id ?? null,
         whatsapp_business_phone: d.whatsapp_business_phone ?? null,
         manager_phone: d.admin_phone ?? null,
+        /** New tenants: core tabs only; premium unlocked via superadmin after payment. */
+        enabled_nav_features: getSetupPackageNavFeatures(),
       })
       .select('id')
       .single()

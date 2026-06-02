@@ -15,11 +15,26 @@ export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'tickets',
 ]
 
+/** Paid add-ons — not included in the standard setup package (~10k NIS). */
 export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'calendar',
   'attendance',
   'pending_residents',
+  'billing',
 ]
+
+/**
+ * Default allowlist for new clients (setup / onboarding).
+ * Derived from full nav minus premium — keep in sync via tests.
+ */
+export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] =
+  DEFAULT_SIDEBAR_NAV_ORDER.filter(
+    (id) => !PREMIUM_NAV_FEATURE_IDS.includes(id)
+  ) as SidebarNavItemId[]
+
+export function getSetupPackageNavFeatures(): SidebarNavItemId[] {
+  return [...SETUP_PACKAGE_NAV_FEATURE_IDS]
+}
 
 export function parseEnabledNavFeaturesFromDb(value: unknown): SidebarNavItemId[] | null {
   if (value == null) return null
@@ -38,7 +53,39 @@ export function parseEnabledNavFeaturesFromDb(value: unknown): SidebarNavItemId[
   return ids.length > 0 ? ids : null
 }
 
-/** null = all features enabled (legacy / default). */
+/**
+ * null = legacy unlimited (existing tenants — never auto-restricted).
+ * Non-null array = explicit allowlist (new setup package or superadmin).
+ */
+export function isLegacyUnlimitedNavFeatures(
+  enabledFeatures: SidebarNavItemId[] | null | undefined
+): boolean {
+  return enabledFeatures == null
+}
+
+export function isSetupPackageNavFeatures(
+  enabledFeatures: SidebarNavItemId[] | null | undefined
+): boolean {
+  if (!enabledFeatures?.length) return false
+  const allowed = new Set(enabledFeatures)
+  if (SETUP_PACKAGE_NAV_FEATURE_IDS.some((id) => !allowed.has(id))) return false
+  for (const premium of PREMIUM_NAV_FEATURE_IDS) {
+    if (allowed.has(premium)) return false
+  }
+  return enabledFeatures.length === SETUP_PACKAGE_NAV_FEATURE_IDS.length
+}
+
+export type ClientNavFeaturesMode = 'legacy_unlimited' | 'setup_package' | 'custom_restricted'
+
+export function describeClientNavFeaturesMode(
+  enabledFeatures: SidebarNavItemId[] | null | undefined
+): ClientNavFeaturesMode {
+  if (isLegacyUnlimitedNavFeatures(enabledFeatures)) return 'legacy_unlimited'
+  if (isSetupPackageNavFeatures(enabledFeatures)) return 'setup_package'
+  return 'custom_restricted'
+}
+
+/** null = all features enabled (legacy tenants only). */
 export function isNavFeatureEnabled(
   enabledFeatures: SidebarNavItemId[] | null | undefined,
   featureId: SidebarNavItemId
