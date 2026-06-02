@@ -28,11 +28,46 @@ import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
 import { asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
+type PlanLimits = {
+  buildings: number
+  workers: number
+  tickets_per_month: number
+}
+
+type PlanRow = {
+  id: string
+  label: string
+  price: string
+  limits: PlanLimits
+  limitsLine: string
+  isCurrent: boolean
+}
+
 type Summary = {
   ticketsThisMonth: number
   residentsTotal: number
   workersActive: number
+  buildingsActive?: number
   ticketsByWeek: { week_start: string; count: number }[]
+  plan?: {
+    tier: string
+    label: string
+    price: string
+    limitsLine: string
+    maxBuildings: number | null
+    maxWorkers: number | null
+    maxTicketsPerMonth: number | null
+  }
+  plans?: PlanRow[]
+}
+
+function formatCap(value: number | null | undefined, used: number): string {
+  if (value == null) return `${used.toLocaleString('he-IL')} / ללא הגבלה`
+  return `${used.toLocaleString('he-IL')} / ${value.toLocaleString('he-IL')}`
+}
+
+function formatLimitCell(value: number): string {
+  return value === Infinity ? 'ללא הגבלה' : value.toLocaleString('he-IL')
 }
 
 export default function BillingPage() {
@@ -60,7 +95,10 @@ export default function BillingPage() {
             ticketsThisMonth: json.ticketsThisMonth,
             residentsTotal: json.residentsTotal,
             workersActive: json.workersActive,
+            buildingsActive: json.buildingsActive,
             ticketsByWeek: json.ticketsByWeek || [],
+            plan: json.plan,
+            plans: json.plans,
           })
           return true
         },
@@ -85,7 +123,7 @@ export default function BillingPage() {
           ...(isMobile ? { padding: '16px 16px 8px', maxWidth: '100%', boxSizing: 'border-box' } : {}),
         }}
       >
-        {!isMobile && <PageHeader title="חיוב ושימוש" subtitle="מדדי שימוש ותמחור עתידי" />}
+        {!isMobile && <PageHeader title="חיוב ושימוש" subtitle="תוכנית חודשית ומדדי צריכה" />}
 
         {loading ? (
           <div style={styles.loading}>
@@ -97,6 +135,43 @@ export default function BillingPage() {
           </div>
         ) : !data ? null : (
           <>
+            {data.plan && (
+              <Card noPadding style={{ marginBottom: 20 }}>
+                <div style={styles.cardPad}>
+                  <h2 style={styles.h2}>תוכנית חודשית פעילה</h2>
+                  <p style={styles.planLead}>
+                    <strong>{data.plan.label}</strong> — {data.plan.price}
+                  </p>
+                  <p style={styles.mutedSmall}>{data.plan.limitsLine}</p>
+                  <div
+                    style={{
+                      ...styles.usageGrid,
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                    }}
+                  >
+                    <div style={styles.usageCell}>
+                      <span style={styles.usageLabel}>בניינים פעילים</span>
+                      <span style={styles.usageVal}>
+                        {formatCap(data.plan.maxBuildings, data.buildingsActive ?? 0)}
+                      </span>
+                    </div>
+                    <div style={styles.usageCell}>
+                      <span style={styles.usageLabel}>עובדים פעילים</span>
+                      <span style={styles.usageVal}>
+                        {formatCap(data.plan.maxWorkers, data.workersActive)}
+                      </span>
+                    </div>
+                    <div style={styles.usageCell}>
+                      <span style={styles.usageLabel}>תקלות החודש</span>
+                      <span style={styles.usageVal}>
+                        {formatCap(data.plan.maxTicketsPerMonth, data.ticketsThisMonth)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <div
               style={{
                 ...styles.kpiGrid,
@@ -107,6 +182,51 @@ export default function BillingPage() {
               <KpiCard label="דיירים (סה״כ ברשומה)" value={data.residentsTotal} accent="success" />
               <KpiCard label="עובדים פעילים" value={data.workersActive} />
             </div>
+
+            {data.plans && data.plans.length > 0 && (
+              <Card noPadding style={{ marginTop: 20 }}>
+                <div style={styles.cardPad}>
+                  <h2 style={styles.h2}>תוכניות חיוב חודשיות</h2>
+                  <p style={styles.mutedSmall}>
+                    תמחור לפי מסלול. שדרוג — פנו להנהלת Bamakor / Levy Tech.
+                  </p>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={styles.plansTable}>
+                      <thead>
+                        <tr>
+                          {['מסלול', 'מחיר/חודש', 'בניינים', 'עובדים', 'תקלות/חודש', ''].map((h) => (
+                            <th key={h || 'status'} style={styles.th}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.plans.map((p) => (
+                          <tr
+                            key={p.id}
+                            style={{
+                              background: p.isCurrent ? theme.colors.primaryMuted : undefined,
+                            }}
+                          >
+                            <td style={styles.td}><strong>{p.label}</strong></td>
+                            <td style={styles.td}>{p.price}</td>
+                            <td style={styles.td}>{formatLimitCell(p.limits.buildings)}</td>
+                            <td style={styles.td}>{formatLimitCell(p.limits.workers)}</td>
+                            <td style={styles.td}>{formatLimitCell(p.limits.tickets_per_month)}</td>
+                            <td style={styles.td}>
+                              {p.isCurrent ? (
+                                <span style={styles.currentBadge}>פעיל אצלכם</span>
+                              ) : (
+                                <span style={styles.mutedSmall}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             <Card noPadding style={{ marginTop: '20px' }}>
               <div style={styles.cardPad}>
@@ -138,7 +258,7 @@ export default function BillingPage() {
             <Card noPadding style={{ marginTop: '16px' }}>
               <div style={styles.cardPad}>
                 <p style={styles.note}>
-                  חיוב חודשי מחושב לפי תוכנית — כאן מוצגים נתוני שימוש בלבד. תמחור וחשבוניות יתווספו בהמשך.
+                  חשבוניות מסודרות יופקו בהמשך. התוספים יומן ושעון עובדים מחויבים בנפרד מהמסלול החודשי.
                 </p>
               </div>
             </Card>
@@ -205,5 +325,57 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     lineHeight: 1.55,
     color: theme.colors.textSecondary,
+  },
+  planLead: {
+    margin: '0 0 6px',
+    fontSize: '18px',
+    color: theme.colors.textPrimary,
+  },
+  mutedSmall: {
+    margin: '0 0 12px',
+    fontSize: '13px',
+    color: theme.colors.textMuted,
+    lineHeight: 1.5,
+  },
+  usageGrid: { display: 'grid', gap: 12, marginTop: 12 },
+  usageCell: {
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+  },
+  usageLabel: {
+    display: 'block',
+    fontSize: '12px',
+    color: theme.colors.textMuted,
+    marginBottom: 4,
+  },
+  usageVal: { fontSize: '15px', fontWeight: 600, color: theme.colors.textPrimary },
+  plansTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '14px',
+    marginTop: 8,
+  },
+  th: {
+    textAlign: 'right',
+    padding: '10px 12px',
+    borderBottom: `2px solid ${theme.colors.border}`,
+    color: theme.colors.textMuted,
+    fontSize: '12px',
+    fontWeight: 600,
+  },
+  td: {
+    padding: '12px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    color: theme.colors.textPrimary,
+  },
+  currentBadge: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: theme.colors.primary,
+    background: theme.colors.primaryMuted,
+    padding: '4px 10px',
+    borderRadius: theme.radius.full,
+    whiteSpace: 'nowrap',
   },
 }

@@ -1,5 +1,21 @@
 import { NextResponse } from 'next/server'
 import { requireSessionClientId } from '@/lib/api-auth'
+import {
+  PLAN_HEBREW_LABELS,
+  PLAN_TIER_ORDER,
+  planLimitsLine,
+  planPriceLabel,
+} from '@/lib/plan-display'
+import {
+  PLAN_LIMITS,
+  PLAN_PRICES,
+  effectiveMaxBuildings,
+  effectiveMaxTicketsPerMonth,
+  effectiveMaxWorkers,
+  getClientPlanRow,
+  normalizeTier,
+  type PlanTier,
+} from '@/lib/plan-limits'
 
 function startOfMonthIso() {
   const d = new Date()
@@ -24,7 +40,12 @@ export async function GET() {
   const monthStart = startOfMonthIso()
 
   try {
-    const [ticketsMonth, residentsCount, workersActive, ticketsForWeeks] = await Promise.all([
+    const clientPlan = await getClientPlanRow(admin, clientId)
+    const planRow = clientPlan.data as Parameters<typeof effectiveMaxBuildings>[0]
+    const tier = normalizeTier(planRow?.plan_tier)
+
+    const [ticketsMonth, residentsCount, workersActive, ticketsForWeeks, buildingsCount] =
+      await Promise.all([
       admin
         .from('tickets')
         .select('*', { count: 'exact', head: true })
@@ -48,9 +69,21 @@ export async function GET() {
         .eq('client_id', clientId)
         .is('deleted_at', null)
         .gte('created_at', new Date(Date.now() - 56 * 24 * 60 * 60 * 1000).toISOString()),
+      admin
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', clientId)
+        .eq('is_active', true)
+        .is('deleted_at', null),
     ])
 
-    if (ticketsMonth.error || residentsCount.error || workersActive.error || ticketsForWeeks.error) {
+    if (
+      ticketsMonth.error ||
+      residentsCount.error ||
+      workersActive.error ||
+      ticketsForWeeks.error ||
+      buildingsCount.error
+    ) {
       return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
     }
 
@@ -64,11 +97,31 @@ export async function GET() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([week_start, count]) => ({ week_start, count }))
 
+    const plans = PLAN_TIER_ORDER.map((planId: PlanTier) => ({
+      id: planId,
+      label: PLAN_HEBREW_LABELS[planId],
+      price: PLAN_PRICES[planId],
+      limits: PLAN_LIMITS[planId],
+      limitsLine: planLimitsLine(planId),
+      isCurrent: planId === tier,
+    }))
+
     return NextResponse.json({
       ticketsThisMonth: ticketsMonth.count ?? 0,
       residentsTotal: residentsCount.count ?? 0,
       workersActive: workersActive.count ?? 0,
+      buildingsActive: buildingsCount.count ?? 0,
       ticketsByWeek: chart,
+      plan: {
+        tier,
+        label: PLAN_HEBREW_LABELS[tier],
+        price: planPriceLabel(tier),
+        limitsLine: planLimitsLine(tier),
+        maxBuildings: effectiveMaxBuildings(planRow),
+        maxWorkers: effectiveMaxWorkers(planRow),
+        maxTicketsPerMonth: effectiveMaxTicketsPerMonth(planRow),
+      },
+      plans,
     })
   } catch {
     return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })

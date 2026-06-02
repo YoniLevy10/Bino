@@ -13,6 +13,9 @@ import {
   SETUP_PACKAGE_NAV_FEATURE_IDS,
   type ClientNavFeaturesMode,
 } from '@/lib/client-nav-features'
+import { PlatformDocsPanel } from '@/app/components/superadmin/PlatformDocsPanel'
+import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
+import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 
 type Project = { id: string; name: string; project_code: string }
@@ -40,52 +43,7 @@ type EditState = {
   sms_sender_name: string
 }
 
-type ViewMode = 'clients' | 'ops'
-
-type FailedNotificationRow = {
-  id: string
-  client_id: string | null
-  client_name: string | null
-  channel: string
-  destination: string | null
-  error_message: string
-  payload: string | null
-  created_at: string
-}
-
-type ErrorLogRow = {
-  id: string
-  client_id: string | null
-  client_name: string | null
-  context: string
-  message: string
-  resolved: boolean
-  whatsapp_attempts: number
-  created_at: string
-}
-
-type OpsFeed = {
-  failed_notifications: FailedNotificationRow[]
-  error_logs: ErrorLogRow[]
-  counts: {
-    failed_notifications: number
-    error_logs: number
-    unresolved_errors: number
-  }
-}
-
-function formatOpsTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })
-  } catch {
-    return iso
-  }
-}
-
-function truncateOps(text: string, max = 120): string {
-  const t = text.trim()
-  return t.length <= max ? t : `${t.slice(0, max)}…`
-}
+type ViewMode = 'clients' | 'docs'
 
 const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter',
@@ -201,9 +159,6 @@ export default function SuperAdminPage() {
   const [deleteError, setDeleteError] = useState('')
 
   const [viewMode, setViewMode] = useState<ViewMode>('clients')
-  const [opsFeed, setOpsFeed] = useState<OpsFeed | null>(null)
-  const [opsLoading, setOpsLoading] = useState(false)
-  const [opsError, setOpsError] = useState('')
 
   const verifySecret = useCallback(async (s: string) => {
     const res = await fetch('/api/superadmin/stats', { headers: { 'x-admin-secret': s } })
@@ -225,39 +180,9 @@ export default function SuperAdminPage() {
     }
   }, [])
 
-  const loadOpsFeed = useCallback(async (s: string) => {
-    setOpsLoading(true)
-    setOpsError('')
-    try {
-      const res = await fetch('/api/superadmin/ops-feed?limit=50', { headers: { 'x-admin-secret': s } })
-      const json = await res.json() as OpsFeed & { error?: string }
-      if (!res.ok) {
-        setOpsError(json.error ?? `שגיאה ${res.status}`)
-        return
-      }
-      setOpsFeed({
-        failed_notifications: json.failed_notifications ?? [],
-        error_logs: json.error_logs ?? [],
-        counts: json.counts ?? {
-          failed_notifications: 0,
-          error_logs: 0,
-          unresolved_errors: 0,
-        },
-      })
-    } catch (e) {
-      setOpsError(e instanceof Error ? e.message : 'שגיאת רשת')
-    } finally {
-      setOpsLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (unlocked) void loadClients(secret)
   }, [unlocked]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (unlocked && viewMode === 'ops') void loadOpsFeed(secret)
-  }, [unlocked, viewMode, secret, loadOpsFeed])
 
   useEffect(() => {
     const stored = readAdminSecret()
@@ -547,16 +472,15 @@ export default function SuperAdminPage() {
             Super Admin
           </h1>
           <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => {
-                if (viewMode === 'clients') void loadClients(secret)
-                else void loadOpsFeed(secret)
-              }}
-              disabled={viewMode === 'clients' ? loading : opsLoading}
-              style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: (viewMode === 'clients' ? loading : opsLoading) ? 'not-allowed' : 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}
-            >
-              {(viewMode === 'clients' ? loading : opsLoading) ? 'טוען...' : 'רענן'}
-            </button>
+            {viewMode === 'clients' && (
+              <button
+                onClick={() => void loadClients(secret)}
+                disabled={loading}
+                style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: loading ? 'not-allowed' : 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}
+              >
+                {loading ? 'טוען...' : 'רענן'}
+              </button>
+            )}
             <a
               href="/admin/setup"
               style={{ background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '8px 18px', cursor: 'pointer', fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -570,7 +494,7 @@ export default function SuperAdminPage() {
           {(
             [
               { id: 'clients' as const, label: 'לקוחות' },
-              { id: 'ops' as const, label: 'כשלונות אחרונים' },
+              { id: 'docs' as const, label: 'תיעוד' },
             ] as const
           ).map((tab) => (
             <button
@@ -593,125 +517,9 @@ export default function SuperAdminPage() {
           ))}
         </div>
 
-        {viewMode === 'ops' && (
+        {viewMode === 'docs' && (
           <>
-            {opsFeed && (
-              <div style={{ display: 'flex', gap: theme.spacing.lg, marginBottom: theme.spacing.xl, flexWrap: 'wrap' }}>
-                {[
-                  { label: 'כשלי SMS/הודעות', value: opsFeed.counts.failed_notifications },
-                  { label: 'רשומות יומן שגיאות', value: opsFeed.counts.error_logs },
-                  { label: 'שגיאות פתוחות', value: opsFeed.counts.unresolved_errors },
-                ].map((s) => (
-                  <div key={s.label} style={{ background: theme.colors.warningMuted, borderRadius: theme.radius.md, padding: `${theme.spacing.md} ${theme.spacing.xl}`, textAlign: 'center', minWidth: 120 }}>
-                    <div style={{ fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.warning }}>{s.value}</div>
-                    <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {opsError && (
-              <div style={{ background: theme.colors.errorMuted, border: `1.5px solid ${theme.colors.error}`, borderRadius: theme.radius.md, padding: theme.spacing.lg, marginBottom: theme.spacing.xl, color: theme.colors.error, fontSize: theme.typography.fontSize.sm }}>
-                {opsError}
-              </div>
-            )}
-
-            <div style={{ ...cardStyle, marginBottom: theme.spacing.xl }}>
-              <div style={{ padding: theme.spacing.lg, borderBottom: `1px solid ${theme.colors.border}` }}>
-                <h2 style={{ margin: 0, fontSize: theme.typography.fontSize.lg, color: theme.colors.textPrimary }}>כשלי הודעות (SMS וכו׳)</h2>
-                <p style={{ margin: '6px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
-                  50 אחרונים — גם נשלח מייל ל-PLATFORM_OPS_EMAIL אם מוגדר Resend
-                </p>
-              </div>
-              {opsLoading && !opsFeed ? (
-                <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>טוען...</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        {['זמן', 'לקוח', 'ערוץ', 'יעד', 'שגיאה'].map((h) => (
-                          <th key={h} style={thStyle}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(opsFeed?.failed_notifications ?? []).map((row) => (
-                        <tr key={row.id}>
-                          <td style={{ ...tdStyle, whiteSpace: 'nowrap', fontSize: theme.typography.fontSize.xs }}>{formatOpsTime(row.created_at)}</td>
-                          <td style={tdStyle}>{row.client_name ?? '—'}</td>
-                          <td style={tdStyle}>{row.channel}</td>
-                          <td style={{ ...tdStyle, direction: 'ltr', fontSize: theme.typography.fontSize.xs }}>{row.destination ?? '—'}</td>
-                          <td style={{ ...tdStyle, maxWidth: 360 }} title={row.error_message}>
-                            {truncateOps(row.error_message, 160)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(opsFeed?.failed_notifications.length ?? 0) === 0 && !opsLoading && (
-                    <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>אין כשלונות אחרונים</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div style={cardStyle}>
-              <div style={{ padding: theme.spacing.lg, borderBottom: `1px solid ${theme.colors.border}` }}>
-                <h2 style={{ margin: 0, fontSize: theme.typography.fontSize.lg, color: theme.colors.textPrimary }}>יומן שגיאות תפעולי</h2>
-                <p style={{ margin: '6px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
-                  WhatsApp, timeouts ועוד — 50 אחרונים
-                </p>
-              </div>
-              {opsLoading && !opsFeed ? (
-                <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>טוען...</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        {['זמן', 'לקוח', 'הקשר', 'סטטוס', 'הודעה'].map((h) => (
-                          <th key={h} style={thStyle}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(opsFeed?.error_logs ?? []).map((row) => (
-                        <tr key={row.id} style={{ opacity: row.resolved ? 0.65 : 1 }}>
-                          <td style={{ ...tdStyle, whiteSpace: 'nowrap', fontSize: theme.typography.fontSize.xs }}>{formatOpsTime(row.created_at)}</td>
-                          <td style={tdStyle}>{row.client_name ?? '—'}</td>
-                          <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs }}>{row.context}</td>
-                          <td style={tdStyle}>
-                            <span style={{
-                              background: row.resolved ? theme.colors.successMuted : theme.colors.errorMuted,
-                              color: row.resolved ? theme.colors.success : theme.colors.error,
-                              borderRadius: theme.radius.xs,
-                              padding: '2px 8px',
-                              fontSize: theme.typography.fontSize.xs,
-                              fontWeight: 600,
-                            }}>
-                              {row.resolved ? 'טופל' : 'פתוח'}
-                            </span>
-                          </td>
-                          <td style={{ ...tdStyle, maxWidth: 400 }} title={row.message}>
-                            {truncateOps(row.message, 180)}
-                            {row.context === 'whatsapp_send' && !row.resolved && (
-                              <span style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginTop: 4 }}>
-                                ניסיונות: {row.whatsapp_attempts}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(opsFeed?.error_logs.length ?? 0) === 0 && !opsLoading && (
-                    <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>אין שגיאות אחרונות</p>
-                  )}
-                </div>
-              )}
-            </div>
-
+            <PlatformDocsPanel adminSecret={secret} />
             <AdminQuickLinks />
           </>
         )}
@@ -882,10 +690,13 @@ export default function SuperAdminPage() {
                                     <div>
                                       <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>תכנית</label>
                                       <select value={editState.plan_tier} onChange={(e) => setEditState((s) => s ? { ...s, plan_tier: e.target.value } : s)} style={inputStyle}>
-                                        {['starter', 'pro', 'business', 'enterprise'].map((p) => (
-                                          <option key={p} value={p}>{PLAN_LABELS[p]}</option>
+                                        {PLAN_SETUP_OPTIONS.map((p) => (
+                                          <option key={p.value} value={p.value}>{p.label}</option>
                                         ))}
                                       </select>
+                                      <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
+                                        מכסות: {planLimitsLine(normalizeTier(editState.plan_tier) as PlanTier)}
+                                      </p>
                                     </div>
                                   </div>
                                   {saveError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{saveError}</p>}
@@ -911,7 +722,7 @@ export default function SuperAdminPage() {
                                   לשוניות ופיצ&apos;רים פעילים
                                 </div>
                                 <p style={{ margin: `0 0 ${theme.spacing.lg}`, fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                                  ברירת מחדל: חבילת הקמה (ליבה). תוספים (יומן, שעון, חיוב…) — סמן ושמור אחרי תשלום.
+                                  ברירת מחדל: חבילת הקמה (ליבה). תוספים בתשלום: יומן, שעון עובדים — סמן ושמור אחרי תשלום.
                                   &quot;לגסי · כל הלשוניות&quot; רק ללקוח ששילם על הכל (NULL ב-DB).
                                   לוח בקרה ותקלות תמיד פעילים.
                                 </p>

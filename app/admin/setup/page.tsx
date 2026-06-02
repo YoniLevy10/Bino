@@ -18,6 +18,8 @@ import { useState, useEffect, type CSSProperties } from 'react'
 import { theme, Button, Card } from '../../components/ui'
 import { LoadingButton } from '../../components/LoadingButton'
 import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
+import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
+import type { PlanTier } from '@/lib/plan-limits'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ProjectInput = { name: string; project_code: string; address: string }
@@ -652,13 +654,18 @@ export default function AdminSetupPage() {
               <Select
                 value={planTier}
                 onChange={(v) => setPlanTier(v as typeof planTier)}
-                options={[
-                  { value: 'starter', label: 'Starter — ₪299/חודש' },
-                  { value: 'pro', label: 'Pro — ₪499/חודש' },
-                  { value: 'business', label: 'Business — ₪699/חודש' },
-                  { value: 'enterprise', label: 'Enterprise — ₪899+/חודש' },
-                ]}
+                options={PLAN_SETUP_OPTIONS}
               />
+              <p
+                style={{
+                  margin: `${theme.spacing.xs}px 0 0`,
+                  fontSize: theme.typography.fontSize.xs,
+                  color: theme.colors.textMuted,
+                  lineHeight: 1.5,
+                }}
+              >
+                מכסות: {planLimitsLine(planTier)}
+              </p>
             </Field>
           </div>
           <div style={rowStyle}>
