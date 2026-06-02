@@ -4,6 +4,7 @@ import {
   DEFAULT_SIDEBAR_NAV_ORDER,
   isInternalSidebarNavItemId,
   isSidebarNavItemId,
+  SIDEBAR_NAV_ITEM_IDS,
   SIDEBAR_NAV_REGISTRY,
   type SidebarNavItem,
   type SidebarNavItemId,
@@ -19,6 +20,8 @@ export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
 export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'calendar',
   'attendance',
+  'pilot_sms',
+  'project_documents',
 ]
 
 /**
@@ -183,7 +186,7 @@ export async function assertClientNavFeatureEnabled(
 }
 
 export function allNavFeatureOptions(): { id: SidebarNavItemId; label: string }[] {
-  return DEFAULT_SIDEBAR_NAV_ORDER.map((id) => ({
+  return SIDEBAR_NAV_ITEM_IDS.filter((id) => !isInternalSidebarNavItemId(id)).map((id) => ({
     id,
     label: SIDEBAR_NAV_REGISTRY[id].label,
   }))

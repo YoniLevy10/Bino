@@ -37,6 +37,9 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGate'
+import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
+import { ProjectPilotSmsPanel } from '../components/projects/ProjectPilotSmsPanel'
 
 type ProjectRow = {
   id: string
@@ -705,6 +708,17 @@ export default function ProjectsPage() {
                 </span>
               </div>
             </div>
+
+            <PaidAddonFeatureGate featureId="pilot_sms">
+              <ProjectPilotSmsPanel
+                projectId={selectedProject.id}
+                projectName={selectedProject.name}
+              />
+            </PaidAddonFeatureGate>
+
+            <PaidAddonFeatureGate featureId="project_documents">
+              <ProjectDocumentsPanel projectId={selectedProject.id} />
+            </PaidAddonFeatureGate>
 
             <div style={styles.ticketsSection}>
               <div style={styles.ticketsSectionHeader}>

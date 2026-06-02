@@ -78,10 +78,57 @@ function AttendanceMock() {
   )
 }
 
+function PilotSmsMock() {
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>SMS פיילוט</span>
+        <span style={styles.mockPill}>פרויקט</span>
+      </div>
+      <div style={{ ...styles.kpi, textAlign: 'right', padding: 12 }}>
+        <div style={{ fontSize: 11, color: theme.colors.textMuted, marginBottom: 6 }}>נמענים: 48 דיירים</div>
+        <div style={{ fontSize: 10, lineHeight: 1.4, color: theme.colors.textSecondary }}>
+          שלום וברכה, כאן מוקד התקלות של במקור...
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DocumentsMock() {
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>תיקיית מסמכים</span>
+      </div>
+      <ul style={{ margin: 0, padding: '8px 12px 12px 28px', fontSize: 10, color: theme.colors.textSecondary }}>
+        <li>חוזה אחזקה.pdf</li>
+        <li>תוכנית קומות.dwg</li>
+        <li>פרוטוקול ועד.docx</li>
+      </ul>
+    </div>
+  )
+}
+
+function renderMock(addonId: PaidAddonId) {
+  switch (addonId) {
+    case 'calendar':
+      return <CalendarMock />
+    case 'attendance':
+      return <AttendanceMock />
+    case 'pilot_sms':
+      return <PilotSmsMock />
+    case 'project_documents':
+      return <DocumentsMock />
+    default:
+      return <CalendarMock />
+  }
+}
+
 export function AddonFeaturePreview({ addonId }: { addonId: PaidAddonId }) {
   return (
     <div style={styles.previewWrap}>
-      {addonId === 'calendar' ? <CalendarMock /> : <AttendanceMock />}
+      {renderMock(addonId)}
       <LockOverlay />
     </div>
   )

@@ -27,6 +27,7 @@ type SidebarNavContextValue = {
   mobileBottomPrimary: SidebarNavItem[]
   mobileBottomMore: SidebarNavItem[]
   orderIds: SidebarNavItemId[]
+  enabledFeatures: SidebarNavItemId[] | null
   lockedAddonsCount: number
   isBootstrapped: boolean
   refreshNav: () => Promise<void>
@@ -41,6 +42,7 @@ const SidebarNavContext = createContext<SidebarNavContextValue>({
   mobileBottomPrimary: defaultSplit.primary,
   mobileBottomMore: defaultSplit.more,
   orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
+  enabledFeatures: null,
   lockedAddonsCount: 0,
   isBootstrapped: false,
   refreshNav: async () => {},
@@ -149,12 +151,23 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
       mobileBottomPrimary,
       mobileBottomMore,
       orderIds,
+      enabledFeatures,
       lockedAddonsCount,
       isBootstrapped,
       refreshNav: loadNav,
       setLocalOrderIds,
     }),
-    [navItems, mobileBottomPrimary, mobileBottomMore, orderIds, lockedAddonsCount, isBootstrapped, loadNav, setLocalOrderIds]
+    [
+      navItems,
+      mobileBottomPrimary,
+      mobileBottomMore,
+      orderIds,
+      enabledFeatures,
+      lockedAddonsCount,
+      isBootstrapped,
+      loadNav,
+      setLocalOrderIds,
+    ]
   )
 
   return <SidebarNavContext.Provider value={value}>{children}</SidebarNavContext.Provider>

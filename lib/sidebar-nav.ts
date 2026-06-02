@@ -17,6 +17,8 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'whatsapp_templates',
   'billing',
   'pending_residents',
+  'pilot_sms',
+  'project_documents',
 ] as const
 
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
@@ -60,6 +62,18 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     href: '/pending-residents',
     label: 'דיירים ממתינים',
     icon: 'building',
+  },
+  pilot_sms: {
+    id: 'pilot_sms',
+    href: '/projects',
+    label: 'SMS פיילוט לדיירים',
+    icon: 'message',
+  },
+  project_documents: {
+    id: 'project_documents',
+    href: '/projects',
+    label: 'תיקיית מסמכים לפרויקט',
+    icon: 'folder',
   },
 }
 

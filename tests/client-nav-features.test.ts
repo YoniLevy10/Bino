@@ -18,7 +18,13 @@ describe('client nav features', () => {
     expect(describeClientNavFeaturesMode(null)).toBe('legacy_unlimited')
   })
 
-  it('setup package excludes premium tabs', () => {
+  it('setup package excludes all premium addons', () => {
+    expect(PREMIUM_NAV_FEATURE_IDS).toEqual([
+      'calendar',
+      'attendance',
+      'pilot_sms',
+      'project_documents',
+    ])
     for (const premium of PREMIUM_NAV_FEATURE_IDS) {
       expect(SETUP_PACKAGE_NAV_FEATURE_IDS).not.toContain(premium)
     }

@@ -316,3 +316,12 @@ export const deleteTicketsBodySchema = z.union([
     delete_all: z.literal(true),
   }),
 ])
+
+export const projectPilotSmsBodySchema = z.object({
+  project_id: z.string().uuid(),
+  dry_run: z.boolean().optional(),
+})
+
+export const deleteProjectDocumentBodySchema = z.object({
+  document_id: z.string().uuid(),
+})

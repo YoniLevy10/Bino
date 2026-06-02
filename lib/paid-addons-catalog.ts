@@ -29,7 +29,27 @@ export const PAID_ADDON_CATALOG: readonly PaidAddonCatalogEntry[] = [
       'רישום כניסה ויציאה לעובדי משרד, סיכום שעות, התראות גדר גיאוגרפית וניהול משמרות פתוחות.',
     highlights: ['QR להדפסה בכניסה', 'שעות ועלות לפי עובד', 'דוחות לפי תקופה'],
   },
+  {
+    id: 'pilot_sms',
+    title: 'SMS פיילוט לדיירים',
+    tagline: 'הודעת פתיחה לכל דיירי הבניין',
+    description:
+      'בתחילת פיילוט בבניין — שליחת SMS רב-לשוני (עברית, אנגלית, צרפתית) לכל דייר עם טלפון בפרויקט, עם המלצה לשמור את מוקד התקלות.',
+    highlights: ['הודעה מוכנה מראש', 'ספירת נמענים לפני שליחה', 'לוג שליחה במערכת'],
+  },
+  {
+    id: 'project_documents',
+    title: 'תיקיית מסמכים',
+    tagline: 'ארכיון קבצים לכל פרויקט',
+    description:
+      'העלאה ושמירה של חוזים, תוכניות, מסמכים וקבצים — מסודר לפי בניין, עם הורדה מאובטחת.',
+    highlights: ['PDF ו-Office', 'עד 15MB לקובץ', 'מחיקה והורדה מהירה'],
+  },
 ] as const
+
+export function getPaidAddonCatalogEntry(id: PaidAddonId): PaidAddonCatalogEntry | undefined {
+  return PAID_ADDON_CATALOG.find((e) => e.id === id)
+}
 
 export function getLockedPaidAddons(
   enabledFeatures: SidebarNavItemId[] | null | undefined
