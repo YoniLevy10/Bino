@@ -125,11 +125,17 @@ function renderMock(addonId: PaidAddonId) {
   }
 }
 
-export function AddonFeaturePreview({ addonId }: { addonId: PaidAddonId }) {
+export function AddonFeaturePreview({
+  addonId,
+  locked = true,
+}: {
+  addonId: PaidAddonId
+  locked?: boolean
+}) {
   return (
     <div style={styles.previewWrap}>
       {renderMock(addonId)}
-      <LockOverlay />
+      {locked ? <LockOverlay /> : null}
     </div>
   )
 }

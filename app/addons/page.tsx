@@ -3,12 +3,13 @@
 import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
+import { AddonMarketingModal } from '@/app/components/addons/AddonMarketingModal'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
 import { LEVY_TECH_BRAND } from '@/lib/addons-nav'
 import {
-  getLockedPaidAddons,
-  type PaidAddonCatalogEntry,
+  getPaidAddonsForDisplay,
+  type PaidAddonDisplayEntry,
 } from '@/lib/paid-addons-catalog'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { toast } from '@/lib/error-handler'
@@ -21,21 +22,40 @@ import {
   theme,
 } from '../components/ui'
 
-function AddonCard({ entry }: { entry: PaidAddonCatalogEntry }) {
+function AddonCard({
+  entry,
+  onOpen,
+}: {
+  entry: PaidAddonDisplayEntry
+  onOpen: (entry: PaidAddonDisplayEntry) => void
+}) {
   return (
-    <article style={styles.card}>
-      <AddonFeaturePreview addonId={entry.id} />
-      <div style={styles.cardBody}>
-        <h3 style={styles.cardTitle}>{entry.title}</h3>
-        <p style={styles.cardTagline}>{entry.tagline}</p>
-        <p style={styles.cardDesc}>{entry.description}</p>
-        <ul style={styles.highlights}>
-          {entry.highlights.map((h) => (
-            <li key={h}>{h}</li>
-          ))}
-        </ul>
-      </div>
-    </article>
+    <button
+      type="button"
+      style={styles.cardButton}
+      onClick={() => onOpen(entry)}
+      aria-label={`פרטים על ${entry.title}`}
+    >
+      <article style={styles.card}>
+        <AddonFeaturePreview addonId={entry.id} locked={entry.locked} />
+        <div style={styles.cardBody}>
+          {entry.locked ? (
+            <span style={styles.lockedBadge}>פיצ&apos;ר בתשלום</span>
+          ) : (
+            <span style={styles.activeBadge}>פעיל בחשבון</span>
+          )}
+          <h3 style={styles.cardTitle}>{entry.title}</h3>
+          <p style={styles.cardTagline}>{entry.tagline}</p>
+          <p style={styles.cardDesc}>{entry.description}</p>
+          <ul style={styles.highlights}>
+            {entry.highlights.map((h) => (
+              <li key={h}>{h}</li>
+            ))}
+          </ul>
+          <span style={styles.tapHint}>לחצו לפרטים והסבר מלא</span>
+        </div>
+      </article>
+    </button>
   )
 }
 
@@ -43,8 +63,10 @@ function AddonsPageInner() {
   const searchParams = useSearchParams()
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [lockedAddons, setLockedAddons] = useState<PaidAddonCatalogEntry[]>([])
+  const [addons, setAddons] = useState<PaidAddonDisplayEntry[]>([])
+  const [legacyUnlimited, setLegacyUnlimited] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [marketingEntry, setMarketingEntry] = useState<PaidAddonDisplayEntry | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -67,9 +89,11 @@ function AddonsPageInner() {
         const json = (await res.json()) as { enabled_nav_features?: unknown }
         if (!res.ok) throw new Error('nav-config failed')
         const enabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
-        setLockedAddons(getLockedPaidAddons(enabled))
+        setLegacyUnlimited(enabled == null)
+        setAddons(getPaidAddonsForDisplay(enabled))
       } catch {
-        setLockedAddons([])
+        setAddons([])
+        setLegacyUnlimited(false)
       } finally {
         setLoading(false)
       }
@@ -89,28 +113,37 @@ function AddonsPageInner() {
         <Card noPadding>
           <div style={styles.cardInner}>
             <p style={styles.lead}>
-              התוספים הבאים אינם פעילים בחשבון שלכם. ניתן לצפות במה שהם כוללים — להפעלה נא לפנות להנהלה.
+              {legacyUnlimited
+                ? 'כל התוספים הבאים פעילים בחשבון שלכם.'
+                : 'סקירת התוספים הזמינים — ניתן לצפות במה שכל אחד כולל. לתוספים שאינם פעילים, להפעלה נא לפנות להנהלה.'}
             </p>
-            <p style={styles.contact}>
-              ליצירת קשר והפעלה: <strong>הנהלת {LEVY_TECH_BRAND}</strong>
-            </p>
+            {!legacyUnlimited && (
+              <p style={styles.contact}>
+                ליצירת קשר והפעלה: <strong>הנהלת {LEVY_TECH_BRAND}</strong>
+              </p>
+            )}
 
             {loading ? (
               <p style={styles.muted}>טוען...</p>
-            ) : lockedAddons.length === 0 ? (
-              <div style={styles.allActive}>
-                <p style={styles.muted}>כל התוספים בחשבון שלכם פעילים.</p>
-              </div>
+            ) : addons.length === 0 ? (
+              <p style={styles.muted}>לא נמצאו תוספים להצגה.</p>
             ) : (
               <div style={styles.grid}>
-                {lockedAddons.map((entry) => (
-                  <AddonCard key={entry.id} entry={entry} />
+                {addons.map((entry) => (
+                  <AddonCard key={entry.id} entry={entry} onOpen={setMarketingEntry} />
                 ))}
               </div>
             )}
           </div>
         </Card>
       </div>
+
+      <AddonMarketingModal
+        open={marketingEntry != null}
+        entry={marketingEntry}
+        isMobile={isMobile}
+        onClose={() => setMarketingEntry(null)}
+      />
     </AppShell>
   )
 }
@@ -148,16 +181,40 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     color: theme.colors.textMuted,
   },
-  allActive: {
-    padding: '24px',
-    textAlign: 'center',
+  lockedBadge: {
+    alignSelf: 'flex-start',
+    fontSize: '11px',
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: theme.radius.full,
+    background: theme.colors.warningMuted,
+    color: theme.colors.warning,
+  },
+  activeBadge: {
+    alignSelf: 'flex-start',
+    fontSize: '11px',
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: theme.radius.full,
     background: theme.colors.successMuted,
-    borderRadius: theme.radius.md,
+    color: theme.colors.success,
   },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: '20px',
+  },
+  cardButton: {
+    display: 'block',
+    width: '100%',
+    padding: 0,
+    margin: 0,
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    textAlign: 'inherit',
+    font: 'inherit',
+    color: 'inherit',
   },
   card: {
     display: 'flex',
@@ -166,6 +223,13 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     overflow: 'hidden',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+  },
+  tapHint: {
+    marginTop: 4,
+    fontSize: '12px',
+    fontWeight: 600,
+    color: theme.colors.primary,
   },
   cardBody: {
     padding: '16px 18px 20px',
