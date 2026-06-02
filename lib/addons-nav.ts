@@ -1,5 +1,5 @@
-import { isNavFeatureEnabled, REQUIRED_NAV_FEATURE_IDS } from '@/lib/client-nav-features'
-import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItem, type SidebarNavItemId } from '@/lib/sidebar-nav'
+import { getLockedPaidAddonsCount } from '@/lib/paid-addons-catalog'
+import type { SidebarNavItem, SidebarNavItemId } from '@/lib/sidebar-nav'
 
 export const LEVY_TECH_BRAND = 'Levy Tech'
 
@@ -11,18 +11,10 @@ export const ADDONS_NAV_ITEM: SidebarNavItem = {
   locked: true,
 }
 
-/** Generic labels — do not reveal which product feature is locked. */
-export function getGenericAddonSlotLabels(count: number): string[] {
-  return Array.from({ length: count }, (_, i) => `תוסף ${i + 1}`)
-}
-
 export function getLockedAddonsCount(
   enabledFeatures: SidebarNavItemId[] | null | undefined
 ): number {
-  if (!enabledFeatures || enabledFeatures.length === 0) return 0
-  return DEFAULT_SIDEBAR_NAV_ORDER.filter(
-    (id) => !REQUIRED_NAV_FEATURE_IDS.includes(id) && !isNavFeatureEnabled(enabledFeatures, id)
-  ).length
+  return getLockedPaidAddonsCount(enabledFeatures)
 }
 
 export function appendAddonsNavIfNeeded(

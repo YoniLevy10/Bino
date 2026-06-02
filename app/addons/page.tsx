@@ -1,14 +1,15 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
+import { LEVY_TECH_BRAND } from '@/lib/addons-nav'
 import {
-  getGenericAddonSlotLabels,
-  getLockedAddonsCount,
-  LEVY_TECH_BRAND,
-} from '@/lib/addons-nav'
+  getLockedPaidAddons,
+  type PaidAddonCatalogEntry,
+} from '@/lib/paid-addons-catalog'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { toast } from '@/lib/error-handler'
 import {
@@ -20,23 +21,21 @@ import {
   theme,
 } from '../components/ui'
 
-function LockIcon({ size = 32 }: { size?: number }) {
-  const color = theme.colors.textMuted
+function AddonCard({ entry }: { entry: PaidAddonCatalogEntry }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect width="14" height="10" x="5" y="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
+    <article style={styles.card}>
+      <AddonFeaturePreview addonId={entry.id} />
+      <div style={styles.cardBody}>
+        <h3 style={styles.cardTitle}>{entry.title}</h3>
+        <p style={styles.cardTagline}>{entry.tagline}</p>
+        <p style={styles.cardDesc}>{entry.description}</p>
+        <ul style={styles.highlights}>
+          {entry.highlights.map((h) => (
+            <li key={h}>{h}</li>
+          ))}
+        </ul>
+      </div>
+    </article>
   )
 }
 
@@ -44,7 +43,7 @@ function AddonsPageInner() {
   const searchParams = useSearchParams()
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [lockedCount, setLockedCount] = useState(0)
+  const [lockedAddons, setLockedAddons] = useState<PaidAddonCatalogEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -68,16 +67,14 @@ function AddonsPageInner() {
         const json = (await res.json()) as { enabled_nav_features?: unknown }
         if (!res.ok) throw new Error('nav-config failed')
         const enabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
-        setLockedCount(getLockedAddonsCount(enabled))
+        setLockedAddons(getLockedPaidAddons(enabled))
       } catch {
-        setLockedCount(0)
+        setLockedAddons([])
       } finally {
         setLoading(false)
       }
     })()
   }, [])
-
-  const slotLabels = useMemo(() => getGenericAddonSlotLabels(lockedCount), [lockedCount])
 
   return (
     <AppShell isMobile={isMobile}>
@@ -92,7 +89,7 @@ function AddonsPageInner() {
         <Card noPadding>
           <div style={styles.cardInner}>
             <p style={styles.lead}>
-              חלק מהתוספים בחשבון שלכם אינם פעילים כרגע. אין גישה לפרטים נוספים עד להפעלה.
+              התוספים הבאים אינם פעילים בחשבון שלכם. ניתן לצפות במה שהם כוללים — להפעלה נא לפנות להנהלה.
             </p>
             <p style={styles.contact}>
               ליצירת קשר והפעלה: <strong>הנהלת {LEVY_TECH_BRAND}</strong>
@@ -100,19 +97,14 @@ function AddonsPageInner() {
 
             {loading ? (
               <p style={styles.muted}>טוען...</p>
-            ) : lockedCount === 0 ? (
+            ) : lockedAddons.length === 0 ? (
               <div style={styles.allActive}>
                 <p style={styles.muted}>כל התוספים בחשבון שלכם פעילים.</p>
               </div>
             ) : (
               <div style={styles.grid}>
-                {slotLabels.map((label) => (
-                  <div key={label} style={styles.slot}>
-                    <LockIcon size={28} />
-                    <div style={styles.slotTitle}>{label}</div>
-                    <div style={styles.slotBadge}>פיצ&apos;ר בתשלום</div>
-                    <p style={styles.slotHint}>פרטים זמינים לאחר הפעלה על ידי הנהלה</p>
-                  </div>
+                {lockedAddons.map((entry) => (
+                  <AddonCard key={entry.id} entry={entry} />
                 ))}
               </div>
             )}
@@ -134,7 +126,7 @@ export default function AddonsPage() {
 const styles: Record<string, CSSProperties> = {
   content: {
     padding: '24px 40px',
-    maxWidth: '900px',
+    maxWidth: '960px',
   },
   cardInner: {
     padding: '28px',
@@ -164,37 +156,46 @@ const styles: Record<string, CSSProperties> = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '16px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '20px',
   },
-  slot: {
+  card: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center',
-    gap: '8px',
-    padding: '20px 16px',
     borderRadius: theme.radius.lg,
-    border: `1px dashed ${theme.colors.borderStrong}`,
-    background: theme.colors.muted,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    overflow: 'hidden',
   },
-  slotTitle: {
-    fontSize: '15px',
-    fontWeight: 600,
-    color: theme.colors.textSecondary,
+  cardBody: {
+    padding: '16px 18px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
   },
-  slotBadge: {
-    fontSize: '12px',
-    fontWeight: 700,
-    color: theme.colors.warning,
-    background: theme.colors.warningMuted,
-    padding: '4px 10px',
-    borderRadius: theme.radius.full,
-  },
-  slotHint: {
+  cardTitle: {
     margin: 0,
+    fontSize: '17px',
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+  },
+  cardTagline: {
+    margin: 0,
+    fontSize: '14px',
+    fontWeight: 600,
+    color: theme.colors.primary,
+  },
+  cardDesc: {
+    margin: 0,
+    fontSize: '13px',
+    color: theme.colors.textSecondary,
+    lineHeight: 1.55,
+  },
+  highlights: {
+    margin: '4px 0 0',
+    paddingInlineStart: 18,
     fontSize: '12px',
     color: theme.colors.textMuted,
-    lineHeight: 1.45,
+    lineHeight: 1.5,
   },
 }

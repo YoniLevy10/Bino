@@ -19,8 +19,6 @@ export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
 export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'calendar',
   'attendance',
-  'pending_residents',
-  'billing',
 ]
 
 /**
