@@ -8,8 +8,38 @@ import {
 const RETRIES = 3
 const BETWEEN_MS = 2000
 
+const DEFAULT_MAX_SMS_CHARS = 900
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
+function getMaxSmsChars(): number {
+  const raw = process.env.SMS_019_MAX_CHARS
+  const n = raw ? Number(String(raw).trim()) : NaN
+  // keep this conservative; 019SMS rejects oversized payloads with status 989
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_MAX_SMS_CHARS
+  return Math.max(50, Math.floor(n))
+}
+
+function clampSmsMessage(message: string): { message: string; truncated: boolean; originalLength: number } {
+  const originalLength = message.length
+  const max = getMaxSmsChars()
+
+  // Normalize newlines and trim. Keep content as-is otherwise (Hebrew is supported).
+  const normalized = message.replace(/\r\n/g, '\n').trim()
+  if (normalized.length <= max) {
+    return { message: normalized, truncated: normalized.length !== originalLength, originalLength }
+  }
+
+  // Use ASCII suffix to avoid any provider quirks.
+  const suffix = '...'
+  const sliceTo = Math.max(1, max - suffix.length)
+  return {
+    message: `${normalized.slice(0, sliceTo)}${suffix}`,
+    truncated: true,
+    originalLength,
+  }
 }
 
 export type Send019SmsRetryContext = {
@@ -59,6 +89,15 @@ export async function send019SmsWithRetries(
       payload: message.length > 2000 ? `${message.slice(0, 2000)}…` : message,
       error_message: lastErr.length > 2000 ? `${lastErr.slice(0, 2000)}…` : lastErr,
     })
+
+    const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
+    void notifyPlatformOps({
+      kind: 'sms_failure',
+      title: 'כשל שליחת SMS',
+      message: lastErr,
+      clientId: ctx.clientId ?? null,
+      details: { channel: ctx.channel, destination: normalizedPhone },
+    })
   } catch (e) {
     console.error('⚠️ failed_notifications insert skipped or failed:', e instanceof Error ? e.message : String(e))
   }
@@ -101,13 +140,29 @@ export async function send019StaffSms(
     return false
   }
 
+  const clamped = clampSmsMessage(message)
+  if (!clamped.message) {
+    console.error('❌ SMS_SEND_FAILURE: message became empty after normalization', {
+      channel: ctx.channel,
+      destination: normalizedPhone,
+    })
+    return false
+  }
+
   const rawSource = String(senderPreferred ?? SMS_019_SENDER).trim()
   // 019SMS only accepts registered phone numbers as sender — never alphanumeric
   const source = normalizePhone019(rawSource) || '972559899132'
 
-  console.log('📱 SMS_SEND_START', { channel: ctx.channel, normalizedPhone, messageLength: message.length })
+  console.log('📱 SMS_SEND_START', {
+    channel: ctx.channel,
+    normalizedPhone,
+    messageLength: clamped.message.length,
+    ...(clamped.truncated
+      ? { truncated: true, originalLength: clamped.originalLength, maxChars: getMaxSmsChars() }
+      : {}),
+  })
 
-  return send019SmsWithRetries(normalizedPhone, message, source, ctx)
+  return send019SmsWithRetries(normalizedPhone, clamped.message, source, ctx)
 }
 
 function get019SmsEnvPresent(): boolean {

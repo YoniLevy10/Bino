@@ -46,6 +46,15 @@ export async function insertWhatsAppSendFailure(
     })
     if (error) {
       console.error('insertWhatsAppSendFailure:', error.message)
+    } else {
+      const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
+      void notifyPlatformOps({
+        kind: 'whatsapp_failure',
+        title: 'כשל שליחת WhatsApp',
+        message: errorMessage,
+        clientId,
+        details: { to: to.slice(0, 64) },
+      })
     }
   } catch (e) {
     console.error('insertWhatsAppSendFailure', e)

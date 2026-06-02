@@ -137,3 +137,6 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | Variable | How to get |
 |----------|-----------|
 | `WHATSAPP_APP_SECRET` | Meta Developer Console → App → Settings → Basic → App Secret |
+| `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
+| `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
+| `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |

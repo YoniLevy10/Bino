@@ -26,6 +26,7 @@
 
 # misc
 .DS_Store
+.claude/worktrees/
 *.pem
 
 # Generated for Google Docs workflow (see WHATSAPP_SCRIPTS.md)

@@ -135,11 +135,13 @@ export default function ProjectsPage() {
   async function updateProjectAssignedWorker(projectId: string, workerId: string) {
     await asyncHandler(
       async () => {
-        const { error } = await withClientId(
-          supabase.from('projects').update({ assigned_worker_id: workerId || null }),
-          clientId
-        ).eq('id', projectId)
-        if (error) throw error
+        const res = await fetchWithTimeout('/api/update-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_id: projectId, assigned_worker_id: workerId || null }),
+        })
+        const json = (await res?.json().catch(() => ({}))) as { error?: string }
+        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(TM.projectMaintainerUpdated)
         await loadProjects()
         return true
@@ -283,11 +285,22 @@ export default function ProjectsPage() {
         }
 
         if (editingProject) {
-          const { error } = await withClientId(supabase.from('projects').update(payload), clientId).eq(
-            'id',
-            editingProject.id
-          )
-          if (error) throw error
+          const res = await fetchWithTimeout('/api/update-project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              project_id: editingProject.id,
+              name: payload.name,
+              project_code: payload.project_code,
+              address: payload.address,
+              address_en: payload.address_en,
+              qr_identifier: payload.qr_identifier,
+              is_active: payload.is_active,
+              assigned_worker_id: payload.assigned_worker_id,
+            }),
+          })
+          const json = (await res?.json().catch(() => ({}))) as { error?: string }
+          if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
           toast.success(TM.projectUpdated)
         } else {
           const res = await fetchWithTimeout('/api/create-project', {
@@ -320,12 +333,13 @@ export default function ProjectsPage() {
   async function toggleProjectStatus(project: ProjectRow) {
     await asyncHandler(
       async () => {
-        const { error } = await withClientId(
-          supabase.from('projects').update({ is_active: !project.is_active }),
-          clientId
-        ).eq('id', project.id)
-
-        if (error) throw error
+        const res = await fetchWithTimeout('/api/update-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_id: project.id, is_active: !project.is_active }),
+        })
+        const json = (await res?.json().catch(() => ({}))) as { error?: string }
+        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(project.is_active ? TM.projectDeactivated : TM.projectActivated)
         await loadProjects()
         return true

@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { isTicketInTreatment } from '@/lib/ticket-status'
 import {
   AppShell,
@@ -113,7 +114,7 @@ export default function SummaryPage() {
   const [customTo, setCustomTo] = useState('')
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 900)
+    const check = () => setIsMobile(getIsMobileViewport())
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)

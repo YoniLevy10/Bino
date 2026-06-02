@@ -318,11 +318,21 @@ export default function WorkersPage() {
         }
 
         if (editingWorker) {
-          const { error } = await withClientId(
-            supabase.from('workers').update(payload),
-            clientId
-          ).eq('id', editingWorker.id)
-          if (error) throw error
+          const res = await fetchWithTimeout('/api/update-worker', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              worker_id: editingWorker.id,
+              full_name: payload.full_name,
+              phone: payload.phone,
+              extra_phones: payload.extra_phones,
+              email: payload.email,
+              role: payload.role,
+              is_active: payload.is_active,
+            }),
+          })
+          const json = (await res?.json().catch(() => ({}))) as { error?: string }
+          if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
           toast.success(TM.workerUpdated)
         } else {
           const res = await fetchWithTimeout('/api/create-worker', {
@@ -354,12 +364,13 @@ export default function WorkersPage() {
   async function toggleWorkerStatus(worker: WorkerRow) {
     await asyncHandler(
       async () => {
-        const { error } = await withClientId(
-          supabase.from('workers').update({ is_active: !worker.is_active }),
-          clientId
-        ).eq('id', worker.id)
-
-        if (error) throw error
+        const res = await fetchWithTimeout('/api/update-worker', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ worker_id: worker.id, is_active: !worker.is_active }),
+        })
+        const json = (await res?.json().catch(() => ({}))) as { error?: string }
+        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(worker.is_active ? TM.workerDeactivated : TM.workerActivated)
         await loadWorkers()
         return true
@@ -374,13 +385,13 @@ export default function WorkersPage() {
 
     await asyncHandler(
       async () => {
-        const { error } = await withClientId(
-          supabase.from('workers').update({ deleted_at: new Date().toISOString() }),
-          clientId
-        )
-          .eq('id', worker.id)
-          .is('deleted_at', null)
-        if (error) throw error
+        const res = await fetchWithTimeout('/api/update-worker', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ worker_id: worker.id, soft_delete: true }),
+        })
+        const json = (await res?.json().catch(() => ({}))) as { error?: string }
+        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(TM.workerDeleted)
         await loadWorkers()
         if (editingWorker?.id === worker.id) closeDrawer()

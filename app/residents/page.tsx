@@ -13,7 +13,7 @@
  * קשור ל: /pending-residents (דיירים שדיווחו אך עדיין לא בפנקס)
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -137,7 +137,12 @@ export default function ResidentsPage() {
     router.replace(newUrl, { scroll: false })
   }, [projectFilter, searchTerm, router])
 
+  const searchParams = useSearchParams()
   const [mainTab, setMainTab] = useState<'active' | 'pending'>('active')
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'pending') setMainTab('pending')
+  }, [searchParams])
   const [pendingItems, setPendingItems] = useState<
     Array<{
       id: string
@@ -266,17 +271,13 @@ export default function ResidentsPage() {
     setDeletingResident(true)
     setAddError('')
     try {
-      const tenantDel = await resolveBamakorClientIdForBrowser()
-      const { error } = await withClientId(
-        supabase.from('residents').update({
-          deleted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
-        tenantDel
-      )
-        .eq('id', editResidentId)
-        .is('deleted_at', null)
-      if (error) throw error
+      const res = await fetchWithTimeout('/api/update-resident', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resident_id: editResidentId, soft_delete: true }),
+      })
+      const json = (await res?.json().catch(() => ({}))) as { error?: string }
+      if (!res?.ok) throw new Error(json.error || 'מחיקת דייר נכשלה')
       setResidents((prev) => prev.filter((x) => x.id !== editResidentId))
       closeResidentModal()
       toast.success('הדייר נמחק')
@@ -309,11 +310,12 @@ export default function ResidentsPage() {
     setAddError('')
     try {
       if (editResidentId) {
-        const scoped = await resolveBamakorClientIdForBrowser()
-        const updateRes = await withClientId(
-          supabase.from('residents').update({
+        const updateRes = await fetchWithTimeout('/api/update-resident', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resident_id: editResidentId,
             project_id: projectId,
-            client_id: clientId,
             full_name: fullName,
             phone: normalizeResidentPhone(addPhone) || null,
             email: addEmail.trim() || null,
@@ -321,20 +323,20 @@ export default function ResidentsPage() {
             apartment_number: addApartment.trim() || null,
             notes: addNotes.trim() || null,
           }),
-          scoped
-        )
-          .eq('id', editResidentId)
-          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes')
-          .single()
-
-        if (updateRes.error) {
-          const msg = updateRes.error.message || TM.genericSaveError
+        })
+        const updateJson = (await updateRes?.json().catch(() => ({}))) as {
+          error?: string
+          data?: ResidentRow
+        }
+        if (!updateRes?.ok) {
+          const msg =
+            typeof updateJson.error === 'string' ? updateJson.error : TM.genericSaveError
           setAddError(msg)
           toast.error(msg)
           return
         }
 
-        const row = updateRes.data as ResidentRow
+        const row = updateJson.data as ResidentRow
         setResidents((prev) => prev.map((x) => (x.id === row.id ? row : x)))
         closeResidentModal()
         toast.success(TM.residentUpdated)

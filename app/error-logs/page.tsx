@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import {
   AppShell,
   MobileHeader,
@@ -102,12 +103,13 @@ export default function ErrorLogsPage() {
   async function markResolved(id: string) {
     setBusyId(id)
     try {
-      const scoped = await resolveBamakorClientIdForBrowser()
-      const { error } = await withClientId(
-        supabase.from('error_logs').update({ resolved: true, resolved_at: new Date().toISOString() }),
-        scoped
-      ).eq('id', id)
-      if (error) throw error
+      const res = await fetchWithTimeout('/api/error-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'resolve' }),
+      })
+      const json = (await res?.json().catch(() => ({}))) as { error?: string }
+      if (!res?.ok) throw new Error(json.error || 'עדכון נכשל')
       setRows((prev) => prev.map((r) => (r.id === id ? { ...r, resolved: true } : r)))
       toast.success('סומן כטופל')
     } catch (e) {
@@ -121,9 +123,13 @@ export default function ErrorLogsPage() {
     if (!window.confirm('למחוק את כל הרשומות שסומנו כטופלו?')) return
     setBulkBusy(true)
     try {
-      const scoped = await resolveBamakorClientIdForBrowser()
-      const { error } = await withClientId(supabase.from('error_logs').delete(), scoped).eq('resolved', true)
-      if (error) throw error
+      const res = await fetchWithTimeout('/api/error-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_resolved' }),
+      })
+      const json = (await res?.json().catch(() => ({}))) as { error?: string }
+      if (!res?.ok) throw new Error(json.error || 'מחיקה נכשלה')
       toast.success('נמחקו רשומות שטופלו')
       await load()
     } catch (e) {

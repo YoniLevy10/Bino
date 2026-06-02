@@ -22,7 +22,7 @@
       "name": "טיקט חדש",
       "short_name": "טיקט חדש",
       "description": "פתח טיקט תקלה חדש",
-      "url": "/tickets",
+      "url": "/tickets?new=1",
       "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
     },
     {

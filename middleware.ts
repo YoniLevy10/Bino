@@ -1,5 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { getSingletonClientId } from '@/lib/singleton-client-server'
+import {
+  fetchClientEnabledNavFeatures,
+  isNavFeatureEnabled,
+  navItemIdForPathname,
+} from '@/lib/client-nav-features'
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -22,6 +29,9 @@ export async function middleware(req: NextRequest) {
     pathname === '/worker-login' ||
     pathname === '/worker' ||
     pathname.startsWith('/worker/') ||
+    pathname.startsWith('/attendance/scan') ||
+    pathname.startsWith('/api/attendance/station') ||
+    pathname.startsWith('/api/attendance/clock') ||
     pathname === '/offline.html'
   ) {
     return NextResponse.next()
@@ -74,6 +84,30 @@ export async function middleware(req: NextRequest) {
     url.pathname = '/login'
     url.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(url)
+  }
+
+  // Platform diagnostics — not for tenant dashboards (alerts go to PLATFORM_OPS_EMAIL).
+  if (pathname === '/error-logs' || pathname === '/failed-notifications') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+
+  const navFeatureId = navItemIdForPathname(pathname)
+  if (navFeatureId) {
+    try {
+      const admin = getSupabaseAdmin()
+      const clientId = await getSingletonClientId(admin, user.id)
+      const enabled = await fetchClientEnabledNavFeatures(admin, clientId)
+      if (!isNavFeatureEnabled(enabled, navFeatureId)) {
+        const url = req.nextUrl.clone()
+        url.pathname = '/addons'
+        url.searchParams.set('blocked', '1')
+        return NextResponse.redirect(url)
+      }
+    } catch {
+      // onboarding / missing org — let page handle
+    }
   }
 
   return res

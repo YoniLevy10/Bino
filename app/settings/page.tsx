@@ -27,6 +27,14 @@ import {
 import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageListSkeleton } from '../components/page-skeleton'
+import { useSidebarNav } from '../components/SidebarNavContext'
+import {
+  DEFAULT_SIDEBAR_NAV_ORDER,
+  parseSidebarNavOrderFromDb,
+  resolveSidebarNavOrderIds,
+  SIDEBAR_NAV_REGISTRY,
+  type SidebarNavItemId,
+} from '@/lib/sidebar-nav'
 
 type ClientRow = {
   id: string
@@ -43,6 +51,7 @@ type ClientRow = {
 const TABS = [
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
+  { id: 'navigation', label: 'תפריט צד' },
   { id: 'team', label: 'גישת צוות' },
 ] as const
 
@@ -100,6 +109,10 @@ function SettingsPageInner() {
   const [inviting, setInviting] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
+  const [navOrderDraft, setNavOrderDraft] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
+  const [savingNav, setSavingNav] = useState(false)
+  const { setLocalOrderIds, refreshNav } = useSidebarNav()
+
   const [origin, setOrigin] = useState('')
 
   useEffect(() => {
@@ -128,7 +141,7 @@ function SettingsPageInner() {
         const { data: row, error: cErr } = await supabase
           .from('clients')
           .select(
-            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name'
+            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name, sidebar_nav_order'
           )
           .eq('id', resolvedClientId)
           .maybeSingle()
@@ -149,6 +162,13 @@ function SettingsPageInner() {
         setWaPhoneNumberId(row.whatsapp_phone_number_id || '')
         setWaAccessToken(row.whatsapp_access_token || '')
         setWaTokenLoaded(true)
+
+        const parsedOrder = parseSidebarNavOrderFromDb(
+          (row as { sidebar_nav_order?: unknown }).sidebar_nav_order
+        )
+        setNavOrderDraft(
+          parsedOrder ? resolveSidebarNavOrderIds(parsedOrder) : [...DEFAULT_SIDEBAR_NAV_ORDER]
+        )
 
         return true
       },
@@ -188,6 +208,38 @@ function SettingsPageInner() {
       { context: 'שמירה נכשלה', showErrorToast: true }
     )
     setSavingNotifications(false)
+  }
+
+  function moveNavItem(index: number, direction: -1 | 1) {
+    setNavOrderDraft((prev) => {
+      const next = [...prev]
+      const target = index + direction
+      if (target < 0 || target >= next.length) return prev
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  async function saveNavigation() {
+    if (!clientId) return
+    setSavingNav(true)
+    await asyncHandler(
+      async () => {
+        const res = await fetchWithTimeout('/api/settings/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sidebar_nav_order: navOrderDraft }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
+        setLocalOrderIds(navOrderDraft)
+        await refreshNav()
+        toast.success(TM.settingsSaved)
+        return true
+      },
+      { context: 'שמירת סדר התפריט נכשלה', showErrorToast: true }
+    )
+    setSavingNav(false)
   }
 
   async function saveWhatsapp() {
@@ -601,6 +653,66 @@ function SettingsPageInner() {
               </Card>
             )}
 
+            {activeTab === 'navigation' && (
+              <Card noPadding>
+                <div style={styles.cardInner}>
+                  <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
+                    סדר הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות הראשונות בנייד נשארות:
+                    לוח בקרה, תקלות, פרויקטים ועובדים — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
+                  </p>
+                  <ul style={styles.navOrderList}>
+                    {navOrderDraft.map((id, index) => {
+                      const item = SIDEBAR_NAV_REGISTRY[id]
+                      return (
+                        <li key={id} style={styles.navOrderRow}>
+                          <span style={styles.navOrderIndex}>{index + 1}</span>
+                          <span style={styles.navOrderLabel}>{item.label}</span>
+                          <div style={styles.navOrderActions}>
+                            <button
+                              type="button"
+                              style={styles.navOrderBtn}
+                              disabled={index === 0}
+                              onClick={() => moveNavItem(index, -1)}
+                              aria-label={`העלה את ${item.label}`}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              style={styles.navOrderBtn}
+                              disabled={index === navOrderDraft.length - 1}
+                              onClick={() => moveNavItem(index, 1)}
+                              aria-label={`הורד את ${item.label}`}
+                            >
+                              ↓
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <div style={styles.drawerActions}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setNavOrderDraft([...DEFAULT_SIDEBAR_NAV_ORDER])}
+                    >
+                      איפוס לברירת מחדל
+                    </Button>
+                    <LoadingButton
+                      variant="primary"
+                      type="button"
+                      onClick={saveNavigation}
+                      loading={savingNav}
+                      loadingText="שומר..."
+                    >
+                      שמור סדר תפריט
+                    </LoadingButton>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {activeTab === 'team' && (
               <Card noPadding>
                 <div style={styles.cardInner}>
@@ -800,5 +912,50 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
     color: theme.colors.primary,
     textDecoration: 'none',
+  },
+  navOrderList: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  navOrderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+  },
+  navOrderIndex: {
+    width: '28px',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: theme.colors.textMuted,
+    flexShrink: 0,
+  },
+  navOrderLabel: {
+    flex: 1,
+    fontSize: '15px',
+    fontWeight: 500,
+    color: theme.colors.textPrimary,
+  },
+  navOrderActions: {
+    display: 'flex',
+    gap: '6px',
+    flexShrink: 0,
+  },
+  navOrderBtn: {
+    width: '36px',
+    height: '36px',
+    borderRadius: theme.radius.sm,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.muted,
+    fontSize: '16px',
+    cursor: 'pointer',
+    color: theme.colors.textSecondary,
   },
 }

@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "supabase.postgrestools",
+    "ms-playwright.playwright",
+    "usernamehw.errorlens",
+    "yoavbls.pretty-ts-errors",
+    "eamodio.gitlens",
+    "mikestead.dotenv",
+    "github.vscode-pull-request-github"
+  ],
+  "unwantedRecommendations": [
+    "supabase.supabase-vscode",
+    "vercel.vercel-vscode"
+  ]
+}

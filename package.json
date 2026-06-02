@@ -6,6 +6,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "next dev",
+    "dev:lan": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -28,6 +28,8 @@ import {
   type BilingualTemplateParts,
 } from '@/lib/whatsapp-bilingual-template'
 import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { TM } from '@/lib/toast-messages'
 import {
   AppShell,
@@ -120,7 +122,7 @@ export default function WhatsappTemplatesPage() {
   }, [])
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 900)
+    const check = () => setIsMobile(getIsMobileViewport())
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -169,15 +171,21 @@ export default function WhatsappTemplatesPage() {
     return () => { cancelled = true }
   }, [])
 
+  async function postTemplates(templates: { template_key: string; template_text: string }[]) {
+    const res = await fetchWithTimeout('/api/settings/whatsapp-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templates }),
+    })
+    const json = (await res?.json().catch(() => ({}))) as { error?: string }
+    if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+  }
+
   async function saveKey(key: WhatsAppTemplateKey) {
     if (!clientId) return
     setSavingKey(key)
     try {
-      const { error } = await supabase.from('whatsapp_templates').upsert(
-        { client_id: clientId, template_key: key, template_text: drafts[key] || '', updated_at: new Date().toISOString() },
-        { onConflict: 'client_id,template_key' }
-      )
-      if (error) throw error
+      await postTemplates([{ template_key: key, template_text: drafts[key] || '' }])
       toast.success(TM.whatsappTemplatesSaved)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : TM.genericSaveError)
@@ -190,11 +198,7 @@ export default function WhatsappTemplatesPage() {
     if (!clientId) return
     setSmsSavingKey(key)
     try {
-      const { error } = await supabase.from('whatsapp_templates').upsert(
-        { client_id: clientId, template_key: key, template_text: smsDrafts[key] || '', updated_at: new Date().toISOString() },
-        { onConflict: 'client_id,template_key' }
-      )
-      if (error) throw error
+      await postTemplates([{ template_key: key, template_text: smsDrafts[key] || '' }])
       toast.success(TM.whatsappTemplatesSaved)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : TM.genericSaveError)
@@ -207,16 +211,7 @@ export default function WhatsappTemplatesPage() {
     if (!clientId) return
     setExtraSavingKey(key)
     try {
-      const { error } = await supabase.from('whatsapp_templates').upsert(
-        {
-          client_id: clientId,
-          template_key: key,
-          template_text: extraDrafts[key] || '',
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'client_id,template_key' }
-      )
-      if (error) throw error
+      await postTemplates([{ template_key: key, template_text: extraDrafts[key] || '' }])
       toast.success(TM.whatsappTemplatesSaved)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : TM.genericSaveError)
@@ -238,10 +233,10 @@ export default function WhatsappTemplatesPage() {
       const extraRows = Object.keys(extraDrafts).map((key) => ({
         client_id: clientId, template_key: key, template_text: extraDrafts[key] || '', updated_at: new Date().toISOString(),
       }))
-      const { error } = await supabase
-        .from('whatsapp_templates')
-        .upsert([...waRows, ...smsRows, ...extraRows], { onConflict: 'client_id,template_key' })
-      if (error) throw error
+      await postTemplates([...waRows, ...smsRows, ...extraRows].map((r) => ({
+        template_key: r.template_key,
+        template_text: r.template_text,
+      })))
       toast.success('כל התבניות נשמרו בהצלחה')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : TM.genericSaveError)

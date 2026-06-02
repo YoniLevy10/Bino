@@ -22,6 +22,7 @@ import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
 import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
 import { resolveWhatsAppTemplateMessage, resolveSmsTemplateMessage } from '@/lib/whatsapp-templates'
 import { sendManagerSMS, sendWorkerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
+import { notifyAlertWorkersOnNewTicket } from '@/lib/notify-field-workers-new-ticket'
 import {
   downloadWhatsAppMedia,
   uploadWhatsAppMediaToStorage,
@@ -1493,6 +1494,17 @@ async function runWhatsAppInboundBackground(
                 logger.warn('WEBHOOK', 'worker SMS failed', { workerId: projectForNotification.assigned_worker_id })
               }
             }
+          }
+
+          if (smsOnTicketOpen) {
+            await notifyAlertWorkersOnNewTicket(supabaseAdmin, webhookClientId, {
+              project_name: projectForNotification.name,
+              ticket_number: createdTicket.ticket_number,
+              description: ticketDescription || 'ללא פירוט',
+              reporter_name: displayReporterForExternalMessage(waRecipient),
+              sms_sender_name: smsSenderName,
+              client_name: clientName,
+            })
           }
         }
       }

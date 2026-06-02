@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     if (!validated.success) {
       return NextResponse.json({ error: validated.error.flatten() }, { status: 400 })
     }
-    const { ticket_id, priority, status } = validated.data
+    const { ticket_id, priority, status, description, assigned_worker_id } = validated.data
 
     const rl = await checkAuthenticatedPostRouteLimit(supabaseAdmin, auth.ctx.userId, 'update-ticket')
     if (rl.isLimited) {
@@ -78,6 +78,17 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'סטטוס לא תקין', requestId }, { status: 400 })
       }
       updatePayload.status = s
+      if (s === 'CLOSED') {
+        updatePayload.closed_at = new Date().toISOString()
+      } else {
+        updatePayload.closed_at = null
+      }
+    }
+    if (description !== undefined) {
+      updatePayload.description = sanitizeString(description)
+    }
+    if (assigned_worker_id !== undefined) {
+      updatePayload.assigned_worker_id = assigned_worker_id
     }
 
     if (Object.keys(updatePayload).length === 0) {

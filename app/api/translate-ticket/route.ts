@@ -4,12 +4,14 @@ import { translateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
+import { fetchWithTimeout } from '@/lib/fetch-timeout'
 
 async function googleTranslate(text: string): Promise<string> {
   const url =
     `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=` +
     encodeURIComponent(text)
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+  const res = await fetchWithTimeout(url, {}, 8000)
+  if (!res) throw new Error('Google Translate timeout')
   if (!res.ok) throw new Error(`Google Translate HTTP ${res.status}`)
   // Response: [ [ ["translated","original",...], ... ], null, "detected_lang" ]
   const data = (await res.json()) as unknown[][]

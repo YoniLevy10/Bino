@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Button, theme } from '../ui'
 
 type Row = {
@@ -84,15 +85,19 @@ export function TicketChat({ ticketId, clientId }: TicketChatProps) {
     if (!ticketId || !body.trim() || !clientId) return
     const name = senderName.trim() || 'צוות'
     setSending(true)
-    const { error } = await supabase.from('ticket_internal_messages').insert({
-      ticket_id: ticketId,
-      client_id: clientId,
-      sender_name: name,
-      body: body.trim(),
+    const res = await fetchWithTimeout('/api/ticket-internal-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticket_id: ticketId,
+        sender_name: name,
+        body: body.trim(),
+      }),
     })
     setSending(false)
-    if (error) {
-      console.error(error)
+    if (!res?.ok) {
+      const json = (await res?.json().catch(() => ({}))) as { error?: string }
+      console.error(json.error || 'send failed')
       return
     }
     setBody('')

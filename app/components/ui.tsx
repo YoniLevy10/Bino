@@ -3,9 +3,23 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { type ReactNode, type CSSProperties, useEffect, useLayoutEffect, useState, lazy, Suspense } from 'react'
+import {
+  type ReactNode,
+  type CSSProperties,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+} from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useClientBranding } from './ClientBrandingContext'
+import { useSidebarNav } from './SidebarNavContext'
+import { isNavItemActive, TENANT_NAV_HREFS } from '@/lib/sidebar-nav'
 import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
@@ -100,17 +114,24 @@ export const theme = {
 // NAV ICONS
 // ============================================================================
 
-const navItems = [
-  { href: '/', label: 'לוח בקרה', icon: 'home' },
-  { href: '/tickets', label: 'תקלות', icon: 'ticket' },
-  { href: '/projects', label: 'פרויקטים', icon: 'folder' },
-  { href: '/workers', label: 'עובדים', icon: 'users' },
-  { href: '/residents', label: 'דיירים', icon: 'building' },
-  { href: '/qr', label: 'קודי QR', icon: 'qr' },
-  { href: '/error-logs', label: 'יומן שגיאות', icon: 'chart' },
-  { href: '/settings/whatsapp-templates', label: 'תבניות וואטסאפ', icon: 'message' },
-  { href: '/summary', label: 'סיכום', icon: 'chart' },
-]
+const MOBILE_BOTTOM_NAV_LABELS: Partial<Record<string, string>> = {
+  '/': 'בית',
+  '/qr': 'QR',
+  '/attendance': 'שעון',
+  '/settings/whatsapp-templates': 'תבניות',
+  '/billing': 'חיוב',
+  '/pending-residents': 'ממתינים',
+}
+
+function mobileBottomNavLabel(href: string, fallback: string): string {
+  return MOBILE_BOTTOM_NAV_LABELS[href] ?? fallback
+}
+
+const AppSearchContext = createContext<{ openSearch: () => void } | null>(null)
+
+export function useAppSearch() {
+  return useContext(AppSearchContext)
+}
 
 function NavIcon({ type, active }: { type: string; active?: boolean }) {
   const color = active ? theme.colors.primary : theme.colors.textMuted
@@ -207,6 +228,12 @@ function NavIcon({ type, active }: { type: string; active?: boolean }) {
         <circle cx="12" cy="12" r="3" />
       </svg>
     ),
+    lock: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="14" height="10" x="5" y="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
   }
 
   return <>{icons[type] || null}</>
@@ -264,6 +291,8 @@ function NavSignOutButton({ onAfterSignOut }: { onAfterSignOut?: () => void }) {
 
 export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   const pathname = usePathname()
+  const { navItems } = useSidebarNav()
+  const { displayName, logoUrl } = useClientBranding()
   const [mounted, setMounted] = useState(false)
   const [userEmail, setUserEmail] = useState('')
   const [userInitials, setUserInitials] = useState('?')
@@ -291,8 +320,6 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   // Avoid dev-time hydration mismatches (Turbopack/HMR) by not SSR-rendering the menu.
   if (hidden) return null
   if (!mounted) return <aside style={{ display: 'none' }} aria-hidden="true" />
-
-  const { displayName, logoUrl } = useClientBranding()
 
   return (
     <aside style={sidebarStyles.container}>
@@ -324,21 +351,24 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
       <div style={sidebarStyles.navColumn}>
         <nav style={sidebarStyles.nav}>
           {navItems.map((item) => {
-            const isActive =
-              item.href === '/settings/whatsapp-templates'
-                ? pathname.startsWith('/settings/whatsapp-templates')
-                : pathname === item.href
+            const isActive = isNavItemActive(pathname, item)
             return (
               <Link
-                key={item.href}
+                key={item.id}
                 href={item.href}
                 style={{
                   ...sidebarStyles.navLink,
                   ...(isActive ? sidebarStyles.navLinkActive : {}),
+                  ...(item.locked ? sidebarStyles.navLinkLocked : {}),
                 }}
               >
                 <NavIcon type={item.icon} active={isActive} />
-                <span style={sidebarStyles.navLabel}>{item.label}</span>
+                <span style={sidebarStyles.navLabel}>
+                  {item.label}
+                  {item.locked && (
+                    <span style={sidebarStyles.navLockBadge}>בתשלום</span>
+                  )}
+                </span>
               </Link>
             )
           })}
@@ -389,6 +419,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     gap: '12px',
     padding: '0 12px',
     marginBottom: '32px',
+    flexShrink: 0,
   },
   logoBox: {
     width: '40px',
@@ -423,20 +454,23 @@ const sidebarStyles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    WebkitOverflowScrolling: 'touch',
   },
   nav: {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
-    flex: 1,
   },
   settingsNav: {
-    marginTop: 'auto',
     paddingTop: '12px',
+    marginTop: '8px',
     borderTop: `1px solid ${theme.colors.border}`,
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
+    flexShrink: 0,
   },
   navLink: {
     display: 'flex',
@@ -463,13 +497,25 @@ const sidebarStyles: Record<string, CSSProperties> = {
     background: theme.colors.primaryMuted,
     color: theme.colors.primary,
   },
+  navLinkLocked: {
+    border: `1px dashed ${theme.colors.borderStrong}`,
+    background: theme.colors.muted,
+  },
+  navLockBadge: {
+    display: 'inline-block',
+    marginInlineStart: '6px',
+    fontSize: '10px',
+    fontWeight: 600,
+    color: theme.colors.warning,
+    verticalAlign: 'middle',
+  },
   footer: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
     padding: '16px 12px',
     borderTop: `1px solid ${theme.colors.border}`,
-    marginTop: 'auto',
+    flexShrink: 0,
   },
   footerAvatar: {
     width: '36px',
@@ -545,79 +591,156 @@ const topBarStyles: Record<string, CSSProperties> = {
 // APP SHELL & MOBILE BOTTOM NAV
 // ============================================================================
 
-const BOTTOM_NAV_ROUTES = new Set([
-  '/',
-  '/tickets',
-  '/projects',
-  '/workers',
-  '/residents',
-  '/qr',
-  '/error-logs',
-  '/settings/whatsapp-templates',
-  '/summary',
-])
+const BOTTOM_NAV_ROUTES = new Set([...TENANT_NAV_HREFS, '/settings', '/addons'])
 
 function showMobileBottomNavForPath(pathname: string): boolean {
-  if (BOTTOM_NAV_ROUTES.has(pathname)) return true
-  if (pathname === '/settings' || pathname === '/billing') return true
-  return false
+  return BOTTOM_NAV_ROUTES.has(pathname)
 }
 
-const bottomNavMainItems: { href: string; label: string; icon: string }[] = navItems.map((i) => ({
-  href: i.href,
-  label: i.label,
-  icon: i.icon,
-}))
+export function MobileBottomNav({
+  moreOpen: moreOpenProp,
+  onMoreToggle: onMoreToggleProp,
+}: {
+  moreOpen?: boolean
+  onMoreToggle?: () => void
+} = {}) {
+  const { mobileBottomPrimary, mobileBottomMore } = useSidebarNav()
+  const [moreOpenLocal, setMoreOpenLocal] = useState(false)
+  const moreOpen = moreOpenProp ?? moreOpenLocal
+  const onMoreToggle = onMoreToggleProp ?? (() => setMoreOpenLocal((o) => !o))
 
-export function MobileBottomNav() {
   const pathname = usePathname()
-
   const settingsActive = pathname === '/settings'
+  const moreActive = mobileBottomMore.some((item) => isNavItemActive(pathname, item))
 
   return (
-    <nav
-      style={bottomNavStyles.bar}
-      aria-label="ניווט ראשי"
-    >
-      <div style={bottomNavStyles.scroll}>
-        {bottomNavMainItems.map((item) => {
-          const active =
-            item.href === '/settings/whatsapp-templates'
-              ? pathname.startsWith('/settings/whatsapp-templates')
-              : pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                ...bottomNavStyles.link,
-                ...(active ? bottomNavStyles.linkActive : {}),
-              }}
-            >
-              <span style={bottomNavStyles.iconWrap}>
-                <NavIcon type={item.icon} active={active} />
-              </span>
-              <span style={bottomNavStyles.label}>{item.label}</span>
-            </Link>
-          )
-        })}
-      </div>
-      <div style={bottomNavStyles.settingsDivider} aria-hidden />
-      <Link
-        href="/settings"
-        style={{
-          ...bottomNavStyles.link,
-          ...bottomNavStyles.settingsLink,
-          ...(settingsActive ? bottomNavStyles.linkActive : {}),
-        }}
-      >
-        <span style={bottomNavStyles.iconWrap}>
-          <NavIcon type="settings" active={settingsActive} />
-        </span>
-        <span style={bottomNavStyles.label}>הגדרות</span>
-      </Link>
-    </nav>
+    <>
+      {moreOpen && (
+        <>
+          <div
+            style={mobileMenuStyles.overlay}
+            onClick={onMoreToggle}
+            aria-hidden
+          />
+          <div
+            style={bottomNavMoreStyles.panel}
+            role="dialog"
+            aria-modal="true"
+            aria-label="עוד אפשרויות"
+          >
+            <div style={bottomNavMoreStyles.grid}>
+              {mobileBottomMore.map((item) => {
+                const active = isNavItemActive(pathname, item)
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    onClick={onMoreToggle}
+                    style={{
+                      ...bottomNavMoreStyles.link,
+                      ...(active ? bottomNavStyles.linkActive : {}),
+                    }}
+                  >
+                    <NavIcon type={item.icon} active={active} />
+                    <span style={bottomNavStyles.label}>
+                      {mobileBottomNavLabel(item.href, item.label)}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+      <nav style={bottomNavStyles.bar} aria-label="ניווט ראשי">
+        <div style={bottomNavStyles.scroll}>
+          {mobileBottomPrimary.map((item) => {
+            const active = isNavItemActive(pathname, item)
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                style={{
+                  ...bottomNavStyles.link,
+                  ...(active ? bottomNavStyles.linkActive : {}),
+                }}
+              >
+                <span style={bottomNavStyles.iconWrap}>
+                  <NavIcon type={item.icon} active={active} />
+                </span>
+                <span style={bottomNavStyles.label}>
+                  {mobileBottomNavLabel(item.href, item.label)}
+                </span>
+              </Link>
+            )
+          })}
+          <button
+            type="button"
+            onClick={onMoreToggle}
+            aria-expanded={moreOpen}
+            aria-label="עוד"
+            style={{
+              ...bottomNavStyles.link,
+              border: 'none',
+              background: moreActive || moreOpen ? theme.colors.primaryMuted : 'transparent',
+              cursor: 'pointer',
+              ...(moreActive || moreOpen ? bottomNavStyles.linkActive : {}),
+            }}
+          >
+            <span style={bottomNavStyles.iconWrap}>
+              <NavIcon type="grid" active={moreActive || moreOpen} />
+            </span>
+            <span style={bottomNavStyles.label}>עוד</span>
+          </button>
+        </div>
+        <div style={bottomNavStyles.settingsDivider} aria-hidden />
+        <Link
+          href="/settings"
+          style={{
+            ...bottomNavStyles.link,
+            ...bottomNavStyles.settingsLink,
+            ...(settingsActive ? bottomNavStyles.linkActive : {}),
+          }}
+        >
+          <span style={bottomNavStyles.iconWrap}>
+            <NavIcon type="settings" active={settingsActive} />
+          </span>
+          <span style={bottomNavStyles.label}>הגדרות</span>
+        </Link>
+      </nav>
+    </>
   )
+}
+
+const bottomNavMoreStyles: Record<string, CSSProperties> = {
+  panel: {
+    position: 'fixed',
+    left: 0,
+    right: 0,
+    bottom: 'calc(58px + env(safe-area-inset-bottom, 0px))',
+    zIndex: 94,
+    background: theme.colors.surface,
+    borderTop: `1px solid ${theme.colors.border}`,
+    padding: '12px 16px',
+    boxShadow: '0 -4px 24px rgba(0,0,0,0.08)',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '8px',
+  },
+  link: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '10px 4px',
+    textDecoration: 'none',
+    color: theme.colors.textMuted,
+    borderRadius: theme.radius.md,
+    minHeight: '48px',
+    justifyContent: 'center',
+  },
 }
 
 const bottomNavStyles: Record<string, CSSProperties> = {
@@ -721,6 +844,8 @@ function AppShellInner({
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [moreNavOpen, setMoreNavOpen] = useState(false)
+  const openSearch = useCallback(() => setSearchOpen(true), [])
 
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -744,7 +869,7 @@ function AppShellInner({
   const showSplash = mounted && shouldShowAppSplash()
 
   return (
-    <>
+    <AppSearchContext.Provider value={{ openSearch }}>
       {showSplash ? <AppSplashScreen ready={isBootstrapped} /> : null}
       <div
         dir="rtl"
@@ -765,7 +890,12 @@ function AppShellInner({
         >
           {children}
         </main>
-        {bottomNav ? <MobileBottomNav /> : null}
+        {bottomNav ? (
+          <MobileBottomNav
+            moreOpen={moreNavOpen}
+            onMoreToggle={() => setMoreNavOpen((o) => !o)}
+          />
+        ) : null}
         <BackToTop />
         {mounted && (
           <Suspense fallback={null}>
@@ -773,7 +903,7 @@ function AppShellInner({
           </Suspense>
         )}
       </div>
-    </>
+    </AppSearchContext.Provider>
   )
 }
 
@@ -826,13 +956,18 @@ export function MobileHeader({
   subtitle,
   subtitleSuppressHydrationWarning,
   onMenuClick,
+  onSearchClick,
 }: {
   title: string
   subtitle?: string
   /** Use when subtitle is locale/time dependent (e.g. `formatDate()`) to avoid React #418 on SSR. */
   subtitleSuppressHydrationWarning?: boolean
   onMenuClick?: () => void
+  onSearchClick?: () => void
 }) {
+  const appSearch = useAppSearch()
+  const handleSearch = onSearchClick ?? appSearch?.openSearch
+
   return (
     <header style={mobileHeaderStyles.container}>
       <div style={mobileHeaderStyles.left}>
@@ -848,15 +983,36 @@ export function MobileHeader({
           )}
         </div>
       </div>
-      {onMenuClick && (
-        <button onClick={onMenuClick} style={mobileHeaderStyles.menuButton} aria-label="פתיחת תפריט">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" x2="21" y1="6" y2="6" />
-            <line x1="3" x2="21" y1="12" y2="12" />
-            <line x1="3" x2="21" y1="18" y2="18" />
-          </svg>
-        </button>
-      )}
+      <div style={mobileHeaderStyles.actions}>
+        {handleSearch && (
+          <button
+            type="button"
+            onClick={handleSearch}
+            style={mobileHeaderStyles.menuButton}
+            aria-label="חיפוש"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </button>
+        )}
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            style={mobileHeaderStyles.menuButton}
+            aria-label="פתיחת תפריט"
+            aria-expanded={false}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" x2="21" y1="6" y2="6" />
+              <line x1="3" x2="21" y1="12" y2="12" />
+              <line x1="3" x2="21" y1="18" y2="18" />
+            </svg>
+          </button>
+        )}
+      </div>
     </header>
   )
 }
@@ -875,6 +1031,14 @@ const mobileHeaderStyles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+    flex: 1,
+    minWidth: 0,
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    flexShrink: 0,
   },
   title: {
     fontSize: '20px',
@@ -915,6 +1079,7 @@ export function MobileMenu({
 }) {
   const pathname = usePathname()
   const { displayName, logoUrl } = useClientBranding()
+  const { navItems } = useSidebarNav()
 
   if (!open) return null
 
@@ -955,13 +1120,10 @@ export function MobileMenu({
         <div style={mobileMenuStyles.navColumn}>
           <nav style={mobileMenuStyles.nav}>
             {navItems.map((item) => {
-              const isActive =
-                item.href === '/settings/whatsapp-templates'
-                  ? pathname.startsWith('/settings/whatsapp-templates')
-                  : pathname === item.href
+              const isActive = isNavItemActive(pathname, item)
               return (
                 <Link
-                  key={item.href}
+                  key={item.id}
                   href={item.href}
                   onClick={onClose}
                   style={{
@@ -986,17 +1148,6 @@ export function MobileMenu({
             >
               <NavIcon type="settings" active={pathname === '/settings'} />
               <span style={mobileMenuStyles.navLabel}>הגדרות</span>
-            </Link>
-            <Link
-              href="/billing"
-              onClick={onClose}
-              style={{
-                ...mobileMenuStyles.navLink,
-                ...(pathname === '/billing' ? mobileMenuStyles.navLinkActive : {}),
-              }}
-            >
-              <NavIcon type="chart" active={pathname === '/billing'} />
-              <span style={mobileMenuStyles.navLabel}>חיוב ושימוש</span>
             </Link>
             <div style={{ paddingInline: '8px', paddingTop: '8px' }}>
               <NavSignOutButton onAfterSignOut={onClose} />
@@ -1629,6 +1780,36 @@ const selectStyles: Record<string, CSSProperties> = {
 // DRAWER
 // ============================================================================
 
+function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement | null>, onEscape: () => void) {
+  useEffect(() => {
+    if (!active || !containerRef.current) return
+    const root = containerRef.current
+    const focusables = root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    first?.focus()
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onEscape()
+        return
+      }
+      if (e.key !== 'Tab' || focusables.length === 0) return
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last?.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [active, containerRef, onEscape])
+}
+
 export function Drawer({
   open,
   onClose,
@@ -1644,6 +1825,9 @@ export function Drawer({
   children: ReactNode
   isMobile?: boolean
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(open, panelRef, onClose)
+
   if (!open) return null
 
   const mobile = !!isMobile
@@ -1653,16 +1837,20 @@ export function Drawer({
 
   return (
     <>
-      <div style={drawerStyles.overlay} onClick={onClose} />
+      <div style={drawerStyles.overlay} onClick={onClose} aria-hidden />
       <div
+        ref={panelRef}
         style={panelStyle}
         data-drawer-panel={mobile ? 'mobile' : 'desktop'}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="drawer-title"
       >
         <div style={drawerStyles.header}>
           <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: '8px' }}>
-            <h2 style={drawerStyles.title}>{title}</h2>
+            <h2 id="drawer-title" style={drawerStyles.title}>
+              {title}
+            </h2>
             {subtitle && <p style={drawerStyles.subtitle}>{subtitle}</p>}
           </div>
           <button

@@ -10,6 +10,11 @@ function getPublicAppBaseUrl(): string {
   return base
 }
 
+/** Base URL when optional (e.g. ops alert emails). Empty if unset. */
+export function getPublicAppUrl(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+}
+
 export function getPublicTicketsUrl(): string {
   return `${getPublicAppBaseUrl()}/tickets`
 }
@@ -18,4 +23,10 @@ export function getPublicTicketsUrl(): string {
 export function getWorkerPortalUrl(accessToken: string): string {
   const token = accessToken.trim().toLowerCase()
   return `${getPublicAppBaseUrl()}/worker?token=${encodeURIComponent(token)}`
+}
+
+/** Office entrance QR — scan with personal phone, pick name, clock in/out. */
+export function getOfficeAttendanceScanUrl(stationToken: string): string {
+  const st = stationToken.trim().toLowerCase()
+  return `${getPublicAppBaseUrl()}/attendance/scan?st=${encodeURIComponent(st)}`
 }

@@ -476,44 +476,15 @@ export default function DashboardPage() {
     setSavingTicket(true)
     await asyncHandler(
       async () => {
-        const workerChanged = (selectedTicket.assigned_worker_id || '') !== (draftWorkerId || '')
-        let didAssign = false
-        if (workerChanged && draftWorkerId) {
-          const assignRes = await fetchWithTimeout('/api/assign-ticket', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticket_id: selectedTicket.id, worker_id: draftWorkerId }),
-          })
-          const assignBody = (await assignRes.json().catch(() => ({}))) as {
-            error?: string
-            worker_sms_sent?: boolean | null
-            worker_sms_note?: string
-          }
-          if (!assignRes.ok) throw new Error(assignBody.error || TM.genericSaveError)
-          if ((assignBody.worker_sms_sent === false || assignBody.worker_sms_sent === null) && assignBody.worker_sms_note) {
-            toast.error(assignBody.worker_sms_note)
-          }
-          didAssign = true
-        }
-        const payload: Record<string, string | null> = {
+        const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
+        const { didAssign, closedNow } = await saveDashboardTicket({
+          ticketId: selectedTicket.id,
           description: draftDescription,
           status: draftStatus,
-          assigned_worker_id: draftWorkerId || null,
-        }
-        if (draftStatus === 'CLOSED') {
-          payload.closed_at = selectedTicket.closed_at || new Date().toISOString()
-        } else {
-          payload.closed_at = null
-        }
-        const closedNow = draftStatus === 'CLOSED' && selectedTicket.status !== 'CLOSED'
-        const saveClientId = await resolveBamakorClientIdForBrowser()
-        const { error } = await withClientId(
-          supabase.from('tickets').update(payload),
-          saveClientId
-        )
-          .eq('id', selectedTicket.id)
-          .is('deleted_at', null)
-        if (error) throw error
+          previousStatus: selectedTicket.status,
+          draftWorkerId,
+          previousWorkerId: selectedTicket.assigned_worker_id,
+        })
         if (closedNow) toast.success(TM.ticketClosed)
         else if (didAssign) toast.success(TM.workerAssigned)
         else toast.success(TM.ticketUpdated)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { normalizeWhatsAppPhoneDigits } from '@/lib/whatsapp-test-phone'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
 import { pendingResidentsQueryUnavailable } from '@/lib/supabase-table-errors'
 import { checkRateLimitDistributed, sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { pendingResidentsApproveBodySchema } from '@/lib/api-body-schemas'
@@ -33,7 +33,7 @@ export async function GET() {
   const logger = getLogger()
   const requestId = `pending-residents-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionClientIdWithNavFeature('pending_residents')
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 
@@ -111,7 +111,7 @@ export async function PATCH(req: NextRequest) {
   const audit = getAuditLogger()
   const requestId = `pending-residents-patch-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionClientIdWithNavFeature('pending_residents')
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 

@@ -78,6 +78,9 @@ export const ToastContainer = () => {
       className="fixed end-4 z-[200] space-y-2 max-w-sm"
       style={{ bottom: 'calc(74px + env(safe-area-inset-bottom, 0px))' }}
       dir="rtl"
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
     >
       {toasts.map((toast) => (
         <div

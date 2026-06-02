@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { sidebarNavOrderSchema } from '@/lib/sidebar-nav'
 import { TICKET_STATUSES } from '@/lib/ticket-status'
 
 /** שיוך תקלה לעובד (לוח בקרה). */
@@ -7,16 +8,115 @@ export const assignWorkerBodySchema = z.object({
   worker_id: z.string().uuid(),
 })
 
-/** עדכון תקלה — לפחות סטטוס או עדיפות. */
+/** עדכון תקלה מלוח הבקרה — לפחות שדה אחד. */
 export const updateTicketBodySchema = z
   .object({
     ticket_id: z.string().uuid(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
     status: z.enum(TICKET_STATUSES).optional(),
+    description: z.string().max(20000).optional(),
+    assigned_worker_id: z.union([z.string().uuid(), z.null()]).optional(),
   })
-  .refine((v) => v.priority !== undefined || v.status !== undefined, {
-    message: 'נדרש status או priority',
+  .refine(
+    (v) =>
+      v.priority !== undefined ||
+      v.status !== undefined ||
+      v.description !== undefined ||
+      v.assigned_worker_id !== undefined,
+    { message: 'נדרש לפחות שדה אחד לעדכון' }
+  )
+
+export const updateWorkerBodySchema = z
+  .object({
+    worker_id: z.string().uuid(),
+    full_name: z.string().min(1).max(200).optional(),
+    phone: z.string().min(6).max(40).optional(),
+    extra_phones: z.array(z.string().min(6).max(40)).max(5).optional(),
+    email: z.union([z.string().email().max(320), z.literal(''), z.null()]).optional(),
+    role: z.string().max(100).nullable().optional(),
+    is_active: z.boolean().optional(),
+    soft_delete: z.literal(true).optional(),
   })
+  .refine(
+    (v) =>
+      v.soft_delete === true ||
+      v.full_name !== undefined ||
+      v.phone !== undefined ||
+      v.extra_phones !== undefined ||
+      v.email !== undefined ||
+      v.role !== undefined ||
+      v.is_active !== undefined,
+    { message: 'נדרש לפחות שדה אחד לעדכון' }
+  )
+
+export const updateProjectBodySchema = z
+  .object({
+    project_id: z.string().uuid(),
+    name: z.string().min(1).max(200).optional(),
+    project_code: z.string().min(1).max(40).optional(),
+    address: z.string().max(500).nullable().optional(),
+    address_en: z.string().max(500).nullable().optional(),
+    qr_identifier: z.string().max(200).nullable().optional(),
+    is_active: z.boolean().optional(),
+    assigned_worker_id: z.union([z.string().uuid(), z.literal(''), z.null()]).optional(),
+  })
+  .refine(
+    (v) =>
+      v.name !== undefined ||
+      v.project_code !== undefined ||
+      v.address !== undefined ||
+      v.address_en !== undefined ||
+      v.qr_identifier !== undefined ||
+      v.is_active !== undefined ||
+      v.assigned_worker_id !== undefined,
+    { message: 'נדרש לפחות שדה אחד לעדכון' }
+  )
+
+export const updateResidentBodySchema = z.object({
+  resident_id: z.string().uuid(),
+  project_id: z.string().uuid().optional(),
+  full_name: z.string().min(1).max(200).optional(),
+  phone: z.string().max(40).nullable().optional(),
+  email: z.union([z.string().email().max(320), z.literal(''), z.null()]).optional(),
+  is_renter: z.boolean().optional(),
+  apartment_number: z.string().max(20).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  soft_delete: z.literal(true).optional(),
+})
+
+export const errorLogActionBodySchema = z.union([
+  z.object({ id: z.string().uuid(), action: z.literal('resolve') }),
+  z.object({ action: z.literal('delete_resolved') }),
+])
+
+export const whatsappTemplateRowSchema = z.object({
+  template_key: z.string().min(1).max(120),
+  template_text: z.string().max(8000),
+})
+
+export const saveWhatsappTemplatesBodySchema = z.object({
+  templates: z.array(whatsappTemplateRowSchema).min(1).max(80),
+})
+
+export const ticketInternalMessageBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  sender_name: z.string().min(1).max(120),
+  body: z.string().min(1).max(8000),
+})
+
+export const settingsUpdateBodySchema = z
+  .object({
+    manager_phone: z.string().max(40).nullable().optional(),
+    default_worker_phone: z.string().max(40).nullable().optional(),
+    sms_sender_name: z.string().max(80).nullable().optional(),
+    sms_on_ticket_open: z.boolean().optional(),
+    sms_on_ticket_close: z.boolean().optional(),
+    whatsapp_business_phone: z.string().max(40).nullable().optional(),
+    whatsapp_phone_number_id: z.string().max(80).nullable().optional(),
+    whatsapp_access_token: z.string().max(500).nullable().optional(),
+    sidebar_nav_order: sidebarNavOrderSchema.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'אין שדות לעדכון' })
 
 /** גוף JSON ל-create-ticket: דף דיווח (project/building) או זרימת WhatsApp דרך API (טלפון). */
 export const createTicketJsonBodySchema = z.object({
@@ -161,6 +261,50 @@ export const createResidentBodySchema = z.object({
 /** שליחת קישור לאזור האישי של עובד שטח ב-SMS. */
 export const sendWorkerPortalLinkBodySchema = z.object({
   worker_id: z.string().uuid(),
+})
+
+export const officeAttendanceClockBodySchema = z.object({
+  station_token: z.string().uuid(),
+  staff_id: z.string().uuid(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  accuracy_m: z.number().min(0).max(50000).optional(),
+})
+
+const calendarEventTypeSchema = z.enum(['committee', 'professional', 'internal', 'other'])
+
+export const createCalendarEventBodySchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string().max(5000).nullable().optional(),
+  location: z.string().max(500).nullable().optional(),
+  starts_at: z.string().datetime({ offset: true }),
+  ends_at: z.string().datetime({ offset: true }),
+  all_day: z.boolean().optional(),
+  project_id: z.string().uuid().nullable().optional(),
+  event_type: calendarEventTypeSchema.optional(),
+})
+
+export const updateCalendarEventBodySchema = createCalendarEventBodySchema.partial().extend({
+  id: z.string().uuid(),
+})
+
+export const patchOfficeTimeEntryBodySchema = z.object({
+  id: z.string().uuid(),
+  clock_in_at: z.string().datetime({ offset: true }).optional(),
+  clock_out_at: z.string().datetime({ offset: true }).nullable().optional(),
+})
+
+export const officeGeofenceBodySchema = z.object({
+  office_geofence_lat: z.number().min(-90).max(90).nullable(),
+  office_geofence_lng: z.number().min(-180).max(180).nullable(),
+  office_geofence_radius_m: z.number().min(10).max(5000).optional(),
+})
+
+export const upsertOfficeStaffBodySchema = z.object({
+  id: z.string().uuid().optional(),
+  full_name: z.string().min(1).max(200),
+  hourly_rate: z.number().min(0).max(99999).nullable().optional(),
+  is_active: z.boolean().optional(),
 })
 
 /** מחיקת תקלות — נבחרות או כולן (soft delete). */
