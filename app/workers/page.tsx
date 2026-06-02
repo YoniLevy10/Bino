@@ -11,7 +11,7 @@
  *  - הסרה/ארכיב → soft-delete (deleted_at)
  *  - לחיצה על עובד → Drawer עם פרטים + תקלות שמשויכות אליו
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -430,6 +430,103 @@ export default function WorkersPage() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
+  function WorkerListCard({ worker }: { worker: WorkerRow }) {
+    const [moreOpen, setMoreOpen] = useState(false)
+    const menuRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+      if (!moreOpen) return
+      const onDoc = (e: MouseEvent) => {
+        if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMoreOpen(false)
+      }
+      document.addEventListener('mousedown', onDoc)
+      return () => document.removeEventListener('mousedown', onDoc)
+    }, [moreOpen])
+
+    return (
+      <div
+        onClick={() => openDetailDrawer(worker)}
+        style={styles.workerCard}
+        data-ui="card"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            openDetailDrawer(worker)
+          }
+        }}
+      >
+        <div style={styles.workerHeader}>
+          <div style={styles.avatar}>{getInitials(worker.full_name)}</div>
+          <div style={styles.workerInfo}>
+            <div style={styles.workerName}>{worker.full_name}</div>
+            <div style={styles.workerRole}>{worker.role || 'ללא תפקיד'}</div>
+          </div>
+          <span style={workerStatusBadge(worker.is_active)}>
+            {worker.is_active ? 'פעיל' : 'לא פעיל'}
+          </span>
+        </div>
+
+        <div style={styles.workerMeta}>
+          <div style={styles.metaItem}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            <span style={styles.metaText}>{formatWorkerPhonesDisplay(worker)}</span>
+          </div>
+          {worker.email ? (
+            <div style={styles.metaItem}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect width="20" height="16" x="2" y="4" rx="2" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+              </svg>
+              <span style={styles.metaText}>{worker.email}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <div style={styles.workerActions} onClick={(e) => e.stopPropagation()}>
+          <Button variant="primary" size="sm" style={styles.actionBtn} onClick={() => openEditDrawer(worker)}>
+            עריכה
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            style={styles.actionBtn}
+            loading={sendingPortalLinkId === worker.id}
+            onClick={(e) => void sendWorkerPortalLink(worker, e)}
+          >
+            שלח קישור
+          </Button>
+          <div style={styles.moreMenuWrap} ref={menuRef}>
+            <Button variant="ghost" size="sm" style={styles.actionBtn} onClick={() => setMoreOpen((v) => !v)}>
+              עוד
+            </Button>
+            {moreOpen ? (
+              <div style={styles.moreMenu} role="menu">
+                <button type="button" style={styles.moreMenuItem} onClick={(e) => { setMoreOpen(false); copyWorkerFieldLink(worker, e) }}>
+                  העתק קישור לאזור אישי
+                </button>
+                <button
+                  type="button"
+                  style={styles.moreMenuItem}
+                  disabled={testingSmsWorkerId === worker.id}
+                  onClick={(e) => { setMoreOpen(false); void sendWorkerTestSms(worker, e) }}
+                >
+                  {testingSmsWorkerId === worker.id ? 'שולח SMS...' : 'ניסיון SMS'}
+                </button>
+                <button type="button" style={styles.moreMenuItem} onClick={() => { setMoreOpen(false); toggleWorkerStatus(worker) }}>
+                  {worker.is_active ? 'השבת עובד' : 'הפעל עובד'}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   function copyWorkerFieldLink(worker: WorkerRow, e?: React.MouseEvent) {
     e?.stopPropagation()
     const token = worker.access_token
@@ -570,28 +667,42 @@ export default function WorkersPage() {
           <KpiCard label="לא פעילים" value={stats.inactive} />
         </div>
 
+        {isMobile && (
+          <Button variant="primary" onClick={openCreateDrawer} style={styles.mobileCreateBtn}>
+            + עובד חדש
+          </Button>
+        )}
+
         {/* Filters + Grid */}
         <Card noPadding>
-          <div style={{
-            ...styles.filtersRow,
-            flexDirection: isMobile ? 'column' : 'row',
-          }}>
+          <div
+            style={{
+              ...styles.filtersRow,
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
+            }}
+          >
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
-              placeholder="חיפוש עובדים..."
-              style={{ flex: 1, maxWidth: isMobile ? '100%' : '320px' }}
+              placeholder="חיפוש לפי שם, טלפון, תפקיד..."
+              style={{ flex: 1, maxWidth: isMobile ? '100%' : '360px' }}
             />
-            <Select
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
-              options={[
-                { label: 'כל הסטטוסים', value: 'ALL' },
-                { label: 'פעיל', value: 'ACTIVE' },
-                { label: 'לא פעיל', value: 'INACTIVE' },
-              ]}
-              style={{ minWidth: '140px' }}
-            />
+            <div style={styles.filtersEnd}>
+              <Select
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
+                options={[
+                  { label: 'כל הסטטוסים', value: 'ALL' },
+                  { label: 'פעיל', value: 'ACTIVE' },
+                  { label: 'לא פעיל', value: 'INACTIVE' },
+                ]}
+                style={{ minWidth: '140px', width: isMobile ? '100%' : undefined }}
+              />
+              <span style={styles.resultCount}>
+                {filteredWorkers.length} מתוך {workers.length}
+              </span>
+            </div>
           </div>
 
           {filteredWorkers.length === 0 ? (
@@ -605,78 +716,15 @@ export default function WorkersPage() {
               }
             />
           ) : (
-            <div style={{
-              ...styles.workerGrid,
-              gridTemplateColumns: isMobile ? '1fr' : undefined,
-            }}>
+            <div
+              style={{
+                ...styles.workerGrid,
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))',
+                padding: isMobile ? '16px' : '24px',
+              }}
+            >
               {filteredWorkers.map((worker) => (
-                <div
-                  key={worker.id}
-                  onClick={() => openDetailDrawer(worker)}
-                  style={styles.workerCard}
-                  data-ui="card"
-                >
-                  <div style={styles.workerHeader}>
-                    <div style={styles.avatar}>
-                      {getInitials(worker.full_name)}
-                    </div>
-                    <div style={styles.workerInfo}>
-                      <div style={styles.workerName}>{worker.full_name}</div>
-                      <div style={styles.workerRole}>{worker.role || 'ללא תפקיד'}</div>
-                    </div>
-                    <span style={workerStatusBadge(worker.is_active)}>
-                      {worker.is_active ? 'פעיל' : 'לא פעיל'}
-                    </span>
-                  </div>
-
-                  <div style={styles.workerMeta}>
-                    <div style={styles.metaItem}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                      <span style={styles.metaText}>{formatWorkerPhonesDisplay(worker)}</span>
-                    </div>
-                    {worker.email && (
-                      <div style={styles.metaItem}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect width="20" height="16" x="2" y="4" rx="2" />
-                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                        </svg>
-                        <span style={styles.metaText}>{worker.email}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={styles.workerActions} onClick={(e) => e.stopPropagation()}>
-                    <Button variant="secondary" size="sm" style={styles.actionBtn} onClick={() => openEditDrawer(worker)}>
-                      עריכה
-                    </Button>
-                    <Button variant="secondary" size="sm" style={styles.actionBtn} onClick={(e) => copyWorkerFieldLink(worker, e)}>
-                      העתק קישור
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      style={styles.actionBtn}
-                      loading={sendingPortalLinkId === worker.id}
-                      onClick={(e) => void sendWorkerPortalLink(worker, e)}
-                    >
-                      שלח קישור ב-SMS
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      style={styles.actionBtn}
-                      loading={testingSmsWorkerId === worker.id}
-                      onClick={(e) => void sendWorkerTestSms(worker, e)}
-                    >
-                      ניסיון SMS
-                    </Button>
-                    <Button variant="secondary" size="sm" style={styles.actionBtn} onClick={() => toggleWorkerStatus(worker)}>
-                      {worker.is_active ? 'השבתה' : 'הפעלה'}
-                    </Button>
-                  </div>
-                </div>
+                <WorkerListCard key={worker.id} worker={worker} />
               ))}
             </div>
           )}
@@ -919,12 +967,29 @@ const styles: Record<string, CSSProperties> = {
     gap: '16px',
     marginBottom: '24px',
   },
+  mobileCreateBtn: {
+    width: '100%',
+    marginBottom: 4,
+  },
   filtersRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    padding: '20px 24px',
+    padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    flexWrap: 'wrap',
+  },
+  filtersEnd: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    flexWrap: 'wrap',
+  },
+  resultCount: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: theme.colors.textMuted,
+    whiteSpace: 'nowrap',
   },
   loadingContainer: {
     display: 'flex',
@@ -934,20 +999,19 @@ const styles: Record<string, CSSProperties> = {
   },
   workerGrid: {
     display: 'grid',
-    gap: '20px',
-    padding: '24px',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+    gap: '16px',
   },
   workerCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.radius.lg,
-    padding: '20px',
+    padding: '18px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
     display: 'flex',
     flexDirection: 'column',
     minWidth: 0,
+    outline: 'none',
   },
   workerHeader: {
     display: 'flex',
@@ -1004,13 +1068,45 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   workerActions: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: '8px',
     marginTop: 'auto',
+    paddingTop: '4px',
+  },
+  moreMenuWrap: {
+    position: 'relative',
+    marginInlineStart: 'auto',
+  },
+  moreMenu: {
+    position: 'absolute',
+    bottom: 'calc(100% + 6px)',
+    insetInlineEnd: 0,
+    minWidth: '200px',
+    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.md,
+    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+    zIndex: 20,
+    padding: '6px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  },
+  moreMenuItem: {
+    display: 'block',
+    width: '100%',
+    textAlign: 'start',
+    padding: '10px 12px',
+    border: 'none',
+    borderRadius: theme.radius.sm,
+    background: 'transparent',
+    fontSize: '13px',
+    fontWeight: 500,
+    color: theme.colors.textPrimary,
+    cursor: 'pointer',
   },
   actionBtn: {
-    width: '100%',
     justifyContent: 'center',
   },
   drawerActionsGrid: {
