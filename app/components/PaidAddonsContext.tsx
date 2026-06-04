@@ -2,15 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { PAID_ADDON_KEYS, type PaidAddonKey } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS, type AddonEntitlement, type PaidAddonKey } from '@/lib/paid-addons'
 
-export type AddonEntitlement = {
-  addon_key: string
-  name_he: string
-  description_he: string | null
-  price_ils_monthly: number
-  enabled: boolean
-}
+export type { AddonEntitlement }
 
 type PaidAddonsContextValue = {
   isBootstrapped: boolean

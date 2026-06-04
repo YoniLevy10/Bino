@@ -47,7 +47,7 @@ export function PaidAddonGate({ addonKey, children }: Props) {
           מחיר: <strong>{formatAddonPriceIls(price)}</strong> לחודש
         </p>
         <p style={styles.hint}>
-          להפעלת התוסף פנו לצוות במקור או בקשו הפעלה דרך דף החיוב. לאחר ההפעלה תוכלו לנהל אנשי מקצוע ולשלוח להם תקלות ב-SMS.
+          להפעלת התוסף פנו לצוות במקור. לאחר ההפעלה תוכלו לגשת לפיצ&apos;ר מהדף תוספים בתשלום.
         </p>
         <div style={styles.actions}>
           <Link href="/addons">

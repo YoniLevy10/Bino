@@ -105,7 +105,6 @@ const navItems = [
   { href: '/tickets', label: 'תקלות', icon: 'ticket' },
   { href: '/projects', label: 'פרויקטים', icon: 'folder' },
   { href: '/workers', label: 'עובדים', icon: 'users' },
-  { href: '/professionals', label: 'אנשי מקצוע', icon: 'users' },
   { href: '/residents', label: 'דיירים', icon: 'building' },
   { href: '/qr', label: 'קודי QR', icon: 'qr' },
   { href: '/error-logs', label: 'יומן שגיאות', icon: 'chart' },
@@ -353,7 +352,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
             }}
           >
             <NavIcon type="grid" active={pathname === '/addons'} />
-            <span style={sidebarStyles.navLabel}>תוספים בתשלום</span>
+            <span style={sidebarStyles.navLabel}>תוספים</span>
           </Link>
           <Link
             href="/billing"
@@ -571,7 +570,6 @@ const BOTTOM_NAV_ROUTES = new Set([
   '/tickets',
   '/projects',
   '/workers',
-  '/professionals',
   '/residents',
   '/qr',
   '/error-logs',
@@ -1018,7 +1016,7 @@ export function MobileMenu({
               }}
             >
               <NavIcon type="grid" active={pathname === '/addons'} />
-              <span style={mobileMenuStyles.navLabel}>תוספים בתשלום</span>
+              <span style={mobileMenuStyles.navLabel}>תוספים</span>
             </Link>
             <Link
               href="/billing"

@@ -18,6 +18,11 @@ export type PaidAddonCatalogRow = {
   sort_order: number
 }
 
+/** Tenant entitlement row returned by /api/addons/entitlements */
+export type AddonEntitlement = PaidAddonCatalogRow & {
+  enabled: boolean
+}
+
 export function formatAddonPriceIls(price: number): string {
   return `₪${price.toLocaleString('he-IL')}`
 }
