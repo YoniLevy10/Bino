@@ -1,14 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyCronRequest } from '@/lib/cron-auth'
 import { applyPendingSqlMigrations } from '@/lib/apply-sql-migrations'
 
-function isAuthorized(req: Request): boolean {
-  const secret = process.env.ADMIN_SETUP_SECRET?.trim()
-  if (!secret) return false
-  return (req.headers.get('x-admin-secret') ?? '') === secret
-}
+export const maxDuration = 60
 
-export async function POST(req: Request) {
-  if (!isAuthorized(req)) {
+/** One-shot / maintenance: apply pending SQL migrations (Bearer CRON_SECRET). */
+export async function GET(req: NextRequest) {
+  if (!verifyCronRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
