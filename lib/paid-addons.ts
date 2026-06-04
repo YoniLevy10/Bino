@@ -2,9 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** Stable keys for paid add-ons — add new keys here when shipping features. */
 export const PAID_ADDON_KEYS = {
+  /** יומן משרד — פגישות, ועדות, קישור לפרויקטים */
+  calendar: 'calendar',
   professionals: 'professionals',
   /** חתמת עובדים — נוכחות QR/NFC, offline sync */
   worker_stamp: 'worker_stamp',
+  /** SMS פתיחת פיילוט לכל דיירי הבניין */
+  pilot_sms: 'pilot_sms',
+  /** ארכיון מסמכים לפי פרויקט */
+  project_documents: 'project_documents',
 } as const
 
 export type PaidAddonKey = (typeof PAID_ADDON_KEYS)[keyof typeof PAID_ADDON_KEYS]

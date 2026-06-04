@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { requireSessionClientId, type SessionClientContext } from '@/lib/api-auth'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   addonRequiredMessageHe,
   clientHasPaidAddon,
@@ -36,4 +38,18 @@ export async function requireClientPaidAddon(
       { status: 403 }
     ),
   }
+}
+
+/** Session auth + paid add-on check for API routes. */
+export async function requireSessionClientPaidAddon(
+  addonKey: PaidAddonKey
+): Promise<{ ok: true; ctx: SessionClientContext } | { ok: false; response: NextResponse }> {
+  const auth = await requireSessionClientId()
+  if (!auth.ok) return auth
+
+  const admin = getSupabaseAdmin()
+  const addon = await requireClientPaidAddon(admin, auth.ctx.clientId, addonKey)
+  if (!addon.ok) return { ok: false, response: addon.response }
+
+  return { ok: true, ctx: auth.ctx }
 }

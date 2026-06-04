@@ -92,6 +92,7 @@ const migrationFiles = [
   '047_worker_attendance_nfc.sql',
   '048_worker_stamp_paid_addon.sql',
   '049_plan_pricing_catalog.sql',
+  '050_paid_addons_full_catalog.sql',
 ].map((f) => path.join(root, 'supabase', 'migrations', f))
 
 async function main() {

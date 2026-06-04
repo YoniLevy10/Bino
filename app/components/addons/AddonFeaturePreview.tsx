@@ -47,6 +47,67 @@ function ProfessionalsMock() {
   )
 }
 
+function CalendarMock() {
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>יומן משרד</span>
+        <span style={styles.mockPill}>חודש</span>
+      </div>
+      <div style={styles.calGrid}>
+        {Array.from({ length: 12 }, (_, i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.calCell,
+              ...(i === 8 ? { background: theme.colors.primaryMuted, borderColor: theme.colors.primary } : {}),
+            }}
+          />
+        ))}
+      </div>
+      <div style={styles.calEvent}>
+        <span style={styles.calEventTitle}>ועד בית — בניין א׳</span>
+        <span style={styles.calEventTime}>10:00</span>
+      </div>
+    </div>
+  )
+}
+
+function PilotSmsMock() {
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>SMS פיילוט</span>
+        <span style={styles.mockPill}>142 נמענים</span>
+      </div>
+      <div style={styles.smsBubble}>
+        <span style={styles.smsLabel}>ברוכים הבאים למוקד התקלות</span>
+        <span style={styles.smsText}>שמרו את המספר לדיווח תקלות בבניין...</span>
+      </div>
+      <p style={styles.mockFooter}>עברית · English · Francais</p>
+    </div>
+  )
+}
+
+function DocumentsMock() {
+  const files = ['חוזה אחזקה.pdf', 'תוכנית חשמל.dwg', 'פרוטוקול ועד.docx']
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>תיקיית מסמכים</span>
+        <span style={styles.mockPill}>3 קבצים</span>
+      </div>
+      <ul style={styles.proList}>
+        {files.map((f) => (
+          <li key={f} style={styles.proRow}>
+            <span style={styles.proName}>{f}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function WorkerStampMock() {
   return (
     <div style={styles.mockFrame}>
@@ -78,12 +139,18 @@ function WorkerStampMock() {
 
 function renderMock(addonId: PaidAddonId) {
   switch (addonId) {
+    case PAID_ADDON_KEYS.calendar:
+      return <CalendarMock />
     case PAID_ADDON_KEYS.professionals:
       return <ProfessionalsMock />
     case PAID_ADDON_KEYS.worker_stamp:
       return <WorkerStampMock />
+    case PAID_ADDON_KEYS.pilot_sms:
+      return <PilotSmsMock />
+    case PAID_ADDON_KEYS.project_documents:
+      return <DocumentsMock />
     default:
-      return <WorkerStampMock />
+      return <CalendarMock />
   }
 }
 
@@ -245,5 +312,34 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 10,
     color: theme.colors.textMuted,
     fontWeight: 600,
+  },
+  calGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 4,
+    flex: 1,
+  },
+  calCell: {
+    aspectRatio: '1',
+    borderRadius: 4,
+    background: theme.colors.muted,
+    border: `1px solid ${theme.colors.border}`,
+  },
+  calEvent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '6px 8px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.primaryMuted,
+    fontSize: 10,
+  },
+  calEventTitle: { fontWeight: 600, color: theme.colors.textPrimary },
+  calEventTime: { color: theme.colors.textMuted },
+  mockFooter: {
+    margin: 0,
+    fontSize: 9,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
   },
 }

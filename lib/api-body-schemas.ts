@@ -230,6 +230,32 @@ export const createNfcTagBodySchema = z.object({
   is_active: z.boolean().optional(),
 })
 
+const calendarEventTypeSchema = z.enum(['committee', 'professional', 'internal', 'other'])
+
+export const createCalendarEventBodySchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string().max(5000).nullable().optional(),
+  location: z.string().max(500).nullable().optional(),
+  starts_at: z.string().datetime({ offset: true }),
+  ends_at: z.string().datetime({ offset: true }),
+  all_day: z.boolean().optional(),
+  project_id: z.string().uuid().nullable().optional(),
+  event_type: calendarEventTypeSchema.optional(),
+})
+
+export const updateCalendarEventBodySchema = createCalendarEventBodySchema.partial().extend({
+  id: z.string().uuid(),
+})
+
+export const projectPilotSmsBodySchema = z.object({
+  project_id: z.string().uuid(),
+  dry_run: z.boolean().optional(),
+})
+
+export const deleteProjectDocumentBodySchema = z.object({
+  document_id: z.string().uuid(),
+})
+
 /** מחיקת תקלות — נבחרות או כולן (soft delete). */
 export const deleteTicketsBodySchema = z.union([
   z.object({

@@ -166,15 +166,15 @@ function AddonsPageInner() {
 
         {loading ? (
           <div style={styles.skeletonGrid}>
-            {Array.from({ length: 2 }, (_, i) => (
+            {Array.from({ length: 5 }, (_, i) => (
               <div key={i} style={styles.skeletonCard} />
             ))}
           </div>
         ) : catalogMissing ? (
           <Card>
             <p style={styles.muted}>
-              מערכת התוספים טרם הופעלה בשרת. הריצו מיגרציות <code>046_paid_addons.sql</code> ו-
-              <code>048_worker_stamp_paid_addon.sql</code>.
+              מערכת התוספים טרם הופעלה בשרת. הריצו מיגרציות <code>046_paid_addons.sql</code>,
+              <code>048_worker_stamp_paid_addon.sql</code> ו-<code>050_paid_addons_full_catalog.sql</code>.
             </p>
           </Card>
         ) : addons.length === 0 ? (
