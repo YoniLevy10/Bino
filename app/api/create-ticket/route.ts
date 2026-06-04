@@ -9,6 +9,7 @@ import { checkAuthenticatedPostRouteLimit, checkIpPostRouteLimit } from '@/lib/r
 import { notifyNewTicketPush } from '@/lib/push-notifications'
 import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
+import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 
 function parseStartCode(message: string) {
   const match = message.trim().toUpperCase().match(/^START_(BMK\d+)(?:_(.+))?$/i)
@@ -342,6 +343,24 @@ export async function POST(req: Request) {
         imageUploadWarning = uploadResult.warning
       }
 
+      const { data: clientRowWeb } = await supabaseAdmin
+        .from('clients')
+        .select('sms_sender_name')
+        .eq('id', project.client_id)
+        .maybeSingle()
+      const smsSenderWeb =
+        (clientRowWeb as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
+
+      await autoAssignTicketFromProject(supabaseAdmin, {
+        ticketId: createdTicket.id,
+        clientId: project.client_id as string,
+        projectId: project.id as string,
+        ticketNumber: createdTicket.ticket_number as number,
+        description,
+        smsSenderName: smsSenderWeb,
+        projectName: (project as { name?: string }).name ?? null,
+      })
+
       void notifyNewTicketPush(supabaseAdmin, project.client_id as string, description).catch(() => {})
 
       return NextResponse.json({
@@ -574,6 +593,24 @@ export async function POST(req: Request) {
         { status: 500 }
       )
     }
+
+    const { data: clientRowWa } = await supabaseAdmin
+      .from('clients')
+      .select('sms_sender_name')
+      .eq('id', project.client_id)
+      .maybeSingle()
+    const smsSenderWa =
+      (clientRowWa as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
+
+    await autoAssignTicketFromProject(supabaseAdmin, {
+      ticketId: createdTicket.id,
+      clientId: project.client_id as string,
+      projectId: project.id as string,
+      ticketNumber: createdTicket.ticket_number as number,
+      description: initialDescription,
+      smsSenderName: smsSenderWa,
+      projectName: (project as { name?: string }).name ?? null,
+    })
 
     void notifyNewTicketPush(supabaseAdmin, project.client_id as string, initialDescription).catch(() => {})
 

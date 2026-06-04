@@ -21,7 +21,8 @@ import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
 import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
 import { resolveWhatsAppTemplateMessage, resolveSmsTemplateMessage } from '@/lib/whatsapp-templates'
-import { sendManagerSMS, sendWorkerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
+import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
+import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 import {
   downloadWhatsAppMedia,
   uploadWhatsAppMediaToStorage,
@@ -30,7 +31,7 @@ import {
 import { getLogger } from '@/lib/logging'
 import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
 import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
-import { getPublicTicketsUrl, getWorkerPortalUrl } from '@/lib/public-app-url'
+import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
@@ -587,7 +588,6 @@ async function runWhatsAppInboundBackground(
     const clientName = (waClient as { name?: string | null } | null)?.name || 'המערכת'
     const smsSenderName = (waClient as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
     const clientManagerPhone = (waClient as { manager_phone?: string | null } | null)?.manager_phone || null
-    const clientDefaultWorkerPhone = (waClient as { default_worker_phone?: string | null } | null)?.default_worker_phone?.trim() || null
     const smsOnTicketOpen = (waClient as { sms_on_ticket_open?: boolean | null } | null)?.sms_on_ticket_open !== false
 
     type WaTemplateVars = Partial<
@@ -1392,6 +1392,29 @@ async function runWhatsAppInboundBackground(
         waFrom: waRecipient,
       }))
 
+    if (session.project_id) {
+      const autoAssign = await autoAssignTicketFromProject(supabaseAdmin, {
+        ticketId: createdTicket.id,
+        clientId: webhookClientId,
+        projectId: session.project_id as string,
+        ticketNumber: createdTicket.ticket_number as number,
+        description: ticketDescription || null,
+        smsSenderName,
+      })
+      if (autoAssign.assigned && autoAssign.assign && !autoAssign.assign.ok) {
+        logger.warn('WEBHOOK', 'auto-assign from project failed', {
+          ticketId: createdTicket.id,
+          workerId: autoAssign.workerId,
+          err: autoAssign.assign.error,
+        })
+      } else if (autoAssign.assigned) {
+        logger.info('WEBHOOK', 'auto-assigned ticket from project worker', {
+          ticketNumber: createdTicket.ticket_number,
+          workerId: autoAssign.workerId,
+        })
+      }
+    }
+
     // Predictive alert — fire-and-forget, never blocks the response
     void checkAndFlagRecurringIssue({
       supabase: supabaseAdmin,
@@ -1459,39 +1482,6 @@ async function runWhatsAppInboundBackground(
             const smsSent = await sendManagerSMS(managerDestination, smsMessage, smsSenderName, webhookClientId)
             if (!smsSent) {
               logger.warn('WEBHOOK', 'manager SMS failed', { ticketNumber: createdTicket.ticket_number })
-            }
-          }
-
-          if (projectForNotification.assigned_worker_id) {
-            const { data: workerRow } = await supabaseAdmin
-              .from('workers')
-              .select('phone, full_name, access_token')
-              .eq('id', projectForNotification.assigned_worker_id)
-              .eq('client_id', webhookClientId)
-              .is('deleted_at', null)
-              .maybeSingle()
-
-            const workerPhone = workerRow?.phone?.trim() || clientDefaultWorkerPhone
-            if (workerPhone) {
-              const workerToken = (workerRow as { access_token?: string | null } | null)?.access_token?.trim()
-              const workerPortalUrl = workerToken ? getWorkerPortalUrl(workerToken) : getPublicTicketsUrl()
-              const workerMsg = await resolveSmsTemplateMessage(
-                supabaseAdmin, webhookClientId,
-                'sms_worker_new_ticket',
-                SMS_TEMPLATE_EDITOR_DEFAULTS.sms_worker_new_ticket,
-                {
-                  project_name: projectForNotification.name,
-                  ticket_number: String(createdTicket.ticket_number),
-                  description: ticketDescription || 'ללא פירוט',
-                  reporter_name: displayReporterForExternalMessage(waRecipient),
-                  dashboard_url: workerPortalUrl,
-                  client_name: clientName,
-                }
-              )
-              const wOk = await sendWorkerSMS(workerPhone, workerMsg, smsSenderName, webhookClientId)
-              if (!wOk) {
-                logger.warn('WEBHOOK', 'worker SMS failed', { workerId: projectForNotification.assigned_worker_id })
-              }
             }
           }
         }
