@@ -2,12 +2,12 @@
 
 import type { ReactNode } from 'react'
 import { ClientBrandingProvider } from './ClientBrandingContext'
-import { SidebarNavProvider } from './SidebarNavContext'
+import { PaidAddonsProvider } from './PaidAddonsContext'
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ClientBrandingProvider>
-      <SidebarNavProvider>{children}</SidebarNavProvider>
+      <PaidAddonsProvider>{children}</PaidAddonsProvider>
     </ClientBrandingProvider>
   )
 }

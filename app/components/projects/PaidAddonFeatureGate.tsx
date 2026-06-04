@@ -2,24 +2,23 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { isNavFeatureEnabled } from '@/lib/client-nav-features'
-import { getPaidAddonCatalogEntry, type PaidAddonId } from '@/lib/paid-addons-catalog'
-import type { SidebarNavItemId } from '@/lib/sidebar-nav'
-import { useSidebarNav } from '../SidebarNavContext'
+import { getPaidAddonCatalogEntry } from '@/lib/paid-addons-catalog'
+import { type PaidAddonKey } from '@/lib/paid-addons'
+import { usePaidAddons } from '../PaidAddonsContext'
 import { theme } from '../ui'
 
 type Props = {
-  featureId: PaidAddonId
+  featureId: PaidAddonKey
   children: ReactNode
 }
 
 export function PaidAddonFeatureGate({ featureId, children }: Props) {
-  const { enabledFeatures, isBootstrapped } = useSidebarNav()
+  const { isBootstrapped, hasAddon } = usePaidAddons()
   const entry = getPaidAddonCatalogEntry(featureId)
 
   if (!isBootstrapped) return null
 
-  if (isNavFeatureEnabled(enabledFeatures, featureId as SidebarNavItemId)) {
+  if (hasAddon(featureId)) {
     return <>{children}</>
   }
 

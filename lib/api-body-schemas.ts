@@ -263,12 +263,71 @@ export const sendWorkerPortalLinkBodySchema = z.object({
   worker_id: z.string().uuid(),
 })
 
-export const officeAttendanceClockBodySchema = z.object({
-  station_token: z.string().uuid(),
-  staff_id: z.string().uuid(),
-  lat: z.number().min(-90).max(90).optional(),
-  lng: z.number().min(-180).max(180).optional(),
-  accuracy_m: z.number().min(0).max(50000).optional(),
+export const createProfessionalBodySchema = z.object({
+  full_name: z.string().min(1).max(200),
+  phone: z.string().min(6).max(40),
+  extra_phones: z.array(z.string().min(6).max(40)).max(5).optional(),
+  trade: z.string().max(100).nullable().optional(),
+  company_name: z.string().max(200).nullable().optional(),
+  email: z.union([z.string().email().max(320), z.literal('')]).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  is_active: z.boolean().optional(),
+})
+
+export const updateProfessionalBodySchema = createProfessionalBodySchema.partial().extend({
+  professional_id: z.string().uuid(),
+})
+
+/** העברת תקלה לאיש מקצוע חיצוני ב-SMS. */
+export const forwardTicketToProfessionalBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  professional_id: z.string().uuid(),
+  note: z.string().max(500).nullable().optional(),
+  set_status_escort: z.boolean().optional(),
+})
+
+const attendanceEventTypeSchema = z.enum([
+  'clock_in',
+  'clock_out',
+  'project_arrival',
+  'project_departure',
+  'project_visit',
+])
+
+export const workerAttendanceSyncBodySchema = z.object({
+  access_token: z.string().uuid(),
+  events: z
+    .array(
+      z.object({
+        client_action_id: z.string().min(8).max(80),
+        tag_code: z.string().min(1).max(80),
+        event_type: attendanceEventTypeSchema,
+        client_recorded_at: z.string().min(10).max(40),
+        client_timezone: z.string().max(80).nullable().optional(),
+        device_id: z.string().max(80).nullable().optional(),
+        user_agent: z.string().max(500).nullable().optional(),
+        lat: z.number().finite().nullable().optional(),
+        lng: z.number().finite().nullable().optional(),
+        note: z.string().max(500).nullable().optional(),
+        source: z.enum(['online', 'offline']),
+      })
+    )
+    .min(1)
+    .max(50),
+})
+
+export const attendanceEventReviewBodySchema = z.object({
+  event_id: z.string().uuid(),
+  sync_status: z.enum(['synced', 'pending_review', 'conflict', 'rejected']),
+  admin_note: z.string().max(2000).nullable().optional(),
+})
+
+export const createNfcTagBodySchema = z.object({
+  tag_code: z.string().min(2).max(80),
+  tag_type: z.enum(['office', 'project']),
+  project_id: z.string().uuid().nullable().optional(),
+  label: z.string().max(200).nullable().optional(),
+  is_active: z.boolean().optional(),
 })
 
 const calendarEventTypeSchema = z.enum(['committee', 'professional', 'internal', 'other'])
@@ -288,23 +347,13 @@ export const updateCalendarEventBodySchema = createCalendarEventBodySchema.parti
   id: z.string().uuid(),
 })
 
-export const patchOfficeTimeEntryBodySchema = z.object({
-  id: z.string().uuid(),
-  clock_in_at: z.string().datetime({ offset: true }).optional(),
-  clock_out_at: z.string().datetime({ offset: true }).nullable().optional(),
+export const projectPilotSmsBodySchema = z.object({
+  project_id: z.string().uuid(),
+  dry_run: z.boolean().optional(),
 })
 
-export const officeGeofenceBodySchema = z.object({
-  office_geofence_lat: z.number().min(-90).max(90).nullable(),
-  office_geofence_lng: z.number().min(-180).max(180).nullable(),
-  office_geofence_radius_m: z.number().min(10).max(5000).optional(),
-})
-
-export const upsertOfficeStaffBodySchema = z.object({
-  id: z.string().uuid().optional(),
-  full_name: z.string().min(1).max(200),
-  hourly_rate: z.number().min(0).max(99999).nullable().optional(),
-  is_active: z.boolean().optional(),
+export const deleteProjectDocumentBodySchema = z.object({
+  document_id: z.string().uuid(),
 })
 
 /** מחיקת תקלות — נבחרות או כולן (soft delete). */

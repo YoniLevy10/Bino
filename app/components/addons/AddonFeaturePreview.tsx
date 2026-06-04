@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import type { PaidAddonId } from '@/lib/paid-addons-catalog'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { theme } from '../ui'
 
 function LockOverlay() {
@@ -18,61 +19,55 @@ function LockOverlay() {
   )
 }
 
-function CalendarMock() {
-  const days = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש']
+function ProfessionalsMock() {
+  const rows = [
+    { name: 'יוסי כהן — חשמל', phone: '052-xxx' },
+    { name: 'מעליות דן', phone: '03-xxx' },
+    { name: 'אבי — אינסטלציה', phone: '054-xxx' },
+  ]
   return (
     <div style={styles.mockFrame}>
       <div style={styles.mockHeader}>
-        <span style={styles.mockTitle}>יוני 2026</span>
-        <span style={styles.mockPill}>חודש</span>
+        <span style={styles.mockTitle}>אנשי מקצוע</span>
+        <span style={styles.mockPill}>SMS</span>
       </div>
-      <div style={styles.calWeekRow}>
-        {days.map((d) => (
-          <span key={d} style={styles.calDow}>
-            {d}
-          </span>
+      <ul style={styles.proList}>
+        {rows.map((r) => (
+          <li key={r.name} style={styles.proRow}>
+            <span style={styles.proName}>{r.name}</span>
+            <span style={styles.proPhone}>{r.phone}</span>
+          </li>
         ))}
-      </div>
-      <div style={styles.calGrid}>
-        {Array.from({ length: 28 }, (_, i) => (
-          <div key={i} style={styles.calCell}>
-            <span style={styles.calNum}>{i + 1}</span>
-            {(i === 4 || i === 11 || i === 18) && <span style={styles.calDot} />}
-          </div>
-        ))}
-      </div>
-      <div style={styles.mockFooter}>
-        <span style={styles.eventChip}>ועד בית · 10:00</span>
-        <span style={{ ...styles.eventChip, background: theme.colors.successMuted }}>אחזקה · 14:30</span>
+      </ul>
+      <div style={styles.smsBubble}>
+        <span style={styles.smsLabel}>הודעה לקבלן</span>
+        <span style={styles.smsText}>תקלה #1247 · בניין א׳ · דירה 12...</span>
       </div>
     </div>
   )
 }
 
-function AttendanceMock() {
+function CalendarMock() {
   return (
     <div style={styles.mockFrame}>
       <div style={styles.mockHeader}>
-        <span style={styles.mockTitle}>שעון עובדים</span>
-        <span style={styles.mockPill}>היום</span>
+        <span style={styles.mockTitle}>יומן משרד</span>
+        <span style={styles.mockPill}>חודש</span>
       </div>
-      <div style={styles.kpiRow}>
-        <div style={styles.kpi}>
-          <span style={styles.kpiVal}>3</span>
-          <span style={styles.kpiLbl}>במשמרת</span>
-        </div>
-        <div style={styles.kpi}>
-          <span style={styles.kpiVal}>24.5</span>
-          <span style={styles.kpiLbl}>שעות</span>
-        </div>
-        <div style={styles.kpi}>
-          <span style={styles.kpiVal}>8</span>
-          <span style={styles.kpiLbl}>עובדות</span>
-        </div>
+      <div style={styles.calGrid}>
+        {Array.from({ length: 12 }, (_, i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.calCell,
+              ...(i === 8 ? { background: theme.colors.primaryMuted, borderColor: theme.colors.primary } : {}),
+            }}
+          />
+        ))}
       </div>
-      <div style={styles.qrBox}>
-        <div style={styles.qrPattern} />
-        <span style={styles.qrCaption}>סריקת QR בכניסה למשרד</span>
+      <div style={styles.calEvent}>
+        <span style={styles.calEventTitle}>ועד בית — בניין א׳</span>
+        <span style={styles.calEventTime}>10:00</span>
       </div>
     </div>
   )
@@ -83,42 +78,76 @@ function PilotSmsMock() {
     <div style={styles.mockFrame}>
       <div style={styles.mockHeader}>
         <span style={styles.mockTitle}>SMS פיילוט</span>
-        <span style={styles.mockPill}>פרויקט</span>
+        <span style={styles.mockPill}>142 נמענים</span>
       </div>
-      <div style={{ ...styles.kpi, textAlign: 'right', padding: 12 }}>
-        <div style={{ fontSize: 11, color: theme.colors.textMuted, marginBottom: 6 }}>נמענים: 48 דיירים</div>
-        <div style={{ fontSize: 10, lineHeight: 1.4, color: theme.colors.textSecondary }}>
-          שלום וברכה, כאן מוקד התקלות של במקור...
-        </div>
+      <div style={styles.smsBubble}>
+        <span style={styles.smsLabel}>ברוכים הבאים למוקד התקלות</span>
+        <span style={styles.smsText}>שמרו את המספר לדיווח תקלות בבניין...</span>
       </div>
+      <p style={styles.mockFooter}>עברית · English · Francais</p>
     </div>
   )
 }
 
 function DocumentsMock() {
+  const files = ['חוזה אחזקה.pdf', 'תוכנית חשמל.dwg', 'פרוטוקול ועד.docx']
   return (
     <div style={styles.mockFrame}>
       <div style={styles.mockHeader}>
         <span style={styles.mockTitle}>תיקיית מסמכים</span>
+        <span style={styles.mockPill}>3 קבצים</span>
       </div>
-      <ul style={{ margin: 0, padding: '8px 12px 12px 28px', fontSize: 10, color: theme.colors.textSecondary }}>
-        <li>חוזה אחזקה.pdf</li>
-        <li>תוכנית קומות.dwg</li>
-        <li>פרוטוקול ועד.docx</li>
+      <ul style={styles.proList}>
+        {files.map((f) => (
+          <li key={f} style={styles.proRow}>
+            <span style={styles.proName}>{f}</span>
+          </li>
+        ))}
       </ul>
+    </div>
+  )
+}
+
+function WorkerStampMock() {
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>חתמת עובדים</span>
+        <span style={styles.mockPill}>היום</span>
+      </div>
+      <div style={styles.kpiRow}>
+        <div style={styles.kpi}>
+          <span style={styles.kpiVal}>4</span>
+          <span style={styles.kpiLbl}>במשמרת</span>
+        </div>
+        <div style={styles.kpi}>
+          <span style={styles.kpiVal}>31</span>
+          <span style={styles.kpiLbl}>שעות</span>
+        </div>
+        <div style={styles.kpi}>
+          <span style={styles.kpiVal}>12</span>
+          <span style={styles.kpiLbl}>אירועים</span>
+        </div>
+      </div>
+      <div style={styles.qrBox}>
+        <div style={styles.qrPattern} />
+        <span style={styles.qrCaption}>סריקת QR / NFC בשטח</span>
+      </div>
     </div>
   )
 }
 
 function renderMock(addonId: PaidAddonId) {
   switch (addonId) {
-    case 'calendar':
+    case PAID_ADDON_KEYS.calendar:
       return <CalendarMock />
-    case 'attendance':
-      return <AttendanceMock />
-    case 'pilot_sms':
+    case PAID_ADDON_KEYS.professionals:
+      return <ProfessionalsMock />
+    case PAID_ADDON_KEYS.worker_stamp:
+      return <WorkerStampMock />
+    case PAID_ADDON_KEYS.pilot_sms:
       return <PilotSmsMock />
-    case 'project_documents':
+    case PAID_ADDON_KEYS.project_documents:
       return <DocumentsMock />
     default:
       return <CalendarMock />
@@ -183,7 +212,6 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
-    filter: 'blur(0.3px)',
   },
   mockHeader: {
     display: 'flex',
@@ -203,54 +231,35 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     fontWeight: 600,
   },
-  calWeekRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: 2,
-  },
-  calDow: {
-    fontSize: 9,
-    textAlign: 'center',
-    color: theme.colors.textMuted,
-    fontWeight: 600,
-  },
-  calGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: 2,
+  proList: {
+    margin: 0,
+    padding: 0,
+    listStyle: 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
     flex: 1,
   },
-  calCell: {
-    fontSize: 9,
-    textAlign: 'center',
-    padding: 2,
-    borderRadius: 4,
-    background: theme.colors.muted,
-    position: 'relative',
-    minHeight: 22,
-  },
-  calNum: { color: theme.colors.textSecondary },
-  calDot: {
-    display: 'block',
-    width: 4,
-    height: 4,
-    borderRadius: '50%',
-    background: theme.colors.primary,
-    margin: '2px auto 0',
-  },
-  mockFooter: {
+  proRow: {
     display: 'flex',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    fontSize: 10,
+    padding: '6px 8px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+  },
+  proName: { fontWeight: 600, color: theme.colors.textPrimary },
+  proPhone: { color: theme.colors.textMuted, direction: 'ltr' },
+  smsBubble: {
+    padding: '8px 10px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.primaryMuted,
+    display: 'flex',
+    flexDirection: 'column',
     gap: 4,
   },
-  eventChip: {
-    fontSize: 9,
-    padding: '2px 6px',
-    borderRadius: 4,
-    background: theme.colors.primaryMuted,
-    color: theme.colors.primary,
-    fontWeight: 600,
-  },
+  smsLabel: { fontSize: 9, fontWeight: 700, color: theme.colors.primary },
+  smsText: { fontSize: 9, color: theme.colors.textSecondary, lineHeight: 1.35 },
   kpiRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
@@ -281,7 +290,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     background: theme.colors.muted,
     borderRadius: theme.radius.md,
-    minHeight: 80,
+    minHeight: 72,
   },
   qrPattern: {
     width: 56,
@@ -303,5 +312,34 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 10,
     color: theme.colors.textMuted,
     fontWeight: 600,
+  },
+  calGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 4,
+    flex: 1,
+  },
+  calCell: {
+    aspectRatio: '1',
+    borderRadius: 4,
+    background: theme.colors.muted,
+    border: `1px solid ${theme.colors.border}`,
+  },
+  calEvent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '6px 8px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.primaryMuted,
+    fontSize: 10,
+  },
+  calEventTitle: { fontWeight: 600, color: theme.colors.textPrimary },
+  calEventTime: { color: theme.colors.textMuted },
+  mockFooter: {
+    margin: 0,
+    fontSize: 9,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
   },
 }

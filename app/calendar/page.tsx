@@ -37,6 +37,8 @@ import {
   theme,
 } from '../components/ui'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PaidAddonGate } from '../components/PaidAddonGate'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 type CalendarEvent = {
   id: string
@@ -284,6 +286,7 @@ export default function CalendarPage() {
 
   return (
     <AppShell isMobile={isMobile}>
+      <PaidAddonGate addonKey={PAID_ADDON_KEYS.calendar}>
       {isMobile && (
         <MobileHeader title="יומן" subtitle={monthRange.label} onMenuClick={() => setMenuOpen(true)} />
       )}
@@ -516,6 +519,7 @@ export default function CalendarPage() {
           </Button>
         </div>
       </Drawer>
+      </PaidAddonGate>
     </AppShell>
   )
 }

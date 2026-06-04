@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { updateCalendarEventBodySchema } from '@/lib/api-body-schemas'
 
@@ -10,7 +11,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const requestId = `calendar-patch-${Date.now()}`
   try {
     const { id } = await ctx.params
-    const auth = await requireSessionClientIdWithNavFeature('calendar')
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()
@@ -70,7 +71,7 @@ export async function DELETE(_req: Request, ctx: RouteCtx) {
   const requestId = `calendar-del-${Date.now()}`
   try {
     const { id } = await ctx.params
-    const auth = await requireSessionClientIdWithNavFeature('calendar')
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

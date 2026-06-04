@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
-import { LEVY_TECH_BRAND } from '@/lib/addons-nav'
+import { BAMAKOR_BRAND } from '@/lib/addons-nav'
+import { formatAddonPriceIls } from '@/lib/paid-addons'
 import type { PaidAddonDisplayEntry } from '@/lib/paid-addons-catalog'
 import { Button, theme } from '../ui'
 
@@ -48,6 +50,9 @@ export function AddonMarketingModal({
             <h2 id="addon-marketing-title" style={styles.title}>
               {entry.title}
             </h2>
+            <p style={styles.price}>
+              {formatAddonPriceIls(entry.price_ils_monthly)} / חודש
+            </p>
           </div>
           <button type="button" style={styles.closeBtn} onClick={onClose} aria-label="סגירה">
             <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -90,14 +95,17 @@ export function AddonMarketingModal({
                 מעוניינים להפעיל את <strong>{entry.title}</strong> בחשבון שלכם?
               </p>
               <p style={styles.ctaContact}>
-                ליצירת קשר והפעלה: <strong>הנהלת {LEVY_TECH_BRAND}</strong>
+                ליצירת קשר והפעלה: <strong>הנהלת {BAMAKOR_BRAND}</strong>
               </p>
             </div>
           ) : (
             <div style={{ ...styles.ctaBox, background: theme.colors.successMuted }}>
-              <p style={{ ...styles.ctaText, color: theme.colors.success, margin: 0 }}>
-                התוסף פעיל בחשבון שלכם — ניתן להשתמש בו מהמערכת.
+              <p style={{ ...styles.ctaText, color: theme.colors.success, margin: '0 0 12px' }}>
+                התוסף פעיל בחשבון שלכם.
               </p>
+              <Link href={entry.featureHref}>
+                <Button variant="primary">{entry.featureCtaHe}</Button>
+              </Link>
             </div>
           )}
         </div>
@@ -156,6 +164,12 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textPrimary,
     lineHeight: 1.3,
   },
+  price: {
+    margin: '6px 0 0',
+    fontSize: '14px',
+    fontWeight: 600,
+    color: theme.colors.textSecondary,
+  },
   closeBtn: {
     flexShrink: 0,
     display: 'flex',
@@ -202,7 +216,6 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
-    textTransform: 'none',
   },
   list: {
     margin: 0,

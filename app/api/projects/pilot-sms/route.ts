@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { projectPilotSmsBodySchema } from '@/lib/api-body-schemas'
 import { runProjectPilotSms } from '@/lib/project-pilot-sms'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientIdWithNavFeature('pilot_sms')
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.pilot_sms)
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

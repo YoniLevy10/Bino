@@ -1,5 +1,5 @@
-/* Bamakor PWA — v4: push + app badge for worker assignments */
-const CACHE_VERSION = 'bamakor-v4'
+/* Bamakor PWA — v5: worker attendance offline shell (/worker, /worker/nfc) */
+const CACHE_VERSION = 'bamakor-v5'
 const STATIC_CACHE = `bamakor-static-${CACHE_VERSION}`
 const HTML_CACHE = `bamakor-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png']

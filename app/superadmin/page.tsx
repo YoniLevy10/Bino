@@ -4,19 +4,9 @@ import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
 import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
-import {
-  allNavFeatureOptions,
-  describeClientNavFeaturesMode,
-  parseEnabledNavFeaturesFromDb,
-  PREMIUM_NAV_FEATURE_IDS,
-  REQUIRED_NAV_FEATURE_IDS,
-  SETUP_PACKAGE_NAV_FEATURE_IDS,
-  type ClientNavFeaturesMode,
-} from '@/lib/client-nav-features'
-import { PlatformDocsPanel } from '@/app/components/superadmin/PlatformDocsPanel'
-import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
-import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
-import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
+import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
+import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
+import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
 
 type Project = { id: string; name: string; project_code: string }
 
@@ -549,6 +539,9 @@ export default function SuperAdminPage() {
           </div>
         )}
 
+        <PlanPricingCatalogAdmin secret={secret} />
+        <PaidAddonsCatalogAdmin secret={secret} />
+
         {/* Table */}
         <div style={cardStyle}>
           {loading && clients.length === 0 ? (
@@ -716,76 +709,13 @@ export default function SuperAdminPage() {
                                 </div>
                               )}
 
-                              {/* Nav features */}
-                              <div style={{ marginBottom: theme.spacing.xl, background: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.xl, border: `1.5px solid ${theme.colors.border}` }}>
-                                <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: 4 }}>
-                                  לשוניות ופיצ&apos;רים פעילים
-                                </div>
-                                <p style={{ margin: `0 0 ${theme.spacing.lg}`, fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                                  ברירת מחדל: חבילת הקמה (ליבה). תוספים בתשלום: יומן, שעון עובדים — סמן ושמור אחרי תשלום.
-                                  &quot;לגסי · כל הלשוניות&quot; רק ללקוח ששילם על הכל (NULL ב-DB).
-                                  לוח בקרה ותקלות תמיד פעילים.
-                                </p>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
-                                  <button type="button" onClick={applySetupPackagePreset} style={{ background: theme.colors.warningMuted, border: `1px solid ${theme.colors.warning}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs, color: theme.colors.textPrimary }}>
-                                    חבילת הקמה (ליבה)
-                                  </button>
-                                  <button type="button" onClick={applyAllFeaturesPreset} style={{ background: theme.colors.muted, border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs }}>
-                                    סמן הכל (לשמירה)
-                                  </button>
-                                  <button type="button" onClick={() => void clearFeatureRestrictions(c.id)} style={{ background: theme.colors.muted, border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '6px 12px', cursor: 'pointer', fontSize: theme.typography.fontSize.xs }} title="רק ללקוחות ותיקים — לא משנה נתונים">
-                                    לגסי · כל הלשוניות
-                                  </button>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
-                                  {allNavFeatureOptions().map((opt) => {
-                                    const required = REQUIRED_NAV_FEATURE_IDS.includes(opt.id)
-                                    const checked = featuresDraft.includes(opt.id)
-                                    const premium = PREMIUM_NAV_FEATURE_IDS.includes(opt.id)
-                                    return (
-                                      <label
-                                        key={opt.id}
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 8,
-                                          padding: '8px 10px',
-                                          borderRadius: theme.radius.md,
-                                          border: `1px solid ${theme.colors.border}`,
-                                          background: checked ? theme.colors.primaryMuted : theme.colors.muted,
-                                          opacity: required ? 0.85 : 1,
-                                          cursor: required ? 'default' : 'pointer',
-                                          fontSize: theme.typography.fontSize.sm,
-                                        }}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={checked}
-                                          disabled={required}
-                                          onChange={(e) => toggleFeatureDraft(opt.id, e.target.checked)}
-                                        />
-                                        <span>
-                                          {opt.label}
-                                          {premium && (
-                                            <span style={{ marginInlineStart: 6, fontSize: 10, color: theme.colors.warning, fontWeight: 600 }}>
-                                              בתשלום
-                                            </span>
-                                          )}
-                                        </span>
-                                      </label>
-                                    )
-                                  })}
-                                </div>
-                                {featuresError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{featuresError}</p>}
-                                <LoadingButton
-                                  onClick={() => void saveFeatures(c.id)}
-                                  loading={savingFeatures}
-                                  loadingText="שומר..."
-                                  size="sm"
-                                >
-                                  שמור הרשאות לשוניות
-                                </LoadingButton>
-                              </div>
+                              <ClientPaidAddonsPanel clientId={c.id} secret={secret} />
+
+                              <ClientAttendanceTagsPanel
+                                clientId={c.id}
+                                secret={secret}
+                                projects={c.projects}
+                              />
 
                               {/* Projects list */}
                               <div style={{ marginBottom: theme.spacing.xl }}>

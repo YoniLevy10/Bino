@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { deleteProjectDocumentBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
@@ -26,7 +27,7 @@ function safeFileName(name: string): string {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireSessionClientIdWithNavFeature('project_documents')
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)
   if (!auth.ok) return auth.response
 
   const projectId = new URL(req.url).searchParams.get('project_id')?.trim()
@@ -83,7 +84,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientIdWithNavFeature('project_documents')
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
@@ -164,7 +165,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireSessionClientIdWithNavFeature('project_documents')
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)
   if (!auth.ok) return auth.response
 
   let body: unknown

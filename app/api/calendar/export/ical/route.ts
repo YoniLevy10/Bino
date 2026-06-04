@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { buildIcalCalendar } from '@/lib/calendar-utils'
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireSessionClientIdWithNavFeature('calendar')
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
     if (!auth.ok) return auth.response
 
     const from = req.nextUrl.searchParams.get('from')

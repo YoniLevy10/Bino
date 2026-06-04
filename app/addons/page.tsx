@@ -1,14 +1,14 @@
 'use client'
 
+import Link from 'next/link'
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonMarketingModal } from '@/app/components/addons/AddonMarketingModal'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
-import { LEVY_TECH_BRAND } from '@/lib/addons-nav'
+import { BAMAKOR_BRAND } from '@/lib/addons-nav'
+import { formatAddonPriceIls } from '@/lib/paid-addons'
 import {
-  getPaidAddonsForDisplay,
+  buildPaidAddonsForDisplay,
   type PaidAddonDisplayEntry,
   type PaidAddonId,
 } from '@/lib/paid-addons-catalog'
@@ -22,9 +22,7 @@ import {
   PageHeader,
   theme,
 } from '../components/ui'
-
-const OFFICE_ADDON_IDS: PaidAddonId[] = ['calendar', 'attendance']
-const PROJECT_ADDON_IDS: PaidAddonId[] = ['pilot_sms', 'project_documents']
+import { usePaidAddons } from '../components/PaidAddonsContext'
 
 function AddonCard({
   entry,
@@ -67,7 +65,7 @@ function AddonCard({
             ) : (
               <span style={styles.activeBadge}>פעיל</span>
             )}
-            <span style={styles.tapHint}>לחצו לפרטים</span>
+            <span style={styles.priceChip}>{formatAddonPriceIls(entry.price_ils_monthly)}/חודש</span>
           </div>
           <h3 style={styles.cardTitle}>{entry.title}</h3>
           <p style={styles.cardTagline}>{entry.tagline}</p>
@@ -77,46 +75,10 @@ function AddonCard({
               <li key={h}>{h}</li>
             ))}
           </ul>
+          <span style={styles.tapHint}>לחצו לפרטים והסבר מלא</span>
         </div>
       </article>
     </button>
-  )
-}
-
-function AddonSection({
-  title,
-  subtitle,
-  entries,
-  hoveredId,
-  onHover,
-  onOpen,
-}: {
-  title: string
-  subtitle: string
-  entries: PaidAddonDisplayEntry[]
-  hoveredId: PaidAddonId | null
-  onHover: (id: PaidAddonId | null) => void
-  onOpen: (entry: PaidAddonDisplayEntry) => void
-}) {
-  if (entries.length === 0) return null
-  return (
-    <section style={styles.section}>
-      <div style={styles.sectionHead}>
-        <h2 style={styles.sectionTitle}>{title}</h2>
-        <p style={styles.sectionSubtitle}>{subtitle}</p>
-      </div>
-      <div style={styles.grid}>
-        {entries.map((entry) => (
-          <AddonCard
-            key={entry.id}
-            entry={entry}
-            onOpen={onOpen}
-            hovered={hoveredId === entry.id}
-            onHover={onHover}
-          />
-        ))}
-      </div>
-    </section>
   )
 }
 
@@ -124,26 +86,20 @@ function AddonsPageInner() {
   const searchParams = useSearchParams()
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [addons, setAddons] = useState<PaidAddonDisplayEntry[]>([])
-  const [legacyUnlimited, setLegacyUnlimited] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [marketingEntry, setMarketingEntry] = useState<PaidAddonDisplayEntry | null>(null)
   const [hoveredId, setHoveredId] = useState<PaidAddonId | null>(null)
+  const { isBootstrapped, catalogMissing, addons: entitlements } = usePaidAddons()
+
+  const addons = useMemo(
+    () => (isBootstrapped ? buildPaidAddonsForDisplay(entitlements) : []),
+    [isBootstrapped, entitlements]
+  )
 
   const stats = useMemo(() => {
     const active = addons.filter((a) => !a.locked).length
     const locked = addons.length - active
     return { active, locked, total: addons.length }
   }, [addons])
-
-  const officeAddons = useMemo(
-    () => addons.filter((a) => OFFICE_ADDON_IDS.includes(a.id)),
-    [addons]
-  )
-  const projectAddons = useMemo(
-    () => addons.filter((a) => PROJECT_ADDON_IDS.includes(a.id)),
-    [addons]
-  )
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -154,28 +110,11 @@ function AddonsPageInner() {
 
   useEffect(() => {
     if (searchParams.get('blocked') === '1') {
-      toast.info(`פיצ'ר בתשלום. ליצירת קשר: הנהלת ${LEVY_TECH_BRAND}.`)
+      toast.info(`פיצ'ר בתשלום. ליצירת קשר: הנהלת ${BAMAKOR_BRAND}.`)
     }
   }, [searchParams])
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true)
-      try {
-        const res = await fetchWithTimeout('/api/client/nav-config')
-        const json = (await res.json()) as { enabled_nav_features?: unknown }
-        if (!res.ok) throw new Error('nav-config failed')
-        const enabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
-        setLegacyUnlimited(enabled == null)
-        setAddons(getPaidAddonsForDisplay(enabled))
-      } catch {
-        setAddons([])
-        setLegacyUnlimited(false)
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
+  const loading = !isBootstrapped
 
   return (
     <AppShell isMobile={isMobile}>
@@ -190,9 +129,11 @@ function AddonsPageInner() {
           ...(isMobile ? { padding: '16px 16px 32px', maxWidth: '100%', boxSizing: 'border-box' } : {}),
         }}
       >
-        {!isMobile && <PageHeader title="תוספים" subtitle="הרחבות זמינות לחשבון" />}
+        {!isMobile && (
+          <PageHeader title="תוספים בתשלום" subtitle="הרחבות לחשבון — לחצו על כרטיס לפרטים מלאים" />
+        )}
 
-        {!legacyUnlimited && !loading && addons.length > 0 && (
+        {!loading && !catalogMissing && addons.length > 0 && (
           <div style={styles.statsRow}>
             <div style={styles.statChip}>
               <span style={styles.statValue}>{stats.total}</span>
@@ -211,46 +152,47 @@ function AddonsPageInner() {
 
         <div style={styles.heroBanner}>
           <p style={styles.heroText}>
-            {legacyUnlimited
-              ? 'כל התוספים הבאים פעילים בחשבון שלכם — ניתן להשתמש בהם מהמערכת.'
-              : 'הרחיבו את המערכת עם יכולות מתקדמות לניהול משרד ופרויקטים. לחצו על כרטיס לקריאת ההסבר המלא.'}
+            הרחיבו את המערכת עם יכולות מתקדמות. כל כרטיס מציג תצוגה מקדימה — תוסף לא פעיל מוצג עם מנעול.
+            לחצו על כרטיס לקריאת ההסבר המלא.
           </p>
-          {!legacyUnlimited && (
-            <p style={styles.heroContact}>
-              להפעלה: <strong>הנהלת {LEVY_TECH_BRAND}</strong>
-            </p>
-          )}
+          <p style={styles.heroContact}>
+            להפעלה: <strong>הנהלת {BAMAKOR_BRAND}</strong>
+            {' · '}
+            <Link href="/billing" style={styles.billingLink}>
+              חיוב ושימוש במנוי
+            </Link>
+          </p>
         </div>
 
         {loading ? (
           <div style={styles.skeletonGrid}>
-            {Array.from({ length: 4 }, (_, i) => (
+            {Array.from({ length: 5 }, (_, i) => (
               <div key={i} style={styles.skeletonCard} />
             ))}
           </div>
+        ) : catalogMissing ? (
+          <Card>
+            <p style={styles.muted}>
+              מערכת התוספים טרם הופעלה בשרת. הריצו מיגרציות <code>046_paid_addons.sql</code>,
+              <code>048_worker_stamp_paid_addon.sql</code> ו-<code>050_paid_addons_full_catalog.sql</code>.
+            </p>
+          </Card>
         ) : addons.length === 0 ? (
           <Card>
-            <p style={styles.muted}>לא נמצאו תוספים להצגה.</p>
+            <p style={styles.muted}>אין תוספים במחירון כרגע.</p>
           </Card>
         ) : (
-          <>
-            <AddonSection
-              title="ניהול משרד"
-              subtitle="יומן, נוכחות ותיאום צוות במשרד האחזקה"
-              entries={officeAddons}
-              hoveredId={hoveredId}
-              onHover={setHoveredId}
-              onOpen={setMarketingEntry}
-            />
-            <AddonSection
-              title="לכל פרויקט (בניין)"
-              subtitle="כלים בתוך מסך הפרויקט — SMS פתיחה וארכיון מסמכים"
-              entries={projectAddons}
-              hoveredId={hoveredId}
-              onHover={setHoveredId}
-              onOpen={setMarketingEntry}
-            />
-          </>
+          <div style={styles.grid}>
+            {addons.map((entry) => (
+              <AddonCard
+                key={entry.id}
+                entry={entry}
+                onOpen={setMarketingEntry}
+                hovered={hoveredId === entry.id}
+                onHover={setHoveredId}
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -323,26 +265,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     color: theme.colors.textSecondary,
   },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-  },
-  sectionHead: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: '18px',
-    fontWeight: 700,
-    color: theme.colors.textPrimary,
-  },
-  sectionSubtitle: {
-    margin: 0,
-    fontSize: '13px',
-    color: theme.colors.textMuted,
+  billingLink: {
+    color: theme.colors.primary,
+    fontWeight: 600,
+    textDecoration: 'none',
   },
   muted: {
     margin: 0,
@@ -358,6 +284,11 @@ const styles: Record<string, CSSProperties> = {
     height: 320,
     borderRadius: theme.radius.lg,
     background: theme.colors.muted,
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gap: 20,
   },
   lockedBadge: {
     fontSize: '11px',
@@ -375,10 +306,10 @@ const styles: Record<string, CSSProperties> = {
     background: theme.colors.successMuted,
     color: theme.colors.success,
   },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-    gap: 20,
+  priceChip: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: theme.colors.textMuted,
   },
   cardButton: {
     display: 'block',
@@ -419,6 +350,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '11px',
     fontWeight: 600,
     color: theme.colors.primary,
+    marginTop: 4,
   },
   cardTitle: {
     margin: 0,

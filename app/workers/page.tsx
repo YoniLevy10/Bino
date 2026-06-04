@@ -37,6 +37,9 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import Link from 'next/link'
+import { usePaidAddons } from '../components/PaidAddonsContext'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import {
   collectWorkerPhones,
   formatWorkerPhonesDisplay,
@@ -94,6 +97,7 @@ const emptyForm: WorkerForm = {
 }
 
 export default function WorkersPage() {
+  const { hasAddon, isBootstrapped } = usePaidAddons()
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [clientId, setClientId] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -636,9 +640,16 @@ export default function WorkersPage() {
             title="עובדים"
             subtitle="ניהול צוות אחזקה"
             actions={
+              <>
+              {isBootstrapped && hasAddon(PAID_ADDON_KEYS.worker_stamp) ? (
+                <Link href="/attendance" style={{ marginLeft: 8 }}>
+                  <Button variant="secondary">חתמת עובדים</Button>
+                </Link>
+              ) : null}
               <Button variant="primary" onClick={openCreateDrawer}>
                 עובד חדש
               </Button>
+              </>
             }
           />
         )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { clientHasPaidAddon, PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { z } from 'zod'
 
 function getRequestIp(req: NextRequest): string {
@@ -34,10 +35,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
     }
 
+    const workerStampEnabled = await clientHasPaidAddon(
+      admin,
+      data.client_id as string,
+      PAID_ADDON_KEYS.worker_stamp
+    )
+
     return NextResponse.json({
       worker_id: data.id,
       client_id: data.client_id,
       full_name: data.full_name,
+      worker_stamp_enabled: workerStampEnabled,
     })
   } catch {
     return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })

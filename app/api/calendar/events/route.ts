@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { createCalendarEventBodySchema } from '@/lib/api-body-schemas'
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireSessionClientIdWithNavFeature('calendar')
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
     if (!auth.ok) return auth.response
 
     const from = req.nextUrl.searchParams.get('from')
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const requestId = `calendar-event-${Date.now()}`
   try {
-    const auth = await requireSessionClientIdWithNavFeature('calendar')
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()
