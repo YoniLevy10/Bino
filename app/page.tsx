@@ -36,6 +36,8 @@ import {
   LoadingSpinner,
   theme 
 } from './components/ui'
+import type { ProfessionalOption } from './components/tickets/ForwardToProfessionalBlock'
+
 const TicketDetailDrawer = dynamic(
   () => import('./components/tickets/TicketDetailDrawer').then((m) => ({ default: m.TicketDetailDrawer })),
   { loading: () => null }
@@ -132,6 +134,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [workersMap, setWorkersMap] = useState<Record<string, string>>({})
+  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -181,7 +184,7 @@ export default function DashboardPage() {
     await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
-        const [ticketsResult, projectsResult, workersResult, logsResult, resCountResult, wCountResult] = await Promise.all([
+        const [ticketsResult, projectsResult, workersResult, professionalsResult, logsResult, resCountResult, wCountResult] = await Promise.all([
           withClientId(
             supabase.from('tickets').select(`
               id, ticket_number, project_id, client_id, reporter_phone, description, 
@@ -198,6 +201,12 @@ export default function DashboardPage() {
           ).order('project_code', { ascending: true }),
           withClientId(
             supabase.from('workers').select('id, full_name'),
+            clientId
+          )
+            .is('deleted_at', null)
+            .order('full_name', { ascending: true }),
+          withClientId(
+            supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
             clientId
           )
             .is('deleted_at', null)
@@ -242,6 +251,12 @@ export default function DashboardPage() {
         }))
 
         const map: Record<string, string> = {}
+        setProfessionals(
+          professionalsResult.error
+            ? []
+            : ((professionalsResult.data as ProfessionalOption[]) || [])
+        )
+
         workersResult.data?.forEach((worker: { id: string; full_name: string }) => {
           map[worker.id] = worker.full_name
         })
@@ -835,6 +850,14 @@ export default function DashboardPage() {
       <TicketDetailDrawer
         selectedTicket={selectedTicket}
         workersMap={workersMap}
+        professionals={professionals}
+        onTicketForwarded={async () => {
+          await loadData(true)
+          if (selectedTicket) {
+            setDraftStatus('PROFESSIONAL_ESCORT')
+            void loadTicketDrawerData(selectedTicket.id)
+          }
+        }}
         ticketLogs={ticketLogs}
         selectedTicketAttachments={selectedTicketAttachments}
         drawerLoading={drawerLoading}

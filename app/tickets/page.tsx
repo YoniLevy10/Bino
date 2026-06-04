@@ -37,6 +37,7 @@ import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
 } from '@/lib/reporter-closed-notify-toast'
+import { ForwardToProfessionalBlock, type ProfessionalOption } from '../components/tickets/ForwardToProfessionalBlock'
 import {
   AppShell,
   MobileHeader,
@@ -162,6 +163,7 @@ const TICKETS_LIST_SELECT = `
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
+  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -235,12 +237,18 @@ export default function TicketsPage() {
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
         setTenantClientId(clientId)
-        const [ticketsResult, workersResult, projectsResult] = await Promise.all([
+        const [ticketsResult, workersResult, professionalsResult, projectsResult] = await Promise.all([
           withClientId(supabase.from('tickets').select(TICKETS_LIST_SELECT), clientId)
             .is('deleted_at', null)
             .order('created_at', { ascending: false })
             .limit(300),
           withClientId(supabase.from('workers').select('id, full_name, phone, email, role, is_active'), clientId)
+            .is('deleted_at', null)
+            .order('full_name', { ascending: true }),
+          withClientId(
+            supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
+            clientId
+          )
             .is('deleted_at', null)
             .order('full_name', { ascending: true }),
           withClientId(supabase.from('projects').select('id, name, project_code'), clientId).order(
@@ -267,6 +275,11 @@ export default function TicketsPage() {
         setTickets(normalizedTickets)
         setTicketsTruncated(normalizedTickets.length >= 300)
         setWorkers((workersResult.data as WorkerRow[]) || [])
+        setProfessionals(
+          professionalsResult.error
+            ? []
+            : ((professionalsResult.data as ProfessionalOption[]) || [])
+        )
         setProjects((projectsResult.data as ProjectRow[]) || [])
         writeTicketsCache(clientId, {
           tickets: normalizedTickets,
@@ -1311,6 +1324,17 @@ export default function TicketsPage() {
                 style={{ width: '100%' }}
               />
             </div>
+
+            <ForwardToProfessionalBlock
+              ticketId={selectedTicket.id}
+              professionals={professionals}
+              onForwarded={async () => {
+                await fetchData(true)
+                if (selectedTicket && draftStatus !== 'PROFESSIONAL_ESCORT') {
+                  setDraftStatus('PROFESSIONAL_ESCORT')
+                }
+              }}
+            />
 
             {/* Attachments */}
             {selectedTicketAttachments.length > 0 && (

@@ -35,6 +35,7 @@ const WorkerToursPanel = dynamic(
   { loading: () => null }
 )
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
+import { WorkerAttendancePanel } from '../components/worker/WorkerAttendancePanel'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
   clearWorkerToken,
@@ -68,7 +69,13 @@ type ApiTicketRow = Ticket & {
   }> | null
 }
 type ChatMessage = { id: string; sender_name: string; body: string; created_at: string }
-type TokenSession = { token: string; workerId: string; clientId: string; fullName: string }
+type TokenSession = {
+  token: string
+  workerId: string
+  clientId: string
+  fullName: string
+  workerStampEnabled: boolean
+}
 
 function normalizeApiTickets(raw: ApiTicketRow[]): Ticket[] {
   return filterOpenWorkerTickets(
@@ -178,7 +185,12 @@ function WorkerPageInner() {
           setTokenChecked(true)
           return
         }
-        const data = (await res.json()) as { worker_id?: string; client_id?: string; full_name?: string }
+        const data = (await res.json()) as {
+          worker_id?: string
+          client_id?: string
+          full_name?: string
+          worker_stamp_enabled?: boolean
+        }
         if (!data.worker_id || !data.client_id) {
           clearWorkerToken()
           setTokenSession(null)
@@ -186,7 +198,13 @@ function WorkerPageInner() {
           return
         }
         writeWorkerToken(token)
-        setTokenSession({ token, workerId: data.worker_id, clientId: data.client_id, fullName: data.full_name || '' })
+        setTokenSession({
+          token,
+          workerId: data.worker_id,
+          clientId: data.client_id,
+          fullName: data.full_name || '',
+          workerStampEnabled: !!data.worker_stamp_enabled,
+        })
       } catch {
         clearWorkerToken()
         setTokenSession(null)
@@ -579,15 +597,23 @@ function WorkerPageInner() {
               setToursRefreshKey((k) => k + 1)
               return
             }
+            if (portalTab === 'ATTENDANCE') return
             void loadTicketsToken(tokenSession.token, { silent: true })
           }}
           onToggleDark={toggleDarkMode}
           onEnablePush={pushEnabled ? undefined : () => void enablePush()}
           pushEnabling={pushEnabling}
+          showAttendanceTab={tokenSession.workerStampEnabled}
         />
 
         <div style={styles.scrollArea}>
-          {portalTab === 'TOURS' ? (
+          {portalTab === 'ATTENDANCE' ? (
+            <WorkerAttendancePanel
+              token={tokenSession.token}
+              workerId={tokenSession.workerId}
+              colors={palette}
+            />
+          ) : portalTab === 'TOURS' ? (
             <WorkerToursPanel
               token={tokenSession.token}
               colors={palette}

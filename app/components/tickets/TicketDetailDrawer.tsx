@@ -43,6 +43,7 @@ interface TicketLog {
 }
 
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
+import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
 
 interface TicketDetailDrawerProps {
   selectedTicket: TicketRow | null
@@ -55,6 +56,8 @@ interface TicketDetailDrawerProps {
   drawerLoading: boolean
   savingTicket: boolean
   workersMap: Record<string, string>
+  professionals?: ProfessionalOption[]
+  onTicketForwarded?: () => void | Promise<void>
   onClose: () => void
   onDescriptionChange: (value: string) => void
   onWorkerChange: (value: string) => void
@@ -78,6 +81,8 @@ export function TicketDetailDrawer({
   drawerLoading,
   savingTicket,
   workersMap,
+  professionals = [],
+  onTicketForwarded,
   onClose,
   onDescriptionChange,
   onWorkerChange,
@@ -119,6 +124,8 @@ export function TicketDetailDrawer({
         return 'הודעת משתמש'
       case 'ASSIGNED_TO_WORKER':
         return 'שויך לעובד'
+      case 'FORWARDED_TO_PROFESSIONAL':
+        return 'הועבר לאיש מקצוע'
       case 'TICKET_CLOSED':
         return 'תקלה נסגרה'
       case 'AUTO_ASSIGNED':
@@ -209,6 +216,14 @@ export function TicketDetailDrawer({
                   </div>
                 )}
               </div>
+
+              {onTicketForwarded && (
+                <ForwardToProfessionalBlock
+                  ticketId={selectedTicket.id}
+                  professionals={professionals}
+                  onForwarded={onTicketForwarded}
+                />
+              )}
 
               <div style={styles.drawerSection}>
                 <div style={styles.drawerLabel}>טלפון מדווח</div>

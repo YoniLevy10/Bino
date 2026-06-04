@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
 import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
+import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
+import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
+import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
 
 type Project = { id: string; name: string; project_code: string }
 
@@ -346,6 +349,9 @@ export default function SuperAdminPage() {
           </div>
         )}
 
+        <PlanPricingCatalogAdmin secret={secret} />
+        <PaidAddonsCatalogAdmin secret={secret} />
+
         {/* Table */}
         <div style={cardStyle}>
           {loading && clients.length === 0 ? (
@@ -508,6 +514,14 @@ export default function SuperAdminPage() {
                                   </div>
                                 </div>
                               )}
+
+                              <ClientPaidAddonsPanel clientId={c.id} secret={secret} />
+
+                              <ClientAttendanceTagsPanel
+                                clientId={c.id}
+                                secret={secret}
+                                projects={c.projects}
+                              />
 
                               {/* Projects list */}
                               <div style={{ marginBottom: theme.spacing.xl }}>

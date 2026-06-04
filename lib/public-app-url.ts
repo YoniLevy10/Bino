@@ -19,3 +19,12 @@ export function getWorkerPortalUrl(accessToken: string): string {
   const token = accessToken.trim().toLowerCase()
   return `${getPublicAppBaseUrl()}/worker?token=${encodeURIComponent(token)}`
 }
+
+/** NFC / QR scan URL for attendance (office or project tag). */
+export function getWorkerAttendanceScanUrl(tagCode: string, accessToken?: string | null): string {
+  const base = getPublicAppBaseUrl()
+  const params = new URLSearchParams({ t: tagCode.trim() })
+  const token = accessToken?.trim()
+  if (token) params.set('token', token)
+  return `${base}/worker/nfc?${params.toString()}`
+}

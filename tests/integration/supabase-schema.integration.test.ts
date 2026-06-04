@@ -82,6 +82,7 @@ describe('2. Table existence', () => {
     'pending_resident_join_requests', 'error_logs', 'ticket_internal_messages',
     'whatsapp_templates', 'audit_log', 'billing_events', 'push_subscriptions',
     'processed_webhooks', 'failed_notifications', 'api_rate_limit',
+    'worker_nfc_tags', 'worker_attendance_events', 'worker_attendance',
   ]
 
   for (const table of expectedTables) {
@@ -113,6 +114,9 @@ describe('3. Critical columns', () => {
     ['whatsapp_templates',['id', 'client_id', 'template_key', 'template_text']],
     ['failed_notifications',['id', 'client_id', 'channel', 'error_message']],
     ['processed_webhooks',['message_id', 'client_id']],
+    ['worker_nfc_tags', ['id', 'client_id', 'tag_code', 'tag_type', 'is_active']],
+    ['worker_attendance_events', ['id', 'client_id', 'worker_id', 'client_action_id', 'event_type', 'sync_status']],
+    ['worker_attendance', ['id', 'client_id', 'worker_id', 'started_at', 'status']],
   ]
 
   for (const [table, cols] of checks) {

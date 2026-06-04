@@ -27,6 +27,11 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
 import { asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { formatAddonPriceIls } from '@/lib/paid-addons'
+import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plan-pricing'
+import type { PlanPricingCatalogRow } from '@/lib/plan-pricing'
+import type { AddonEntitlement } from '../components/PaidAddonsContext'
+import type { PlanTier } from '@/lib/plan-limits'
 
 type Summary = {
   ticketsThisMonth: number
@@ -40,6 +45,11 @@ export default function BillingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<Summary | null>(null)
+  const [addons, setAddons] = useState<AddonEntitlement[]>([])
+  const [planTier, setPlanTier] = useState<PlanTier | null>(null)
+  const [currentPlan, setCurrentPlan] = useState<PlanPricingCatalogRow | null>(null)
+  const [planCatalog, setPlanCatalog] = useState<PlanPricingCatalogRow[]>([])
+  const [setupFeeIls, setSetupFeeIls] = useState<number | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -53,15 +63,33 @@ export default function BillingPage() {
       setLoading(true)
       await asyncHandler(
         async () => {
-          const res = await fetchWithTimeout('/api/billing/summary')
-          const json = (await res.json()) as Summary & { error?: string }
-          if (!res.ok) throw new Error(json.error || 'טעינה נכשלה')
+          const [summaryRes, addonsRes, pricingRes] = await Promise.all([
+            fetchWithTimeout('/api/billing/summary'),
+            fetchWithTimeout('/api/addons/entitlements'),
+            fetchWithTimeout('/api/billing/pricing'),
+          ])
+          const json = (await summaryRes.json()) as Summary & { error?: string }
+          if (!summaryRes.ok) throw new Error(json.error || 'טעינה נכשלה')
           setData({
             ticketsThisMonth: json.ticketsThisMonth,
             residentsTotal: json.residentsTotal,
             workersActive: json.workersActive,
             ticketsByWeek: json.ticketsByWeek || [],
           })
+          const addonsJson = (await addonsRes.json()) as { addons?: AddonEntitlement[] }
+          if (addonsRes.ok) setAddons(addonsJson.addons || [])
+          const pricingJson = (await pricingRes.json()) as {
+            plan_tier?: PlanTier
+            currentPlan?: PlanPricingCatalogRow
+            catalog?: PlanPricingCatalogRow[]
+            setup_fee_ils?: number
+          }
+          if (pricingRes.ok) {
+            if (pricingJson.plan_tier) setPlanTier(pricingJson.plan_tier)
+            setCurrentPlan(pricingJson.currentPlan ?? null)
+            setPlanCatalog(pricingJson.catalog || [])
+            if (typeof pricingJson.setup_fee_ils === 'number') setSetupFeeIls(pricingJson.setup_fee_ils)
+          }
           return true
         },
         { context: 'טעינת חיוב', showErrorToast: true }
@@ -137,8 +165,90 @@ export default function BillingPage() {
 
             <Card noPadding style={{ marginTop: '16px' }}>
               <div style={styles.cardPad}>
+                <h2 style={styles.h2}>תוכנית ומנוי</h2>
+                {currentPlan ? (
+                  <div style={styles.planCurrent}>
+                    <div>
+                      <div style={styles.planCurrentTitle}>{currentPlan.name_he}</div>
+                      {currentPlan.description_he ? (
+                        <div style={styles.planCurrentDesc}>{currentPlan.description_he}</div>
+                      ) : null}
+                      <div style={styles.planCurrentPrice}>{formatPlanPriceDisplay(currentPlan)}</div>
+                      <div style={styles.planLimits}>
+                        בניינים: {formatLimitHe(currentPlan.buildings_max)} · עובדים:{' '}
+                        {formatLimitHe(currentPlan.workers_max)} · תקלות/חודש:{' '}
+                        {formatLimitHe(currentPlan.tickets_per_month_max)}
+                      </div>
+                    </div>
+                    {planTier ? (
+                      <span style={styles.planBadge}>{planTier}</span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p style={styles.muted}>לא נטען מחירון מנוי</p>
+                )}
+                {setupFeeIls != null ? (
+                  <p style={{ ...styles.note, marginTop: 12 }}>
+                    דמי הקמה (חד-פעמי): {formatPlanPriceIls(setupFeeIls)}
+                  </p>
+                ) : null}
+                {planCatalog.length > 1 ? (
+                  <>
+                    <p style={{ ...styles.note, marginTop: 16 }}>מסלולים נוספים (לשדרוג — פנו לבמקור):</p>
+                    <div style={styles.planCatalogList}>
+                      {planCatalog
+                        .filter((p) => p.plan_tier !== planTier)
+                        .map((p) => (
+                          <div key={p.plan_tier} style={styles.planCatalogRow}>
+                            <span style={styles.planCatalogName}>{p.name_he}</span>
+                            <span style={styles.planCatalogPrice}>{formatPlanPriceDisplay(p)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </Card>
+
+            <Card noPadding style={{ marginTop: '16px' }}>
+              <div style={styles.cardPad}>
+                <h2 style={styles.h2}>תוספים בתשלום</h2>
                 <p style={styles.note}>
-                  חיוב חודשי מחושב לפי תוכנית — כאן מוצגים נתוני שימוש בלבד. תמחור וחשבוניות יתווספו בהמשך.
+                  תוספים נרכשים בנפרד מהתוכנית הבסיסית. להפעלה פנו לצוות במקור — ניתן לשלוח בקשה עם שם התוסף הרצוי.
+                </p>
+                {addons.length === 0 ? (
+                  <p style={styles.muted}>אין תוספים זמינים כרגע.</p>
+                ) : (
+                  <div style={styles.addonList}>
+                    {addons.map((a) => (
+                      <div key={a.addon_key} style={styles.addonRow}>
+                        <div style={styles.addonMain}>
+                          <div style={styles.addonTitle}>{a.name_he}</div>
+                          {a.description_he ? (
+                            <div style={styles.addonDesc}>{a.description_he}</div>
+                          ) : null}
+                          <div style={styles.addonPrice}>{formatAddonPriceIls(a.price_ils_monthly)} / חודש</div>
+                        </div>
+                        <span
+                          style={{
+                            ...styles.addonBadge,
+                            background: a.enabled ? theme.colors.successMuted : theme.colors.muted,
+                            color: a.enabled ? theme.colors.success : theme.colors.textMuted,
+                          }}
+                        >
+                          {a.enabled ? 'פעיל' : 'לא פעיל'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card noPadding style={{ marginTop: '16px' }}>
+              <div style={styles.cardPad}>
+                <p style={styles.note}>
+                  חיוב חודשי לפי מסלול ומספר בניינים — כאן מוצגים נתוני שימוש. חשבוניות יתווספו בהמשך.
                 </p>
               </div>
             </Card>
@@ -206,4 +316,60 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.55,
     color: theme.colors.textSecondary,
   },
+  addonList: { display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 },
+  addonRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 16,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.muted,
+  },
+  addonMain: { flex: 1, minWidth: 0 },
+  addonTitle: { fontSize: 15, fontWeight: 600, color: theme.colors.textPrimary },
+  addonDesc: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4, lineHeight: 1.4 },
+  addonPrice: { fontSize: 14, fontWeight: 600, color: theme.colors.primary, marginTop: 8 },
+  addonBadge: {
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '4px 10px',
+    borderRadius: theme.radius.full,
+    flexShrink: 0,
+  },
+  planCurrent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 16,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.primaryMuted,
+  },
+  planCurrentTitle: { fontSize: 17, fontWeight: 700, color: theme.colors.textPrimary },
+  planCurrentDesc: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4 },
+  planCurrentPrice: { fontSize: 15, fontWeight: 600, color: theme.colors.primary, marginTop: 8 },
+  planLimits: { fontSize: 12, color: theme.colors.textMuted, marginTop: 8 },
+  planBadge: {
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '4px 10px',
+    borderRadius: theme.radius.full,
+    background: theme.colors.surface,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  planCatalogList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  planCatalogRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+    fontSize: 14,
+  },
+  planCatalogName: { fontWeight: 500 },
+  planCatalogPrice: { color: theme.colors.textSecondary, fontSize: 13 },
 }

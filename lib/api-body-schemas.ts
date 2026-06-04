@@ -163,6 +163,73 @@ export const sendWorkerPortalLinkBodySchema = z.object({
   worker_id: z.string().uuid(),
 })
 
+export const createProfessionalBodySchema = z.object({
+  full_name: z.string().min(1).max(200),
+  phone: z.string().min(6).max(40),
+  extra_phones: z.array(z.string().min(6).max(40)).max(5).optional(),
+  trade: z.string().max(100).nullable().optional(),
+  company_name: z.string().max(200).nullable().optional(),
+  email: z.union([z.string().email().max(320), z.literal('')]).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  is_active: z.boolean().optional(),
+})
+
+export const updateProfessionalBodySchema = createProfessionalBodySchema.partial().extend({
+  professional_id: z.string().uuid(),
+})
+
+/** העברת תקלה לאיש מקצוע חיצוני ב-SMS. */
+export const forwardTicketToProfessionalBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  professional_id: z.string().uuid(),
+  note: z.string().max(500).nullable().optional(),
+  set_status_escort: z.boolean().optional(),
+})
+
+const attendanceEventTypeSchema = z.enum([
+  'clock_in',
+  'clock_out',
+  'project_arrival',
+  'project_departure',
+  'project_visit',
+])
+
+export const workerAttendanceSyncBodySchema = z.object({
+  access_token: z.string().uuid(),
+  events: z
+    .array(
+      z.object({
+        client_action_id: z.string().min(8).max(80),
+        tag_code: z.string().min(1).max(80),
+        event_type: attendanceEventTypeSchema,
+        client_recorded_at: z.string().min(10).max(40),
+        client_timezone: z.string().max(80).nullable().optional(),
+        device_id: z.string().max(80).nullable().optional(),
+        user_agent: z.string().max(500).nullable().optional(),
+        lat: z.number().finite().nullable().optional(),
+        lng: z.number().finite().nullable().optional(),
+        note: z.string().max(500).nullable().optional(),
+        source: z.enum(['online', 'offline']),
+      })
+    )
+    .min(1)
+    .max(50),
+})
+
+export const attendanceEventReviewBodySchema = z.object({
+  event_id: z.string().uuid(),
+  sync_status: z.enum(['synced', 'pending_review', 'conflict', 'rejected']),
+  admin_note: z.string().max(2000).nullable().optional(),
+})
+
+export const createNfcTagBodySchema = z.object({
+  tag_code: z.string().min(2).max(80),
+  tag_type: z.enum(['office', 'project']),
+  project_id: z.string().uuid().nullable().optional(),
+  label: z.string().max(200).nullable().optional(),
+  is_active: z.boolean().optional(),
+})
+
 /** מחיקת תקלות — נבחרות או כולן (soft delete). */
 export const deleteTicketsBodySchema = z.union([
   z.object({

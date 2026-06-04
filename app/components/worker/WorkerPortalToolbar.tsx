@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 import type { theme } from '../ui'
 
 export type WorkerTicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
-export type WorkerPortalTab = 'TICKETS' | 'TOURS'
+export type WorkerPortalTab = 'TICKETS' | 'TOURS' | 'ATTENDANCE'
 
 type WorkerPortalToolbarProps = {
   colors: typeof theme.colors
@@ -21,11 +21,14 @@ type WorkerPortalToolbarProps = {
   onToggleDark: () => void
   onEnablePush?: () => void
   pushEnabling?: boolean
+  /** תוסף חתמת עובדים — מציג לשונית נוכחות */
+  showAttendanceTab?: boolean
 }
 
 const PORTAL_TABS: { id: WorkerPortalTab; label: string }[] = [
   { id: 'TICKETS', label: 'תקלות' },
   { id: 'TOURS', label: 'סיורים' },
+  { id: 'ATTENDANCE', label: 'נוכחות' },
 ]
 
 const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
@@ -49,11 +52,16 @@ export function WorkerPortalToolbar({
   onToggleDark,
   onEnablePush,
   pushEnabling,
+  showAttendanceTab = false,
 }: WorkerPortalToolbarProps) {
+  const tabs = showAttendanceTab
+    ? PORTAL_TABS
+    : PORTAL_TABS.filter((t) => t.id !== 'ATTENDANCE')
+
   return (
     <div style={styles.wrap(colors)}>
       <div style={styles.portalTabs}>
-        {PORTAL_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -69,7 +77,9 @@ export function WorkerPortalToolbar({
         <span style={styles.count(colors)}>
           {portalTab === 'TOURS'
             ? 'רישום סיורים בפרויקטים'
-            : filteredCount === ticketCount
+            : portalTab === 'ATTENDANCE'
+              ? 'נוכחות QR / NFC'
+              : filteredCount === ticketCount
               ? `${ticketCount} תקלות פתוחות`
               : `${filteredCount} מתוך ${ticketCount}`}
         </span>
