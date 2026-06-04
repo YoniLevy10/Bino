@@ -23,6 +23,21 @@ export const SIDEBAR_NAV_ITEM_IDS = [
 
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
 
+/**
+ * Premium / add-on routes — never in tenant sidebar (access via /addons and deep links).
+ * Keep in sync with PREMIUM_NAV_FEATURE_IDS in client-nav-features.ts.
+ */
+export const ADDON_ONLY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
+  'calendar',
+  'attendance',
+  'pilot_sms',
+  'project_documents',
+] as const
+
+export function isAddonOnlySidebarNavId(id: SidebarNavItemId): boolean {
+  return (ADDON_ONLY_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
+}
+
 export type SidebarNavItem = {
   id: SidebarNavItemId | 'addons'
   href: string
@@ -77,7 +92,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   },
 }
 
-/** Default order: core ops → people → reporting → scheduling → tools. */
+/** Default sidebar order (excludes add-on-only routes). */
 export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'dashboard',
   'tickets',
@@ -85,8 +100,6 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'residents',
   'workers',
   'summary',
-  'calendar',
-  'attendance',
   'qr',
   'whatsapp_templates',
   'billing',
@@ -137,7 +150,7 @@ export function resolveSidebarNavItems(
   )
 
   for (const id of orderedIds) {
-    if (!isSidebarNavItemId(id) || seen.has(id)) continue
+    if (!isSidebarNavItemId(id) || seen.has(id) || isAddonOnlySidebarNavId(id)) continue
     if (allowedSet && !allowedSet.has(id)) continue
     seen.add(id)
     result.push(SIDEBAR_NAV_REGISTRY[id])

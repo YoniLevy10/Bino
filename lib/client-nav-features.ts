@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
+  ADDON_ONLY_SIDEBAR_NAV_IDS,
   DEFAULT_SIDEBAR_NAV_ORDER,
   isInternalSidebarNavItemId,
   isSidebarNavItemId,
@@ -16,13 +17,8 @@ export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'tickets',
 ]
 
-/** Paid add-ons — not included in the standard setup package (~10k NIS). */
-export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
-  'calendar',
-  'attendance',
-  'pilot_sms',
-  'project_documents',
-]
+/** Paid add-ons — not in sidebar; not in setup package (~10k NIS). */
+export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = ADDON_ONLY_SIDEBAR_NAV_IDS
 
 /**
  * Default allowlist for new clients (setup / onboarding).

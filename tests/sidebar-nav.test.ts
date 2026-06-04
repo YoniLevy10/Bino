@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ADDON_ONLY_SIDEBAR_NAV_IDS,
   DEFAULT_SIDEBAR_NAV_ORDER,
   parseSidebarNavOrderFromDb,
   resolveSidebarNavItems,
@@ -11,6 +12,18 @@ describe('resolveSidebarNavItems', () => {
     const items = resolveSidebarNavItems(null)
     expect(items.map((i) => i.id)).toEqual(DEFAULT_SIDEBAR_NAV_ORDER)
     expect(items.map((i) => i.label)).not.toContain('כשלי הודעות')
+    for (const addonId of ADDON_ONLY_SIDEBAR_NAV_IDS) {
+      expect(items.map((i) => i.id)).not.toContain(addonId)
+    }
+  })
+
+  it('never shows add-on-only routes in sidebar even for legacy unlimited', () => {
+    const items = resolveSidebarNavItems(
+      ['calendar', 'attendance', ...DEFAULT_SIDEBAR_NAV_ORDER],
+      null
+    )
+    expect(items.map((i) => i.id)).not.toContain('calendar')
+    expect(items.map((i) => i.id)).not.toContain('attendance')
   })
 
   it('applies custom order and appends missing ids', () => {

@@ -12,8 +12,10 @@ import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
 import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import {
+  allNavFeatureOptions,
   describeClientNavFeaturesMode,
   parseEnabledNavFeaturesFromDb,
+  PREMIUM_NAV_FEATURE_IDS,
   REQUIRED_NAV_FEATURE_IDS,
   SETUP_PACKAGE_NAV_FEATURE_IDS,
   type ClientNavFeaturesMode,
@@ -719,6 +721,163 @@ export default function SuperAdminPage() {
                                   </div>
                                 </div>
                               )}
+
+                              <div
+                                style={{
+                                  marginBottom: theme.spacing.xl,
+                                  background: theme.colors.surface,
+                                  borderRadius: theme.radius.lg,
+                                  padding: theme.spacing.xl,
+                                  border: `1.5px solid ${theme.colors.border}`,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: theme.spacing.sm,
+                                    flexWrap: 'wrap',
+                                    marginBottom: theme.spacing.md,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontWeight: theme.typography.fontWeight.semibold,
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: theme.colors.textPrimary,
+                                    }}
+                                  >
+                                    הרשאות לשוניות
+                                  </div>
+                                  <NavFeaturesModeBadge
+                                    mode={describeClientNavFeaturesMode(c.enabled_nav_features)}
+                                  />
+                                </div>
+                                <p
+                                  style={{
+                                    margin: `0 0 ${theme.spacing.md}`,
+                                    fontSize: theme.typography.fontSize.xs,
+                                    color: theme.colors.textMuted,
+                                    lineHeight: 1.5,
+                                  }}
+                                >
+                                  יומן, שעון עובדים ושאר תוספים בתשלום אינם מופיעים בסרגל — הגישה מדף תוספים.
+                                  סמנו כאן כדי לאפשר גישה לדפי התוסף (ובמסכי פרויקט ל-SMS פיילוט / מסמכים).
+                                </p>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: theme.spacing.sm,
+                                    flexWrap: 'wrap',
+                                    marginBottom: theme.spacing.lg,
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={applySetupPackagePreset}
+                                    style={{
+                                      background: theme.colors.surface,
+                                      border: `1px solid ${theme.colors.border}`,
+                                      borderRadius: theme.radius.md,
+                                      padding: '6px 12px',
+                                      cursor: 'pointer',
+                                      fontSize: theme.typography.fontSize.xs,
+                                      color: theme.colors.textSecondary,
+                                    }}
+                                  >
+                                    חבילת הקמה
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={applyAllFeaturesPreset}
+                                    style={{
+                                      background: theme.colors.surface,
+                                      border: `1px solid ${theme.colors.border}`,
+                                      borderRadius: theme.radius.md,
+                                      padding: '6px 12px',
+                                      cursor: 'pointer',
+                                      fontSize: theme.typography.fontSize.xs,
+                                      color: theme.colors.textSecondary,
+                                    }}
+                                  >
+                                    כל הלשוניות
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void clearFeatureRestrictions(c.id)}
+                                    disabled={savingFeatures}
+                                    style={{
+                                      background: theme.colors.surface,
+                                      border: `1px solid ${theme.colors.border}`,
+                                      borderRadius: theme.radius.md,
+                                      padding: '6px 12px',
+                                      cursor: savingFeatures ? 'not-allowed' : 'pointer',
+                                      fontSize: theme.typography.fontSize.xs,
+                                      color: theme.colors.textSecondary,
+                                    }}
+                                  >
+                                    לגסי · ללא הגבלה
+                                  </button>
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                    gap: theme.spacing.sm,
+                                    marginBottom: theme.spacing.lg,
+                                  }}
+                                >
+                                  {allNavFeatureOptions().map(({ id, label }) => {
+                                    const isPremium = (PREMIUM_NAV_FEATURE_IDS as readonly string[]).includes(id)
+                                    const required = (REQUIRED_NAV_FEATURE_IDS as readonly string[]).includes(id)
+                                    return (
+                                      <label
+                                        key={id}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 8,
+                                          fontSize: theme.typography.fontSize.xs,
+                                          color: theme.colors.textPrimary,
+                                          cursor: required ? 'default' : 'pointer',
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={featuresDraft.includes(id)}
+                                          disabled={required}
+                                          onChange={(e) => toggleFeatureDraft(id, e.target.checked)}
+                                        />
+                                        <span>
+                                          {label}
+                                          {isPremium ? (
+                                            <span style={{ color: theme.colors.textMuted }}> (תוסף)</span>
+                                          ) : null}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                                {featuresError && (
+                                  <p
+                                    style={{
+                                      color: theme.colors.error,
+                                      fontSize: theme.typography.fontSize.xs,
+                                      marginBottom: theme.spacing.md,
+                                    }}
+                                  >
+                                    {featuresError}
+                                  </p>
+                                )}
+                                <LoadingButton
+                                  onClick={() => void saveFeatures(c.id)}
+                                  loading={savingFeatures}
+                                  loadingText="שומר..."
+                                  size="sm"
+                                >
+                                  שמור הרשאות
+                                </LoadingButton>
+                              </div>
 
                               <ClientPaidAddonsPanel clientId={c.id} secret={secret} />
 
