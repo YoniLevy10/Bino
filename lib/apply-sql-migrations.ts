@@ -11,19 +11,33 @@ export const PENDING_MIGRATION_FILES = [
   '049_plan_pricing_catalog.sql',
 ] as const
 
+/** Strip sslmode from URL so pg Client `ssl.rejectUnauthorized` applies (Vercel + Supabase). */
+export function normalizePostgresUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    u.searchParams.delete('sslmode')
+    u.searchParams.delete('supa')
+    return u.toString()
+  } catch {
+    return url.replace(/[?&]sslmode=[^&]+/gi, '')
+  }
+}
+
 export function resolvePostgresUrl(): string | null {
   const direct =
     process.env.POSTGRES_URL_NON_POOLING?.trim() ||
     process.env.POSTGRES_URL?.trim() ||
     process.env.DATABASE_URL?.trim()
-  if (direct && direct.length > 30) return direct
+  if (direct && direct.length > 30) return normalizePostgresUrl(direct)
 
   const password = process.env.SUPABASE_DB_PASSWORD?.trim()
   const host = process.env.POSTGRES_HOST?.trim()
   if (password && host) {
     const user = process.env.POSTGRES_USER?.trim() || 'postgres'
     const db = process.env.POSTGRES_DATABASE?.trim() || 'postgres'
-    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:5432/${db}`
+    return normalizePostgresUrl(
+      `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:5432/${db}`
+    )
   }
   return null
 }
@@ -48,7 +62,14 @@ export async function applyPendingSqlMigrations(cwd = process.cwd()): Promise<{
 
   const applied: string[] = []
   const skipped: string[] = []
-  const client = new pg.Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } })
+  const client = new pg.Client({
+    connectionString: dbUrl,
+    ssl: {
+      rejectUnauthorized: false,
+      // Supabase pooler / Vercel: avoid SELF_SIGNED_CERT_IN_CHAIN on serverless
+      checkServerIdentity: () => undefined,
+    },
+  })
 
   try {
     await client.connect()
