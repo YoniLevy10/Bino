@@ -50,8 +50,8 @@ export function PaidAddonGate({ addonKey, children }: Props) {
           להפעלת התוסף פנו לצוות במקור או בקשו הפעלה דרך דף החיוב. לאחר ההפעלה תוכלו לנהל אנשי מקצוע ולשלוח להם תקלות ב-SMS.
         </p>
         <div style={styles.actions}>
-          <Link href="/billing">
-            <Button variant="primary">לדף חיוב ותוספים</Button>
+          <Link href="/addons">
+            <Button variant="primary">לדף תוספים בתשלום</Button>
           </Link>
         </div>
       </div>

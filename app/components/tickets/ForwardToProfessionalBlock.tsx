@@ -44,7 +44,7 @@ export function ForwardToProfessionalBlock({ ticketId, professionals, onForwarde
         <p style={styles.hint}>
           תוסף בתשלום — {addon?.name_he || 'אנשי מקצוע'}{' '}
           ({formatAddonPriceIls(addon?.price_ils_monthly ?? 0)}/חודש).{' '}
-          <Link href="/billing" style={styles.link}>
+          <Link href="/addons" style={styles.link}>
             לפרטים והפעלה
           </Link>
         </p>

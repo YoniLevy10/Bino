@@ -346,6 +346,26 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
         </nav>
         <div style={sidebarStyles.settingsNav}>
           <Link
+            href="/addons"
+            style={{
+              ...sidebarStyles.navLink,
+              ...(pathname === '/addons' ? sidebarStyles.navLinkActive : {}),
+            }}
+          >
+            <NavIcon type="grid" active={pathname === '/addons'} />
+            <span style={sidebarStyles.navLabel}>תוספים בתשלום</span>
+          </Link>
+          <Link
+            href="/billing"
+            style={{
+              ...sidebarStyles.navLink,
+              ...(pathname === '/billing' ? sidebarStyles.navLinkActive : {}),
+            }}
+          >
+            <NavIcon type="chart" active={pathname === '/billing'} />
+            <span style={sidebarStyles.navLabel}>חיוב ושימוש</span>
+          </Link>
+          <Link
             href="/settings"
             style={{
               ...sidebarStyles.navLink,
@@ -561,7 +581,7 @@ const BOTTOM_NAV_ROUTES = new Set([
 
 function showMobileBottomNavForPath(pathname: string): boolean {
   if (BOTTOM_NAV_ROUTES.has(pathname)) return true
-  if (pathname === '/settings' || pathname === '/billing') return true
+  if (pathname === '/settings' || pathname === '/billing' || pathname === '/addons') return true
   return false
 }
 
@@ -988,6 +1008,17 @@ export function MobileMenu({
             >
               <NavIcon type="settings" active={pathname === '/settings'} />
               <span style={mobileMenuStyles.navLabel}>הגדרות</span>
+            </Link>
+            <Link
+              href="/addons"
+              onClick={onClose}
+              style={{
+                ...mobileMenuStyles.navLink,
+                ...(pathname === '/addons' ? mobileMenuStyles.navLinkActive : {}),
+              }}
+            >
+              <NavIcon type="grid" active={pathname === '/addons'} />
+              <span style={mobileMenuStyles.navLabel}>תוספים בתשלום</span>
             </Link>
             <Link
               href="/billing"

@@ -12,6 +12,7 @@
  *
  * קשור ל: lib/plan-limits.ts
  */
+import Link from 'next/link'
 import { useEffect, useState, type CSSProperties } from 'react'
 import {
   AppShell,
@@ -27,10 +28,9 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
 import { asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { formatAddonPriceIls } from '@/lib/paid-addons'
 import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plan-pricing'
 import type { PlanPricingCatalogRow } from '@/lib/plan-pricing'
-import type { AddonEntitlement } from '../components/PaidAddonsContext'
+import { usePaidAddons } from '../components/PaidAddonsContext'
 import type { PlanTier } from '@/lib/plan-limits'
 
 type Summary = {
@@ -45,7 +45,7 @@ export default function BillingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<Summary | null>(null)
-  const [addons, setAddons] = useState<AddonEntitlement[]>([])
+  const { addons, isBootstrapped: addonsReady } = usePaidAddons()
   const [planTier, setPlanTier] = useState<PlanTier | null>(null)
   const [currentPlan, setCurrentPlan] = useState<PlanPricingCatalogRow | null>(null)
   const [planCatalog, setPlanCatalog] = useState<PlanPricingCatalogRow[]>([])
@@ -63,9 +63,8 @@ export default function BillingPage() {
       setLoading(true)
       await asyncHandler(
         async () => {
-          const [summaryRes, addonsRes, pricingRes] = await Promise.all([
+          const [summaryRes, pricingRes] = await Promise.all([
             fetchWithTimeout('/api/billing/summary'),
-            fetchWithTimeout('/api/addons/entitlements'),
             fetchWithTimeout('/api/billing/pricing'),
           ])
           const json = (await summaryRes.json()) as Summary & { error?: string }
@@ -76,8 +75,6 @@ export default function BillingPage() {
             workersActive: json.workersActive,
             ticketsByWeek: json.ticketsByWeek || [],
           })
-          const addonsJson = (await addonsRes.json()) as { addons?: AddonEntitlement[] }
-          if (addonsRes.ok) setAddons(addonsJson.addons || [])
           const pricingJson = (await pricingRes.json()) as {
             plan_tier?: PlanTier
             currentPlan?: PlanPricingCatalogRow
@@ -214,34 +211,20 @@ export default function BillingPage() {
               <div style={styles.cardPad}>
                 <h2 style={styles.h2}>תוספים בתשלום</h2>
                 <p style={styles.note}>
-                  תוספים נרכשים בנפרד מהתוכנית הבסיסית. להפעלה פנו לצוות במקור — ניתן לשלוח בקשה עם שם התוסף הרצוי.
+                  תוספים נרכשים בנפרד מהתוכנית הבסיסית (אנשי מקצוע, חתמת עובדים ועוד).
                 </p>
-                {addons.length === 0 ? (
-                  <p style={styles.muted}>אין תוספים זמינים כרגע.</p>
+                {!addonsReady ? (
+                  <p style={styles.muted}>טוען תוספים...</p>
+                ) : addons.length === 0 ? (
+                  <p style={styles.muted}>אין תוספים במחירון — ודאו שהמיגרציות 046 ו-048 הורצו ב-Supabase.</p>
                 ) : (
-                  <div style={styles.addonList}>
-                    {addons.map((a) => (
-                      <div key={a.addon_key} style={styles.addonRow}>
-                        <div style={styles.addonMain}>
-                          <div style={styles.addonTitle}>{a.name_he}</div>
-                          {a.description_he ? (
-                            <div style={styles.addonDesc}>{a.description_he}</div>
-                          ) : null}
-                          <div style={styles.addonPrice}>{formatAddonPriceIls(a.price_ils_monthly)} / חודש</div>
-                        </div>
-                        <span
-                          style={{
-                            ...styles.addonBadge,
-                            background: a.enabled ? theme.colors.successMuted : theme.colors.muted,
-                            color: a.enabled ? theme.colors.success : theme.colors.textMuted,
-                          }}
-                        >
-                          {a.enabled ? 'פעיל' : 'לא פעיל'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <p style={styles.note}>
+                    {addons.filter((a) => a.enabled).length} מתוך {addons.length} תוספים פעילים בחשבון.
+                  </p>
                 )}
+                <Link href="/addons" style={styles.addonsPageLink}>
+                  לדף תוספים בתשלום — מחירון והפעלה
+                </Link>
               </div>
             </Card>
 
@@ -316,27 +299,13 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.55,
     color: theme.colors.textSecondary,
   },
-  addonList: { display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 },
-  addonRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 16,
-    padding: 14,
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
-  },
-  addonMain: { flex: 1, minWidth: 0 },
-  addonTitle: { fontSize: 15, fontWeight: 600, color: theme.colors.textPrimary },
-  addonDesc: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4, lineHeight: 1.4 },
-  addonPrice: { fontSize: 14, fontWeight: 600, color: theme.colors.primary, marginTop: 8 },
-  addonBadge: {
-    fontSize: 12,
+  addonsPageLink: {
+    display: 'inline-block',
+    marginTop: 12,
+    fontSize: 14,
     fontWeight: 600,
-    padding: '4px 10px',
-    borderRadius: theme.radius.full,
-    flexShrink: 0,
+    color: theme.colors.primary,
+    textDecoration: 'none',
   },
   planCurrent: {
     display: 'flex',
