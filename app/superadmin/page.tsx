@@ -7,6 +7,17 @@ import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
 import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
 import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
 import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
+import { PlatformDocsPanel } from '@/app/components/superadmin/PlatformDocsPanel'
+import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
+import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
+import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
+import {
+  describeClientNavFeaturesMode,
+  parseEnabledNavFeaturesFromDb,
+  REQUIRED_NAV_FEATURE_IDS,
+  SETUP_PACKAGE_NAV_FEATURE_IDS,
+  type ClientNavFeaturesMode,
+} from '@/lib/client-nav-features'
 
 type Project = { id: string; name: string; project_code: string }
 
