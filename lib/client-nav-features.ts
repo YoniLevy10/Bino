@@ -128,6 +128,8 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
   '/calendar': 'calendar',
   '/attendance': 'attendance',
   '/professionals': 'professionals',
+  '/pilot-sms': 'pilot_sms',
+  '/project-documents': 'project_documents',
   '/qr': 'qr',
   '/settings/whatsapp-templates': 'whatsapp_templates',
   '/pending-residents': 'pending_residents',

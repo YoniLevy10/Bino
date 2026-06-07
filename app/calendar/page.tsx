@@ -288,7 +288,7 @@ export default function CalendarPage() {
     <AppShell isMobile={isMobile}>
       <PaidAddonGate addonKey={PAID_ADDON_KEYS.calendar}>
       {isMobile && (
-        <MobileHeader title="יומן" subtitle={monthRange.label} onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="יומן משרד" subtitle={monthRange.label} onMenuClick={() => setMenuOpen(true)} />
       )}
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
@@ -300,7 +300,7 @@ export default function CalendarPage() {
       >
         {!isMobile && (
           <PageHeader
-            title="יומן"
+            title="יומן משרד"
             subtitle="פגישות ועד, אנשי מקצוע ואירועי משרד"
             actions={
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

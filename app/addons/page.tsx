@@ -75,7 +75,17 @@ function AddonCard({
               <li key={h}>{h}</li>
             ))}
           </ul>
-          <span style={styles.tapHint}>לחצו לפרטים והסבר מלא</span>
+          {entry.locked ? (
+            <span style={styles.tapHint}>לחצו לפרטים והסבר מלא</span>
+          ) : (
+            <Link
+              href={entry.featureHref}
+              style={styles.openLink}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {entry.featureCtaHe} ←
+            </Link>
+          )}
         </div>
       </article>
     </button>
@@ -342,6 +352,14 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
     color: theme.colors.primary,
     marginTop: 4,
+  },
+  openLink: {
+    display: 'inline-block',
+    fontSize: '13px',
+    fontWeight: 700,
+    color: theme.colors.primary,
+    marginTop: 8,
+    textDecoration: 'none',
   },
   cardTitle: {
     margin: 0,

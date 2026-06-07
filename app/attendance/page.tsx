@@ -11,9 +11,7 @@ import {
   PageHeader,
   Card,
   Button,
-  LoadingSpinner,
   theme,
-  MobileBottomNav,
 } from '../components/ui'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
@@ -142,12 +140,14 @@ export default function AttendancePage() {
     }
   }
 
-  const content = (
+  const inner = (
     <>
-      <PageHeader
-        title="חתמת עובדים"
-        subtitle="דוח נוכחות — סריקות QR/NFC, משמרות וסנכרון Offline"
-      />
+      {!isMobile && (
+        <PageHeader
+          title="שעון עובדים"
+          subtitle="דוח נוכחות — סריקות QR/NFC, משמרות וסנכרון Offline"
+        />
+      )}
 
       <div style={styles.kpiGrid}>
         <Card style={styles.kpiCard}>
@@ -280,20 +280,30 @@ export default function AttendancePage() {
     </>
   )
 
-  const gated = <PaidAddonGate addonKey={PAID_ADDON_KEYS.worker_stamp}>{content}</PaidAddonGate>
-
-  if (isMobile) {
-    return (
-      <div style={{ minHeight: '100dvh', background: theme.colors.background }} dir="rtl">
-        <MobileHeader title="חתמת עובדים" onMenuClick={() => setMenuOpen(true)} />
+  return (
+    <AppShell isMobile={isMobile}>
+      <PaidAddonGate addonKey={PAID_ADDON_KEYS.worker_stamp}>
+        {isMobile && (
+          <MobileHeader
+            title="שעון עובדים"
+            subtitle="נוכחות ומשמרות"
+            onMenuClick={() => setMenuOpen(true)}
+          />
+        )}
         <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-        <div style={{ padding: '12px 16px 80px' }}>{gated}</div>
-        <MobileBottomNav />
-      </div>
-    )
-  }
-
-  return <AppShell>{gated}</AppShell>
+        <div
+          style={{
+            padding: isMobile ? '16px 16px 32px' : '32px 40px',
+            maxWidth: isMobile ? '100%' : 1200,
+            margin: '0 auto',
+            boxSizing: 'border-box',
+          }}
+        >
+          {inner}
+        </div>
+      </PaidAddonGate>
+    </AppShell>
+  )
 }
 
 function syncBadgeColor(status: string): string {

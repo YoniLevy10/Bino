@@ -53,4 +53,12 @@ describe('paid addons catalog', () => {
     expect(display.find((e) => e.id === 'calendar')?.locked).toBe(true)
     expect(getLockedPaidAddonsCount(display)).toBeGreaterThanOrEqual(2)
   })
+
+  it('featureHref points to dedicated add-on pages', () => {
+    expect(getPaidAddonCatalogEntry('pilot_sms')?.featureHref).toBe('/pilot-sms')
+    expect(getPaidAddonCatalogEntry('project_documents')?.featureHref).toBe('/project-documents')
+    expect(getPaidAddonCatalogEntry('calendar')?.featureHref).toBe('/calendar')
+    expect(getPaidAddonCatalogEntry('worker_stamp')?.featureHref).toBe('/attendance')
+    expect(getPaidAddonCatalogEntry('professionals')?.featureHref).toBe('/professionals')
+  })
 })

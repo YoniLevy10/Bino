@@ -121,8 +121,8 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
     description:
       'בתחילת פיילוט — SMS רב-לשוני (עברית, אנגלית, צרפתית) לדיירים עם טלפון בפרויקט, והמלצה לשמור את מוקד התקלות.',
     highlights: ['הודעה מוכנה מראש', 'ספירת נמענים לפני שליחה', 'לוג שליחה במערכת'],
-    featureHref: '/projects',
-    featureCtaHe: 'לפרויקטים (SMS פיילוט)',
+    featureHref: '/pilot-sms',
+    featureCtaHe: 'ל-SMS פיילוט',
     marketing: {
       headline: 'פתיחת פיילוט בבניין? כל הדיירים מקבלים הודעה מקצועית בלחיצה',
       intro:
@@ -148,8 +148,8 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
     description:
       'העלאה ושמירה של חוזים, תוכניות ומסמכים — מסודר לפי בניין, עם הורדה מאובטחת.',
     highlights: ['PDF ו-Office', 'עד 15MB לקובץ', 'מחיקה והורדה מהירה'],
-    featureHref: '/projects',
-    featureCtaHe: 'לפרויקטים (מסמכים)',
+    featureHref: '/project-documents',
+    featureCtaHe: 'לתיקיית מסמכים',
     marketing: {
       headline: 'כל מסמכי הבניין במקום אחד — לא בתיקיות במייל',
       intro:

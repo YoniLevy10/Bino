@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ADDON_ONLY_SIDEBAR_NAV_IDS,
   DEFAULT_SIDEBAR_NAV_ORDER,
+  SIDEBAR_NAV_REGISTRY,
   parseSidebarNavOrderFromDb,
   resolveSidebarNavItems,
   splitMobileBottomNav,
@@ -60,5 +61,12 @@ describe('splitMobileBottomNav', () => {
     expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'projects', 'workers'])
     expect(more.some((i) => i.id === 'summary')).toBe(true)
     expect(more.some((i) => i.id === 'dashboard')).toBe(false)
+  })
+})
+
+describe('addon nav hrefs', () => {
+  it('routes project-scoped add-ons to dedicated pages', () => {
+    expect(SIDEBAR_NAV_REGISTRY.pilot_sms.href).toBe('/pilot-sms')
+    expect(SIDEBAR_NAV_REGISTRY.project_documents.href).toBe('/project-documents')
   })
 })
