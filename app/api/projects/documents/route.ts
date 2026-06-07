@@ -41,7 +41,6 @@ export async function GET(req: Request) {
     .select('id')
     .eq('id', projectId)
     .eq('client_id', auth.ctx.clientId)
-    .is('deleted_at', null)
     .maybeSingle()
   if (!project) return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
 
@@ -117,7 +116,6 @@ export async function POST(req: Request) {
     .select('id')
     .eq('id', projectId)
     .eq('client_id', auth.ctx.clientId)
-    .is('deleted_at', null)
     .maybeSingle()
   if (!project) return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
 

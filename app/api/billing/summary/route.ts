@@ -73,8 +73,7 @@ export async function GET() {
         .from('projects')
         .select('*', { count: 'exact', head: true })
         .eq('client_id', clientId)
-        .eq('is_active', true)
-        .is('deleted_at', null),
+        .eq('is_active', true),
     ])
 
     if (

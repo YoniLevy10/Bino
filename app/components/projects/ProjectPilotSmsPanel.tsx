@@ -4,7 +4,7 @@ import { useState, type CSSProperties } from 'react'
 import { buildPilotAnnouncementSms } from '@/lib/pilot-announcement-message'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
-import { Button, theme } from '../ui'
+import { Button, Card, theme } from '../ui'
 
 type Props = {
   projectId: string
@@ -79,67 +79,56 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
   }
 
   return (
-    <div style={styles.box}>
-      <h4 style={styles.title}>פיילוט — הודעת פתיחה לדיירים (SMS)</h4>
-      <p style={styles.hint}>
-        שולח לכל דייר בפרויקט עם מספר טלפון. ההודעה בעברית, אנגלית וצרפתית (ללא אימוג&apos;י — דרישת ספק SMS).
-      </p>
+    <Card
+      title="הודעת פתיחה לדיירים"
+      subtitle="SMS רב-לשוני (עברית, אנגלית, צרפתית) — ללא אימוג'י, דרישת ספק 019"
+    >
       <button type="button" onClick={() => setShowMessage((v) => !v)} style={styles.linkBtn}>
         {showMessage ? 'הסתר תצוגת הודעה' : 'הצג תצוגת הודעה'}
       </button>
       {showMessage && <pre style={styles.pre}>{message}</pre>}
       <div style={styles.actions}>
-        <Button variant="secondary" size="sm" onClick={() => void loadPreview()} loading={loadingPreview}>
+        <Button variant="secondary" onClick={() => void loadPreview()} loading={loadingPreview}>
           בדיקת נמענים
         </Button>
-        <Button variant="primary" size="sm" onClick={() => void sendPilotSms()} loading={sending}>
+        <Button variant="primary" onClick={() => void sendPilotSms()} loading={sending}>
           שלח SMS לדיירים
         </Button>
       </div>
       {preview && (
         <p style={styles.stats}>
           נמענים: <strong>{preview.recipients_total}</strong>
-          {preview.skipped_no_phone > 0 && (
-            <> · ללא טלפון: {preview.skipped_no_phone}</>
-          )}
+          {preview.skipped_no_phone > 0 && <> · ללא טלפון: {preview.skipped_no_phone}</>}
           {' · '}אורך הודעה: {preview.message_length} תווים
         </p>
       )}
-    </div>
+    </Card>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  box: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: theme.radius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
-  },
-  title: { margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: theme.colors.textPrimary },
-  hint: { margin: '0 0 10px', fontSize: 12, color: theme.colors.textMuted, lineHeight: 1.5 },
   linkBtn: {
     background: 'none',
     border: 'none',
     padding: 0,
     color: theme.colors.primary,
     cursor: 'pointer',
-    fontSize: 12,
-    marginBottom: 8,
+    fontSize: 13,
+    marginBottom: 12,
+    fontWeight: 600,
   },
   pre: {
-    margin: '0 0 12px',
-    padding: 12,
-    fontSize: 11,
-    lineHeight: 1.45,
+    margin: '0 0 16px',
+    padding: 14,
+    fontSize: 12,
+    lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
-    background: theme.colors.surface,
+    background: theme.colors.muted,
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
-    maxHeight: 200,
+    maxHeight: 220,
     overflow: 'auto',
   },
-  actions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  stats: { margin: '12px 0 0', fontSize: 12, color: theme.colors.textSecondary },
+  actions: { display: 'flex', flexWrap: 'wrap', gap: 10 },
+  stats: { margin: '16px 0 0', fontSize: 13, color: theme.colors.textSecondary },
 }

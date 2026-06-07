@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { supabase } from '@/lib/supabase'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
-import { Button, theme } from '../ui'
+import { Button, Card, theme } from '../ui'
 
 type Conversation = {
   id: string
@@ -116,7 +116,8 @@ export function WhatsAppInboxPanel() {
   }
 
   return (
-    <div style={styles.wrap}>
+    <Card noPadding style={{ overflow: 'hidden' }}>
+      <div style={styles.wrap}>
       <aside style={styles.list} aria-label="רשימת שיחות WhatsApp">
         {loading ? (
           <p style={styles.muted}>טוען…</p>
@@ -183,13 +184,24 @@ export function WhatsAppInboxPanel() {
           </>
         )}
       </section>
-    </div>
+      </div>
+    </Card>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  wrap: { display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) 1fr', gap: 16, minHeight: 420 },
-  list: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.lg, overflow: 'auto', maxHeight: 520 },
+  wrap: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(240px, 300px) 1fr',
+    gap: 0,
+    minHeight: 480,
+  },
+  list: {
+    borderInlineEnd: `1px solid ${theme.colors.border}`,
+    overflow: 'auto',
+    maxHeight: 560,
+    background: theme.colors.surface,
+  },
   listItem: {
     display: 'block',
     width: '100%',
@@ -203,15 +215,36 @@ const styles: Record<string, CSSProperties> = {
   listItemActive: { background: theme.colors.muted },
   listTitle: { fontWeight: 600, fontSize: 14, color: theme.colors.textPrimary },
   listPreview: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
-  thread: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.lg, display: 'flex', flexDirection: 'column', minHeight: 420 },
+  thread: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 480,
+    background: theme.colors.surface,
+  },
   threadHeader: { padding: '12px 16px', borderBottom: `1px solid ${theme.colors.border}`, fontWeight: 600 },
   messages: { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 },
   bubble: { maxWidth: '85%', padding: '10px 12px', borderRadius: 12, fontSize: 14, lineHeight: 1.45 },
   bubbleIn: { alignSelf: 'flex-start', background: theme.colors.muted, color: theme.colors.textPrimary },
   bubbleOut: { alignSelf: 'flex-end', background: '#dcf8c6', color: theme.colors.textPrimary },
   time: { fontSize: 11, color: theme.colors.textMuted, marginTop: 4 },
-  compose: { padding: 12, borderTop: `1px solid ${theme.colors.border}`, display: 'flex', flexDirection: 'column', gap: 8 },
-  textarea: { width: '100%', resize: 'vertical', padding: 10, borderRadius: 8, border: `1px solid ${theme.colors.border}`, fontFamily: 'inherit' },
+  compose: {
+    padding: 14,
+    borderTop: `1px solid ${theme.colors.border}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    background: theme.colors.muted,
+  },
+  textarea: {
+    width: '100%',
+    resize: 'vertical',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    fontFamily: 'inherit',
+    fontSize: 15,
+    boxSizing: 'border-box',
+  },
   muted: { padding: 16, color: theme.colors.textMuted, margin: 0 },
   srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' },
 }

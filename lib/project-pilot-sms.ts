@@ -41,7 +41,6 @@ export async function listPilotSmsRecipients(
     .select('id')
     .eq('id', projectId)
     .eq('client_id', clientId)
-    .is('deleted_at', null)
     .maybeSingle()
   if (projErr || !project) throw new Error('פרויקט לא נמצא')
 

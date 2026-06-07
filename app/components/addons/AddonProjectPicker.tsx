@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -70,7 +71,6 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
           .select('id, name, project_code')
           .eq('client_id', clientId)
           .eq('is_active', true)
-          .is('deleted_at', null)
           .order('name', { ascending: true })
         if (error) throw error
         const rows = (data as AddonProjectOption[]) || []
@@ -112,9 +112,11 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
 
   if (loading) {
     return (
-      <div style={styles.loading}>
-        <LoadingSpinner />
-      </div>
+      <Card>
+        <div style={styles.loading}>
+          <LoadingSpinner />
+        </div>
+      </Card>
     )
   }
 
@@ -124,6 +126,11 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
         <EmptyState
           title="אין פרויקטים פעילים"
           description={emptyHint ?? 'הוסיפו בניין בדף פרויקטים כדי להשתמש בתוסף.'}
+          action={
+            <Link href="/projects" style={styles.projectsLink}>
+              לדף פרויקטים ←
+            </Link>
+          }
         />
       </Card>
     )
@@ -133,18 +140,19 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
 
   return (
     <div style={styles.wrap}>
-      <div style={styles.pickerRow}>
-        <label style={styles.label}>בניין</label>
-        <Select
-          value={selected.id}
-          onChange={handleSelect}
-          options={projects.map((p) => ({
-            label: `${p.name} (${p.project_code})`,
-            value: p.id,
-          }))}
-          style={{ flex: 1, maxWidth: 420 }}
-        />
-      </div>
+      <Card title="בחירת בניין" subtitle={`${projects.length} בניינים פעילים`}>
+        <div style={styles.pickerRow}>
+          <Select
+            value={selected.id}
+            onChange={handleSelect}
+            options={projects.map((p) => ({
+              label: `${p.name} (${p.project_code})`,
+              value: p.id,
+            }))}
+            style={{ flex: 1, minWidth: 200 }}
+          />
+        </div>
+      </Card>
       {children(selected)}
     </div>
   )
@@ -158,11 +166,13 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: 12,
   },
-  label: {
+  loading: { display: 'flex', justifyContent: 'center', padding: 32 },
+  projectsLink: {
+    display: 'inline-block',
+    marginTop: 8,
     fontSize: 14,
     fontWeight: 600,
-    color: theme.colors.textSecondary,
-    flexShrink: 0,
+    color: theme.colors.primary,
+    textDecoration: 'none',
   },
-  loading: { display: 'flex', justifyContent: 'center', padding: 48 },
 }

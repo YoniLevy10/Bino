@@ -10,9 +10,11 @@ type Props = {
   addonKey: PaidAddonKey
   title: string
   mobileSubtitle: string
-  desktopSubtitle: string
+  desktopSubtitle?: string
   children: ReactNode
+  headerActions?: ReactNode
   contentMaxWidth?: number
+  narrow?: boolean
 }
 
 export function AddonFeaturePageShell({
@@ -21,10 +23,13 @@ export function AddonFeaturePageShell({
   mobileSubtitle,
   desktopSubtitle,
   children,
-  contentMaxWidth = 720,
+  headerActions,
+  contentMaxWidth,
+  narrow = false,
 }: Props) {
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const maxWidth = contentMaxWidth ?? (narrow ? 720 : 1400)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -48,12 +53,18 @@ export function AddonFeaturePageShell({
         <div
           style={{
             ...styles.content,
-            maxWidth: contentMaxWidth,
+            maxWidth,
             ...(isMobile ? styles.contentMobile : {}),
           }}
         >
-          {!isMobile && <PageHeader title={title} subtitle={desktopSubtitle} />}
-          {children}
+          {!isMobile && (
+            <PageHeader
+              title={title}
+              subtitle={desktopSubtitle ?? mobileSubtitle}
+              actions={headerActions}
+            />
+          )}
+          <div style={styles.body}>{children}</div>
         </div>
       </PaidAddonGate>
     </AppShell>
@@ -64,10 +75,16 @@ const styles: Record<string, CSSProperties> = {
   content: {
     padding: '32px 40px',
     margin: '0 auto',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   contentMobile: {
     padding: '16px 16px 32px',
     maxWidth: '100%',
-    boxSizing: 'border-box',
+  },
+  body: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20,
   },
 }

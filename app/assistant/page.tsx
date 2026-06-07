@@ -94,15 +94,17 @@ export default function AssistantPage() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  content: { padding: '24px 32px', maxWidth: 640, margin: '0 auto' },
-  label: { display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 14 },
+  content: { padding: '32px 40px', maxWidth: 1400, margin: '0 auto', width: '100%', boxSizing: 'border-box' },
+  label: { display: 'block', fontWeight: 500, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary },
   textarea: {
     width: '100%',
-    padding: 10,
-    borderRadius: 8,
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     fontFamily: 'inherit',
+    fontSize: 15,
     marginBottom: 12,
+    boxSizing: 'border-box',
   },
   answer: { marginTop: 20, paddingTop: 16, borderTop: `1px solid ${theme.colors.border}` },
   answerText: { margin: '0 0 12px', fontSize: 15, lineHeight: 1.5 },

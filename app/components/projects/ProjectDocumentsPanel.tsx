@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
-import { Button, theme } from '../ui'
+import { Button, Card, theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 type DocRow = {
@@ -137,10 +137,11 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
   }
 
   return (
-    <div style={styles.box}>
-      <div style={styles.header}>
-        <h4 style={styles.title}>תיקיית מסמכים</h4>
-        <div style={styles.headerActions}>
+    <Card
+      title="תיקיית מסמכים"
+      subtitle="חוזים, תוכניות, מסמכים — עד 15MB (PDF, תמונות, Office, ZIP)"
+      actions={
+        <>
           <input
             ref={fileRef}
             type="file"
@@ -150,22 +151,16 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
               if (f) void onUpload(f)
             }}
           />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => fileRef.current?.click()}
-            loading={uploading}
-          >
+          <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} loading={uploading}>
             העלאת קובץ
           </Button>
-        </div>
-      </div>
-      <p style={styles.hint}>חוזים, תוכניות, מסמכים — עד 15MB (PDF, תמונות, Office, ZIP).</p>
-
+        </>
+      }
+    >
       {loading ? (
         <p style={styles.muted}>טוען...</p>
       ) : docs.length === 0 ? (
-        <p style={styles.muted}>אין מסמכים בפרויקט</p>
+        <p style={styles.muted}>אין מסמכים בפרויקט — העלו קובץ ראשון.</p>
       ) : (
         <ul style={styles.list}>
           {docs.map((doc) => (
@@ -258,30 +253,12 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  box: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: theme.radius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  headerActions: { display: 'flex', gap: 8 },
-  title: { margin: 0, fontSize: 15, fontWeight: 600 },
-  hint: { margin: '0 0 12px', fontSize: 12, color: theme.colors.textMuted },
-  muted: { margin: 0, fontSize: 13, color: theme.colors.textMuted },
+  muted: { margin: 0, fontSize: 14, color: theme.colors.textMuted },
   list: { listStyle: 'none', margin: 0, padding: 0 },
   item: {
     display: 'flex',

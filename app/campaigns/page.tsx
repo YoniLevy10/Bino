@@ -6,7 +6,7 @@ import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageS
 import { AddonProjectPicker } from '@/app/components/addons/AddonProjectPicker'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
-import { Button, theme, LoadingSpinner } from '../components/ui'
+import { Button, Card, theme, LoadingSpinner } from '../components/ui'
 
 function CampaignPanel({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [name, setName] = useState('הודעה לדיירים')
@@ -68,35 +68,37 @@ function CampaignPanel({ projectId, projectName }: { projectId: string; projectN
   }
 
   return (
-    <div style={styles.panel}>
-      <label htmlFor="campaign-name" style={styles.label}>שם קמפיין</label>
-      <input id="campaign-name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} />
-
-      <label htmlFor="campaign-body" style={styles.label}>טקסט ההודעה (ללא אימוג&apos;י)</label>
-      <textarea
-        id="campaign-body"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={6}
-        style={styles.textarea}
-        maxLength={900}
-      />
-
+    <Card title="קמפיין SMS" subtitle="הודעה חופשית לדיירי הבניין (019SMS — ללא אימוג'י)">
+      <div style={styles.field}>
+        <label htmlFor="campaign-name" style={styles.label}>שם קמפיין</label>
+        <input id="campaign-name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} />
+      </div>
+      <div style={styles.field}>
+        <label htmlFor="campaign-body" style={styles.label}>טקסט ההודעה</label>
+        <textarea
+          id="campaign-body"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={5}
+          style={styles.textarea}
+          maxLength={900}
+          placeholder="כתבו כאן את ההודעה לדיירים…"
+        />
+      </div>
       <div style={styles.actions}>
-        <Button onClick={() => void dryRun()} disabled={loading || sending}>
-          {loading ? 'בודק…' : 'תצוגה מקדימה'}
+        <Button variant="secondary" onClick={() => void dryRun()} loading={loading} disabled={sending}>
+          תצוגה מקדימה
         </Button>
-        <Button onClick={() => void send()} disabled={sending || !body.trim()}>
-          {sending ? 'שולח…' : 'שלח לדיירים'}
+        <Button variant="primary" onClick={() => void send()} loading={sending} disabled={!body.trim()}>
+          שלח לדיירים
         </Button>
       </div>
-
       {preview && (
         <p style={styles.preview}>
           נמענים: {preview.recipients_total} · ללא טלפון: {preview.skipped_no_phone} · אורך: {preview.message_length}
         </p>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -160,32 +162,34 @@ function WaBroadcastPanel({ projectId, projectName }: { projectId: string; proje
   }
 
   return (
-    <div style={styles.panel}>
-      <h4 style={styles.sectionTitle}>תפוצת WhatsApp (תבנית Meta)</h4>
-      <p style={styles.sectionHint}>דורש תוסף תיבת WhatsApp ותבנית marketing/utility מאושרת ב-Meta.</p>
-      <label htmlFor="wa-template" style={styles.label}>שם תבנית</label>
-      <input
-        id="wa-template"
-        value={templateName}
-        onChange={(e) => setTemplateName(e.target.value)}
-        style={styles.input}
-        dir="ltr"
-        placeholder="hello_world"
-      />
-      <label htmlFor="wa-body-param" style={styles.label}>פרמטר גוף (אופציונלי)</label>
-      <input
-        id="wa-body-param"
-        value={bodyParam}
-        onChange={(e) => setBodyParam(e.target.value)}
-        style={styles.input}
-        maxLength={500}
-      />
+    <Card title="תפוצת WhatsApp" subtitle="תבנית marketing/utility מאושרת ב-Meta">
+      <div style={styles.field}>
+        <label htmlFor="wa-template" style={styles.label}>שם תבנית</label>
+        <input
+          id="wa-template"
+          value={templateName}
+          onChange={(e) => setTemplateName(e.target.value)}
+          style={styles.input}
+          dir="ltr"
+          placeholder="hello_world"
+        />
+      </div>
+      <div style={styles.field}>
+        <label htmlFor="wa-body-param" style={styles.label}>פרמטר גוף (אופציונלי)</label>
+        <input
+          id="wa-body-param"
+          value={bodyParam}
+          onChange={(e) => setBodyParam(e.target.value)}
+          style={styles.input}
+          maxLength={500}
+        />
+      </div>
       <div style={styles.actions}>
-        <Button onClick={() => void dryRun()} disabled={loading || sending}>
-          {loading ? 'בודק…' : 'תצוגה מקדימה'}
+        <Button variant="secondary" onClick={() => void dryRun()} loading={loading} disabled={sending}>
+          תצוגה מקדימה
         </Button>
-        <Button onClick={() => void send()} disabled={sending || !templateName.trim()}>
-          {sending ? 'שולח…' : 'שלח WhatsApp'}
+        <Button variant="primary" onClick={() => void send()} loading={sending} disabled={!templateName.trim()}>
+          שלח WhatsApp
         </Button>
       </div>
       {preview && (
@@ -193,7 +197,7 @@ function WaBroadcastPanel({ projectId, projectName }: { projectId: string; proje
           נמענים: {preview.recipients_total ?? 0} · ללא טלפון: {preview.skipped_no_phone ?? 0}
         </p>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -205,7 +209,7 @@ function CampaignsPageInner() {
       mobileSubtitle="SMS ו-WhatsApp לדיירי בניין"
       desktopSubtitle="SMS חופשי (019) ותפוצת WhatsApp בתבניות Meta"
     >
-      <AddonProjectPicker emptyHint="הוסיפו בניין כדי לשלוח קמפיין.">
+      <AddonProjectPicker emptyHint="הוסיפו בניין בדף פרויקטים כדי לשלוח קמפיין.">
         {(project) => (
           <>
             <CampaignPanel projectId={project.id} projectName={project.name} />
@@ -232,12 +236,26 @@ export default function CampaignsPage() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  panel: { display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560 },
-  label: { fontSize: 13, fontWeight: 600, color: theme.colors.textPrimary },
-  input: { padding: 10, borderRadius: 8, border: `1px solid ${theme.colors.border}` },
-  textarea: { padding: 10, borderRadius: 8, border: `1px solid ${theme.colors.border}`, fontFamily: 'inherit' },
-  actions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  preview: { fontSize: 13, color: theme.colors.textMuted, margin: '8px 0 0' },
-  sectionTitle: { margin: '24px 0 4px', fontSize: 15, fontWeight: 600 },
-  sectionHint: { margin: '0 0 12px', fontSize: 12, color: theme.colors.textMuted },
+  field: { marginBottom: 14 },
+  label: { display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6, color: theme.colors.textPrimary },
+  input: {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    fontSize: 15,
+    boxSizing: 'border-box',
+  },
+  textarea: {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    fontFamily: 'inherit',
+    fontSize: 15,
+    boxSizing: 'border-box',
+    resize: 'vertical',
+  },
+  actions: { display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 },
+  preview: { fontSize: 13, color: theme.colors.textMuted, margin: '16px 0 0' },
 }
