@@ -44,6 +44,13 @@ type NfcTagAdmin = {
   projects?: { name?: string; project_code?: string } | null
 }
 
+type OfficeStaffRow = {
+  id: string
+  full_name: string
+  is_active: boolean
+  hourly_rate: number | null
+}
+
 const EVENT_LABELS: Record<string, string> = {
   clock_in: 'כניסה',
   clock_out: 'יציאה',
@@ -89,7 +96,26 @@ export default function AttendancePage() {
     tag_label: string | null
   } | null>(null)
   const [onboardingLoading, setOnboardingLoading] = useState(true)
+  const [officeStaff, setOfficeStaff] = useState<OfficeStaffRow[]>([])
+  const [officeStaffLoading, setOfficeStaffLoading] = useState(true)
+  const [syncingWorkers, setSyncingWorkers] = useState(false)
+  const [newStaffName, setNewStaffName] = useState('')
+  const [addingStaff, setAddingStaff] = useState(false)
   const qrRef = useRef<HTMLDivElement>(null)
+
+  const loadOfficeStaff = useCallback(async () => {
+    setOfficeStaffLoading(true)
+    try {
+      const res = await fetchWithTimeout('/api/attendance/office-staff')
+      const body = (await res.json().catch(() => ({}))) as { staff?: OfficeStaffRow[]; error?: string }
+      if (!res.ok) throw new Error(body.error || 'טעינת עובדים נכשלה')
+      setOfficeStaff(body.staff ?? [])
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'טעינת עובדים נכשלה')
+    } finally {
+      setOfficeStaffLoading(false)
+    }
+  }, [])
 
   const loadOnboarding = useCallback(async () => {
     setOnboardingLoading(true)
@@ -156,7 +182,48 @@ export default function AttendancePage() {
   useEffect(() => {
     void load()
     void loadOnboarding()
-  }, [load, loadOnboarding])
+    void loadOfficeStaff()
+  }, [load, loadOnboarding, loadOfficeStaff])
+
+  async function syncWorkersToStaffList() {
+    setSyncingWorkers(true)
+    try {
+      const res = await fetchWithTimeout('/api/attendance/office-staff/sync-workers', { method: 'POST' })
+      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!res.ok) throw new Error(body.error || 'ייבוא נכשל')
+      toast.success(body.message || 'עודכן')
+      await loadOfficeStaff()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'ייבוא נכשל')
+    } finally {
+      setSyncingWorkers(false)
+    }
+  }
+
+  async function addOfficeStaffMember() {
+    const name = newStaffName.trim()
+    if (!name) {
+      toast.error('נא להזין שם')
+      return
+    }
+    setAddingStaff(true)
+    try {
+      const res = await fetchWithTimeout('/api/attendance/office-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: name, is_active: true }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) throw new Error(typeof body.error === 'string' ? body.error : 'הוספה נכשלה')
+      toast.success('נוסף לרשימת ההחתמה')
+      setNewStaffName('')
+      await loadOfficeStaff()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'הוספה נכשלה')
+    } finally {
+      setAddingStaff(false)
+    }
+  }
 
   async function copyOnboardingMessage() {
     if (!onboarding?.onboarding_message_he) return
@@ -269,6 +336,52 @@ export default function AttendancePage() {
             </div>
           </div>
         ) : null}
+      </Card>
+
+      <Card style={{ marginBottom: 16 }}>
+        <h3 style={styles.sectionTitle}>עובדים להחתמה (תחנת QR)</h3>
+        <p style={styles.hint}>
+          מי שמופיע כאן יוכל לבחור את שמו אחרי סריקת ה-QR. ייבאו מהרשימה ב«עובדים» או הוסיפו שם ידנית.
+          בלי אינטרנט — רק פורטל העובד האישי (לא תחנת QR זו).
+        </p>
+        <div style={styles.qrBtnRow}>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={syncingWorkers}
+            onClick={() => void syncWorkersToStaffList()}
+          >
+            ייבא מעובדים
+          </Button>
+        </div>
+        {officeStaffLoading ? (
+          <p style={styles.hint}>טוען רשימה…</p>
+        ) : officeStaff.filter((s) => s.is_active).length === 0 ? (
+          <p style={styles.hint}>אין עובדים ברשימה — לחצו «ייבא מעובדים» או הוסיפו שם.</p>
+        ) : (
+          <ul style={styles.tagList}>
+            {officeStaff
+              .filter((s) => s.is_active)
+              .map((s) => (
+                <li key={s.id} style={styles.tagItem}>
+                  {s.full_name}
+                </li>
+              ))}
+          </ul>
+        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
+          <input
+            type="text"
+            value={newStaffName}
+            onChange={(e) => setNewStaffName(e.target.value)}
+            placeholder="שם לעובד שלא ברשימה"
+            style={styles.input}
+            maxLength={200}
+          />
+          <Button variant="primary" size="sm" loading={addingStaff} onClick={() => void addOfficeStaffMember()}>
+            הוסף
+          </Button>
+        </div>
       </Card>
 
       <Card style={{ marginBottom: 16 }}>

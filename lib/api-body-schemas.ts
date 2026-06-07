@@ -374,13 +374,18 @@ export const deleteProjectDocumentBodySchema = z.object({
   document_id: z.string().uuid(),
 })
 
-export const officeAttendanceClockBodySchema = z.object({
-  station_token: z.string().uuid(),
-  staff_id: z.string().uuid(),
-  lat: z.number().min(-90).max(90).optional(),
-  lng: z.number().min(-180).max(180).optional(),
-  accuracy_m: z.number().min(0).max(50000).optional(),
-})
+export const officeAttendanceClockBodySchema = z
+  .object({
+    station_token: z.string().uuid(),
+    staff_id: z.string().uuid().optional(),
+    guest_name: z.string().min(2).max(200).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+    accuracy_m: z.number().min(0).max(50000).optional(),
+  })
+  .refine((v) => Boolean(v.staff_id) !== Boolean(v.guest_name?.trim()), {
+    message: 'נדרש מזהה עובד או שם להחתמה',
+  })
 
 export const patchOfficeTimeEntryBodySchema = z.object({
   id: z.string().uuid(),

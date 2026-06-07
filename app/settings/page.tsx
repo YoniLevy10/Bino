@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
@@ -363,9 +363,15 @@ function SettingsPageInner() {
           body: JSON.stringify({ sidebar_nav_order: navOrderDraft, sidebar_nav_labels }),
         })
         const json = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
+        if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'שמירה נכשלה'))
         setLocalOrderIds(navOrderDraft)
         await refreshNav()
+        const labelPayload = buildNavLabelsPayload()
+        const labelDraft: Record<string, string> = {}
+        for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
+          labelDraft[id] = labelPayload[id] ?? SIDEBAR_NAV_REGISTRY[id].label
+        }
+        setNavLabelsDraft(labelDraft)
         toast.success(TM.settingsSaved)
         return true
       },

@@ -52,6 +52,8 @@ function ScanPageInner() {
   const [successMsg, setSuccessMsg] = useState('')
   const [geoWarn, setGeoWarn] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [showGuestForm, setShowGuestForm] = useState(false)
 
   useEffect(() => {
     const fromUrl = (searchParams.get('st') || '').trim().toLowerCase()
@@ -91,7 +93,7 @@ function ScanPageInner() {
       setClientName(body.client_name || '')
       setStaff(body.staff || [])
       if ((body.staff || []).length === 0) {
-        setError('עדיין לא הוגדרו עובדות משרד. פנו למנהלת להוספה בדשבורד תחת «שעון עובדים».')
+        setError('עדיין לא הוגדרו שמות להחתמה. המנהלת: חתמת עובדים → «ייבא מעובדים» או הוספת שם.')
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
@@ -104,9 +106,9 @@ function ScanPageInner() {
     if (stationToken) void loadStation()
   }, [loadStation, stationToken])
 
-  async function onPick(member: StaffOption) {
+  async function clockAs(staffId: string | null, nameForGuest: string | null) {
     if (!stationToken || busyId) return
-    setBusyId(member.id)
+    setBusyId(staffId ?? 'guest')
     setSuccessMsg('')
     setError('')
     setGeoWarn(false)
@@ -118,7 +120,7 @@ function ScanPageInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           station_token: stationToken,
-          staff_id: member.id,
+          ...(staffId ? { staff_id: staffId } : { guest_name: nameForGuest }),
           ...(geo ? { lat: geo.lat, lng: geo.lng, accuracy_m: geo.accuracy_m } : {}),
         }),
       })
@@ -138,6 +140,21 @@ function ScanPageInner() {
     } finally {
       setBusyId(null)
     }
+  }
+
+  async function onPick(member: StaffOption) {
+    await clockAs(member.id, null)
+  }
+
+  async function onGuestClock() {
+    const name = guestName.trim()
+    if (!name) {
+      setError('נא להזין שם')
+      return
+    }
+    await clockAs(null, name)
+    setGuestName('')
+    setShowGuestForm(false)
   }
 
   if (showSuccess && successMsg) {
@@ -198,7 +215,37 @@ function ScanPageInner() {
           </div>
         ) : null}
 
-        <p style={styles.geoNote}>מומלץ לאשר גישה למיקום כשהדפדפן שואל.</p>
+        {!loading ? (
+          <div style={{ marginTop: 16 }}>
+            {!showGuestForm ? (
+              <button type="button" style={styles.guestToggle} onClick={() => setShowGuestForm(true)}>
+                לא ברשימה? הזינו שם
+              </button>
+            ) : (
+              <div style={styles.guestRow}>
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="שם מלא"
+                  style={styles.guestInput}
+                  maxLength={200}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  disabled={!!busyId}
+                  onClick={() => void onGuestClock()}
+                  style={styles.guestSubmit}
+                >
+                  {busyId === 'guest' ? 'רושם…' : 'החתמה'}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <p style={styles.geoNote}>מומלץ לאשר גישה למיקום כשהדפדפן שואל. נדרש אינטרנט בכל החתמה בתחנה זו.</p>
       </div>
     </div>
   )
@@ -290,5 +337,38 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textMuted,
     textAlign: 'center',
     lineHeight: 1.45,
+  },
+  guestToggle: {
+    width: '100%',
+    padding: '12px',
+    border: `1px dashed ${theme.colors.border}`,
+    borderRadius: theme.radius.md,
+    background: 'transparent',
+    color: theme.colors.primary,
+    fontSize: '15px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  guestRow: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  guestInput: {
+    width: '100%',
+    padding: '14px 12px',
+    fontSize: '16px',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.md,
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+  },
+  guestSubmit: {
+    padding: '14px',
+    borderRadius: theme.radius.md,
+    border: 'none',
+    background: theme.colors.primary,
+    color: '#fff',
+    fontSize: '16px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
 }

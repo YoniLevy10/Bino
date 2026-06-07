@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { officeAttendanceClockBodySchema } from '@/lib/api-body-schemas'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { formatOfficeClockTime, resolveClientByStationToken, toggleOfficeClock } from '@/lib/office-attendance'
+import {
+  formatOfficeClockTime,
+  resolveClientByStationToken,
+  resolveOrCreateOfficeStaffByName,
+  toggleOfficeClock,
+} from '@/lib/office-attendance'
+import { formatZodError } from '@/lib/format-zod-error'
 import { isOutsideGeofence } from '@/lib/office-geo'
 
 function clientIp(req: NextRequest): string {
@@ -27,13 +33,25 @@ export async function POST(req: NextRequest) {
 
     const parsed = officeAttendanceClockBodySchema.safeParse(raw)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
     }
 
-    const { station_token, staff_id, lat, lng, accuracy_m } = parsed.data
+    const { station_token, staff_id, guest_name, lat, lng, accuracy_m } = parsed.data
     const client = await resolveClientByStationToken(station_token)
     if (!client) {
       return NextResponse.json({ error: 'תחנת כניסה לא תקין' }, { status: 404 })
+    }
+
+    let resolvedStaffId = staff_id
+    if (!resolvedStaffId && guest_name?.trim()) {
+      const created = await resolveOrCreateOfficeStaffByName(client.clientId, guest_name)
+      if (!created) {
+        return NextResponse.json({ error: 'שם לא תקין' }, { status: 400 })
+      }
+      resolvedStaffId = created.id
+    }
+    if (!resolvedStaffId) {
+      return NextResponse.json({ error: 'נדרש עובד או שם' }, { status: 400 })
     }
 
     const geo =
@@ -62,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     const result = await toggleOfficeClock({
       clientId: client.clientId,
-      staffId: staff_id,
+      staffId: resolvedStaffId,
       geo,
     })
 

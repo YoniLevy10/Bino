@@ -27,6 +27,83 @@ export async function resolveClientByStationToken(stationToken: string) {
   return { clientId: data.id as string, clientName: (data.name as string) || 'המשרד' }
 }
 
+function normalizeStaffName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/** Find or create office_staff row by display name (for guest / walk-in clock). */
+export async function resolveOrCreateOfficeStaffByName(clientId: string, fullName: string) {
+  const trimmed = fullName.trim().replace(/\s+/g, ' ')
+  if (!trimmed) return null
+
+  const admin = getSupabaseAdmin()
+  const { data: existing, error: listErr } = await admin
+    .from('office_staff')
+    .select('id, full_name')
+    .eq('client_id', clientId)
+    .eq('is_active', true)
+
+  if (listErr) throw listErr
+  const key = normalizeStaffName(trimmed)
+  const match = (existing || []).find((r) => normalizeStaffName(r.full_name as string) === key)
+  if (match?.id) return { id: match.id as string, full_name: match.full_name as string }
+
+  const { data: created, error: insErr } = await admin
+    .from('office_staff')
+    .insert({
+      client_id: clientId,
+      full_name: trimmed,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    })
+    .select('id, full_name')
+    .single()
+
+  if (insErr) throw insErr
+  return { id: created.id as string, full_name: created.full_name as string }
+}
+
+/** Copy active field workers into office_staff for QR station clock-in. */
+export async function syncWorkersToOfficeStaff(clientId: string): Promise<{ added: number; total: number }> {
+  const admin = getSupabaseAdmin()
+  const [{ data: workers, error: wErr }, { data: staff, error: sErr }] = await Promise.all([
+    admin
+      .from('workers')
+      .select('full_name')
+      .eq('client_id', clientId)
+      .eq('is_active', true)
+      .is('deleted_at', null),
+    admin.from('office_staff').select('full_name').eq('client_id', clientId),
+  ])
+
+  if (wErr) throw wErr
+  if (sErr) throw sErr
+
+  const existingNames = new Set(
+    (staff || []).map((r) => normalizeStaffName((r.full_name as string) || ''))
+  )
+  let added = 0
+  const now = new Date().toISOString()
+
+  for (const row of workers || []) {
+    const name = (row.full_name as string | null)?.trim()
+    if (!name) continue
+    const key = normalizeStaffName(name)
+    if (existingNames.has(key)) continue
+    const { error } = await admin.from('office_staff').insert({
+      client_id: clientId,
+      full_name: name,
+      is_active: true,
+      updated_at: now,
+    })
+    if (error) throw error
+    existingNames.add(key)
+    added++
+  }
+
+  return { added, total: existingNames.size }
+}
+
 export async function listActiveOfficeStaff(clientId: string) {
   const admin = getSupabaseAdmin()
   const { data, error } = await admin

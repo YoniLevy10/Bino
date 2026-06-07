@@ -3,6 +3,31 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { upsertOfficeStaffBodySchema } from '@/lib/api-body-schemas'
+import { formatZodError } from '@/lib/format-zod-error'
+
+export async function GET() {
+  try {
+    const auth = await requireSessionClientIdWithNavFeature('attendance')
+    if (!auth.ok) return auth.response
+
+    const admin = getSupabaseAdmin()
+    const { data, error } = await admin
+      .from('office_staff')
+      .select('id, full_name, hourly_rate, is_active, created_at')
+      .eq('client_id', auth.ctx.clientId)
+      .order('full_name')
+
+    if (error) {
+      console.error('[attendance/office-staff GET]', error.message)
+      return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
+    }
+
+    return NextResponse.json({ staff: data ?? [] })
+  } catch (e) {
+    console.error('[attendance/office-staff GET]', e)
+    return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
+  }
+}
 
 export async function POST(req: Request) {
   const requestId = `office-staff-${Date.now()}`
@@ -25,7 +50,7 @@ export async function POST(req: Request) {
 
     const parsed = upsertOfficeStaffBodySchema.safeParse(raw)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten(), requestId }, { status: 400 })
+      return NextResponse.json({ error: formatZodError(parsed.error), requestId }, { status: 400 })
     }
 
     const { id, full_name, hourly_rate, is_active } = parsed.data

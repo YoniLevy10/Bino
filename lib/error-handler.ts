@@ -3,6 +3,8 @@
  * Provides consistent toast/notification pattern
  */
 
+import { formatApiErrorBody } from '@/lib/format-zod-error'
+
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 export interface Toast {
@@ -56,7 +58,7 @@ export const toast = {
  */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    return error.message;
+    if (error.message && error.message !== '[object Object]') return error.message
   }
 
   if (typeof error === 'object' && error !== null) {
@@ -78,7 +80,21 @@ export function getErrorMessage(error: unknown): string {
     return error;
   }
 
+  if (error instanceof Error && error.message === '[object Object]') {
+    return 'שגיאה בשמירה — בדקו את השדות'
+  }
+
   return 'שגיאה לא צפויה — נסה שוב';
+}
+
+/** Parse JSON error field from API responses (string or Zod flatten object). */
+export function errorMessageFromResponseJson(json: { error?: unknown } | null | undefined, fallback: string): string {
+  if (!json?.error) return fallback
+  if (typeof json.error === 'string') return json.error
+  if (typeof json.error === 'object' && json.error !== null) {
+    return formatApiErrorBody(json.error)
+  }
+  return fallback
 }
 
 /**

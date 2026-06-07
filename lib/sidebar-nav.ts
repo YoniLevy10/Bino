@@ -132,10 +132,12 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
 
 export type SidebarNavLabels = Partial<Record<SidebarNavItemId, string>>
 
-export const sidebarNavLabelsSchema = z.record(
-  z.enum(SIDEBAR_NAV_ITEM_IDS),
-  z.string().min(1).max(80)
-)
+const sidebarNavLabelFields = Object.fromEntries(
+  SIDEBAR_NAV_ITEM_IDS.map((id) => [id, z.string().min(1).max(80).optional()])
+) as { [K in SidebarNavItemId]: z.ZodOptional<z.ZodString> }
+
+/** Partial map — only customized labels are sent from settings UI. */
+export const sidebarNavLabelsSchema = z.object(sidebarNavLabelFields).strict()
 
 export function parseSidebarNavLabelsFromDb(value: unknown): SidebarNavLabels {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) return {}

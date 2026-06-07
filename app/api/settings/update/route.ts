@@ -4,6 +4,7 @@ import { requireSessionClientId } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { settingsUpdateBodySchema } from '@/lib/api-body-schemas'
 import { logAudit } from '@/lib/audit'
+import { formatZodError } from '@/lib/format-zod-error'
 
 export async function POST(req: Request) {
   const auth = await requireSessionClientId()
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   const rawBody = await req.json().catch(() => null)
   const validated = settingsUpdateBodySchema.safeParse(rawBody)
   if (!validated.success) {
-    return NextResponse.json({ error: validated.error.flatten() }, { status: 400 })
+    return NextResponse.json({ error: formatZodError(validated.error) }, { status: 400 })
   }
 
   const payload = validated.data as Record<string, unknown>
