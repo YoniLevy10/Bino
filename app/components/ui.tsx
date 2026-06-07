@@ -622,7 +622,7 @@ export function MobileBottomNav({
       {moreOpen && (
         <>
           <div
-            style={mobileMenuStyles.overlay}
+            style={bottomNavMoreStyles.overlay}
             onClick={onMoreToggle}
             aria-hidden
           />
@@ -719,6 +719,13 @@ export function MobileBottomNav({
 }
 
 const bottomNavMoreStyles: Record<string, CSSProperties> = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: theme.colors.overlay,
+    zIndex: 93,
+    animation: 'fadeIn 0.2s ease',
+  },
   panel: {
     position: 'fixed',
     left: 0,
