@@ -132,6 +132,7 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
   '/project-documents': 'project_documents',
   '/whatsapp-inbox': 'whatsapp_inbox',
   '/campaigns': 'campaigns',
+  '/collections': 'collections',
   '/assistant': 'summary',
   '/notifications/failed': 'summary',
   '/qr': 'qr',

@@ -6,6 +6,7 @@ import {
   pickInboxResidentByPhone,
   residentSummaryFromJoin,
   type InboxResidentSummary,
+  type ResidentJoinSummary,
 } from '@/lib/whatsapp-inbox-display'
 
 export type WhatsAppMessageDirection = 'in' | 'out'
@@ -111,7 +112,7 @@ export async function listWhatsAppConversations(
   const rows = data ?? []
 
   const phonesNeedingLookup = rows
-    .filter((row) => !hasDisplayableResidentJoin((row as { residents?: unknown }).residents))
+    .filter((row) => !hasDisplayableResidentJoin((row as { residents?: ResidentJoinSummary }).residents))
     .map((row) => (row as { phone: string }).phone)
 
   const normalizedSet = [...new Set(phonesNeedingLookup.map((p) => normalizePhone(p)).filter(Boolean))]
@@ -136,7 +137,7 @@ export async function listWhatsAppConversations(
       resident_id: string | null
       last_message_at: string
       last_message_preview: string | null
-      residents?: { full_name?: string; apartment_number?: string | null } | { full_name?: string; apartment_number?: string | null }[] | null
+      residents?: ResidentJoinSummary
     }
 
     if (hasDisplayableResidentJoin(r.residents)) {

@@ -21,6 +21,7 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'project_documents',
   'whatsapp_inbox',
   'campaigns',
+  'collections',
 ] as const
 
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
@@ -37,6 +38,7 @@ export const ADDON_ONLY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'project_documents',
   'whatsapp_inbox',
   'campaigns',
+  'collections',
 ] as const
 
 export function isAddonOnlySidebarNavId(id: SidebarNavItemId): boolean {
@@ -106,6 +108,12 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     href: '/campaigns',
     label: 'קמפיינים SMS',
     icon: 'message',
+  },
+  collections: {
+    id: 'collections',
+    href: '/collections',
+    label: 'גביית ועד',
+    icon: 'chart',
   },
 }
 

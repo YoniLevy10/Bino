@@ -221,6 +221,18 @@ export type Database = {
           default_worker_phone: string | null
           display_name: string | null
           enabled_nav_features: Json | null
+          greeninvoice_api_key_id: string | null
+          greeninvoice_api_secret: string | null
+          greeninvoice_business_id: string | null
+          greeninvoice_clearing_plugin: string | null
+          greeninvoice_default_doc_type: number
+          greeninvoice_enabled: boolean
+          greeninvoice_env: string
+          greeninvoice_payment_failure_url: string | null
+          greeninvoice_payment_success_url: string | null
+          greeninvoice_remarks_template: string | null
+          greeninvoice_send_invoice_email: boolean
+          greeninvoice_vat_type: number
           id: string
           is_active: boolean
           logo_url: string | null
@@ -259,6 +271,18 @@ export type Database = {
           default_worker_phone?: string | null
           display_name?: string | null
           enabled_nav_features?: Json | null
+          greeninvoice_api_key_id?: string | null
+          greeninvoice_api_secret?: string | null
+          greeninvoice_business_id?: string | null
+          greeninvoice_clearing_plugin?: string | null
+          greeninvoice_default_doc_type?: number
+          greeninvoice_enabled?: boolean
+          greeninvoice_env?: string
+          greeninvoice_payment_failure_url?: string | null
+          greeninvoice_payment_success_url?: string | null
+          greeninvoice_remarks_template?: string | null
+          greeninvoice_send_invoice_email?: boolean
+          greeninvoice_vat_type?: number
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -297,6 +321,18 @@ export type Database = {
           default_worker_phone?: string | null
           display_name?: string | null
           enabled_nav_features?: Json | null
+          greeninvoice_api_key_id?: string | null
+          greeninvoice_api_secret?: string | null
+          greeninvoice_business_id?: string | null
+          greeninvoice_clearing_plugin?: string | null
+          greeninvoice_default_doc_type?: number
+          greeninvoice_enabled?: boolean
+          greeninvoice_env?: string
+          greeninvoice_payment_failure_url?: string | null
+          greeninvoice_payment_success_url?: string | null
+          greeninvoice_remarks_template?: string | null
+          greeninvoice_send_invoice_email?: boolean
+          greeninvoice_vat_type?: number
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -326,6 +362,94 @@ export type Database = {
           whatsapp_phone_number_id?: string | null
         }
         Relationships: []
+      }
+      collection_charges: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          greeninvoice_client_id: string | null
+          greeninvoice_document_id: string | null
+          greeninvoice_document_number: number | null
+          greeninvoice_payment_id: string | null
+          greeninvoice_payment_url: string | null
+          id: string
+          paid_at: string | null
+          project_id: string | null
+          resident_id: string | null
+          sent_at: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          greeninvoice_client_id?: string | null
+          greeninvoice_document_id?: string | null
+          greeninvoice_document_number?: number | null
+          greeninvoice_payment_id?: string | null
+          greeninvoice_payment_url?: string | null
+          id?: string
+          paid_at?: string | null
+          project_id?: string | null
+          resident_id?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          greeninvoice_client_id?: string | null
+          greeninvoice_document_id?: string | null
+          greeninvoice_document_number?: number | null
+          greeninvoice_payment_id?: string | null
+          greeninvoice_payment_url?: string | null
+          id?: string
+          paid_at?: string | null
+          project_id?: string | null
+          resident_id?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_charges_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_charges_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_charges_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_sign_requests: {
         Row: {

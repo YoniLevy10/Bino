@@ -33,24 +33,21 @@ export function pickInboxResidentByPhone(
   return matches.find((r) => isDisplayableResidentName(r.full_name)) ?? null
 }
 
-export function residentSummaryFromJoin(
-  joined:
-    | { full_name?: string; apartment_number?: string | null }
-    | { full_name?: string; apartment_number?: string | null }[]
-    | null
-    | undefined
-): { full_name?: string; apartment_number?: string | null } | null {
+export type ResidentJoinSummary =
+  | { full_name?: string; apartment_number?: string | null }
+  | { full_name?: string; apartment_number?: string | null }[]
+  | null
+  | undefined
+
+export function residentSummaryFromJoin(joined: ResidentJoinSummary): {
+  full_name?: string
+  apartment_number?: string | null
+} | null {
   if (!joined) return null
   return Array.isArray(joined) ? joined[0] ?? null : joined
 }
 
-export function hasDisplayableResidentJoin(
-  joined:
-    | { full_name?: string; apartment_number?: string | null }
-    | { full_name?: string; apartment_number?: string | null }[]
-    | null
-    | undefined
-): boolean {
+export function hasDisplayableResidentJoin(joined: ResidentJoinSummary): boolean {
   const r = residentSummaryFromJoin(joined)
   return isDisplayableResidentName(r?.full_name)
 }

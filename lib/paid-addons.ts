@@ -16,6 +16,8 @@ export const PAID_ADDON_KEYS = {
   whatsapp_inbox: 'whatsapp_inbox',
   /** קמפיינים SMS לדיירים */
   campaigns: 'campaigns',
+  /** גביית ועד — Morning (חשבונית ירוקה) */
+  collections: 'collections',
 } as const
 
 export type PaidAddonKey = (typeof PAID_ADDON_KEYS)[keyof typeof PAID_ADDON_KEYS]
@@ -126,6 +128,7 @@ export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
   [PAID_ADDON_KEYS.project_documents]: 'project_documents',
   [PAID_ADDON_KEYS.whatsapp_inbox]: 'whatsapp_inbox',
   [PAID_ADDON_KEYS.campaigns]: 'campaigns',
+  [PAID_ADDON_KEYS.collections]: 'collections',
 }
 
 const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
@@ -135,6 +138,7 @@ const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
   PAID_ADDON_KEYS.whatsapp_inbox,
   PAID_ADDON_KEYS.pilot_sms,
   PAID_ADDON_KEYS.campaigns,
+  PAID_ADDON_KEYS.collections,
   PAID_ADDON_KEYS.project_documents,
 ]
 
