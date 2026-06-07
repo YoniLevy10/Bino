@@ -25,6 +25,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||
     pathname.startsWith('/report') ||
+    pathname === '/privacy' ||
     pathname.startsWith('/admin/') ||
     pathname === '/worker-login' ||
     pathname === '/worker' ||
