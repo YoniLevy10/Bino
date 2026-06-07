@@ -37,3 +37,12 @@ Bonne journée !`
 
   return stripEmojiForSms(raw)
 }
+
+/** Custom draft from UI, or default template — always emoji-safe for 019SMS. */
+export function resolvePilotSmsMessage(custom?: string | null): string {
+  const trimmed = (custom ?? '').trim()
+  if (!trimmed) return buildPilotAnnouncementSms()
+  const cleaned = stripEmojiForSms(trimmed)
+  if (!cleaned) throw new Error('ההודעה ריקה לאחר הסרת תווים לא נתמכים')
+  return cleaned
+}

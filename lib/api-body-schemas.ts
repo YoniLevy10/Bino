@@ -351,6 +351,8 @@ export const updateCalendarEventBodySchema = createCalendarEventBodySchema.parti
 export const projectPilotSmsBodySchema = z.object({
   project_id: z.string().uuid(),
   dry_run: z.boolean().optional(),
+  /** Optional custom message; default multilingual template if omitted. */
+  message: z.string().min(10).max(2000).optional(),
 })
 
 export const deleteProjectDocumentBodySchema = z.object({

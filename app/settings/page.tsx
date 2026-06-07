@@ -87,6 +87,7 @@ function SettingsPageInner() {
 
   const [clientId, setClientId] = useState<string>('')
   const [client, setClient] = useState<ClientRow | null>(null)
+  const [settingsHydrated, setSettingsHydrated] = useState(false)
 
   const [managerPhone, setManagerPhone] = useState('')
   const [defaultWorkerPhone, setDefaultWorkerPhone] = useState('')
@@ -154,6 +155,7 @@ function SettingsPageInner() {
 
   async function load() {
     setLoading(true)
+    setSettingsHydrated(false)
     await asyncHandler(
       async () => {
         const resolvedClientId = await resolveBamakorClientIdForBrowser()
@@ -161,7 +163,7 @@ function SettingsPageInner() {
         const { data: row, error: cErr } = await supabase
           .from('clients')
           .select(
-            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name, sidebar_nav_order, sidebar_nav_labels'
+            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name, sidebar_nav_order'
           )
           .eq('id', resolvedClientId)
           .maybeSingle()
@@ -190,14 +192,26 @@ function SettingsPageInner() {
           parsedOrder ? resolveSidebarNavOrderIds(parsedOrder) : [...DEFAULT_SIDEBAR_NAV_ORDER]
         )
 
-        const parsedLabels = parseSidebarNavLabelsFromDb(
-          (row as { sidebar_nav_labels?: unknown }).sidebar_nav_labels
-        )
+        let parsedLabels: SidebarNavLabels = {}
+        try {
+          const navRes = await fetchWithTimeout('/api/client/nav-config')
+          const navJson = (await navRes.json().catch(() => ({}))) as {
+            sidebar_nav_labels?: unknown
+            error?: string
+          }
+          if (navRes.ok) {
+            parsedLabels = parseSidebarNavLabelsFromDb(navJson.sidebar_nav_labels)
+          }
+        } catch {
+          /* nav labels optional — phones must still load */
+        }
+
         const labelDraft: Record<string, string> = {}
         for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
           labelDraft[id] = parsedLabels[id] ?? SIDEBAR_NAV_REGISTRY[id].label
         }
         setNavLabelsDraft(labelDraft)
+        setSettingsHydrated(true)
 
         return true
       },
@@ -212,7 +226,10 @@ function SettingsPageInner() {
   }, [])
 
   async function saveNotifications() {
-    if (!clientId) return
+    if (!clientId || !settingsHydrated) {
+      toast.error('ההגדרות טרם נטענו — רעננו את הדף לפני שמירה')
+      return
+    }
     setSavingNotifications(true)
     await asyncHandler(
       async () => {

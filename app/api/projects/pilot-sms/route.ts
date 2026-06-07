@@ -44,6 +44,7 @@ export async function POST(req: Request) {
       projectId: parsed.data.project_id,
       smsSenderName: (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name ?? null,
       dryRun,
+      message: parsed.data.message,
     })
 
     if (!dryRun) {

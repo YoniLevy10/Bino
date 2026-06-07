@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { supabase } from '@/lib/supabase'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
+import { formatWhatsAppInboxDisplayLabel } from '@/lib/whatsapp-inbox-display'
 import { Button, Card, theme } from '../ui'
 
 type Conversation = {
@@ -109,10 +110,7 @@ export function WhatsAppInboxPanel() {
 
   function residentLabel(c: Conversation): string {
     const r = Array.isArray(c.residents) ? c.residents[0] : c.residents
-    if (r?.full_name) {
-      return r.apartment_number ? `${r.full_name} · דירה ${r.apartment_number}` : r.full_name
-    }
-    return c.phone
+    return formatWhatsAppInboxDisplayLabel(c.phone, r)
   }
 
   return (

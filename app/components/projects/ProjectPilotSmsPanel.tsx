@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
-import { buildPilotAnnouncementSms } from '@/lib/pilot-announcement-message'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { buildPilotAnnouncementSms, stripEmojiForSms } from '@/lib/pilot-announcement-message'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { Button, Card, theme } from '../ui'
+
+const SMS_SOFT_LIMIT = 900
 
 type Props = {
   projectId: string
@@ -18,20 +20,43 @@ type PreviewResult = {
 }
 
 export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
+  const [messageText, setMessageText] = useState(() => buildPilotAnnouncementSms())
   const [preview, setPreview] = useState<PreviewResult | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [sending, setSending] = useState(false)
-  const [showMessage, setShowMessage] = useState(false)
 
-  const message = buildPilotAnnouncementSms()
+  useEffect(() => {
+    setMessageText(buildPilotAnnouncementSms())
+    setPreview(null)
+  }, [projectId])
+
+  const sanitizedLength = useMemo(() => stripEmojiForSms(messageText).length, [messageText])
+  const overLimit = sanitizedLength > SMS_SOFT_LIMIT
+
+  function resetMessage() {
+    setMessageText(buildPilotAnnouncementSms())
+    setPreview(null)
+  }
+
+  function payloadBody(dryRun: boolean) {
+    return {
+      project_id: projectId,
+      dry_run: dryRun,
+      message: messageText.trim() || undefined,
+    }
+  }
 
   async function loadPreview() {
+    if (!messageText.trim()) {
+      toast.error('יש להזין טקסט להודעה')
+      return
+    }
     setLoadingPreview(true)
     try {
       const res = await fetchWithTimeout('/api/projects/pilot-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_id: projectId, dry_run: true }),
+        body: JSON.stringify(payloadBody(true)),
       })
       const json = await res.json() as PreviewResult & { error?: string }
       if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
@@ -45,9 +70,13 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
   }
 
   async function sendPilotSms() {
+    if (!messageText.trim()) {
+      toast.error('יש להזין טקסט להודעה')
+      return
+    }
     if (
       !window.confirm(
-        `לשלוח SMS פיילוט לכל הדיירים עם טלפון בפרויקט "${projectName}"?\n\nההודעה רב-לשונית (ללא אימוג'י).`
+        `לשלוח SMS לכל הדיירים עם טלפון בפרויקט "${projectName}"?\n\n${overLimit ? `אזהרה: ההודעה ארוכה (${sanitizedLength} תווים) — הספק עלול לקצר.\n\n` : ''}ללא אימוג'י.`
       )
     ) {
       return
@@ -57,7 +86,7 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
       const res = await fetchWithTimeout('/api/projects/pilot-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_id: projectId, dry_run: false }),
+        body: JSON.stringify(payloadBody(false)),
       })
       const json = await res.json() as PreviewResult & {
         sent?: number
@@ -81,12 +110,31 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
   return (
     <Card
       title="הודעת פתיחה לדיירים"
-      subtitle="SMS רב-לשוני (עברית, אנגלית, צרפתית) — ללא אימוג'י, דרישת ספק 019"
+      subtitle="ערכו את הטקסט לפני השליחה — רב-לשוני (עברית, אנגלית, צרפתית), ללא אימוג'י (דרישת 019SMS)"
     >
-      <button type="button" onClick={() => setShowMessage((v) => !v)} style={styles.linkBtn}>
-        {showMessage ? 'הסתר תצוגת הודעה' : 'הצג תצוגת הודעה'}
-      </button>
-      {showMessage && <pre style={styles.pre}>{message}</pre>}
+      <label style={styles.label} htmlFor={`pilot-sms-${projectId}`}>
+        תוכן ההודעה
+      </label>
+      <textarea
+        id={`pilot-sms-${projectId}`}
+        value={messageText}
+        onChange={(e) => {
+          setMessageText(e.target.value)
+          setPreview(null)
+        }}
+        rows={14}
+        style={styles.textarea}
+        dir="auto"
+        spellCheck
+      />
+      <div style={styles.metaRow}>
+        <span style={{ ...styles.charCount, ...(overLimit ? { color: theme.colors.warning } : {}) }}>
+          {sanitizedLength} תווים{overLimit ? ` (מומלץ עד ${SMS_SOFT_LIMIT})` : ''}
+        </span>
+        <button type="button" onClick={resetMessage} style={styles.linkBtn}>
+          איפוס לברירת מחדל
+        </button>
+      </div>
       <div style={styles.actions}>
         <Button variant="secondary" onClick={() => void loadPreview()} loading={loadingPreview}>
           בדיקת נמענים
@@ -99,7 +147,7 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
         <p style={styles.stats}>
           נמענים: <strong>{preview.recipients_total}</strong>
           {preview.skipped_no_phone > 0 && <> · ללא טלפון: {preview.skipped_no_phone}</>}
-          {' · '}אורך הודעה: {preview.message_length} תווים
+          {' · '}אורך הודעה לשליחה: {preview.message_length} תווים
         </p>
       )}
     </Card>
@@ -107,6 +155,41 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
 }
 
 const styles: Record<string, CSSProperties> = {
+  label: {
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
+  },
+  textarea: {
+    width: '100%',
+    boxSizing: 'border-box',
+    margin: '0 0 8px',
+    padding: 14,
+    fontSize: 13,
+    lineHeight: 1.55,
+    fontFamily: 'inherit',
+    whiteSpace: 'pre-wrap',
+    background: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    color: theme.colors.textPrimary,
+    resize: 'vertical',
+    minHeight: 220,
+  },
+  metaRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  charCount: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
   linkBtn: {
     background: 'none',
     border: 'none',
@@ -114,20 +197,7 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     cursor: 'pointer',
     fontSize: 13,
-    marginBottom: 12,
     fontWeight: 600,
-  },
-  pre: {
-    margin: '0 0 16px',
-    padding: 14,
-    fontSize: 12,
-    lineHeight: 1.5,
-    whiteSpace: 'pre-wrap',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    maxHeight: 220,
-    overflow: 'auto',
   },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 10 },
   stats: { margin: '16px 0 0', fontSize: 13, color: theme.colors.textSecondary },

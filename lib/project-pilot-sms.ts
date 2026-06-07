@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { buildPilotAnnouncementSms } from '@/lib/pilot-announcement-message'
+import { resolvePilotSmsMessage } from '@/lib/pilot-announcement-message'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 import { send019StaffSms } from '@/lib/sms'
 
@@ -92,8 +92,9 @@ export async function runProjectPilotSms(params: {
   projectId: string
   smsSenderName: string | null
   dryRun?: boolean
+  message?: string | null
 }): Promise<PilotSmsRunResult> {
-  const message = buildPilotAnnouncementSms()
+  const message = resolvePilotSmsMessage(params.message)
   const { recipients, skippedNoPhone } = await listPilotSmsRecipients(
     params.admin,
     params.clientId,

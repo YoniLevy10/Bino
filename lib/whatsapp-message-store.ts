@@ -1,4 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { findResidentByPhoneClient, normalizePhone } from '@/lib/residents-whatsapp'
+import {
+  hasDisplayableResidentJoin,
+  isDisplayableResidentName,
+  pickInboxResidentByPhone,
+  residentSummaryFromJoin,
+  type InboxResidentSummary,
+} from '@/lib/whatsapp-inbox-display'
 
 export type WhatsAppMessageDirection = 'in' | 'out'
 
@@ -35,13 +43,21 @@ export async function persistWhatsAppMessage(
 ): Promise<{ conversationId: string; messageId: string } | null> {
   try {
     const now = new Date().toISOString()
+    let residentId = input.residentId ?? null
+    if (!residentId) {
+      const resident = await findResidentByPhoneClient(admin, input.clientId, input.phone)
+      if (resident && isDisplayableResidentName(resident.full_name)) {
+        residentId = resident.id
+      }
+    }
+
     const { data: conv, error: convErr } = await admin
       .from('whatsapp_conversations')
       .upsert(
         {
           client_id: input.clientId,
           phone: input.phone,
-          resident_id: input.residentId ?? null,
+          resident_id: residentId,
           last_message_at: now,
           last_message_preview: previewText(input.body),
           updated_at: now,
@@ -92,7 +108,87 @@ export async function listWhatsAppConversations(
     .limit(limit)
 
   if (error) throw error
-  return data ?? []
+  const rows = data ?? []
+
+  const phonesNeedingLookup = rows
+    .filter((row) => !hasDisplayableResidentJoin((row as { residents?: unknown }).residents))
+    .map((row) => (row as { phone: string }).phone)
+
+  const normalizedSet = [...new Set(phonesNeedingLookup.map((p) => normalizePhone(p)).filter(Boolean))]
+  let residentsByPhone: InboxResidentSummary[] = []
+
+  if (normalizedSet.length > 0) {
+    const { data: residentRows, error: residentErr } = await admin
+      .from('residents')
+      .select('id, full_name, apartment_number, normalized_phone')
+      .eq('client_id', clientId)
+      .in('normalized_phone', normalizedSet)
+      .is('deleted_at', null)
+
+    if (residentErr) throw residentErr
+    residentsByPhone = (residentRows ?? []) as InboxResidentSummary[]
+  }
+
+  const enriched = rows.map((row) => {
+    const r = row as {
+      id: string
+      phone: string
+      resident_id: string | null
+      last_message_at: string
+      last_message_preview: string | null
+      residents?: { full_name?: string; apartment_number?: string | null } | { full_name?: string; apartment_number?: string | null }[] | null
+    }
+
+    if (hasDisplayableResidentJoin(r.residents)) {
+      return {
+        id: r.id,
+        phone: r.phone,
+        resident_id: r.resident_id,
+        last_message_at: r.last_message_at,
+        last_message_preview: r.last_message_preview,
+        residents: residentSummaryFromJoin(r.residents),
+      }
+    }
+
+    const matched = pickInboxResidentByPhone(residentsByPhone, r.phone)
+    if (matched) {
+      return {
+        id: r.id,
+        phone: r.phone,
+        resident_id: r.resident_id ?? matched.id,
+        last_message_at: r.last_message_at,
+        last_message_preview: r.last_message_preview,
+        residents: {
+          full_name: matched.full_name,
+          apartment_number: matched.apartment_number ?? null,
+        },
+      }
+    }
+
+    return {
+      id: r.id,
+      phone: r.phone,
+      resident_id: r.resident_id,
+      last_message_at: r.last_message_at,
+      last_message_preview: r.last_message_preview,
+      residents: null,
+    }
+  })
+
+  // Backfill resident_id for older threads (best-effort)
+  await Promise.all(
+    enriched
+      .filter((row) => {
+        if (!row.resident_id) return false
+        const orig = rows.find((o) => (o as { id: string }).id === row.id) as { resident_id?: string | null } | undefined
+        return !orig?.resident_id
+      })
+      .map((row) =>
+        admin.from('whatsapp_conversations').update({ resident_id: row.resident_id }).eq('id', row.id)
+      )
+  )
+
+  return enriched
 }
 
 export async function listWhatsAppMessagesForConversation(
