@@ -160,12 +160,12 @@ export async function sendWhatsAppTextMessage(
   return result
 }
 
-export async function sendWhatsAppTemplateMessage(
+function buildWhatsAppTemplatePayload(
   to: string,
   templateName: string,
-  bodyParams: string[] = [],
-  languageCode = 'he'
-): Promise<Record<string, unknown> | null> {
+  bodyParams: string[],
+  languageCode: string
+): Record<string, unknown> {
   const components: WhatsAppTemplateComponent[] = []
 
   if (bodyParams.length > 0) {
@@ -178,7 +178,7 @@ export async function sendWhatsAppTemplateMessage(
     })
   }
 
-  return sendRawWhatsAppPayload({
+  return {
     to,
     type: 'template',
     template: {
@@ -188,7 +188,51 @@ export async function sendWhatsAppTemplateMessage(
       },
       components,
     },
-  })
+  }
+}
+
+export async function sendWhatsAppTemplateMessage(
+  to: string,
+  templateName: string,
+  bodyParams: string[] = [],
+  languageCode = 'he'
+): Promise<Record<string, unknown> | null> {
+  return sendRawWhatsAppPayload(
+    buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode)
+  )
+}
+
+export async function sendWhatsAppTemplateMessageWithCredentials(
+  to: string,
+  templateName: string,
+  bodyParams: string[] = [],
+  creds: WhatsAppCredentials,
+  languageCode = 'he',
+  failureLog?: WhatsAppFailureLog
+): Promise<Record<string, unknown> | null> {
+  const phoneNumberId = creds.phoneNumberId
+  const accessToken = creds.accessToken
+  if (!phoneNumberId || !accessToken) {
+    getLogger().warn('WA_SEND', 'template send skipped: missing credentials')
+    return null
+  }
+
+  const result = await sendRawWhatsAppPayloadWithCredentials(
+    phoneNumberId,
+    accessToken,
+    buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode)
+  )
+
+  if (!result && failureLog?.clientId) {
+    await insertWhatsAppSendFailure(
+      failureLog.clientId,
+      to,
+      templateName,
+      'WhatsApp template send returned null (timeout/error)'
+    )
+  }
+
+  return result
 }
 
 export async function sendWhatsAppTextWithTemplateFallback(

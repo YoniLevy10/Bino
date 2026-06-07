@@ -21,7 +21,6 @@ import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
-  toastReporterClosedNotifyNetworkWarning,
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
 } from '@/lib/reporter-closed-notify-toast'
@@ -492,7 +491,7 @@ export default function DashboardPage() {
     await asyncHandler(
       async () => {
         const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
-        const { didAssign, closedNow } = await saveDashboardTicket({
+        const { didAssign, closedNow, reporter_has_phone, whatsapp_sent } = await saveDashboardTicket({
           ticketId: selectedTicket.id,
           description: draftDescription,
           status: draftStatus,
@@ -504,21 +503,11 @@ export default function DashboardPage() {
         else if (didAssign) toast.success(TM.workerAssigned)
         else toast.success(TM.ticketUpdated)
         if (closedNow) {
-          try {
-            const nRes = await fetchWithTimeout('/api/notify-reporter-ticket-closed', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ticket_id: selectedTicket.id }),
-            })
-            const nBody = (await nRes.json().catch(() => ({}))) as ReporterClosedNotifyApiBody
-            if (!nRes.ok) {
-              toastReporterClosedNotifyNetworkWarning()
-            } else {
-              toastReporterClosedNotifySummary(nBody)
-            }
-          } catch {
-            toastReporterClosedNotifyNetworkWarning()
-          }
+          toastReporterClosedNotifySummary({
+            success: true,
+            reporter_has_phone,
+            whatsapp_sent,
+          })
         }
         await loadData()
         return true

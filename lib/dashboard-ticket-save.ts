@@ -13,6 +13,8 @@ export type SaveDashboardTicketInput = {
 export type SaveDashboardTicketResult = {
   didAssign: boolean
   closedNow: boolean
+  reporter_has_phone?: boolean
+  whatsapp_sent?: boolean
 }
 
 /** שמירת תקלה מלוח הבקרה — שיוך עובד דרך API ייעודי, שאר השדות דרך update-ticket. */
@@ -63,7 +65,12 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updateBody),
   })
-  const updateJson = (await updateRes?.json().catch(() => ({}))) as { error?: string }
+  const updateJson = (await updateRes?.json().catch(() => ({}))) as {
+    error?: string
+    closed_now?: boolean
+    reporter_has_phone?: boolean
+    whatsapp_sent?: boolean
+  }
   if (!updateRes?.ok) {
     const errMsg =
       typeof updateJson.error === 'string'
@@ -75,5 +82,10 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
   }
 
   const closedNow = status === 'CLOSED' && input.previousStatus !== 'CLOSED'
-  return { didAssign, closedNow }
+  return {
+    didAssign,
+    closedNow,
+    reporter_has_phone: updateJson.reporter_has_phone,
+    whatsapp_sent: updateJson.whatsapp_sent,
+  }
 }

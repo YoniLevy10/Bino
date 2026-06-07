@@ -7,6 +7,7 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { logAudit } from '@/lib/audit'
 import { isTicketStatus } from '@/lib/ticket-status'
+import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     // Validate ticket exists
     const existsQuery = supabaseAdmin
       .from('tickets')
-      .select('id, client_id, priority, status')
+      .select('id, client_id, priority, status, reporter_phone, projects(name)')
       .eq('id', ticket_id)
       .eq('client_id', bamakorClientId)
       .is('deleted_at', null)
@@ -131,10 +132,50 @@ export async function POST(req: Request) {
       })
     }
 
+    const previousStatus = (ticket as { status?: string | null }).status
+    const closedNow =
+      status !== undefined &&
+      status !== null &&
+      sanitizeString(status).toUpperCase() === 'CLOSED' &&
+      previousStatus !== 'CLOSED'
+
+    let reporterHasPhone = false
+    let whatsappSent = false
+
+    if (closedNow) {
+      const notify = await notifyReporterIfTicketNewlyClosed(
+        supabaseAdmin,
+        clientId,
+        ticket_id,
+        previousStatus
+      )
+      reporterHasPhone = Boolean((ticket as { reporter_phone?: string | null }).reporter_phone?.trim())
+      whatsappSent = notify?.whatsappSent ?? false
+      logger.info('TICKET_API', 'Reporter WhatsApp on close (update-ticket)', {
+        requestId,
+        ticket_id,
+        whatsappSent,
+      })
+      if (notify?.whatsappError) {
+        logger.warn('TICKET_API', 'Reporter WhatsApp on close failed (update-ticket)', {
+          requestId,
+          ticket_id,
+          error: notify.whatsappError,
+        })
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: updatedTicket,
       requestId,
+      ...(closedNow
+        ? {
+            closed_now: true,
+            reporter_has_phone: reporterHasPhone,
+            whatsapp_sent: whatsappSent,
+          }
+        : {}),
     })
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error))

@@ -526,12 +526,13 @@ function WorkerPageInner() {
     if (!clientId) { toast.error('מזהה לקוח לא זמין — התחברו מחדש'); return }
     setBusyKey(`${ticketId}:${status}`)
     try {
-      const payload: Record<string, string | null> = { status }
-      if (status === 'CLOSED') payload.closed_at = new Date().toISOString()
-      else payload.closed_at = null
-      const { error } = await supabase.from('tickets').update(payload)
-        .eq('id', ticketId).eq('client_id', clientId).is('deleted_at', null)
-      if (error) throw error
+      const res = await fetchWithTimeout('/api/update-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId, status }),
+      })
+      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
       if (status === 'CLOSED') {
         removeClosedTicketFromView(ticketId)
       }

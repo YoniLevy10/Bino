@@ -5,6 +5,8 @@ import { workerUpdateTicketBodySchema } from '@/lib/api-body-schemas'
 import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { isWorkerSettableStatus } from '@/lib/ticket-status'
+import { getLogger } from '@/lib/logging'
+import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,6 +76,21 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
     }
 
+    const { data: existing, error: existingErr } = await admin
+      .from('tickets')
+      .select('id, status')
+      .eq('id', ticketId)
+      .eq('client_id', worker.client_id)
+      .eq('assigned_worker_id', worker.id)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (existingErr || !existing) {
+      return NextResponse.json({ error: 'תקלה לא נמצאה או שאינה משויכת אליך' }, { status: 404 })
+    }
+
+    const previousStatus = (existing as { status?: string }).status
+
     const payload: Record<string, string | null> = {
       status,
       updated_at: new Date().toISOString(),
@@ -100,6 +117,26 @@ export async function PATCH(req: NextRequest) {
     }
     if (!updated) {
       return NextResponse.json({ error: 'תקלה לא נמצאה או שאינה משויכת אליך' }, { status: 404 })
+    }
+
+    if (status === 'CLOSED' && previousStatus !== 'CLOSED') {
+      const logger = getLogger()
+      const notify = await notifyReporterIfTicketNewlyClosed(
+        admin,
+        worker.client_id,
+        ticketId,
+        previousStatus
+      )
+      logger.info('WORKER_API', 'Reporter WhatsApp on close (worker/tickets)', {
+        ticket_id: ticketId,
+        whatsappSent: notify?.whatsappSent ?? false,
+      })
+      if (notify?.whatsappError) {
+        logger.warn('WORKER_API', 'Reporter WhatsApp on close failed (worker/tickets)', {
+          ticket_id: ticketId,
+          error: notify.whatsappError,
+        })
+      }
     }
 
     return NextResponse.json({ ok: true, ticket: updated })

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getAuditLogger } from '@/lib/logging'
+import { getAuditLogger, getLogger } from '@/lib/logging'
 import { logAudit } from '@/lib/audit'
+import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
 
 type AuditLogger = ReturnType<typeof getAuditLogger>
 
@@ -27,7 +28,7 @@ export async function mergeTicketsForClient(params: MergeTicketsParams): Promise
 
   const { data: source, error: sErr } = await supabaseAdmin
     .from('tickets')
-    .select('id, ticket_number, project_id, description, status, client_id')
+    .select('id, ticket_number, project_id, description, status, client_id, reporter_phone, projects(name)')
     .eq('id', sourceTicketId)
     .eq('client_id', clientId)
     .is('deleted_at', null)
@@ -110,6 +111,20 @@ export async function mergeTicketsForClient(params: MergeTicketsParams): Promise
       is_merged: true,
     },
   })
+
+  const notify = await notifyReporterIfTicketNewlyClosed(
+    supabaseAdmin,
+    clientId,
+    sourceTicketId,
+    (source as { status?: string }).status
+  )
+  if (notify?.whatsappError) {
+    getLogger().warn('MERGE', 'Reporter WhatsApp on merge-close failed', {
+      requestId,
+      sourceTicketId,
+      error: notify.whatsappError,
+    })
+  }
 
   return { ok: true, merged_into_ticket_number: target.ticket_number as number }
 }
