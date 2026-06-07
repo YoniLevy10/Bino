@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
 /** Stable keys for paid add-ons — add new keys here when shipping features. */
 export const PAID_ADDON_KEYS = {
@@ -105,4 +106,32 @@ export async function getCatalogRowForAddon(
 
   if (error) throw error
   return (data as PaidAddonCatalogRow | null) ?? null
+}
+
+/** Maps paid addon keys to sidebar nav ids — keep in sync with ADDON_ONLY_SIDEBAR_NAV_IDS. */
+export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
+  [PAID_ADDON_KEYS.calendar]: 'calendar',
+  [PAID_ADDON_KEYS.professionals]: 'professionals',
+  [PAID_ADDON_KEYS.worker_stamp]: 'attendance',
+  [PAID_ADDON_KEYS.pilot_sms]: 'pilot_sms',
+  [PAID_ADDON_KEYS.project_documents]: 'project_documents',
+}
+
+const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
+  PAID_ADDON_KEYS.calendar,
+  PAID_ADDON_KEYS.professionals,
+  PAID_ADDON_KEYS.worker_stamp,
+  PAID_ADDON_KEYS.pilot_sms,
+  PAID_ADDON_KEYS.project_documents,
+]
+
+export function navIdsForEnabledAddonKeys(keys: Iterable<string>): SidebarNavItemId[] {
+  const enabled = new Set(keys)
+  const result: SidebarNavItemId[] = []
+  for (const addonKey of PAID_ADDON_NAV_ORDER) {
+    if (enabled.has(addonKey)) {
+      result.push(PAID_ADDON_NAV_ID[addonKey])
+    }
+  }
+  return result
 }

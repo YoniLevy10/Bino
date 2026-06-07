@@ -221,6 +221,7 @@ export default function AdminSetupPage() {
   const [waBusinessPhone, setWaBusinessPhone] = useState('')
   const [projects, setProjects] = useState<ProjectInput[]>([emptyProject()])
   const [workers, setWorkers] = useState<WorkerInput[]>([emptyWorker()])
+  const [logoFile, setLogoFile] = useState<File | null>(null)
 
   // UI state
   const [loading, setLoading] = useState(false)
@@ -349,7 +350,18 @@ export default function AdminSetupPage() {
             : `שגיאה ${res.status}`
         setError(msg)
       } else {
-        setResult(data as SetupResult)
+        const setupResult = data as SetupResult
+        if (logoFile) {
+          const form = new FormData()
+          form.append('file', logoFile)
+          form.append('client_id', setupResult.client_id)
+          await fetch('/api/admin/upload-client-logo', {
+            method: 'POST',
+            headers: { 'x-admin-secret': secret },
+            body: form,
+          }).catch(() => {})
+        }
+        setResult(setupResult)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאת רשת')
@@ -647,7 +659,7 @@ export default function AdminSetupPage() {
         <div style={cardStyle}>
           <SectionTitle>פרטי חברה</SectionTitle>
           <div style={rowStyle}>
-            <Field label="שם החברה" required>
+            <Field label="שם החברה (מוצג באפליקציה)" required>
               <Input value={companyName} onChange={setCompanyName} placeholder="למשל: ועד הבית תל אביב" />
             </Field>
             <Field label="תכנית" required>
@@ -668,6 +680,17 @@ export default function AdminSetupPage() {
               </p>
             </Field>
           </div>
+          <Field label="לוגו (אופציונלי)">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+              style={{ ...inputStyle, padding: '8px 14px' }}
+            />
+            <p style={{ margin: `${theme.spacing.xs}px 0 0`, fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
+              PNG או JPEG, עד 2MB — יוצג בסרגל ובמסך הפתיחה
+            </p>
+          </Field>
           <div style={rowStyle}>
             <Field label="WhatsApp Phone Number ID (Meta)">
               <Input value={waPhoneId} onChange={setWaPhoneId} placeholder="123456789012345" />

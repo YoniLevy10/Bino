@@ -13,9 +13,9 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'summary',
   'calendar',
   'attendance',
+  'professionals',
   'qr',
   'whatsapp_templates',
-  'billing',
   'pending_residents',
   'pilot_sms',
   'project_documents',
@@ -30,6 +30,7 @@ export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
 export const ADDON_ONLY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'calendar',
   'attendance',
+  'professionals',
   'pilot_sms',
   'project_documents',
 ] as const
@@ -64,6 +65,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   summary: { id: 'summary', href: '/summary', label: 'סיכום', icon: 'chart' },
   calendar: { id: 'calendar', href: '/calendar', label: 'יומן', icon: 'grid' },
   attendance: { id: 'attendance', href: '/attendance', label: 'שעון עובדים', icon: 'clock' },
+  professionals: { id: 'professionals', href: '/professionals', label: 'אנשי מקצוע', icon: 'users' },
   qr: { id: 'qr', href: '/qr', label: 'קודי QR', icon: 'qr' },
   whatsapp_templates: {
     id: 'whatsapp_templates',
@@ -71,7 +73,6 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     label: 'תבניות וואטסאפ',
     icon: 'message',
   },
-  billing: { id: 'billing', href: '/billing', label: 'חיוב ושימוש', icon: 'chart' },
   pending_residents: {
     id: 'pending_residents',
     href: '/pending-residents',
@@ -102,7 +103,6 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'summary',
   'qr',
   'whatsapp_templates',
-  'billing',
   'pending_residents',
 ]
 
@@ -138,7 +138,8 @@ export function parseSidebarNavOrderFromDb(value: unknown): SidebarNavItemId[] |
 
 export function resolveSidebarNavItems(
   customOrder: SidebarNavItemId[] | null | undefined,
-  enabledFeatures?: SidebarNavItemId[] | null
+  enabledFeatures?: SidebarNavItemId[] | null,
+  paidNavIds?: ReadonlySet<SidebarNavItemId>
 ): SidebarNavItem[] {
   const seen = new Set<SidebarNavItemId>()
   const result: SidebarNavItem[] = []
@@ -149,16 +150,21 @@ export function resolveSidebarNavItems(
     (id) => !isInternalSidebarNavItemId(id)
   )
 
+  const includeId = (id: SidebarNavItemId): boolean => {
+    if (isAddonOnlySidebarNavId(id) && !paidNavIds?.has(id)) return false
+    if (allowedSet && !allowedSet.has(id)) return false
+    return true
+  }
+
   for (const id of orderedIds) {
-    if (!isSidebarNavItemId(id) || seen.has(id) || isAddonOnlySidebarNavId(id)) continue
-    if (allowedSet && !allowedSet.has(id)) continue
+    if (!isSidebarNavItemId(id) || seen.has(id)) continue
+    if (!includeId(id)) continue
     seen.add(id)
     result.push(SIDEBAR_NAV_REGISTRY[id])
   }
 
   for (const id of DEFAULT_SIDEBAR_NAV_ORDER) {
-    if (!seen.has(id)) {
-      if (allowedSet && !allowedSet.has(id)) continue
+    if (!seen.has(id) && includeId(id)) {
       seen.add(id)
       result.push(SIDEBAR_NAV_REGISTRY[id])
     }

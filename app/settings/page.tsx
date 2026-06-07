@@ -419,12 +419,8 @@ function SettingsPageInner() {
       )}
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      {isMobile && (
-        <div style={{ padding: '0 16px 12px', maxWidth: '100%', boxSizing: 'border-box' }}>
-          <Link href="/billing" style={styles.headerSecondaryLink}>
-            חיוב ושימוש
-          </Link>
-        </div>
+      {!isMobile && (
+        <PageHeader title="הגדרות" subtitle="התראות ווואטסאפ" />
       )}
 
       <div
@@ -435,18 +431,6 @@ function SettingsPageInner() {
             : {}),
         }}
       >
-        {!isMobile && (
-          <PageHeader
-            title="הגדרות"
-            subtitle="התראות ווואטסאפ"
-            actions={
-              <Link href="/billing" style={styles.headerSecondaryLink}>
-                חיוב ושימוש
-              </Link>
-            }
-          />
-        )}
-
         <p style={{ margin: '0 0 16px', fontSize: '14px', color: theme.colors.textMuted }}>
           <Link href="/privacy">מדיניות פרטיות</Link> · קובץ התבניה המלא בתיקיית הריפו{' '}
           <code>PRIVACY_POLICY_TEMPLATE.md</code>

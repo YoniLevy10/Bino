@@ -17,18 +17,26 @@ describe('resolveSidebarNavItems', () => {
     }
   })
 
-  it('never shows add-on-only routes in sidebar even for legacy unlimited', () => {
-    const items = resolveSidebarNavItems(
+  it('never shows add-on-only routes unless paid', () => {
+    const unpaid = resolveSidebarNavItems(
       ['calendar', 'attendance', ...DEFAULT_SIDEBAR_NAV_ORDER],
       null
     )
-    expect(items.map((i) => i.id)).not.toContain('calendar')
-    expect(items.map((i) => i.id)).not.toContain('attendance')
+    expect(unpaid.map((i) => i.id)).not.toContain('calendar')
+    expect(unpaid.map((i) => i.id)).not.toContain('attendance')
+
+    const paid = resolveSidebarNavItems(
+      ['calendar', 'attendance', ...DEFAULT_SIDEBAR_NAV_ORDER],
+      null,
+      new Set(['calendar', 'attendance'] as const)
+    )
+    expect(paid.map((i) => i.id)).toContain('calendar')
+    expect(paid.map((i) => i.id)).toContain('attendance')
   })
 
   it('applies custom order and appends missing ids', () => {
-    const items = resolveSidebarNavItems(['billing', 'tickets', 'dashboard'])
-    expect(items[0].id).toBe('billing')
+    const items = resolveSidebarNavItems(['summary', 'tickets', 'dashboard'])
+    expect(items[0].id).toBe('summary')
     expect(items[1].id).toBe('tickets')
     expect(items[2].id).toBe('dashboard')
     expect(items.map((i) => i.id)).toHaveLength(DEFAULT_SIDEBAR_NAV_ORDER.length)
@@ -47,10 +55,10 @@ describe('resolveSidebarNavItems', () => {
 
 describe('splitMobileBottomNav', () => {
   it('keeps four primary slots and puts the rest in more', () => {
-    const items = resolveSidebarNavItems(['billing', ...DEFAULT_SIDEBAR_NAV_ORDER])
+    const items = resolveSidebarNavItems(['summary', ...DEFAULT_SIDEBAR_NAV_ORDER])
     const { primary, more } = splitMobileBottomNav(items)
     expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'projects', 'workers'])
-    expect(more.some((i) => i.id === 'billing')).toBe(true)
+    expect(more.some((i) => i.id === 'summary')).toBe(true)
     expect(more.some((i) => i.id === 'dashboard')).toBe(false)
   })
 })

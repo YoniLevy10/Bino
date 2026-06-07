@@ -56,12 +56,12 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
 
         const { data } = await supabase
           .from('clients')
-          .select('display_name, logo_url')
+          .select('name, logo_url')
           .eq('id', clientId)
           .maybeSingle()
         if (!cancelled && data) {
           const fresh: ClientBranding = {
-            displayName: (data as { display_name?: string | null }).display_name?.trim() || 'במקור',
+            displayName: (data as { name?: string | null }).name?.trim() || 'במקור',
             logoUrl: (data as { logo_url?: string | null }).logo_url?.trim() || null,
           }
           setBranding(fresh)
@@ -76,6 +76,11 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     void load()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (!isBootstrapped) return
+    document.title = `${branding.displayName} — ניהול תקלות ואחזקה`
+  }, [branding.displayName, isBootstrapped])
 
   return (
     <ClientBrandingContext.Provider value={{ ...branding, isBootstrapped }}>

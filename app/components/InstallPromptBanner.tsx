@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useClientBranding } from './ClientBrandingContext'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -10,14 +11,13 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPromptBanner() {
   const pathname = usePathname()
+  const { displayName, logoUrl } = useClientBranding()
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [updatePending, setUpdatePending] = useState(false)
 
   useEffect(() => {
-    // Don't show if already installed as PWA
     if (window.matchMedia('(display-mode: standalone)').matches) return
-    // Don't show if user dismissed previously (session)
     if (sessionStorage.getItem('pwa-install-dismissed')) return
 
     const handler = (e: Event) => {
@@ -52,6 +52,8 @@ export function InstallPromptBanner() {
   if (pathname?.startsWith('/worker')) return null
   if (!prompt || dismissed) return null
 
+  const iconSrc = logoUrl || '/apple-icon.png'
+
   return (
     <div
       style={{
@@ -74,9 +76,9 @@ export function InstallPromptBanner() {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/apple-icon.png" alt="במקור" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
+      <img src={iconSrc} alt={displayName} style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, objectFit: 'contain' }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>התקן את במקור</div>
+        <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>התקן את {displayName}</div>
         <div style={{ fontSize: '12px', color: '#64748b', marginTop: 2 }}>גישה מהירה מהמסך הראשי</div>
       </div>
       <button

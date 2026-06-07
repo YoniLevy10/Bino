@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { mergePremiumNavFeaturesForSync, fetchClientEnabledNavFeatures } from '@/lib/client-nav-features'
 import { z } from 'zod'
 
 function isAuthorized(req: Request): boolean {
@@ -113,8 +114,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .eq('client_id', clientId)
     .eq('enabled', true)
 
+  const enabledKeys = (enabled || []).map((r) => (r as { addon_key: string }).addon_key)
+
+  const currentNavFeatures = await fetchClientEnabledNavFeatures(admin, clientId)
+  const mergedNav = mergePremiumNavFeaturesForSync(currentNavFeatures, enabledKeys)
+  if (mergedNav !== null) {
+    const { error: navErr } = await admin
+      .from('clients')
+      .update({ enabled_nav_features: mergedNav })
+      .eq('id', clientId)
+    if (navErr) {
+      return NextResponse.json({ error: navErr.message }, { status: 500 })
+    }
+  }
+
   return NextResponse.json({
     client_id: clientId,
-    enabled_keys: (enabled || []).map((r) => (r as { addon_key: string }).addon_key),
+    enabled_keys: enabledKeys,
   })
 }

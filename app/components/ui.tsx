@@ -119,7 +119,6 @@ const MOBILE_BOTTOM_NAV_LABELS: Partial<Record<string, string>> = {
   '/qr': 'QR',
   '/attendance': 'שעון',
   '/settings/whatsapp-templates': 'תבניות',
-  '/billing': 'חיוב',
   '/pending-residents': 'ממתינים',
 }
 
@@ -375,26 +374,6 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
         </nav>
         <div style={sidebarStyles.settingsNav}>
           <Link
-            href="/addons"
-            style={{
-              ...sidebarStyles.navLink,
-              ...(pathname === '/addons' ? sidebarStyles.navLinkActive : {}),
-            }}
-          >
-            <NavIcon type="grid" active={pathname === '/addons'} />
-            <span style={sidebarStyles.navLabel}>תוספים</span>
-          </Link>
-          <Link
-            href="/billing"
-            style={{
-              ...sidebarStyles.navLink,
-              ...(pathname === '/billing' ? sidebarStyles.navLinkActive : {}),
-            }}
-          >
-            <NavIcon type="chart" active={pathname === '/billing'} />
-            <span style={sidebarStyles.navLabel}>חיוב ושימוש</span>
-          </Link>
-          <Link
             href="/settings"
             style={{
               ...sidebarStyles.navLink,
@@ -615,7 +594,7 @@ const BOTTOM_NAV_ROUTES = new Set([...TENANT_NAV_HREFS, '/settings', '/addons'])
 
 function showMobileBottomNavForPath(pathname: string): boolean {
   if (BOTTOM_NAV_ROUTES.has(pathname)) return true
-  if (pathname === '/settings' || pathname === '/billing' || pathname === '/addons') return true
+  if (pathname === '/settings' || pathname === '/addons') return true
   return false
 }
 
@@ -634,6 +613,7 @@ export function MobileBottomNav({
   const pathname = usePathname()
   const settingsActive = pathname === '/settings'
   const moreActive = mobileBottomMore.some((item) => isNavItemActive(pathname, item))
+  const hasMoreItems = mobileBottomMore.length > 0
 
   return (
     <>
@@ -696,24 +676,26 @@ export function MobileBottomNav({
               </Link>
             )
           })}
-          <button
-            type="button"
-            onClick={onMoreToggle}
-            aria-expanded={moreOpen}
-            aria-label="עוד"
-            style={{
-              ...bottomNavStyles.link,
-              border: 'none',
-              background: moreActive || moreOpen ? theme.colors.primaryMuted : 'transparent',
-              cursor: 'pointer',
-              ...(moreActive || moreOpen ? bottomNavStyles.linkActive : {}),
-            }}
-          >
-            <span style={bottomNavStyles.iconWrap}>
-              <NavIcon type="grid" active={moreActive || moreOpen} />
-            </span>
-            <span style={bottomNavStyles.label}>עוד</span>
-          </button>
+          {hasMoreItems ? (
+            <button
+              type="button"
+              onClick={onMoreToggle}
+              aria-expanded={moreOpen}
+              aria-label="עוד"
+              style={{
+                ...bottomNavStyles.link,
+                border: 'none',
+                background: moreActive || moreOpen ? theme.colors.primaryMuted : 'transparent',
+                cursor: 'pointer',
+                ...(moreActive || moreOpen ? bottomNavStyles.linkActive : {}),
+              }}
+            >
+              <span style={bottomNavStyles.iconWrap}>
+                <NavIcon type="grid" active={moreActive || moreOpen} />
+              </span>
+              <span style={bottomNavStyles.label}>עוד</span>
+            </button>
+          ) : null}
         </div>
         <div style={bottomNavStyles.settingsDivider} aria-hidden />
         <Link
@@ -873,6 +855,10 @@ function AppShellInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    setMoreNavOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1171,28 +1157,6 @@ export function MobileMenu({
               <NavIcon type="settings" active={pathname === '/settings'} />
               <span style={mobileMenuStyles.navLabel}>הגדרות</span>
             </Link>
-            <Link
-              href="/addons"
-              onClick={onClose}
-              style={{
-                ...mobileMenuStyles.navLink,
-                ...(pathname === '/addons' ? mobileMenuStyles.navLinkActive : {}),
-              }}
-            >
-              <NavIcon type="grid" active={pathname === '/addons'} />
-              <span style={mobileMenuStyles.navLabel}>תוספים</span>
-            </Link>
-            <Link
-              href="/billing"
-              onClick={onClose}
-              style={{
-                ...mobileMenuStyles.navLink,
-                ...(pathname === '/billing' ? mobileMenuStyles.navLinkActive : {}),
-              }}
-            >
-              <NavIcon type="chart" active={pathname === '/billing'} />
-              <span style={mobileMenuStyles.navLabel}>חיוב ושימוש</span>
-            </Link>
             <div style={{ paddingInline: '8px', paddingTop: '8px' }}>
               <NavSignOutButton onAfterSignOut={onClose} />
             </div>
@@ -1214,7 +1178,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
   panel: {
     position: 'fixed',
     top: 0,
-    insetInlineStart: 0,
+    insetInlineEnd: 0,
     bottom: 0,
     width: '280px',
     background: theme.colors.surface,
@@ -1222,7 +1186,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     padding: '24px 16px',
     display: 'flex',
     flexDirection: 'column',
-    animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+    animation: 'slideInFromInlineEnd 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
   },
   navColumn: {
     flex: 1,

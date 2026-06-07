@@ -229,3 +229,30 @@ textarea {
 .bamakor-skeleton-row .bamakor-skeleton-bar {
   animation: bamakor-skeleton-pulse 1.2s ease-in-out infinite;
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromInlineEnd {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}

@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const admin = getSupabaseAdmin()
 
   const [clientsRes, projectsRes, residentsRes, ticketsRes, adminsRes] = await Promise.all([
-    admin.from('clients').select('id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features'),
+    admin.from('clients').select('id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features, logo_url'),
     admin.from('projects').select('id, client_id, name, project_code'),
     admin.from('residents').select('id, client_id').is('deleted_at', null),
     admin.from('tickets').select('id, client_id, status').not('status', 'eq', 'CLOSED'),
@@ -40,6 +40,7 @@ export async function GET(req: Request) {
     whatsapp_phone_number_id: c.whatsapp_phone_number_id ?? null,
     manager_phone: c.manager_phone ?? null,
     sms_sender_name: c.sms_sender_name ?? null,
+    logo_url: (c as { logo_url?: string | null }).logo_url ?? null,
     admin_email: adminEmails.find((a) => a.client_id === c.id)?.email ?? null,
     enabled_nav_features: parseEnabledNavFeaturesFromDb(
       (c as { enabled_nav_features?: unknown }).enabled_nav_features

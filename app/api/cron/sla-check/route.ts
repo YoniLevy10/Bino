@@ -93,8 +93,8 @@ export async function GET(req: NextRequest) {
       if (!clientCreds) continue
 
       const managerPhone =
-        (project.manager_phone as string | null)?.trim() ||
         clientCreds.manager_phone?.trim() ||
+        (project.manager_phone as string | null)?.trim() ||
         null
 
       const slaH: number = typeof project.sla_hours === 'number' ? project.sla_hours : 24
@@ -114,10 +114,10 @@ export async function GET(req: NextRequest) {
         }
 
         const msg =
-          `SLA: ticket #${ticketNum} at ${projectName}\n` +
-          `Open ${Math.floor(openHours)} hours without action.\n` +
+          `SLA: תקלה #${ticketNum} ב${projectName}\n` +
+          `פתוחה ${Math.floor(openHours)} שעות ללא טיפול.\n` +
           `${(row.description as string | null)?.slice(0, 80) ?? '-'}\n` +
-          `Check the dashboard.`
+          `בדקו בלוח הבקרה.`
 
         const sent = await sendManagerSlaSms(
           managerPhone,
@@ -137,26 +137,8 @@ export async function GET(req: NextRequest) {
         stats.firstAlerts++
       }
 
-      // ── 2. ESCALATION — 24h after first alert ───────────────────────────────
+      // ── 2. ESCALATION — 24h after first alert (WA to resident only; no manager SMS) ──
       if (alerted && alertedAt && !escalatedAt && hoursAgo(alertedAt) >= 24) {
-        if (managerPhone) {
-          const mgrMsg =
-            `Escalation: ticket #${ticketNum} at ${projectName}\n` +
-            `Open ${Math.floor(openHours)} hours with no resolution.\n` +
-            `Immediate action required.`
-
-          const sent = await sendManagerSlaSms(
-            managerPhone,
-            mgrMsg,
-            clientCreds.sms_sender_name ?? null,
-            'Escalation-mgr',
-            logger,
-            row.id as string,
-            clientId
-          )
-          if (sent) stats.smsSent++
-        }
-
         // WhatsApp to resident (plain text, no emoji)
         if (reporterPhone && clientCreds.whatsapp_phone_number_id && clientCreds.whatsapp_access_token) {
           try {

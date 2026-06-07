@@ -61,9 +61,9 @@ function AddonCard({
         <div style={styles.cardBody}>
           <div style={styles.cardTopRow}>
             {entry.locked ? (
-              <span style={styles.lockedBadge}>בתשלום</span>
+              <span style={styles.lockedBadge}>נעול · בתשלום</span>
             ) : (
-              <span style={styles.activeBadge}>פעיל</span>
+              <span style={styles.activeBadge}>פתוח</span>
             )}
             <span style={styles.priceChip}>{formatAddonPriceIls(entry.price_ils_monthly)}/חודש</span>
           </div>
@@ -157,10 +157,6 @@ function AddonsPageInner() {
           </p>
           <p style={styles.heroContact}>
             להפעלה: <strong>הנהלת {BAMAKOR_BRAND}</strong>
-            {' · '}
-            <Link href="/billing" style={styles.billingLink}>
-              חיוב ושימוש במנוי
-            </Link>
           </p>
         </div>
 
@@ -264,11 +260,6 @@ const styles: Record<string, CSSProperties> = {
     margin: '10px 0 0',
     fontSize: '14px',
     color: theme.colors.textSecondary,
-  },
-  billingLink: {
-    color: theme.colors.primary,
-    fontWeight: 600,
-    textDecoration: 'none',
   },
   muted: {
     margin: 0,

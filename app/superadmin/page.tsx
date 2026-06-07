@@ -7,15 +7,15 @@ import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
 import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
 import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
 import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
+import { ClientLogoUpload } from './ClientLogoUpload'
 import { PlatformDocsPanel } from '@/app/components/superadmin/PlatformDocsPanel'
 import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
 import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import {
-  allNavFeatureOptions,
+  coreNavFeatureOptions,
   describeClientNavFeaturesMode,
   parseEnabledNavFeaturesFromDb,
-  PREMIUM_NAV_FEATURE_IDS,
   REQUIRED_NAV_FEATURE_IDS,
   SETUP_PACKAGE_NAV_FEATURE_IDS,
   type ClientNavFeaturesMode,
@@ -36,6 +36,7 @@ type ClientRow = {
   open_tickets_count: number
   projects: Project[]
   enabled_nav_features: SidebarNavItemId[] | null
+  logo_url?: string | null
 }
 
 type EditState = {
@@ -722,6 +723,18 @@ export default function SuperAdminPage() {
                                 </div>
                               )}
 
+                              <ClientLogoUpload
+                                clientId={c.id}
+                                clientName={c.name}
+                                currentLogoUrl={c.logo_url}
+                                secret={secret}
+                                onUploaded={(url) => {
+                                  setClients((prev) =>
+                                    prev.map((row) => (row.id === c.id ? { ...row, logo_url: url } : row))
+                                  )
+                                }}
+                              />
+
                               <div
                                 style={{
                                   marginBottom: theme.spacing.xl,
@@ -761,8 +774,8 @@ export default function SuperAdminPage() {
                                     lineHeight: 1.5,
                                   }}
                                 >
-                                  יומן, שעון עובדים ושאר תוספים בתשלום אינם מופיעים בסרגל — הגישה מדף תוספים.
-                                  סמנו כאן כדי לאפשר גישה לדפי התוסף (ובמסכי פרויקט ל-SMS פיילוט / מסמכים).
+                                  יומן, שעון עובדים ושאר תוספים בתשלום מנוהלים בלוח «תוספים בתשלום ללקוח» למטה —
+                                  לא כאן. סמנו כאן רק לשוניות ליבה (תקלות, פרויקטים, דיירים וכו&apos;).
                                 </p>
                                 <div
                                   style={{
@@ -827,8 +840,7 @@ export default function SuperAdminPage() {
                                     marginBottom: theme.spacing.lg,
                                   }}
                                 >
-                                  {allNavFeatureOptions().map(({ id, label }) => {
-                                    const isPremium = (PREMIUM_NAV_FEATURE_IDS as readonly string[]).includes(id)
+                                  {coreNavFeatureOptions().map(({ id, label }) => {
                                     const required = (REQUIRED_NAV_FEATURE_IDS as readonly string[]).includes(id)
                                     return (
                                       <label
@@ -848,12 +860,7 @@ export default function SuperAdminPage() {
                                           disabled={required}
                                           onChange={(e) => toggleFeatureDraft(id, e.target.checked)}
                                         />
-                                        <span>
-                                          {label}
-                                          {isPremium ? (
-                                            <span style={{ color: theme.colors.textMuted }}> (תוסף)</span>
-                                          ) : null}
-                                        </span>
+                                        <span>{label}</span>
                                       </label>
                                     )
                                   })}

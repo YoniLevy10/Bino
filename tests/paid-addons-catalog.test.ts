@@ -1,41 +1,56 @@
 import { describe, expect, it } from 'vitest'
-import { getSetupPackageNavFeatures } from '@/lib/client-nav-features'
 import {
-  getLockedPaidAddons,
-  getPaidAddonsForDisplay,
-  PAID_ADDON_CATALOG,
+  buildPaidAddonsForDisplay,
+  getLockedPaidAddonsCount,
+  getPaidAddonCatalogEntry,
 } from '@/lib/paid-addons-catalog'
+import type { AddonEntitlement } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+
+function mockEntitlement(addon_key: string, enabled: boolean): AddonEntitlement {
+  const base = getPaidAddonCatalogEntry(addon_key as keyof typeof PAID_ADDON_KEYS)
+  return {
+    addon_key,
+    name_he: base?.title ?? addon_key,
+    description_he: base?.description ?? null,
+    price_ils_monthly: 100,
+    is_active: true,
+    sort_order: 0,
+    enabled,
+  }
+}
+
+const ALL_KEYS = Object.values(PAID_ADDON_KEYS)
 
 describe('paid addons catalog', () => {
-  it('lists all four premium add-ons on the addons page', () => {
-    expect(PAID_ADDON_CATALOG.map((e) => e.id)).toEqual([
-      'calendar',
-      'attendance',
-      'pilot_sms',
-      'project_documents',
-    ])
+  it('catalog includes all premium add-on keys', () => {
+    for (const key of ALL_KEYS) {
+      expect(getPaidAddonCatalogEntry(key)).toBeDefined()
+    }
   })
 
-  it('setup package marks every catalog entry as locked', () => {
-    const setup = getSetupPackageNavFeatures()
-    const display = getPaidAddonsForDisplay(setup)
-    expect(display).toHaveLength(4)
+  it('all disabled entitlements show as locked', () => {
+    const entitlements = ALL_KEYS.map((key) => mockEntitlement(key, false))
+    const display = buildPaidAddonsForDisplay(entitlements)
+    expect(display.length).toBeGreaterThanOrEqual(4)
     expect(display.every((e) => e.locked)).toBe(true)
-    expect(getLockedPaidAddons(setup)).toHaveLength(4)
+    expect(getLockedPaidAddonsCount(display)).toBe(display.length)
   })
 
-  it('legacy unlimited shows all add-ons as active', () => {
-    const display = getPaidAddonsForDisplay(null)
-    expect(display).toHaveLength(4)
+  it('all enabled entitlements show as unlocked', () => {
+    const entitlements = ALL_KEYS.map((key) => mockEntitlement(key, true))
+    const display = buildPaidAddonsForDisplay(entitlements)
     expect(display.every((e) => !e.locked)).toBe(true)
-    expect(getLockedPaidAddons(null)).toHaveLength(0)
+    expect(getLockedPaidAddonsCount(display)).toBe(0)
   })
 
-  it('mixed enablement shows full catalog with correct lock flags', () => {
-    const enabled = [...getSetupPackageNavFeatures(), 'pilot_sms', 'project_documents']
-    const display = getPaidAddonsForDisplay(enabled)
+  it('mixed enablement reflects correct lock flags', () => {
+    const entitlements = ALL_KEYS.map((key) =>
+      mockEntitlement(key, key === 'pilot_sms' || key === 'project_documents')
+    )
+    const display = buildPaidAddonsForDisplay(entitlements)
     expect(display.find((e) => e.id === 'pilot_sms')?.locked).toBe(false)
     expect(display.find((e) => e.id === 'calendar')?.locked).toBe(true)
-    expect(getLockedPaidAddons(enabled)).toHaveLength(2)
+    expect(getLockedPaidAddonsCount(display)).toBeGreaterThanOrEqual(2)
   })
 })

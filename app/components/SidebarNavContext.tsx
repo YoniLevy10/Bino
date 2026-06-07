@@ -11,8 +11,14 @@ import {
 } from 'react'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { appendAddonsNavIfNeeded, getLockedAddonsCount } from '@/lib/addons-nav'
+import {
+  appendAddonsNavAlways,
+  enabledAddonKeysFromEntitlements,
+  getLockedAddonsCountFromEntitlements,
+  injectPaidAddonNavItems,
+} from '@/lib/addons-nav'
 import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
+import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
   parseSidebarNavOrderFromDb,
@@ -21,6 +27,7 @@ import {
   type SidebarNavItem,
   type SidebarNavItemId,
 } from '@/lib/sidebar-nav'
+import { usePaidAddons } from './PaidAddonsContext'
 
 type SidebarNavContextValue = {
   navItems: SidebarNavItem[]
@@ -34,7 +41,7 @@ type SidebarNavContextValue = {
   setLocalOrderIds: (ids: SidebarNavItemId[]) => void
 }
 
-const defaultItems = resolveSidebarNavItems(null, null)
+const defaultItems = appendAddonsNavAlways(resolveSidebarNavItems(null, null))
 const defaultSplit = splitMobileBottomNav(defaultItems)
 
 const SidebarNavContext = createContext<SidebarNavContextValue>({
@@ -78,7 +85,21 @@ function writeNavCache(clientId: string, payload: NavCachePayload) {
   } catch {}
 }
 
+function buildNavItems(
+  orderIds: SidebarNavItemId[],
+  enabledFeatures: SidebarNavItemId[] | null,
+  enabledAddonKeys: string[]
+): SidebarNavItem[] {
+  const paidNavIds = new Set(navIdsForEnabledAddonKeys(enabledAddonKeys))
+  const base = resolveSidebarNavItems(orderIds, enabledFeatures, paidNavIds)
+  const withPaid = injectPaidAddonNavItems(base, enabledAddonKeys)
+  return appendAddonsNavAlways(withPaid)
+}
+
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
+  const { addons } = usePaidAddons()
+  const enabledAddonKeys = useMemo(() => enabledAddonKeysFromEntitlements(addons), [addons])
+
   const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
   const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(null)
   const [isBootstrapped, setIsBootstrapped] = useState(false)
@@ -125,14 +146,15 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   }, [loadNav])
 
   const lockedAddonsCount = useMemo(
-    () => getLockedAddonsCount(enabledFeatures),
-    [enabledFeatures]
+    () => getLockedAddonsCountFromEntitlements(addons),
+    [addons]
   )
 
   const navItems = useMemo(
-    () => appendAddonsNavIfNeeded(resolveSidebarNavItems(orderIds, enabledFeatures), enabledFeatures),
-    [orderIds, enabledFeatures]
+    () => buildNavItems(orderIds, enabledFeatures, enabledAddonKeys),
+    [orderIds, enabledFeatures, enabledAddonKeys]
   )
+
   const { primary: mobileBottomPrimary, more: mobileBottomMore } = useMemo(
     () => splitMobileBottomNav(navItems),
     [navItems]

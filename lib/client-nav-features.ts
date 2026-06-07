@@ -1,3 +1,4 @@
+import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
@@ -126,9 +127,9 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
   '/summary': 'summary',
   '/calendar': 'calendar',
   '/attendance': 'attendance',
+  '/professionals': 'professionals',
   '/qr': 'qr',
   '/settings/whatsapp-templates': 'whatsapp_templates',
-  '/billing': 'billing',
   '/pending-residents': 'pending_residents',
 }
 
@@ -186,4 +187,23 @@ export function allNavFeatureOptions(): { id: SidebarNavItemId; label: string }[
     id,
     label: SIDEBAR_NAV_REGISTRY[id].label,
   }))
+}
+
+/** Core tabs only — premium add-ons are managed via client_paid_addons in superadmin. */
+export function coreNavFeatureOptions(): { id: SidebarNavItemId; label: string }[] {
+  const premium = new Set<string>(PREMIUM_NAV_FEATURE_IDS)
+  return allNavFeatureOptions().filter(({ id }) => !premium.has(id))
+}
+
+export function mergePremiumNavFeaturesForSync(
+  currentFeatures: SidebarNavItemId[] | null,
+  enabledAddonKeys: string[]
+): SidebarNavItemId[] | null {
+  if (currentFeatures === null) return null
+  const premiumSet = new Set<string>(PREMIUM_NAV_FEATURE_IDS)
+  const core = currentFeatures.filter((id) => !premiumSet.has(id))
+  for (const id of navIdsForEnabledAddonKeys(enabledAddonKeys)) {
+    if (!core.includes(id)) core.push(id)
+  }
+  return resolveEnabledNavFeaturesForClient(core) ?? core
 }
