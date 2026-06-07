@@ -21,11 +21,14 @@ import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
 import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
+  applySidebarNavLabels,
   parseSidebarNavOrderFromDb,
+  parseSidebarNavLabelsFromDb,
   resolveSidebarNavItems,
   splitMobileBottomNav,
   type SidebarNavItem,
   type SidebarNavItemId,
+  type SidebarNavLabels,
 } from '@/lib/sidebar-nav'
 import { usePaidAddons } from './PaidAddonsContext'
 
@@ -61,19 +64,26 @@ const NAV_CACHE_TTL = 5 * 60 * 1000
 type NavCachePayload = {
   orderIds: SidebarNavItemId[]
   enabledFeatures: SidebarNavItemId[] | null
+  navLabels: SidebarNavLabels
 }
 
 function readNavCache(clientId: string): NavCachePayload | null {
   try {
-    const raw = localStorage.getItem(`bamakor_nav_v4_${clientId}`)
+    const raw = localStorage.getItem(`bamakor_nav_v5_${clientId}`)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as { orderIds: unknown; enabledFeatures?: unknown; ts: number }
+    const parsed = JSON.parse(raw) as {
+      orderIds: unknown
+      enabledFeatures?: unknown
+      navLabels?: unknown
+      ts: number
+    }
     if (Date.now() - parsed.ts >= NAV_CACHE_TTL) return null
     const orderIds = parseSidebarNavOrderFromDb(parsed.orderIds)
     if (!orderIds) return null
     return {
       orderIds,
       enabledFeatures: parseEnabledNavFeaturesFromDb(parsed.enabledFeatures ?? null),
+      navLabels: parseSidebarNavLabelsFromDb(parsed.navLabels ?? null),
     }
   } catch {}
   return null
@@ -81,19 +91,20 @@ function readNavCache(clientId: string): NavCachePayload | null {
 
 function writeNavCache(clientId: string, payload: NavCachePayload) {
   try {
-    localStorage.setItem(`bamakor_nav_v4_${clientId}`, JSON.stringify({ ...payload, ts: Date.now() }))
+    localStorage.setItem(`bamakor_nav_v5_${clientId}`, JSON.stringify({ ...payload, ts: Date.now() }))
   } catch {}
 }
 
 function buildNavItems(
   orderIds: SidebarNavItemId[],
   enabledFeatures: SidebarNavItemId[] | null,
-  enabledAddonKeys: string[]
+  enabledAddonKeys: string[],
+  navLabels: SidebarNavLabels
 ): SidebarNavItem[] {
   const paidNavIds = new Set(navIdsForEnabledAddonKeys(enabledAddonKeys))
   const base = resolveSidebarNavItems(orderIds, enabledFeatures, paidNavIds)
   const withPaid = injectPaidAddonNavItems(base, enabledAddonKeys)
-  return appendAddonsNavAlways(withPaid)
+  return applySidebarNavLabels(appendAddonsNavAlways(withPaid), navLabels)
 }
 
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
@@ -102,22 +113,28 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
 
   const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
   const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(null)
+  const [navLabels, setNavLabels] = useState<SidebarNavLabels>({})
   const [isBootstrapped, setIsBootstrapped] = useState(false)
 
-  const applyNavState = useCallback((ids: SidebarNavItemId[], enabled: SidebarNavItemId[] | null) => {
-    setOrderIds(ids)
-    setEnabledFeatures(enabled)
-  }, [])
+  const applyNavState = useCallback(
+    (ids: SidebarNavItemId[], enabled: SidebarNavItemId[] | null, labels: SidebarNavLabels) => {
+      setOrderIds(ids)
+      setEnabledFeatures(enabled)
+      setNavLabels(labels)
+    },
+    []
+  )
 
   const loadNav = useCallback(async () => {
     try {
       const clientId = await resolveBamakorClientIdForBrowser()
       const cached = readNavCache(clientId)
-      if (cached) applyNavState(cached.orderIds, cached.enabledFeatures)
+      if (cached) applyNavState(cached.orderIds, cached.enabledFeatures, cached.navLabels)
 
       const res = await fetchWithTimeout('/api/client/nav-config')
       const json = (await res.json().catch(() => ({}))) as {
         sidebar_nav_order?: unknown
+        sidebar_nav_labels?: unknown
         enabled_nav_features?: unknown
         error?: string
       }
@@ -127,15 +144,16 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
 
       const parsedOrder = parseSidebarNavOrderFromDb(json.sidebar_nav_order)
       const parsedEnabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
+      const parsedLabels = parseSidebarNavLabelsFromDb(json.sidebar_nav_labels)
       const resolved = resolveSidebarNavItems(parsedOrder, parsedEnabled)
       const nextIds = resolved
         .map((item) => item.id)
         .filter((id): id is SidebarNavItemId => id !== 'addons')
-      applyNavState(nextIds, parsedEnabled)
-      writeNavCache(clientId, { orderIds: nextIds, enabledFeatures: parsedEnabled })
+      applyNavState(nextIds, parsedEnabled, parsedLabels)
+      writeNavCache(clientId, { orderIds: nextIds, enabledFeatures: parsedEnabled, navLabels: parsedLabels })
     } catch (e) {
       console.error('[SidebarNav] load failed:', e instanceof Error ? e.message : e)
-      applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null)
+      applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {})
     } finally {
       setIsBootstrapped(true)
     }
@@ -151,8 +169,8 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   )
 
   const navItems = useMemo(
-    () => buildNavItems(orderIds, enabledFeatures, enabledAddonKeys),
-    [orderIds, enabledFeatures, enabledAddonKeys]
+    () => buildNavItems(orderIds, enabledFeatures, enabledAddonKeys, navLabels),
+    [orderIds, enabledFeatures, enabledAddonKeys, navLabels]
   )
 
   const { primary: mobileBottomPrimary, more: mobileBottomMore } = useMemo(
@@ -162,9 +180,9 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
 
   const setLocalOrderIds = useCallback(
     (ids: SidebarNavItemId[]) => {
-      applyNavState(ids, enabledFeatures)
+      applyNavState(ids, enabledFeatures, navLabels)
     },
-    [applyNavState, enabledFeatures]
+    [applyNavState, enabledFeatures, navLabels]
   )
 
   const value = useMemo(

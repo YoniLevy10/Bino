@@ -38,8 +38,13 @@ export function formatAddonPriceIls(price: number): string {
   return `₪${price.toLocaleString('he-IL')}`
 }
 
+/** One-time activation fee (DB column `price_ils_monthly` kept for compatibility). */
+export function formatAddonPriceDisplay(price: number): string {
+  return `${formatAddonPriceIls(price)} חד פעמי`
+}
+
 export function addonRequiredMessageHe(nameHe: string, priceIls: number): string {
-  return `התוסף "${nameHe}" אינו פעיל בחשבון שלכם. מחיר: ${formatAddonPriceIls(priceIls)}/חודש — פנו לבמקור להפעלה.`
+  return `התוסף "${nameHe}" אינו פעיל בחשבון שלכם. מחיר: ${formatAddonPriceDisplay(priceIls)} — פנו לבמקור להפעלה.`
 }
 
 export async function listActiveAddonsCatalog(
@@ -125,12 +130,12 @@ export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
 
 const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
   PAID_ADDON_KEYS.calendar,
-  PAID_ADDON_KEYS.professionals,
   PAID_ADDON_KEYS.worker_stamp,
-  PAID_ADDON_KEYS.pilot_sms,
-  PAID_ADDON_KEYS.project_documents,
+  PAID_ADDON_KEYS.professionals,
   PAID_ADDON_KEYS.whatsapp_inbox,
+  PAID_ADDON_KEYS.pilot_sms,
   PAID_ADDON_KEYS.campaigns,
+  PAID_ADDON_KEYS.project_documents,
 ]
 
 export function navIdsForEnabledAddonKeys(keys: Iterable<string>): SidebarNavItemId[] {

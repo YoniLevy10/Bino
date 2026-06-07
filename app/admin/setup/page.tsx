@@ -32,6 +32,8 @@ type SetupResult = {
   admin_email: string
   invite_sent: boolean
   workers_created: number
+  logo_url?: string | null
+  logo_upload_error?: string | null
   projects: Array<{
     id: string
     name: string
@@ -355,11 +357,21 @@ export default function AdminSetupPage() {
           const form = new FormData()
           form.append('file', logoFile)
           form.append('client_id', setupResult.client_id)
-          await fetch('/api/admin/upload-client-logo', {
-            method: 'POST',
-            headers: { 'x-admin-secret': secret },
-            body: form,
-          }).catch(() => {})
+          try {
+            const logoRes = await fetch('/api/admin/upload-client-logo', {
+              method: 'POST',
+              headers: { 'x-admin-secret': secret },
+              body: form,
+            })
+            const logoJson = (await logoRes.json().catch(() => ({}))) as { url?: string; error?: string }
+            if (!logoRes.ok || !logoJson.url) {
+              setupResult.logo_upload_error = logoJson.error || `שגיאה ${logoRes.status}`
+            } else {
+              setupResult.logo_url = logoJson.url
+            }
+          } catch (e) {
+            setupResult.logo_upload_error = e instanceof Error ? e.message : 'העלאת לוגו נכשלה'
+          }
         }
         setResult(setupResult)
       }
@@ -482,6 +494,37 @@ export default function AdminSetupPage() {
                 </p>
               </div>
             </div>
+
+            {result.logo_url ? (
+              <div
+                style={{
+                  marginBottom: theme.spacing.xl,
+                  padding: theme.spacing.lg,
+                  borderRadius: theme.radius.md,
+                  background: theme.colors.successMuted,
+                  fontSize: theme.typography.fontSize.sm,
+                  color: theme.colors.textPrimary,
+                }}
+              >
+                לוגו הועלה בהצלחה.
+              </div>
+            ) : null}
+            {result.logo_upload_error ? (
+              <div
+                style={{
+                  marginBottom: theme.spacing.xl,
+                  padding: theme.spacing.lg,
+                  borderRadius: theme.radius.md,
+                  background: theme.colors.warningMuted,
+                  fontSize: theme.typography.fontSize.sm,
+                  color: theme.colors.textPrimary,
+                }}
+              >
+                הלקוח נוצר, אך העלאת הלוגו נכשלה: {result.logo_upload_error}
+                {' — '}
+                ניתן להעלות מ-Super Admin אחר כך.
+              </div>
+            ) : null}
 
             {/* IDs */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>

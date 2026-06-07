@@ -68,7 +68,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   workers: { id: 'workers', href: '/workers', label: 'עובדים', icon: 'users' },
   summary: { id: 'summary', href: '/summary', label: 'סיכום', icon: 'chart' },
   calendar: { id: 'calendar', href: '/calendar', label: 'יומן משרד', icon: 'grid' },
-  attendance: { id: 'attendance', href: '/attendance', label: 'שעון עובדים', icon: 'clock' },
+  attendance: { id: 'attendance', href: '/attendance', label: 'חתמת עובדים', icon: 'clock' },
   professionals: { id: 'professionals', href: '/professionals', label: 'אנשי מקצוע', icon: 'users' },
   qr: { id: 'qr', href: '/qr', label: 'קודי QR', icon: 'qr' },
   whatsapp_templates: {
@@ -116,11 +116,41 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'projects',
   'residents',
   'workers',
-  'summary',
   'qr',
   'whatsapp_templates',
   'pending_residents',
+  'summary',
 ]
+
+export type SidebarNavLabels = Partial<Record<SidebarNavItemId, string>>
+
+export const sidebarNavLabelsSchema = z.record(
+  z.enum(SIDEBAR_NAV_ITEM_IDS),
+  z.string().min(1).max(80)
+)
+
+export function parseSidebarNavLabelsFromDb(value: unknown): SidebarNavLabels {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: SidebarNavLabels = {}
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    if (!isSidebarNavItemId(key) || typeof val !== 'string') continue
+    const trimmed = val.trim()
+    if (trimmed) out[key] = trimmed
+  }
+  return out
+}
+
+export function applySidebarNavLabels(
+  items: SidebarNavItem[],
+  labels: SidebarNavLabels | null | undefined
+): SidebarNavItem[] {
+  if (!labels || Object.keys(labels).length === 0) return items
+  return items.map((item) => {
+    if (item.id === 'addons') return item
+    const custom = labels[item.id as SidebarNavItemId]
+    return custom ? { ...item, label: custom } : item
+  })
+}
 
 const navIdSet = new Set<string>(SIDEBAR_NAV_ITEM_IDS)
 const internalNavIdSet = new Set<string>(INTERNAL_SIDEBAR_NAV_ITEM_IDS)
@@ -155,7 +185,8 @@ export function parseSidebarNavOrderFromDb(value: unknown): SidebarNavItemId[] |
 export function resolveSidebarNavItems(
   customOrder: SidebarNavItemId[] | null | undefined,
   enabledFeatures?: SidebarNavItemId[] | null,
-  paidNavIds?: ReadonlySet<SidebarNavItemId>
+  paidNavIds?: ReadonlySet<SidebarNavItemId>,
+  customLabels?: SidebarNavLabels | null
 ): SidebarNavItem[] {
   const seen = new Set<SidebarNavItemId>()
   const result: SidebarNavItem[] = []
@@ -186,7 +217,7 @@ export function resolveSidebarNavItems(
     }
   }
 
-  return result
+  return applySidebarNavLabels(result, customLabels)
 }
 
 export function resolveSidebarNavOrderIds(customOrder: SidebarNavItemId[] | null | undefined): SidebarNavItemId[] {

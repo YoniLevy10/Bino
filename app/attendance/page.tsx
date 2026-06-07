@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
@@ -81,6 +82,41 @@ export default function AttendancePage() {
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [onboarding, setOnboarding] = useState<{
+    scan_url: string
+    onboarding_message_he: string
+    mode: 'nfc_tag' | 'office_station'
+    tag_label: string | null
+  } | null>(null)
+  const [onboardingLoading, setOnboardingLoading] = useState(true)
+  const qrRef = useRef<HTMLDivElement>(null)
+
+  const loadOnboarding = useCallback(async () => {
+    setOnboardingLoading(true)
+    try {
+      const res = await fetchWithTimeout('/api/attendance/onboarding-qr')
+      const body = (await res.json().catch(() => ({}))) as {
+        scan_url?: string
+        onboarding_message_he?: string
+        mode?: 'nfc_tag' | 'office_station'
+        tag_label?: string | null
+        error?: string
+      }
+      if (!res.ok) throw new Error(body.error || 'טעינת QR נכשלה')
+      if (body.scan_url && body.onboarding_message_he && body.mode) {
+        setOnboarding({
+          scan_url: body.scan_url,
+          onboarding_message_he: body.onboarding_message_he,
+          mode: body.mode,
+          tag_label: body.tag_label ?? null,
+        })
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'טעינת QR נכשלה')
+    } finally {
+      setOnboardingLoading(false)
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -119,7 +155,38 @@ export default function AttendancePage() {
 
   useEffect(() => {
     void load()
-  }, [load])
+    void loadOnboarding()
+  }, [load, loadOnboarding])
+
+  async function copyOnboardingMessage() {
+    if (!onboarding?.onboarding_message_he) return
+    try {
+      await navigator.clipboard.writeText(onboarding.onboarding_message_he)
+      toast.success('הודעה הועתקה')
+    } catch {
+      toast.error('העתקה נכשלה')
+    }
+  }
+
+  async function copyScanUrl() {
+    if (!onboarding?.scan_url) return
+    try {
+      await navigator.clipboard.writeText(onboarding.scan_url)
+      toast.success('קישור הועתק')
+    } catch {
+      toast.error('העתקה נכשלה')
+    }
+  }
+
+  function downloadQrPng() {
+    const canvas = qrRef.current?.querySelector('canvas')
+    if (!canvas) return
+    const url = canvas.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'bamakor-attendance-qr.png'
+    a.click()
+  }
 
   async function approveEvent(id: string) {
     setBusyId(id)
@@ -144,7 +211,7 @@ export default function AttendancePage() {
     <>
       {!isMobile && (
         <PageHeader
-          title="שעון עובדים"
+          title="חתמת עובדים"
           subtitle="דוח נוכחות — סריקות QR/NFC, משמרות וסנכרון Offline"
         />
       )}
@@ -167,6 +234,42 @@ export default function AttendancePage() {
           <div style={styles.kpiLabel}>ממתינים לבדיקה</div>
         </Card>
       </div>
+
+      <Card style={{ marginBottom: 16 }}>
+        <h3 style={styles.sectionTitle}>QR לתחילת תיקוף שעות (עד הגעת NFC)</h3>
+        <p style={styles.hint}>
+          הדפיסו את קוד ה-QR והעבירו לעובדים — עד שמדבקות NFC יגיעו מהמערכת. שלחו גם את הקישור האישי
+          ממסך העובדים (פעם אחת, עם אינטרנט).
+        </p>
+        {onboardingLoading ? (
+          <p style={styles.hint}>טוען QR...</p>
+        ) : onboarding ? (
+          <div style={styles.qrOnboardRow}>
+            <div ref={qrRef} style={styles.qrCanvasWrap}>
+              <QRCodeCanvas value={onboarding.scan_url} size={168} includeMargin />
+            </div>
+            <div style={styles.qrOnboardMeta}>
+              <p style={styles.scanUrl}>{onboarding.scan_url}</p>
+              {onboarding.tag_label ? (
+                <p style={styles.hint}>תג: {onboarding.tag_label}</p>
+              ) : onboarding.mode === 'office_station' ? (
+                <p style={styles.hint}>תחנת משרד — עד שיונפקו תגי שטח</p>
+              ) : null}
+              <div style={styles.qrBtnRow}>
+                <Button variant="secondary" size="sm" onClick={() => void copyScanUrl()}>
+                  העתק קישור
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => void copyOnboardingMessage()}>
+                  העתק הודעה לעובדים
+                </Button>
+                <Button variant="secondary" size="sm" onClick={downloadQrPng}>
+                  הורד QR
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Card>
 
       <Card style={{ marginBottom: 16 }}>
         <h3 style={styles.sectionTitle}>תגי QR / NFC</h3>
@@ -285,7 +388,7 @@ export default function AttendancePage() {
       <PaidAddonGate addonKey={PAID_ADDON_KEYS.worker_stamp}>
         {isMobile && (
           <MobileHeader
-            title="שעון עובדים"
+            title="חתמת עובדים"
             subtitle="נוכחות ומשמרות"
             onMenuClick={() => setMenuOpen(true)}
           />
@@ -346,7 +449,21 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 120,
     flex: 1,
   },
-  scanUrl: { fontSize: 12, wordBreak: 'break-all', marginBottom: 8 },
+  scanUrl: { fontSize: 12, wordBreak: 'break-all', marginBottom: 8, direction: 'ltr', textAlign: 'left' },
+  qrOnboardRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 20,
+    alignItems: 'flex-start',
+  },
+  qrCanvasWrap: {
+    padding: 12,
+    borderRadius: 12,
+    border: `1px solid ${theme.colors.border}`,
+    background: '#fff',
+  },
+  qrOnboardMeta: { flex: 1, minWidth: 200 },
+  qrBtnRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   tagList: { margin: 0, paddingRight: 20, fontSize: 13 },
   tagItem: { marginBottom: 4 },
   filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 },

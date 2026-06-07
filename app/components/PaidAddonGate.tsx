@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { ReactNode, CSSProperties } from 'react'
 import { Card, Button, theme } from './ui'
 import { usePaidAddons } from './PaidAddonsContext'
-import { formatAddonPriceIls, type PaidAddonKey } from '@/lib/paid-addons'
+import { formatAddonPriceDisplay, type PaidAddonKey } from '@/lib/paid-addons'
 
 type Props = {
   addonKey: PaidAddonKey
@@ -44,7 +44,7 @@ export function PaidAddonGate({ addonKey, children }: Props) {
         <h2 style={styles.title}>תוסף בתשלום — {name}</h2>
         {desc ? <p style={styles.text}>{desc}</p> : null}
         <p style={styles.price}>
-          מחיר: <strong>{formatAddonPriceIls(price)}</strong> לחודש
+          מחיר: <strong>{formatAddonPriceDisplay(price)}</strong>
         </p>
         <p style={styles.hint}>
           להפעלת התוסף פנו לצוות במקור. לאחר ההפעלה תוכלו לגשת לפיצ&apos;ר מהדף תוספים בתשלום.

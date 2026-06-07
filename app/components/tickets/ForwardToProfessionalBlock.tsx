@@ -6,7 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
 import { usePaidAddons } from '../PaidAddonsContext'
-import { PAID_ADDON_KEYS, formatAddonPriceIls } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS, formatAddonPriceDisplay } from '@/lib/paid-addons'
 import Link from 'next/link'
 
 export type ProfessionalOption = {
@@ -43,7 +43,7 @@ export function ForwardToProfessionalBlock({ ticketId, professionals, onForwarde
         <div style={styles.label}>העברה לאיש מקצוע</div>
         <p style={styles.hint}>
           תוסף בתשלום — {addon?.name_he || 'אנשי מקצוע'}{' '}
-          ({formatAddonPriceIls(addon?.price_ils_monthly ?? 0)}/חודש).{' '}
+          ({formatAddonPriceDisplay(addon?.price_ils_monthly ?? 0)}).{' '}
           <Link href="/addons" style={styles.link}>
             לפרטים והפעלה
           </Link>

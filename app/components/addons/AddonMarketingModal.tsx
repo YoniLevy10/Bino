@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { BAMAKOR_BRAND } from '@/lib/addons-nav'
-import { formatAddonPriceIls } from '@/lib/paid-addons'
+import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 import type { PaidAddonDisplayEntry } from '@/lib/paid-addons-catalog'
 import { Button, theme } from '../ui'
 
@@ -51,7 +51,7 @@ export function AddonMarketingModal({
               {entry.title}
             </h2>
             <p style={styles.price}>
-              {formatAddonPriceIls(entry.price_ils_monthly)} / חודש
+              {formatAddonPriceDisplay(entry.price_ils_monthly)}
             </p>
           </div>
           <button type="button" style={styles.closeBtn} onClick={onClose} aria-label="סגירה">

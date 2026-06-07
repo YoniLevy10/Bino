@@ -28,12 +28,16 @@ import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { useSidebarNav } from '../components/SidebarNavContext'
+import { usePaidAddons } from '../components/PaidAddonsContext'
+import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
   parseSidebarNavOrderFromDb,
+  parseSidebarNavLabelsFromDb,
   resolveSidebarNavOrderIds,
   SIDEBAR_NAV_REGISTRY,
   type SidebarNavItemId,
+  type SidebarNavLabels,
 } from '@/lib/sidebar-nav'
 
 type ClientRow = {
@@ -114,8 +118,20 @@ function SettingsPageInner() {
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   const [navOrderDraft, setNavOrderDraft] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
+  const [navLabelsDraft, setNavLabelsDraft] = useState<Record<string, string>>({})
   const [savingNav, setSavingNav] = useState(false)
   const { setLocalOrderIds, refreshNav } = useSidebarNav()
+  const { addons } = usePaidAddons()
+
+  const enabledAddonNavIds = useMemo(
+    () => navIdsForEnabledAddonKeys(addons.filter((a) => a.enabled).map((a) => a.addon_key)),
+    [addons]
+  )
+
+  const addonOnlyNavIds = useMemo(
+    () => enabledAddonNavIds.filter((id) => !navOrderDraft.includes(id)),
+    [enabledAddonNavIds, navOrderDraft]
+  )
 
   const [origin, setOrigin] = useState('')
 
@@ -145,7 +161,7 @@ function SettingsPageInner() {
         const { data: row, error: cErr } = await supabase
           .from('clients')
           .select(
-            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name, sidebar_nav_order'
+            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name, sidebar_nav_order, sidebar_nav_labels'
           )
           .eq('id', resolvedClientId)
           .maybeSingle()
@@ -173,6 +189,15 @@ function SettingsPageInner() {
         setNavOrderDraft(
           parsedOrder ? resolveSidebarNavOrderIds(parsedOrder) : [...DEFAULT_SIDEBAR_NAV_ORDER]
         )
+
+        const parsedLabels = parseSidebarNavLabelsFromDb(
+          (row as { sidebar_nav_labels?: unknown }).sidebar_nav_labels
+        )
+        const labelDraft: Record<string, string> = {}
+        for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
+          labelDraft[id] = parsedLabels[id] ?? SIDEBAR_NAV_REGISTRY[id].label
+        }
+        setNavLabelsDraft(labelDraft)
 
         return true
       },
@@ -224,15 +249,29 @@ function SettingsPageInner() {
     })
   }
 
+  function buildNavLabelsPayload(): SidebarNavLabels {
+    const out: SidebarNavLabels = {}
+    for (const [id, label] of Object.entries(navLabelsDraft)) {
+      if (!(id in SIDEBAR_NAV_REGISTRY)) continue
+      const trimmed = label.trim()
+      const defaultLabel = SIDEBAR_NAV_REGISTRY[id as SidebarNavItemId].label
+      if (trimmed && trimmed !== defaultLabel) {
+        out[id as SidebarNavItemId] = trimmed
+      }
+    }
+    return out
+  }
+
   async function saveNavigation() {
     if (!clientId) return
     setSavingNav(true)
     await asyncHandler(
       async () => {
+        const sidebar_nav_labels = buildNavLabelsPayload()
         const res = await fetchWithTimeout('/api/settings/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sidebar_nav_order: navOrderDraft }),
+          body: JSON.stringify({ sidebar_nav_order: navOrderDraft, sidebar_nav_labels }),
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
@@ -725,7 +764,7 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    סדר הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות הראשונות בנייד נשארות:
+                    סדר ושמות הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות הראשונות בנייד נשארות:
                     לוח בקרה, תקלות, פרויקטים ועובדים — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
                   </p>
                   <ul style={styles.navOrderList}>
@@ -734,7 +773,15 @@ function SettingsPageInner() {
                       return (
                         <li key={id} style={styles.navOrderRow}>
                           <span style={styles.navOrderIndex}>{index + 1}</span>
-                          <span style={styles.navOrderLabel}>{item.label}</span>
+                          <input
+                            type="text"
+                            value={navLabelsDraft[id] ?? item.label}
+                            onChange={(e) =>
+                              setNavLabelsDraft((prev) => ({ ...prev, [id]: e.target.value }))
+                            }
+                            style={styles.navLabelInput}
+                            aria-label={`שם תצוגה: ${item.label}`}
+                          />
                           <div style={styles.navOrderActions}>
                             <button
                               type="button"
@@ -759,11 +806,44 @@ function SettingsPageInner() {
                       )
                     })}
                   </ul>
+                  {addonOnlyNavIds.length > 0 ? (
+                    <div style={{ marginTop: 16 }}>
+                      <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: theme.colors.textPrimary }}>
+                        תוספים פעילים (שם בתפריט)
+                      </p>
+                      <ul style={styles.navOrderList}>
+                        {addonOnlyNavIds.map((id) => {
+                          const item = SIDEBAR_NAV_REGISTRY[id]
+                          return (
+                            <li key={id} style={styles.navOrderRow}>
+                              <span style={styles.navOrderIndex}>+</span>
+                              <input
+                                type="text"
+                                value={navLabelsDraft[id] ?? item.label}
+                                onChange={(e) =>
+                                  setNavLabelsDraft((prev) => ({ ...prev, [id]: e.target.value }))
+                                }
+                                style={styles.navLabelInput}
+                                aria-label={`שם תצוגה: ${item.label}`}
+                              />
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  ) : null}
                   <div style={styles.drawerActions}>
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => setNavOrderDraft([...DEFAULT_SIDEBAR_NAV_ORDER])}
+                      onClick={() => {
+                        setNavOrderDraft([...DEFAULT_SIDEBAR_NAV_ORDER])
+                        const labelDraft: Record<string, string> = {}
+                        for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
+                          labelDraft[id] = SIDEBAR_NAV_REGISTRY[id].label
+                        }
+                        setNavLabelsDraft(labelDraft)
+                      }}
                     >
                       איפוס לברירת מחדל
                     </Button>
@@ -774,7 +854,7 @@ function SettingsPageInner() {
                       loading={savingNav}
                       loadingText="שומר..."
                     >
-                      שמור סדר תפריט
+                      שמור תפריט
                     </LoadingButton>
                   </div>
                 </div>
@@ -1014,6 +1094,17 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '15px',
     fontWeight: 500,
     color: theme.colors.textPrimary,
+  },
+  navLabelInput: {
+    flex: 1,
+    padding: '10px 12px',
+    fontSize: '14px',
+    fontWeight: 600,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.md,
+    background: theme.colors.surface,
+    color: theme.colors.textPrimary,
+    minWidth: 0,
   },
   navOrderActions: {
     display: 'flex',

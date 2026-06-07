@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonMarketingModal } from '@/app/components/addons/AddonMarketingModal'
 import { BAMAKOR_BRAND } from '@/lib/addons-nav'
-import { formatAddonPriceIls } from '@/lib/paid-addons'
+import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 import {
   buildPaidAddonsForDisplay,
   type PaidAddonDisplayEntry,
@@ -65,7 +65,7 @@ function AddonCard({
             ) : (
               <span style={styles.activeBadge}>פתוח</span>
             )}
-            <span style={styles.priceChip}>{formatAddonPriceIls(entry.price_ils_monthly)}/חודש</span>
+            <span style={styles.priceChip}>{formatAddonPriceDisplay(entry.price_ils_monthly)}</span>
           </div>
           <h3 style={styles.cardTitle}>{entry.title}</h3>
           <p style={styles.cardTagline}>{entry.tagline}</p>

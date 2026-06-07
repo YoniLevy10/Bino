@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
-import { formatAddonPriceIls } from '@/lib/paid-addons'
+import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 
 export type CatalogRow = {
   addon_key: string
@@ -110,7 +110,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
         <div>
           <h2 style={titleStyle}>תוספים בתשלום — מחירון</h2>
-          <p style={subStyle}>עדכון מחיר חודשי (₪) לכל תוסף. לקוחות רואים מחירים בדף חיוב.</p>
+          <p style={subStyle}>עדכון מחיר חד פעמי (₪) לכל תוסף. לקוחות רואים מחירים בדף התוספים.</p>
         </div>
         <LoadingButton onClick={() => void save()} loading={saving} loadingText="שומר..." size="sm">
           שמור מחירון
@@ -147,7 +147,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>מחיר / חודש (₪)</label>
+                    <label style={labelStyle}>מחיר חד פעמי (₪)</label>
                     <input
                       type="number"
                       min={0}
@@ -177,7 +177,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
                   />
                 </div>
                 <div style={{ marginTop: 8, fontSize: 12, color: theme.colors.textMuted }}>
-                  תצוגה ללקוח: {formatAddonPriceIls(parseInt(d?.price || '0', 10) || row.price_ils_monthly)}/חודש
+                  תצוגה ללקוח: {formatAddonPriceDisplay(parseInt(d?.price || '0', 10) || row.price_ils_monthly)}
                 </div>
               </div>
             )
@@ -283,7 +283,7 @@ export function ClientPaidAddonsPanel({
               <input type="checkbox" checked={r.enabled} onChange={() => toggle(r.addon_key)} />
               <span style={{ flex: 1, fontSize: 14 }}>{r.name_he}</span>
               <span style={{ fontSize: 12, color: theme.colors.textMuted }}>
-                {formatAddonPriceIls(r.price_ils_monthly)}/חודש
+                {formatAddonPriceDisplay(r.price_ils_monthly)}
               </span>
             </label>
           ))}

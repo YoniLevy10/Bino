@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { sidebarNavOrderSchema } from '@/lib/sidebar-nav'
+import { sidebarNavOrderSchema, sidebarNavLabelsSchema } from '@/lib/sidebar-nav'
 import { TICKET_STATUSES } from '@/lib/ticket-status'
 
 /** שיוך תקלה לעובד (לוח בקרה). */
@@ -115,6 +115,7 @@ export const settingsUpdateBodySchema = z
     whatsapp_phone_number_id: z.string().max(80).nullable().optional(),
     whatsapp_access_token: z.string().max(500).nullable().optional(),
     sidebar_nav_order: sidebarNavOrderSchema.optional(),
+    sidebar_nav_labels: sidebarNavLabelsSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'אין שדות לעדכון' })
 

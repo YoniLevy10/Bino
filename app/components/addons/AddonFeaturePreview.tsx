@@ -108,6 +108,45 @@ function DocumentsMock() {
   )
 }
 
+function WhatsappInboxMock() {
+  const chats = [
+    { name: 'דירה 12 · בניין א׳', preview: 'יש רטיבות במקלחת...' },
+    { name: 'ועד בית', preview: 'מתי טכנאי מגיע?' },
+  ]
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>תיבת WhatsApp</span>
+        <span style={styles.mockPill}>2 פתוחות</span>
+      </div>
+      <ul style={styles.proList}>
+        {chats.map((c) => (
+          <li key={c.name} style={{ ...styles.proRow, flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+            <span style={styles.proName}>{c.name}</span>
+            <span style={{ fontSize: 9, color: theme.colors.textMuted }}>{c.preview}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function CampaignsMock() {
+  return (
+    <div style={styles.mockFrame}>
+      <div style={styles.mockHeader}>
+        <span style={styles.mockTitle}>קמפיינים SMS</span>
+        <span style={styles.mockPill}>84 נמענים</span>
+      </div>
+      <div style={styles.smsBubble}>
+        <span style={styles.smsLabel}>הודעה לבניין</span>
+        <span style={styles.smsText}>עבודות תחזוקה ביום ג׳ 09:00–14:00. מעלית B לא פעילה.</span>
+      </div>
+      <p style={styles.mockFooter}>שליחה לכל דיירי הפרויקט</p>
+    </div>
+  )
+}
+
 function WorkerStampMock() {
   return (
     <div style={styles.mockFrame}>
@@ -149,6 +188,10 @@ function renderMock(addonId: PaidAddonId) {
       return <PilotSmsMock />
     case PAID_ADDON_KEYS.project_documents:
       return <DocumentsMock />
+    case PAID_ADDON_KEYS.whatsapp_inbox:
+      return <WhatsappInboxMock />
+    case PAID_ADDON_KEYS.campaigns:
+      return <CampaignsMock />
     default:
       return <CalendarMock />
   }

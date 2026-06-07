@@ -3,8 +3,12 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-
-const BUCKET = 'client-logos'
+import {
+  CLIENT_LOGOS_BUCKET,
+  clientLogoExtension,
+  resolveClientLogoMime,
+  validateClientLogoFile,
+} from '@/lib/client-logo-upload'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -23,41 +27,48 @@ export async function POST(req: Request) {
 
     const formData = await req.formData()
     const file = formData.get('file')
+    const fileName = file instanceof File ? file.name : null
 
     if (!file || !(file instanceof Blob)) {
       return NextResponse.json({ error: 'חסר קובץ', requestId }, { status: 400 })
     }
 
-    const mime = (file as Blob).type || 'application/octet-stream'
-    const size = (file as Blob).size || 0
-    const MAX = 2 * 1024 * 1024 // 2MB
-    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp'])
-    if (!allowed.has(mime)) {
-      return NextResponse.json({ error: 'סוג קובץ לא נתמך (PNG/JPEG/WEBP בלבד)', requestId }, { status: 400 })
-    }
-    if (size <= 0 || size > MAX) {
-      return NextResponse.json({ error: 'הקובץ גדול מדי (מקסימום 2MB)', requestId }, { status: 400 })
+    const size = file.size || 0
+    const buf = Buffer.from(await file.arrayBuffer())
+    const mime = resolveClientLogoMime(file, fileName, buf)
+    const validationError = validateClientLogoFile(size, mime)
+    if (validationError) {
+      return NextResponse.json({ error: validationError, requestId }, { status: 400 })
     }
 
-    const buf = Buffer.from(await file.arrayBuffer())
-    const ext = mime.includes('jpeg') ? 'jpg' : mime.includes('png') ? 'png' : 'webp'
+    const ext = clientLogoExtension(mime!)
     const path = `${clientId}/logo-${Date.now()}.${ext}`
 
-    const { error: upErr } = await admin.storage.from(BUCKET).upload(path, buf, {
-      contentType: mime,
+    const { error: upErr } = await admin.storage.from(CLIENT_LOGOS_BUCKET).upload(path, buf, {
+      contentType: mime!,
       upsert: true,
     })
 
     if (upErr) {
       logger.error('SETTINGS', 'Logo upload failed', new Error(upErr.message), { requestId, clientId })
       audit.logFailedOperation('UPLOAD', 'CLIENT_LOGO', clientId, clientId, upErr.message)
-      return NextResponse.json({ error: 'העלאה נכשלה', requestId }, { status: 500 })
+      const hint =
+        upErr.message.includes('Bucket not found') || upErr.message.includes('not found')
+          ? 'דלי האחסון client-logos חסר — הריצו מיגרציה 058_client_logos_bucket.sql'
+          : upErr.message
+      return NextResponse.json({ error: `העלאה נכשלה: ${hint}`, requestId }, { status: 500 })
     }
 
-    const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path)
+    const { data: pub } = admin.storage.from(CLIENT_LOGOS_BUCKET).getPublicUrl(path)
+    const logoUrl = pub.publicUrl
+
+    const { error: dbErr } = await admin.from('clients').update({ logo_url: logoUrl }).eq('id', clientId)
+    if (dbErr) {
+      return NextResponse.json({ error: dbErr.message, requestId }, { status: 500 })
+    }
 
     audit.logAction('UPLOAD', 'CLIENT_LOGO', clientId, clientId, 'dashboard')
-    return NextResponse.json({ url: pub.publicUrl, requestId })
+    return NextResponse.json({ url: logoUrl, requestId })
   } catch (e) {
     console.error('[settings/upload-logo]', e)
     logger.error('SETTINGS', 'Unhandled upload-logo error', e instanceof Error ? e : new Error(String(e)), { requestId })
