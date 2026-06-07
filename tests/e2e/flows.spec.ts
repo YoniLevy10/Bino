@@ -54,7 +54,7 @@ test.describe('דפים ציבוריים', () => {
     await page.waitForLoadState('domcontentloaded')
     // הדף יכול להציג "פרויקט לא נמצא" — זה תקין. חשוב שלא יהיה crash
     const body = await page.locator('body').innerText()
-    expect(body.length).toBeGreaterThan(10)
+    expect(body.trim().length).toBeGreaterThanOrEqual(10)
   })
 
   test('דף /privacy עולה', async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe('דפים ציבוריים', () => {
     await page.goto('/this-page-does-not-exist-xyz')
     await page.waitForLoadState('domcontentloaded')
     const body = await page.locator('body').innerText()
-    expect(body.length).toBeGreaterThan(5)
+    expect(body.trim().length).toBeGreaterThanOrEqual(5)
   })
 })
 

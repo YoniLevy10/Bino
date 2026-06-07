@@ -27,6 +27,7 @@ describe('client nav features', () => {
       'project_documents',
       'whatsapp_inbox',
       'campaigns',
+      'collections',
     ])
     for (const premium of PREMIUM_NAV_FEATURE_IDS) {
       expect(SETUP_PACKAGE_NAV_FEATURE_IDS).not.toContain(premium)

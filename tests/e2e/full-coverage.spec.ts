@@ -73,7 +73,7 @@ test.describe('דפים ציבוריים — עולים ללא login', () => {
     await page.goto('/report?project=TEST&client=00000000-0000-0000-0000-000000000000')
     await page.waitForLoadState('domcontentloaded')
     const body = await page.locator('body').innerText()
-    expect(body.length).toBeGreaterThan(10)
+    expect(body.trim().length).toBeGreaterThanOrEqual(10)
   })
 
   test('/report — שדה תיאור ושדה שם מוצגים', async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe('דפים ציבוריים — עולים ללא login', () => {
     await page.goto('/this-page-does-not-exist-xyz')
     await page.waitForLoadState('domcontentloaded')
     const body = await page.locator('body').innerText()
-    expect(body.length).toBeGreaterThan(5)
+    expect(body.trim().length).toBeGreaterThanOrEqual(5)
   })
 })
 
