@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
+import { TENANT_ACCESS_DENIED_HE } from '@/lib/tenant-access'
 
 function GoogleIcon() {
   return (
@@ -34,13 +36,22 @@ export function LoginClient() {
   const authError = searchParams.get('error')
 
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(authError === 'auth' ? 'ההתחברות נכשלה. נסו שוב.' : '')
+  const [error, setError] = useState(
+    authError === 'auth'
+      ? 'ההתחברות נכשלה. נסו שוב.'
+      : authError === 'no_access'
+        ? TENANT_ACCESS_DENIED_HE
+        : ''
+  )
 
   async function signInWithGoogle() {
     setError('')
     setLoading(true)
     try {
       const supabase = createClient()
+      // Prevent stale sessions from a previous tenant showing after a failed login attempt.
+      await supabase.auth.signOut()
+      clearTenantBrowserCaches()
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

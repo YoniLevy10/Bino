@@ -12,6 +12,10 @@ export const PAID_ADDON_KEYS = {
   pilot_sms: 'pilot_sms',
   /** ארכיון מסמכים לפי פרויקט */
   project_documents: 'project_documents',
+  /** תיבת WhatsApp — inbox מנהל */
+  whatsapp_inbox: 'whatsapp_inbox',
+  /** קמפיינים SMS לדיירים */
+  campaigns: 'campaigns',
 } as const
 
 export type PaidAddonKey = (typeof PAID_ADDON_KEYS)[keyof typeof PAID_ADDON_KEYS]
@@ -115,6 +119,8 @@ export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
   [PAID_ADDON_KEYS.worker_stamp]: 'attendance',
   [PAID_ADDON_KEYS.pilot_sms]: 'pilot_sms',
   [PAID_ADDON_KEYS.project_documents]: 'project_documents',
+  [PAID_ADDON_KEYS.whatsapp_inbox]: 'whatsapp_inbox',
+  [PAID_ADDON_KEYS.campaigns]: 'campaigns',
 }
 
 const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
@@ -123,6 +129,8 @@ const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
   PAID_ADDON_KEYS.worker_stamp,
   PAID_ADDON_KEYS.pilot_sms,
   PAID_ADDON_KEYS.project_documents,
+  PAID_ADDON_KEYS.whatsapp_inbox,
+  PAID_ADDON_KEYS.campaigns,
 ]
 
 export function navIdsForEnabledAddonKeys(keys: Iterable<string>): SidebarNavItemId[] {

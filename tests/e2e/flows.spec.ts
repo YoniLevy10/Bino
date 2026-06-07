@@ -84,10 +84,19 @@ test.describe('הפניות auth — דפים מוגנים', () => {
     '/residents',
     '/qr',
     '/summary',
-    '/billing',
     '/settings',
     '/error-logs',
     '/pending-residents',
+    '/addons',
+    '/calendar',
+    '/attendance',
+    '/professionals',
+    '/pilot-sms',
+    '/project-documents',
+    '/whatsapp-inbox',
+    '/campaigns',
+    '/assistant',
+    '/notifications/failed',
   ]
 
   for (const route of protectedRoutes) {
@@ -180,6 +189,8 @@ test.describe('API routes — דורשים session', () => {
     { method: 'POST', path: '/api/create-worker' },
     { method: 'PATCH', path: '/api/close-ticket' },
     { method: 'GET', path: '/api/billing/summary' },
+    { method: 'POST', path: '/api/projects/pilot-sms' },
+    { method: 'GET', path: '/api/projects/documents' },
   ]
 
   for (const { method, path } of apiRoutes) {

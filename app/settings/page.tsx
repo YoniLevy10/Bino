@@ -100,6 +100,10 @@ function SettingsPageInner() {
   const [testingWa, setTestingWa] = useState(false)
   const [testingSms, setTestingSms] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
 
   // Team tab state
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([])
@@ -525,6 +529,12 @@ function SettingsPageInner() {
                     />
                     <span>שלח SMS בסגירת תקלה</span>
                   </label>
+                  <p style={{ ...styles.formHint, marginTop: 16 }}>
+                    <Link href="/notifications/failed" style={styles.inlineLink}>
+                      הודעות SMS / WhatsApp שנכשלו
+                    </Link>
+                    {' — תור כשלונות ללקוח (לא כולל התראות פלטפורמה פנימיות).'}
+                  </p>
                   <div
                     style={{
                       marginTop: '20px',
@@ -544,6 +554,80 @@ function SettingsPageInner() {
                       loadingText="מפעיל..."
                     >
                       הפעל התראות
+                    </LoadingButton>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: '20px',
+                      paddingTop: '20px',
+                      borderTop: `1px solid ${theme.colors.border}`,
+                    }}
+                  >
+                    <label style={styles.formLabel}>שליחת מייל (Resend)</label>
+                    <p style={styles.formHint}>
+                      דורש RESEND_API_KEY בשרת. Gmail/Outlook inbox — שלב עתידי (Coexistence / OAuth).
+                    </p>
+                    <div style={styles.formGroup}>
+                      <input
+                        type="email"
+                        value={emailTo}
+                        onChange={(e) => setEmailTo(e.target.value)}
+                        style={styles.input}
+                        placeholder="נמען@example.com"
+                        dir="ltr"
+                        aria-label="כתובת מייל נמען"
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <input
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        style={styles.input}
+                        placeholder="נושא"
+                        aria-label="נושא המייל"
+                      />
+                    </div>
+                    <div style={styles.formGroup}>
+                      <textarea
+                        value={emailBody}
+                        onChange={(e) => setEmailBody(e.target.value)}
+                        style={{ ...styles.input, minHeight: 80 }}
+                        placeholder="גוף ההודעה"
+                        aria-label="גוף המייל"
+                      />
+                    </div>
+                    <LoadingButton
+                      variant="secondary"
+                      type="button"
+                      loading={emailSending}
+                      loadingText="שולח..."
+                      onClick={async () => {
+                        if (!emailTo.trim() || !emailSubject.trim() || !emailBody.trim()) {
+                          toast.error('נא למלא נמען, נושא וגוף')
+                          return
+                        }
+                        setEmailSending(true)
+                        try {
+                          const res = await fetchWithTimeout('/api/email/send', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              to: emailTo.trim(),
+                              subject: emailSubject.trim(),
+                              body: emailBody.trim(),
+                            }),
+                          })
+                          const json = (await res.json()) as { error?: string }
+                          if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+                          toast.success('המייל נשלח')
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
+                        } finally {
+                          setEmailSending(false)
+                        }
+                      }}
+                    >
+                      שלח מייל
                     </LoadingButton>
                   </div>
                   <div style={styles.drawerActions}>
@@ -856,6 +940,10 @@ const styles: Record<string, CSSProperties> = {
   formHint: {
     fontSize: '12px',
     color: theme.colors.textMuted,
+  },
+  inlineLink: {
+    color: theme.colors.primary,
+    textDecoration: 'underline',
   },
   fieldHint: {
     margin: '4px 0 0',

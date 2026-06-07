@@ -19,6 +19,8 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'pending_residents',
   'pilot_sms',
   'project_documents',
+  'whatsapp_inbox',
+  'campaigns',
 ] as const
 
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
@@ -33,6 +35,8 @@ export const ADDON_ONLY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'professionals',
   'pilot_sms',
   'project_documents',
+  'whatsapp_inbox',
+  'campaigns',
 ] as const
 
 export function isAddonOnlySidebarNavId(id: SidebarNavItemId): boolean {
@@ -90,6 +94,18 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     href: '/project-documents',
     label: 'תיקיית מסמכים לפרויקט',
     icon: 'folder',
+  },
+  whatsapp_inbox: {
+    id: 'whatsapp_inbox',
+    href: '/whatsapp-inbox',
+    label: 'תיבת WhatsApp',
+    icon: 'message',
+  },
+  campaigns: {
+    id: 'campaigns',
+    href: '/campaigns',
+    label: 'קמפיינים SMS',
+    icon: 'message',
   },
 }
 

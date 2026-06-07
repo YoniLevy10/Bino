@@ -22,8 +22,11 @@ describe('client nav features', () => {
     expect(PREMIUM_NAV_FEATURE_IDS).toEqual([
       'calendar',
       'attendance',
+      'professionals',
       'pilot_sms',
       'project_documents',
+      'whatsapp_inbox',
+      'campaigns',
     ])
     for (const premium of PREMIUM_NAV_FEATURE_IDS) {
       expect(SETUP_PACKAGE_NAV_FEATURE_IDS).not.toContain(premium)

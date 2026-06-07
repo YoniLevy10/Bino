@@ -10,6 +10,7 @@ import { notifyNewTicketPush } from '@/lib/push-notifications'
 import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
+import { checkTicketsMonthlyQuota } from '@/lib/plan-quota-check'
 
 function parseStartCode(message: string) {
   const match = message.trim().toUpperCase().match(/^START_(BMK\d+)(?:_(.+))?$/i)
@@ -217,6 +218,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'נדרשת התחברות או קישור דיווח תקין (מזהה לקוח חסר)' },
         { status: 401 }
+      )
+    }
+
+    const quota = await checkTicketsMonthlyQuota(supabaseAdmin, bamakorClientId)
+    if (!quota.ok) {
+      return NextResponse.json(
+        { error: quota.error, code: 'PLAN_LIMIT', current: quota.current, max: quota.max },
+        { status: 403 }
       )
     }
 

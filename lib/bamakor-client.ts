@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
+import { TENANT_CID_SESSION_KEY } from '@/lib/tenant-browser-cache'
 
 /**
  * מזהה `clients.id` לדפדפן לפי המשתמש המחובר:
@@ -8,7 +9,7 @@ import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
  * Fallback לפיתוח: NEXT_PUBLIC_BAMAKOR_CLIENT_ID רק כש־NODE_ENV=development
  * ורק אם אין שיוך ארגון (אחרי ניסיון getUser + שרשרת org).
  */
-const CID_CACHE_KEY = 'bamakor_cid_v1'
+const CID_CACHE_KEY = TENANT_CID_SESSION_KEY
 const CID_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 function readCidCache(userId: string): string | null {

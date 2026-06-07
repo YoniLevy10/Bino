@@ -6,6 +6,9 @@ export type ParsedWhatsAppMessage = {
   mediaId?: string
   mediaType?: 'image' | 'audio' | 'video' | 'document'
   location?: { lat: number; lng: number; name?: string; address?: string }
+  /** Meta interactive list/button reply id */
+  interactiveReplyId?: string
+  interactiveReplyTitle?: string
 }
 
 /**
@@ -117,6 +120,22 @@ export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessa
         name: typeof loc?.name === 'string' ? loc.name : undefined,
         address: typeof loc?.address === 'string' ? loc.address : undefined,
       }
+    }
+  }
+
+  if (message?.type === 'interactive') {
+    const interactive = message?.interactive as Record<string, unknown> | undefined
+    const interactiveType = String(interactive?.type || '')
+    if (interactiveType === 'button_reply') {
+      const br = interactive?.button_reply as Record<string, unknown> | undefined
+      result.interactiveReplyId = typeof br?.id === 'string' ? br.id : undefined
+      result.interactiveReplyTitle = typeof br?.title === 'string' ? br.title : undefined
+      result.textBody = result.interactiveReplyTitle || result.interactiveReplyId || ''
+    } else if (interactiveType === 'list_reply') {
+      const lr = interactive?.list_reply as Record<string, unknown> | undefined
+      result.interactiveReplyId = typeof lr?.id === 'string' ? lr.id : undefined
+      result.interactiveReplyTitle = typeof lr?.title === 'string' ? lr.title : undefined
+      result.textBody = result.interactiveReplyTitle || result.interactiveReplyId || ''
     }
   }
 

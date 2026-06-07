@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies, headers } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
 import { getPublicSiteUrlFromHeaders } from '@/lib/site-url'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { userHasTenantAccess } from '@/lib/tenant-access'
 
 function sanitizeNext(raw: string | null): string {
   if (!raw) return '/'
@@ -32,6 +34,27 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
+    return NextResponse.redirect(`${origin}/login?error=auth`)
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    await supabase.auth.signOut()
+    return NextResponse.redirect(`${origin}/login?error=auth`)
+  }
+
+  try {
+    const admin = getSupabaseAdmin()
+    const hasAccess = await userHasTenantAccess(admin, user.id)
+    if (!hasAccess) {
+      await supabase.auth.signOut()
+      return NextResponse.redirect(`${origin}/login?error=no_access`)
+    }
+  } catch {
+    await supabase.auth.signOut()
     return NextResponse.redirect(`${origin}/login?error=auth`)
   }
 

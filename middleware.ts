@@ -51,13 +51,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  const res = NextResponse.next()
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseAnonKey) {
-    return res
+    return NextResponse.next()
   }
+
+  let pendingResponse = NextResponse.next()
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -66,7 +66,7 @@ export async function middleware(req: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, options)
+          pendingResponse.cookies.set(name, value, options)
         })
       },
     },
@@ -86,34 +86,53 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  let clientId: string
+  try {
+    const admin = getSupabaseAdmin()
+    clientId = await getSingletonClientId(admin, user.id)
+  } catch {
+    await supabase.auth.signOut()
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'אין גישה — חשבון לא משויך לארגון' },
+        { status: 403 }
+      )
+    }
+    const url = req.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('error', 'no_access')
+    pendingResponse = NextResponse.redirect(url)
+    return pendingResponse
+  }
+
   // Platform diagnostics — not for tenant dashboards (alerts go to PLATFORM_OPS_EMAIL).
   if (pathname === '/error-logs' || pathname === '/failed-notifications') {
     const url = req.nextUrl.clone()
     url.pathname = '/'
-    return NextResponse.redirect(url)
+    pendingResponse = NextResponse.redirect(url)
+    return pendingResponse
   }
 
   const navFeatureId = navItemIdForPathname(pathname)
   if (navFeatureId) {
     try {
       const admin = getSupabaseAdmin()
-      const clientId = await getSingletonClientId(admin, user.id)
       const enabled = await fetchClientEnabledNavFeatures(admin, clientId)
       if (!isNavFeatureEnabled(enabled, navFeatureId)) {
         const url = req.nextUrl.clone()
         url.pathname = '/addons'
         url.searchParams.set('blocked', '1')
-        return NextResponse.redirect(url)
+        pendingResponse = NextResponse.redirect(url)
+        return pendingResponse
       }
     } catch {
-      // onboarding / missing org — let page handle
+      // should not happen — clientId already resolved
     }
   }
 
-  return res
+  return pendingResponse
 }
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
-

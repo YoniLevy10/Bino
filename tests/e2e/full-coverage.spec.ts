@@ -111,11 +111,16 @@ test.describe('הפניות auth — דפים מוגנים', () => {
     '/residents',
     '/qr',
     '/summary',
-    '/billing',
     '/settings',
     '/error-logs',
     '/pending-residents',
     '/onboarding',
+    '/addons',
+    '/calendar',
+    '/attendance',
+    '/professionals',
+    '/pilot-sms',
+    '/project-documents',
   ]
 
   for (const route of routes) {
@@ -334,6 +339,8 @@ test.describe('API routes — session נדרש', () => {
     { method: 'PATCH', path: '/api/assign-ticket' },
     { method: 'POST', path: '/api/merge-ticket' },
     { method: 'GET', path: '/api/billing/summary' },
+    { method: 'POST', path: '/api/projects/pilot-sms' },
+    { method: 'GET', path: '/api/projects/documents' },
   ]
 
   for (const { method, path } of routes) {
@@ -396,12 +403,18 @@ test.describe('/qr — redirect', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════
-// Billing — redirect
+// Add-on pages — redirect
 // ═══════════════════════════════════════════════════════════════
 
-test.describe('/billing — redirect', () => {
-  test('/billing ללא auth → /login', async ({ page }) => {
-    await expectRedirectToLogin(page, '/billing')
+test.describe('דפי תוספים — redirect', () => {
+  for (const route of ['/addons', '/pilot-sms', '/project-documents', '/calendar', '/attendance', '/professionals']) {
+    test(`${route} ללא auth → /login`, async ({ page }) => {
+      await expectRedirectToLogin(page, route)
+    })
+  }
+
+  test('/pilot-sms?project=uuid ללא auth → /login', async ({ page }) => {
+    await expectRedirectToLogin(page, '/pilot-sms?project=00000000-0000-0000-0000-000000000001')
   })
 })
 

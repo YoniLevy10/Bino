@@ -208,3 +208,29 @@ export async function sendWhatsAppTextWithTemplateFallback(
   }
   return templ
 }
+
+export async function sendWhatsAppInteractivePayloadWithCredentials(
+  phoneNumberId: string,
+  accessToken: string,
+  payload: Record<string, unknown>
+): Promise<Record<string, unknown> | null> {
+  return sendRawWhatsAppPayloadWithCredentials(phoneNumberId, accessToken, payload)
+}
+
+export async function sendWhatsAppInteractivePayload(
+  payload: Record<string, unknown>,
+  creds?: WhatsAppCredentials,
+  failureLog?: WhatsAppFailureLog
+): Promise<Record<string, unknown> | null> {
+  const result = await sendRawWhatsAppPayload(payload, creds)
+  if (!result && failureLog?.clientId) {
+    const to = String(payload.to || '')
+    await insertWhatsAppSendFailure(
+      failureLog.clientId,
+      to,
+      JSON.stringify(payload.interactive ?? payload),
+      'WhatsApp interactive send returned null'
+    )
+  }
+  return result
+}

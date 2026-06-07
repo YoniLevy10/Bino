@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { Button, theme } from '../ui'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 type DocRow = {
   id: string
@@ -30,7 +31,15 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
   const [docs, setDocs] = useState<DocRow[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [signDoc, setSignDoc] = useState<DocRow | null>(null)
+  const [signerName, setSignerName] = useState('')
+  const [signerPhone, setSignerPhone] = useState('')
+  const [signUrl, setSignUrl] = useState('')
+  const [sendVia, setSendVia] = useState<'none' | 'sms' | 'whatsapp'>('whatsapp')
+  const [signSending, setSignSending] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(modalRef, signDoc != null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,6 +101,41 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
     }
   }
 
+  async function onSendForSign() {
+    if (!signDoc) return
+    if (!signUrl.trim()) {
+      toast.error('נא להזין קישור לחתימה (DocuSign / Comsign)')
+      return
+    }
+    setSignSending(true)
+    try {
+      const res = await fetchWithTimeout('/api/documents/sign-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          document_id: signDoc.id,
+          document_name: signDoc.file_name,
+          signer_name: signerName.trim() || undefined,
+          signer_phone: signerPhone.trim() || undefined,
+          sign_url: signUrl.trim(),
+          send_via: sendVia,
+        }),
+      })
+      const json = await res.json() as { error?: string }
+      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      toast.success('בקשת חתימה נשלחה')
+      setSignDoc(null)
+      setSignerName('')
+      setSignerPhone('')
+      setSignUrl('')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
+    } finally {
+      setSignSending(false)
+    }
+  }
+
   return (
     <div style={styles.box}>
       <div style={styles.header}>
@@ -139,6 +183,18 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
                     הורדה
                   </a>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSignDoc(doc)
+                    setSignerName('')
+                    setSignerPhone('')
+                    setSignUrl('')
+                  }}
+                  style={styles.signBtn}
+                >
+                  שליחה לחתימה
+                </button>
                 <button type="button" onClick={() => void onDelete(doc)} style={styles.deleteBtn}>
                   מחק
                 </button>
@@ -146,6 +202,61 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {signDoc && (
+        <div style={styles.modalBackdrop} role="presentation">
+          <div ref={modalRef} style={styles.modal} role="dialog" aria-modal="true" aria-labelledby="sign-doc-title">
+            <h5 id="sign-doc-title" style={styles.modalTitle}>
+              שליחה לחתימה — {signDoc.file_name}
+            </h5>
+            <label style={styles.modalLabel} htmlFor="sign-url">קישור חתימה (DocuSign / Comsign)</label>
+            <input
+              id="sign-url"
+              type="url"
+              value={signUrl}
+              onChange={(e) => setSignUrl(e.target.value)}
+              style={styles.modalInput}
+              dir="ltr"
+              placeholder="https://..."
+            />
+            <label style={styles.modalLabel} htmlFor="signer-name">שם החותם</label>
+            <input
+              id="signer-name"
+              value={signerName}
+              onChange={(e) => setSignerName(e.target.value)}
+              style={styles.modalInput}
+            />
+            <label style={styles.modalLabel} htmlFor="signer-phone">טלפון (SMS / WhatsApp)</label>
+            <input
+              id="signer-phone"
+              type="tel"
+              value={signerPhone}
+              onChange={(e) => setSignerPhone(e.target.value)}
+              style={styles.modalInput}
+              placeholder="05xxxxxxxx"
+            />
+            <label style={styles.modalLabel} htmlFor="send-via">שליחת הקישור</label>
+            <select
+              id="send-via"
+              value={sendVia}
+              onChange={(e) => setSendVia(e.target.value as typeof sendVia)}
+              style={styles.modalInput}
+            >
+              <option value="whatsapp">WhatsApp</option>
+              <option value="sms">SMS</option>
+              <option value="none">שמירה בלבד (ללא שליחה)</option>
+            </select>
+            <div style={styles.modalActions}>
+              <Button variant="secondary" size="sm" onClick={() => setSignDoc(null)}>
+                ביטול
+              </Button>
+              <Button size="sm" loading={signSending} onClick={() => void onSendForSign()}>
+                שלח
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -185,6 +296,13 @@ const styles: Record<string, CSSProperties> = {
   meta: { fontSize: 11, color: theme.colors.textMuted },
   itemActions: { display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 },
   link: { fontSize: 13, color: theme.colors.primary, textDecoration: 'none' },
+  signBtn: {
+    background: 'none',
+    border: 'none',
+    color: theme.colors.primary,
+    cursor: 'pointer',
+    fontSize: 13,
+  },
   deleteBtn: {
     background: 'none',
     border: 'none',
@@ -192,4 +310,34 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     fontSize: 13,
   },
+  modalBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.45)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: 16,
+  },
+  modal: {
+    background: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: 20,
+    maxWidth: 420,
+    width: '100%',
+    border: `1px solid ${theme.colors.border}`,
+  },
+  modalTitle: { margin: '0 0 12px', fontSize: 15, fontWeight: 600 },
+  modalLabel: { display: 'block', fontSize: 12, marginBottom: 4, color: theme.colors.textMuted },
+  modalInput: {
+    width: '100%',
+    marginBottom: 12,
+    padding: '8px 10px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    fontSize: 14,
+    boxSizing: 'border-box',
+  },
+  modalActions: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 },
 }

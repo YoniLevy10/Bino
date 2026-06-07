@@ -1,0 +1,160 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+export type WhatsAppMessageDirection = 'in' | 'out'
+
+export type PersistWhatsAppMessageInput = {
+  clientId: string
+  phone: string
+  direction: WhatsAppMessageDirection
+  body?: string | null
+  messageType?: string
+  waMessageId?: string | null
+  interactivePayload?: Record<string, unknown> | null
+  ticketId?: string | null
+  residentId?: string | null
+}
+
+function previewText(body: string | null | undefined, max = 120): string | null {
+  if (!body) return null
+  const t = body.trim()
+  if (!t) return null
+  return t.length <= max ? t : `${t.slice(0, max - 1)}…`
+}
+
+export function extractMetaWaMessageId(response: Record<string, unknown> | null): string | null {
+  if (!response) return null
+  const messages = (response as { messages?: Array<{ id?: string }> }).messages
+  const id = messages?.[0]?.id
+  return typeof id === 'string' && id.length > 0 ? id : null
+}
+
+/** Upsert conversation row and insert message. Best-effort — never throws to caller. */
+export async function persistWhatsAppMessage(
+  admin: SupabaseClient,
+  input: PersistWhatsAppMessageInput
+): Promise<{ conversationId: string; messageId: string } | null> {
+  try {
+    const now = new Date().toISOString()
+    const { data: conv, error: convErr } = await admin
+      .from('whatsapp_conversations')
+      .upsert(
+        {
+          client_id: input.clientId,
+          phone: input.phone,
+          resident_id: input.residentId ?? null,
+          last_message_at: now,
+          last_message_preview: previewText(input.body),
+          updated_at: now,
+        },
+        { onConflict: 'client_id,phone' }
+      )
+      .select('id')
+      .single()
+
+    if (convErr || !conv?.id) {
+      return null
+    }
+
+    const { data: msg, error: msgErr } = await admin
+      .from('whatsapp_messages')
+      .insert({
+        conversation_id: conv.id,
+        client_id: input.clientId,
+        direction: input.direction,
+        wa_message_id: input.waMessageId ?? null,
+        body: input.body ?? null,
+        message_type: input.messageType ?? 'text',
+        interactive_payload: input.interactivePayload ?? null,
+        ticket_id: input.ticketId ?? null,
+        status: 'sent',
+        created_at: now,
+      })
+      .select('id')
+      .single()
+
+    if (msgErr || !msg?.id) return null
+    return { conversationId: conv.id as string, messageId: msg.id as string }
+  } catch {
+    return null
+  }
+}
+
+export async function listWhatsAppConversations(
+  admin: SupabaseClient,
+  clientId: string,
+  limit = 50
+) {
+  const { data, error } = await admin
+    .from('whatsapp_conversations')
+    .select('id, phone, resident_id, last_message_at, last_message_preview, residents(full_name, apartment_number)')
+    .eq('client_id', clientId)
+    .order('last_message_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function listWhatsAppMessagesForConversation(
+  admin: SupabaseClient,
+  clientId: string,
+  conversationId: string,
+  limit = 200
+) {
+  const { data, error } = await admin
+    .from('whatsapp_messages')
+    .select('id, direction, body, message_type, interactive_payload, ticket_id, created_at, wa_message_id')
+    .eq('client_id', clientId)
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+    .limit(limit)
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function listWhatsAppMessagesForPhone(
+  admin: SupabaseClient,
+  clientId: string,
+  phone: string,
+  limit = 200
+) {
+  const { data: conv } = await admin
+    .from('whatsapp_conversations')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('phone', phone)
+    .maybeSingle()
+
+  if (!conv?.id) return []
+  return listWhatsAppMessagesForConversation(admin, clientId, conv.id as string, limit)
+}
+
+/** True if resident messaged within last 24 hours (Meta session window). */
+export async function isWithinWhatsAppSessionWindow(
+  admin: SupabaseClient,
+  clientId: string,
+  phone: string
+): Promise<boolean> {
+  const { data: conv } = await admin
+    .from('whatsapp_conversations')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('phone', phone)
+    .maybeSingle()
+
+  if (!conv?.id) return false
+
+  const { data: lastIn } = await admin
+    .from('whatsapp_messages')
+    .select('created_at')
+    .eq('conversation_id', conv.id)
+    .eq('direction', 'in')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!lastIn?.created_at) return false
+  const ageMs = Date.now() - new Date(lastIn.created_at as string).getTime()
+  return ageMs < 24 * 60 * 60 * 1000
+}

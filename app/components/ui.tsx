@@ -17,6 +17,7 @@ import {
   Suspense,
 } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { useClientBranding } from './ClientBrandingContext'
 import { useSidebarNav } from './SidebarNavContext'
 import { isNavItemActive, TENANT_NAV_HREFS } from '@/lib/sidebar-nav'
@@ -255,6 +256,7 @@ function NavSignOutButton({ onAfterSignOut }: { onAfterSignOut?: () => void }) {
         try {
           const supabase = createClient()
           await supabase.auth.signOut()
+          clearTenantBrowserCaches()
           onAfterSignOut?.()
           router.push('/login')
           router.refresh()

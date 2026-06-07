@@ -24,6 +24,12 @@ export function getEnvReadinessFlags(): EnvReadinessFlag[] {
     hint: cronSecret.length > 0 ? undefined : 'Cron routes will reject requests',
   })
 
+  flags.push({
+    key: 'RESEND_API_KEY',
+    ok: (process.env.RESEND_API_KEY || '').trim().length > 0,
+    hint: 'Email sending disabled until set',
+  })
+
   return flags
 }
 

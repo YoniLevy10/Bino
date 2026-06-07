@@ -168,6 +168,38 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
       closing: 'פחות חיפושים, יותר שליטה ומסירות מקצועית ללקוח.',
     },
   },
+  [PAID_ADDON_KEYS.whatsapp_inbox]: {
+    id: PAID_ADDON_KEYS.whatsapp_inbox,
+    title: 'תיבת WhatsApp',
+    tagline: 'שיחות דיירים בזמן אמת',
+    description: 'צפייה והשבה לדיירים מתוך המערכת — בתוך חלון 24 שעות.',
+    highlights: ['רשימת שיחות', 'היסטוריית הודעות', 'קישור מתוך התקלה'],
+    featureHref: '/whatsapp-inbox',
+    featureCtaHe: 'לתיבת WhatsApp',
+    marketing: {
+      headline: 'כל שיחות הדיירים במקום אחד — כמו ProSaaS',
+      intro: 'מנהל רואה מה הדייר כתב ב-WhatsApp ויכול להשיב מהמערכת.',
+      valueProps: ['Inbox מרכזי', 'Realtime', 'קישור לתקלה'],
+      scenarios: ['מנהל שרוצה לענות לדייר בלי לפתוח טלפון'],
+      closing: 'תקשורת מהירה ומקצועית עם דיירים.',
+    },
+  },
+  [PAID_ADDON_KEYS.campaigns]: {
+    id: PAID_ADDON_KEYS.campaigns,
+    title: 'קמפיינים SMS',
+    tagline: 'תפוצה מותאמת לבניין',
+    description: 'שליחת SMS לכל דיירי פרויקט — טקסט חופשי, ללא אימוג׳י.',
+    highlights: ['תבנית מותאמת', 'dry-run', 'לוג שליחה'],
+    featureHref: '/campaigns',
+    featureCtaHe: 'לקמפיינים',
+    marketing: {
+      headline: 'הודעה לכל הבניין בלחיצה',
+      intro: 'מעבר ל-SMS פיילוט — כל הודעה שתבחרו.',
+      valueProps: ['019SMS', 'ספירת נמענים', 'ללא אימוג׳י'],
+      scenarios: ['הודעה על עבודות', 'תזכורת כללית'],
+      closing: 'תקשורת המונית פשוטה ובטוחה.',
+    },
+  },
 }
 
 export function getPaidAddonCatalogEntry(id: PaidAddonId): PaidAddonCatalogEntry | undefined {

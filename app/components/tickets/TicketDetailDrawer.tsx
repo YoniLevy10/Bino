@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Drawer, Button, theme } from '../ui'
 import { TicketChat } from './TicketChat'
+import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 interface TicketRow {
@@ -68,7 +69,7 @@ interface TicketDetailDrawerProps {
   getImageUrl: (attachment: AttachmentRow) => string
 }
 
-type Tab = 'details' | 'chat'
+type Tab = 'details' | 'chat' | 'whatsapp'
 
 export function TicketDetailDrawer({
   selectedTicket,
@@ -158,6 +159,12 @@ export function TicketDetailDrawer({
               onClick={() => setActiveTab('chat')}
             >
               צ׳אט פנימי
+            </button>
+            <button
+              style={{ ...styles.tab, ...(activeTab === 'whatsapp' ? styles.tabActive : styles.tabInactive) }}
+              onClick={() => setActiveTab('whatsapp')}
+            >
+              WhatsApp דייר
             </button>
           </div>
 
@@ -331,6 +338,13 @@ export function TicketDetailDrawer({
 
           {activeTab === 'chat' && (
             <TicketChat ticketId={selectedTicket.id} clientId={selectedTicket.client_id ?? null} />
+          )}
+
+          {activeTab === 'whatsapp' && selectedTicket.reporter_phone && (
+            <TicketWhatsAppThread reporterPhone={selectedTicket.reporter_phone} />
+          )}
+          {activeTab === 'whatsapp' && !selectedTicket.reporter_phone && (
+            <p style={{ color: theme.colors.textMuted, fontSize: 13 }}>אין טלפון דייר לתקלה זו.</p>
           )}
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { theme } from '../ui'
+import { WHATSAPP_COEXISTENCE_NOTE } from '@/lib/wa-broadcast'
 
 export interface WhatsAppSettingsProps {
   isConnected?: boolean
@@ -79,6 +80,10 @@ export default function WhatsAppSettings({
           )}
         </div>
       </div>
+
+      <p style={styles.coexistenceNote} role="note">
+        {WHATSAPP_COEXISTENCE_NOTE}
+      </p>
 
       {/* Configuration Form */}
       <div style={styles.formSection}>
@@ -255,6 +260,15 @@ const styles: Record<string, React.CSSProperties> = {
   statusLabel: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textMuted,
+  },
+  coexistenceNote: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textSecondary,
+    margin: 0,
+    lineHeight: 1.5,
+    padding: '12px 16px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.md,
   },
   formSection: {
     display: 'flex',
