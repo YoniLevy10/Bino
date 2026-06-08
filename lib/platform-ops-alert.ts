@@ -64,7 +64,7 @@ async function markAlertSent(dedupKey: string): Promise<void> {
 async function sendOpsEmail(subject: string, text: string): Promise<boolean> {
   const to = resolveOpsEmail()
   const apiKey = (process.env.RESEND_API_KEY || '').trim()
-  const from = (process.env.RESEND_FROM_EMAIL || 'Bamakor Ops <onboarding@resend.dev>').trim()
+  const from = (process.env.RESEND_FROM_EMAIL || 'Bamakor <office@bamakor.com>').trim()
 
   if (!to) {
     console.warn('[platform-ops-alert] PLATFORM_OPS_EMAIL not set — skipping email')
