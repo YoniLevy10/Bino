@@ -8,7 +8,8 @@ import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin
 import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
 import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
 import { ClientLogoUpload } from './ClientLogoUpload'
-import { PlatformDocsPanel } from '@/app/components/superadmin/PlatformDocsPanel'
+import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
+import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
 import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
@@ -47,7 +48,7 @@ type EditState = {
   sms_sender_name: string
 }
 
-type ViewMode = 'clients' | 'docs'
+type ViewMode = 'clients' | 'ops'
 
 const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter',
@@ -498,7 +499,7 @@ export default function SuperAdminPage() {
           {(
             [
               { id: 'clients' as const, label: 'לקוחות' },
-              { id: 'docs' as const, label: 'תיעוד' },
+              { id: 'ops' as const, label: 'תפעול' },
             ] as const
           ).map((tab) => (
             <button
@@ -521,9 +522,12 @@ export default function SuperAdminPage() {
           ))}
         </div>
 
-        {viewMode === 'docs' && (
+        {viewMode === 'ops' && (
           <>
-            <PlatformDocsPanel adminSecret={secret} />
+            <SuperadminOpsPanel adminSecret={secret} />
+            <div style={{ marginTop: 24 }}>
+              <MetaWhatsAppPendingPanel />
+            </div>
             <AdminQuickLinks />
           </>
         )}

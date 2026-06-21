@@ -1,23 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  sendWhatsAppTemplateMessageWithCredentials,
-  sendWhatsAppTextMessage,
-} from '@/lib/whatsapp-send'
 import { resolveWhatsAppTemplateMessage } from '@/lib/whatsapp-templates'
 import { getLogger } from '@/lib/logging'
+import { sendResidentTextOrTemplate } from '@/lib/whatsapp-resident-outbound'
+import { metaTemplateNameTicketClosed } from '@/lib/meta-whatsapp-pending-actions'
 
 export type ReporterClosedNotifyResult = {
   whatsappSent: boolean
+  reporterHasPhone: boolean
   whatsappError?: string
 }
 
 const TICKET_CLOSED_WA_FALLBACK =
   '✅ שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\nאם יש בעיה נוספת, ניתן לפנות אלינו בכל עת 🙏'
-
-/** Meta-approved template name for outside the 24h session window (env override). */
-function metaTemplateNameForTicketClosed(): string {
-  return process.env.WHATSAPP_META_TEMPLATE_TICKET_CLOSED?.trim() || 'ticket_closed'
-}
 
 function resolveProjectName(
   projects: { name?: string | null } | { name?: string | null }[] | null | undefined
@@ -29,7 +23,7 @@ function resolveProjectName(
 
 /**
  * After a ticket is CLOSED: notify the reporter on WhatsApp (if configured).
- * Uses free text inside Meta's 24h window; falls back to approved template outside it.
+ * Free text inside Meta's 24h window; Utility template outside it.
  * Non-throwing — failures are returned in the result for logging.
  */
 export async function notifyReporterTicketClosed(
@@ -41,7 +35,7 @@ export async function notifyReporterTicketClosed(
   }
 ): Promise<ReporterClosedNotifyResult> {
   const reporterPhone = opts.reporterPhone?.trim()
-  const result: ReporterClosedNotifyResult = { whatsappSent: false }
+  const result: ReporterClosedNotifyResult = { whatsappSent: false, reporterHasPhone: Boolean(reporterPhone) }
 
   if (!reporterPhone) {
     return result
@@ -55,17 +49,13 @@ export async function notifyReporterTicketClosed(
     .eq('id', clientId)
     .maybeSingle()
 
-  const residentWhatsAppCreds = {
-    phoneNumberId: (waClient as { whatsapp_phone_number_id?: string | null } | null)?.whatsapp_phone_number_id || undefined,
-    accessToken: (waClient as { whatsapp_access_token?: string | null } | null)?.whatsapp_access_token || undefined,
-  }
+  const phoneNumberId = (waClient as { whatsapp_phone_number_id?: string | null } | null)?.whatsapp_phone_number_id
+  const accessToken = (waClient as { whatsapp_access_token?: string | null } | null)?.whatsapp_access_token
 
-  if (!residentWhatsAppCreds.phoneNumberId || !residentWhatsAppCreds.accessToken) {
+  if (!phoneNumberId || !accessToken) {
     result.whatsappError = 'WhatsApp credentials missing for client'
     return result
   }
-
-  const failureLog = { clientId }
 
   try {
     const waBody = await resolveWhatsAppTemplateMessage(
@@ -76,26 +66,32 @@ export async function notifyReporterTicketClosed(
       { project_name: building }
     )
 
-    let wa = await sendWhatsAppTextMessage(reporterPhone, waBody, residentWhatsAppCreds, failureLog)
+    const send = await sendResidentTextOrTemplate(supabaseAdmin, {
+      clientId,
+      phone: reporterPhone,
+      textBody: waBody,
+      templateName: metaTemplateNameTicketClosed(),
+      templateParams: [building],
+      creds: { phoneNumberId, accessToken },
+      failureLog: { clientId },
+      persistOutbound: true,
+      messageTypeForPersist: 'text',
+    })
 
-    if (!wa) {
-      getLogger().info('WA_SEND', 'ticket_closed text failed — trying Meta template', {
+    result.whatsappSent = send.sent
+    if (!send.sent) {
+      result.whatsappError = send.errorMessage ?? 'WhatsApp send failed (text and template)'
+      getLogger().warn('WA_SEND', 'ticket_closed notify failed', {
         clientId,
-        template: metaTemplateNameForTicketClosed(),
+        mode: send.mode,
+        error: result.whatsappError,
+        metaCode: send.metaErrorCode,
       })
-      wa = await sendWhatsAppTemplateMessageWithCredentials(
-        reporterPhone,
-        metaTemplateNameForTicketClosed(),
-        [building],
-        residentWhatsAppCreds,
-        'he',
-        failureLog
-      )
-    }
-
-    result.whatsappSent = !!wa
-    if (!wa) {
-      result.whatsappError = 'WhatsApp send failed (text and template)'
+    } else {
+      getLogger().info('WA_SEND', 'ticket_closed notify sent', {
+        clientId,
+        mode: send.mode,
+      })
     }
   } catch (e) {
     result.whatsappError = e instanceof Error ? e.message : String(e)

@@ -47,7 +47,6 @@ import {
   type GreenInvoiceClearingPlugin,
   type GreenInvoiceEnv,
 } from '@/lib/greeninvoice-config'
-
 type ClientRow = {
   id: string
   whatsapp_business_phone?: string | null
@@ -860,9 +859,9 @@ function SettingsPageInner() {
 
             {activeTab === 'whatsapp' && (
               <Card noPadding>
-                <div style={styles.cardInner}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מספר וואטסאפ לקישורי QR (wa.me)</label>
+                  <div style={styles.cardInner}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>מספר וואטסאפ לקישורי QR (wa.me)</label>
                     <input
                       value={waBusinessPhone}
                       onChange={(e) => setWaBusinessPhone(e.target.value)}
@@ -1361,6 +1360,17 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: '24px',
     position: 'relative',
     zIndex: 2,
+  },
+  waGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr minmax(260px, 320px)',
+    gap: 20,
+    alignItems: 'start',
+  },
+  waStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
   },
   tabBtn: {
     padding: '10px 16px',

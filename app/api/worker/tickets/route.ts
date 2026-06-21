@@ -137,6 +137,14 @@ export async function PATCH(req: NextRequest) {
           error: notify.whatsappError,
         })
       }
+
+      return NextResponse.json({
+        ok: true,
+        ticket: updated,
+        reporter_has_phone: notify?.reporterHasPhone ?? false,
+        whatsapp_sent: notify?.whatsappSent ?? false,
+        whatsapp_error: notify?.whatsappError,
+      })
     }
 
     return NextResponse.json({ ok: true, ticket: updated })

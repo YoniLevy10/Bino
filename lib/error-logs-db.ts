@@ -29,7 +29,8 @@ export async function insertWhatsAppSendFailure(
   clientId: string,
   to: string,
   body: string,
-  errorMessage: string
+  errorMessage: string,
+  detailsExtra?: Record<string, unknown>
 ): Promise<void> {
   try {
     const admin = getSupabaseAdmin()
@@ -38,8 +39,10 @@ export async function insertWhatsAppSendFailure(
       message: errorMessage.slice(0, 8000),
       client_id: clientId,
       details: {
+        client_id: clientId,
         to: to.slice(0, 64),
         body: body.slice(0, 4000),
+        ...detailsExtra,
       },
       resolved: false,
       whatsapp_attempts: 1,

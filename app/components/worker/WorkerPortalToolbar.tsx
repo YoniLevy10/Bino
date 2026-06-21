@@ -28,7 +28,7 @@ type WorkerPortalToolbarProps = {
 const PORTAL_TABS: { id: WorkerPortalTab; label: string }[] = [
   { id: 'TICKETS', label: 'תקלות' },
   { id: 'TOURS', label: 'סיורים' },
-  { id: 'ATTENDANCE', label: 'נוכחות' },
+  { id: 'ATTENDANCE', label: 'שעות' },
 ]
 
 const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
@@ -78,7 +78,7 @@ export function WorkerPortalToolbar({
           {portalTab === 'TOURS'
             ? 'רישום סיורים בפרויקטים'
             : portalTab === 'ATTENDANCE'
-              ? 'נוכחות QR / NFC'
+              ? 'הצמידו את הטלפון למדבקה'
               : filteredCount === ticketCount
               ? `${ticketCount} תקלות פתוחות`
               : `${filteredCount} מתוך ${ticketCount}`}

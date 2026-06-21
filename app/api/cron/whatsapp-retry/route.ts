@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { sendRawWhatsAppPayloadWithCredentials } from '@/lib/whatsapp-send'
+import { sendRawWhatsAppPayloadWithCredentials, buildWhatsAppTemplatePayloadForRetry } from '@/lib/whatsapp-send'
 import { getLogger } from '@/lib/logging'
 
 type Details = {
   client_id?: string
   to?: string
   body?: string
+  send_kind?: 'text' | 'template'
+  template_params?: string[]
+  template_language?: string
 }
 
 export async function GET(req: NextRequest) {
@@ -64,14 +67,23 @@ export async function GET(req: NextRequest) {
 
       retried++
       try {
+        const isTemplate = d.send_kind === 'template' || (!d.send_kind && d.body && /^[a-z0-9_]+$/.test(d.body))
+        const payload = isTemplate
+          ? buildWhatsAppTemplatePayloadForRetry(
+              d.to,
+              d.body || '',
+              Array.isArray(d.template_params) ? d.template_params.map(String) : [],
+              d.template_language || 'he'
+            )
+          : {
+              to: d.to,
+              type: 'text',
+              text: { body: d.body },
+            }
         const sent = await sendRawWhatsAppPayloadWithCredentials(
           client.whatsapp_phone_number_id,
           client.whatsapp_access_token,
-          {
-            to: d.to,
-            type: 'text',
-            text: { body: d.body },
-          }
+          payload
         )
         if (sent) {
           await admin

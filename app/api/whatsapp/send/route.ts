@@ -8,6 +8,8 @@ import {
   isWithinWhatsAppSessionWindow,
 } from '@/lib/whatsapp-message-store'
 import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp-send'
+import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { normalizePhone } from '@/lib/residents-whatsapp'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
@@ -27,7 +29,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const phone = whatsappDbPhoneKey(parsed.data.phone)
+  const phone = normalizePhone(whatsappDbPhoneKey(parsed.data.phone))
+  if (!phone || phone.startsWith('wa_test_')) {
+    return NextResponse.json({ error: 'מספר לא תקין לשליחה' }, { status: 400 })
+  }
+
   const inWindow = await isWithinWhatsAppSessionWindow(admin, auth.ctx.clientId, phone)
   if (!inWindow) {
     return NextResponse.json(
@@ -60,6 +66,13 @@ export async function POST(req: Request) {
   )
 
   if (!result) {
+    await insertWhatsAppSendFailure(
+      auth.ctx.clientId,
+      phone,
+      parsed.data.body,
+      'WhatsApp inbox text send returned null (timeout/error)',
+      { send_kind: 'text' }
+    )
     return NextResponse.json({ error: 'שליחת WhatsApp נכשלה' }, { status: 502 })
   }
 

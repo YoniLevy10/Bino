@@ -12,8 +12,9 @@ export function parseStartCode(text: string) {
 
 export function isNumericSelection(text: string): number | null {
   const trimmed = text.trim()
-  if (!/^[1-3]$/.test(trimmed)) return null
-  return parseInt(trimmed, 10)
+  const n = parseInt(trimmed, 10)
+  if (!Number.isFinite(n) || n < 1 || n > 10 || String(n) !== trimmed) return null
+  return n
 }
 
 export async function searchProjectsByBuilding(
@@ -40,7 +41,7 @@ export async function searchProjectsByBuilding(
         p.address?.toLowerCase().includes(lowerSearch) ||
         p.project_code?.toLowerCase().includes(lowerSearch)
     )
-    .slice(0, 3)
+    .slice(0, 10)
 }
 
 export async function createPendingSelection(

@@ -1147,7 +1147,7 @@ export async function runWhatsAppInboundBackground(
         return
       }
 
-      // Multiple matches (2-3) - store pending selection and send numbered list
+      // Multiple matches — store pending selection and send interactive list (up to 10)
       const pendingCreated = await createPendingSelection(
         from,
         searchResults,

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
 import { sendManagerSMS } from '@/lib/sms-send'
 import { getLogger } from '@/lib/logging'
 import { resolveWhatsAppTemplateMessage } from '@/lib/whatsapp-templates'
 import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
+import { sendResidentTextOrTemplate } from '@/lib/whatsapp-resident-outbound'
+import { metaTemplateNameSlaEscalation } from '@/lib/meta-whatsapp-pending-actions'
 
 /** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
 const MAX_FIRST_ALERTS_PER_RUN = 10
@@ -139,8 +140,12 @@ export async function GET(req: NextRequest) {
 
       // ── 2. ESCALATION — 24h after first alert (WA to resident only; no manager SMS) ──
       if (alerted && alertedAt && !escalatedAt && hoursAgo(alertedAt) >= 24) {
+        let waAttempted = false
+        let waSent = false
+
         // WhatsApp to resident (plain text, no emoji)
         if (reporterPhone && clientCreds.whatsapp_phone_number_id && clientCreds.whatsapp_access_token) {
+          waAttempted = true
           try {
             const descSnippet = ((row.description as string | null) ?? '-').slice(0, 60)
             const residentMsg = await resolveWhatsAppTemplateMessage(
@@ -153,19 +158,38 @@ export async function GET(req: NextRequest) {
                 description: descSnippet,
               }
             )
-            await sendWhatsAppTextMessage(
-              reporterPhone,
-              residentMsg,
-              { phoneNumberId: clientCreds.whatsapp_phone_number_id, accessToken: clientCreds.whatsapp_access_token },
-              { clientId }
-            )
+            const wa = await sendResidentTextOrTemplate(admin, {
+              clientId,
+              phone: reporterPhone,
+              textBody: residentMsg,
+              templateName: metaTemplateNameSlaEscalation(),
+              templateParams: [String(ticketNum), descSnippet],
+              creds: {
+                phoneNumberId: clientCreds.whatsapp_phone_number_id,
+                accessToken: clientCreds.whatsapp_access_token,
+              },
+              failureLog: { clientId },
+              persistOutbound: true,
+            })
+            waSent = wa.sent
+            if (!wa.sent) {
+              logger.warn('CRON', 'Escalation resident WA failed', {
+                ticketId: row.id,
+                error: wa.errorMessage,
+              })
+            }
           } catch (e) {
-            logger.warn('CRON', 'Escalation resident WA failed', { ticketId: row.id, err: e instanceof Error ? e.message : String(e) })
+            logger.warn('CRON', 'Escalation resident WA failed', {
+              ticketId: row.id,
+              err: e instanceof Error ? e.message : String(e),
+            })
           }
         }
 
-        await admin.from('tickets').update({ escalated_at: new Date().toISOString() }).eq('id', row.id as string)
-        stats.escalations++
+        if (!waAttempted || waSent) {
+          await admin.from('tickets').update({ escalated_at: new Date().toISOString() }).eq('id', row.id as string)
+          stats.escalations++
+        }
       }
     }
 

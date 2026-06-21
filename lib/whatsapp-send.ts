@@ -154,7 +154,9 @@ export async function sendWhatsAppTextMessage(
   )
 
   if (!result && failureLog?.clientId) {
-    await insertWhatsAppSendFailure(failureLog.clientId, to, body, 'WhatsApp send returned null (timeout/error)')
+    await insertWhatsAppSendFailure(failureLog.clientId, to, body, 'WhatsApp send returned null (timeout/error)', {
+      send_kind: 'text',
+    })
   }
 
   return result
@@ -189,6 +191,16 @@ function buildWhatsAppTemplatePayload(
       components,
     },
   }
+}
+
+/** Exported for whatsapp-retry cron. */
+export function buildWhatsAppTemplatePayloadForRetry(
+  to: string,
+  templateName: string,
+  bodyParams: string[],
+  languageCode: string
+): Record<string, unknown> {
+  return buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode)
 }
 
 export async function sendWhatsAppTemplateMessage(
@@ -228,7 +240,12 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
       failureLog.clientId,
       to,
       templateName,
-      'WhatsApp template send returned null (timeout/error)'
+      'WhatsApp template send returned null (timeout/error)',
+      {
+        send_kind: 'template',
+        template_params: bodyParams,
+        template_language: languageCode,
+      }
     )
   }
 

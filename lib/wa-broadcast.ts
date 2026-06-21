@@ -1,37 +1,105 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizePhone019 } from '@/lib/sms-019-core'
+import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
 import { sendRawWhatsAppPayloadWithCredentials } from '@/lib/whatsapp-send'
+import { buildInboxTemplatePreview } from '@/lib/whatsapp-inbox-meta-templates'
+import {
+  extractMetaWaMessageId,
+  persistWhatsAppMessage,
+} from '@/lib/whatsapp-message-store'
+import {
+  listWaBroadcastRecipients,
+  WA_BROADCAST_MAX_PER_RUN,
+  type WaBroadcastRecipientBreakdown,
+} from '@/lib/wa-broadcast-eligibility'
+import {
+  resolveWaBroadcastTemplate,
+  resolveWaBroadcastTemplateByMetaName,
+} from '@/lib/wa-broadcast-policy'
+
+export type WaBroadcastRunResult = WaBroadcastRecipientBreakdown & {
+  recipients_total: number
+  sent: number
+  failed: number
+  template_name: string
+  dry_run: boolean
+}
+
+function resolveTemplate(opts: {
+  templateId?: string
+  templateName?: string
+}) {
+  if (opts.templateId?.trim()) {
+    return resolveWaBroadcastTemplate(opts.templateId.trim())
+  }
+  if (opts.templateName?.trim()) {
+    return resolveWaBroadcastTemplateByMetaName(opts.templateName.trim())
+  }
+  return undefined
+}
 
 export async function runWhatsAppBroadcast(
   admin: SupabaseClient,
   opts: {
     clientId: string
     projectId: string
-    templateName: string
+    templateId?: string
+    templateName?: string
     templateLanguage?: string
+    bodyParams?: string[]
     bodyParam?: string
     dryRun: boolean
   }
-): Promise<{ recipients_total: number; sent: number; failed: number }> {
-  const { data: residents, error } = await admin
-    .from('residents')
-    .select('phone, normalized_phone')
-    .eq('client_id', opts.clientId)
-    .eq('project_id', opts.projectId)
-    .is('deleted_at', null)
+): Promise<WaBroadcastRunResult> {
+  const catalog = resolveTemplate({
+    templateId: opts.templateId,
+    templateName: opts.templateName,
+  })
 
-  if (error) throw error
-
-  const phones = new Set<string>()
-  for (const r of residents ?? []) {
-    const row = r as { phone?: string | null; normalized_phone?: string | null }
-    const p = row.normalized_phone || (row.phone ? normalizePhone019(row.phone) : null)
-    if (p) phones.add(p)
+  if (!catalog) {
+    throw new Error(
+      'תבנית לא מורשית לתפוצה. השתמשו רק בתבנית Utility מאושרת (ticket_closed).'
+    )
   }
 
-  const list = [...phones].slice(0, 200)
+  const metaName = catalog.resolveMetaName()
+  const lang = opts.templateLanguage || catalog.language
+
+  const expectedParams = catalog.params.length
+  let params = opts.bodyParams ?? (opts.bodyParam ? [opts.bodyParam] : [])
+  if (params.length !== expectedParams) {
+    if (expectedParams === 0) params = []
+    else if (expectedParams === 1 && opts.bodyParam && !opts.bodyParams?.length) {
+      params = [opts.bodyParam]
+    } else {
+      throw new Error(`נדרשים ${expectedParams} פרמטרים לתבנית "${catalog.label}"`)
+    }
+  }
+
+  const trimmedParams = params.map((p) => p.trim())
+  for (let i = 0; i < catalog.params.length; i++) {
+    if (!trimmedParams[i]) {
+      throw new Error(`שדה חובה: ${catalog.params[i].label}`)
+    }
+  }
+
+  const breakdown = await listWaBroadcastRecipients(admin, opts.clientId, opts.projectId)
+  const list = breakdown.recipients.slice(0, WA_BROADCAST_MAX_PER_RUN)
+
+  if (!opts.dryRun && list.length === 0) {
+    throw new Error(
+      'אין נמענים זכאים — אף דייר בבניין לא יצר קשר קודם ב-WhatsApp. SMS מתאים לפנייה ראשונה.'
+    )
+  }
+
   if (opts.dryRun) {
-    return { recipients_total: list.length, sent: 0, failed: 0 }
+    return {
+      ...breakdown,
+      recipients_total: list.length,
+      sent: 0,
+      failed: 0,
+      template_name: metaName,
+      dry_run: true,
+    }
   }
 
   const { data: clientRow } = await admin
@@ -49,40 +117,66 @@ export async function runWhatsAppBroadcast(
 
   let sent = 0
   let failed = 0
-  const params = opts.bodyParam ? [opts.bodyParam] : []
+  const previewBody = buildInboxTemplatePreview(catalog, trimmedParams)
 
-  for (const phone of list) {
-    const components =
-      params.length > 0
-        ? [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }]
-        : []
+  const components =
+    trimmedParams.length > 0
+      ? [{ type: 'body', parameters: trimmedParams.map((text) => ({ type: 'text', text })) }]
+      : []
 
+  for (const recipient of list) {
     const result = await sendRawWhatsAppPayloadWithCredentials(phoneNumberId, accessToken, {
-      to: phone,
+      to: recipient.normalized_phone,
       type: 'template',
       template: {
-        name: opts.templateName,
-        language: { code: opts.templateLanguage || 'he' },
+        name: metaName,
+        language: { code: lang },
         components,
       },
     })
-    if (result) sent++
-    else failed++
+    if (result) {
+      sent++
+      await persistWhatsAppMessage(admin, {
+        clientId: opts.clientId,
+        phone: recipient.normalized_phone,
+        direction: 'out',
+        body: `[תבנית: ${catalog.label}] ${previewBody}`,
+        messageType: 'template',
+        waMessageId: extractMetaWaMessageId(result),
+        residentId: recipient.resident_id,
+      })
+    } else {
+      failed++
+      await insertWhatsAppSendFailure(
+        opts.clientId,
+        recipient.normalized_phone,
+        previewBody,
+        `Broadcast template "${metaName}" failed`,
+        { send_kind: 'template', template_name: metaName }
+      )
+    }
     await new Promise((r) => setTimeout(r, 300))
   }
 
   await admin.from('wa_broadcast_runs').insert({
     client_id: opts.clientId,
     project_id: opts.projectId,
-    template_name: opts.templateName,
-    template_language: opts.templateLanguage || 'he',
+    template_name: metaName,
+    template_language: lang,
     recipients_total: list.length,
     sent,
     failed,
     dry_run: false,
   })
 
-  return { recipients_total: list.length, sent, failed }
+  return {
+    ...breakdown,
+    recipients_total: list.length,
+    sent,
+    failed,
+    template_name: metaName,
+    dry_run: false,
+  }
 }
 
 export const WHATSAPP_COEXISTENCE_NOTE =

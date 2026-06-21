@@ -12,7 +12,7 @@ function WhatsAppInboxInner() {
       addonKey={PAID_ADDON_KEYS.whatsapp_inbox}
       title="תיבת WhatsApp"
       mobileSubtitle="שיחות עם דיירים בזמן אמת"
-      desktopSubtitle="צפייה והשבה לדיירים — בתוך חלון 24 שעות ממסר אחרון"
+      desktopSubtitle="בחרו דייר מהרשימה וכתבו — בלי להקליד טלפון"
     >
       <WhatsAppInboxPanel />
     </AddonFeaturePageShell>

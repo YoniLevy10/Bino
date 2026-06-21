@@ -6,6 +6,17 @@ export const whatsappSendBodySchema = z.object({
   conversation_id: z.string().uuid().optional(),
 })
 
+export const whatsappSendTemplateBodySchema = z.object({
+  phone: z.string().min(8).max(20),
+  template_id: z.string().min(1).max(80),
+  params: z.array(z.string().max(500)).max(5),
+  conversation_id: z.string().uuid().optional(),
+})
+
+export const whatsappSessionQuerySchema = z.object({
+  phone: z.string().min(8).max(20),
+})
+
 export const smsCampaignBodySchema = z.object({
   project_id: z.string().uuid(),
   campaign_name: z.string().max(120).optional(),
@@ -41,8 +52,16 @@ export const emailSendBodySchema = z.object({
 
 export const waBroadcastBodySchema = z.object({
   project_id: z.string().uuid(),
-  template_name: z.string().min(1).max(120),
+  /** Catalog id (ticket_closed, sla_escalation) — preferred */
+  template_id: z.string().min(1).max(80).optional(),
+  body_params: z.array(z.string().max(500)).max(5).optional(),
+  /** Legacy: raw Meta template name */
+  template_name: z.string().min(1).max(120).optional(),
   template_language: z.string().max(10).optional(),
   body_param: z.string().max(500).optional(),
   dry_run: z.boolean().optional(),
+  /** Required when sending (not dry_run) — manager confirms Meta policy */
+  ack_wa_policy: z.literal(true).optional(),
+}).refine((d) => Boolean(d.template_id?.trim() || d.template_name?.trim()), {
+  message: 'template_id or template_name required',
 })

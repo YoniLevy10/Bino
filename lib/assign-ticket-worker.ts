@@ -4,12 +4,15 @@ import { collectWorkerPhones } from '@/lib/worker-phones'
 import { getWorkerPortalUrl } from '@/lib/public-app-url'
 import { notifyWorkerAssignedPush } from '@/lib/push-notifications'
 import { getLogger } from '@/lib/logging'
+import { notifyWorkerAssignmentWhatsApp, type WorkerAssignmentWaResult } from '@/lib/worker-assignment-wa-notify'
 
 export type AssignTicketToWorkerResult = {
   ok: boolean
   updatedTicket?: Record<string, unknown>
   workerSms: WorkerSmsBatchResult | null
   workerSmsNote?: string
+  workerWhatsApp?: WorkerAssignmentWaResult | null
+  workerWhatsAppNote?: string
   error?: string
 }
 
@@ -134,6 +137,32 @@ export async function assignTicketToWorker(
     workerSmsNote = 'לעובד אין מספר טלפון במערכת — לא נשלח SMS.'
   }
 
+  let workerWhatsApp: WorkerAssignmentWaResult | null = null
+  let workerWhatsAppNote: string | undefined
+  if (workerPhones.length > 0) {
+    try {
+      workerWhatsApp = await notifyWorkerAssignmentWhatsApp(supabase, {
+        clientId,
+        workerPhones,
+        buildingName,
+        ticketNumber,
+        description,
+      })
+      if (workerWhatsApp.sent > 0 && workerWhatsApp.failed === 0) {
+        workerWhatsAppNote = `WhatsApp template נשלח ל-${workerWhatsApp.sent} מספרים.`
+      } else if (workerWhatsApp.sent > 0) {
+        workerWhatsAppNote = `WhatsApp נשלח ל-${workerWhatsApp.sent}, נכשל ל-${workerWhatsApp.failed}.`
+      } else if (workerWhatsApp.failed > 0) {
+        workerWhatsAppNote = 'שליחת WhatsApp template לעובד נכשלה.'
+      }
+    } catch (waErr) {
+      workerWhatsAppNote = 'שגיאה בשליחת WhatsApp לעובד.'
+      logger.warn('ASSIGN', 'Worker WA template error', {
+        err: waErr instanceof Error ? waErr.message : String(waErr),
+      })
+    }
+  }
+
   try {
     await notifyWorkerAssignedPush(
       supabase,
@@ -152,6 +181,8 @@ export async function assignTicketToWorker(
     updatedTicket: updatedTicket as Record<string, unknown>,
     workerSms,
     workerSmsNote,
+    workerWhatsApp,
+    workerWhatsAppNote,
   }
 }
 
