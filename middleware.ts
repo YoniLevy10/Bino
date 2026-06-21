@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getSingletonClientId } from '@/lib/singleton-client-server'
+import { listClientIdsForUserId } from '@/lib/tenant-resolution'
 import {
   fetchClientEnabledNavFeatures,
   isNavFeatureEnabled,
@@ -90,7 +90,25 @@ export async function middleware(req: NextRequest) {
   let clientId: string
   try {
     const admin = getSupabaseAdmin()
-    clientId = await getSingletonClientId(admin, user.id)
+    const clientIds = await listClientIdsForUserId(admin, user.id)
+    if (clientIds.length === 0) {
+      throw new Error('NO_CLIENT')
+    }
+    if (clientIds.length > 1) {
+      await supabase.auth.signOut()
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'החשבון משויך ליותר מלקוח אחד — פנו לתמיכה' },
+          { status: 403 }
+        )
+      }
+      const url = req.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('error', 'multi_tenant')
+      pendingResponse = NextResponse.redirect(url)
+      return pendingResponse
+    }
+    clientId = clientIds[0]
   } catch {
     await supabase.auth.signOut()
     if (pathname.startsWith('/api/')) {

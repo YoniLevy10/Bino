@@ -23,11 +23,7 @@ describe('tenant resolution security', () => {
     const admin = {
       from: () => ({
         select: () => ({
-          eq: () => ({
-            order: () => ({
-              limit: async () => ({ data: [], error: null }),
-            }),
-          }),
+          eq: () => Promise.resolve({ data: [], error: null }),
         }),
       }),
     } as unknown as Parameters<typeof requireClientIdForUser>[0]
@@ -37,15 +33,49 @@ describe('tenant resolution security', () => {
     )
   })
 
+  it('resolveClientIdForUserId returns null when user belongs to multiple clients', async () => {
+    const admin = {
+      from: (table: string) => {
+        if (table === 'organization_users') {
+          return {
+            select: () => ({
+              eq: () =>
+                Promise.resolve({
+                  data: [
+                    { organization_id: 'org-a' },
+                    { organization_id: 'org-b' },
+                  ],
+                  error: null,
+                }),
+            }),
+          }
+        }
+        if (table === 'organizations') {
+          return {
+            select: () => ({
+              in: () =>
+                Promise.resolve({
+                  data: [
+                    { client_id: 'client-a' },
+                    { client_id: 'client-b' },
+                  ],
+                  error: null,
+                }),
+            }),
+          }
+        }
+        throw new Error(`unexpected table ${table}`)
+      },
+    } as unknown as Parameters<typeof resolveClientIdForUserId>[0]
+
+    await expect(resolveClientIdForUserId(admin, 'multi-tenant-user')).resolves.toBeNull()
+  })
+
   it('resolveClientIdForUserId returns null when user has no organization_users rows', async () => {
     const admin = {
       from: () => ({
         select: () => ({
-          eq: () => ({
-            order: () => ({
-              limit: async () => ({ data: [], error: null }),
-            }),
-          }),
+          eq: () => Promise.resolve({ data: [], error: null }),
         }),
       }),
     } as unknown as Parameters<typeof resolveClientIdForUserId>[0]
@@ -60,11 +90,7 @@ describe('userHasTenantAccess', () => {
     const admin = {
       from: () => ({
         select: () => ({
-          eq: () => ({
-            order: () => ({
-              limit: async () => ({ data: [], error: null }),
-            }),
-          }),
+          eq: () => Promise.resolve({ data: [], error: null }),
         }),
       }),
     } as unknown as Parameters<typeof userHasTenantAccess>[0]

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
-import { TENANT_ACCESS_DENIED_HE } from '@/lib/tenant-access'
+import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant-access'
 
 function GoogleIcon() {
   return (
@@ -39,9 +39,11 @@ export function LoginClient() {
   const [error, setError] = useState(
     authError === 'auth'
       ? 'ההתחברות נכשלה. נסו שוב.'
-      : authError === 'no_access'
-        ? TENANT_ACCESS_DENIED_HE
-        : ''
+      : authError === 'multi_tenant'
+        ? TENANT_MULTI_CLIENT_DENIED_HE
+        : authError === 'no_access'
+          ? TENANT_ACCESS_DENIED_HE
+          : ''
   )
 
   async function signInWithGoogle() {

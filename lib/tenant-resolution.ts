@@ -10,21 +10,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * מזהה לקוח (clients.id) לפי משתמש מחובר:
+ * כל מזהי הלקוחות (clients.id) שמשתמש מחובר משויך אליהם.
  * auth.users → organization_users → organizations.client_id
  */
-export async function resolveClientIdForUserId(
+export async function listClientIdsForUserId(
   admin: SupabaseClient,
   userId: string
-): Promise<string | null> {
+): Promise<string[]> {
   const { data: ouRows, error: ouErr } = await admin
     .from('organization_users')
-    .select('organization_id, created_at')
+    .select('organization_id')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(20)
 
-  if (ouErr || !ouRows?.length) return null
+  if (ouErr || !ouRows?.length) return []
 
   const orgIds = Array.from(
     new Set(
@@ -34,31 +32,41 @@ export async function resolveClientIdForUserId(
     )
   )
 
-  if (!orgIds.length) return null
+  if (!orgIds.length) return []
 
   const { data: orgRows, error: orgErr } = await admin
     .from('organizations')
-    .select('id, client_id')
+    .select('client_id')
     .in('id', orgIds)
 
-  if (orgErr || !orgRows?.length) return null
+  if (orgErr || !orgRows?.length) return []
 
-  const orgToClient = new Map<string, string>()
-  for (const row of orgRows as Array<{ id?: string | null; client_id?: string | null }>) {
-    const orgId = typeof row.id === 'string' ? row.id : ''
+  const clientIds = new Set<string>()
+  for (const row of orgRows as Array<{ client_id?: string | null }>) {
     const clientId = typeof row.client_id === 'string' ? row.client_id.trim() : ''
-    if (orgId && clientId) {
-      orgToClient.set(orgId, clientId)
-    }
+    if (clientId) clientIds.add(clientId)
   }
 
-  for (const row of ouRows as Array<{ organization_id?: string | null }>) {
-    const orgId = typeof row.organization_id === 'string' ? row.organization_id : ''
-    const clientId = orgToClient.get(orgId)
-    if (clientId) return clientId
-  }
+  return Array.from(clientIds)
+}
 
-  return null
+/**
+ * מזהה לקוח יחיד — נכשל (null) אם המשתמש משויך ליותר מלקוח אחד (מניעת דליפת tenant).
+ */
+export async function resolveClientIdForUserId(
+  admin: SupabaseClient,
+  userId: string
+): Promise<string | null> {
+  const clientIds = await listClientIdsForUserId(admin, userId)
+  if (clientIds.length === 0) return null
+  if (clientIds.length > 1) {
+    console.warn('[tenant-resolution] user linked to multiple clients — access denied', {
+      userId,
+      clientIds,
+    })
+    return null
+  }
+  return clientIds[0] ?? null
 }
 
 /**
