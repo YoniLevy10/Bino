@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isSuperAdminAuthorized } from '@/lib/superadmin-auth'
 import { createNfcTagBodySchema } from '@/lib/api-body-schemas'
-import { getWorkerAttendanceScanUrl } from '@/lib/public-app-url'
+import { buildNfcTagScanUrl, normalizeTagCode } from '@/lib/nfc-tag-utils'
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isSuperAdminAuthorized(req)) {
@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const { data, error } = await admin
     .from('worker_nfc_tags')
-    .select('id, tag_code, tag_type, project_id, label, is_active, created_at, projects(name, project_code)')
+    .select('id, tag_code, tag_type, project_id, label, is_active, sticker_installed_at, created_at, projects(name, project_code)')
     .eq('client_id', clientId)
     .order('tag_code')
 
@@ -24,13 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const tags = (data || []).map((row) => {
     const code = (row as { tag_code: string }).tag_code
-    let scan_url = `/worker/nfc?t=${encodeURIComponent(code)}`
-    try {
-      scan_url = getWorkerAttendanceScanUrl(code)
-    } catch {
-      /* NEXT_PUBLIC_APP_URL missing in dev */
-    }
-    return { ...row, scan_url }
+    return { ...row, scan_url: buildNfcTagScanUrl(code) }
   })
 
   return NextResponse.json({ client_id: clientId, tags })
@@ -72,7 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  const tagCode = d.tag_code.trim().toUpperCase()
+  const tagCode = normalizeTagCode(d.tag_code)
   const { data: created, error } = await admin
     .from('worker_nfc_tags')
     .insert({
@@ -93,12 +87,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  let scan_url = `/worker/nfc?t=${encodeURIComponent(tagCode)}`
-  try {
-    scan_url = getWorkerAttendanceScanUrl(tagCode)
-  } catch {
-    /* ignore */
-  }
-
-  return NextResponse.json({ tag: created, scan_url })
+  return NextResponse.json({ tag: created, scan_url: buildNfcTagScanUrl(tagCode) })
 }

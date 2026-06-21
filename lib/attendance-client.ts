@@ -5,6 +5,8 @@ import type {
   NfcTagRow,
   PendingAttendanceEvent,
 } from '@/lib/attendance-types'
+import { normalizeTagCode } from '@/lib/nfc-tag-utils'
+import { isDuplicateScan } from '@/lib/attendance-duplicate'
 import { resolveEventTypeForTag } from '@/lib/attendance-sync-server'
 import {
   addPendingAttendanceEvent,
@@ -15,14 +17,15 @@ import {
 } from '@/lib/offline-attendance-db'
 
 export function findOfflineTag(tags: NfcTagRow[], tagCode: string): NfcTagRow | null {
-  const code = tagCode.trim()
-  return tags.find((t) => t.is_active && t.tag_code === code) ?? null
+  const code = normalizeTagCode(tagCode)
+  return tags.find((t) => t.is_active && normalizeTagCode(t.tag_code) === code) ?? null
 }
 
 export async function buildAttendanceAction(
   workerId: string,
   tag: NfcTagRow,
-  source: AttendanceEventSource
+  source: AttendanceEventSource,
+  geo?: { lat: number; lng: number } | null
 ): Promise<{ event_type: AttendanceEventType; pending: PendingAttendanceEvent }> {
   const state = (await getLocalAttendanceState(workerId)) ?? {
     has_open_shift: false,
@@ -43,8 +46,8 @@ export async function buildAttendanceAction(
     client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,
     device_id: getOrCreateDeviceId(),
     user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    lat: null,
-    lng: null,
+    lat: geo?.lat ?? null,
+    lng: geo?.lng ?? null,
     note: null,
     source,
     sync_state: 'pending',
@@ -87,16 +90,22 @@ export async function recordAttendanceScan(
   workerId: string,
   clientId: string,
   tagCode: string,
-  source: AttendanceEventSource
+  source: AttendanceEventSource,
+  geo?: { lat: number; lng: number } | null
 ): Promise<
   | { ok: true; pending: PendingAttendanceEvent; event_type: AttendanceEventType; tag: NfcTagRow }
-  | { ok: false; reason: 'unknown_tag' }
+  | { ok: false; reason: 'unknown_tag' | 'duplicate_scan' }
 > {
   const tags = await getOfflineNfcTags(clientId)
   const tag = findOfflineTag(tags, tagCode)
   if (!tag) return { ok: false, reason: 'unknown_tag' }
 
-  const { event_type, pending } = await buildAttendanceAction(workerId, tag, source)
+  const state = await getLocalAttendanceState(workerId)
+  if (isDuplicateScan(state?.last_tag_code, state?.last_event_at, tag.tag_code)) {
+    return { ok: false, reason: 'duplicate_scan' }
+  }
+
+  const { event_type, pending } = await buildAttendanceAction(workerId, tag, source, geo)
   await addPendingAttendanceEvent(pending)
   await applyLocalAttendanceAfterAction(workerId, tag, event_type, pending.client_recorded_at)
   return { ok: true, pending, event_type, tag }

@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { QRCodeCanvas } from 'qrcode.react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
@@ -17,6 +16,15 @@ import {
 import { PageListSkeleton } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { AttendanceHelpSteps } from '../components/attendance/AttendanceHelpSteps'
+import { AttendanceShiftsReport } from '../components/attendance/AttendanceShiftsReport'
+import { AttendanceTodaySummary } from '../components/attendance/AttendanceTodaySummary'
+import { AttendanceSetupChecklist } from '../components/attendance/AttendanceSetupChecklist'
+import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
+import { AttendanceLiveWorkers } from '../components/attendance/AttendanceLiveWorkers'
+import { AttendanceAnomalies } from '../components/attendance/AttendanceAnomalies'
+import { AttendanceStickerProgress } from '../components/attendance/AttendanceStickerProgress'
+import { EVENT_TYPE_HE } from '@/lib/attendance-display'
 
 type AttendanceEventRow = {
   id: string
@@ -25,38 +33,16 @@ type AttendanceEventRow = {
   tag_code: string | null
   event_type: string
   client_recorded_at: string
-  source: string
   sync_status: string
-  sync_delay_minutes: number | null
-  suspicious_reason: string | null
-  admin_note: string | null
   workers?: { full_name?: string } | { full_name?: string }[] | null
   projects?: { name?: string } | { name?: string }[] | null
 }
 
-type NfcTagAdmin = {
-  id: string
-  tag_code: string
-  tag_type: string
-  label: string | null
-  is_active: boolean
-  project_id: string | null
-  projects?: { name?: string; project_code?: string } | null
-}
-
-type OfficeStaffRow = {
-  id: string
-  full_name: string
-  is_active: boolean
-  hourly_rate: number | null
-}
-
-const EVENT_LABELS: Record<string, string> = {
-  clock_in: 'כניסה',
-  clock_out: 'יציאה',
-  project_visit: 'ביקור',
-  project_arrival: 'הגעה',
-  project_departure: 'יציאה מפרויקט',
+const SYNC_STATUS_HE: Record<string, string> = {
+  synced: 'תקין',
+  pending_review: 'לבדיקה',
+  conflict: 'חריג',
+  rejected: 'נדחה',
 }
 
 function workerName(row: AttendanceEventRow): string {
@@ -76,7 +62,9 @@ function projectName(row: AttendanceEventRow): string {
 
 export default function AttendancePage() {
   const [events, setEvents] = useState<AttendanceEventRow[]>([])
-  const [tags, setTags] = useState<NfcTagAdmin[]>([])
+  const [tagCount, setTagCount] = useState(0)
+  const [stickerInstalled, setStickerInstalled] = useState(0)
+  const [stickerTotal, setStickerTotal] = useState(0)
   const [kpis, setKpis] = useState({
     active_workers_now: 0,
     clock_ins_today: 0,
@@ -85,63 +73,13 @@ export default function AttendancePage() {
   })
   const [loading, setLoading] = useState(true)
   const [syncFilter, setSyncFilter] = useState('')
-  const [sourceFilter, setSourceFilter] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [onboarding, setOnboarding] = useState<{
-    scan_url: string
-    onboarding_message_he: string
-    mode: 'nfc_tag' | 'office_station'
-    tag_label: string | null
-  } | null>(null)
-  const [onboardingLoading, setOnboardingLoading] = useState(true)
-  const [officeStaff, setOfficeStaff] = useState<OfficeStaffRow[]>([])
-  const [officeStaffLoading, setOfficeStaffLoading] = useState(true)
-  const [syncingWorkers, setSyncingWorkers] = useState(false)
-  const [newStaffName, setNewStaffName] = useState('')
-  const [addingStaff, setAddingStaff] = useState(false)
-  const qrRef = useRef<HTMLDivElement>(null)
 
-  const loadOfficeStaff = useCallback(async () => {
-    setOfficeStaffLoading(true)
-    try {
-      const res = await fetchWithTimeout('/api/attendance/office-staff')
-      const body = (await res.json().catch(() => ({}))) as { staff?: OfficeStaffRow[]; error?: string }
-      if (!res.ok) throw new Error(body.error || 'טעינת עובדים נכשלה')
-      setOfficeStaff(body.staff ?? [])
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'טעינת עובדים נכשלה')
-    } finally {
-      setOfficeStaffLoading(false)
-    }
-  }, [])
-
-  const loadOnboarding = useCallback(async () => {
-    setOnboardingLoading(true)
-    try {
-      const res = await fetchWithTimeout('/api/attendance/onboarding-qr')
-      const body = (await res.json().catch(() => ({}))) as {
-        scan_url?: string
-        onboarding_message_he?: string
-        mode?: 'nfc_tag' | 'office_station'
-        tag_label?: string | null
-        error?: string
-      }
-      if (!res.ok) throw new Error(body.error || 'טעינת QR נכשלה')
-      if (body.scan_url && body.onboarding_message_he && body.mode) {
-        setOnboarding({
-          scan_url: body.scan_url,
-          onboarding_message_he: body.onboarding_message_he,
-          mode: body.mode,
-          tag_label: body.tag_label ?? null,
-        })
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'טעינת QR נכשלה')
-    } finally {
-      setOnboardingLoading(false)
-    }
+  const onStickerProgress = useCallback((installed: number, total: number) => {
+    setStickerInstalled(installed)
+    setStickerTotal(total)
   }, [])
 
   const load = useCallback(async () => {
@@ -149,7 +87,6 @@ export default function AttendancePage() {
     try {
       const params = new URLSearchParams()
       if (syncFilter) params.set('sync_status', syncFilter)
-      if (sourceFilter) params.set('source', sourceFilter)
       const [evRes, tagRes] = await Promise.all([
         fetchWithTimeout(`/api/attendance/events?${params.toString()}`),
         fetchWithTimeout('/api/attendance/tags'),
@@ -163,14 +100,14 @@ export default function AttendancePage() {
       setEvents(evBody.events ?? [])
       if (evBody.kpis) setKpis(evBody.kpis)
 
-      const tagBody = (await tagRes.json().catch(() => ({}))) as { tags?: NfcTagAdmin[]; error?: string }
-      if (tagRes.ok) setTags(tagBody.tags ?? [])
+      const tagBody = (await tagRes.json().catch(() => ({}))) as { tags?: unknown[] }
+      if (tagRes.ok) setTagCount((tagBody.tags ?? []).length)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
     } finally {
       setLoading(false)
     }
-  }, [syncFilter, sourceFilter])
+  }, [syncFilter])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -181,79 +118,7 @@ export default function AttendancePage() {
 
   useEffect(() => {
     void load()
-    void loadOnboarding()
-    void loadOfficeStaff()
-  }, [load, loadOnboarding, loadOfficeStaff])
-
-  async function syncWorkersToStaffList() {
-    setSyncingWorkers(true)
-    try {
-      const res = await fetchWithTimeout('/api/attendance/office-staff/sync-workers', { method: 'POST' })
-      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
-      if (!res.ok) throw new Error(body.error || 'ייבוא נכשל')
-      toast.success(body.message || 'עודכן')
-      await loadOfficeStaff()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'ייבוא נכשל')
-    } finally {
-      setSyncingWorkers(false)
-    }
-  }
-
-  async function addOfficeStaffMember() {
-    const name = newStaffName.trim()
-    if (!name) {
-      toast.error('נא להזין שם')
-      return
-    }
-    setAddingStaff(true)
-    try {
-      const res = await fetchWithTimeout('/api/attendance/office-staff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: name, is_active: true }),
-      })
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      if (!res.ok) throw new Error(typeof body.error === 'string' ? body.error : 'הוספה נכשלה')
-      toast.success('נוסף לרשימת ההחתמה')
-      setNewStaffName('')
-      await loadOfficeStaff()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'הוספה נכשלה')
-    } finally {
-      setAddingStaff(false)
-    }
-  }
-
-  async function copyOnboardingMessage() {
-    if (!onboarding?.onboarding_message_he) return
-    try {
-      await navigator.clipboard.writeText(onboarding.onboarding_message_he)
-      toast.success('הודעה הועתקה')
-    } catch {
-      toast.error('העתקה נכשלה')
-    }
-  }
-
-  async function copyScanUrl() {
-    if (!onboarding?.scan_url) return
-    try {
-      await navigator.clipboard.writeText(onboarding.scan_url)
-      toast.success('קישור הועתק')
-    } catch {
-      toast.error('העתקה נכשלה')
-    }
-  }
-
-  function downloadQrPng() {
-    const canvas = qrRef.current?.querySelector('canvas')
-    if (!canvas) return
-    const url = canvas.toDataURL('image/png')
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'bamakor-attendance-qr.png'
-    a.click()
-  }
+  }, [load])
 
   async function approveEvent(id: string) {
     setBusyId(id)
@@ -277,156 +142,64 @@ export default function AttendancePage() {
   const inner = (
     <>
       {!isMobile && (
-        <PageHeader
-          title="חתמת עובדים"
-          subtitle="דוח נוכחות — סריקות QR/NFC, משמרות וסנכרון Offline"
-        />
+        <PageHeader title="חתמת עובדים" subtitle="מעקב שעות עובדי שטח — מדבקות NFC" />
       )}
+
+      <AttendanceHelpSteps />
+      <AttendanceHelpContact />
+
+      <AttendanceSetupChecklist
+        tagCount={tagCount}
+        stickerInstalled={stickerInstalled}
+        stickerTotal={stickerTotal}
+      />
+
+      <AttendanceStickerProgress onProgress={onStickerProgress} />
+
+      {kpis.pending_review > 0 ? (
+        <Card style={{ marginBottom: 16, borderColor: theme.colors.warning, background: theme.colors.warningMuted }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+            יש {kpis.pending_review} החתמות שדורשות את תשומת לבך — גללו למטה ולחצו «אשר».
+          </p>
+        </Card>
+      ) : null}
+
+      <AttendanceAnomalies />
+      <AttendanceTodaySummary />
+      <AttendanceLiveWorkers />
 
       <div style={styles.kpiGrid}>
         <Card style={styles.kpiCard}>
           <div style={styles.kpiValue}>{kpis.active_workers_now}</div>
-          <div style={styles.kpiLabel}>עובדים פעילים עכשיו</div>
+          <div style={styles.kpiLabel}>עובדים בדרך עכשיו</div>
         </Card>
         <Card style={styles.kpiCard}>
           <div style={styles.kpiValue}>{kpis.clock_ins_today}</div>
-          <div style={styles.kpiLabel}>כניסות היום</div>
+          <div style={styles.kpiLabel}>נכנסו היום</div>
         </Card>
         <Card style={styles.kpiCard}>
           <div style={styles.kpiValue}>{kpis.project_visits_today}</div>
-          <div style={styles.kpiLabel}>ביקורים בפרויקטים היום</div>
-        </Card>
-        <Card style={styles.kpiCard}>
-          <div style={styles.kpiValue}>{kpis.pending_review}</div>
-          <div style={styles.kpiLabel}>ממתינים לבדיקה</div>
+          <div style={styles.kpiLabel}>ביקורים בבניינים היום</div>
         </Card>
       </div>
 
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={styles.sectionTitle}>QR לתחילת תיקוף שעות (עד הגעת NFC)</h3>
-        <p style={styles.hint}>
-          הדפיסו את קוד ה-QR והעבירו לעובדים — עד שמדבקות NFC יגיעו מהמערכת. שלחו גם את הקישור האישי
-          ממסך העובדים (פעם אחת, עם אינטרנט).
-        </p>
-        {onboardingLoading ? (
-          <p style={styles.hint}>טוען QR...</p>
-        ) : onboarding ? (
-          <div style={styles.qrOnboardRow}>
-            <div ref={qrRef} style={styles.qrCanvasWrap}>
-              <QRCodeCanvas value={onboarding.scan_url} size={168} includeMargin />
-            </div>
-            <div style={styles.qrOnboardMeta}>
-              <p style={styles.scanUrl}>{onboarding.scan_url}</p>
-              {onboarding.tag_label ? (
-                <p style={styles.hint}>תג: {onboarding.tag_label}</p>
-              ) : onboarding.mode === 'office_station' ? (
-                <p style={styles.hint}>תחנת משרד — עד שיונפקו תגי שטח</p>
-              ) : null}
-              <div style={styles.qrBtnRow}>
-                <Button variant="secondary" size="sm" onClick={() => void copyScanUrl()}>
-                  העתק קישור
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => void copyOnboardingMessage()}>
-                  העתק הודעה לעובדים
-                </Button>
-                <Button variant="secondary" size="sm" onClick={downloadQrPng}>
-                  הורד QR
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={styles.sectionTitle}>עובדים להחתמה (תחנת QR)</h3>
-        <p style={styles.hint}>
-          מי שמופיע כאן יוכל לבחור את שמו אחרי סריקת ה-QR. ייבאו מהרשימה ב«עובדים» או הוסיפו שם ידנית.
-          בלי אינטרנט — רק פורטל העובד האישי (לא תחנת QR זו).
-        </p>
-        <div style={styles.qrBtnRow}>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={syncingWorkers}
-            onClick={() => void syncWorkersToStaffList()}
-          >
-            ייבא מעובדים
-          </Button>
-        </div>
-        {officeStaffLoading ? (
-          <p style={styles.hint}>טוען רשימה…</p>
-        ) : officeStaff.filter((s) => s.is_active).length === 0 ? (
-          <p style={styles.hint}>אין עובדים ברשימה — לחצו «ייבא מעובדים» או הוסיפו שם.</p>
-        ) : (
-          <ul style={styles.tagList}>
-            {officeStaff
-              .filter((s) => s.is_active)
-              .map((s) => (
-                <li key={s.id} style={styles.tagItem}>
-                  {s.full_name}
-                </li>
-              ))}
-          </ul>
-        )}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
-          <input
-            type="text"
-            value={newStaffName}
-            onChange={(e) => setNewStaffName(e.target.value)}
-            placeholder="שם לעובד שלא ברשימה"
-            style={styles.input}
-            maxLength={200}
-          />
-          <Button variant="primary" size="sm" loading={addingStaff} onClick={() => void addOfficeStaffMember()}>
-            הוסף
-          </Button>
-        </div>
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={styles.sectionTitle}>תגי QR / NFC</h3>
-        <p style={styles.hint}>
-          מדבקות QR מונפקות על ידי צוות במקור. לבקשת תגים חדשים או להדפסת QR — פנו לתמיכה.
-          עובדים סורקים לאחר פתיחה חד-פעמית של האזור האישי עם אינטרנט.
-        </p>
-        {tags.length === 0 ? (
-          <p style={styles.hint}>אין תגים רשומים לחשבון.</p>
-        ) : (
-          <ul style={styles.tagList}>
-            {tags.map((t) => (
-              <li key={t.id} style={styles.tagItem}>
-                <strong>{t.tag_code}</strong> · {t.tag_type === 'office' ? 'משרד' : 'פרויקט'}
-                {t.label ? ` · ${t.label}` : ''}
-                {!t.is_active ? ' (מושבת)' : ''}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      <AttendanceShiftsReport />
 
       <Card>
+        <h3 style={styles.sectionTitle}>החתמות אחרונות</h3>
+        <p style={styles.hint}>כניסות, יציאות וביקורים — נרשמים אוטומטית מהמדבקות.</p>
         <div style={styles.filters}>
-          <select
-            style={styles.input}
-            value={syncFilter}
-            onChange={(e) => setSyncFilter(e.target.value)}
-          >
-            <option value="">כל הסטטוסים</option>
-            <option value="synced">סונכרן</option>
-            <option value="pending_review">ממתין לבדיקה</option>
-            <option value="conflict">קונפליקט</option>
-            <option value="rejected">נדחה</option>
-          </select>
-          <select
-            style={styles.input}
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-          >
-            <option value="">כל המקורות</option>
-            <option value="online">Online</option>
-            <option value="offline">Offline</option>
-          </select>
+          {kpis.pending_review > 0 ? (
+            <select
+              style={styles.input}
+              value={syncFilter}
+              onChange={(e) => setSyncFilter(e.target.value)}
+            >
+              <option value="">הכל</option>
+              <option value="pending_review">רק שדורשות בדיקה</option>
+              <option value="synced">תקין</option>
+            </select>
+          ) : null}
           <Button variant="secondary" size="sm" onClick={() => void load()}>
             רענון
           </Button>
@@ -435,19 +208,16 @@ export default function AttendancePage() {
         {loading ? (
           <PageListSkeleton rows={6} />
         ) : events.length === 0 ? (
-          <p style={styles.hint}>אין אירועים להצגה</p>
+          <p style={styles.hint}>עדיין אין החתמות — אחרי שהעובדים יצמידו את הטלפון למדבקה, יופיעו כאן.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={styles.table}>
               <thead>
                 <tr>
                   <th style={styles.th}>עובד</th>
-                  <th style={styles.th}>סוג</th>
-                  <th style={styles.th}>מיקום</th>
-                  <th style={styles.th}>זמן</th>
-                  <th style={styles.th}>מקור</th>
-                  <th style={styles.th}>סנכרון</th>
-                  <th style={styles.th}>עיכוב</th>
+                  <th style={styles.th}>מה קרה</th>
+                  <th style={styles.th}>איפה</th>
+                  <th style={styles.th}>מתי</th>
                   <th style={styles.th}></th>
                 </tr>
               </thead>
@@ -455,24 +225,10 @@ export default function AttendancePage() {
                 {events.map((row) => (
                   <tr key={row.id}>
                     <td style={styles.td}>{workerName(row)}</td>
-                    <td style={styles.td}>{EVENT_LABELS[row.event_type] ?? row.event_type}</td>
+                    <td style={styles.td}>{EVENT_TYPE_HE[row.event_type] ?? row.event_type}</td>
                     <td style={styles.td}>{projectName(row)}</td>
                     <td style={styles.td}>
                       {new Date(row.client_recorded_at).toLocaleString('he-IL')}
-                    </td>
-                    <td style={styles.td}>
-                      <span style={badge(row.source === 'online' ? theme.colors.primary : theme.colors.warning)}>
-                        {row.source === 'online' ? 'Online' : 'Offline'}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={badge(syncBadgeColor(row.sync_status))}>{row.sync_status}</span>
-                      {row.suspicious_reason ? (
-                        <div style={{ fontSize: 11, color: theme.colors.error }}>{row.suspicious_reason}</div>
-                      ) : null}
-                    </td>
-                    <td style={styles.td}>
-                      {row.sync_delay_minutes != null ? `${row.sync_delay_minutes} דק׳` : '—'}
                     </td>
                     <td style={styles.td}>
                       {row.sync_status === 'pending_review' ? (
@@ -484,7 +240,11 @@ export default function AttendancePage() {
                         >
                           אשר
                         </Button>
-                      ) : null}
+                      ) : (
+                        <span style={{ fontSize: 12, color: theme.colors.textMuted }}>
+                          {SYNC_STATUS_HE[row.sync_status] ?? row.sync_status}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -522,25 +282,6 @@ export default function AttendancePage() {
   )
 }
 
-function syncBadgeColor(status: string): string {
-  if (status === 'synced') return theme.colors.success
-  if (status === 'pending_review') return theme.colors.warning
-  if (status === 'conflict') return theme.colors.error
-  return theme.colors.textMuted
-}
-
-function badge(bg: string): CSSProperties {
-  return {
-    display: 'inline-block',
-    fontSize: 11,
-    padding: '2px 8px',
-    borderRadius: 6,
-    background: bg,
-    color: '#fff',
-    fontWeight: 600,
-  }
-}
-
 const styles: Record<string, CSSProperties> = {
   kpiGrid: {
     display: 'grid',
@@ -553,32 +294,13 @@ const styles: Record<string, CSSProperties> = {
   kpiLabel: { fontSize: 13, color: theme.colors.textMuted, marginTop: 4 },
   sectionTitle: { margin: '0 0 8px', fontSize: 16, fontWeight: 600 },
   hint: { margin: '0 0 12px', fontSize: 13, color: theme.colors.textMuted },
-  tagFormRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   input: {
     padding: '8px 12px',
     borderRadius: 8,
     border: `1px solid ${theme.colors.border}`,
     fontSize: 14,
     minWidth: 120,
-    flex: 1,
   },
-  scanUrl: { fontSize: 12, wordBreak: 'break-all', marginBottom: 8, direction: 'ltr', textAlign: 'left' },
-  qrOnboardRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 20,
-    alignItems: 'flex-start',
-  },
-  qrCanvasWrap: {
-    padding: 12,
-    borderRadius: 12,
-    border: `1px solid ${theme.colors.border}`,
-    background: '#fff',
-  },
-  qrOnboardMeta: { flex: 1, minWidth: 200 },
-  qrBtnRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  tagList: { margin: 0, paddingRight: 20, fontSize: 13 },
-  tagItem: { marginBottom: 4 },
   filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
   th: {

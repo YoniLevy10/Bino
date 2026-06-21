@@ -9,6 +9,8 @@ import {
   type AttendanceSyncStatus,
   type NfcTagRow,
 } from '@/lib/attendance-types'
+import { normalizeTagCode } from '@/lib/nfc-tag-utils'
+import { DUPLICATE_SCAN_WINDOW_MS } from '@/lib/attendance-duplicate'
 
 export function computeSyncDelayMinutes(clientRecordedAt: string, serverReceivedAt: Date): number {
   const clientMs = new Date(clientRecordedAt).getTime()
@@ -65,6 +67,17 @@ type ProcessCtx = {
   serverReceivedAt: Date
 }
 
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
 export async function processAttendanceSyncEvent(
   ctx: ProcessCtx,
   input: AttendanceSyncEventInput,
@@ -84,6 +97,29 @@ export async function processAttendanceSyncEvent(
       status: (existing.sync_status as AttendanceSyncStatus) || 'synced',
       event_id: existing.id as string,
       message: 'already_synced',
+    }
+  }
+
+  const clientRecordedMs = new Date(input.client_recorded_at).getTime()
+  if (Number.isFinite(clientRecordedMs)) {
+    const windowStart = new Date(clientRecordedMs - DUPLICATE_SCAN_WINDOW_MS).toISOString()
+    const { data: recentSameTag } = await admin
+      .from('worker_attendance_events')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('worker_id', workerId)
+      .eq('tag_code', tag.tag_code)
+      .gte('client_recorded_at', windowStart)
+      .lte('client_recorded_at', input.client_recorded_at)
+      .limit(1)
+      .maybeSingle()
+
+    if (recentSameTag) {
+      return {
+        client_action_id: input.client_action_id,
+        status: 'synced',
+        message: 'duplicate_scan',
+      }
     }
   }
 
@@ -109,6 +145,31 @@ export async function processAttendanceSyncEvent(
   if (input.event_type === 'clock_out' && !hasOpenShift) {
     sync_status = sync_status === 'synced' ? 'pending_review' : sync_status
     suspicious_reason = [suspicious_reason, 'no_open_shift'].filter(Boolean).join(';')
+  }
+
+  if (tag.project_id && input.lat != null && input.lng != null) {
+    const { data: proj } = await admin
+      .from('projects')
+      .select('geofence_lat, geofence_lng, geofence_radius_m')
+      .eq('id', tag.project_id)
+      .maybeSingle()
+    const gf = proj as {
+      geofence_lat?: number | null
+      geofence_lng?: number | null
+      geofence_radius_m?: number | null
+    } | null
+    if (
+      gf?.geofence_lat != null &&
+      gf?.geofence_lng != null &&
+      gf?.geofence_radius_m != null &&
+      gf.geofence_radius_m > 0
+    ) {
+      const dist = haversineMeters(input.lat, input.lng, gf.geofence_lat, gf.geofence_lng)
+      if (dist > gf.geofence_radius_m) {
+        sync_status = sync_status === 'synced' ? 'pending_review' : sync_status
+        suspicious_reason = [suspicious_reason, 'outside_geofence'].filter(Boolean).join(';')
+      }
+    }
   }
 
   const { data: inserted, error: insErr } = await admin
@@ -202,7 +263,7 @@ export async function resolveTagForClient(
   clientId: string,
   tagCode: string
 ): Promise<{ tag: NfcTagRow | null; rejectReason?: string }> {
-  const code = tagCode.trim()
+  const code = normalizeTagCode(tagCode)
   if (!code) return { tag: null, rejectReason: 'empty_tag_code' }
 
   const { data, error } = await admin

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
+import { toastReporterClosedNotifySummary } from '@/lib/reporter-closed-notify-toast'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import {
@@ -36,6 +37,7 @@ const WorkerToursPanel = dynamic(
 )
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
 import { WorkerAttendancePanel } from '../components/worker/WorkerAttendancePanel'
+import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
   clearWorkerToken,
@@ -510,12 +512,24 @@ function WorkerPageInner() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: tokenSession.token, ticket_id: ticketId, status }),
         })
-        const json = (await res.json().catch(() => ({}))) as { error?: string; details?: unknown }
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string
+          details?: unknown
+          reporter_has_phone?: boolean
+          whatsapp_sent?: boolean
+        }
         if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
         if (status === 'CLOSED') {
           removeClosedTicketFromView(ticketId)
+          toast.success(TM.ticketClosed)
+          toastReporterClosedNotifySummary({
+            success: true,
+            reporter_has_phone: json.reporter_has_phone,
+            whatsapp_sent: json.whatsapp_sent,
+          })
+        } else {
+          toast.success(TM.ticketUpdated)
         }
-        toast.success(status === 'CLOSED' ? TM.ticketClosed : TM.ticketUpdated)
         await loadTicketsToken(tokenSession.token)
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
@@ -531,12 +545,26 @@ function WorkerPageInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_id: ticketId, status }),
       })
-      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        closed_now?: boolean
+        reporter_has_phone?: boolean
+        whatsapp_sent?: boolean
+      }
       if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
       if (status === 'CLOSED') {
         removeClosedTicketFromView(ticketId)
+        toast.success(TM.ticketClosed)
+        if (json.closed_now) {
+          toastReporterClosedNotifySummary({
+            success: true,
+            reporter_has_phone: json.reporter_has_phone,
+            whatsapp_sent: json.whatsapp_sent,
+          })
+        }
+      } else {
+        toast.success(TM.ticketUpdated)
       }
-      toast.success(status === 'CLOSED' ? TM.ticketClosed : TM.ticketUpdated)
       await loadTicketsDashboard(workerId)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
@@ -609,11 +637,16 @@ function WorkerPageInner() {
 
         <div style={styles.scrollArea}>
           {portalTab === 'ATTENDANCE' ? (
-            <WorkerAttendancePanel
-              token={tokenSession.token}
-              workerId={tokenSession.workerId}
-              colors={palette}
-            />
+            <>
+              <WorkerAttendancePanel
+                token={tokenSession.token}
+                workerId={tokenSession.workerId}
+                colors={palette}
+              />
+              <div style={{ padding: '0 16px' }}>
+                <AttendanceHelpContact />
+              </div>
+            </>
           ) : portalTab === 'TOURS' ? (
             <WorkerToursPanel
               token={tokenSession.token}
@@ -649,6 +682,7 @@ function WorkerPageInner() {
                   attachmentsLoading={attachmentsLoadingId === t.id}
                   onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
                   uploadingPhoto={uploadingPhotoId === t.id}
+                  showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
                   chatSlot={
                     <>
                       {chatLoading && expandedChatId === t.id ? (

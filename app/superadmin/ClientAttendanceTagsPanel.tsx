@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
+import { toast } from '@/lib/error-handler'
 
 type TagRow = {
   id: string
@@ -10,8 +12,8 @@ type TagRow = {
   tag_type: string
   label: string | null
   is_active: boolean
+  sticker_installed_at?: string | null
   scan_url?: string
-  projects?: { name?: string; project_code?: string } | null
 }
 
 type Project = { id: string; name: string; project_code: string }
@@ -28,14 +30,25 @@ export function ClientAttendanceTagsPanel({
   const [stampAddonEnabled, setStampAddonEnabled] = useState(false)
   const [tags, setTags] = useState<TagRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({
-    tag_code: '',
-    tag_type: 'office' as 'office' | 'project',
-    project_id: '',
-    label: '',
-  })
-  const [lastUrl, setLastUrl] = useState<string | null>(null)
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const [wizardIndex, setWizardIndex] = useState(0)
+  const [copied, setCopied] = useState(false)
+  const [togglingInstall, setTogglingInstall] = useState(false)
+
+  const installedCount = useMemo(
+    () => tags.filter((t) => t.sticker_installed_at).length,
+    [tags]
+  )
+
+  const sortedTags = useMemo(() => {
+    return [...tags].sort((a, b) => {
+      if (a.tag_type === 'office' && b.tag_type !== 'office') return -1
+      if (b.tag_type === 'office' && a.tag_type !== 'office') return 1
+      return (a.label || a.tag_code).localeCompare(b.label || b.tag_code, 'he')
+    })
+  }, [tags])
+
+  const currentTag = sortedTags[wizardIndex] ?? null
 
   const loadAddons = useCallback(async () => {
     const res = await fetch(`/api/superadmin/client/${clientId}/addons`, {
@@ -72,126 +85,204 @@ export function ClientAttendanceTagsPanel({
     })()
   }, [loadAddons, load])
 
-  async function createTag() {
-    if (!form.tag_code.trim()) return
-    setSaving(true)
-    setLastUrl(null)
+  async function bulkCreateTags() {
+    setBulkSaving(true)
     try {
-      const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags`, {
+      const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/bulk`, {
         method: 'POST',
         headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tag_code: form.tag_code.trim(),
-          tag_type: form.tag_type,
-          project_id: form.tag_type === 'project' ? form.project_id || null : null,
-          label: form.label.trim() || null,
-        }),
+        body: JSON.stringify({ include_office: true, office_tag_code: 'OFFICE' }),
       })
-      const body = (await res.json().catch(() => ({}))) as { error?: string; scan_url?: string }
+      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
       if (!res.ok) {
-        alert(body.error || 'יצירה נכשלה')
+        toast.error(typeof body.error === 'string' ? body.error : 'יצירה נכשלה')
         return
       }
-      setLastUrl(body.scan_url ?? null)
-      setForm({ tag_code: '', tag_type: 'office', project_id: '', label: '' })
+      toast.success(body.message || 'התגים נוצרו')
+      setWizardIndex(0)
       await load()
     } finally {
-      setSaving(false)
+      setBulkSaving(false)
+    }
+  }
+
+  async function copyCurrentUrl() {
+    if (!currentTag?.scan_url) return
+    try {
+      await navigator.clipboard.writeText(currentTag.scan_url)
+      setCopied(true)
+      toast.success('הקישור הועתק — הדביקו באפליקציית NFC')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('העתקה נכשלה')
+    }
+  }
+
+  async function toggleStickerInstalled(installed: boolean) {
+    if (!currentTag) return
+    setTogglingInstall(true)
+    try {
+      const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/installed`, {
+        method: 'PATCH',
+        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_id: currentTag.id, installed }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast.error(typeof body.error === 'string' ? body.error : 'עדכון נכשל')
+        return
+      }
+      toast.success(installed ? 'סומן כהודבק' : 'סומן כלא הודבק')
+      await load()
+    } finally {
+      setTogglingInstall(false)
     }
   }
 
   if (!stampAddonEnabled) {
     return (
       <div style={boxStyle}>
-        <div style={titleStyle}>חתמת עובדים (QR / NFC)</div>
+        <div style={titleStyle}>מדבקות NFC — חתמת עובדים</div>
+        <p style={hintStyle}>הפעילו קודם את התוסף «חתמת עובדים» ללקוח.</p>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div style={boxStyle}>
+        <p style={hintStyle}>טוען מדבקות...</p>
+      </div>
+    )
+  }
+
+  if (tags.length === 0) {
+    return (
+      <div style={boxStyle}>
+        <div style={titleStyle}>שלב 1 — יצירת רשימת מדבקות</div>
         <p style={hintStyle}>
-          הפעילו את התוסף &quot;חתמת עובדים&quot; ללקוח למעלה, ואז תוכלו ליצור תגים ולהוציא QR.
+          לוחצים פעם אחת — נוצרת מדבקה למשרד + מדבקה לכל {projects.length} בניינים.
         </p>
+        <LoadingButton onClick={() => void bulkCreateTags()} loading={bulkSaving} loadingText="יוצר...">
+          צור את כל המדבקות
+        </LoadingButton>
       </div>
     )
   }
 
   return (
     <div style={boxStyle}>
-      <div style={titleStyle}>חתמת עובדים — תגים ו-QR (במקור מנפיק)</div>
-      <p style={hintStyle}>
-        הדפיסו QR מהקישור. העובד פותח את האזור האישי פעם אחת עם אינטרנט, ואז סורק גם Offline.
-      </p>
-
-      <div style={formRow}>
-        <input
-          style={inputStyle}
-          placeholder="קוד תג (OFFICE_01)"
-          value={form.tag_code}
-          onChange={(e) => setForm((f) => ({ ...f, tag_code: e.target.value }))}
-        />
-        <select
-          style={inputStyle}
-          value={form.tag_type}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, tag_type: e.target.value as 'office' | 'project', project_id: '' }))
-          }
-        >
-          <option value="office">משרד</option>
-          <option value="project">פרויקט</option>
-        </select>
-        {form.tag_type === 'project' ? (
-          <select
-            style={inputStyle}
-            value={form.project_id}
-            onChange={(e) => setForm((f) => ({ ...f, project_id: e.target.value }))}
-          >
-            <option value="">בחר פרויקט</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.project_code})
-              </option>
-            ))}
-          </select>
-        ) : null}
-        <input
-          style={inputStyle}
-          placeholder="תווית"
-          value={form.label}
-          onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-        />
-        <LoadingButton onClick={() => void createTag()} loading={saving} loadingText="יוצר..." size="sm">
-          צור תג + QR
-        </LoadingButton>
+      <div style={titleStyle}>
+        תכנון מדבקות NFC — {wizardIndex + 1} מתוך {sortedTags.length}
+        <span style={{ fontWeight: 400, fontSize: 13, color: theme.colors.textMuted, marginRight: 8 }}>
+          ({installedCount}/{sortedTags.length} הודבקו)
+        </span>
       </div>
 
-      {lastUrl ? (
-        <p style={{ ...hintStyle, direction: 'ltr', wordBreak: 'break-all' }}>
-          קישור סריקה: {lastUrl}
-          <button
-            type="button"
-            style={copyBtn}
-            onClick={() => void navigator.clipboard.writeText(lastUrl)}
-          >
-            העתק
-          </button>
-        </p>
-      ) : null}
+      <div style={progressBarWrap}>
+        <div
+          style={{
+            ...progressBarFill,
+            width: `${sortedTags.length ? Math.round((installedCount / sortedTags.length) * 100) : 0}%`,
+          }}
+        />
+      </div>
 
-      {loading ? (
-        <p style={hintStyle}>טוען תגים...</p>
-      ) : tags.length === 0 ? (
-        <p style={hintStyle}>אין תגים — צרו תג משרד ותג לכל בניין לפי הצורך.</p>
-      ) : (
-        <ul style={{ margin: 0, paddingRight: 18, fontSize: 13 }}>
-          {tags.map((t) => (
-            <li key={t.id} style={{ marginBottom: 8 }}>
-              <strong>{t.tag_code}</strong> · {t.tag_type === 'office' ? 'משרד' : 'פרויקט'}
-              {t.label ? ` · ${t.label}` : ''}
-              {t.scan_url ? (
-                <div style={{ direction: 'ltr', fontSize: 11, color: theme.colors.textMuted, marginTop: 2 }}>
-                  {t.scan_url}
-                </div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
+      <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <a
+          href={`/api/superadmin/client/${clientId}/attendance-tags/print-sheet`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={printLinkStyle}
+          onClick={(e) => {
+            e.preventDefault()
+            void fetch(`/api/superadmin/client/${clientId}/attendance-tags/print-sheet`, {
+              headers: { 'x-admin-secret': secret },
+            })
+              .then((r) => r.text())
+              .then((html) => {
+                const w = window.open('', '_blank')
+                if (w) {
+                  w.document.write(html)
+                  w.document.close()
+                }
+              })
+              .catch(() => toast.error('פתיחת גיליון הדפסה נכשלה'))
+          }}
+        >
+          גיליון הדפסת מדבקות (PDF)
+        </a>
+      </div>
+
+      {currentTag ? (
+        <div style={wizardCard}>
+          <div style={wizardLocation}>
+            {currentTag.tag_type === 'office' ? '🏢 משרד' : '🏗️ בניין'}
+          </div>
+          <div style={wizardName}>{currentTag.label || currentTag.tag_code}</div>
+          <div style={wizardCode}>קוד: {currentTag.tag_code}</div>
+
+          {currentTag.scan_url ? (
+            <div style={qrCenter}>
+              <QRCodeCanvas value={currentTag.scan_url} size={140} includeMargin />
+            </div>
+          ) : null}
+
+          <button type="button" style={bigCopyBtn} onClick={() => void copyCurrentUrl()}>
+            {copied ? '✓ הועתק!' : 'העתק קישור למדבקה'}
+          </button>
+
+          <LoadingButton
+            onClick={() => void toggleStickerInstalled(!currentTag.sticker_installed_at)}
+            loading={togglingInstall}
+            loadingText="שומר..."
+          >
+            {currentTag.sticker_installed_at ? '✓ הודבק — לחץ לביטול' : 'סמן: המדבקה הודבקה על הדלת'}
+          </LoadingButton>
+
+          <div style={stepsBox}>
+            <div style={stepsTitle}>עכשיו בטלפון:</div>
+            <ol style={stepsList}>
+              <li>פתחו <strong>NFC Tools</strong> (אנדרואיד) או <strong>TagWriter</strong> (אייפון)</li>
+              <li>בחרו «כתיבת קישור» / Write URL</li>
+              <li>הדביקו את הקישור שהעתקתם</li>
+              <li>הצמידו את הטלפון למדבקה הריקה → Write</li>
+              <li>הדביקו את המדבקה על הדלת</li>
+            </ol>
+          </div>
+
+          <div style={navRow}>
+            <button
+              type="button"
+              style={navBtn}
+              disabled={wizardIndex === 0}
+              onClick={() => setWizardIndex((i) => Math.max(0, i - 1))}
+            >
+              ← הקודם
+            </button>
+            <select
+              style={jumpSelect}
+              value={String(wizardIndex)}
+              onChange={(e) => setWizardIndex(Number(e.target.value))}
+            >
+              {sortedTags.map((t, i) => (
+                <option key={t.id} value={String(i)}>
+                  {t.tag_type === 'office' ? 'משרד' : t.label || t.tag_code}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              style={navBtnPrimary}
+              onClick={() =>
+                setWizardIndex((i) => (i >= sortedTags.length - 1 ? 0 : i + 1))
+              }
+            >
+              {wizardIndex >= sortedTags.length - 1 ? 'סיום ✓' : 'הבא →'}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -205,38 +296,139 @@ const boxStyle: CSSProperties = {
 }
 
 const titleStyle: CSSProperties = {
-  fontWeight: theme.typography.fontWeight.semibold,
-  fontSize: theme.typography.fontSize.sm,
+  fontWeight: 700,
+  fontSize: 15,
   marginBottom: theme.spacing.sm,
 }
 
 const hintStyle: CSSProperties = {
-  margin: '0 0 10px',
-  fontSize: theme.typography.fontSize.xs,
+  margin: '0 0 12px',
+  fontSize: 13,
   color: theme.colors.textMuted,
-  lineHeight: 1.45,
+  lineHeight: 1.5,
 }
 
-const formRow: CSSProperties = {
+const progressBarWrap: CSSProperties = {
+  height: 6,
+  background: theme.colors.border,
+  borderRadius: 999,
+  marginBottom: 16,
+  overflow: 'hidden',
+}
+
+const progressBarFill: CSSProperties = {
+  height: '100%',
+  background: theme.colors.primary,
+  borderRadius: 999,
+  transition: 'width 0.2s',
+}
+
+const wizardCard: CSSProperties = {
+  padding: 16,
+  borderRadius: theme.radius.md,
+  background: theme.colors.background,
+  border: `1px solid ${theme.colors.border}`,
+  textAlign: 'center',
+}
+
+const wizardLocation: CSSProperties = {
+  fontSize: 28,
+  marginBottom: 6,
+}
+
+const wizardName: CSSProperties = {
+  fontSize: 18,
+  fontWeight: 700,
+  marginBottom: 4,
+}
+
+const wizardCode: CSSProperties = {
+  fontSize: 12,
+  color: theme.colors.textMuted,
+  marginBottom: 14,
+}
+
+const qrCenter: CSSProperties = {
+  display: 'inline-block',
+  padding: 10,
+  background: '#fff',
+  borderRadius: 10,
+  marginBottom: 14,
+}
+
+const bigCopyBtn: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  maxWidth: 320,
+  margin: '0 auto 16px',
+  padding: '14px 20px',
+  fontSize: 16,
+  fontWeight: 700,
+  border: 'none',
+  borderRadius: 10,
+  background: theme.colors.primary,
+  color: '#fff',
+  cursor: 'pointer',
+}
+
+const stepsBox: CSSProperties = {
+  textAlign: 'right',
+  background: theme.colors.primaryMuted,
+  borderRadius: theme.radius.sm,
+  padding: 14,
+  marginBottom: 16,
+}
+
+const stepsTitle: CSSProperties = {
+  fontWeight: 700,
+  fontSize: 14,
+  marginBottom: 8,
+}
+
+const stepsList: CSSProperties = {
+  margin: 0,
+  paddingRight: 20,
+  fontSize: 13,
+  lineHeight: 1.65,
+}
+
+const navRow: CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
   gap: 8,
-  marginBottom: 10,
+  justifyContent: 'center',
+  alignItems: 'center',
 }
 
-const inputStyle: CSSProperties = {
-  padding: '6px 10px',
-  borderRadius: theme.radius.sm,
+const navBtn: CSSProperties = {
+  padding: '8px 14px',
+  borderRadius: 8,
   border: `1px solid ${theme.colors.border}`,
-  fontSize: theme.typography.fontSize.sm,
-  minWidth: 100,
+  background: theme.colors.surface,
+  cursor: 'pointer',
+  fontSize: 13,
 }
 
-const copyBtn: CSSProperties = {
-  marginRight: 8,
-  background: 'none',
+const navBtnPrimary: CSSProperties = {
+  ...navBtn,
+  background: theme.colors.primary,
+  color: '#fff',
   border: 'none',
-  cursor: 'pointer',
+  fontWeight: 600,
+}
+
+const jumpSelect: CSSProperties = {
+  padding: '8px 10px',
+  borderRadius: 8,
+  border: `1px solid ${theme.colors.border}`,
+  fontSize: 13,
+  minWidth: 160,
+}
+
+const printLinkStyle: CSSProperties = {
+  fontSize: 13,
   color: theme.colors.primary,
-  fontSize: 12,
+  fontWeight: 600,
+  textDecoration: 'underline',
+  cursor: 'pointer',
 }

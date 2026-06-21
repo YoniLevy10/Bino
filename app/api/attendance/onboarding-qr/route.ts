@@ -7,10 +7,12 @@ import { getOfficeAttendanceScanUrl, getWorkerAttendanceScanUrl } from '@/lib/pu
 
 function buildOnboardingMessageHe(scanUrl: string, mode: 'nfc_tag' | 'office_station'): string {
   const intro =
-    'שלום,\nמתחילים תיקוף שעות במערכת במקור עד להגעת מדבקות NFC.\n'
+    mode === 'nfc_tag'
+      ? 'שלום,\nתיקוף שעות במערכת במקור — סריקת מדבקת NFC או QR בכניסה/בפרויקט.\n'
+      : 'שלום,\nמתחילים תיקוף שעות במערכת במקור (QR ביניים עד תגי NFC).\n'
   const steps =
     mode === 'nfc_tag'
-      ? '1. פתחו את הקישור האישי שלכם מהמנהל (פעם אחת, עם אינטרנט).\n2. בכל כניסה ויציאה — סרקו את קוד ה-QR בכניסה לבניין/משרד.\n'
+      ? '1. פתחו את הקישור האישי שלכם מהמנהל (פעם אחת, עם אינטרנט).\n2. בכל כניסה, יציאה או ביקור בפרויקט — הצמידו את הטלפון למדבקת NFC (או סרקו QR).\n'
       : '1. סרקו את קוד ה-QR בכניסה למשרד.\n2. בחרו את שמכם ולחצו כניסה/יציאה.\n'
   return `${intro}${steps}\nקישור לסריקה:\n${scanUrl}`
 }

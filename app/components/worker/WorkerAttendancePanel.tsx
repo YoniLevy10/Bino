@@ -1,9 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import type { LocalAttendanceState } from '@/lib/attendance-types'
+import {
+  formatAttendanceDateTime,
+  formatShiftMinutes,
+  SHIFT_STATUS_HE,
+} from '@/lib/attendance-display'
 import {
   getLocalAttendanceState,
   getPendingAttendanceEvents,
@@ -13,12 +19,12 @@ import {
 import { fetchAndCacheWorkerAttendanceBootstrap } from '@/lib/worker-attendance-bootstrap'
 import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
 
-const EVENT_LABELS: Record<string, string> = {
-  clock_in: 'כניסה לעבודה',
-  clock_out: 'יציאה מהעבודה',
-  project_visit: 'ביקור בפרויקט',
-  project_arrival: 'הגעה לפרויקט',
-  project_departure: 'יציאה מפרויקט',
+type ShiftRow = {
+  id: string
+  started_at: string
+  ended_at: string | null
+  total_minutes: number | null
+  status: string
 }
 
 type Props = {
@@ -32,8 +38,9 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
   const [ready, setReady] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [state, setState] = useState<LocalAttendanceState | null>(null)
+  const [shifts, setShifts] = useState<ShiftRow[]>([])
+  const [shiftsLoading, setShiftsLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [bootstrapping, setBootstrapping] = useState(false)
 
   const refreshLocal = useCallback(async () => {
     await initOfflineAttendanceDB()
@@ -45,6 +52,22 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
     setState(st)
   }, [token, workerId])
 
+  const loadShifts = useCallback(async () => {
+    if (!online || !token) return
+    setShiftsLoading(true)
+    try {
+      const res = await fetchWithTimeout(
+        `/api/worker/attendance/shifts?token=${encodeURIComponent(token)}&limit=30`
+      )
+      if (res.ok) {
+        const body = (await res.json()) as { shifts?: ShiftRow[] }
+        setShifts(body.shifts ?? [])
+      }
+    } finally {
+      setShiftsLoading(false)
+    }
+  }, [online, token])
+
   useEffect(() => {
     void refreshLocal()
   }, [refreshLocal])
@@ -52,20 +75,23 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
   useEffect(() => {
     if (!online || !token) return
     void (async () => {
-      setBootstrapping(true)
       try {
         await fetchAndCacheWorkerAttendanceBootstrap(token)
         await refreshLocal()
-      } finally {
-        setBootstrapping(false)
+        await loadShifts()
+      } catch {
+        /* ignore */
       }
     })()
-  }, [online, token, refreshLocal])
+  }, [online, token, refreshLocal, loadShifts])
 
   useEffect(() => {
     if (!online || !token) return
-    void syncPendingAttendanceEvents(token).then(() => refreshLocal())
-  }, [online, token, refreshLocal])
+    void syncPendingAttendanceEvents(token).then(async () => {
+      await refreshLocal()
+      await loadShifts()
+    })
+  }, [online, token, refreshLocal, loadShifts])
 
   const handleSync = async () => {
     if (!online) return
@@ -74,80 +100,135 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
       await syncPendingAttendanceEvents(token)
       await fetchAndCacheWorkerAttendanceBootstrap(token)
       await refreshLocal()
+      await loadShifts()
     } finally {
       setSyncing(false)
     }
   }
 
-  return (
-    <div style={styles.card(colors)}>
-      {!online ? (
-        <p style={styles.banner(colors)}>
-          אתה במצב ללא אינטרנט. הפעולות יישמרו במכשיר ויסתנכרנו אוטומטית כשהחיבור יחזור.
-        </p>
-      ) : null}
+  const inShift = state?.has_open_shift
 
-      <div style={styles.statusRow}>
-        <span
-          style={styles.badge(
-            online ? colors.successMuted : colors.warningMuted,
-            online ? colors.success : colors.warning
-          )}
-        >
-          {online ? 'מחובר' : 'לא מחובר'}
-        </span>
-        {pendingCount > 0 ? (
-          <span style={styles.badge(colors.primaryMuted, colors.primary)}>
-            {pendingCount} ממתינים לסנכרון
-          </span>
-        ) : null}
-        {ready ? (
-          <span style={styles.badge(colors.successMuted, colors.success)}>מוכן ל-Offline</span>
-        ) : (
-          <span style={styles.badge(colors.warningMuted, colors.warning)}>נדרשת פתיחה עם אינטרנט</span>
-        )}
+  const { todayMinutes, weekMinutes } = useMemo(() => {
+    const nowDate = new Date()
+    const dayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate())
+    const weekStart = new Date(dayStart)
+    weekStart.setDate(weekStart.getDate() - 6)
+    let today = 0
+    let week = 0
+    for (const s of shifts) {
+      if (!s.total_minutes) continue
+      const started = new Date(s.started_at)
+      if (started >= dayStart) today += s.total_minutes
+      if (started >= weekStart) week += s.total_minutes
+    }
+    return { todayMinutes: today, weekMinutes: week }
+  }, [shifts])
+
+  return (
+    <div style={styles.wrap}>
+      <div style={styles.hero(colors, inShift)}>
+        <div style={styles.heroTitle(colors)}>
+          {inShift ? 'את/ה בעבודה עכשיו' : 'לא רשום/ה בעבודה'}
+        </div>
+        <p style={styles.heroHint(colors)}>
+          {inShift
+            ? 'ביציאה — הצמידו שוב את הטלפון למדבקה.'
+            : 'בכניסה — הצמידו את הטלפון למדבקה בדלת.'}
+        </p>
       </div>
 
-      <p style={styles.hint(colors)}>
-        {ready
-          ? 'המכשיר מוכן לעבודה גם ללא אינטרנט.'
-          : 'כדי לעבוד ללא אינטרנט, צריך לפתוח את המערכת פעם אחת כשיש חיבור.'}
-      </p>
+      <div style={styles.card(colors)}>
+        <div style={styles.instructionTitle(colors)}>מה עושים?</div>
+        <ol style={styles.steps(colors)}>
+          <li>מצמידים את הטלפון למדבקה בכניסה למשרד או לבניין</li>
+          <li>מחכים שנייה — יופיע אישור על המסך</li>
+          <li>בסוף היום — שוב מדבקה ביציאה</li>
+        </ol>
+        {!ready && online ? (
+          <p style={styles.warn(colors)}>פעם ראשונה? ודאו שיש אינטרנט — זה נדרש רק פעם אחת.</p>
+        ) : null}
+        {!online ? (
+          <p style={styles.warn(colors)}>אין אינטרנט — ההחתמה נשמרת ותעלה כשיחזור קליט.</p>
+        ) : null}
+        {pendingCount > 0 ? (
+          <p style={styles.pending(colors)}>
+            {pendingCount} החתמות ממתינות לשליחה — {online ? 'שולח...' : 'ישלחו כשיחזור אינטרנט'}
+          </p>
+        ) : null}
+      </div>
 
-      <p style={styles.hint(colors)}>
-        סריקת QR / NFC עובדת גם ללא אינטרנט לאחר פתיחת המערכת פעם אחת במכשיר.
-      </p>
+      <div style={styles.statsRow(colors)}>
+        <div style={styles.statBox(colors)}>
+          <div style={styles.statLabel(colors)}>היום</div>
+          <div style={styles.statValue(colors)}>{formatShiftMinutes(todayMinutes)}</div>
+        </div>
+        <div style={styles.statBox(colors)}>
+          <div style={styles.statLabel(colors)}>7 ימים</div>
+          <div style={styles.statValue(colors)}>{formatShiftMinutes(weekMinutes)}</div>
+        </div>
+      </div>
 
-      <div style={styles.row}>
-        <div>
-          <div style={styles.label(colors)}>סטטוס משמרת</div>
-          <div style={styles.value(colors)}>
-            {state?.has_open_shift ? 'בתוך משמרת פתוחה' : 'לא במשמרת'}
-          </div>
-          {state?.last_event_type ? (
-            <div style={{ ...styles.sub(colors), marginTop: 4 }}>
-              פעולה אחרונה: {EVENT_LABELS[state.last_event_type] ?? state.last_event_type}
-              {state.last_event_at
-                ? ` · ${new Date(state.last_event_at).toLocaleString('he-IL')}`
-                : ''}
-            </div>
+      <div style={styles.card(colors)}>
+        <div style={styles.sectionHead}>
+          <div style={styles.sectionTitle(colors)}>המשמרות שלי</div>
+          {online ? (
+            <Button variant="secondary" size="sm" loading={syncing} onClick={() => void handleSync()}>
+              רענון
+            </Button>
           ) : null}
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          loading={syncing || bootstrapping}
-          disabled={!online}
-          onClick={() => void handleSync()}
-        >
-          סנכרן עכשיו
-        </Button>
+
+        {shiftsLoading && shifts.length === 0 ? (
+          <p style={styles.muted(colors)}>טוען...</p>
+        ) : shifts.length === 0 ? (
+          <p style={styles.muted(colors)}>עדיין אין משמרות — אחרי ההחתמה הראשונה יופיעו כאן.</p>
+        ) : (
+          <ul style={styles.shiftList}>
+            {shifts.map((s) => (
+              <li key={s.id} style={styles.shiftItem(colors)}>
+                <div style={styles.shiftDate(colors)}>{formatAttendanceDateTime(s.started_at)}</div>
+                <div style={styles.shiftMeta(colors)}>
+                  {s.ended_at ? (
+                    <>
+                      יציאה: {formatAttendanceDateTime(s.ended_at)}
+                      {' · '}
+                      {formatShiftMinutes(s.total_minutes)}
+                    </>
+                  ) : (
+                    SHIFT_STATUS_HE[s.status] ?? 'בעבודה'
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )
 }
 
 const styles = {
+  wrap: { padding: '0 0 24px' } as CSSProperties,
+  hero: (c: typeof theme.colors, active: boolean | undefined): CSSProperties => ({
+    margin: '12px 16px',
+    padding: '20px 18px',
+    borderRadius: 14,
+    background: active ? c.successMuted : c.surface,
+    border: `2px solid ${active ? c.success : c.border}`,
+    textAlign: 'center',
+  }),
+  heroTitle: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: 22,
+    fontWeight: 800,
+    color: c.textPrimary,
+    marginBottom: 6,
+  }),
+  heroHint: (c: typeof theme.colors): CSSProperties => ({
+    margin: 0,
+    fontSize: 15,
+    lineHeight: 1.45,
+    color: c.textPrimary,
+  }),
   card: (c: typeof theme.colors): CSSProperties => ({
     margin: '12px 16px',
     padding: 16,
@@ -155,42 +236,84 @@ const styles = {
     border: `1px solid ${c.border}`,
     background: c.surface,
   }),
-  banner: (c: typeof theme.colors): CSSProperties => ({
-    margin: '0 0 12px',
-    padding: 10,
-    borderRadius: 8,
-    background: c.warningMuted,
+  instructionTitle: (c: typeof theme.colors): CSSProperties => ({
+    fontWeight: 700,
+    fontSize: 16,
+    marginBottom: 10,
     color: c.textPrimary,
-    fontSize: 14,
-    lineHeight: 1.5,
   }),
-  statusRow: { display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 10 },
-  badge: (bg: string, text?: string): CSSProperties => ({
-    fontSize: 12,
-    padding: '4px 10px',
-    borderRadius: 999,
-    background: bg,
-    color: text ?? '#fff',
-    fontWeight: 600,
+  steps: (c: typeof theme.colors): CSSProperties => ({
+    margin: '0 0 12px',
+    paddingRight: 20,
+    fontSize: 15,
+    lineHeight: 1.6,
+    color: c.textPrimary,
   }),
-  hint: (c: typeof theme.colors): CSSProperties => ({
-    margin: '0 0 8px',
+  warn: (c: typeof theme.colors): CSSProperties => ({
+    margin: '8px 0 0',
     fontSize: 13,
+    color: c.warning,
+    lineHeight: 1.45,
+  }),
+  pending: (c: typeof theme.colors): CSSProperties => ({
+    margin: '8px 0 0',
+    fontSize: 13,
+    color: c.primary,
+  }),
+  sectionHead: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  } as CSSProperties,
+  sectionTitle: (c: typeof theme.colors): CSSProperties => ({
+    fontWeight: 700,
+    fontSize: 16,
+    color: c.textPrimary,
+  }),
+  muted: (c: typeof theme.colors): CSSProperties => ({
+    margin: 0,
+    fontSize: 14,
     color: c.textMuted,
     lineHeight: 1.45,
   }),
-  row: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-  label: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: 12,
-    color: c.textMuted,
+  shiftList: { margin: 0, padding: 0, listStyle: 'none' } as CSSProperties,
+  shiftItem: (c: typeof theme.colors): CSSProperties => ({
+    padding: '12px 0',
+    borderBottom: `1px solid ${c.border}`,
   }),
-  value: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: 16,
+  shiftDate: (c: typeof theme.colors): CSSProperties => ({
     fontWeight: 600,
+    fontSize: 14,
     color: c.textPrimary,
+    marginBottom: 4,
   }),
-  sub: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: 12,
+  shiftMeta: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: 13,
     color: c.textMuted,
+  }),
+  statsRow: (c: typeof theme.colors): CSSProperties => ({
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 10,
+    margin: '12px 16px',
+  }),
+  statBox: (c: typeof theme.colors): CSSProperties => ({
+    padding: 14,
+    borderRadius: 12,
+    border: `1px solid ${c.border}`,
+    background: c.surface,
+    textAlign: 'center',
+  }),
+  statLabel: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: 13,
+    color: c.textMuted,
+    marginBottom: 4,
+  }),
+  statValue: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: 20,
+    fontWeight: 800,
+    color: c.primary,
   }),
 }

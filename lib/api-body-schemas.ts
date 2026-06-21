@@ -35,6 +35,7 @@ export const updateWorkerBodySchema = z
     email: z.union([z.string().email().max(320), z.literal(''), z.null()]).optional(),
     role: z.string().max(100).nullable().optional(),
     is_active: z.boolean().optional(),
+    hourly_rate: z.number().min(0).max(99999).nullable().optional(),
     soft_delete: z.literal(true).optional(),
   })
   .refine(
@@ -344,6 +345,32 @@ export const createNfcTagBodySchema = z.object({
   project_id: z.string().uuid().nullable().optional(),
   label: z.string().max(200).nullable().optional(),
   is_active: z.boolean().optional(),
+})
+
+export const patchWorkerAttendanceShiftBodySchema = z
+  .object({
+    started_at: z.string().datetime({ offset: true }).optional(),
+    ended_at: z.string().datetime({ offset: true }).nullable().optional(),
+    status: z.enum(['open', 'closed', 'missing_checkout', 'edited', 'pending_review']).optional(),
+    admin_note: z.string().max(2000).nullable().optional(),
+  })
+  .refine(
+    (v) =>
+      v.started_at !== undefined ||
+      v.ended_at !== undefined ||
+      v.status !== undefined ||
+      v.admin_note !== undefined,
+    { message: 'נדרש לפחות שדה אחד' }
+  )
+
+export const sendWorkerAttendanceLinksBodySchema = z.object({
+  worker_ids: z.array(z.string().uuid()).min(1).max(100).optional(),
+  send_all_active: z.boolean().optional(),
+})
+
+export const patchNfcStickerBodySchema = z.object({
+  tag_id: z.string().uuid(),
+  installed: z.boolean(),
 })
 
 const calendarEventTypeSchema = z.enum(['committee', 'professional', 'internal', 'other'])

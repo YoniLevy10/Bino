@@ -79,6 +79,7 @@ export async function POST(req: Request) {
     }
     if (fields.role !== undefined) payload.role = fields.role
     if (fields.is_active !== undefined) payload.is_active = fields.is_active
+    if (fields.hourly_rate !== undefined) payload.hourly_rate = fields.hourly_rate
 
     const { data: updated, error } = await admin
       .from('workers')
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
       .eq('id', worker_id)
       .eq('client_id', clientId)
       .is('deleted_at', null)
-      .select('id, full_name, phone, email, role, is_active, extra_phones')
+      .select('id, full_name, phone, email, role, is_active, extra_phones, hourly_rate')
       .single()
 
     if (error) {

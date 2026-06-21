@@ -4,6 +4,9 @@
     { "path": "/api/cron/sla-check",        "schedule": "0 7 * * *" },
     { "path": "/api/cron/health-check",     "schedule": "0 6 * * *" },
     { "path": "/api/cron/whatsapp-retry",   "schedule": "0 9 * * *" },
-    { "path": "/api/cron/cleanup-webhooks", "schedule": "0 3 * * 0" }
+    { "path": "/api/cron/cleanup-webhooks", "schedule": "0 3 * * 0" },
+    { "path": "/api/cron/attendance-stale-shifts", "schedule": "0 */4 * * *" },
+    { "path": "/api/cron/attendance-pending-alert", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/attendance-open-shift-reminder", "schedule": "0 18 * * *" }
   ]
 }

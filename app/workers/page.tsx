@@ -56,6 +56,7 @@ type WorkerRow = {
   email: string | null
   role: string | null
   is_active: boolean
+  hourly_rate?: number | null
   created_at: string
   client_id: string
   access_token?: string | null
@@ -85,6 +86,7 @@ type WorkerForm = {
   email: string
   role: string
   is_active: boolean
+  hourly_rate: string
 }
 
 const emptyForm: WorkerForm = {
@@ -94,6 +96,7 @@ const emptyForm: WorkerForm = {
   email: '',
   role: '',
   is_active: true,
+  hourly_rate: '',
 }
 
 export default function WorkersPage() {
@@ -176,6 +179,7 @@ export default function WorkersPage() {
       email: worker.email || '',
       role: worker.role || '',
       is_active: worker.is_active,
+      hourly_rate: worker.hourly_rate != null ? String(worker.hourly_rate) : '',
     })
     setDrawerOpen(true)
   }
@@ -311,6 +315,13 @@ export default function WorkersPage() {
         const extraSanitized = sanitizeExtraPhones(form.phone, form.extra_phones)
         if (!extraSanitized.ok) throw new Error(extraSanitized.error)
 
+        const hourlyParsed = form.hourly_rate.trim()
+          ? Number(form.hourly_rate.replace(',', '.'))
+          : null
+        if (hourlyParsed != null && (!Number.isFinite(hourlyParsed) || hourlyParsed < 0)) {
+          throw new Error('תעריף שעה לא תקין')
+        }
+
         const payload = {
           full_name: form.full_name.trim(),
           phone: form.phone.trim(),
@@ -319,6 +330,7 @@ export default function WorkersPage() {
           role: form.role.trim() || null,
           is_active: form.is_active,
           client_id: clientId,
+          hourly_rate: hourlyParsed,
         }
 
         if (editingWorker) {
@@ -333,6 +345,7 @@ export default function WorkersPage() {
               email: payload.email,
               role: payload.role,
               is_active: payload.is_active,
+              hourly_rate: payload.hourly_rate,
             }),
           })
           const json = (await res?.json().catch(() => ({}))) as { error?: string }
@@ -828,6 +841,21 @@ export default function WorkersPage() {
               style={styles.input}
             />
           </div>
+
+          {hasAddon(PAID_ADDON_KEYS.worker_stamp) ? (
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>תעריף שעה (₪) — לדוחות חתמה</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.hourly_rate}
+                onChange={(e) => updateForm('hourly_rate', e.target.value)}
+                placeholder="אופציונלי"
+                style={styles.input}
+              />
+            </div>
+          ) : null}
 
           <div style={styles.formGroup}>
             <label style={styles.checkboxLabel}>

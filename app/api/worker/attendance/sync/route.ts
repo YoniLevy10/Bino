@@ -6,6 +6,7 @@ import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { processAttendanceSyncEvent, resolveTagForClient } from '@/lib/attendance-sync-server'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { notifyManagerAttendanceReview } from '@/lib/attendance-manager-notify'
 import type { AttendanceSyncEventResult } from '@/lib/attendance-types'
 
 function clientIp(req: NextRequest): string {
@@ -65,6 +66,16 @@ export async function POST(req: NextRequest) {
         tag
       )
       results.push(result)
+    }
+
+    const newPending = results.filter((r) => r.status === 'pending_review').length
+    if (newPending > 0) {
+      const { count } = await admin
+        .from('worker_attendance_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', worker.client_id)
+        .eq('sync_status', 'pending_review')
+      await notifyManagerAttendanceReview(admin, worker.client_id, count ?? newPending)
     }
 
     return NextResponse.json({ success: true, results })

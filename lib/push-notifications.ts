@@ -98,3 +98,30 @@ export async function notifyWorkerAssignedPush(
     await admin.from('worker_push_subscriptions').delete().eq('worker_id', workerId).eq('client_id', clientId)
   })
 }
+
+/** Remind worker to clock out if shift open too long. */
+export async function notifyWorkerOpenShiftReminderPush(
+  admin: SupabaseClient,
+  workerId: string,
+  clientId: string,
+  startedAt: string
+): Promise<void> {
+  if (!initWebPush()) return
+
+  const { data: rows, error } = await admin
+    .from('worker_push_subscriptions')
+    .select('subscription')
+    .eq('worker_id', workerId)
+    .eq('client_id', clientId)
+
+  if (error || !rows?.length) return
+
+  const started = new Date(startedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  const payload = JSON.stringify({
+    title: 'שכחת לצאת?',
+    body: `נראה שאתה עדיין רשום בעבודה מ-${started}. הצמד את הטלפון למדבקה ביציאה.`,
+    url: '/worker',
+    tag: `open-shift-${workerId}`,
+  })
+  await sendPushPayload(admin, 'worker_push_subscriptions', rows, payload)
+}

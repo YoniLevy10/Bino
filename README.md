@@ -17,7 +17,7 @@
 | `bamakor-dashboard-dev` | `develop` | **פיתוח יומי** — יומן, שעון, CI, שיפורי מנהל |
 | `bamakor-dashboard` | `main` | **פרודקשן** — merge ממוקד / hotfix בלבד |
 
-פרטים: `WORKSPACE_GUIDE.md`. כללי פיתוח (API, SMS, Supabase): `CLAUDE.md`.
+כללי פיתוח (API, SMS, Supabase): `CLAUDE.md`.
 
 **פריסה:** `https://bamakor.vercel.app` (או `NEXT_PUBLIC_APP_URL`). אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
 
@@ -36,7 +36,7 @@
 | `/pending-residents` | דיירים שדיווחו וטרם אושרו בפנקס | מחובר |
 | `/summary` | דוחות ניהוליים + Excel | מחובר |
 | `/calendar` | יומן משרד — חודש/שבוע, iCal, Google Calendar (קישור) | מחובר |
-| `/attendance` | שעון עובדות משרד — QR, רישומים, גדר GPS, Excel | מחובר |
+| `/attendance` | חתמת עובדים — NFC, משמרות, דוחות שעות, Excel | מחובר |
 | `/qr` | קודי QR לפרויקט (WhatsApp + Web) | מחובר |
 | `/settings` | הגדרות — WhatsApp, SMS, push, סדר תפריט, לוגו | מחובר |
 | `/settings/whatsapp-templates` | עריכת תבניות הודעות Meta | מחובר |
@@ -56,7 +56,8 @@
 | `/report` | טופס דיווח לדייר | ציבורי |
 | `/worker-login` | כניסת עובד → `/worker?token=` | ציבורי |
 | `/worker` | פורטל עובד — תקלות, סטטוסים, צ'אט, סיורים, push | `?token=` / מחובר |
-| `/attendance/scan` | סריקת QR לשעון משרד | ציבורי (`?st=`) |
+| `/worker/nfc` | החתמת NFC — כניסה/יציאה/ביקור | `?t=` + token עובד |
+| `/attendance/scan` | **הוצא משימוש** — מפנה לחתמת NFC | ציבורי (legacy) |
 
 ---
 
@@ -121,8 +122,6 @@ npm run db:types             # lib/database.types.ts אחרי שינוי סכמ�
 | `PLATFORM_OPS_EMAIL` / `RESEND_API_KEY` | התראות תפעול פלטפורמה |
 
 > **SMS:** בלי אימוג'י בהודעות. כתיבות ל-`clients` / הגדרות — רק דרך `/api/settings/update` (לא מ-`supabase` בדפדפן).
-
-רשימה מלאה לפריסה: `DEPLOYMENT_CHECKLIST.md`.
 
 ---
 
@@ -204,18 +203,12 @@ npm run test:e2e
 
 ---
 
-## תיעוד נוסף
+## תיעוד
 
 | קובץ | תוכן |
 |------|------|
-| `CLAUDE.md` | כללי פיתוח — API, SMS 019, Supabase, מובייל |
-| `WORKSPACE_GUIDE.md` | develop מול main, hotfix SMS |
-| `IMPROVEMENT_CHECKLIST.md` | רשימת שיפורים כללית (P0–P3) |
-| `IMPROVEMENT_CHECKLIST_OFFICE.md` | יומן + שעון עובדים |
-| `DEVELOPER_SUMMARY.md` | ארכיטקטורה מפורטת, מפת API |
-| `DEPLOYMENT_CHECKLIST.md` | פריסה, env, פרטיות |
-| `docs/RUNBOOKS.md` | SMS 515, webhook 403, כתיבות RLS |
-| `KNOWN_ISSUES.md` | TODO/FIXME מהקוד |
+| `CLAUDE.md` | כללי פיתוח — API, SMS 019, Supabase, env, מובייל |
+| `PRIVACY_POLICY_TEMPLATE.md` | מדיניות פרטיות (`/privacy`) |
 
 > **Hydration / SW ישן ב-dev:** DevTools → Application → Service Workers → Unregister, Clear site data.
 

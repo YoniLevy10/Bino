@@ -47,6 +47,8 @@ type WorkerTicketCardProps = {
   attachmentsLoading?: boolean
   onUploadPhoto?: (file: File) => void
   uploadingPhoto?: boolean
+  /** When worker stamp addon is on — hint that NFC visit is recorded at this building */
+  showAttendanceHint?: boolean
 }
 
 function locationLine(ticket: WorkerTicketCardTicket): string {
@@ -73,6 +75,7 @@ export function WorkerTicketCard({
   attachmentsLoading = false,
   onUploadPhoto,
   uploadingPhoto = false,
+  showAttendanceHint = false,
 }: WorkerTicketCardProps) {
   const [descOpen, setDescOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -140,6 +143,9 @@ export function WorkerTicketCard({
           <span style={styles.collapseHint(colors)}>▲</span>
         </div>
         {loc ? <div style={styles.compactLoc(colors)}>{loc}</div> : null}
+        {showAttendanceHint && loc ? (
+          <div style={styles.attendanceHint(colors)}>ביקור בבניין זה נרשם בהחתמת NFC</div>
+        ) : null}
       </button>
 
       <div style={styles.expandedBody}>
@@ -309,6 +315,12 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  }),
+  attendanceHint: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '11px',
+    color: c.primary,
+    marginBottom: '6px',
+    fontWeight: 600,
   }),
   compactDesc: (c: typeof theme.colors): CSSProperties => ({
     fontSize: '12px',

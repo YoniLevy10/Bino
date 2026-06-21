@@ -1,23 +1,44 @@
-# Runbooks — Bamakor
+﻿# Bamakor Runbooks
 
-## SMS 019 — status 515 (שולח לא תקין)
+Operational guides for platform and tenant features.
 
-- **סימפטום:** HTTP 200 מ-019 אבל XML status 515; SMS לא נשלח אחרי 3 retries.
-- **סיבה:** `from` אינו מספר `972xxxxxxxxx` (שם אלפביתי או sender לא רשום).
-- **פתרון:** `SMS_019_SENDER` / `sms_sender_name` ב-DB = null או מספר טלפון מאושר בלבד. ראה `CLAUDE.md`.
+---
 
-## Webhook WhatsApp — 403
+## חתמת עובדים (NFC — worker stamp)
 
-- **סימפטום:** Meta מחזיר שגיאה או `GET /api/health` מציג `WHATSAPP_APP_SECRET` ב-`envWarnings`.
-- **פתרון:** הגדר `WHATSAPP_APP_SECRET` ב-Vercel; וודא `WHATSAPP_VERIFY_TOKEN` תואם ל-Meta.
+### URL format for stickers
 
-## כתיבה מהדפדפן "לא עובדת"
+Program each NFC sticker with a URL record:
 
-- **סימפטום:** לחיצת שמירה ללא שגיאה אבל הנתונים לא משתנים.
-- **סיבה:** RLS חוסם writes מ-`supabase` בצד לקוח.
-- **פתרון:** כל mutation חייב לעבור דרך `/api/*` עם `getSupabaseAdmin()`.
+```
+https://bamakor.vercel.app/worker/nfc?t=TAG_CODE
+```
 
-## Cron נכשל
+- `TAG_CODE` — uppercase alphanumeric (e.g. `OFFICE`, `BMK1`). Normalized server-side.
+- Worker must open personal link once: `/worker?token=…` (from SMS).
+- Office QR clock (`/attendance/scan`) is **deprecated** — field workers use NFC only.
 
-- **בדיקה:** `system_logs` ב-Supabase; לוגי Vercel ל-`/api/cron/*`.
-- **אימות:** `CRON_SECRET` ב-query או Bearer.
+### Super Admin setup
+
+1. Enable paid addon **worker_stamp** for the client.
+2. `/superadmin` → client → **NFC tags** → create all tags (office + one tag per project).
+3. Walk through wizard: copy URL → write with NFC Tools (Android) or TagWriter (iOS).
+4. Mark sticker as installed when mounted on the door.
+5. Print sheet: sticker print sheet (QR + building name per tag).
+
+### Manager rollout
+
+1. `/attendance` — follow setup checklist.
+2. Send SMS links to all workers.
+3. Print worker guide: `/attendance/worker-guide`.
+4. Monitor today summary, live workers, anomalies, sticker progress.
+
+### Cron jobs (Vercel)
+
+| Path | Purpose |
+|------|---------|
+| `/api/cron/attendance-stale-shifts` | Open shift > 12h → missing_checkout |
+| `/api/cron/attendance-pending-alert` | Daily SMS/email for pending review |
+| `/api/cron/attendance-open-shift-reminder` | Push reminder for long open shifts |
+
+All require `Authorization: Bearer $CRON_SECRET`.
