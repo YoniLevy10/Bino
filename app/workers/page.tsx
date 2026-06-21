@@ -632,7 +632,7 @@ export default function WorkersPage() {
     <AppShell isMobile={isMobile}>
       {isMobile && (
         <MobileHeader
-          title="רשימת שיבוץ"
+          title="העובדים שלי"
           subtitle="מי מטפל בתקלות"
           onMenuClick={() => setMenuOpen(true)}
         />
@@ -650,7 +650,7 @@ export default function WorkersPage() {
       >
         {!isMobile && (
           <PageHeader
-            title="רשימת שיבוץ"
+            title="העובדים שלי"
             subtitle="מי מטפל בתקלות"
             actions={
               <>

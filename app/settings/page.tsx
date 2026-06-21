@@ -1153,7 +1153,7 @@ function SettingsPageInner() {
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
                     סדר ושמות הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות הראשונות בנייד נשארות:
-                    לוח בקרה, תקלות, פרויקטים ורשימת שיבוץ — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
+                    לוח בקרה, תקלות, פרויקטים והעובדים שלי — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
                   </p>
                   <ul style={styles.navOrderList}>
                     {navOrderDraft.map((id, index) => {

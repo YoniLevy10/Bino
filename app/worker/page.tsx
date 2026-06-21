@@ -587,7 +587,7 @@ function WorkerPageInner() {
         <div style={styles.standaloneHeader}>
           <h1 style={styles.standaloneTitle}>עובדי שטח (קישור)</h1>
           <p style={styles.standaloneSub}>
-            שולחים לכם SMS עם קישור אישי — פתחו אותו מההודעה. אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; ברשימת השיבוץ.
+            שולחים לכם SMS עם קישור אישי — פתחו אותו מההודעה. אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; ב«העובדים שלי».
           </p>
         </div>
       </div>
@@ -788,7 +788,7 @@ function WorkerPageInner() {
         {!clientId ? (
           <Card title="אין גישה" noPadding>
             <div style={styles.pad}>
-              <p style={styles.muted}>בקשו קישור מהמנהל (רשימת שיבוץ → &quot;העתק קישור&quot;).</p>
+              <p style={styles.muted}>בקשו קישור מהמנהל (העובדים שלי → &quot;העתק קישור&quot;).</p>
             </div>
           </Card>
         ) : (
