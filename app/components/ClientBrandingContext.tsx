@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { TENANT_CID_SESSION_KEY } from '@/lib/tenant-browser-cache'
 
 export type ClientBranding = {
   displayName: string
@@ -20,6 +21,19 @@ function readBrandingCache(clientId: string): ClientBranding | null {
     if (branding && Date.now() - ts < BRANDING_CACHE_TTL) return branding
   } catch {}
   return null
+}
+
+/** Sync read for route loading UI — logo before React context updates. */
+export function tryReadBrandingFromSessionCache(): ClientBranding | null {
+  try {
+    const raw = sessionStorage.getItem(TENANT_CID_SESSION_KEY)
+    if (!raw) return null
+    const { cid } = JSON.parse(raw) as { cid?: string }
+    if (!cid) return null
+    return readBrandingCache(cid)
+  } catch {
+    return null
+  }
 }
 
 function writeBrandingCache(clientId: string, branding: ClientBranding) {

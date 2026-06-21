@@ -225,6 +225,42 @@ textarea {
   animation: bamakor-splash-glow 3s ease-in-out infinite;
 }
 
+@keyframes bamakor-page-loader-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(180%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.bamakor-page-loader-logo {
+  animation: bamakor-splash-logo-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.bamakor-page-loader-bar {
+  width: 45%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0066ff 0%, #3399ff 100%);
+  animation: bamakor-page-loader-bar 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bamakor-page-loader-bar {
+    width: 100%;
+    animation: none;
+    transform: none;
+    opacity: 0.55;
+  }
+  .bamakor-page-loader-logo {
+    animation: none;
+  }
+}
+
 .bamakor-skeleton-bar,
 .bamakor-skeleton-row .bamakor-skeleton-bar {
   animation: bamakor-skeleton-pulse 1.2s ease-in-out infinite;
