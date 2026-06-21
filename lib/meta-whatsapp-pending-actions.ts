@@ -23,7 +23,7 @@ export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
     title: 'יצירת תבנית sla_escalation_resident',
     description:
       'Utility · עברית · {{1}}=מספר פנייה, {{2}}=תיאור קצר. דוגמה: "שלום, הפנייה #{{1}} בנושא {{2}} עדיין בטיפול."',
-    status: 'todo',
+    status: 'submitted',
     href: 'https://business.facebook.com/wa/manage/message-templates/',
   },
   {
@@ -44,8 +44,8 @@ export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
   {
     id: 'app_secret',
     title: 'WHATSAPP_APP_SECRET ב-Vercel',
-    description: 'Meta Developer → App → Settings → Basic → App Secret. מאבטח את ה-webhook.',
-    status: 'todo',
+    description: 'Meta Developer → App → Settings → Basic → App Secret. מאבטח את ה-webhook (אופציונלי — לא חוסם שליחה).',
+    status: 'optional',
     href: 'https://developers.facebook.com/apps/',
   },
   {

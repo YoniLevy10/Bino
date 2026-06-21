@@ -26,17 +26,18 @@ export async function POST(req: Request) {
     const auth = await requireSessionClientId()
     if (!auth.ok) return auth.response
 
+    let supabaseAdmin
     try {
-      const supabaseAdmin = getSupabaseAdmin()
-      const rl = await checkAuthenticatedPostRouteLimit(supabaseAdmin, auth.ctx.userId, 'translate-ticket')
-      if (rl.isLimited) {
-        return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.', requestId }, { status: 429 })
-      }
+      supabaseAdmin = getSupabaseAdmin()
     } catch (e) {
-      logger.warn('TRANSLATE_API', 'Rate limit check skipped', {
+      logger.error('TRANSLATE_API', 'Admin client init failed', e instanceof Error ? e : new Error(String(e)), {
         requestId,
-        error: e instanceof Error ? e.message : String(e),
       })
+      return NextResponse.json({ error: 'שגיאת שרת', requestId }, { status: 500 })
+    }
+    const rl = await checkAuthenticatedPostRouteLimit(supabaseAdmin, auth.ctx.userId, 'translate-ticket')
+    if (rl.isLimited) {
+      return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.', requestId }, { status: 429 })
     }
 
     const rawBody = await req.json()

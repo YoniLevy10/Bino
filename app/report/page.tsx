@@ -7,6 +7,7 @@ import { toast, asyncHandler, validateResponse } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validateMinLength } from '@/lib/validators'
+import { LoadingSpinner } from '../components/ui'
 
 type ProjectRow = {
   id: string
@@ -426,7 +427,7 @@ function ReportPageContent() {
 
 export default function ReportPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><LoadingSpinner /></div>}>
       <ReportPageContent />
     </Suspense>
   )

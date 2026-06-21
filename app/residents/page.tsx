@@ -12,7 +12,7 @@
  *
  * קשור ל: /pending-residents (דיירים שדיווחו אך עדיין לא בפנקס)
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, Suspense, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -85,6 +85,20 @@ function isResidentsTableMissingError(err: { message?: string } | null): boolean
 }
 
 export default function ResidentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+          <LoadingSpinner />
+        </div>
+      }
+    >
+      <ResidentsPageInner />
+    </Suspense>
+  )
+}
+
+function ResidentsPageInner() {
   const router = useRouter()
   const [projects, setProjects] = useState<ResidentProjectRow[]>([])
   const [residents, setResidents] = useState<ResidentRow[]>([])
@@ -566,15 +580,16 @@ export default function ResidentsPage() {
     if (!window.confirm(`למחוק ${count} דיירים? לא ניתן לשחזר.`)) return
     setBulkDeleting(true)
     try {
-      const scoped = await resolveBamakorClientIdForBrowser()
-      const { error } = await withClientId(
-        supabase
-          .from('residents')
-          .update({ deleted_at: new Date().toISOString() })
-          .in('id', Array.from(selectedIds)),
-        scoped
-      )
-      if (error) throw error
+      const ids = Array.from(selectedIds)
+      for (const resident_id of ids) {
+        const res = await fetchWithTimeout('/api/update-resident', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resident_id, soft_delete: true }),
+        })
+        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        if (!res.ok) throw new Error(json.error || 'מחיקה נכשלה')
+      }
       setResidents((prev) => prev.filter((r) => !selectedIds.has(r.id)))
       setSelectedIds(new Set())
       toast.success(`${count} דיירים נמחקו`)

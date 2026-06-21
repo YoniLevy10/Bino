@@ -25,7 +25,7 @@
  *  - "מיזוג" → POST /api/merge-ticket
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -616,6 +616,13 @@ export default function TicketsPage() {
     loadTicketAttachments(ticket.id)
   }
 
+  function handleTicketRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, ticket: TicketRow) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openTicket(ticket)
+    }
+  }
+
   async function loadTicketAttachments(ticketId: string) {
     setLoadingAttachments(true)
     try {
@@ -1098,6 +1105,9 @@ export default function TicketsPage() {
                   {filteredTickets.map((ticket) => (
                     <tr
                       key={ticket.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`פתח תקלה ${ticket.ticket_number}`}
                       style={{
                         ...styles.tr,
                         ...(selectedTicketIds.has(ticket.id)
@@ -1105,6 +1115,7 @@ export default function TicketsPage() {
                           : {}),
                       }}
                       onClick={() => openTicket(ticket)}
+                      onKeyDown={(e) => handleTicketRowKeyDown(e, ticket)}
                     >
                       <td style={styles.td} onClick={(e) => e.stopPropagation()}>
                         <input

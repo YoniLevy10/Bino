@@ -26,19 +26,6 @@ export async function POST(req: Request) {
       )
     }
 
-    let rawBody: unknown
-    try {
-      rawBody = await req.json()
-    } catch {
-      return NextResponse.json({ error: 'גוף JSON לא תקין', requestId }, { status: 400 })
-    }
-
-    const parsedWorker = createWorkerBodySchema.safeParse(rawBody)
-    if (!parsedWorker.success) {
-      return NextResponse.json({ error: parsedWorker.error.flatten() }, { status: 400 })
-    }
-    const body = parsedWorker.data
-
     const auth = await requireSessionClientId()
     if (!auth.ok) return auth.response
 
@@ -54,6 +41,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.', requestId }, { status: 429 })
     }
     const clientId = auth.ctx.clientId
+
+    let rawBody: unknown
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'גוף JSON לא תקין', requestId }, { status: 400 })
+    }
+
+    const parsedWorker = createWorkerBodySchema.safeParse(rawBody)
+    if (!parsedWorker.success) {
+      return NextResponse.json({ error: parsedWorker.error.flatten() }, { status: 400 })
+    }
+    const body = parsedWorker.data
 
     const orgId = body.organization_id ? sanitizeId(body.organization_id) : null
     if (orgId) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientId } from '@/lib/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
 
 export async function POST() {
@@ -11,6 +12,11 @@ export async function POST() {
     const { clientId } = auth.ctx
 
     const admin = getSupabaseAdmin()
+    const rl = await checkAuthenticatedPostRouteLimit(admin, auth.ctx.userId, 'test-sms')
+    if (rl.isLimited) {
+      return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.', requestId }, { status: 429 })
+    }
+
     const { data: client } = await admin
       .from('clients')
       .select('manager_phone, sms_sender_name')

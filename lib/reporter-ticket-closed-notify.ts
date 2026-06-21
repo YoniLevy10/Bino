@@ -11,7 +11,7 @@ export type ReporterClosedNotifyResult = {
 }
 
 const TICKET_CLOSED_WA_FALLBACK =
-  '✅ שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\nאם יש בעיה נוספת, ניתן לפנות אלינו בכל עת 🙏'
+  'שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\nאם יש בעיה נוספת, ניתן לפנות אלינו בכל עת.'
 
 function resolveProjectName(
   projects: { name?: string | null } | { name?: string | null }[] | null | undefined

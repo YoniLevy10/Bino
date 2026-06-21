@@ -544,7 +544,7 @@ export function WhatsAppInboxPanel() {
 
       <p style={styles.helpBanner}>
 
-        בחרו דייר/ה מהרשימה משמאל וכתבו הודעה — אין צורך להקליד מספר טלפון.
+        בחרו דייר/ה מהרשימה וכתבו הודעה — אין צורך להקליד מספר טלפון.
 
       </p>
 
@@ -604,7 +604,7 @@ export function WhatsAppInboxPanel() {
 
             <div style={styles.emptyThread}>
 
-              <p style={styles.emptyTitle}>← בחרו דייר/ה מהרשימה</p>
+              <p style={styles.emptyTitle}>→ בחרו דייר/ה מהרשימה</p>
 
               <p style={styles.muted}>המערכת מזהה את הטלפון אוטומטית.</p>
 

@@ -798,7 +798,12 @@ function WorkerPageInner() {
             ) : (
               <Card title="בחר עובד" noPadding style={{ marginBottom: '16px' }}>
                 <div style={styles.pad}>
-                  <select value={workerId} onChange={(e) => setWorkerId(e.target.value)} style={styles.select}>
+                  <select
+                    value={workerId}
+                    onChange={(e) => setWorkerId(e.target.value)}
+                    style={styles.select}
+                    aria-label="בחר עובד"
+                  >
                     <option value="">בחרו עובד…</option>
                     {workers.map((w) => (
                       <option key={w.id} value={w.id}>{w.full_name}</option>
@@ -829,6 +834,7 @@ function WorkerPageInner() {
                             disabled={!!busyKey}
                             onChange={(e) => handleWorkerStatusChange(t.id, e.target.value as TicketStatus)}
                             style={{ ...styles.select, marginTop: '8px' }}
+                            aria-label={`שינוי סטטוס תקלה ${t.ticket_number}`}
                           >
                             {WORKER_STATUS_SELECT_OPTIONS.map((opt) => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
