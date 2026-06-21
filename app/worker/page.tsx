@@ -585,9 +585,9 @@ function WorkerPageInner() {
     return (
       <div style={standaloneShell} dir="rtl">
         <div style={styles.standaloneHeader}>
-          <h1 style={styles.standaloneTitle}>אזור אישי לעובדי שטח</h1>
+          <h1 style={styles.standaloneTitle}>עובדי שטח (קישור)</h1>
           <p style={styles.standaloneSub}>
-            פתחו את הקישור האישי שנשלח אליכם (SMS / WhatsApp). אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; בדף העובדים.
+            שולחים לכם SMS עם קישור אישי — פתחו אותו מההודעה. אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; ברשימת השיבוץ.
           </p>
         </div>
       </div>
@@ -778,17 +778,17 @@ function WorkerPageInner() {
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader title="מסך עובד" onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="עובדי שטח (קישור)" subtitle="שולחים להם SMS עם קישור" onMenuClick={() => setMenuOpen(true)} />
       )}
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={styles.page}>
-        <PageHeader title="מסך עובד" subtitle="בחרו עובד ועדכנו תקלות פתוחות" />
+        <PageHeader title="עובדי שטח (קישור)" subtitle="שולחים להם SMS עם קישור" />
 
         {!clientId ? (
           <Card title="אין גישה" noPadding>
             <div style={styles.pad}>
-              <p style={styles.muted}>בקש קישור מהמנהל (מסך עובדים → &quot;העתק קישור&quot;).</p>
+              <p style={styles.muted}>בקשו קישור מהמנהל (רשימת שיבוץ → &quot;העתק קישור&quot;).</p>
             </div>
           </Card>
         ) : (

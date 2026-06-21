@@ -632,8 +632,8 @@ export default function WorkersPage() {
     <AppShell isMobile={isMobile}>
       {isMobile && (
         <MobileHeader
-          title="עובדים"
-          subtitle={`${filteredWorkers.length} עובדים`}
+          title="רשימת שיבוץ"
+          subtitle="מי מטפל בתקלות"
           onMenuClick={() => setMenuOpen(true)}
         />
       )}
@@ -650,8 +650,8 @@ export default function WorkersPage() {
       >
         {!isMobile && (
           <PageHeader
-            title="עובדים"
-            subtitle="ניהול צוות אחזקה"
+            title="רשימת שיבוץ"
+            subtitle="מי מטפל בתקלות"
             actions={
               <>
               {isBootstrapped && hasAddon(PAID_ADDON_KEYS.worker_stamp) ? (

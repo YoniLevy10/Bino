@@ -67,7 +67,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   tickets: { id: 'tickets', href: '/tickets', label: 'תקלות', icon: 'ticket' },
   projects: { id: 'projects', href: '/projects', label: 'פרויקטים', icon: 'folder' },
   residents: { id: 'residents', href: '/residents', label: 'דיירים', icon: 'building' },
-  workers: { id: 'workers', href: '/workers', label: 'עובדים', icon: 'users' },
+  workers: { id: 'workers', href: '/workers', label: 'רשימת שיבוץ', icon: 'users' },
   summary: { id: 'summary', href: '/summary', label: 'סיכום', icon: 'chart' },
   calendar: { id: 'calendar', href: '/calendar', label: 'יומן משרד', icon: 'grid' },
   attendance: { id: 'attendance', href: '/attendance', label: 'חתמת עובדים', icon: 'clock' },

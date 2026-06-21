@@ -6,10 +6,8 @@ export default function WorkerLoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.title}>אזור אישי לעובדי שטח</h1>
-        <p style={styles.subtitle}>
-          כאן רואים את התקלות שמשויכות אליכם, מעדכנים סטטוס ושולחים הודעות — בלי כניסה עם Google.
-        </p>
+        <h1 style={styles.title}>עובדי שטח (קישור)</h1>
+        <p style={styles.subtitle}>שולחים לכם SMS עם קישור אישי — מכאן רואים תקלות, מעדכנים סטטוס ושולחים הודעות.</p>
         <p style={styles.note}>
           הכניסה מתבצעת דרך <strong>קישור אישי</strong> (WhatsApp / SMS) מהמשרד. אחרי פתיחה ראשונה — שמרו את הדף במסך הבית.
         </p>

@@ -76,7 +76,7 @@ const TABS = [
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
   { id: 'greeninvoice', label: 'חשבונית ירוקה' },
   { id: 'navigation', label: 'תפריט צד' },
-  { id: 'team', label: 'גישת צוות' },
+  { id: 'team', label: 'משתמשי משרד' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -1153,7 +1153,7 @@ function SettingsPageInner() {
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
                     סדר ושמות הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות הראשונות בנייד נשארות:
-                    לוח בקרה, תקלות, פרויקטים ועובדים — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
+                    לוח בקרה, תקלות, פרויקטים ורשימת שיבוץ — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
                   </p>
                   <ul style={styles.navOrderList}>
                     {navOrderDraft.map((id, index) => {
@@ -1253,7 +1253,7 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <div style={{ fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    הזמינו עובדים לראות תקלות במערכת. הם יקבלו מייל עם קישור כניסה וייראו את כל התקלות של הלקוח.
+                    מי נכנס למערכת עם Google — מנהלי משרד, לא עובדי שטח. שולחים הזמנה במייל; הם רואים את כל התקלות של הלקוח.
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1262,7 +1262,7 @@ function SettingsPageInner() {
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="כתובת מייל של העובד"
+                        placeholder="כתובת מייל של משתמש המשרד"
                         style={{ ...styles.input, flex: 1, minWidth: '200px' }}
                         onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
                       />
