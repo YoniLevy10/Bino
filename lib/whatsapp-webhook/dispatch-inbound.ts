@@ -67,6 +67,200 @@ import {
 const logger = getLogger()
 
 type WaLocation = NonNullable<ParsedWhatsAppMessage['location']>
+type WaInboundMediaKind = 'image' | 'video'
+
+const WA_INBOUND_MEDIA: Record<
+  WaInboundMediaKind,
+  {
+    downloadType: WaInboundMediaKind
+    attachmentType: string
+    templates: {
+      attached: WhatsAppTemplateKey
+      failed: WhatsAppTemplateKey
+      stashed: WhatsAppTemplateKey
+    }
+  }
+> = {
+  image: {
+    downloadType: 'image',
+    attachmentType: 'whatsapp_image',
+    templates: {
+      attached: 'image_attached',
+      failed: 'image_failed',
+      stashed: 'image_stashed',
+    },
+  },
+  video: {
+    downloadType: 'video',
+    attachmentType: 'whatsapp_video',
+    templates: {
+      attached: 'video_attached',
+      failed: 'video_failed',
+      stashed: 'video_stashed',
+    },
+  },
+}
+
+type WaSendFn = (
+  to: string,
+  templateKey: WhatsAppTemplateKey,
+  creds?: { phoneNumberId?: string; accessToken?: string },
+  vars?: Partial<
+    Record<'project_name' | 'ticket_number' | 'description' | 'reporter_name' | 'building_line' | 'list', string>
+  >
+) => Promise<unknown>
+
+async function attachWhatsAppMediaToTicket(
+  supabaseAdmin: SupabaseClient,
+  ticketId: string,
+  mediaId: string,
+  mediaKind: WaInboundMediaKind
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const config = WA_INBOUND_MEDIA[mediaKind]
+  const mediaData = await downloadWhatsAppMedia(mediaId, config.downloadType)
+  if (!mediaData) {
+    return { ok: false, reason: 'DOWNLOAD_FAILED' }
+  }
+
+  const uploadResult = await uploadWhatsAppMediaToStorage(
+    ticketId,
+    mediaData.buffer,
+    mediaData.fileName,
+    mediaData.mimeType
+  )
+  if (!uploadResult) {
+    return { ok: false, reason: 'STORAGE_UPLOAD_FAILED' }
+  }
+
+  const attachmentCreated = await createAttachmentRecord(
+    supabaseAdmin,
+    ticketId,
+    mediaData.fileName,
+    uploadResult.filePath,
+    uploadResult.fileSize,
+    mediaData.mimeType,
+    mediaId,
+    config.attachmentType
+  )
+  if (!attachmentCreated) {
+    return { ok: false, reason: 'DB_INSERT_FAILED' }
+  }
+
+  return { ok: true }
+}
+
+async function handleWhatsAppInboundMedia(
+  from: string,
+  webhookClientId: string,
+  supabaseAdmin: SupabaseClient,
+  mediaId: string,
+  mediaKind: WaInboundMediaKind,
+  waRecipient: string,
+  sendWa: WaSendFn,
+  residentWhatsAppCreds: { phoneNumberId?: string; accessToken?: string }
+): Promise<void> {
+  const config = WA_INBOUND_MEDIA[mediaKind]
+  const label = mediaKind === 'video' ? 'video' : 'image'
+
+  const { data: session, error: sessionError } = await supabaseAdmin
+    .from('sessions')
+    .select('id, phone_number, project_id, active_ticket_id, is_active')
+    .eq('phone_number', from)
+    .eq('client_id', webhookClientId)
+    .eq('is_active', true)
+    .order('last_activity_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (sessionError) {
+    logger.warn('WEBHOOK', `fetch session for ${label} attachment failed`, { err: sessionError.message })
+  }
+
+  if (session?.active_ticket_id) {
+    const ticketId = session.active_ticket_id
+    const result = await attachWhatsAppMediaToTicket(supabaseAdmin, ticketId, mediaId, mediaKind)
+
+    if (result.ok) {
+      logger.info('WEBHOOK', `${label} attached to ticket`, { ticketId })
+      try {
+        await sendWa(waRecipient, config.templates.attached, residentWhatsAppCreds)
+      } catch { /* WA send failure is non-fatal */ }
+      await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `${label}_processed_success`)
+      return
+    }
+
+    logger.warn('WEBHOOK', `${label} attach failed, sending fallback`, {
+      ticketId,
+      failureReason: result.reason,
+    })
+    try {
+      await sendWa(waRecipient, config.templates.failed, residentWhatsAppCreds)
+    } catch { /* WA send failure is non-fatal */ }
+    await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `${label}_processed_failure`)
+    return
+  }
+
+  if (session?.project_id && !session.active_ticket_id && session.id) {
+    const stashPayload: Record<string, string | null> = {
+      pending_whatsapp_media_id: mediaId,
+      pending_whatsapp_media_type: mediaKind,
+      last_activity_at: new Date().toISOString(),
+    }
+    let { error: stashErr } = await supabaseAdmin
+      .from('sessions')
+      .update(stashPayload)
+      .eq('id', session.id)
+
+    if (stashErr) {
+      const msg = String((stashErr as { message?: string }).message || '')
+      if (msg.includes('pending_whatsapp_media_type') || (stashErr as { code?: string }).code === '42703') {
+        const fallback = await supabaseAdmin
+          .from('sessions')
+          .update({
+            pending_whatsapp_media_id: mediaId,
+            last_activity_at: new Date().toISOString(),
+          })
+          .eq('id', session.id)
+        stashErr = fallback.error
+      }
+    }
+
+    if (stashErr) {
+      logger.warn('WEBHOOK', `stash pending ${label} failed`, { err: stashErr.message })
+    } else {
+      try {
+        await sendWa(waRecipient, config.templates.stashed, residentWhatsAppCreds)
+      } catch { /* WA send failure is non-fatal */ }
+    }
+    return
+  }
+
+  const recentTicket = await findRecentTicketForPhone(from, supabaseAdmin, webhookClientId)
+  if (recentTicket && recentTicket.status !== 'CLOSED') {
+    const ticketId = recentTicket.id
+    const result = await attachWhatsAppMediaToTicket(supabaseAdmin, ticketId, mediaId, mediaKind)
+
+    if (result.ok) {
+      logger.info('WEBHOOK', `${label} attached to recent ticket`, { ticketId })
+      try {
+        await sendWa(waRecipient, config.templates.attached, residentWhatsAppCreds)
+      } catch { /* WA send failure is non-fatal */ }
+      await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `recent_ticket_${label}_processed_success`)
+      return
+    }
+
+    logger.warn('WEBHOOK', `recent-ticket ${label} attach failed`, { ticketId, failureReason: result.reason })
+    try {
+      await sendWa(waRecipient, config.templates.failed, residentWhatsAppCreds)
+    } catch { /* WA send failure is non-fatal */ }
+    await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `recent_ticket_${label}_processed_failure`)
+    return
+  }
+
+  try {
+    await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
+  } catch { /* WA send failure is non-fatal */ }
+}
 
 async function resetSessionCompletely(
   from: string,
@@ -145,8 +339,8 @@ async function findRecentTicketForPhone(
   return data as { id: string; status: string; created_at: string }
 }
 
-/** If the user sent an image before the first text in this session, attach it to the new ticket. */
-async function attachPendingWhatsAppImageToTicketIfAny(
+/** If the user sent media before the first text in this session, attach it to the new ticket. */
+async function attachPendingWhatsAppMediaToTicketIfAny(
   from: string,
   clientId: string,
   ticketId: string,
@@ -154,7 +348,7 @@ async function attachPendingWhatsAppImageToTicketIfAny(
 ): Promise<boolean> {
   const { data: openSession, error } = await supabaseAdmin
     .from('sessions')
-    .select('id, pending_whatsapp_media_id')
+    .select('id, pending_whatsapp_media_id, pending_whatsapp_media_type')
     .eq('phone_number', from)
     .eq('client_id', clientId)
     .eq('is_active', true)
@@ -162,29 +356,42 @@ async function attachPendingWhatsAppImageToTicketIfAny(
 
   if (error) {
     const msg = String((error as { message?: string }).message || '')
-    if (msg.includes('pending_whatsapp_media_id') || (error as { code?: string }).code === '42703') {
+    if (
+      msg.includes('pending_whatsapp_media_id') ||
+      msg.includes('pending_whatsapp_media_type') ||
+      (error as { code?: string }).code === '42703'
+    ) {
       return false
     }
-    logger.warn('WEBHOOK', 'pending image: could not load session', { err: (error as { message?: string }).message })
+    logger.warn('WEBHOOK', 'pending media: could not load session', { err: (error as { message?: string }).message })
     return false
   }
 
   const pendingId = (openSession as { pending_whatsapp_media_id?: string | null } | null)
     ?.pending_whatsapp_media_id
+  const pendingTypeRaw = (openSession as { pending_whatsapp_media_type?: string | null } | null)
+    ?.pending_whatsapp_media_type
+  const mediaKind: WaInboundMediaKind = pendingTypeRaw === 'video' ? 'video' : 'image'
   const sessionId = (openSession as { id?: string } | null)?.id
   if (!pendingId || !sessionId) return false
 
+  const clearPayload: Record<string, string | null> = {
+    pending_whatsapp_media_id: null,
+    pending_whatsapp_media_type: null,
+    last_activity_at: new Date().toISOString(),
+  }
   const { error: clearPendingErr } = await supabaseAdmin
     .from('sessions')
-    .update({
-      pending_whatsapp_media_id: null,
-      last_activity_at: new Date().toISOString(),
-    })
+    .update(clearPayload)
     .eq('id', sessionId)
 
   if (clearPendingErr) {
     const m = String((clearPendingErr as { message?: string }).message || '')
-    if (m.includes('pending_whatsapp_media_id') || (clearPendingErr as { code?: string }).code === '42703') {
+    if (
+      m.includes('pending_whatsapp_media_id') ||
+      m.includes('pending_whatsapp_media_type') ||
+      (clearPendingErr as { code?: string }).code === '42703'
+    ) {
       await supabaseAdmin
         .from('sessions')
         .update({
@@ -194,34 +401,12 @@ async function attachPendingWhatsAppImageToTicketIfAny(
     }
   }
 
-  const mediaData = await downloadWhatsAppMedia(pendingId, 'image')
-  if (!mediaData) {
-    logger.warn('WEBHOOK', 'pending image: download failed', { pendingId, ticketId })
+  const result = await attachWhatsAppMediaToTicket(supabaseAdmin, ticketId, pendingId, mediaKind)
+  if (!result.ok) {
+    logger.warn('WEBHOOK', 'pending media attach failed', { pendingId, ticketId, reason: result.reason })
     return false
   }
-
-  const uploadResult = await uploadWhatsAppMediaToStorage(
-    ticketId,
-    mediaData.buffer,
-    mediaData.fileName,
-    mediaData.mimeType
-  )
-  if (!uploadResult) {
-    logger.warn('WEBHOOK', 'pending image: storage upload failed', { ticketId })
-    return false
-  }
-
-  const ok = await createAttachmentRecord(
-    supabaseAdmin,
-    ticketId,
-    mediaData.fileName,
-    uploadResult.filePath,
-    uploadResult.fileSize,
-    mediaData.mimeType,
-    pendingId,
-    'whatsapp_image'
-  )
-  return !!ok
+  return true
 }
 
 /** Same reporter + tenant, non-closed ticket opened within the last N seconds (duplicate guard). */
@@ -599,176 +784,27 @@ export async function runWhatsAppInboundBackground(
       return
     }
 
-    if (messageType === 'video' || messageType === 'document') {
+    if (messageType === 'document') {
       try {
         await sendWa(waRecipient, 'unsupported_message', residentWhatsAppCreds)
-      } catch (sendError) {
-        // WA send failure is non-fatal
-      }
+      } catch { /* WA send failure is non-fatal */ }
       return
     }
 
-    // HANDLE IMAGE MESSAGES
-    if (messageType === 'image' && mediaId && mediaType === 'image') {
-
-      // Check if user has an active session/ticket context
-      const { data: session, error: sessionError } = await supabaseAdmin
-        .from('sessions')
-        .select('id, phone_number, project_id, active_ticket_id, is_active')
-        .eq('phone_number', from)
-        .eq('client_id', webhookClientId)
-        .eq('is_active', true)
-        .order('last_activity_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (sessionError) {
-        logger.warn('WEBHOOK', 'fetch session for image attachment failed', { err: sessionError.message })
-      }
-
-      // Case A: Active ticket exists - attach image to it
-      if (session?.active_ticket_id) {
-        const ticketId = session.active_ticket_id
-        let failureReason = ''
-
-        const mediaData = await downloadWhatsAppMedia(mediaId, 'image')
-
-        if (!mediaData) {
-          failureReason = 'DOWNLOAD_FAILED'
-          logger.warn('WEBHOOK', 'image download failed', { mediaId, ticketId, failureReason })
-        } else {
-          const uploadResult = await uploadWhatsAppMediaToStorage(
-            ticketId,
-            mediaData.buffer,
-            mediaData.fileName,
-            mediaData.mimeType
-          )
-
-          if (uploadResult) {
-            const attachmentCreated = await createAttachmentRecord(
-              supabaseAdmin,
-              ticketId,
-              mediaData.fileName,
-              uploadResult.filePath,
-              uploadResult.fileSize,
-              mediaData.mimeType,
-              mediaId,
-              'whatsapp_image'
-            )
-
-            if (attachmentCreated) {
-              logger.info('WEBHOOK', 'image attached to ticket', { ticketId })
-              try {
-                await sendWa(waRecipient, 'image_attached', residentWhatsAppCreds)
-              } catch { /* WA send failure is non-fatal */ }
-
-              // Product rule: after image confirmation, reset to default state
-              await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'image_processed_success')
-              return
-            } else {
-              failureReason = 'DB_INSERT_FAILED'
-              logger.warn('WEBHOOK', 'image attachment DB insert failed', { ticketId, failureReason })
-            }
-          } else {
-            failureReason = 'STORAGE_UPLOAD_FAILED'
-            logger.warn('WEBHOOK', 'image storage upload failed', { ticketId, failureReason })
-          }
-        }
-
-        // Fallback: Image download/upload failed but ticket exists, preserve it
-        logger.warn('WEBHOOK', 'image attach failed, sending fallback', { ticketId, failureReason })
-        try {
-          await sendWa(waRecipient, 'image_failed', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-
-        // Product rule: reset to default state after image attempt
-        await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'image_processed_failure')
-        return
-      }
-
-      // Case A5: Building known (session) but ticket not created yet — keep image until first text opens ticket
-      if (session?.project_id && !session.active_ticket_id && session.id) {
-        const { error: stashErr } = await supabaseAdmin
-          .from('sessions')
-          .update({
-            pending_whatsapp_media_id: mediaId,
-            last_activity_at: new Date().toISOString(),
-          })
-          .eq('id', session.id)
-
-        if (stashErr) {
-          logger.warn('WEBHOOK', 'stash pending image failed', { err: stashErr.message })
-        } else {
-          try {
-            await sendWa(waRecipient, 'image_stashed', residentWhatsAppCreds)
-          } catch { /* WA send failure is non-fatal */ }
-        }
-
-        return
-      }
-
-      // Case B: No session/ticket context - attach to most recent ticket for this phone (short window)
-      const recentTicket = await findRecentTicketForPhone(from, supabaseAdmin, webhookClientId)
-      if (recentTicket && recentTicket.status !== 'CLOSED') {
-        const ticketId = recentTicket.id
-        let failureReason = ''
-
-        const mediaData = await downloadWhatsAppMedia(mediaId, 'image')
-
-        if (!mediaData) {
-          failureReason = 'DOWNLOAD_FAILED'
-        } else {
-          const uploadResult = await uploadWhatsAppMediaToStorage(
-            ticketId,
-            mediaData.buffer,
-            mediaData.fileName,
-            mediaData.mimeType
-          )
-
-          if (uploadResult) {
-            const attachmentCreated = await createAttachmentRecord(
-              supabaseAdmin,
-              ticketId,
-              mediaData.fileName,
-              uploadResult.filePath,
-              uploadResult.fileSize,
-              mediaData.mimeType,
-              mediaId,
-              'whatsapp_image'
-            )
-
-            if (attachmentCreated) {
-              logger.info('WEBHOOK', 'image attached to recent ticket', { ticketId })
-              try {
-                await sendWa(waRecipient, 'image_attached', residentWhatsAppCreds)
-              } catch { /* WA send failure is non-fatal */ }
-
-              await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'recent_ticket_image_processed_success')
-
-              return
-            } else {
-              failureReason = 'DB_INSERT_FAILED'
-            }
-          } else {
-            failureReason = 'STORAGE_UPLOAD_FAILED'
-          }
-        }
-
-        logger.warn('WEBHOOK', 'recent-ticket image attach failed', { ticketId, failureReason })
-        try {
-          await sendWa(waRecipient, 'image_failed', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-
-        await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'recent_ticket_image_processed_failure')
-
-        return
-      }
-
-      // Case C: No context and no recent ticket - guide user to start flow
-      try {
-        await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
-      } catch { /* WA send failure is non-fatal */ }
-
+    if (
+      (messageType === 'image' && mediaId && mediaType === 'image') ||
+      (messageType === 'video' && mediaId && mediaType === 'video')
+    ) {
+      await handleWhatsAppInboundMedia(
+        from,
+        webhookClientId,
+        supabaseAdmin,
+        mediaId,
+        mediaType as WaInboundMediaKind,
+        waRecipient,
+        sendWa,
+        residentWhatsAppCreds
+      )
       return
     }
 
@@ -1322,7 +1358,7 @@ export async function runWhatsAppInboundBackground(
       return
     }
 
-    await attachPendingWhatsAppImageToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
+    await attachPendingWhatsAppMediaToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
     await attachPendingSessionLocationToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
 
     const pendingForApproval =

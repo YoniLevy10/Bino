@@ -4,6 +4,7 @@ import { useState, type CSSProperties } from 'react'
 import { Drawer, Button, theme } from '../ui'
 import { TicketChat } from './TicketChat'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
+import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 interface TicketRow {
@@ -263,21 +264,21 @@ export function TicketDetailDrawer({
                     {selectedTicketAttachments.map((attachment) => (
                       <button
                         key={attachment.id}
-                        onClick={() => onSelectImage(getImageUrl(attachment))}
+                        onClick={() => {
+                          if (attachment.mime_type.startsWith('image/')) {
+                            onSelectImage(getImageUrl(attachment))
+                          }
+                        }}
                         style={styles.attachmentThumb}
                       >
-                        {attachment.mime_type.startsWith('image/') ? (
-                          <img
-                            src={getImageUrl(attachment)}
-                            alt={attachment.file_name}
-                            style={styles.attachmentImg}
-                            crossOrigin="anonymous"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : (
-                          <div style={styles.attachmentFile}>{attachment.file_name}</div>
-                        )}
+                        <TicketAttachmentThumb
+                          mimeType={attachment.mime_type}
+                          url={getImageUrl(attachment)}
+                          fileName={attachment.file_name}
+                          imageStyle={styles.attachmentImg}
+                          videoStyle={styles.attachmentVideo}
+                          fileStyle={styles.attachmentFile}
+                        />
                       </button>
                     ))}
                   </div>
@@ -461,6 +462,13 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
+  },
+  attachmentVideo: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
+    background: '#000',
   },
   attachmentFile: {
     display: 'flex',

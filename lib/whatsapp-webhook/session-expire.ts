@@ -54,6 +54,7 @@ export type SessionRow = {
   active_ticket_id: string | null
   is_active: boolean
   pending_whatsapp_media_id?: string | null
+  pending_whatsapp_media_type?: string | null
   pending_apartment_detail?: string | null
 }
 

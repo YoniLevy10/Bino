@@ -16,9 +16,14 @@ export const WHATSAPP_TEMPLATE_KEYS = [
   'image_failed',       // תמונה לא צורפה
   'image_stashed',      // תמונה התקבלה, ממתין לתיאור
 
+  // ── סרטון (3) ─────────────────────────────────────────────────────
+  'video_attached',     // סרטון צורף לתקלה
+  'video_failed',       // סרטון לא צורף
+  'video_stashed',      // סרטון התקבל, ממתין לתיאור
+
   // ── סוגי הודעות לא נתמכים (2) ────────────────────────────────────
   'redirect_to_text',   // סטיקר / אנשי קשר / שמע / תגובה
-  'unsupported_message', // וידאו / מסמך / סוג לא ידוע
+  'unsupported_message', // מסמך / סוג לא ידוע
 
   // ── QR / חיפוש בניין (6) ──────────────────────────────────────────
   'qr_invalid',                 // קוד QR לא תקין
@@ -55,6 +60,7 @@ export type WhatsAppTemplateCategory =
   | 'general'
   | 'location'
   | 'image'
+  | 'video'
   | 'unsupported'
   | 'building'
   | 'flow'
@@ -74,6 +80,9 @@ export const WHATSAPP_TEMPLATE_CATEGORIES: Record<
   image_attached: 'image',
   image_failed: 'image',
   image_stashed: 'image',
+  video_attached: 'video',
+  video_failed: 'video',
+  video_stashed: 'video',
   redirect_to_text: 'unsupported',
   unsupported_message: 'unsupported',
   qr_invalid: 'building',
@@ -97,6 +106,7 @@ export const WHATSAPP_TEMPLATE_CATEGORY_LABELS: Record<WhatsAppTemplateCategory,
   building: 'חיפוש בניין וקוד QR',
   location: 'הודעות מיקום',
   image: 'הודעות תמונה',
+  video: 'הודעות סרטון',
   unsupported: 'סוגי הודעות לא נתמכים',
 }
 
@@ -139,14 +149,14 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
   },
   {
     step: 6,
-    title: 'תמונות (לפני/אחרי תקלה)',
-    description: 'תמונה לפני פתיחת תקלה נשמרת זמנית; אחרי תיאור טקסט — צורפת לתקלה',
+    title: 'תמונות וסרטונים (לפני/אחרי תקלה)',
+    description: 'תמונה או סרטון לפני פתיחת תקלה נשמרים זמנית; ההנחיה לשליחה מופיעה בהודעת אישור התקלה (ticket_opened)',
     keys: ['image_stashed', 'image_attached', 'image_failed'],
   },
   {
     step: 7,
     title: 'שגיאות והודעות לא נתמכות',
-    description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, וידאו/מסמך',
+    description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, מסמך',
     keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message'],
   },
 ]
@@ -179,13 +189,16 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   image_stashed:           'דייר שלח תמונה לפני שפתח תקלה — מבקשים תיאור טקסט',
   image_attached:          'תמונה צורפה בהצלחה לתקלה פתוחה',
   image_failed:            'שגיאה בהורדה/העלאה של התמונה',
+  video_stashed:           'דייר שלח סרטון לפני שפתח תקלה — מבקשים תיאור טקסט',
+  video_attached:          'סרטון צורף בהצלחה לתקלה פתוחה',
+  video_failed:            'שגיאה בהורדה/העלאה של הסרטון',
   location_stashed:        'דייר שלח מיקום לפני שפתח תקלה — מבקשים תיאור טקסט',
   location_attached:       'מיקום צורף לתקלה פתוחה',
   location_error:          'שגיאה בקריאת המיקום',
   technical_error:         'שגיאה טכנית בלתי צפויה (DB, WA API, timeout וכו\')',
   error_general:           'שגיאות SLA או שגיאות אחרות שלא מטופלות אחרת',
   redirect_to_text:        'דייר שלח סטיקר / הודעה קולית / איש קשר — מכווינים לטקסט',
-  unsupported_message:     'דייר שלח וידאו / מסמך / סוג הודעה לא ידוע',
+  unsupported_message:     'דייר שלח מסמך / סוג הודעה לא ידוע',
 }
 
 /** כותרת קריאה בעברית לכרטיס בעמוד ההגדרות */
@@ -201,8 +214,11 @@ export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
   image_attached: 'תמונה צורפה לתקלה בהצלחה',
   image_failed: 'תמונה לא הצליחה להיצרף',
   image_stashed: 'תמונה התקבלה, ממתין לתיאור טקסט',
+  video_attached: 'סרטון צורף לתקלה בהצלחה',
+  video_failed: 'סרטון לא הצליח להיצרף',
+  video_stashed: 'סרטון התקבל, ממתין לתיאור טקסט',
   redirect_to_text: 'הפניה לשימוש בטקסט (סטיקר / שמע / אנשי קשר)',
-  unsupported_message: 'סוג הודעה לא נתמך (וידאו / מסמך)',
+  unsupported_message: 'סוג הודעה לא נתמך (מסמך / סוג לא ידוע)',
   qr_invalid: 'קוד QR לא תקין',
   project_not_found: 'פרויקט לא נמצא מקוד QR',
   building_not_found: 'בניין לא נמצא בחיפוש',
@@ -265,14 +281,14 @@ export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
 export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, string> = {
   welcome:
     'לדיווח תקלה: כתבו בטקסט את תיאור הבעיה, או סרקו את קוד ה־QR בבניין.\n' +
-    'אחרי שנפתחה פנייה – אפשר לשלוח גם תמונה של התקלה.',
+    'אחרי שנפתחה פנייה – אפשר לשלוח גם תמונה או סרטון של התקלה.',
   ticket_opened:
     'התקלה התקבלה בהצלחה.{{building_line}}\n' +
     'מספר הפנייה שלך: {{ticket_number}}\n\n' +
     'תיאור: {{description}}\n' +
     'מדווח: {{reporter_name}}\n' +
     'פרויקט: {{project_name}}\n\n' +
-    '💡 אפשר גם לשלוח תמונה של התקלה — זה יעזור לנו לטפל בה מהר יותר.\n\n' +
+    'אפשר גם לשלוח תמונה או סרטון של התקלה — זה יעזור לנו לטפל בה מהר יותר.\n\n' +
     'נעדכן כשיהיה טיפול.\n' +
     'לפתיחת תקלה נוספת: סרקו שוב את קוד ה־QR בבניין או כתבו רחוב ומספר בניין.',
   ticket_closed:
@@ -294,13 +310,21 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
   location_error:
     'לא הצלחנו לקרוא את פרטי המיקום — נסו שוב או שלחו כתובת בטקסט.',
 
-  // תמונה
+  // תמונה / סרטון (אותן תבניות לשני הסוגים)
   image_attached:
-    '✅ התמונה התקבלה בהצלחה וצורפה לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
+    'הקובץ התקבל בהצלחה וצורף לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
   image_failed:
-    '⚠️ לא הצלחנו להוסיף את התמונה, אך התקלה שלך תקבלה.\n\nנעדכן כשיהיה טיפול.',
+    'לא הצלחנו להוסיף את הקובץ, אך התקלה שלך נשמרה.\n\nנעדכן כשיהיה טיפול.',
   image_stashed:
-    '🖼️ קיבלנו את התמונה!\n\nכדי לצרף אותה לתקלה, כתבו עכשיו בקצרה את תיאור התקלה בטקסט.',
+    'קיבלנו את הקובץ!\n\nכדי לצרף אותו לתקלה, כתבו עכשיו בקצרה את תיאור התקלה בטקסט.',
+
+  // לא בשימוש — סרטון משתמש באותן תבניות image_*
+  video_attached:
+    'הקובץ התקבל בהצלחה וצורף לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
+  video_failed:
+    'לא הצלחנו להוסיף את הקובץ, אך התקלה שלך נשמרה.\n\nנעדכן כשיהיה טיפול.',
+  video_stashed:
+    'קיבלנו את הקובץ!\n\nכדי לצרף אותו לתקלה, כתבו עכשיו בקצרה את תיאור התקלה בטקסט.',
 
   // סוגים לא נתמכים
   redirect_to_text:

@@ -58,6 +58,7 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
+import { TicketAttachmentThumb } from '../components/shared/TicketAttachmentThumb'
 import { TicketChat } from '../components/tickets/TicketChat'
 import {
   TICKET_STATUS_FILTER_OPTIONS,
@@ -1334,31 +1335,24 @@ export default function TicketsPage() {
                   {selectedTicketAttachments.map((attachment) => (
                     <div
                       key={attachment.id}
-                      style={styles.attachmentItem}
+                      style={{
+                        ...styles.attachmentItem,
+                        cursor: attachment.mime_type?.startsWith('image/') ? 'pointer' : 'default',
+                      }}
                       onClick={() => {
-                        if (attachment.signed_url) {
+                        if (attachment.mime_type?.startsWith('image/') && attachment.signed_url) {
                           setLightboxImage(attachment.signed_url)
                         }
                       }}
                     >
-                      {attachment.mime_type?.startsWith('image/') ? (
-                        <img
-                          src={attachment.signed_url || ''}
-                          alt={attachment.file_name || 'attachment'}
-                          style={styles.attachmentImage}
-                          crossOrigin="anonymous"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div style={styles.attachmentFile}>
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                          </svg>
-                          <span style={styles.attachmentName}>{attachment.file_name}</span>
-                        </div>
-                      )}
+                      <TicketAttachmentThumb
+                        mimeType={attachment.mime_type}
+                        url={attachment.signed_url || ''}
+                        fileName={attachment.file_name}
+                        imageStyle={styles.attachmentImage}
+                        videoStyle={styles.attachmentVideo}
+                        fileStyle={styles.attachmentFile}
+                      />
                     </div>
                   ))}
                 </div>
@@ -1621,6 +1615,13 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
     height: '80px',
     objectFit: 'cover',
+  },
+  attachmentVideo: {
+    width: '100%',
+    height: '120px',
+    objectFit: 'cover',
+    display: 'block',
+    background: '#000',
   },
   attachmentFile: {
     display: 'flex',

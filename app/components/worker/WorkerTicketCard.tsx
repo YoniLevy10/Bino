@@ -98,7 +98,9 @@ export function WorkerTicketCard({
   )
   const waze = wazeHref(ticket.project_address)
   const maps = googleMapsHref(ticket.project_address)
-  const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith('image/') && a.public_url)
+  const mediaAttachments = attachments.filter(
+    (a) => (a.mime_type?.startsWith('image/') || a.mime_type?.startsWith('video/')) && a.public_url
+  )
 
   async function copyTicketNumber() {
     try {
@@ -206,25 +208,31 @@ export function WorkerTicketCard({
       )}
 
       <div style={styles.attachSection(colors)}>
-        <div style={styles.attachHead(colors)}>תמונות</div>
+        <div style={styles.attachHead(colors)}>קבצים מצורפים</div>
         {attachmentsLoading ? (
           <p style={styles.attachMuted(colors)}>טוען…</p>
-        ) : imageAttachments.length === 0 ? (
-          <p style={styles.attachMuted(colors)}>אין תמונות</p>
+        ) : mediaAttachments.length === 0 ? (
+          <p style={styles.attachMuted(colors)}>אין קבצים</p>
         ) : (
           <div style={styles.gallery}>
-            {imageAttachments.map((a) => (
-              <a
-                key={a.id}
-                href={a.public_url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.thumbWrap}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
-              </a>
-            ))}
+            {mediaAttachments.map((a) =>
+              a.mime_type?.startsWith('video/') ? (
+                <div key={a.id} style={styles.videoWrap}>
+                  <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
+                </div>
+              ) : (
+                <a
+                  key={a.id}
+                  href={a.public_url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.thumbWrap}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
+                </a>
+              )
+            )}
           </div>
         )}
         {onUploadPhoto ? (
@@ -515,6 +523,20 @@ const styles = {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
+  } as CSSProperties,
+  videoWrap: {
+    width: '120px',
+    height: '72px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    flexShrink: 0,
+    background: '#000',
+  } as CSSProperties,
+  videoThumb: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
   } as CSSProperties,
   actions: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' } as CSSProperties,
   statusLabel: (c: typeof theme.colors): CSSProperties => ({
