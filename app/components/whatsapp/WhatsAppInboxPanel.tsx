@@ -24,6 +24,10 @@ import {
 
   inboxTemplateParamsFromContext,
 
+  managerReplyTemplateParams,
+
+  residentFirstNameForTemplate,
+
   type WhatsAppInboxContext,
 
 } from '@/lib/whatsapp-inbox-context'
@@ -378,6 +382,40 @@ export function WhatsAppInboxPanel() {
 
 
 
+  const hasManagerReplyTemplate = templates.some((t) => t.id === 'manager_reply')
+
+
+
+  function managerReplyContext(): WhatsAppInboxContext {
+
+    if (inboxContext) return inboxContext
+
+    const r = selected
+
+      ? Array.isArray(selected.residents)
+
+        ? selected.residents[0]
+
+        : selected.residents
+
+      : null
+
+    return {
+
+      resident_name: residentFirstNameForTemplate(r?.full_name),
+
+      building_name: null,
+
+      open_ticket: null,
+
+      recent_closed_ticket: null,
+
+    }
+
+  }
+
+
+
   async function sendReply() {
 
     if (!selected || !reply.trim()) return
@@ -385,6 +423,52 @@ export function WhatsAppInboxPanel() {
     setSending(true)
 
     try {
+
+      if (!inSession) {
+
+        if (!hasManagerReplyTemplate) {
+
+          toast.error('תבנית manager_reply לא מוגדרת — צרו אותה ב-Meta Business Manager')
+
+          return
+
+        }
+
+        const res = await fetchWithTimeout('/api/whatsapp/send-template', {
+
+          method: 'POST',
+
+          headers: { 'Content-Type': 'application/json' },
+
+          body: JSON.stringify({
+
+            phone: selected.phone,
+
+            template_id: 'manager_reply',
+
+            params: managerReplyTemplateParams(managerReplyContext(), reply.trim()),
+
+            conversation_id: selected.id,
+
+          }),
+
+        })
+
+        const json = (await res.json()) as { error?: string }
+
+        if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
+
+        toast.success('ההודעה נשלחה לדייר/ה — כשיגיב/תגיב אפשר לכתוב חופשי')
+
+        setReply('')
+
+        await loadMessages(selected.id)
+
+        await loadConversations()
+
+        return
+
+      }
 
       const res = await fetchWithTimeout('/api/whatsapp/send', {
 
@@ -404,7 +488,7 @@ export function WhatsAppInboxPanel() {
 
           setInSession(false)
 
-          toast.error('לא ניתן לכתוב חופשי — בחרו הודעה מוכנה למטה')
+          toast.error('חלון 24 שעות נסגר — ההודעה תישלח דרך תבנית Meta')
 
           return
 
@@ -622,7 +706,7 @@ export function WhatsAppInboxPanel() {
 
                   <span style={inSession ? styles.badgeOpen : styles.badgeClosed}>
 
-                    {inSession ? 'אפשר לכתוב חופשי' : 'רק הודעות מוכנות'}
+                    {inSession ? 'אפשר לכתוב חופשי' : 'שליחה דרך תבנית Meta'}
 
                   </span>
 
@@ -668,7 +752,7 @@ export function WhatsAppInboxPanel() {
 
               <div style={styles.compose}>
 
-                {inSession && (
+                {(inSession || hasManagerReplyTemplate) && (
 
                   <>
 
@@ -677,6 +761,16 @@ export function WhatsAppInboxPanel() {
                       הודעה לדייר/ה
 
                     </label>
+
+                    {!inSession && (
+
+                      <p style={styles.templateComposeHint}>
+
+                        חלון 24 שעות סגור — ההודעה תישלח דרך תבנית Meta. כשהדייר/ה יגיב/תגיב, אפשר לכתוב חופשי.
+
+                      </p>
+
+                    )}
 
                     <textarea
 
@@ -692,11 +786,51 @@ export function WhatsAppInboxPanel() {
 
                       style={styles.textarea}
 
+                      maxLength={500}
+
                     />
+
+                    {!inSession && reply.trim() && hasManagerReplyTemplate && (
+
+                      <div style={styles.previewBox}>
+
+                        <div style={styles.previewLabel}>כך תיראה ההודעה:</div>
+
+                        <div style={styles.previewText}>
+
+                          {buildInboxTemplatePreview(
+
+                            {
+
+                              id: 'manager_reply',
+
+                              label: 'הודעה מהמשרד',
+
+                              description: '',
+
+                              language: 'he',
+
+                              resolveMetaName: () => 'manager_reply',
+
+                              preview: '',
+
+                              params: [],
+
+                            },
+
+                            managerReplyTemplateParams(managerReplyContext(), reply)
+
+                          )}
+
+                        </div>
+
+                      </div>
+
+                    )}
 
                     <Button onClick={() => void sendReply()} disabled={sending || !reply.trim()}>
 
-                      {sending ? 'שולח…' : 'שלח הודעה'}
+                      {sending ? 'שולח…' : inSession ? 'שלח הודעה' : 'שלח דרך תבנית Meta'}
 
                     </Button>
 
@@ -706,7 +840,7 @@ export function WhatsAppInboxPanel() {
 
 
 
-                {!inSession && (
+                {!inSession && !hasManagerReplyTemplate && (
 
                   <p style={styles.closedHint}>
 
@@ -1065,6 +1199,18 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.45,
 
     color: theme.colors.textSecondary,
+
+  },
+
+  templateComposeHint: {
+
+    margin: 0,
+
+    fontSize: 12,
+
+    lineHeight: 1.45,
+
+    color: theme.colors.textMuted,
 
   },
 

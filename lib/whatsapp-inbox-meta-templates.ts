@@ -1,4 +1,5 @@
 import {
+  metaTemplateNameManagerReply,
   metaTemplateNameSlaEscalation,
   metaTemplateNameTicketClosed,
 } from '@/lib/meta-whatsapp-pending-actions'
@@ -23,6 +24,29 @@ export type InboxMetaTemplate = {
 
 /** Meta Utility templates managers can send from inbox when the 24h session expired. */
 export const WHATSAPP_INBOX_META_TEMPLATES: InboxMetaTemplate[] = [
+  {
+    id: 'manager_reply',
+    label: 'הודעה מהמשרד',
+    description: 'שיחה חופשית דרך תבנית Meta — כשחלון 24 שעות סגור.',
+    language: 'he',
+    resolveMetaName: metaTemplateNameManagerReply,
+    preview:
+      'שלום {{שם}},\n\nהודעה ממשרד האחזקה:\n{{הודעה}}\n\nניתן להשיב להודעה זו.',
+    params: [
+      {
+        key: 'resident_name',
+        label: 'שם דייר/ה',
+        placeholder: 'למשל: יוני',
+        maxLength: 40,
+      },
+      {
+        key: 'message',
+        label: 'תוכן ההודעה',
+        placeholder: 'כתבו כאן את ההודעה לדייר/ה…',
+        maxLength: 500,
+      },
+    ],
+  },
   {
     id: 'ticket_closed',
     label: 'סגירת תקלה',
@@ -70,6 +94,11 @@ export function getInboxMetaTemplateById(id: string): InboxMetaTemplate | undefi
 }
 
 export function buildInboxTemplatePreview(template: InboxMetaTemplate, paramValues: string[]): string {
+  if (template.id === 'manager_reply') {
+    const name = paramValues[0]?.trim() || 'דייר/ה'
+    const body = paramValues[1]?.trim() || '[הודעה]'
+    return `שלום ${name},\n\nהודעה ממשרד האחזקה:\n${body}\n\nניתן להשיב להודעה זו.`
+  }
   if (template.id === 'ticket_closed') {
     const building = paramValues[0]?.trim() || '[שם בניין]'
     return `שלום, התקלה בדירתכם בבניין ${building} טופלה ונסגרה.\n\nאם יש בעיה נוספת, ניתן לפנות אלינו בכל עת.`

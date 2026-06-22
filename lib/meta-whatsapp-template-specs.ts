@@ -65,6 +65,33 @@ export const META_WHATSAPP_TEMPLATE_SPECS: MetaTemplateSpec[] = [
     ],
   },
   {
+    id: 'manager_reply',
+    metaName: 'manager_reply',
+    status: 'todo',
+    category: 'Utility',
+    language: 'he',
+    languageLabel: 'עברית',
+    purpose: 'שיחה עם דייר מתיבת WhatsApp מחוץ ל-24 שעות — המנהל/ת כותב/ת, תוכן ההודעה נשלח ב-{{2}}',
+    body:
+      'שלום {{1}},\n\n' +
+      'הודעה ממשרד האחזקה:\n' +
+      '{{2}}\n\n' +
+      'ניתן להשיב להודעה זו.',
+    variables: [
+      { index: 1, label: 'שם דייר/ה', sample: 'יוני' },
+      { index: 2, label: 'תוכן ההודעה', sample: 'הטכנאי יגיע מחר בין 9:00 ל-11:00' },
+    ],
+    header: null,
+    footer: null,
+    buttons: null,
+    notes: [
+      'שם התבנית ב-Meta חייב להיות בדיוק: manager_reply',
+      'קטגוריה Utility — לא Marketing.',
+      'ללא אימוג\'ים.',
+      'אחרי שהדייר מגיב — נפתח חלון 24 שעות לשיחה חופשית.',
+    ],
+  },
+  {
     id: 'worker_assignment',
     metaName: 'worker_assignment_notice',
     status: 'approved',

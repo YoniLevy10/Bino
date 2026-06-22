@@ -1,7 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { findResidentByPhoneClient, normalizePhone } from '@/lib/residents-whatsapp'
+import { isDisplayableResidentName } from '@/lib/whatsapp-inbox-display'
 
 export type WhatsAppInboxContext = {
+  /** First name (or fallback) for manager_reply template {{1}} */
+  resident_name: string
   building_name: string | null
   open_ticket: {
     ticket_number: number
@@ -23,6 +26,13 @@ function projectNameFromJoin(
   return trimmed || null
 }
 
+/** First name for Meta template greeting — avoids placeholder "דייר WhatsApp". */
+export function residentFirstNameForTemplate(fullName: string | null | undefined): string {
+  const trimmed = (fullName ?? '').trim()
+  if (!trimmed || !isDisplayableResidentName(trimmed)) return 'דייר/ה'
+  return trimmed.split(/\s+/)[0]!.slice(0, 40)
+}
+
 export async function loadWhatsAppInboxContext(
   admin: SupabaseClient,
   clientId: string,
@@ -30,18 +40,26 @@ export async function loadWhatsAppInboxContext(
 ): Promise<WhatsAppInboxContext> {
   const normalizedPhone = normalizePhone(opts.phone)
   let building_name: string | null = null
+  let resident_name = 'דייר/ה'
 
   if (opts.residentId) {
     const { data: residentRow } = await admin
       .from('residents')
-      .select('projects(name)')
+      .select('full_name, projects(name)')
       .eq('id', opts.residentId)
       .eq('client_id', clientId)
       .maybeSingle()
 
-    building_name = projectNameFromJoin(
-      (residentRow as { projects?: { name?: string | null } | { name?: string | null }[] } | null)?.projects
-    )
+    const row = residentRow as
+      | { full_name?: string | null; projects?: { name?: string | null } | { name?: string | null }[] }
+      | null
+    resident_name = residentFirstNameForTemplate(row?.full_name)
+    building_name = projectNameFromJoin(row?.projects)
+  } else {
+    const resident = await findResidentByPhoneClient(admin, clientId, normalizedPhone)
+    if (resident) {
+      resident_name = residentFirstNameForTemplate(resident.full_name)
+    }
   }
 
   const ticketSelect = 'ticket_number, description, status, projects(name)'
@@ -107,6 +125,7 @@ export async function loadWhatsAppInboxContext(
     : null
 
   return {
+    resident_name,
     building_name,
     open_ticket,
     recent_closed_ticket,
@@ -118,6 +137,9 @@ export function inboxTemplateParamsFromContext(
   templateId: string,
   ctx: WhatsAppInboxContext
 ): string[] {
+  if (templateId === 'manager_reply') {
+    return [ctx.resident_name, '']
+  }
   if (templateId === 'ticket_closed') {
     const building =
       ctx.building_name ||
@@ -131,4 +153,12 @@ export function inboxTemplateParamsFromContext(
     return [String(t.ticket_number), t.description]
   }
   return []
+}
+
+/** Params for manager_reply when sending from inbox compose (outside 24h window). */
+export function managerReplyTemplateParams(
+  ctx: WhatsAppInboxContext,
+  messageBody: string
+): string[] {
+  return [ctx.resident_name, messageBody.trim().slice(0, 500)]
 }

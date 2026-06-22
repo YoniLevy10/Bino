@@ -27,6 +27,14 @@ export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
     href: 'https://business.facebook.com/wa/manage/message-templates/',
   },
   {
+    id: 'manager_reply',
+    title: 'יצירת תבנית manager_reply',
+    description:
+      'Utility · עברית · {{1}}=שם דייר, {{2}}=טקst המנהל/ת. מאפשר שיחה מתיבת WhatsApp מחוץ ל-24 שעות.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
     id: 'waba_cleanup',
     title: 'מחיקת 2 חשבונות WABA כפולים',
     description:
@@ -72,4 +80,8 @@ export function metaTemplateNameSlaEscalation(): string {
 
 export function metaTemplateNameWorkerAssignment(): string {
   return process.env.WHATSAPP_META_TEMPLATE_WORKER_ASSIGNMENT?.trim() || 'worker_assignment_notice'
+}
+
+export function metaTemplateNameManagerReply(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_MANAGER_REPLY?.trim() || 'manager_reply'
 }
