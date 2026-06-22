@@ -46,6 +46,7 @@ export async function softDeleteTicketsForClient(
       active_ticket_id: null,
       is_active: false,
       pending_whatsapp_media_id: null,
+      pending_whatsapp_media_type: null,
       pending_apartment_detail: null,
     })
     .in('active_ticket_id', ids)

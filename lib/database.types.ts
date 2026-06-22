@@ -1393,6 +1393,7 @@ export type Database = {
           pending_location: Json | null
           pending_ticket_description: string | null
           pending_whatsapp_media_id: string | null
+          pending_whatsapp_media_type: string | null
           phone: string | null
           phone_number: string
           project_id: string
@@ -1413,6 +1414,7 @@ export type Database = {
           pending_location?: Json | null
           pending_ticket_description?: string | null
           pending_whatsapp_media_id?: string | null
+          pending_whatsapp_media_type?: string | null
           phone?: string | null
           phone_number: string
           project_id: string
@@ -1433,6 +1435,7 @@ export type Database = {
           pending_location?: Json | null
           pending_ticket_description?: string | null
           pending_whatsapp_media_id?: string | null
+          pending_whatsapp_media_type?: string | null
           phone?: string | null
           phone_number?: string
           project_id?: string
