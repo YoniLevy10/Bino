@@ -69,20 +69,25 @@ export async function POST(req: Request) {
       projectName: projectName || 'הבניין',
     })
 
-    logger.info('NOTIFY_CLOSED', 'Reporter WhatsApp after close', {
+    logger.info('NOTIFY_CLOSED', 'Reporter notify after close', {
       requestId,
       ticket_id,
       whatsappSent: notify.whatsappSent,
+      smsSent: notify.smsSent,
     })
 
     if (notify.whatsappError) {
       logger.warn('NOTIFY_CLOSED', 'WhatsApp notify failed', { requestId, ticket_id, error: notify.whatsappError })
+    }
+    if (notify.smsError && !notify.smsSent) {
+      logger.warn('NOTIFY_CLOSED', 'SMS fallback failed', { requestId, ticket_id, error: notify.smsError })
     }
 
     return NextResponse.json({
       success: true,
       reporter_has_phone: reporterHasPhone,
       whatsapp_sent: notify.whatsappSent,
+      sms_sent: notify.smsSent,
     })
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))

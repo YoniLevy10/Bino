@@ -57,3 +57,13 @@ export async function sendManagerSMS(
 ): Promise<boolean> {
   return send019StaffSms(phoneNumber, message, senderName, { channel: 'manager_sms', clientId })
 }
+
+/** Send SMS to resident/reporter via 019SMS (3 retries, 10s timeout each). */
+export async function sendResidentSMS(
+  phoneNumber: string,
+  message: string,
+  senderName?: string | null,
+  clientId?: string | null
+): Promise<boolean> {
+  return send019StaffSms(phoneNumber, message, senderName, { channel: 'resident_sms', clientId })
+}

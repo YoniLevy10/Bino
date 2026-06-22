@@ -143,6 +143,7 @@ export async function PATCH(req: NextRequest) {
         ticket: updated,
         reporter_has_phone: notify?.reporterHasPhone ?? false,
         whatsapp_sent: notify?.whatsappSent ?? false,
+        sms_sent: notify?.smsSent ?? false,
         whatsapp_error: notify?.whatsappError,
       })
     }

@@ -148,16 +148,24 @@ export async function POST(req: Request) {
       reporterPhone: trow.reporter_phone,
       projectName: projectName || 'הבניין',
     })
-    logger.info('TICKET_API', 'Reporter WhatsApp on close', {
+    logger.info('TICKET_API', 'Reporter notify on close', {
       requestId,
       ticket_id,
       whatsappSent: notify.whatsappSent,
+      smsSent: notify.smsSent,
     })
     if (notify.whatsappError) {
       logger.warn('TICKET_API', 'Reporter WhatsApp on close failed', {
         requestId,
         ticket_id,
         error: notify.whatsappError,
+      })
+    }
+    if (notify.smsError && !notify.smsSent) {
+      logger.warn('TICKET_API', 'Reporter SMS fallback on close failed', {
+        requestId,
+        ticket_id,
+        error: notify.smsError,
       })
     }
 
@@ -195,6 +203,7 @@ export async function POST(req: Request) {
       ticket: updatedTicket,
       reporter_has_phone: Boolean(trow.reporter_phone?.trim()),
       whatsapp_sent: notify.whatsappSent,
+      sms_sent: notify.smsSent,
       requestId,
     })
   } catch (error) {

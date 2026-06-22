@@ -242,6 +242,7 @@ export const SMS_TEMPLATE_KEYS = [
   'sms_manager_new_ticket',
   'sms_worker_new_ticket',
   'sms_manager_ticket_closed',
+  'sms_resident_ticket_closed',
 ] as const
 
 export type SmsTemplateKey = (typeof SMS_TEMPLATE_KEYS)[number]
@@ -260,12 +261,15 @@ export const SMS_TEMPLATE_LABELS: Record<SmsTemplateKey, string> = {
   sms_manager_new_ticket: 'SMS למנהל/ת — תקלה חדשה',
   sms_worker_new_ticket: 'SMS לעובד — תקלה חדשה',
   sms_manager_ticket_closed: 'SMS למנהל/ת — תקלה נסגרה',
+  sms_resident_ticket_closed: 'SMS לדייר — תקלה נסגרה (גיבוי)',
 }
 
 export const SMS_TEMPLATE_WHEN_SENT: Record<SmsTemplateKey, string> = {
   sms_manager_new_ticket: 'נשלח למנהל/ת כשנפתחת תקלה חדשה דרך וואטסאפ',
   sms_worker_new_ticket: 'נשלח לעובד המשויך לפרויקט כשנפתחת תקלה חדשה',
   sms_manager_ticket_closed: 'נשלח למנהל/ת כשתקלה נסגרת מהדשבורד',
+  sms_resident_ticket_closed:
+    'נשלח לדייר כשסגירת תקלה ב-WhatsApp נכשלת (למשל מחוץ לחלון 24 שעות ללא תבנית מאושרת)',
 }
 
 export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
@@ -275,6 +279,8 @@ export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
     'תקלה חדשה ב{{project_name}}\n#{{ticket_number}}\n{{description}}\nמדווח: {{reporter_name}}\n{{dashboard_url}}\n{{client_name}}',
   sms_manager_ticket_closed:
     'תקלה #{{ticket_number}} נסגרה\nפרויקט: {{project_name}}',
+  sms_resident_ticket_closed:
+    'שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\nאם יש בעיה נוספת, ניתן לפנות אלינו בכל עת.',
 }
 
 /** טקסט ברירת מחדל לטעינה ראשונית בעורך (כשאין שורה ב-DB) */
