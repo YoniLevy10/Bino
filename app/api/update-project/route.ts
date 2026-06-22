@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'פרויקט לא נמצא', requestId }, { status: 404 })
     }
 
-    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    const payload: Record<string, unknown> = {}
     if (fields.name !== undefined) payload.name = sanitizeString(fields.name)
     if (fields.project_code !== undefined) payload.project_code = sanitizeString(fields.project_code).toUpperCase()
     if (fields.address !== undefined) payload.address = fields.address
