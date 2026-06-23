@@ -72,6 +72,9 @@ type TicketRow = {
   ticket_number: number
   status: string
   priority?: string | null
+  description?: string | null
+  created_at?: string | null
+  closed_at?: string | null
 }
 
 const emptyForm: ProjectForm = {
@@ -101,7 +104,10 @@ export default function ProjectsPage() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
   const [projectTickets, setProjectTickets] = useState<TicketRow[]>([])
+  const [projectClosedTickets, setProjectClosedTickets] = useState<TicketRow[]>([])
+  const [projectTicketsTab, setProjectTicketsTab] = useState<'active' | 'history'>('active')
   const [loadingTickets, setLoadingTickets] = useState(false)
+  const [exportingHistory, setExportingHistory] = useState(false)
 
   async function loadClientId() {
     const id = await resolveBamakorClientIdForBrowser()
@@ -230,28 +236,97 @@ export default function ProjectsPage() {
     setDetailDrawerOpen(false)
     setSelectedProject(null)
     setProjectTickets([])
+    setProjectClosedTickets([])
+    setProjectTicketsTab('active')
+  }
+
+  async function fetchProjectOpenTickets(projectId: string) {
+    const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+    const { data, error } = await withClientId(
+      supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
+      scoped
+    )
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .neq('status', 'CLOSED')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) throw error
+    setProjectTickets((data as TicketRow[]) || [])
+  }
+
+  async function fetchProjectClosedTickets(projectId: string) {
+    const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+    const { data, error } = await withClientId(
+      supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
+      scoped
+    )
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .eq('status', 'CLOSED')
+      .order('closed_at', { ascending: false })
+      .limit(20)
+
+    if (error) throw error
+    setProjectClosedTickets((data as TicketRow[]) || [])
   }
 
   async function fetchProjectTickets(projectId: string) {
     setLoadingTickets(true)
     await asyncHandler(
       async () => {
-        const scoped = clientId || (await resolveBamakorClientIdForBrowser())
-        const { data, error } = await withClientId(
-          supabase.from('tickets').select('id, ticket_number, status, priority'),
-          scoped
-        )
-          .eq('project_id', projectId)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-        setProjectTickets((data as TicketRow[]) || [])
+        await Promise.all([
+          fetchProjectOpenTickets(projectId),
+          fetchProjectClosedTickets(projectId),
+        ])
         return true
       },
       { context: 'Failed to load project tickets', showErrorToast: false }
     )
     setLoadingTickets(false)
+  }
+
+  async function exportProjectHistory(project: ProjectRow) {
+    setExportingHistory(true)
+    try {
+      const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+      const { data, error } = await withClientId(
+        supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
+        scoped
+      )
+        .eq('project_id', project.id)
+        .is('deleted_at', null)
+        .eq('status', 'CLOSED')
+        .order('closed_at', { ascending: false })
+
+      if (error) throw error
+
+      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const rows = (data || []).map((t: TicketRow) => ({
+        '#': t.ticket_number,
+        'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
+        'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
+        תיאור: t.description || '',
+        סטטוס: 'סגור',
+        עדיפות: t.priority || '',
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const COLS = 6
+      ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 42 }, { wch: 10 }, { wch: 10 }]
+      applyHeaderStyle(ws, COLS)
+      applyDataStyles(ws, rows.length, COLS)
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'היסטוריה')
+      const day = new Date().toISOString().slice(0, 10)
+      XLSX.writeFile(wb, `bamakor-history-${project.project_code}-${day}.xlsx`)
+      toast.success(TM.excelExported)
+    } catch {
+      toast.error('ייצוא היסטוריה נכשל')
+    }
+    setExportingHistory(false)
   }
 
   function updateForm<K extends keyof ProjectForm>(key: K, value: ProjectForm[K]) {
@@ -723,31 +798,86 @@ export default function ProjectsPage() {
 
             <div style={styles.ticketsSection}>
               <div style={styles.ticketsSectionHeader}>
-                <h4 style={styles.ticketsSectionTitle}>תקלות אחרונות</h4>
+                <h4 style={styles.ticketsSectionTitle}>תקלות</h4>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => window.location.href = `/tickets?project=${encodeURIComponent(selectedProject.project_code)}`}
                 >
-                  הכל
+                  פעילות
                 </Button>
+              </div>
+
+              <div style={styles.projectTicketTabs}>
+                <button
+                  type="button"
+                  onClick={() => setProjectTicketsTab('active')}
+                  style={{
+                    ...styles.projectTicketTab,
+                    ...(projectTicketsTab === 'active' ? styles.projectTicketTabActive : {}),
+                  }}
+                >
+                  פעילות ({projectTickets.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProjectTicketsTab('history')}
+                  style={{
+                    ...styles.projectTicketTab,
+                    ...(projectTicketsTab === 'history' ? styles.projectTicketTabActive : {}),
+                  }}
+                >
+                  היסטוריה ({projectClosedTickets.length})
+                </button>
               </div>
 
               {loadingTickets ? (
                 <div style={styles.loadingSmall}>
                   <LoadingSpinner size="sm" />
                 </div>
-              ) : projectTickets.length === 0 ? (
-                <p style={styles.emptyText}>אין תקלות לפרויקט זה</p>
+              ) : projectTicketsTab === 'active' ? (
+                projectTickets.length === 0 ? (
+                  <p style={styles.emptyText}>אין תקלות פעילות לפרויקט זה</p>
+                ) : (
+                  <div style={styles.ticketList}>
+                    {projectTickets.map((ticket) => (
+                      <div key={ticket.id} style={styles.ticketItem}>
+                        <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
+                        <StatusBadge status={ticket.status} size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : projectClosedTickets.length === 0 ? (
+                <p style={styles.emptyText}>אין תקלות סגורות בהיסטוריה</p>
               ) : (
-                <div style={styles.ticketList}>
-                  {projectTickets.slice(0, 5).map((ticket) => (
-                    <div key={ticket.id} style={styles.ticketItem}>
-                      <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                      <StatusBadge status={ticket.status} size="sm" />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={styles.ticketList}>
+                    {projectClosedTickets.map((ticket) => (
+                      <div key={ticket.id} style={styles.ticketHistoryItem}>
+                        <div style={styles.ticketHistoryTop}>
+                          <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
+                          <StatusBadge status={ticket.status} size="sm" />
+                        </div>
+                        <p style={styles.ticketHistoryDesc}>
+                          {ticket.description?.slice(0, 80)}{(ticket.description?.length || 0) > 80 ? '…' : ''}
+                        </p>
+                        <span style={styles.ticketHistoryDate}>
+                          נסגרה: {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('he-IL') : '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={exportingHistory}
+                    onClick={() => void exportProjectHistory(selectedProject)}
+                    style={{ marginTop: '12px', width: '100%' }}
+                  >
+                    ייצוא היסטוריה ל-Excel
+                  </Button>
+                </>
               )}
             </div>
 
@@ -986,5 +1116,50 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     fontWeight: 500,
     color: theme.colors.textPrimary,
+  },
+  projectTicketTabs: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  projectTicketTab: {
+    flex: 1,
+    padding: '10px 8px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    fontSize: '13px',
+    fontWeight: 600,
+    color: theme.colors.textSecondary,
+    cursor: 'pointer',
+  },
+  projectTicketTabActive: {
+    borderColor: theme.colors.primary,
+    background: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+  },
+  ticketHistoryItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    padding: '12px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.sm,
+    textAlign: 'right',
+  },
+  ticketHistoryTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ticketHistoryDesc: {
+    margin: 0,
+    fontSize: '13px',
+    color: theme.colors.textPrimary,
+    lineHeight: 1.4,
+  },
+  ticketHistoryDate: {
+    fontSize: '12px',
+    color: theme.colors.textMuted,
   },
 }

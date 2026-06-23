@@ -9,7 +9,8 @@
  * סינון: חודש, פרויקט, סטטוס.
  *
  * פעולות:
- *  - "יצוא Excel" → xlsx עם נתוני הסיכום
+ *  - "יצוא Excel" → xlsx עם KPI, סיכום פרויקטים, תקלות לפי פרויקט, ועומס עובדים
+ *  - כפתור Excel בשורת פרויקט → קובץ תקלות לפרויקט בלבד
  *  - שינוי חודש/פרויקט → מחשב מחדש את הדוח
  */
 import { useRouter } from 'next/navigation'
@@ -19,7 +20,10 @@ import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { isTicketInTreatment } from '@/lib/ticket-status'
+import { isTicketInTreatment, ticketStatusLabelHe } from '@/lib/ticket-status'
+import { toast } from '@/lib/error-handler'
+import { TM } from '@/lib/toast-messages'
+import { downloadExcelWorkbook } from '@/lib/excel-download'
 import {
   AppShell,
   MobileHeader,
@@ -112,6 +116,7 @@ export default function SummaryPage() {
   const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -260,9 +265,27 @@ export default function SummaryPage() {
   const ticketsInRange = useMemo(() => {
     if (!activeRange) return []
     return tickets.filter((t) => {
-      const createdAt = new Date(t.created_at)
-      return createdAt >= activeRange.from && createdAt < activeRange.toExclusive
+      const createdInRange =
+        t.created_at &&
+        new Date(t.created_at) >= activeRange.from &&
+        new Date(t.created_at) < activeRange.toExclusive
+      const closedInRange =
+        t.closed_at &&
+        new Date(t.closed_at) >= activeRange.from &&
+        new Date(t.closed_at) < activeRange.toExclusive
+      return Boolean(createdInRange || closedInRange)
     })
+  }, [tickets, activeRange])
+
+  const closedTicketsInRange = useMemo(() => {
+    if (!activeRange) return []
+    return tickets
+      .filter((t) => {
+        if (!t.closed_at || t.status !== 'CLOSED') return false
+        const closedAt = new Date(t.closed_at)
+        return closedAt >= activeRange.from && closedAt < activeRange.toExclusive
+      })
+      .sort((a, b) => new Date(b.closed_at || 0).getTime() - new Date(a.closed_at || 0).getTime())
   }, [tickets, activeRange])
 
   const closedInRangeCount = useMemo(() => {
@@ -332,6 +355,16 @@ export default function SummaryPage() {
       .slice(0, 6)
   }, [projectStats])
 
+  const workerNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const worker of workers) map.set(worker.id, worker.full_name)
+    return map
+  }, [workers])
+
+  const sourceTicketsForExport = useMemo(() => {
+    return activeRange ? ticketsInRange : tickets
+  }, [activeRange, ticketsInRange, tickets])
+
   function navigateToTickets(filter?: { status?: string; project?: string; worker?: string }) {
     let url = '/tickets'
     if (filter) {
@@ -353,63 +386,164 @@ export default function SummaryPage() {
     })
   }
 
-  async function exportSummaryToExcel() {
-    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+  function buildTicketExportRows(list: TicketRow[]) {
+    return list.map((t) => ({
+      פרויקט: t.project_name || t.project_code || '',
+      'קוד פרויקט': t.project_code || '',
+      '#': t.ticket_number,
+      'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
+      'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
+      'טלפון מדווח': t.reporter_phone || '',
+      תיאור: t.description || '',
+      סטטוס: ticketStatusLabelHe(t.status),
+      עדיפות: t.priority || '',
+      עובד: t.assigned_worker_id ? workerNameById.get(t.assigned_worker_id) || '' : '',
+    }))
+  }
+
+  function exportFilenameSuffix() {
+    return period === 'custom'
+      ? `custom-${customFrom || 'from'}-${customTo || 'to'}`
+      : period
+  }
+
+  async function exportProjectToExcel(project: {
+    id: string
+    name: string
+    project_code: string
+    total: number
+  }) {
     const range = activeRange
     if (!range) return
 
-    const kpiRows = [
-      { מדד: 'פתוחות כעת', ערך: summary.openNow },
-      { מדד: 'בטיפול כעת', ערך: summary.assignedNow },
-      { מדד: `נפתחו (${range.label})`, ערך: summary.openedInRange },
-      { מדד: `נסגרו (${range.label})`, ערך: summary.closedInRange },
-    ]
+    setExporting(true)
+    try {
+      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const projectTickets = sourceTicketsForExport
+        .filter(
+          (t) =>
+            (t.project_id && t.project_id === project.id) ||
+            (!!t.project_code && t.project_code === project.project_code)
+        )
+        .sort((a, b) => b.ticket_number - a.ticket_number)
 
-    const projectRows = projectStats.map((p) => ({
-      פרויקט: p.name,
-      'סה״כ תקלות': p.total,
-      פתוחות: p.open,
-      בטיפול: p.assigned,
-      נסגרו: p.closed,
-    }))
+      const ticketRows = buildTicketExportRows(projectTickets)
+      const wsTickets = XLSX.utils.json_to_sheet(ticketRows)
+      wsTickets['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 42 }, { wch: 12 }, { wch: 10 }, { wch: 18 }]
+      wsTickets['!freeze'] = { xSplit: 0, ySplit: 1 }
+      if (wsTickets['!ref']) wsTickets['!autofilter'] = { ref: wsTickets['!ref'] as string }
+      applyHeaderStyle(wsTickets, 10)
+      applyDataStyles(wsTickets, ticketRows.length, 10)
 
-    const workerRows = workerLoad.map((w) => ({
-      עובד: w.full_name,
-      'תקלות פעילות': w.assigned_tickets,
-    }))
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet([
+          {
+            פרויקט: project.name,
+            קוד: project.project_code,
+            טווח: range.label,
+            הופק_בתאריך: new Date().toLocaleString('he-IL'),
+          },
+        ]),
+        'Meta'
+      )
+      XLSX.utils.book_append_sheet(wb, wsTickets, 'תקלות')
 
-    const wsKpi = XLSX.utils.json_to_sheet(kpiRows)
-    wsKpi['!cols'] = [{ wch: 28 }, { wch: 12 }]
-    wsKpi['!freeze'] = { xSplit: 0, ySplit: 1 }
-    wsKpi['!autofilter'] = { ref: wsKpi['!ref'] as string }
-    applyHeaderStyle(wsKpi, 2)
-    applyDataStyles(wsKpi, kpiRows.length, 2)
+      const safeCode = project.project_code.replace(/[^\w-]+/g, '_') || 'project'
+      downloadExcelWorkbook(wb, XLSX, `summary-${safeCode}-${exportFilenameSuffix()}.xlsx`)
+      toast.success(TM.excelExported)
+    } catch (err) {
+      console.error('Project Excel export failed:', err)
+      toast.error('ייצוא Excel נכשל')
+    } finally {
+      setExporting(false)
+    }
+  }
 
-    const wsProjects = XLSX.utils.json_to_sheet(projectRows)
-    wsProjects['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
-    wsProjects['!freeze'] = { xSplit: 0, ySplit: 1 }
-    wsProjects['!autofilter'] = { ref: wsProjects['!ref'] as string }
-    applyHeaderStyle(wsProjects, 5)
-    applyDataStyles(wsProjects, projectRows.length, 5)
+  async function exportSummaryToExcel() {
+    const range = activeRange
+    if (!range) return
 
-    const wsWorkers = XLSX.utils.json_to_sheet(workerRows)
-    wsWorkers['!cols'] = [{ wch: 24 }, { wch: 16 }]
-    wsWorkers['!freeze'] = { xSplit: 0, ySplit: 1 }
-    wsWorkers['!autofilter'] = { ref: wsWorkers['!ref'] as string }
-    applyHeaderStyle(wsWorkers, 2)
-    applyDataStyles(wsWorkers, workerRows.length, 2)
+    setExporting(true)
+    try {
+      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
 
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ טווח: range.label, הופק_בתאריך: new Date().toLocaleString('he-IL') }]), 'Meta')
-    XLSX.utils.book_append_sheet(wb, wsKpi, 'KPIs')
-    XLSX.utils.book_append_sheet(wb, wsProjects, 'Projects')
-    XLSX.utils.book_append_sheet(wb, wsWorkers, 'Workers')
+      const kpiRows = [
+        { מדד: 'פתוחות כעת', ערך: summary.openNow },
+        { מדד: 'בטיפול כעת', ערך: summary.assignedNow },
+        { מדד: `נפתחו (${range.label})`, ערך: summary.openedInRange },
+        { מדד: `נסגרו (${range.label})`, ערך: summary.closedInRange },
+      ]
 
-    const safeName =
-      period === 'custom'
-        ? `summary-custom-${customFrom || 'from'}-${customTo || 'to'}`
-        : `summary-${period}`
-    XLSX.writeFile(wb, `${safeName}.xlsx`)
+      const projectRows = projectStats.map((p) => ({
+        פרויקט: p.name,
+        'קוד פרויקט': p.project_code,
+        'סה״כ תקלות': p.total,
+        פתוחות: p.open,
+        בטיפול: p.assigned,
+        נסגרו: p.closed,
+      }))
+
+      const workerRows = workerLoad.map((w) => ({
+        עובד: w.full_name,
+        'תקלות פעילות': w.assigned_tickets,
+      }))
+
+      const ticketRows = buildTicketExportRows(
+        [...sourceTicketsForExport].sort((a, b) => {
+          const projectCmp = (a.project_name || a.project_code || '').localeCompare(
+            b.project_name || b.project_code || '',
+            'he'
+          )
+          if (projectCmp !== 0) return projectCmp
+          return b.ticket_number - a.ticket_number
+        })
+      )
+
+      const wsKpi = XLSX.utils.json_to_sheet(kpiRows)
+      wsKpi['!cols'] = [{ wch: 28 }, { wch: 12 }]
+      wsKpi['!freeze'] = { xSplit: 0, ySplit: 1 }
+      wsKpi['!autofilter'] = { ref: wsKpi['!ref'] as string }
+      applyHeaderStyle(wsKpi, 2)
+      applyDataStyles(wsKpi, kpiRows.length, 2)
+
+      const wsProjects = XLSX.utils.json_to_sheet(projectRows)
+      wsProjects['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
+      wsProjects['!freeze'] = { xSplit: 0, ySplit: 1 }
+      wsProjects['!autofilter'] = { ref: wsProjects['!ref'] as string }
+      applyHeaderStyle(wsProjects, 6)
+      applyDataStyles(wsProjects, projectRows.length, 6)
+
+      const wsTickets = XLSX.utils.json_to_sheet(ticketRows)
+      wsTickets['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 42 }, { wch: 12 }, { wch: 10 }, { wch: 18 }]
+      wsTickets['!freeze'] = { xSplit: 0, ySplit: 1 }
+      if (wsTickets['!ref']) wsTickets['!autofilter'] = { ref: wsTickets['!ref'] as string }
+      applyHeaderStyle(wsTickets, 10)
+      applyDataStyles(wsTickets, ticketRows.length, 10)
+
+      const wsWorkers = XLSX.utils.json_to_sheet(workerRows)
+      wsWorkers['!cols'] = [{ wch: 24 }, { wch: 16 }]
+      wsWorkers['!freeze'] = { xSplit: 0, ySplit: 1 }
+      if (wsWorkers['!ref']) wsWorkers['!autofilter'] = { ref: wsWorkers['!ref'] as string }
+      applyHeaderStyle(wsWorkers, 2)
+      applyDataStyles(wsWorkers, workerRows.length, 2)
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ טווח: range.label, הופק_בתאריך: new Date().toLocaleString('he-IL') }]), 'Meta')
+      XLSX.utils.book_append_sheet(wb, wsKpi, 'KPIs')
+      XLSX.utils.book_append_sheet(wb, wsProjects, 'Projects')
+      XLSX.utils.book_append_sheet(wb, wsTickets, 'תקלות')
+      XLSX.utils.book_append_sheet(wb, wsWorkers, 'Workers')
+
+      downloadExcelWorkbook(wb, XLSX, `summary-${exportFilenameSuffix()}.xlsx`)
+      toast.success(TM.excelExported)
+    } catch (err) {
+      console.error('Summary Excel export failed:', err)
+      toast.error('ייצוא Excel נכשל')
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -445,8 +579,9 @@ export default function SummaryPage() {
                 <Button
                   variant="secondary"
                   type="button"
-                  disabled={!activeRange}
-                  onClick={exportSummaryToExcel}
+                  disabled={!activeRange || exporting}
+                  loading={exporting}
+                  onClick={() => void exportSummaryToExcel()}
                 >
                   ייצוא ל-Excel
                 </Button>
@@ -471,8 +606,9 @@ export default function SummaryPage() {
               <Button
                 variant="secondary"
                 type="button"
-                disabled={!activeRange}
-                onClick={exportSummaryToExcel}
+                disabled={!activeRange || exporting}
+                loading={exporting}
+                onClick={() => void exportSummaryToExcel()}
               >
                 ייצוא ל-Excel
               </Button>
@@ -543,6 +679,39 @@ export default function SummaryPage() {
                 accent="success"
               />
             </div>
+
+            {closedTicketsInRange.length > 0 && (
+              <Card
+                title="תקלות שנסגרו בטווח"
+                subtitle={activeRange ? activeRange.label : ''}
+                noPadding
+                style={{ marginBottom: '24px' }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 16px 16px' }}>
+                  {closedTicketsInRange.slice(0, isMobile ? 8 : 12).map((t) => (
+                    <div
+                      key={t.id}
+                      style={{
+                        padding: '12px',
+                        borderRadius: theme.radius.md,
+                        border: `1px solid ${theme.colors.border}`,
+                        textAlign: 'right',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>
+                        #{t.ticket_number} · {t.project_name || t.project_code}
+                      </div>
+                      <div style={{ fontSize: '13px', color: theme.colors.textSecondary, marginTop: '4px' }}>
+                        {t.description?.slice(0, 70)}{(t.description?.length || 0) > 70 ? '…' : ''}
+                      </div>
+                      <div style={{ fontSize: '12px', color: theme.colors.textMuted, marginTop: '6px' }}>
+                        נסגרה: {t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '—'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {/* System Health */}
             <Card title="בריאות המערכת" subtitle="מדדי ביצוע מרכזיים">
@@ -698,6 +867,7 @@ export default function SummaryPage() {
                         <th style={styles.th}>פתוחות</th>
                         <th style={styles.th}>בטיפול</th>
                         <th style={styles.th}>נסגרו</th>
+                        <th style={styles.th}>Excel</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -734,6 +904,18 @@ export default function SummaryPage() {
                             }}>
                               {project.closed}
                             </span>
+                          </td>
+                          <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              disabled={!activeRange || exporting}
+                              loading={exporting}
+                              onClick={() => void exportProjectToExcel(project)}
+                            >
+                              Excel
+                            </Button>
                           </td>
                         </tr>
                       ))}

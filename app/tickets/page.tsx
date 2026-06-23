@@ -25,7 +25,7 @@
  *  - "מיזוג" → POST /api/merge-ticket
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -54,14 +54,17 @@ import {
   LoadingSpinner,
   theme
 } from '../components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useIsMobile } from '@/lib/use-is-mobile'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
+import { removeTicketFromListState } from '@/lib/open-tickets'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketAttachmentThumb } from '../components/shared/TicketAttachmentThumb'
 import { TicketChat } from '../components/tickets/TicketChat'
+import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
+import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
 import {
-  TICKET_STATUS_FILTER_OPTIONS,
+  OPEN_TICKET_STATUS_FILTER_OPTIONS,
   ticketStatusLabelHe,
   isTicketInTreatment,
 } from '@/lib/ticket-status'
@@ -115,7 +118,16 @@ type ProjectRow = {
   project_code: string
 }
 
-const statusOptions = TICKET_STATUS_FILTER_OPTIONS
+const statusOptions = OPEN_TICKET_STATUS_FILTER_OPTIONS
+
+const REFRESH_DEBOUNCE_MS = 30_000
+
+const MOBILE_QUICK_STATUS_CHIPS: { label: string; value: string }[] = [
+  { label: 'הכל', value: 'ALL' },
+  { label: 'חדשות', value: 'NEW' },
+  { label: 'בטיפול', value: 'IN_PROGRESS' },
+  { label: 'דחופות', value: 'URGENT' },
+]
 
 const priorityOptions = [
   { label: 'כל העדיפויות', value: 'ALL' },
@@ -171,7 +183,9 @@ export default function TicketsPage() {
   const [priorityFilter, setPriorityFilter] = useState('ALL')
   const [projectFilter, setProjectFilter] = useState('ALL')
   const [workerFilter, setWorkerFilter] = useState('ALL')
-  const [isMobile, setIsMobile] = useState(false)
+  const isMobile = useIsMobile()
+  const lastFetchAtRef = useRef(0)
+  const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
   const [draftPriority, setDraftPriority] = useState<string>('')
@@ -203,18 +217,14 @@ export default function TicketsPage() {
   const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'chat'>('details')
 
   useEffect(() => {
-    const check = () => setIsMobile(getIsMobileViewport())
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       if (params.get('project')) setProjectFilter(decodeURIComponent(params.get('project')!))
       if (params.get('worker')) setWorkerFilter(decodeURIComponent(params.get('worker')!))
-      if (params.get('status')) setStatusFilter(decodeURIComponent(params.get('status')!))
+      const statusParam = params.get('status')
+      if (statusParam && statusParam !== 'CLOSED') {
+        setStatusFilter(decodeURIComponent(statusParam))
+      }
       if (params.get('priority')) setPriorityFilter(decodeURIComponent(params.get('priority')!))
       if (params.get('new') === '1') setShowAddTicketModal(true)
     }
@@ -241,6 +251,7 @@ export default function TicketsPage() {
         const [ticketsResult, workersResult, professionalsResult, projectsResult] = await Promise.all([
           withClientId(supabase.from('tickets').select(TICKETS_LIST_SELECT), clientId)
             .is('deleted_at', null)
+            .neq('status', 'CLOSED')
             .order('created_at', { ascending: false })
             .limit(300),
           withClientId(supabase.from('workers').select('id, full_name, phone, email, role, is_active'), clientId)
@@ -288,6 +299,7 @@ export default function TicketsPage() {
           projects: (projectsResult.data as ProjectRow[]) || [],
           ticketsTruncated: normalizedTickets.length >= 300,
         })
+        lastFetchAtRef.current = Date.now()
         return true
       },
       { context: 'טעינת תקלות', showErrorToast: true }
@@ -295,12 +307,20 @@ export default function TicketsPage() {
     if (!silent) setLoading(false)
   }, [])
 
+  const debouncedFetchData = useCallback(
+    (silent = false) => {
+      if (Date.now() - lastFetchAtRef.current < REFRESH_DEBOUNCE_MS) return
+      void fetchData(silent)
+    },
+    [fetchData]
+  )
+
   useEffect(() => {
     void (async () => {
       const clientId = await resolveBamakorClientIdForBrowser()
       const cached = shouldSkipStalePageCache() ? null : readTicketsCache(clientId)
       if (cached) {
-        setTickets(cached.tickets)
+        setTickets(cached.tickets.filter((t) => t.status !== 'CLOSED'))
         setWorkers(cached.workers)
         setProjects(cached.projects)
         setTicketsTruncated(cached.ticketsTruncated)
@@ -317,27 +337,26 @@ export default function TicketsPage() {
     const channel = supabase
       .channel('tickets-page-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        void fetchData(true)
+        debouncedFetchData(true)
       })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
-  }, [fetchData])
+  }, [debouncedFetchData])
 
   // Visibility API — silent refresh when returning to tab
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void fetchData(true)
+      if (document.visibilityState === 'visible') debouncedFetchData(true)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [fetchData])
+  }, [debouncedFetchData])
 
   const stats = useMemo(() => {
     const total = tickets.length
     const open = tickets.filter((t) => t.status === 'NEW').length
     const assigned = tickets.filter((t) => isTicketInTreatment(t.status)).length
-    const resolved = tickets.filter((t) => t.status === 'CLOSED').length
-    return { total, open, assigned, resolved }
+    return { total, open, assigned }
   }, [tickets])
 
   const projectOptions = useMemo(() => {
@@ -697,6 +716,22 @@ export default function TicketsPage() {
     setSavingTicket(false)
   }
 
+  function removeClosedTicketFromView(ticketId: string) {
+    setTickets((prev) => {
+      const next = removeTicketFromListState(prev, ticketId)
+      if (tenantClientId) {
+        writeTicketsCache(tenantClientId, {
+          tickets: next,
+          workers,
+          projects,
+          ticketsTruncated,
+        })
+      }
+      return next
+    })
+    if (selectedTicket?.id === ticketId) closeDrawer()
+  }
+
   async function performCloseTicket(ticketId: string) {
     const response = await fetchWithTimeout('/api/close-ticket', {
       method: 'POST',
@@ -711,34 +746,53 @@ export default function TicketsPage() {
     }
     toast.success(TM.ticketClosed)
     toastReporterClosedNotifySummary(closeBody)
+    removeClosedTicketFromView(ticketId)
     return closeBody
   }
 
-  async function handleCloseTicket() {
-    if (!selectedTicket) return
-    setSavingTicket(true)
-    try {
-      await performCloseTicket(selectedTicket.id)
-      await fetchData()
-      closeDrawer()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : TM.genericSaveError)
-    }
-    setSavingTicket(false)
+  function requestCloseTicket(ticket: TicketRow) {
+    setCloseConfirmTicket(ticket)
   }
 
-  async function quickCloseTicket(ticket: TicketRow, e: React.MouseEvent) {
-    e.stopPropagation()
-    if (ticket.status === 'CLOSED' || closingTicketId) return
-    setClosingTicketId(ticket.id)
+  async function confirmCloseTicket() {
+    if (!closeConfirmTicket) return
+    setClosingTicketId(closeConfirmTicket.id)
     try {
-      await performCloseTicket(ticket.id)
-      if (selectedTicket?.id === ticket.id) closeDrawer()
-      await fetchData()
+      await performCloseTicket(closeConfirmTicket.id)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : TM.genericSaveError)
     }
     setClosingTicketId(null)
+    setCloseConfirmTicket(null)
+  }
+
+  async function handleCloseTicket() {
+    if (!selectedTicket) return
+    requestCloseTicket(selectedTicket)
+  }
+
+  function applyMobileQuickChip(chip: string) {
+    if (chip === 'ALL') {
+      setStatusFilter('ALL')
+      setPriorityFilter('ALL')
+    } else if (chip === 'NEW') {
+      setStatusFilter('NEW')
+      setPriorityFilter('ALL')
+    } else if (chip === 'IN_PROGRESS') {
+      setStatusFilter('IN_PROGRESS')
+      setPriorityFilter('ALL')
+    } else if (chip === 'URGENT') {
+      setStatusFilter('ALL')
+      setPriorityFilter('URGENT')
+    }
+  }
+
+  function isMobileQuickChipActive(chip: string): boolean {
+    if (chip === 'ALL') return statusFilter === 'ALL' && priorityFilter === 'ALL'
+    if (chip === 'NEW') return statusFilter === 'NEW' && priorityFilter === 'ALL'
+    if (chip === 'IN_PROGRESS') return statusFilter === 'IN_PROGRESS' && priorityFilter === 'ALL'
+    if (chip === 'URGENT') return priorityFilter === 'URGENT' && statusFilter === 'ALL'
+    return false
   }
 
   async function handleCreateTicket(e: React.FormEvent) {
@@ -917,13 +971,16 @@ export default function TicketsPage() {
         {/* KPI Cards */}
         <div style={{
           ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
         }}>
-          <KpiCard label="סה״כ תקלות" value={stats.total} accent="primary" />
+          <KpiCard label="סה״כ פעילות" value={stats.total} accent="primary" />
           <KpiCard label="פתוחות" value={stats.open} accent="warning" />
           <KpiCard label="בטיפול" value={stats.assigned} accent="primary" />
-          <KpiCard label="נסגרו" value={stats.resolved} accent="success" />
         </div>
+
+        <p style={styles.closedHint}>
+          תקלות סגורות מופיעות בהיסטוריית הפרויקט ובדוח הסיכום — לא ברשימה זו.
+        </p>
 
         {ticketsTruncated && (
           <div style={{
@@ -936,7 +993,7 @@ export default function TicketsPage() {
             marginBottom: '12px',
             direction: 'rtl',
           }}>
-            ⚠️ מציג 300 תקלות אחרונות בלבד. להצגת תקלות ישנות יותר, השתמש בייצוא לאקסל.
+            ⚠️ מציג עד 300 תקלות פעילות אחרונות. תקלות סגורות — בהיסטוריית פרויקט או בדוח סיכום.
           </div>
         )}
 
@@ -958,6 +1015,21 @@ export default function TicketsPage() {
                 placeholder="חיפוש תקלות..."
                 style={{ width: '100%', maxWidth: 'none' }}
               />
+              <div style={styles.chipRow}>
+                {MOBILE_QUICK_STATUS_CHIPS.map((chip) => (
+                  <button
+                    key={chip.value}
+                    type="button"
+                    onClick={() => applyMobileQuickChip(chip.value)}
+                    style={{
+                      ...styles.chip,
+                      ...(isMobileQuickChipActive(chip.value) ? styles.chipActive : {}),
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
               <Button
                 variant="secondary"
                 size="md"
@@ -1078,6 +1150,18 @@ export default function TicketsPage() {
                 </Button>
               }
             />
+          ) : isMobile ? (
+            <div style={styles.mobileCardList}>
+              {filteredTickets.map((ticket) => (
+                <TicketMobileCard
+                  key={ticket.id}
+                  ticket={ticket}
+                  workerName={getWorkerName(ticket.assigned_worker_id)}
+                  selected={selectedTicket?.id === ticket.id}
+                  onClick={() => openTicket(ticket)}
+                />
+              ))}
+            </div>
           ) : (
             <div style={styles.tableContainer}>
               <table style={styles.table}>
@@ -1099,7 +1183,6 @@ export default function TicketsPage() {
                     <th style={styles.th}>סטטוס</th>
                     <th style={styles.th}>משויך</th>
                     <th style={styles.th}>גיל</th>
-                    <th style={styles.th}>סגירה</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1148,21 +1231,6 @@ export default function TicketsPage() {
                       </td>
                       <td style={styles.td}>
                         <span style={styles.ageText}>{getTicketAge(ticket.created_at)}</span>
-                      </td>
-                      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
-                        {ticket.status !== 'CLOSED' ? (
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            loading={closingTicketId === ticket.id}
-                            disabled={!!closingTicketId && closingTicketId !== ticket.id}
-                            onClick={(e) => void quickCloseTicket(ticket, e)}
-                          >
-                            סגור
-                          </Button>
-                        ) : (
-                          <span style={styles.ageText}>—</span>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -1450,6 +1518,17 @@ export default function TicketsPage() {
         </form>
       </Drawer>
 
+      <CloseTicketConfirmSheet
+        open={!!closeConfirmTicket}
+        ticketNumber={closeConfirmTicket?.ticket_number ?? 0}
+        loading={!!closingTicketId}
+        isMobile={isMobile}
+        onConfirm={() => void confirmCloseTicket()}
+        onCancel={() => {
+          if (!closingTicketId) setCloseConfirmTicket(null)
+        }}
+      />
+
       <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />
     </AppShell>
   )
@@ -1464,7 +1543,43 @@ const styles: Record<string, CSSProperties> = {
   kpiGrid: {
     display: 'grid',
     gap: '16px',
-    marginBottom: '24px',
+    marginBottom: '12px',
+  },
+  closedHint: {
+    fontSize: '13px',
+    color: theme.colors.textMuted,
+    margin: '0 0 16px',
+    lineHeight: 1.45,
+  },
+  chipRow: {
+    display: 'flex',
+    gap: '8px',
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    paddingBottom: '2px',
+  },
+  chip: {
+    flex: '0 0 auto',
+    padding: '8px 14px',
+    minHeight: '36px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    color: theme.colors.textSecondary,
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  chipActive: {
+    borderColor: theme.colors.primary,
+    background: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+  },
+  mobileCardList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    padding: '12px 16px 20px',
   },
   filtersRow: {
     display: 'flex',

@@ -12,6 +12,7 @@
  *  - ניווט בסרגל → /tickets, /projects, /workers, /residents, /qr, /summary, /settings
  */
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -47,7 +48,10 @@ const AddTicketModal = dynamic(
 )
 import { PageKpiSkeleton, PageListSkeleton } from './components/page-skeleton'
 import { ImageLightbox } from './components/shared/ImageLightbox'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useIsMobile } from '@/lib/use-is-mobile'
+import { removeTicketFromListState } from '@/lib/open-tickets'
+import { TicketMobileCard } from './components/tickets/TicketMobileCard'
+import { CloseTicketConfirmSheet } from './components/tickets/CloseTicketConfirmSheet'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { isTicketInTreatment } from '@/lib/ticket-status'
 
@@ -129,13 +133,17 @@ function writeDashboardCache(data: Omit<DashboardCache, 'savedAt'>) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [workersMap, setWorkersMap] = useState<Record<string, string>>({})
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const isMobile = useIsMobile()
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
+  const [closedCount, setClosedCount] = useState(0)
+  const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
 
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
   const [ticketLogs, setTicketLogs] = useState<TicketLog[]>([])
@@ -156,7 +164,7 @@ export default function DashboardPage() {
   const [addingTicket, setAddingTicket] = useState(false)
   const [addTicketError, setAddTicketError] = useState('')
 
-  const [activeKpi, setActiveKpi] = useState<'ALL' | 'NEW' | 'IN_PROGRESS' | 'CLOSED'>('ALL')
+  const [activeKpi, setActiveKpi] = useState<'ALL' | 'NEW' | 'IN_PROGRESS'>('ALL')
   const [residentsCount, setResidentsCount] = useState<number | null>(null)
   const [workersCount, setWorkersCount] = useState<number | null>(null)
 
@@ -171,19 +179,12 @@ export default function DashboardPage() {
 
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
 
-  useEffect(() => {
-    const check = () => setIsMobile(getIsMobileViewport())
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
-        const [ticketsResult, projectsResult, workersResult, professionalsResult, logsResult, resCountResult, wCountResult] = await Promise.all([
+        const [ticketsResult, closedCountResult, projectsResult, workersResult, professionalsResult, logsResult, resCountResult, wCountResult] = await Promise.all([
           withClientId(
             supabase.from('tickets').select(`
               id, ticket_number, project_id, client_id, reporter_phone, description, 
@@ -193,7 +194,15 @@ export default function DashboardPage() {
             clientId
           )
             .is('deleted_at', null)
-            .order('created_at', { ascending: false }),
+            .neq('status', 'CLOSED')
+            .order('created_at', { ascending: false })
+            .limit(50),
+          withClientId(
+            supabase.from('tickets').select('id', { count: 'exact', head: true }),
+            clientId
+          )
+            .is('deleted_at', null)
+            .eq('status', 'CLOSED'),
           withClientId(
             supabase.from('projects').select('id, name, project_code'),
             clientId
@@ -267,7 +276,7 @@ export default function DashboardPage() {
           ? fromLogs
           : formatted.slice(0, 5).map((ticket) => ({
               id: ticket.id,
-              type: (ticket.status === 'CLOSED' ? 'closed' : ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
+              type: (ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
               ticket_number: ticket.ticket_number,
               project_label: ticket.project_name || ticket.project_code || '',
               description: ticket.description,
@@ -275,6 +284,7 @@ export default function DashboardPage() {
             }))
 
         setTickets(formatted)
+        setClosedCount(closedCountResult.count ?? 0)
         setProjects(projectsResult.data || [])
         setWorkersMap(map)
         setResidentsCount(resCount)
@@ -377,17 +387,15 @@ export default function DashboardPage() {
     const total = tickets.length
     const open = tickets.filter((t) => t.status === 'NEW').length
     const inProgress = tickets.filter((t) => isTicketInTreatment(t.status)).length
-    const closed = tickets.filter((t) => t.status === 'CLOSED').length
-    return { total, open, inProgress, closed }
-  }, [tickets])
+    return { total, open, inProgress, closed: closedCount }
+  }, [tickets, closedCount])
 
   const filteredTickets = useMemo(() => {
     let filtered = tickets
     if (activeKpi === 'NEW') filtered = tickets.filter((t) => t.status === 'NEW')
     else if (activeKpi === 'IN_PROGRESS') filtered = tickets.filter((t) => isTicketInTreatment(t.status))
-    else if (activeKpi === 'CLOSED') filtered = tickets.filter((t) => t.status === 'CLOSED')
-    return filtered.slice(0, 8)
-  }, [tickets, activeKpi])
+    return filtered.slice(0, isMobile ? 8 : 8)
+  }, [tickets, activeKpi, isMobile])
 
   const projectStats = useMemo(() => {
     return projects.map((project) => {
@@ -508,13 +516,21 @@ export default function DashboardPage() {
             reporter_has_phone,
             whatsapp_sent,
           })
+          removeClosedTicketFromView(selectedTicket.id)
+        } else {
+          await loadData(true)
         }
-        await loadData()
         return true
       },
       { context: 'שמירת התקלה', showErrorToast: true }
     )
     setSavingTicket(false)
+  }
+
+  function removeClosedTicketFromView(ticketId: string) {
+    setTickets((prev) => removeTicketFromListState(prev, ticketId))
+    setClosedCount((c) => c + 1)
+    closeDrawer()
   }
 
   async function performCloseTicket(ticketId: string) {
@@ -531,38 +547,27 @@ export default function DashboardPage() {
     }
     toast.success(TM.ticketClosed)
     toastReporterClosedNotifySummary(closeBody)
+    removeClosedTicketFromView(ticketId)
     return closeBody
   }
 
   async function handleCloseTicket() {
     if (!selectedTicket) return
-    setSavingTicket(true)
-    await asyncHandler(
-      async () => {
-        await performCloseTicket(selectedTicket.id)
-        await loadData()
-        closeDrawer()
-        return true
-      },
-      { context: 'סגירת התקלה', showErrorToast: true }
-    )
-    setSavingTicket(false)
+    setCloseConfirmTicket(selectedTicket)
   }
 
-  async function quickCloseTicket(ticket: TicketRow, e: React.MouseEvent) {
-    e.stopPropagation()
-    if (ticket.status === 'CLOSED' || closingTicketId) return
-    setClosingTicketId(ticket.id)
+  async function confirmCloseTicket() {
+    if (!closeConfirmTicket) return
+    setClosingTicketId(closeConfirmTicket.id)
     await asyncHandler(
       async () => {
-        await performCloseTicket(ticket.id)
-        if (selectedTicket?.id === ticket.id) closeDrawer()
-        await loadData()
+        await performCloseTicket(closeConfirmTicket.id)
         return true
       },
       { context: 'סגירת התקלה', showErrorToast: true }
     )
     setClosingTicketId(null)
+    setCloseConfirmTicket(null)
   }
 
   async function handleCreateTicket(e: React.FormEvent) {
@@ -642,11 +647,13 @@ export default function DashboardPage() {
     </p>
   )}
 </div>
-            <div style={styles.heroActions}>
-              <Button variant="primary" size="lg" onClick={() => setShowAddTicketModal(true)}>
-                תקלה חדשה
-              </Button>
-            </div>
+            {!isMobile && (
+              <div style={styles.heroActions}>
+                <Button variant="primary" size="lg" onClick={() => setShowAddTicketModal(true)}>
+                  תקלה חדשה
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -662,17 +669,19 @@ export default function DashboardPage() {
           <>
             <div style={{
               ...styles.kpiGrid,
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
             }}>
-              <KpiCard label="סה״כ תקלות" value={stats.total} accent="primary" onClick={() => setActiveKpi('ALL')} />
+              <KpiCard label="פעילות" value={stats.total} accent="primary" onClick={() => setActiveKpi('ALL')} />
               <KpiCard label="פתוחות" value={stats.open} accent="warning" onClick={() => setActiveKpi('NEW')} />
               <KpiCard label="בטיפול" value={stats.inProgress} accent="primary" onClick={() => setActiveKpi('IN_PROGRESS')} />
-              <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => setActiveKpi('CLOSED')} />
-              {residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} accent="primary" />}
-              {workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} accent="success" />}
+              <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => router.push('/summary')} />
+              {!isMobile && residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} accent="primary" />}
+              {!isMobile && workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} accent="success" />}
             </div>
 
             <div style={{ ...styles.mainGrid, gridTemplateColumns: isMobile ? '1fr' : '1fr 340px' }}>
+              {(!isMobile || mobileMoreOpen) && (
+              <>
               <Card
                 title="סטטוס פרויקטים"
                 subtitle="בניינים עם עבודה פתוחה"
@@ -743,14 +752,34 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </Card>
+              </>
+              )}
+
+              {isMobile && !mobileMoreOpen && (
+                <Button variant="ghost" size="sm" onClick={() => setMobileMoreOpen(true)} style={{ marginBottom: '12px' }}>
+                  הצג עוד — פרויקטים ופעילות
+                </Button>
+              )}
             </div>
 
             <Card
-              title="תקלות אחרונות"
-              subtitle={activeKpi === 'ALL' ? 'כל התקלות' : `מסונן לפי ${activeKpi}`}
+              title="תקלות פעילות"
+              subtitle={activeKpi === 'ALL' ? 'תקלות פתוחות' : `מסונן לפי ${activeKpi}`}
               actions={<Link href="/tickets" style={styles.viewAllLink}>הצג הכל</Link>}
               noPadding
             >
+              {isMobile ? (
+                <div style={styles.mobileCardList}>
+                  {filteredTickets.map((ticket) => (
+                    <TicketMobileCard
+                      key={ticket.id}
+                      ticket={ticket}
+                      workerName={ticket.assigned_worker_id ? workersMap[ticket.assigned_worker_id] || 'לא ידוע' : 'לא משויך'}
+                      onClick={() => openTicket(ticket)}
+                    />
+                  ))}
+                </div>
+              ) : (
               <div style={styles.tableContainer}>
                 <table style={styles.table}>
                   <thead>
@@ -761,7 +790,6 @@ export default function DashboardPage() {
                       <th style={styles.th}>סטטוס</th>
                       <th style={styles.th}>משויך</th>
                       <th style={styles.th}>גיל</th>
-                      <th style={styles.th}>סגירה</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -781,26 +809,12 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td style={styles.td}><span style={styles.ageText}>{formatRelativeTime(ticket.created_at)}</span></td>
-                        <td style={styles.td} onClick={(e) => e.stopPropagation()}>
-                          {ticket.status !== 'CLOSED' ? (
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              loading={closingTicketId === ticket.id}
-                              disabled={!!closingTicketId && closingTicketId !== ticket.id}
-                              onClick={(e) => void quickCloseTicket(ticket, e)}
-                            >
-                              סגור
-                            </Button>
-                          ) : (
-                            <span style={styles.ageText}>—</span>
-                          )}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              )}
             </Card>
           </>
         )}
@@ -855,6 +869,28 @@ export default function DashboardPage() {
         onSubmit={handleCreateTicket}
       />
 
+      {isMobile && (
+        <button
+          type="button"
+          onClick={() => setShowAddTicketModal(true)}
+          style={styles.fab}
+          aria-label="תקלה חדשה"
+        >
+          +
+        </button>
+      )}
+
+      <CloseTicketConfirmSheet
+        open={!!closeConfirmTicket}
+        ticketNumber={closeConfirmTicket?.ticket_number ?? 0}
+        loading={!!closingTicketId}
+        isMobile={isMobile}
+        onConfirm={() => void confirmCloseTicket()}
+        onCancel={() => {
+          if (!closingTicketId) setCloseConfirmTicket(null)
+        }}
+      />
+
       <ImageLightbox imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </AppShell>
   )
@@ -901,6 +937,24 @@ const styles: Record<string, CSSProperties> = {
   activityTime: { fontSize: '12px', color: theme.colors.textMuted, flexShrink: 0 },
   viewAllLink: { fontSize: '14px', fontWeight: 500, color: theme.colors.primary, textDecoration: 'none' },
   tableContainer: { overflowX: 'auto' },
+  mobileCardList: { display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px 16px 20px' },
+  fab: {
+    position: 'fixed',
+    left: '20px',
+    bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
+    zIndex: 90,
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    border: 'none',
+    background: theme.colors.primary,
+    color: '#fff',
+    fontSize: '28px',
+    fontWeight: 300,
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxShadow: theme.shadows.lg,
+  },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'start', padding: '14px 20px', fontSize: '12px', fontWeight: 600, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${theme.colors.border}`, background: theme.colors.muted },
   tr: { cursor: 'pointer', transition: 'background 0.15s ease' },

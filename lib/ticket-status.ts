@@ -85,3 +85,12 @@ export const TICKET_STATUS_FILTER_OPTIONS: { label: string; value: string }[] = 
   { label: 'כל הסטטוסים', value: 'ALL' },
   ...TICKET_STATUSES.map((value) => ({ label: LABELS_HE[value], value })),
 ]
+
+/** Operational ticket list filters — excludes CLOSED (see project history / summary). */
+export const OPEN_TICKET_STATUS_FILTER_OPTIONS: { label: string; value: string }[] = [
+  { label: 'כל הסטטוסים', value: 'ALL' },
+  ...TICKET_STATUSES.filter((s) => s !== 'CLOSED').map((value) => ({
+    label: LABELS_HE[value],
+    value,
+  })),
+]
