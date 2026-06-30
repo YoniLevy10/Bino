@@ -127,7 +127,6 @@ GRANT SELECT ON TABLE public.project_pilot_sms_runs TO authenticated;
 
 REVOKE ALL ON TABLE public.audit_log FROM anon, authenticated;
 REVOKE ALL ON TABLE public.system_logs FROM anon, authenticated;
-REVOKE ALL ON TABLE public.platform_ops_alert_sent FROM anon, authenticated;
 REVOKE ALL ON TABLE public.worker_push_subscriptions FROM anon, authenticated;
 
 DO $$
