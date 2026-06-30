@@ -283,5 +283,37 @@ describe('11. RLS ג€” anon client blocked from tenant data', () => {
     if (rowCount > 0) console.error('נ¨  RLS BREACH: anon client read workers without auth!')
     expect(rowCount).toBe(0)
   })
+
+  it('anon cannot read clients (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('clients').select('id, whatsapp_access_token').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon client read clients without auth!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read failed_notifications (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('failed_notifications').select('id').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon read failed_notifications!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read processed_webhooks (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('processed_webhooks').select('message_id').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon read processed_webhooks!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read project_documents (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('project_documents').select('id').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon read project_documents!')
+    expect(rowCount).toBe(0)
+  })
 })
 

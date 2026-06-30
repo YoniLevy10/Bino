@@ -17,6 +17,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -459,11 +460,7 @@ export default function DashboardPage() {
       if (attachResult.error) throw attachResult.error
       const data = attachResult.data
       if (data && data.length > 0) {
-        const attachmentsWithUrls = data.map((attachment: AttachmentRow) => {
-          const filePath = attachment.file_url || ''
-          const { data: publicUrlData } = supabase.storage.from('ticket-attachments').getPublicUrl(filePath)
-          return { ...attachment, signed_url: publicUrlData?.publicUrl || null }
-        })
+        const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, data as AttachmentRow[])
         setSelectedTicketAttachments(attachmentsWithUrls)
       } else {
         setSelectedTicketAttachments([])

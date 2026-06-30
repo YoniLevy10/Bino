@@ -3,17 +3,13 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
 import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-token-auth'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { createServerSignedAttachmentUrl } from '@/lib/ticket-attachment-url'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
-}
-
-function publicAttachmentUrl(admin: ReturnType<typeof getSupabaseAdmin>, filePath: string): string {
-  const { data } = admin.storage.from('ticket-attachments').getPublicUrl(filePath)
-  return data?.publicUrl || ''
 }
 
 export async function GET(req: NextRequest) {
@@ -37,10 +33,12 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
 
-    const attachments = (data || []).map((row) => ({
-      ...row,
-      public_url: row.file_url ? publicAttachmentUrl(admin, row.file_url) : null,
-    }))
+    const attachments = await Promise.all(
+      (data || []).map(async (row) => ({
+        ...row,
+        public_url: row.file_url ? await createServerSignedAttachmentUrl(admin, row.file_url) : null,
+      }))
+    )
 
     return NextResponse.json({ attachments })
   } catch {
@@ -115,7 +113,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       attachment: {
         ...row,
-        public_url: publicAttachmentUrl(admin, filePath),
+        public_url: await createServerSignedAttachmentUrl(admin, filePath),
       },
     })
   } catch {
