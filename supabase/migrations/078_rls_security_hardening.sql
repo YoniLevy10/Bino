@@ -143,13 +143,6 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$
-BEGIN
-  CREATE POLICY service_role_bypass_platform_ops_alert_sent ON public.platform_ops_alert_sent
-    FOR ALL TO service_role USING (true) WITH CHECK (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
 -- ─── ticket-attachments storage: private bucket + tenant-scoped read ───
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit)
