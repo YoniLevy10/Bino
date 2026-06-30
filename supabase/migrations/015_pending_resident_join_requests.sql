@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS pending_resident_join_requests (
   notes TEXT
 );
 
+ALTER TABLE pending_resident_join_requests
+  ADD COLUMN IF NOT EXISTS normalized_phone TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_pending_resident_client ON pending_resident_join_requests (client_id);
 
 CREATE INDEX IF NOT EXISTS idx_pending_resident_project ON pending_resident_join_requests (project_id);

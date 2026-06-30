@@ -9,9 +9,6 @@ add column if not exists normalized_phone text;
 alter table public.sessions
 add column if not exists normalized_phone text;
 
-alter table public.pending_resident_join_requests
-add column if not exists normalized_phone text;
-
 create index if not exists idx_residents_normalized_phone
 on public.residents(normalized_phone);
 
