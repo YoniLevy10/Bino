@@ -61,9 +61,6 @@ GRANT SELECT (
   greeninvoice_remarks_template,
   greeninvoice_payment_success_url,
   greeninvoice_payment_failure_url,
-  office_geofence_lat,
-  office_geofence_lng,
-  office_geofence_radius_m,
   max_workers,
   max_residents,
   max_tickets_per_month
