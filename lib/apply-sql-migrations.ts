@@ -4,7 +4,7 @@ import pg from 'pg'
 
 export const PENDING_MIGRATION_FILES = [
   '066_professionals.sql',
-  '067_paid_addons.sql',
+  '051_paid_addons_catalog.sql',
   '069_professionals_write_via_api.sql',
   '070_worker_attendance_nfc.sql',
   '071_worker_stamp_paid_addon.sql',
