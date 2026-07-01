@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "db:migration:list": "npx supabase migration list --linked",
     "db:migrate:professionals": "npx supabase db query --linked -f supabase/migrations/066_professionals.sql && npx supabase db query --linked -f supabase/migrations/051_paid_addons_catalog.sql && npx supabase db query --linked -f supabase/migrations/069_professionals_write_via_api.sql && npx supabase db query --linked -f supabase/migrations/071_worker_stamp_paid_addon.sql",
+    "db:migrate:rate-limit": "npx supabase db query --linked -f supabase/migrations/080_api_rate_limit_rpc.sql && npx supabase db query --linked -f supabase/migrations/081_session_preferred_language.sql && npx supabase db query --linked -f supabase/migrations/082_rate_limit_upsert.sql",
     "db:types": "npx supabase gen types typescript --linked --schema public > lib/database.types.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

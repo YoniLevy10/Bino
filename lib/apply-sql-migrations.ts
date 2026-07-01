@@ -3,16 +3,9 @@ import { join } from 'path'
 import pg from 'pg'
 
 export const PENDING_MIGRATION_FILES = [
-  '066_professionals.sql',
-  '051_paid_addons_catalog.sql',
-  '069_professionals_write_via_api.sql',
-  '070_worker_attendance_nfc.sql',
-  '071_worker_stamp_paid_addon.sql',
-  '049_plan_pricing_catalog.sql',
-  '073_paid_addons_full_catalog.sql',
-  '060_workers_hourly_rate.sql',
-  '061_nfc_sticker_status.sql',
-  '062_projects_geofence_optional.sql',
+  '080_api_rate_limit_rpc.sql',
+  '081_session_preferred_language.sql',
+  '082_rate_limit_upsert.sql',
 ] as const
 
 /** Strip sslmode from URL so pg Client `ssl.rejectUnauthorized` applies (Vercel + Supabase). */
