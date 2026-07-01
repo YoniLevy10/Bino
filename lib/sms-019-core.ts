@@ -10,7 +10,8 @@ export const SMS_019_SENDER = process.env.SMS_019_SENDER || '972559899132'
 /** נרמול מספר טלפון לפורמט 019SMS: 972xxxxxxxxx */
 export function normalizePhone019(phoneNumber: string): string {
   if (!phoneNumber) return ''
-  let n = phoneNumber.replace(/[\s\-+]/g, '')
+  // Digits only — handles spaces, ASCII/Unicode dashes, parentheses, +972, iOS bidi marks.
+  let n = phoneNumber.replace(/[\u200e\u200f\ufeff]/g, '').replace(/\D/g, '')
   if (n.startsWith('0')) n = '972' + n.slice(1)
   if (/^5\d{8}$/.test(n)) n = '972' + n
   if (!/^972\d{9}$/.test(n)) return ''

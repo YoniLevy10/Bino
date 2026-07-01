@@ -23,6 +23,13 @@ describe('normalizeWorkerPhone', () => {
     expect(normalizeWorkerPhone('050 123 4567')).toBe('972501234567')
   })
 
+  it('accepts unicode dashes and parentheses (common on iOS)', () => {
+    expect(normalizeWorkerPhone('+972\u201354-561-9243')).toBe('972545619243')
+    expect(normalizeWorkerPhone('(972) 54-561-9243')).toBe('972545619243')
+    expect(normalizeWorkerPhone('+972 (54) 561-9243')).toBe('972545619243')
+    expect(normalizeWorkerPhone('+972 54-561-9243')).toBe('972545619243')
+  })
+
   it('rejects too short numbers', () => {
     expect(normalizeWorkerPhone('050-123')).toBe('')
     expect(isValidWorkerPhone('050-123')).toBe(false)
