@@ -6,9 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
+import { createClient } from '@/utils/supabase/client'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import {
@@ -30,6 +32,7 @@ import {
   type SidebarNavItemId,
   type SidebarNavLabels,
 } from '@/lib/sidebar-nav'
+import { NAV_CACHE_PREFIX } from '@/lib/tenant-browser-cache'
 import { usePaidAddons } from './PaidAddonsContext'
 
 type SidebarNavContextValue = {
@@ -60,6 +63,8 @@ const SidebarNavContext = createContext<SidebarNavContextValue>({
 })
 
 const NAV_CACHE_TTL = 5 * 60 * 1000
+/** Min interval between background refetches (tab focus / auth). */
+const NAV_REFETCH_MIN_INTERVAL_MS = 60 * 1000
 
 type NavCachePayload = {
   orderIds: SidebarNavItemId[]
@@ -69,7 +74,7 @@ type NavCachePayload = {
 
 function readNavCache(clientId: string): NavCachePayload | null {
   try {
-    const raw = localStorage.getItem(`bamakor_nav_v5_${clientId}`)
+    const raw = localStorage.getItem(`${NAV_CACHE_PREFIX}${clientId}`)
     if (!raw) return null
     const parsed = JSON.parse(raw) as {
       orderIds: unknown
@@ -91,7 +96,7 @@ function readNavCache(clientId: string): NavCachePayload | null {
 
 function writeNavCache(clientId: string, payload: NavCachePayload) {
   try {
-    localStorage.setItem(`bamakor_nav_v5_${clientId}`, JSON.stringify({ ...payload, ts: Date.now() }))
+    localStorage.setItem(`${NAV_CACHE_PREFIX}${clientId}`, JSON.stringify({ ...payload, ts: Date.now() }))
   } catch {}
 }
 
@@ -107,6 +112,11 @@ function buildNavItems(
   return applySidebarNavLabels(appendAddonsNavAlways(withPaid), navLabels)
 }
 
+type LoadNavOptions = {
+  /** Skip localStorage hydration — use after sign-in or explicit refresh. */
+  skipCache?: boolean
+}
+
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const { addons } = usePaidAddons()
   const enabledAddonKeys = useMemo(() => enabledAddonKeysFromEntitlements(addons), [addons])
@@ -115,6 +125,9 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(null)
   const [navLabels, setNavLabels] = useState<SidebarNavLabels>({})
   const [isBootstrapped, setIsBootstrapped] = useState(false)
+
+  const loadGenerationRef = useRef(0)
+  const lastSuccessfulFetchRef = useRef(0)
 
   const applyNavState = useCallback(
     (ids: SidebarNavItemId[], enabled: SidebarNavItemId[] | null, labels: SidebarNavLabels) => {
@@ -125,43 +138,100 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     []
   )
 
-  const loadNav = useCallback(async () => {
-    try {
-      const clientId = await resolveBamakorClientIdForBrowser()
-      const cached = readNavCache(clientId)
-      if (cached) applyNavState(cached.orderIds, cached.enabledFeatures, cached.navLabels)
+  const loadNav = useCallback(
+    async (options?: LoadNavOptions) => {
+      const generation = ++loadGenerationRef.current
+      let hadCachedState = false
 
-      const res = await fetchWithTimeout('/api/client/nav-config')
-      const json = (await res.json().catch(() => ({}))) as {
-        sidebar_nav_order?: unknown
-        sidebar_nav_labels?: unknown
-        enabled_nav_features?: unknown
-        error?: string
-      }
-      if (!res.ok) {
-        throw new Error(json.error || `nav-config ${res.status}`)
-      }
+      try {
+        const clientId = await resolveBamakorClientIdForBrowser()
+        if (generation !== loadGenerationRef.current) return
 
-      const parsedOrder = parseSidebarNavOrderFromDb(json.sidebar_nav_order)
-      const parsedEnabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
-      const parsedLabels = parseSidebarNavLabelsFromDb(json.sidebar_nav_labels)
-      const resolved = resolveSidebarNavItems(parsedOrder, parsedEnabled)
-      const nextIds = resolved
-        .map((item) => item.id)
-        .filter((id): id is SidebarNavItemId => id !== 'addons')
-      applyNavState(nextIds, parsedEnabled, parsedLabels)
-      writeNavCache(clientId, { orderIds: nextIds, enabledFeatures: parsedEnabled, navLabels: parsedLabels })
-    } catch (e) {
-      console.error('[SidebarNav] load failed:', e instanceof Error ? e.message : e)
-      applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {})
-    } finally {
-      setIsBootstrapped(true)
-    }
-  }, [applyNavState])
+        if (!options?.skipCache) {
+          const cached = readNavCache(clientId)
+          if (cached) {
+            hadCachedState = true
+            applyNavState(cached.orderIds, cached.enabledFeatures, cached.navLabels)
+          }
+        }
+
+        const res = await fetchWithTimeout('/api/client/nav-config')
+        if (generation !== loadGenerationRef.current) return
+
+        const json = (await res.json().catch(() => ({}))) as {
+          sidebar_nav_order?: unknown
+          sidebar_nav_labels?: unknown
+          enabled_nav_features?: unknown
+          error?: string
+        }
+        if (!res.ok) {
+          throw new Error(json.error || `nav-config ${res.status}`)
+        }
+
+        const parsedOrder = parseSidebarNavOrderFromDb(json.sidebar_nav_order)
+        const parsedEnabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
+        const parsedLabels = parseSidebarNavLabelsFromDb(json.sidebar_nav_labels)
+        const resolved = resolveSidebarNavItems(parsedOrder, parsedEnabled)
+        const nextIds = resolved
+          .map((item) => item.id)
+          .filter((id): id is SidebarNavItemId => id !== 'addons')
+        applyNavState(nextIds, parsedEnabled, parsedLabels)
+        writeNavCache(clientId, {
+          orderIds: nextIds,
+          enabledFeatures: parsedEnabled,
+          navLabels: parsedLabels,
+        })
+        lastSuccessfulFetchRef.current = Date.now()
+      } catch (e) {
+        if (generation !== loadGenerationRef.current) return
+        console.error('[SidebarNav] load failed:', e instanceof Error ? e.message : e)
+        if (!hadCachedState) {
+          applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {})
+        }
+      } finally {
+        if (generation === loadGenerationRef.current) {
+          setIsBootstrapped(true)
+        }
+      }
+    },
+    [applyNavState]
+  )
+
+  const maybeRefetchNav = useCallback(
+    (options?: LoadNavOptions) => {
+      const elapsed = Date.now() - lastSuccessfulFetchRef.current
+      if (lastSuccessfulFetchRef.current > 0 && elapsed < NAV_REFETCH_MIN_INTERVAL_MS) return
+      void loadNav(options)
+    },
+    [loadNav]
+  )
 
   useEffect(() => {
     void loadNav()
   }, [loadNav])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        void loadNav({ skipCache: true })
+      }
+    })
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [loadNav])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      maybeRefetchNav()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [maybeRefetchNav])
 
   const lockedAddonsCount = useMemo(
     () => getLockedAddonsCountFromEntitlements(addons),
@@ -185,6 +255,8 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     [applyNavState, enabledFeatures, navLabels]
   )
 
+  const refreshNav = useCallback(() => loadNav({ skipCache: true }), [loadNav])
+
   const value = useMemo(
     () => ({
       navItems,
@@ -194,7 +266,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
       enabledFeatures,
       lockedAddonsCount,
       isBootstrapped,
-      refreshNav: loadNav,
+      refreshNav,
       setLocalOrderIds,
     }),
     [
@@ -205,7 +277,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
       enabledFeatures,
       lockedAddonsCount,
       isBootstrapped,
-      loadNav,
+      refreshNav,
       setLocalOrderIds,
     ]
   )
