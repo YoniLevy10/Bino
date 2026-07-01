@@ -57,6 +57,8 @@
 :root {
   --background: #F9F9FB;
   --foreground: #1A1A2E;
+  /* Fixed mobile bottom nav bar (see MobileBottomNav in ui.tsx) */
+  --mobile-bottom-nav-height: 64px;
 }
 
 * {

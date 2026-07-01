@@ -840,7 +840,9 @@ function AppShellInner({
             marginInlineStart: mobile ? 0 : '240px',
             minWidth: 0,
             textAlign: 'right',
-              paddingBottom: bottomNav ? 'calc(64px + env(safe-area-inset-bottom, 0px))' : undefined,
+              paddingBottom: bottomNav
+                ? 'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
+                : undefined,
               overflowX: mobile ? 'hidden' : undefined,
               maxWidth: mobile ? '100%' : undefined,
           }}
@@ -1819,6 +1821,9 @@ function useFocusTrap(
   }, [active, containerRef])
 }
 
+const MOBILE_BOTTOM_NAV_CLEARANCE =
+  'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
+
 export function Drawer({
   open,
   onClose,
@@ -1835,14 +1840,22 @@ export function Drawer({
   isMobile?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const mobileMenu = useMobileMenuOptional()
   useFocusTrap(open, panelRef, onClose)
 
   if (!open) return null
 
   const mobile = !!isMobile
+  const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible
   const panelStyle: CSSProperties = mobile
     ? drawerStyles.panelMobile
     : { ...drawerStyles.panelSide, width: '480px' }
+  const contentStyle: CSSProperties = {
+    ...drawerStyles.content,
+    paddingBottom: bottomNavVisible
+      ? `calc(24px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`
+      : 'calc(24px + env(safe-area-inset-bottom, 0px))',
+  }
 
   return (
     <>
@@ -1875,7 +1888,7 @@ export function Drawer({
             </svg>
           </button>
         </div>
-        <div style={drawerStyles.content}>{children}</div>
+        <div style={contentStyle}>{children}</div>
       </div>
     </>
   )
@@ -1960,7 +1973,6 @@ const drawerStyles: Record<string, CSSProperties> = {
     WebkitOverflowScrolling: 'touch',
     overscrollBehavior: 'contain',
     padding: '24px',
-    paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
     touchAction: 'manipulation',
   },
 }
