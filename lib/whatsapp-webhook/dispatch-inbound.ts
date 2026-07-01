@@ -66,7 +66,7 @@ import {
   createAttachmentRecord,
 } from '@/lib/whatsapp-media'
 import { getLogger } from '@/lib/logging'
-import { insertOperationalErrorLog } from '@/lib/error-logs-db'
+import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
@@ -123,21 +123,43 @@ type WaSendFn = (
   lang?: ResidentLang
 ) => Promise<unknown>
 
+const MEDIA_ATTACH_RETRY_MS = 1200
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function logWebhookOperationalError(
   context: string,
   message: string,
   clientId?: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
+  clientName?: string | null
 ): Promise<void> {
-  await insertOperationalErrorLog({
+  const isMedia = context.startsWith('media_')
+  const alertKind = context === 'ticket_create'
+    ? 'ticket_create_failure'
+    : isMedia
+      ? 'media_attach_failure'
+      : 'operational_error'
+  const alertTitle = context === 'ticket_create'
+    ? 'כשל יצירת תקלה מ-WhatsApp'
+    : isMedia
+      ? 'כשל צירוף מדיה לתקלה'
+      : 'שגיאה ב-webhook WhatsApp'
+
+  void logCriticalOperationalFailure({
     context: `whatsapp_webhook:${context}`,
     message,
     clientId: clientId ?? null,
+    clientName: clientName ?? null,
     details: { ...details, source: 'dispatch-inbound' },
+    alertKind,
+    alertTitle,
   })
 }
 
-async function attachWhatsAppMediaToTicket(
+async function attachWhatsAppMediaToTicketOnce(
   supabaseAdmin: SupabaseClient,
   ticketId: string,
   mediaId: string,
@@ -148,24 +170,12 @@ async function attachWhatsAppMediaToTicket(
   if (!accessToken?.trim()) {
     const reason = 'MISSING_ACCESS_TOKEN'
     logger.warn('WEBHOOK', 'media attach skipped — no tenant access token', { ticketId, mediaId, mediaKind })
-    void logWebhookOperationalError('media_attach', 'Missing WhatsApp access token for media download', clientId, {
-      ticketId,
-      mediaId,
-      mediaKind,
-      reason,
-    })
     return { ok: false, reason }
   }
 
   const config = WA_INBOUND_MEDIA[mediaKind]
   const mediaData = await downloadWhatsAppMedia(mediaId, config.downloadType, accessToken)
   if (!mediaData) {
-    void logWebhookOperationalError('media_download', 'WhatsApp media download failed after retry', clientId, {
-      ticketId,
-      mediaId,
-      mediaKind,
-      reason: 'DOWNLOAD_FAILED',
-    })
     return { ok: false, reason: 'DOWNLOAD_FAILED' }
   }
 
@@ -176,12 +186,6 @@ async function attachWhatsAppMediaToTicket(
     mediaData.mimeType
   )
   if (!uploadResult) {
-    void logWebhookOperationalError('media_upload', 'ticket-attachments storage upload failed', clientId, {
-      ticketId,
-      mediaId,
-      mediaKind,
-      reason: 'STORAGE_UPLOAD_FAILED',
-    })
     return { ok: false, reason: 'STORAGE_UPLOAD_FAILED' }
   }
 
@@ -196,17 +200,75 @@ async function attachWhatsAppMediaToTicket(
     config.attachmentType
   )
   if (!attachmentCreated) {
-    void logWebhookOperationalError('media_db', 'ticket_attachments insert failed', clientId, {
-      ticketId,
-      mediaId,
-      mediaKind,
-      filePath: uploadResult.filePath,
-      reason: 'DB_INSERT_FAILED',
-    })
     return { ok: false, reason: 'DB_INSERT_FAILED' }
   }
 
   return { ok: true }
+}
+
+const MEDIA_ATTACH_FAILURE_MESSAGES: Record<string, string> = {
+  MISSING_ACCESS_TOKEN: 'Missing WhatsApp access token for media download',
+  DOWNLOAD_FAILED: 'WhatsApp media download failed after retries',
+  STORAGE_UPLOAD_FAILED: 'ticket-attachments storage upload failed',
+  DB_INSERT_FAILED: 'ticket_attachments insert failed',
+}
+
+/** Download + upload + DB insert; retries the full pipeline once on transient failures. */
+async function attachWhatsAppMediaToTicket(
+  supabaseAdmin: SupabaseClient,
+  ticketId: string,
+  mediaId: string,
+  mediaKind: WaInboundMediaKind,
+  accessToken?: string,
+  clientId?: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const first = await attachWhatsAppMediaToTicketOnce(
+    supabaseAdmin,
+    ticketId,
+    mediaId,
+    mediaKind,
+    accessToken,
+    clientId
+  )
+  if (first.ok) return first
+
+  if (first.reason === 'MISSING_ACCESS_TOKEN') {
+    void logWebhookOperationalError(
+      'media_attach',
+      MEDIA_ATTACH_FAILURE_MESSAGES.MISSING_ACCESS_TOKEN,
+      clientId,
+      { ticketId, mediaId, mediaKind, reason: first.reason }
+    )
+    return first
+  }
+
+  await sleepMs(MEDIA_ATTACH_RETRY_MS)
+  const second = await attachWhatsAppMediaToTicketOnce(
+    supabaseAdmin,
+    ticketId,
+    mediaId,
+    mediaKind,
+    accessToken,
+    clientId
+  )
+  if (second.ok) return second
+
+  const reason = second.reason
+  const contextKey =
+    reason === 'DOWNLOAD_FAILED'
+      ? 'media_download'
+      : reason === 'STORAGE_UPLOAD_FAILED'
+        ? 'media_upload'
+        : reason === 'DB_INSERT_FAILED'
+          ? 'media_db'
+          : 'media_attach'
+  void logWebhookOperationalError(
+    contextKey,
+    MEDIA_ATTACH_FAILURE_MESSAGES[reason] || `Media attach failed: ${reason}`,
+    clientId,
+    { ticketId, mediaId, mediaKind, reason, retried: true }
+  )
+  return second
 }
 
 async function handleWhatsAppInboundMedia(
@@ -677,6 +739,12 @@ export async function runWhatsAppInboundBackground(
           'WEBHOOK',
           'No client for WhatsApp phone_number_id',
           new Error('no_client_for_phone_number_id'),
+          { requestId, phoneNumberId }
+        )
+        void logWebhookOperationalError(
+          'tenant_resolve',
+          `No client for WhatsApp phone_number_id ${phoneNumberId}`,
+          undefined,
           { requestId, phoneNumberId }
         )
         return
@@ -1654,7 +1722,7 @@ export async function runWhatsAppInboundBackground(
         requestId,
         phone: from,
         projectId: session.project_id,
-      })
+      }, clientName)
       try {
         await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
       } catch { /* non-fatal */ }

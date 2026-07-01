@@ -4,8 +4,15 @@ import { getPublicAppUrl } from '@/lib/public-app-url'
 
 const DEDUP_WINDOW_MS = 30 * 60 * 1000
 
+export type PlatformOpsAlertKind =
+  | 'sms_failure'
+  | 'whatsapp_failure'
+  | 'ticket_create_failure'
+  | 'media_attach_failure'
+  | 'operational_error'
+
 export type PlatformOpsAlertInput = {
-  kind: 'sms_failure' | 'whatsapp_failure' | 'operational_error'
+  kind: PlatformOpsAlertKind
   title: string
   message: string
   clientId?: string | null
@@ -25,11 +32,17 @@ function resolveOpsEmail(): string | null {
 function buildDedupKey(input: PlatformOpsAlertInput): string {
   const clientPart = input.clientId || 'global'
   const detailHint =
-    typeof input.details?.channel === 'string'
-      ? input.details.channel
-      : typeof input.details?.to === 'string'
-        ? input.details.to
-        : ''
+    typeof input.details?.reason === 'string'
+      ? input.details.reason
+      : typeof input.details?.context === 'string'
+        ? input.details.context
+        : typeof input.details?.channel === 'string'
+          ? input.details.channel
+          : typeof input.details?.to === 'string'
+            ? input.details.to
+            : typeof input.details?.ticketId === 'string'
+              ? input.details.ticketId
+              : ''
   return `${input.kind}:${clientPart}:${input.title}:${detailHint}`.slice(0, 200)
 }
 

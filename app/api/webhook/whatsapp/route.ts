@@ -7,7 +7,7 @@ import { webhookDedupeMessageId } from '@/lib/whatsapp-webhook-dedupe'
 import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
 import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
-import { insertOperationalErrorLog } from '@/lib/error-logs-db'
+import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
 import {
   runWhatsAppInboundBackground,
   type WaWebhookTenant,
@@ -89,6 +89,13 @@ export async function POST(req: NextRequest) {
         new Error('no_client_for_phone_number_id'),
         { requestId, phoneNumberId }
       )
+      void logCriticalOperationalFailure({
+        context: 'whatsapp_webhook:tenant_resolve',
+        message: `No client for WhatsApp phone_number_id ${phoneNumberId}`,
+        details: { requestId, phoneNumberId },
+        alertKind: 'operational_error',
+        alertTitle: 'WhatsApp webhook — טננט לא נמצא',
+      })
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
@@ -111,10 +118,12 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
     logger.error('WEBHOOK', 'WhatsApp webhook POST error', err, { requestId })
-    void insertOperationalErrorLog({
+    void logCriticalOperationalFailure({
       context: 'whatsapp_webhook:route',
       message: err.message,
       details: { requestId, stack: err.stack?.slice(0, 2000) },
+      alertKind: 'operational_error',
+      alertTitle: 'שגיאה ב-webhook WhatsApp',
     })
     return NextResponse.json({ received: true }, { status: 200 })
   }

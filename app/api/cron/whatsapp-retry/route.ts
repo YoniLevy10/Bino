@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { sendRawWhatsAppPayloadWithCredentials, buildWhatsAppTemplatePayloadForRetry } from '@/lib/whatsapp-send'
+import { notifyWhatsAppSendRetriesExhausted } from '@/lib/error-logs-db'
 import { getLogger } from '@/lib/logging'
 
 type Details = {
@@ -54,13 +55,22 @@ export async function GET(req: NextRequest) {
         .maybeSingle()
 
       if (cErr || !client?.whatsapp_phone_number_id || !client?.whatsapp_access_token) {
+        const nextAttempts = attempts + 1
         await admin
           .from('error_logs')
           .update({
-            whatsapp_attempts: attempts + 1,
+            whatsapp_attempts: nextAttempts,
             updated_at: new Date().toISOString(),
           })
           .eq('id', row.id)
+        if (nextAttempts >= 3 && d.client_id && d.to) {
+          void notifyWhatsAppSendRetriesExhausted(
+            d.client_id,
+            d.to,
+            'WhatsApp credentials missing or invalid for retry',
+            { send_kind: d.send_kind, attempts: nextAttempts }
+          )
+        }
         retried++
         continue
       }
@@ -100,14 +110,22 @@ export async function GET(req: NextRequest) {
         }
       } catch (e) {
         const nextAttempts = attempts + 1
+        const errMsg = e instanceof Error ? e.message.slice(0, 8000) : String(e).slice(0, 8000)
         await admin
           .from('error_logs')
           .update({
             whatsapp_attempts: nextAttempts,
             updated_at: new Date().toISOString(),
-            message: e instanceof Error ? e.message.slice(0, 8000) : String(e).slice(0, 8000),
+            message: errMsg,
           })
           .eq('id', row.id)
+
+        if (nextAttempts >= 3 && d.client_id && d.to) {
+          void notifyWhatsAppSendRetriesExhausted(d.client_id, d.to, errMsg, {
+            send_kind: d.send_kind,
+            attempts: nextAttempts,
+          })
+        }
       }
     }
 
