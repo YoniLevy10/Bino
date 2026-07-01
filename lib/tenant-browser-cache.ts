@@ -2,7 +2,10 @@
 
 export const TENANT_CID_SESSION_KEY = 'bamakor_cid_v1'
 
-const LOCAL_PREFIXES = ['bamakor_branding_v1_', 'bamakor_nav_v4_'] as const
+/** Sidebar nav order + enabled_nav_features (SidebarNavContext). */
+export const NAV_CACHE_PREFIX = 'bamakor_nav_v5_' as const
+
+const LOCAL_PREFIXES = ['bamakor_branding_v1_', 'bamakor_nav_v4_', NAV_CACHE_PREFIX] as const
 
 export function clearTenantBrowserCaches(): void {
   if (typeof window === 'undefined') return
