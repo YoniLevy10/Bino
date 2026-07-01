@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { monthBounds } from '@/lib/attendance-display'
 import {
   AppShell,
   MobileHeader,
@@ -24,7 +26,10 @@ import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpCo
 import { AttendanceLiveWorkers } from '../components/attendance/AttendanceLiveWorkers'
 import { AttendanceAnomalies } from '../components/attendance/AttendanceAnomalies'
 import { AttendanceStickerProgress } from '../components/attendance/AttendanceStickerProgress'
+import { AttendanceHistoryTab } from '../components/attendance/AttendanceHistoryTab'
 import { EVENT_TYPE_HE } from '@/lib/attendance-display'
+
+type PageTab = 'current' | 'history'
 
 type AttendanceEventRow = {
   id: string
@@ -62,6 +67,8 @@ function projectName(row: AttendanceEventRow): string {
 
 export default function AttendancePage() {
   const { openMenu } = useMobileMenu()
+  const searchParams = useSearchParams()
+  const [pageTab, setPageTab] = useState<PageTab>('current')
   const [events, setEvents] = useState<AttendanceEventRow[]>([])
   const [tagCount, setTagCount] = useState(0)
   const [stickerInstalled, setStickerInstalled] = useState(0)
@@ -77,15 +84,37 @@ export default function AttendancePage() {
   const [isMobile, setIsMobile] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
+  const currentMonthBounds = useMemo(() => {
+    const d = new Date()
+    return monthBounds(d.getFullYear(), d.getMonth())
+  }, [])
+
   const onStickerProgress = useCallback((installed: number, total: number) => {
     setStickerInstalled(installed)
     setStickerTotal(total)
   }, [])
 
+  useEffect(() => {
+    if (searchParams.get('tab') === 'history') setPageTab('history')
+  }, [searchParams])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (pageTab === 'history') params.set('tab', 'history')
+    else params.delete('tab')
+    const qs = params.toString()
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    window.history.replaceState(null, '', newUrl)
+  }, [pageTab])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({
+        from: currentMonthBounds.from,
+        to: currentMonthBounds.to,
+        limit: '500',
+      })
       if (syncFilter) params.set('sync_status', syncFilter)
       const [evRes, tagRes] = await Promise.all([
         fetchWithTimeout(`/api/attendance/events?${params.toString()}`),
@@ -107,7 +136,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false)
     }
-  }, [syncFilter])
+  }, [syncFilter, currentMonthBounds.from, currentMonthBounds.to])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -117,8 +146,9 @@ export default function AttendancePage() {
   }, [])
 
   useEffect(() => {
+    if (pageTab !== 'current') return
     void load()
-  }, [load])
+  }, [load, pageTab])
 
   async function approveEvent(id: string) {
     setBusyId(id)
@@ -139,12 +169,8 @@ export default function AttendancePage() {
     }
   }
 
-  const inner = (
+  const currentTabContent = (
     <>
-      {!isMobile && (
-        <PageHeader title="חתמת עובדים" subtitle="מעקב שעות עובדי שטח — מדבקות NFC" />
-      )}
-
       <AttendanceHelpSteps />
       <AttendanceHelpContact />
 
@@ -183,11 +209,13 @@ export default function AttendancePage() {
         </Card>
       </div>
 
-      <AttendanceShiftsReport />
+      <AttendanceShiftsReport lockToCurrentMonth />
 
       <Card>
-        <h3 style={styles.sectionTitle}>החתמות אחרונות</h3>
-        <p style={styles.hint}>כניסות, יציאות וביקורים — נרשמים אוטומטית מהמדבקות.</p>
+        <h3 style={styles.sectionTitle}>החתמות החודש ({currentMonthBounds.label})</h3>
+        <p style={styles.hint}>
+          מציג רק את החודש הנוכחי. משמרות מחודשים קודמים נשמרות בלשונית «היסטוריה».
+        </p>
         <div style={styles.filters}>
           {kpis.pending_review > 0 ? (
             <select
@@ -208,7 +236,7 @@ export default function AttendancePage() {
         {loading ? (
           <PageListSkeleton rows={6} />
         ) : events.length === 0 ? (
-          <p style={styles.hint}>עדיין אין החתמות — אחרי שהעובדים יצמידו את הטלפון למדבקה, יופיעו כאן.</p>
+          <p style={styles.hint}>עדיין אין החתמות החודש — אחרי שהעובדים יצמידו את הטלפון למדבקה, יופיעו כאן.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={styles.table}>
@@ -262,7 +290,7 @@ export default function AttendancePage() {
         {isMobile && (
           <MobileHeader
             title="חתמת עובדים"
-            subtitle="נוכחות ומשמרות"
+            subtitle={pageTab === 'history' ? 'ארכיון חודשי' : currentMonthBounds.label}
             onMenuClick={openMenu}
           />
         )}
@@ -274,7 +302,41 @@ export default function AttendancePage() {
             boxSizing: 'border-box',
           }}
         >
-          {inner}
+          {!isMobile && (
+            <PageHeader
+              title="חתמת עובדים"
+              subtitle={
+                pageTab === 'history'
+                  ? 'ארכיון משמרות לפי חודש'
+                  : `מעקב שעות — ${currentMonthBounds.label}`
+              }
+            />
+          )}
+
+          <div style={styles.pageTabBar}>
+            <button
+              type="button"
+              onClick={() => setPageTab('current')}
+              style={{
+                ...styles.pageTab,
+                ...(pageTab === 'current' ? styles.pageTabActive : styles.pageTabInactive),
+              }}
+            >
+              חודש נוכחי
+            </button>
+            <button
+              type="button"
+              onClick={() => setPageTab('history')}
+              style={{
+                ...styles.pageTab,
+                ...(pageTab === 'history' ? styles.pageTabActive : styles.pageTabInactive),
+              }}
+            >
+              היסטוריה
+            </button>
+          </div>
+
+          {pageTab === 'history' ? <AttendanceHistoryTab isMobile={isMobile} /> : currentTabContent}
         </div>
       </PaidAddonGate>
     </AppShell>
@@ -282,6 +344,35 @@ export default function AttendancePage() {
 }
 
 const styles: Record<string, CSSProperties> = {
+  pageTabBar: {
+    display: 'flex',
+    gap: '4px',
+    padding: '4px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.md,
+    marginBottom: '20px',
+  },
+  pageTab: {
+    flex: 1,
+    minHeight: '48px',
+    padding: '12px 8px',
+    fontSize: '14px',
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: theme.radius.sm,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    fontFamily: 'inherit',
+  },
+  pageTabActive: {
+    background: theme.colors.surface,
+    color: theme.colors.primary,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  },
+  pageTabInactive: {
+    background: 'transparent',
+    color: theme.colors.textMuted,
+  },
   kpiGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',

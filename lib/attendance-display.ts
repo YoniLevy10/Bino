@@ -50,3 +50,54 @@ export function monthBounds(year: number, monthIndex: number): { from: string; t
   const label = from.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
   return { from: from.toISOString(), to: to.toISOString(), label }
 }
+
+/** `YYYY-MM` for a date (local calendar month). */
+export function monthKeyFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+export function currentMonthKey(d = new Date()): string {
+  return monthKeyFromDate(d)
+}
+
+export function parseMonthKey(key: string): { year: number; monthIndex: number } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(key.trim())
+  if (!m) return null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  if (!Number.isFinite(year) || month < 1 || month > 12) return null
+  return { year, monthIndex: month - 1 }
+}
+
+export function monthBoundsFromKey(key: string): { from: string; to: string; label: string } | null {
+  const parsed = parseMonthKey(key)
+  if (!parsed) return null
+  return monthBounds(parsed.year, parsed.monthIndex)
+}
+
+/** Start of the current calendar month (local). */
+export function startOfCurrentMonth(d = new Date()): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0)
+}
+
+export function buildMonthOptions(count = 12, upTo = new Date()): { value: string; label: string }[] {
+  const opts: { value: string; label: string }[] = []
+  for (let i = 0; i < count; i++) {
+    const d = new Date(upTo.getFullYear(), upTo.getMonth() - i, 1)
+    const value = monthKeyFromDate(d)
+    const label = d.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
+    opts.push({ value, label })
+  }
+  return opts
+}
+
+/** Past months only — excludes the current calendar month. */
+export function buildPastMonthOptions(count = 24): { value: string; label: string }[] {
+  const now = new Date()
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  return buildMonthOptions(count, prev)
+}
+
+export function monthKeyFromIso(iso: string): string {
+  return monthKeyFromDate(new Date(iso))
+}
