@@ -39,6 +39,13 @@
       "description": "ניהול עובדים",
       "url": "/workers",
       "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Super Admin",
+      "short_name": "Super Admin",
+      "description": "ניהול לקוחות וחבילות",
+      "url": "/superadmin",
+      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
     }
   ]
 }

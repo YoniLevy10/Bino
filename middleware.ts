@@ -46,6 +46,7 @@ export async function middleware(req: NextRequest) {
     pathname === '/apple-icon.png' ||
     pathname === '/manifest.json' ||
     pathname === '/manifest.worker.json' ||
+    pathname === '/manifest.superadmin.json' ||
     pathname === '/sw.js' ||
     pathname === '/offline.html'
   ) {

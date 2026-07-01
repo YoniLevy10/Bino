@@ -172,7 +172,7 @@ function NavFeaturesModeBadge({ mode }: { mode: ClientNavFeaturesMode }) {
 
 const inputStyle: CSSProperties = {
   width: '100%',
-  padding: '8px 12px',
+  padding: '12px 14px',
   fontSize: theme.typography.fontSize.sm,
   border: `1.5px solid ${theme.colors.border}`,
   borderRadius: theme.radius.md,
@@ -181,6 +181,7 @@ const inputStyle: CSSProperties = {
   color: theme.colors.textPrimary,
   boxSizing: 'border-box',
   direction: 'ltr',
+  minHeight: 44,
 }
 
 function AdminQuickLinks() {
@@ -565,14 +566,15 @@ export default function SuperAdminPage() {
   // ── Lock screen ──────────────────────────────────────────────────────────────
   if (!unlocked) {
     return (
-      <div style={{ ...pageStyle, display: 'flex', justifyContent: 'center' }}>
-        <div style={{ background: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.xxl, boxShadow: theme.shadows.md, width: '100%', maxWidth: 380, marginTop: 80 }}>
+      <div className="sa-page" style={{ ...pageStyle, display: 'flex', justifyContent: 'center', padding: `${theme.spacing.lg} ${theme.spacing.md}` }}>
+        <div className="sa-lock-card" style={{ background: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.xxl, boxShadow: theme.shadows.md, width: '100%', maxWidth: 380, marginTop: 80 }}>
           <h1 style={{ fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, textAlign: 'center', marginBottom: theme.spacing.xl, color: theme.colors.textPrimary }}>
             Super Admin
           </h1>
           <div style={{ marginBottom: theme.spacing.lg }}>
             <input
               type="password"
+              className="sa-input"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
@@ -584,7 +586,8 @@ export default function SuperAdminPage() {
           {unlockError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md }}>{unlockError}</p>}
           <LoadingButton
             onClick={handleUnlock}
-            style={{ width: '100%' }}
+            className="sa-touch-btn"
+            style={{ width: '100%', minHeight: 48 }}
           >
             כניסה
           </LoadingButton>
@@ -596,34 +599,36 @@ export default function SuperAdminPage() {
 
   // ── Main ─────────────────────────────────────────────────────────────────────
   return (
-    <div style={pageStyle}>
+    <div className="sa-page" style={pageStyle}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg, flexWrap: 'wrap', gap: theme.spacing.md }}>
-          <h1 style={{ fontSize: theme.typography.fontSize['3xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.textPrimary, margin: 0 }}>
+          <h1 className="sa-header-title" style={{ fontSize: theme.typography.fontSize['3xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.textPrimary, margin: 0 }}>
             Super Admin
           </h1>
-          <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap', width: '100%' }}>
             {viewMode === 'clients' && (
               <button
+                className="sa-touch-btn"
                 onClick={() => void loadClients(secret)}
                 disabled={loading}
-                style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: loading ? 'not-allowed' : 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}
+                style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: loading ? 'not-allowed' : 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}
               >
                 {loading ? 'טוען...' : 'רענן'}
               </button>
             )}
             <a
               href="/admin/setup"
-              style={{ background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '8px 18px', cursor: 'pointer', fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              className="sa-touch-btn"
+              style={{ background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '10px 18px', cursor: 'pointer', fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, minHeight: 44 }}
             >
               + הקם לקוח חדש
             </a>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
+        <div className="sa-tab-bar" style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
           {(
             [
               { id: 'clients' as const, label: 'לקוחות' },
@@ -633,6 +638,7 @@ export default function SuperAdminPage() {
             <button
               key={tab.id}
               type="button"
+              className="sa-tab-btn sa-touch-btn"
               onClick={() => setViewMode(tab.id)}
               style={{
                 padding: '10px 18px',
@@ -672,7 +678,7 @@ export default function SuperAdminPage() {
               { label: 'דיירים', value: clients.reduce((s, c) => s + c.residents_count, 0) },
               { label: 'קריאות פתוחות', value: clients.reduce((s, c) => s + c.open_tickets_count, 0) },
             ].map((s) => (
-              <div key={s.label} style={{ background: theme.colors.primaryMuted, borderRadius: theme.radius.md, padding: `${theme.spacing.md} ${theme.spacing.xl}`, textAlign: 'center', minWidth: 90 }}>
+              <div key={s.label} className="sa-stat-chip" style={{ background: theme.colors.primaryMuted, borderRadius: theme.radius.md, padding: `${theme.spacing.md} ${theme.spacing.xl}`, textAlign: 'center', minWidth: 90 }}>
                 <div style={{ fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.primary }}>{s.value}</div>
                 <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>{s.label}</div>
               </div>
@@ -694,8 +700,8 @@ export default function SuperAdminPage() {
           {loading && clients.length === 0 ? (
             <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>טוען...</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="sa-table-wrap" style={{ overflowX: 'auto' }}>
+              <table className="sa-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     {['', 'שם לקוח', 'מייל אדמין', 'תכנית', 'WhatsApp', 'טלפון מנהל', 'SMS שולח', 'בניינים', 'עובדים', 'דיירים', 'קריאות', ''].map((h, i) => (
@@ -709,21 +715,24 @@ export default function SuperAdminPage() {
                       {/* Main row */}
                       <tr
                         key={c.id}
+                        className="sa-client-row"
                         style={{ background: expandedId === c.id ? theme.colors.primaryMuted : 'transparent', transition: 'background 0.15s' }}
                       >
                         {/* Expand toggle */}
-                        <td style={{ ...tdStyle, width: 36, textAlign: 'center', paddingLeft: 8, paddingRight: 8 }}>
+                        <td className="sa-cell-expand" style={{ ...tdStyle, width: 36, textAlign: 'center', paddingLeft: 8, paddingRight: 8 }}>
                           <button
+                            className="sa-touch-btn"
                             onClick={() => toggleExpand(c)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted, fontSize: 11, padding: 4, borderRadius: 4, transition: 'transform 0.15s', transform: expandedId === c.id ? 'rotate(90deg)' : 'none' }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted, fontSize: 11, padding: 8, borderRadius: 4, transition: 'transform 0.15s', transform: expandedId === c.id ? 'rotate(90deg)' : 'none', minWidth: 44, minHeight: 44 }}
                             title={expandedId === c.id ? 'סגור' : 'פרט'}
+                            aria-label={expandedId === c.id ? 'סגור פרטי לקוח' : 'פתח פרטי לקוח'}
                           >
                             ▶
                           </button>
                         </td>
 
                         {/* Name + copy ID */}
-                        <td style={{ ...tdStyle, fontWeight: theme.typography.fontWeight.semibold, whiteSpace: 'nowrap' }}>
+                        <td data-label="שם לקוח" style={{ ...tdStyle, fontWeight: theme.typography.fontWeight.semibold, whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                             {c.name}
                             <NavFeaturesModeBadge mode={describeClientNavFeaturesMode(c.enabled_nav_features)} />
@@ -732,21 +741,21 @@ export default function SuperAdminPage() {
                         </td>
 
                         {/* Admin email */}
-                        <td style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs, direction: 'ltr' }}>
+                        <td data-label="מייל אדמין" style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs, direction: 'ltr' }}>
                           {c.admin_email
                             ? <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span>{c.admin_email}</span><CopyButton text={c.admin_email} /></div>
                             : <span style={{ color: theme.colors.textMuted }}>—</span>}
                         </td>
 
                         {/* Plan badge */}
-                        <td style={tdStyle}>
+                        <td data-label="תכנית" style={tdStyle}>
                           <span style={{ background: PLAN_COLORS[c.plan_tier] ?? '#6b7280', color: '#fff', borderRadius: theme.radius.xs, padding: '2px 8px', fontSize: theme.typography.fontSize.xs, fontWeight: 600 }}>
                             {PLAN_LABELS[c.plan_tier] ?? c.plan_tier}
                           </span>
                         </td>
 
                         {/* WA status */}
-                        <td style={{ ...tdStyle, direction: 'ltr', fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs }}>
+                        <td data-label="WhatsApp" style={{ ...tdStyle, direction: 'ltr', fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs }}>
                           {c.whatsapp_phone_number_id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span style={{ color: theme.colors.success, fontSize: 8 }}>●</span>
@@ -763,20 +772,20 @@ export default function SuperAdminPage() {
                         </td>
 
                         {/* Manager phone */}
-                        <td style={{ ...tdStyle, direction: 'ltr', fontSize: theme.typography.fontSize.xs }}>
+                        <td data-label="טלפון מנהל" style={{ ...tdStyle, direction: 'ltr', fontSize: theme.typography.fontSize.xs }}>
                           {c.manager_phone ?? <span style={{ color: theme.colors.textMuted }}>—</span>}
                         </td>
 
                         {/* SMS sender */}
-                        <td style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs }}>
+                        <td data-label="SMS שולח" style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs }}>
                           {c.sms_sender_name ?? <span style={{ color: theme.colors.textMuted }}>—</span>}
                         </td>
 
                         {/* Buildings */}
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>{c.buildings_count}</td>
+                        <td data-label="בניינים" style={{ ...tdStyle, textAlign: 'center' }}>{c.buildings_count}</td>
 
                         {/* Workers */}
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <td data-label="עובדים" style={{ ...tdStyle, textAlign: 'center' }}>
                           {(() => {
                             const limits = effectiveLimitsForClient(c, planCatalog)
                             const cap = limits.workers
@@ -785,23 +794,24 @@ export default function SuperAdminPage() {
                         </td>
 
                         {/* Residents */}
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>{c.residents_count}</td>
+                        <td data-label="דיירים" style={{ ...tdStyle, textAlign: 'center' }}>{c.residents_count}</td>
 
                         {/* Open tickets */}
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <td data-label="קריאות" style={{ ...tdStyle, textAlign: 'center' }}>
                           {c.open_tickets_count > 0
                             ? <span style={{ color: theme.colors.warning, fontWeight: 600 }}>{c.open_tickets_count}</span>
                             : <span style={{ color: theme.colors.textMuted }}>0</span>}
                         </td>
 
                         {/* Actions */}
-                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                        <td className="sa-cell-actions" style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                           {editingId === c.id ? (
-                            <button onClick={cancelEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted, fontSize: theme.typography.fontSize.xs }}>ביטול</button>
+                            <button className="sa-touch-btn" onClick={cancelEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted, fontSize: theme.typography.fontSize.xs, minHeight: 44, padding: '8px 12px' }}>ביטול</button>
                           ) : (
                             <button
+                              className="sa-touch-btn"
                               onClick={() => startEdit(c)}
-                              style={{ background: 'none', border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.xs, padding: '4px 10px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.xs }}
+                              style={{ background: 'none', border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.xs, padding: '8px 14px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.xs, minHeight: 44 }}
                             >
                               ערוך
                             </button>
@@ -811,9 +821,9 @@ export default function SuperAdminPage() {
 
                       {/* Expanded row */}
                       {expandedId === c.id && (
-                        <tr key={`${c.id}-expand`}>
+                        <tr key={`${c.id}-expand`} className="sa-expand-row">
                           <td colSpan={12} style={{ padding: 0, borderBottom: `1px solid ${theme.colors.borderSubtle}` }}>
-                            <div style={{ background: theme.colors.muted, padding: theme.spacing.xl, direction: 'rtl' }}>
+                            <div className="sa-expand-inner" style={{ background: theme.colors.muted, padding: theme.spacing.xl, direction: 'rtl' }}>
 
                               {/* Edit form */}
                               {editingId === c.id && editState && (() => {
@@ -827,7 +837,7 @@ export default function SuperAdminPage() {
                                     כאן מגדירים את החבילה והמכסות שחלות על הלקוח. שינוי תכנית מאפס מכסות מותאמות ישנות.
                                     מכסות מטאב &quot;מנוי ותמחור&quot; נאכפות אוטומטית כשאין override.
                                   </p>
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+                                  <div className="sa-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
                                     {[
                                       { label: 'שם לקוח', key: 'name' as const, placeholder: '' },
                                       { label: 'WA Phone Number ID', key: 'whatsapp_phone_number_id' as const, placeholder: 'ריק = ללא WhatsApp' },
@@ -837,6 +847,7 @@ export default function SuperAdminPage() {
                                       <div key={key}>
                                         <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>{label}</label>
                                         <input
+                                          className="sa-input"
                                           value={editState[key]}
                                           onChange={(e) => setEditState((s) => s ? { ...s, [key]: e.target.value } : s)}
                                           placeholder={placeholder}
@@ -846,7 +857,7 @@ export default function SuperAdminPage() {
                                     ))}
                                     <div>
                                       <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>תכנית</label>
-                                      <select value={editState.plan_tier} onChange={(e) => onPlanTierChange(e.target.value)} style={inputStyle}>
+                                      <select value={editState.plan_tier} onChange={(e) => onPlanTierChange(e.target.value)} className="sa-input" style={inputStyle}>
                                         {PLAN_SETUP_OPTIONS.map((p) => (
                                           <option key={p.value} value={p.value}>{p.label}</option>
                                         ))}
@@ -864,6 +875,7 @@ export default function SuperAdminPage() {
                                       <input
                                         type="number"
                                         min={1}
+                                        className="sa-input"
                                         value={editState.max_workers}
                                         onChange={(e) => setEditState((s) => s ? { ...s, max_workers: e.target.value } : s)}
                                         placeholder="ריק = לפי תכנית"
@@ -875,6 +887,7 @@ export default function SuperAdminPage() {
                                       <input
                                         type="number"
                                         min={1}
+                                        className="sa-input"
                                         value={editState.buildings_allowed}
                                         onChange={(e) => setEditState((s) => s ? { ...s, buildings_allowed: e.target.value } : s)}
                                         placeholder="ריק = לפי תכנית"
@@ -886,6 +899,7 @@ export default function SuperAdminPage() {
                                       <input
                                         type="number"
                                         min={1}
+                                        className="sa-input"
                                         value={editState.max_tickets_per_month}
                                         onChange={(e) => setEditState((s) => s ? { ...s, max_tickets_per_month: e.target.value } : s)}
                                         placeholder="ריק = לפי תכנית"
@@ -920,11 +934,12 @@ export default function SuperAdminPage() {
                                     <button
                                       type="button"
                                       onClick={clearLimitOverridesInEdit}
-                                      style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}
+                                      className="sa-touch-btn"
+                                      style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}
                                     >
                                       אפס מכסות מותאמות
                                     </button>
-                                    <button onClick={cancelEdit} style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}>
+                                    <button onClick={cancelEdit} className="sa-touch-btn" style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}>
                                       ביטול
                                     </button>
                                   </div>
@@ -1042,6 +1057,7 @@ export default function SuperAdminPage() {
                                   </button>
                                 </div>
                                 <div
+                                  className="sa-grid-features"
                                   style={{
                                     display: 'grid',
                                     gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -1129,7 +1145,7 @@ export default function SuperAdminPage() {
                                     כניסה כלקוח
                                   </div>
                                   {magicLinks[c.id] ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, background: theme.colors.surface, borderRadius: theme.radius.md, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}` }}>
+                                    <div className="sa-magic-row" style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, background: theme.colors.surface, borderRadius: theme.radius.md, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}` }}>
                                       <code style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, direction: 'ltr' }}>
                                         {magicLinks[c.id]}
                                       </code>

@@ -106,7 +106,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
   }
 
   return (
-    <div style={panelStyle}>
+    <div className="sa-panel" style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
         <div>
           <h2 style={titleStyle}>תוספים בתשלום — מחירון</h2>
@@ -144,6 +144,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                   <div>
@@ -159,6 +160,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                 </div>
