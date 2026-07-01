@@ -829,6 +829,16 @@ export default function WorkersPage() {
         title={editingWorker ? 'עריכת עובד' : 'עובד חדש'}
         subtitle={editingWorker ? 'עדכון פרטי עובד' : 'הוספת חבר צוות'}
         isMobile={isMobile}
+        footer={
+          <div style={styles.drawerFooterActions}>
+            <Button variant="secondary" onClick={() => closeDrawer()}>
+              ביטול
+            </Button>
+            <Button variant="primary" onClick={saveWorker} loading={saving}>
+              {editingWorker ? 'עדכון' : 'יצירה'}
+            </Button>
+          </div>
+        }
       >
         <div style={styles.drawerContent}>
           <div style={styles.formGroup}>
@@ -939,15 +949,6 @@ export default function WorkersPage() {
               />
               <span>פעיל</span>
             </label>
-          </div>
-
-          <div style={styles.drawerActions}>
-            <Button variant="secondary" onClick={() => closeDrawer()}>
-              ביטול
-            </Button>
-            <Button variant="primary" onClick={saveWorker} loading={saving}>
-              {editingWorker ? 'עדכון' : 'יצירה'}
-            </Button>
           </div>
 
           {editingWorker && (
@@ -1420,6 +1421,11 @@ const styles: Record<string, CSSProperties> = {
     paddingTop: '16px',
     borderTop: `1px solid ${theme.colors.border}`,
     marginTop: '8px',
+  },
+  drawerFooterActions: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
   },
   dangerZone: {
     paddingTop: '20px',
