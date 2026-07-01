@@ -144,8 +144,17 @@ input[type="tel"],
 input[type="search"],
 input[type="number"],
 input[type="password"],
-textarea {
+textarea,
+select {
   font-size: 16px;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+
+[data-app-main] {
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 @media (max-width: 768px) {

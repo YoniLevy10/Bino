@@ -59,8 +59,8 @@ export function InstallPromptBanner() {
       style={{
         position: 'fixed',
         bottom: updatePending
-          ? 'calc(env(safe-area-inset-bottom, 0px) + 72px + 60px)'
-          : 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+          ? 'calc(env(safe-area-inset-bottom, 0px) + 64px + 60px)'
+          : 'calc(env(safe-area-inset-bottom, 0px) + 64px)',
         right: '16px',
         left: '16px',
         zIndex: 9998,
@@ -91,7 +91,7 @@ export function InstallPromptBanner() {
       <button
         onClick={install}
         style={{
-          background: '#2563eb',
+          background: '#0066FF',
           color: '#fff',
           border: 'none',
           borderRadius: '9px',
