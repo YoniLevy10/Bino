@@ -16,6 +16,7 @@ export {
 export { runWhatsAppInboundBackground, type WaWebhookTenant } from '@/lib/whatsapp-webhook/dispatch-inbound'
 export {
   findOpenTicketForReporterInWindow,
+  findOpenTicketForPhone,
   findRecentTicketForPhone,
   mergeWhatsAppLocationIntoTicketMetadata,
   type WaLocation,
