@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getClientPlanRow, effectiveMaxWorkers } from '@/lib/plan-limits'
+import { getPlanPricingRow } from '@/lib/plan-pricing'
 import { sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { createWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
@@ -73,7 +74,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'לקוח לא נמצא', requestId }, { status: 404 })
     }
 
-    const maxW = effectiveMaxWorkers(client)
+    const catalog = await getPlanPricingRow(supabase, client.plan_tier ?? 'starter')
+    const maxW = effectiveMaxWorkers(client, catalog)
     const { count, error: countErr } = await supabase
       .from('workers')
       .select('*', { count: 'exact', head: true })

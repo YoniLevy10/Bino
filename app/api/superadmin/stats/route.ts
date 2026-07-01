@@ -8,11 +8,12 @@ export async function GET(req: Request) {
 
   const admin = getSupabaseAdmin()
 
-  const [clientsRes, projectsRes, residentsRes, ticketsRes, adminsRes] = await Promise.all([
-    admin.from('clients').select('id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features, logo_url'),
+  const [clientsRes, projectsRes, residentsRes, ticketsRes, workersRes, adminsRes] = await Promise.all([
+    admin.from('clients').select('id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features, logo_url, max_workers, buildings_allowed, max_tickets_per_month'),
     admin.from('projects').select('id, client_id, name, project_code'),
     admin.from('residents').select('id, client_id').is('deleted_at', null),
     admin.from('tickets').select('id, client_id, status').not('status', 'eq', 'CLOSED'),
+    admin.from('workers').select('id, client_id, is_active').is('deleted_at', null),
     admin.rpc('get_client_admin_emails') as unknown as Promise<{ data: { client_id: string; email: string }[] | null; error: unknown }>,
   ])
 
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
   const projects = projectsRes.data ?? []
   const residents = residentsRes.data ?? []
   const tickets = ticketsRes.data ?? []
+  const workers = workersRes.data ?? []
   const adminEmails: { client_id: string; email: string }[] = adminsRes.data ?? []
 
   type ProjectRow = { id: string; name: string; project_code: string }
@@ -45,6 +47,11 @@ export async function GET(req: Request) {
     enabled_nav_features: parseEnabledNavFeaturesFromDb(
       (c as { enabled_nav_features?: unknown }).enabled_nav_features
     ),
+    max_workers: (c as { max_workers?: number | null }).max_workers ?? null,
+    buildings_allowed: (c as { buildings_allowed?: number | null }).buildings_allowed ?? null,
+    max_tickets_per_month: (c as { max_tickets_per_month?: number | null }).max_tickets_per_month ?? null,
+    workers_active_count: workers.filter((w) => w.client_id === c.id && w.is_active).length,
+    workers_total_count: workers.filter((w) => w.client_id === c.id).length,
     buildings_count: (projectsByClient[c.id] ?? []).length,
     residents_count: residents.filter((r) => r.client_id === c.id).length,
     open_tickets_count: tickets.filter((t) => t.client_id === c.id).length,

@@ -35,6 +35,11 @@ type ClientRow = {
   buildings_count: number
   residents_count: number
   open_tickets_count: number
+  workers_active_count: number
+  workers_total_count: number
+  max_workers: number | null
+  buildings_allowed: number | null
+  max_tickets_per_month: number | null
   projects: Project[]
   enabled_nav_features: SidebarNavItemId[] | null
   logo_url?: string | null
@@ -46,6 +51,9 @@ type EditState = {
   whatsapp_phone_number_id: string
   manager_phone: string
   sms_sender_name: string
+  max_workers: string
+  buildings_allowed: string
+  max_tickets_per_month: string
 }
 
 type ViewMode = 'clients' | 'ops'
@@ -363,6 +371,9 @@ export default function SuperAdminPage() {
       whatsapp_phone_number_id: c.whatsapp_phone_number_id ?? '',
       manager_phone: c.manager_phone ?? '',
       sms_sender_name: c.sms_sender_name ?? '',
+      max_workers: c.max_workers != null ? String(c.max_workers) : '',
+      buildings_allowed: c.buildings_allowed != null ? String(c.buildings_allowed) : '',
+      max_tickets_per_month: c.max_tickets_per_month != null ? String(c.max_tickets_per_month) : '',
     })
   }
 
@@ -377,6 +388,14 @@ export default function SuperAdminPage() {
     setSaving(true)
     setSaveError('')
     try {
+      const parseOptionalLimit = (raw: string) => {
+        const trimmed = raw.trim()
+        if (!trimmed) return null
+        const n = Number(trimmed)
+        if (!Number.isFinite(n) || n < 1) throw new Error('מכסות חייבות להיות מספר חיובי')
+        return Math.floor(n)
+      }
+
       const res = await fetch(`/api/superadmin/client/${editingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
@@ -386,13 +405,25 @@ export default function SuperAdminPage() {
           whatsapp_phone_number_id: editState.whatsapp_phone_number_id.trim() || null,
           manager_phone: editState.manager_phone.trim() || null,
           sms_sender_name: editState.sms_sender_name.trim() || null,
+          max_workers: parseOptionalLimit(editState.max_workers),
+          buildings_allowed: parseOptionalLimit(editState.buildings_allowed),
+          max_tickets_per_month: parseOptionalLimit(editState.max_tickets_per_month),
         }),
       })
       const json = await res.json() as { client?: ClientRow; error?: string }
       if (!res.ok) { setSaveError(json.error ?? `שגיאה ${res.status}`); return }
       if (json.client) {
         setClients((prev) => prev.map((c) =>
-          c.id !== editingId ? c : { ...c, ...json.client!, buildings_count: c.buildings_count, residents_count: c.residents_count, open_tickets_count: c.open_tickets_count, projects: c.projects }
+          c.id !== editingId ? c : {
+            ...c,
+            ...json.client!,
+            buildings_count: c.buildings_count,
+            residents_count: c.residents_count,
+            open_tickets_count: c.open_tickets_count,
+            workers_active_count: c.workers_active_count,
+            workers_total_count: c.workers_total_count,
+            projects: c.projects,
+          }
         ))
       }
       cancelEdit()
@@ -540,6 +571,7 @@ export default function SuperAdminPage() {
             {[
               { label: 'לקוחות', value: clients.length },
               { label: 'בניינים', value: clients.reduce((s, c) => s + c.buildings_count, 0) },
+              { label: 'עובדים', value: clients.reduce((s, c) => s + c.workers_active_count, 0) },
               { label: 'דיירים', value: clients.reduce((s, c) => s + c.residents_count, 0) },
               { label: 'קריאות פתוחות', value: clients.reduce((s, c) => s + c.open_tickets_count, 0) },
             ].map((s) => (
@@ -569,7 +601,7 @@ export default function SuperAdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['', 'שם לקוח', 'מייל אדמין', 'תכנית', 'WhatsApp', 'טלפון מנהל', 'SMS שולח', 'בניינים', 'דיירים', 'קריאות', ''].map((h, i) => (
+                    {['', 'שם לקוח', 'מייל אדמין', 'תכנית', 'WhatsApp', 'טלפון מנהל', 'SMS שולח', 'בניינים', 'עובדים', 'דיירים', 'קריאות', ''].map((h, i) => (
                       <th key={i} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -646,6 +678,11 @@ export default function SuperAdminPage() {
                         {/* Buildings */}
                         <td style={{ ...tdStyle, textAlign: 'center' }}>{c.buildings_count}</td>
 
+                        {/* Workers */}
+                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          {c.max_workers != null ? `${c.workers_active_count}/${c.max_workers}` : c.workers_active_count}
+                        </td>
+
                         {/* Residents */}
                         <td style={{ ...tdStyle, textAlign: 'center' }}>{c.residents_count}</td>
 
@@ -706,8 +743,44 @@ export default function SuperAdminPage() {
                                         ))}
                                       </select>
                                       <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
-                                        מכסות: {planLimitsLine(normalizeTier(editState.plan_tier) as PlanTier)}
+                                        מכסות ברירת מחדל: {planLimitsLine(normalizeTier(editState.plan_tier) as PlanTier)}
                                       </p>
+                                      <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textSecondary }}>
+                                        עובדים פעילים: {c.workers_active_count}{c.max_workers != null ? ` · מכסה מותאמת: ${c.max_workers}` : ''}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת עובדים (override)</label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editState.max_workers}
+                                        onChange={(e) => setEditState((s) => s ? { ...s, max_workers: e.target.value } : s)}
+                                        placeholder="ריק = לפי תכנית"
+                                        style={inputStyle}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת בניינים (override)</label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editState.buildings_allowed}
+                                        onChange={(e) => setEditState((s) => s ? { ...s, buildings_allowed: e.target.value } : s)}
+                                        placeholder="ריק = לפי תכנית"
+                                        style={inputStyle}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת תקלות/חודש (override)</label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editState.max_tickets_per_month}
+                                        onChange={(e) => setEditState((s) => s ? { ...s, max_tickets_per_month: e.target.value } : s)}
+                                        placeholder="ריק = לפי תכנית"
+                                        style={inputStyle}
+                                      />
                                     </div>
                                   </div>
                                   {saveError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{saveError}</p>}

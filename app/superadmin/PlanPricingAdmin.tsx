@@ -142,7 +142,8 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
         <div>
           <h2 style={titleStyle}>מנוי ותמחור — מסלולים</h2>
           <p style={subStyle}>
-            מחיר חודשי לפי מסלול (בניינים), דמי הקמה חד-פעמיים, ותצוגה ללקוחות בדף חיוב.
+            מחיר חודשי לפי מסלול, מכסות עובדים/בניינים/תקלות (מאכפות ב-API), דמי הקמה חד-פעמיים, ותצוגה ללקוחות בדף חיוב.
+            לדריסה ללקוח בודד — עריכת לקוח → מכסות override.
           </p>
         </div>
         <LoadingButton onClick={() => void save()} loading={saving} loadingText="שומר..." size="sm">

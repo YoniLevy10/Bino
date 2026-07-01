@@ -6,6 +6,7 @@ import {
   planLimitsLine,
   planPriceLabel,
 } from '@/lib/plan-display'
+import { getPlanPricingRow } from '@/lib/plan-pricing'
 import {
   PLAN_LIMITS,
   PLAN_PRICES,
@@ -43,6 +44,7 @@ export async function GET() {
     const clientPlan = await getClientPlanRow(admin, clientId)
     const planRow = clientPlan.data as Parameters<typeof effectiveMaxBuildings>[0]
     const tier = normalizeTier(planRow?.plan_tier)
+    const catalog = await getPlanPricingRow(admin, tier)
 
     const [ticketsMonth, residentsCount, workersActive, ticketsForWeeks, buildingsCount] =
       await Promise.all([
@@ -116,9 +118,9 @@ export async function GET() {
         label: PLAN_HEBREW_LABELS[tier],
         price: planPriceLabel(tier),
         limitsLine: planLimitsLine(tier),
-        maxBuildings: effectiveMaxBuildings(planRow),
-        maxWorkers: effectiveMaxWorkers(planRow),
-        maxTicketsPerMonth: effectiveMaxTicketsPerMonth(planRow),
+        maxBuildings: effectiveMaxBuildings(planRow, catalog),
+        maxWorkers: effectiveMaxWorkers(planRow, catalog),
+        maxTicketsPerMonth: effectiveMaxTicketsPerMonth(planRow, catalog),
       },
       plans,
     })

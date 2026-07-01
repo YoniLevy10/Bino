@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getClientPlanRow, effectiveMaxBuildings } from '@/lib/plan-limits'
+import { getPlanPricingRow } from '@/lib/plan-pricing'
 import { sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { createProjectBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'לקוח לא נמצא', requestId }, { status: 404 })
     }
 
-    const maxB = effectiveMaxBuildings(client)
+    const maxB = effectiveMaxBuildings(client, await getPlanPricingRow(supabase, client.plan_tier ?? 'starter'))
     const { count, error: countErr } = await supabase
       .from('projects')
       .select('*', { count: 'exact', head: true })
