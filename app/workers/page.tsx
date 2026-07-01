@@ -11,7 +11,7 @@
  *  - הסרה/ארכיב → soft-delete (deleted_at)
  *  - לחיצה על עובד → Drawer עם פרטים + תקלות שמשויכות אליו
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -293,7 +293,6 @@ export default function WorkersPage() {
     }
     const extraSanitized = sanitizeExtraPhones(form.phone, form.extra_phones)
     if (!extraSanitized.ok) return extraSanitized.error
-    if (!editingWorker && !form.email.trim()) return 'נדרש אימייל לעובד חדש'
     if (form.email) {
       const emailError = validateEmail(form.email, 'אימייל')
       if (emailError) return 'כתובת אימייל לא תקינה'
@@ -443,108 +442,7 @@ export default function WorkersPage() {
     })
   }, [workers, searchTerm, statusFilter])
 
-  function getInitials(name: string) {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
-  function WorkerListCard({ worker }: { worker: WorkerRow }) {
-    const [moreOpen, setMoreOpen] = useState(false)
-    const menuRef = useRef<HTMLDivElement>(null)
-
-    useEffect(() => {
-      if (!moreOpen) return
-      const onDoc = (e: MouseEvent) => {
-        if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMoreOpen(false)
-      }
-      document.addEventListener('mousedown', onDoc)
-      return () => document.removeEventListener('mousedown', onDoc)
-    }, [moreOpen])
-
-    return (
-      <div
-        onClick={() => openDetailDrawer(worker)}
-        style={styles.workerCard}
-        data-ui="card"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            openDetailDrawer(worker)
-          }
-        }}
-      >
-        <div style={styles.workerHeader}>
-          <div style={styles.avatar}>{getInitials(worker.full_name)}</div>
-          <div style={styles.workerInfo}>
-            <div style={styles.workerName}>{worker.full_name}</div>
-            <div style={styles.workerRole}>{worker.role || 'ללא תפקיד'}</div>
-          </div>
-          <span style={workerStatusBadge(worker.is_active)}>
-            {worker.is_active ? 'פעיל' : 'לא פעיל'}
-          </span>
-        </div>
-
-        <div style={styles.workerMeta}>
-          <div style={styles.metaItem}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-            </svg>
-            <span style={styles.metaText}>{formatWorkerPhonesDisplay(worker)}</span>
-          </div>
-          {worker.email ? (
-            <div style={styles.metaItem}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <rect width="20" height="16" x="2" y="4" rx="2" />
-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-              </svg>
-              <span style={styles.metaText}>{worker.email}</span>
-            </div>
-          ) : null}
-        </div>
-
-        <div style={styles.workerActions} onClick={(e) => e.stopPropagation()}>
-          <Button variant="primary" size="sm" style={styles.actionBtn} onClick={() => openEditDrawer(worker)}>
-            עריכה
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            style={styles.actionBtn}
-            loading={sendingPortalLinkId === worker.id}
-            onClick={(e) => void sendWorkerPortalLink(worker, e)}
-          >
-            שלח קישור
-          </Button>
-          <div style={styles.moreMenuWrap} ref={menuRef}>
-            <Button variant="ghost" size="sm" style={styles.actionBtn} onClick={() => setMoreOpen((v) => !v)}>
-              עוד
-            </Button>
-            {moreOpen ? (
-              <div style={styles.moreMenu} role="menu">
-                <button type="button" style={styles.moreMenuItem} onClick={(e) => { setMoreOpen(false); copyWorkerFieldLink(worker, e) }}>
-                  העתק קישור לאזור אישי
-                </button>
-                <button
-                  type="button"
-                  style={styles.moreMenuItem}
-                  disabled={testingSmsWorkerId === worker.id}
-                  onClick={(e) => { setMoreOpen(false); void sendWorkerTestSms(worker, e) }}
-                >
-                  {testingSmsWorkerId === worker.id ? 'שולח SMS...' : 'ניסיון SMS'}
-                </button>
-                <button type="button" style={styles.moreMenuItem} onClick={() => { setMoreOpen(false); toggleWorkerStatus(worker) }}>
-                  {worker.is_active ? 'השבת עובד' : 'הפעל עובד'}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  function copyWorkerFieldLink(worker: WorkerRow, e?: React.MouseEvent) {
+  function copyWorkerFieldLink(worker: WorkerRow, e?: MouseEvent) {
     e?.stopPropagation()
     const token = worker.access_token
     if (!token) {
@@ -558,7 +456,7 @@ export default function WorkersPage() {
     )
   }
 
-  async function sendWorkerTestSms(worker: WorkerRow, e?: React.MouseEvent) {
+  async function sendWorkerTestSms(worker: WorkerRow, e?: MouseEvent) {
     e?.stopPropagation()
     if (!workerHasPhone(worker)) {
       toast.error('לעובד אין מספר טלפון')
@@ -593,7 +491,7 @@ export default function WorkersPage() {
     }
   }
 
-  async function sendWorkerPortalLink(worker: WorkerRow, e?: React.MouseEvent) {
+  async function sendWorkerPortalLink(worker: WorkerRow, e?: MouseEvent) {
     e?.stopPropagation()
     if (!workerHasPhone(worker)) {
       toast.error('לעובד אין מספר טלפון')
@@ -748,7 +646,18 @@ export default function WorkersPage() {
               }}
             >
               {filteredWorkers.map((worker) => (
-                <WorkerListCard key={worker.id} worker={worker} />
+                <WorkerListCard
+                  key={worker.id}
+                  worker={worker}
+                  sendingPortalLinkId={sendingPortalLinkId}
+                  testingSmsWorkerId={testingSmsWorkerId}
+                  onOpenDetail={openDetailDrawer}
+                  onOpenEdit={openEditDrawer}
+                  onSendPortalLink={sendWorkerPortalLink}
+                  onCopyLink={copyWorkerFieldLink}
+                  onTestSms={sendWorkerTestSms}
+                  onToggleStatus={toggleWorkerStatus}
+                />
               ))}
             </div>
           )}
@@ -822,7 +731,7 @@ export default function WorkersPage() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.formLabel}>{editingWorker ? 'אימייל' : 'אימייל *'}</label>
+            <label style={styles.formLabel}>אימייל</label>
             <input
               type="email"
               value={form.email}
@@ -980,6 +889,129 @@ export default function WorkersPage() {
         )}
       </Drawer>
     </AppShell>
+  )
+}
+
+function getWorkerInitials(name: string) {
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+}
+
+type WorkerListCardProps = {
+  worker: WorkerRow
+  sendingPortalLinkId: string | null
+  testingSmsWorkerId: string | null
+  onOpenDetail: (worker: WorkerRow) => void
+  onOpenEdit: (worker: WorkerRow) => void
+  onSendPortalLink: (worker: WorkerRow, e?: MouseEvent) => void
+  onCopyLink: (worker: WorkerRow, e?: MouseEvent) => void
+  onTestSms: (worker: WorkerRow, e?: MouseEvent) => void
+  onToggleStatus: (worker: WorkerRow) => void
+}
+
+function WorkerListCard({
+  worker,
+  sendingPortalLinkId,
+  testingSmsWorkerId,
+  onOpenDetail,
+  onOpenEdit,
+  onSendPortalLink,
+  onCopyLink,
+  onTestSms,
+  onToggleStatus,
+}: WorkerListCardProps) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!moreOpen) return
+    const onDoc = (e: globalThis.MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [moreOpen])
+
+  return (
+    <div
+      onClick={() => onOpenDetail(worker)}
+      style={styles.workerCard}
+      data-ui="card"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpenDetail(worker)
+        }
+      }}
+    >
+      <div style={styles.workerHeader}>
+        <div style={styles.avatar}>{getWorkerInitials(worker.full_name)}</div>
+        <div style={styles.workerInfo}>
+          <div style={styles.workerName}>{worker.full_name}</div>
+          <div style={styles.workerRole}>{worker.role || 'ללא תפקיד'}</div>
+        </div>
+        <span style={workerStatusBadge(worker.is_active)}>
+          {worker.is_active ? 'פעיל' : 'לא פעיל'}
+        </span>
+      </div>
+
+      <div style={styles.workerMeta}>
+        <div style={styles.metaItem}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+          <span style={styles.metaText}>{formatWorkerPhonesDisplay(worker)}</span>
+        </div>
+        {worker.email ? (
+          <div style={styles.metaItem}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+            <span style={styles.metaText}>{worker.email}</span>
+          </div>
+        ) : null}
+      </div>
+
+      <div style={styles.workerActions} onClick={(e) => e.stopPropagation()}>
+        <Button variant="primary" size="sm" style={styles.actionBtn} onClick={() => onOpenEdit(worker)}>
+          עריכה
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          style={styles.actionBtn}
+          loading={sendingPortalLinkId === worker.id}
+          onClick={(e) => void onSendPortalLink(worker, e)}
+        >
+          שלח קישור
+        </Button>
+        <div style={styles.moreMenuWrap} ref={menuRef}>
+          <Button variant="ghost" size="sm" style={styles.actionBtn} onClick={() => setMoreOpen((v) => !v)}>
+            עוד
+          </Button>
+          {moreOpen ? (
+            <div style={styles.moreMenu} role="menu">
+              <button type="button" style={styles.moreMenuItem} onClick={(e) => { setMoreOpen(false); onCopyLink(worker, e) }}>
+                העתק קישור לאזור אישי
+              </button>
+              <button
+                type="button"
+                style={styles.moreMenuItem}
+                disabled={testingSmsWorkerId === worker.id}
+                onClick={(e) => { setMoreOpen(false); void onTestSms(worker, e) }}
+              >
+                {testingSmsWorkerId === worker.id ? 'שולח SMS...' : 'ניסיון SMS'}
+              </button>
+              <button type="button" style={styles.moreMenuItem} onClick={() => { setMoreOpen(false); onToggleStatus(worker) }}>
+                {worker.is_active ? 'השבת עובד' : 'הפעל עובד'}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   )
 }
 

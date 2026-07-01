@@ -117,11 +117,8 @@ export async function POST(req: Request) {
     if (phoneStr && phoneStr.replace(/\D/g, '').length < 9) {
       return NextResponse.json({ error: 'מספר טלפון לא תקין', requestId }, { status: 400 })
     }
-    const emailStr = payload.email != null ? String(payload.email) : ''
-    if (!emailStr) {
-      return NextResponse.json({ error: 'נדרש אימייל לעובד', requestId }, { status: 400 })
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+    const emailStr = payload.email != null ? String(payload.email).trim() : ''
+    if (emailStr && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
       return NextResponse.json({ error: 'אימייל לא תקין', requestId }, { status: 400 })
     }
 

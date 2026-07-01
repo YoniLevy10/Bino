@@ -1798,19 +1798,33 @@ const selectStyles: Record<string, CSSProperties> = {
 // ============================================================================
 
 function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement | null>, onEscape: () => void) {
+  const onEscapeRef = useRef(onEscape)
+  onEscapeRef.current = onEscape
+  const wasActiveRef = useRef(false)
+
   useEffect(() => {
-    if (!active || !containerRef.current) return
+    if (!active || !containerRef.current) {
+      wasActiveRef.current = false
+      return
+    }
+
     const root = containerRef.current
+    const justOpened = !wasActiveRef.current
+    wasActiveRef.current = true
+
     const focusables = root.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     )
     const first = focusables[0]
     const last = focusables[focusables.length - 1]
-    first?.focus()
+
+    if (justOpened) {
+      first?.focus()
+    }
 
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onEscape()
+        onEscapeRef.current()
         return
       }
       if (e.key !== 'Tab' || focusables.length === 0) return
@@ -1824,7 +1838,7 @@ function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [active, containerRef, onEscape])
+  }, [active, containerRef])
 }
 
 export function Drawer({
