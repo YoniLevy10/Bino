@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
-  const rl = await checkAuthenticatedPostRouteLimit(admin, auth.ctx.userId, 'attendance-events-get')
+  const rl = await checkAuthenticatedReadRouteLimit(admin, auth.ctx.userId, 'attendance-events-get')
   if (rl.isLimited) {
     return NextResponse.json({ error: 'יותר מדי בקשות' }, { status: 429 })
   }

@@ -57,6 +57,15 @@ export async function checkAuthenticatedPostRouteLimit(admin: SupabaseClient, us
   return r
 }
 
+/** GET מהדפדפן (קריאות לקריאה בלבד) — 120/דקה לכל משתמש+נתיב. */
+export async function checkAuthenticatedReadRouteLimit(admin: SupabaseClient, userId: string, routeSlug: string) {
+  const safeUser = userId.slice(0, 64)
+  const safeSlug = routeSlug.slice(0, 80).replace(/[^a-zA-Z0-9:_-]/g, '_')
+  const r = await checkRateLimit(admin, `get:user:${safeUser}:${safeSlug}`, 120, 60_000)
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: false }
+  return r
+}
+
 /** POST ללא משתמש (דיווח ציבורי, worker token וכד') — 20/דקה לכל IP + נתיב. */
 export async function checkIpPostRouteLimit(admin: SupabaseClient, ip: string, routeSlug: string) {
   const safeIp = (ip || 'unknown').slice(0, 64)

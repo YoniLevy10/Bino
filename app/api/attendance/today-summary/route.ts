@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
@@ -18,7 +18,7 @@ export async function GET() {
   if (!auth.ok) return auth.response
 
   const admin = auth.ctx.admin
-  const rl = await checkAuthenticatedPostRouteLimit(admin, auth.ctx.userId, 'attendance-today-get')
+  const rl = await checkAuthenticatedReadRouteLimit(admin, auth.ctx.userId, 'attendance-today-get')
   if (rl.isLimited) {
     return NextResponse.json({ error: 'יותר מדי בקשות' }, { status: 429 })
   }
