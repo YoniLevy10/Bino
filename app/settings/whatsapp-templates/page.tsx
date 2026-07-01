@@ -25,6 +25,7 @@ import { ResidentWhatsAppFlowGuide } from '../../components/settings/ResidentWha
 import {
   splitTrilingualTemplate,
   joinTrilingualTemplate,
+  mergeTrilingualWithDefaults,
   type TrilingualTemplateParts,
 } from '@/lib/whatsapp-bilingual-template'
 import { toast } from '@/lib/error-handler'
@@ -156,7 +157,12 @@ export default function WhatsappTemplatesPage() {
         for (const row of (data || []) as { template_key: string; template_text: string }[]) {
           const k = row.template_key as WhatsAppTemplateKey
           const sk = row.template_key as SmsTemplateKey
-          if (WHATSAPP_TEMPLATE_KEYS.includes(k)) next[k] = row.template_text
+          if (WHATSAPP_TEMPLATE_KEYS.includes(k)) {
+            next[k] = mergeTrilingualWithDefaults(
+              row.template_text,
+              WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[k]
+            )
+          }
           else if ((SMS_TEMPLATE_KEYS as readonly string[]).includes(row.template_key)) smsNext[sk] = row.template_text
           else if (row.template_key?.trim()) extras[row.template_key] = row.template_text
         }
@@ -306,6 +312,31 @@ export default function WhatsappTemplatesPage() {
       else next.add(key)
       return next
     })
+  }
+
+  function resetKeyToDefaults(key: WhatsAppTemplateKey) {
+    const def = WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[key]
+    setDrafts((d) => ({ ...d, [key]: def }))
+    setWaTrilingual((prev) => ({ ...prev, [key]: splitTrilingualTemplate(def) }))
+    toast.success('הוחזר לברירת מחדל — לחצו שמור כדי לעדכן את המסד')
+  }
+
+  function renderWaPreviewBubbles(key: WhatsAppTemplateKey) {
+    const parts = previewPairs[key]
+    const langs: { id: 'he' | 'fr' | 'en'; label: string; text: string; dir: 'rtl' | 'ltr' }[] = [
+      { id: 'he', label: 'עברית', text: parts.he, dir: 'rtl' },
+      { id: 'fr', label: 'Français', text: parts.fr, dir: 'ltr' },
+      { id: 'en', label: 'English', text: parts.en, dir: 'ltr' },
+    ]
+    return langs.map(({ id, label, text, dir }) => (
+      <div key={id} style={{ ...styles.waBubble, marginTop: id === 'he' ? 0 : 8 }}>
+        <span style={styles.waLangTag}>{label}</span>
+        <p style={{ ...styles.waText, direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left' }}>
+          {text || '(לא הוגדר)'}
+        </p>
+        <span style={styles.waTime}>14:02</span>
+      </div>
+    ))
   }
 
   function chip(token: string, key: WhatsAppTemplateKey) {
@@ -483,29 +514,10 @@ export default function WhatsappTemplatesPage() {
                           </div>
                         </button>
 
-                        {/* Preview bubble — always visible */}
+                        {/* Preview bubble — always visible (HE | FR | EN) */}
                         <div style={styles.previewStrip}>
                           <div style={styles.waChrome}>
-                            <div style={styles.waBubble}>
-                              <p style={styles.waText}>{previewPairs[key].he}</p>
-                              <span style={styles.waTime}>14:02</span>
-                            </div>
-                            {previewPairs[key].fr ? (
-                              <div style={{ ...styles.waBubble, marginTop: 8 }}>
-                                <p style={{ ...styles.waText, direction: 'ltr', textAlign: 'left' }}>
-                                  {previewPairs[key].fr}
-                                </p>
-                                <span style={styles.waTime}>14:02</span>
-                              </div>
-                            ) : null}
-                            {previewPairs[key].en ? (
-                              <div style={{ ...styles.waBubble, marginTop: 8 }}>
-                                <p style={{ ...styles.waText, direction: 'ltr', textAlign: 'left' }}>
-                                  {previewPairs[key].en}
-                                </p>
-                                <span style={styles.waTime}>14:02</span>
-                              </div>
-                            ) : null}
+                            {renderWaPreviewBubbles(key)}
                           </div>
                         </div>
 
@@ -560,7 +572,7 @@ export default function WhatsappTemplatesPage() {
                                 style={{ ...styles.textarea, direction: 'ltr', textAlign: 'left' }}
                               />
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
                               <Button
                                 variant="primary"
                                 size="sm"
@@ -568,6 +580,13 @@ export default function WhatsappTemplatesPage() {
                                 loading={savingKey === key}
                               >
                                 שמור תבנית זו
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => resetKeyToDefaults(key)}
+                              >
+                                איפוס לברירת מחדל
                               </Button>
                             </div>
                           </div>
@@ -696,6 +715,14 @@ const styles: Record<string, CSSProperties> = {
     position: 'relative', boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
   },
   waText: { margin: 0, fontSize: 14, lineHeight: 1.45, color: '#111', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
+  waLangTag: {
+    display: 'inline-block',
+    fontSize: 10,
+    fontWeight: 700,
+    color: 'rgba(0,0,0,0.55)',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
   waTime: { position: 'absolute', bottom: 5, left: 10, fontSize: 11, color: 'rgba(0,0,0,0.45)' },
 
   smsChrome: {

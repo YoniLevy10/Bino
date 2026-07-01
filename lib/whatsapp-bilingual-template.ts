@@ -59,6 +59,17 @@ export function joinTrilingualTemplate(he: string, fr: string, en: string): stri
   return blocks.join(BILINGUAL_TEMPLATE_SEPARATOR)
 }
 
+/** Fill missing FR/EN (or empty HE) from defaults — legacy DB rows are often Hebrew-only. */
+export function mergeTrilingualWithDefaults(stored: string, defaults: string): string {
+  const s = splitTrilingualTemplate(stored)
+  const d = splitTrilingualTemplate(defaults)
+  return joinTrilingualTemplate(
+    s.he.trim() || d.he,
+    s.fr.trim() || d.fr,
+    s.en.trim() || d.en
+  )
+}
+
 /** @deprecated use joinTrilingualTemplate */
 export function joinBilingualTemplate(he: string, en: string): string {
   return joinTrilingualTemplate(he, '', en)

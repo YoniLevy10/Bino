@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { WhatsAppTemplateKey } from '@/lib/whatsapp-template-keys'
 import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS, SMS_TEMPLATE_VAR_NAMES } from '@/lib/whatsapp-template-keys'
+import { mergeTrilingualWithDefaults } from '@/lib/whatsapp-bilingual-template'
 
 const VAR_NAMES = ['project_name', 'ticket_number', 'description', 'reporter_name', 'building_line', 'list'] as const
 
@@ -68,10 +69,10 @@ export async function resolveWhatsAppTemplateMessage(
   }
 
   const fromDb = await loadTemplateTextFromDb(admin, clientId, templateKey)
-  const raw = fromDb ?? fallbackText
+  const raw = fromDb ? mergeTrilingualWithDefaults(fromDb, fallbackText) : fallbackText
 
   if (fromDb) {
-    templateTextCache.set(cacheKey, { text: fromDb, expiresAt: now + TEMPLATE_CACHE_TTL_MS })
+    templateTextCache.set(cacheKey, { text: raw, expiresAt: now + TEMPLATE_CACHE_TTL_MS })
     setTimeout(() => {
       const cur = templateTextCache.get(cacheKey)
       if (cur && cur.expiresAt <= Date.now()) {
