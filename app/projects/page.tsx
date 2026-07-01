@@ -699,6 +699,16 @@ export default function ProjectsPage() {
         title={editingProject ? 'עריכת פרויקט' : 'פרויקט חדש'}
         subtitle={editingProject ? 'עדכון פרטי פרויקט' : 'יצירת בניין חדש'}
         isMobile={isMobile}
+        footer={
+          <div style={styles.drawerFooterActions}>
+            <Button variant="secondary" onClick={closeDrawer}>
+              ביטול
+            </Button>
+            <Button variant="primary" onClick={saveProject} loading={saving}>
+              {editingProject ? 'שמירה' : 'יצירה'}
+            </Button>
+          </div>
+        }
       >
         <div style={styles.drawerContent}>
           <div style={styles.formGroup}>
@@ -776,15 +786,6 @@ export default function ProjectsPage() {
               />
               <span>פעיל</span>
             </label>
-          </div>
-
-          <div style={styles.drawerActions}>
-            <Button variant="secondary" onClick={closeDrawer}>
-              ביטול
-            </Button>
-            <Button variant="primary" onClick={saveProject} loading={saving}>
-              {editingProject ? 'שמירה' : 'יצירה'}
-            </Button>
           </div>
 
           {editingProject && (
@@ -1090,6 +1091,11 @@ const styles: Record<string, CSSProperties> = {
     paddingTop: '16px',
     borderTop: `1px solid ${theme.colors.border}`,
     marginTop: '8px',
+  },
+  drawerFooterActions: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
   },
   dangerZone: {
     paddingTop: '20px',

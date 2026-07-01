@@ -1830,6 +1830,7 @@ export function Drawer({
   title,
   subtitle,
   children,
+  footer,
   isMobile,
 }: {
   open: boolean
@@ -1837,6 +1838,8 @@ export function Drawer({
   title: string
   subtitle?: string
   children: ReactNode
+  /** Sticky action bar — stays visible above mobile bottom nav while form body scrolls. */
+  footer?: ReactNode
   isMobile?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -1848,13 +1851,27 @@ export function Drawer({
   const mobile = !!isMobile
   const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible
   const panelStyle: CSSProperties = mobile
-    ? drawerStyles.panelMobile
+    ? {
+        ...drawerStyles.panelMobile,
+        ...(bottomNavVisible
+          ? {
+              bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
+              maxHeight: `min(calc(92dvh - ${MOBILE_BOTTOM_NAV_CLEARANCE}), calc(100svh - ${MOBILE_BOTTOM_NAV_CLEARANCE}))`,
+            }
+          : {}),
+      }
     : { ...drawerStyles.panelSide, width: '480px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
-    paddingBottom: bottomNavVisible
-      ? `calc(24px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`
-      : 'calc(24px + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: footer
+      ? '24px'
+      : bottomNavVisible
+        ? `calc(24px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`
+        : 'calc(24px + env(safe-area-inset-bottom, 0px))',
+  }
+  const footerStyle: CSSProperties = {
+    ...drawerStyles.footer,
+    paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
   }
 
   return (
@@ -1889,6 +1906,7 @@ export function Drawer({
           </button>
         </div>
         <div style={contentStyle}>{children}</div>
+        {footer ? <div style={footerStyle}>{footer}</div> : null}
       </div>
     </>
   )
@@ -1974,6 +1992,12 @@ const drawerStyles: Record<string, CSSProperties> = {
     overscrollBehavior: 'contain',
     padding: '24px',
     touchAction: 'manipulation',
+  },
+  footer: {
+    flexShrink: 0,
+    padding: '16px 24px',
+    borderTop: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
   },
 }
 
