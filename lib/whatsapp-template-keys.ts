@@ -1,3 +1,5 @@
+import { joinTrilingualTemplate } from '@/lib/whatsapp-bilingual-template'
+
 export const WHATSAPP_TEMPLATE_KEYS = [
   // ── קיים (5) ──────────────────────────────────────────────────────
   'welcome',            // הנחיות כלליות
@@ -283,89 +285,193 @@ export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
     'שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\nאם יש בעיה נוספת, ניתן לפנות אלינו בכל עת.',
 }
 
-/** טקסט ברירת מחדל לטעינה ראשונית בעורך (כשאין שורה ב-DB) */
+/** טקסט ברירת מחדל לטעינה ראשונית בעורך (כשאין שורה ב-DB) — עברית | français | English */
 export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, string> = {
-  welcome:
+  welcome: joinTrilingualTemplate(
     'לדיווח תקלה: כתבו בטקסט את תיאור הבעיה, או סרקו את קוד ה־QR בבניין.\n' +
-    'אחרי שנפתחה פנייה – אפשר לשלוח גם תמונה או סרטון של התקלה.',
-  ticket_opened:
+      'אחרי שנפתחה פנייה – אפשר לשלוח גם תמונה או סרטון של התקלה.',
+    'Pour signaler un problème : décrivez-le par texte ou scannez le code QR du bâtiment.\n' +
+      'Après l\'ouverture d\'une demande, vous pouvez aussi envoyer une photo ou une vidéo.',
+    'To report an issue: describe it in text, or scan the building QR code.\n' +
+      'After a request is opened, you can also send a photo or video of the issue.'
+  ),
+  ticket_opened: joinTrilingualTemplate(
     'התקלה התקבלה בהצלחה.{{building_line}}\n' +
-    'מספר הפנייה שלך: {{ticket_number}}\n\n' +
-    'תיאור: {{description}}\n' +
-    'מדווח: {{reporter_name}}\n' +
-    'פרויקט: {{project_name}}\n\n' +
-    'אפשר גם לשלוח תמונה או סרטון של התקלה — זה יעזור לנו לטפל בה מהר יותר.\n\n' +
-    'נעדכן כשיהיה טיפול.\n' +
-    'לפתיחת תקלה נוספת: סרקו שוב את קוד ה־QR בבניין או כתבו רחוב ומספר בניין.',
-  ticket_closed:
+      'מספר הפנייה שלך: {{ticket_number}}\n\n' +
+      'תיאור: {{description}}\n' +
+      'מדווח: {{reporter_name}}\n' +
+      'פרויקט: {{project_name}}\n\n' +
+      'אפשר גם לשלוח תמונה או סרטון של התקלה — זה יעזור לנו לטפל בה מהר יותר.\n\n' +
+      'נעדכן כשיהיה טיפול.\n' +
+      'לפתיחת תקלה נוספת: סרקו שוב את קוד ה־QR בבניין או כתבו רחוב ומספר בניין.',
+    'Votre demande a bien été reçue.{{building_line}}\n' +
+      'Numéro de demande : {{ticket_number}}\n\n' +
+      'Description : {{description}}\n' +
+      'Signalé par : {{reporter_name}}\n' +
+      'Projet : {{project_name}}\n\n' +
+      'Vous pouvez aussi envoyer une photo ou une vidéo — cela nous aide à traiter plus vite.\n\n' +
+      'Nous vous tiendrons informés.\n' +
+      'Pour une nouvelle demande : scannez à nouveau le QR du bâtiment ou indiquez l\'adresse.',
+    'Your request was received successfully.{{building_line}}\n' +
+      'Your reference number: {{ticket_number}}\n\n' +
+      'Description: {{description}}\n' +
+      'Reported by: {{reporter_name}}\n' +
+      'Project: {{project_name}}\n\n' +
+      'You can also send a photo or video — it helps us resolve the issue faster.\n\n' +
+      'We will update you when there is progress.\n' +
+      'To open another request: scan the building QR code again or send the street address.'
+  ),
+  ticket_closed: joinTrilingualTemplate(
     '✅ שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\n' +
-    'אם יש בעיה נוספת, ניתן לפנות אלינו בכל עת 🙏',
+      'אם יש בעיה נוספת, ניתן לפנות אלינו בכל עת 🙏',
+    'Bonjour ! Le problème signalé dans {{project_name}} a été traité et clos.\n\n' +
+      'Pour tout autre problème, contactez-nous à tout moment.',
+    'Hello! The issue you reported in {{project_name}} has been resolved and closed.\n\n' +
+      'If you have another problem, you can contact us at any time.'
+  ),
   worker_assigned:
     'תקלה חדשה ב{{project_name}}\n' +
     'מספר: #{{ticket_number}}\n' +
     '{{description}}\n' +
     'מדווח: {{reporter_name}}',
-  error_general:
+  error_general: joinTrilingualTemplate(
     '⚠️ אירעה שגיאה. אנא נסו שוב או פנו למנהלת הבניין.',
+    'Une erreur s\'est produite. Veuillez réessayer ou contacter la gestionnaire du bâtiment.',
+    'An error occurred. Please try again or contact the building manager.'
+  ),
 
   // מיקום
-  location_attached:
+  location_attached: joinTrilingualTemplate(
     '📍 קיבלנו את המיקום וצירפנו אותו לתקלה.',
-  location_stashed:
+    'Nous avons reçu votre position et l\'avons ajoutée à la demande.',
+    'We received your location and attached it to the request.'
+  ),
+  location_stashed: joinTrilingualTemplate(
     '📍 קיבלנו את המיקום!\nכתבו עכשיו בקצרה את תיאור התקלה — נשלב את המיקום בפנייה.',
-  location_error:
+    'Nous avons reçu votre position !\nDécrivez brièvement le problème — nous l\'ajouterons à la demande.',
+    'We received your location!\nPlease briefly describe the issue — we will include the location in the request.'
+  ),
+  location_error: joinTrilingualTemplate(
     'לא הצלחנו לקרוא את פרטי המיקום — נסו שוב או שלחו כתובת בטקסט.',
+    'Impossible de lire la position. Réessayez ou envoyez l\'adresse par texte.',
+    'We could not read the location details. Please try again or send the address as text.'
+  ),
 
   // תמונה / סרטון (אותן תבניות לשני הסוגים)
-  image_attached:
+  image_attached: joinTrilingualTemplate(
     'הקובץ התקבל בהצלחה וצורף לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
-  image_failed:
+    'Le fichier a bien été reçu et ajouté à la demande. Notre équipe s\'en occupe rapidement.',
+    'The file was received and attached to the request. Our team will handle it soon.'
+  ),
+  image_failed: joinTrilingualTemplate(
     'לא הצלחנו להוסיף את הקובץ, אך התקלה שלך נשמרה.\n\nנעדכן כשיהיה טיפול.',
-  image_stashed:
+    'Nous n\'avons pas pu ajouter le fichier, mais votre demande est enregistrée.\n\nNous vous tiendrons informés.',
+    'We could not attach the file, but your request was saved.\n\nWe will update you when there is progress.'
+  ),
+  image_stashed: joinTrilingualTemplate(
     'קיבלנו את הקובץ!\n\nכדי לצרף אותו לתקלה, כתבו עכשיו בקצרה את תיאור התקלה בטקסט.',
+    'Nous avons reçu le fichier !\n\nPour l\'ajouter à la demande, décrivez brièvement le problème par texte.',
+    'We received the file!\n\nTo attach it to the request, please briefly describe the issue in text.'
+  ),
 
   // לא בשימוש — סרטון משתמש באותן תבניות image_*
-  video_attached:
+  video_attached: joinTrilingualTemplate(
     'הקובץ התקבל בהצלחה וצורף לתקלה. צוות הטכנאים יטפל בבקשתך בהקדם.',
-  video_failed:
+    'Le fichier a bien été reçu et ajouté à la demande. Notre équipe s\'en occupe rapidement.',
+    'The file was received and attached to the request. Our team will handle it soon.'
+  ),
+  video_failed: joinTrilingualTemplate(
     'לא הצלחנו להוסיף את הקובץ, אך התקלה שלך נשמרה.\n\nנעדכן כשיהיה טיפול.',
-  video_stashed:
+    'Nous n\'avons pas pu ajouter le fichier, mais votre demande est enregistrée.\n\nNous vous tiendrons informés.',
+    'We could not attach the file, but your request was saved.\n\nWe will update you when there is progress.'
+  ),
+  video_stashed: joinTrilingualTemplate(
     'קיבלנו את הקובץ!\n\nכדי לצרף אותו לתקלה, כתבו עכשיו בקצרה את תיאור התקלה בטקסט.',
+    'Nous avons reçu le fichier !\n\nPour l\'ajouter à la demande, décrivez brièvement le problème par texte.',
+    'We received the file!\n\nTo attach it to the request, please briefly describe the issue in text.'
+  ),
 
   // סוגים לא נתמכים
-  redirect_to_text:
+  redirect_to_text: joinTrilingualTemplate(
     'לדיווח תקלה שלחו הודעת טקסט 📝',
-  unsupported_message:
+    'Pour signaler un problème, envoyez un message texte.',
+    'To report an issue, please send a text message.'
+  ),
+  unsupported_message: joinTrilingualTemplate(
     'לא הצלחנו לקרוא את ההודעה — נסו שוב בטקסט.',
+    'Nous n\'avons pas pu lire le message — réessayez en texte.',
+    'We could not read the message — please try again with text.'
+  ),
 
   // QR / חיפוש בניין
-  qr_invalid:
+  qr_invalid: joinTrilingualTemplate(
     'פורמט קוד ה-QR לא תקין. אנא סרקו שוב את הקוד או פנו למנהלת הבניין.',
-  project_not_found:
+    'Code QR invalide. Veuillez scanner à nouveau ou contacter la gestionnaire du bâtiment.',
+    'Invalid QR code format. Please scan again or contact the building manager.'
+  ),
+  project_not_found: joinTrilingualTemplate(
     '❌ לא הצלחנו לזהות את הפרויקט.\n\nנסו שוב:\n1️⃣ סרקו את QR מחדש\n2️⃣ או כתבו את כתובת הבניין (רחוב ומספר)\n3️⃣ או צרו קשר למנהלת הבניין',
-  building_not_found:
+    'Nous n\'avons pas pu identifier le projet.\n\nRéessayez :\n1. Scannez le QR à nouveau\n2. Ou indiquez l\'adresse du bâtiment\n3. Ou contactez la gestionnaire',
+    'We could not identify the project.\n\nTry again:\n1. Scan the QR code again\n2. Or send the building address\n3. Or contact the building manager'
+  ),
+  building_not_found: joinTrilingualTemplate(
     'לא הצלחנו לזהות את הבניין.\n\n📍 כדי שנוכל לאתר אותו, כתבו את כתובת הבניין (רחוב ומספר)\n\nאו:\n1. סרקו את קוד ה-QR בבניין\n2. פנו למנהלת הבניין לקבלת קוד הגישה',
-  building_multiple_matches:
+    'Nous n\'avons pas pu identifier le bâtiment.\n\nIndiquez l\'adresse (rue et numéro)\n\nOu :\n1. Scannez le QR dans le bâtiment\n2. Contactez la gestionnaire pour un code d\'accès',
+    'We could not identify the building.\n\nPlease send the address (street and number)\n\nOr:\n1. Scan the QR code in the building\n2. Contact the building manager for an access code'
+  ),
+  building_multiple_matches: joinTrilingualTemplate(
     'מצאנו כמה בניינים תואמים:\n\n{{list}}\n📌 להמשך, השיבו רק עם מספר האפשרות: 1, 2 או 3',
-  technical_error:
+    'Plusieurs bâtiments correspondent :\n\n{{list}}\nRépondez uniquement avec le numéro : 1, 2 ou 3',
+    'We found several matching buildings:\n\n{{list}}\nPlease reply with the option number: 1, 2, or 3'
+  ),
+  technical_error: joinTrilingualTemplate(
     'תקלה טכנית. אנא סרקו את קוד ה-QR בבניין או פנו למנהלת הבניין.',
-  selection_invalid:
+    'Erreur technique. Scannez le QR du bâtiment ou contactez la gestionnaire.',
+    'Technical error. Please scan the building QR code or contact the building manager.'
+  ),
+  selection_invalid: joinTrilingualTemplate(
     'אנא השיבו רק עם מספר האפשרות המתאים: 1, 2 או 3.',
+    'Veuillez répondre uniquement avec le numéro : 1, 2 ou 3.',
+    'Please reply only with the matching option number: 1, 2, or 3.'
+  ),
 
   // זרימת תקלה
-  session_created:
+  session_created: joinTrilingualTemplate(
     'ברוכים הבאים! כתבו בקצרה את הבעיה ב{{project_name}}{{building_line}} 📝',
-  resident_prompt:
+    'Bienvenue ! Décrivez brièvement le problème à {{project_name}}{{building_line}}',
+    'Welcome! Please briefly describe the issue at {{project_name}}{{building_line}}'
+  ),
+  resident_prompt: joinTrilingualTemplate(
     '{{reporter_name}}מה הבעיה? כתבו בקצרה את תיאור התקלה 📝',
-  duplicate_ticket:
+    '{{reporter_name}}Quel est le problème ? Décrivez brièvement la demande.',
+    '{{reporter_name}}What is the issue? Please briefly describe the problem.'
+  ),
+  duplicate_ticket: joinTrilingualTemplate(
     'קיבלנו כבר את הדיווח שלך, מספר תקלה: {{ticket_number}}. נעדכן אותך בהתקדמות.',
-  no_open_tickets:
+    'Nous avons déjà reçu votre signalement, demande n° {{ticket_number}}. Nous vous tiendrons informés.',
+    'We already received your report, request #{{ticket_number}}. We will keep you updated.'
+  ),
+  no_open_tickets: joinTrilingualTemplate(
     'לא מצאנו תקלה פתוחה המקושרת למספר שלך במערכת. לפתיחת פנייה כתבו את הבניין או סרקו את קוד ה־QR.',
-  ticket_status_list:
+    'Aucune demande ouverte pour votre numéro. Pour en ouvrir une, indiquez le bâtiment ou scannez le QR.',
+    'No open request is linked to your number. To open one, send the building name or scan the QR code.'
+  ),
+  ticket_status_list: joinTrilingualTemplate(
     'התקלות הפתוחות שלך:\n\n{{list}}',
-  sla_escalation_resident:
+    'Vos demandes ouvertes :\n\n{{list}}',
+    'Your open requests:\n\n{{list}}'
+  ),
+  sla_escalation_resident: joinTrilingualTemplate(
     'שלום, הפנייה שלך #{{ticket_number}} בנושא "{{description}}" עדיין בטיפול.\n' +
-    'אנחנו מטפלים בה. תודה על הסבלנות.',
-  pending_approval_note:
+      'אנחנו מטפלים בה. תודה על הסבלנות.',
+    'Bonjour, votre demande #{{ticket_number}} concernant « {{description}} » est toujours en cours.\n' +
+      'Nous nous en occupons. Merci de votre patience.',
+    'Hello, your request #{{ticket_number}} about "{{description}}" is still being handled.\n' +
+      'We are working on it. Thank you for your patience.'
+  ),
+  pending_approval_note: joinTrilingualTemplate(
     '\n\nℹ️ מספר הטלפון שלכם עדיין לא מופיע ברשימת הדיירים של הבניין — הבקשה נשמרה לאישור המנהלת. אחרי האישור תופיעו ברשימה.',
+    '\n\nVotre numéro n\'est pas encore sur la liste des résidents — la demande est en attente d\'approbation de la gestionnaire.',
+    '\n\nYour phone number is not yet on the residents list — the request is saved pending manager approval.'
+  ),
 }

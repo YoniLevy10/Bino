@@ -44,6 +44,7 @@ import type { SummaryTicketRow } from '@/lib/summary-tickets'
 import { PageListSkeleton } from '../components/page-skeleton'
 
 const CACHE_KEY = 'bamakor_summary_meta_v1'
+const KPI_CACHE_KEY = 'bamakor_summary_kpi_v1'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const SUMMARY_FETCH_TIMEOUT_MS = 30_000
 
@@ -68,6 +69,38 @@ function readSummaryMetaCache(clientId: string): SummaryMetaCache | null {
 function writeSummaryMetaCache(clientId: string, data: Omit<SummaryMetaCache, 'savedAt'>) {
   try {
     localStorage.setItem(`${CACHE_KEY}_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
+  } catch {}
+}
+
+type SummaryKpiCache = {
+  openNow: number
+  assignedNow: number
+  ticketsInRange: TicketRow[]
+  savedAt: number
+}
+
+function summaryKpiStorageKey(clientId: string, from: string, to: string) {
+  return `${KPI_CACHE_KEY}_${clientId}_${from}_${to}`
+}
+
+function readSummaryKpiCache(clientId: string, from: string, to: string): SummaryKpiCache | null {
+  try {
+    const raw = localStorage.getItem(summaryKpiStorageKey(clientId, from, to))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SummaryKpiCache
+    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeSummaryKpiCache(clientId: string, from: string, to: string, data: Omit<SummaryKpiCache, 'savedAt'>) {
+  try {
+    localStorage.setItem(
+      summaryKpiStorageKey(clientId, from, to),
+      JSON.stringify({ ...data, savedAt: Date.now() })
+    )
   } catch {}
 }
 
@@ -160,7 +193,7 @@ export default function SummaryPage() {
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
-  const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('month')
+  const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -230,12 +263,29 @@ export default function SummaryPage() {
       if (!silent) setSummaryLoading(false)
       return
     }
-    if (!silent) setSummaryLoading(true)
+    let showedCachedKpi = false
+    if (!silent) {
+      const clientId = await resolveBamakorClientIdForBrowser()
+      const fromIso = range.from.toISOString()
+      const toIso = range.toExclusive.toISOString()
+      const cachedKpi = shouldSkipStalePageCache()
+        ? null
+        : readSummaryKpiCache(clientId, fromIso, toIso)
+      if (cachedKpi) {
+        setOpenNow(cachedKpi.openNow)
+        setAssignedNow(cachedKpi.assignedNow)
+        setSummaryTickets(cachedKpi.ticketsInRange)
+        setSummaryLoading(false)
+        showedCachedKpi = true
+      } else {
+        setSummaryLoading(true)
+      }
+    }
     try {
-      const params = new URLSearchParams({
-        from: range.from.toISOString(),
-        to: range.toExclusive.toISOString(),
-      })
+      const clientId = await resolveBamakorClientIdForBrowser()
+      const fromIso = range.from.toISOString()
+      const toIso = range.toExclusive.toISOString()
+      const params = new URLSearchParams({ from: fromIso, to: toIso })
       const res = await fetchWithTimeout(
         `/api/summary/kpi?${params}`,
         { credentials: 'include' },
@@ -250,6 +300,11 @@ export default function SummaryPage() {
       setOpenNow(data.openNow)
       setAssignedNow(data.assignedNow)
       setSummaryTickets(data.ticketsInRange)
+      writeSummaryKpiCache(clientId, fromIso, toIso, {
+        openNow: data.openNow,
+        assignedNow: data.assignedNow,
+        ticketsInRange: data.ticketsInRange,
+      })
     } catch (err) {
       console.error('Failed to load summary KPIs:', err)
       if (!silent) toast.error('טעינת הסיכום נכשלה — נסה שוב')
@@ -324,8 +379,8 @@ export default function SummaryPage() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [loadMeta, loadSummary, loadHistory, pageTab])
 
-  const loading =
-    metaLoading || (pageTab === 'summary' ? summaryLoading : historyLoading)
+  const showSummarySkeleton = pageTab === 'summary' && summaryLoading && summaryTickets.length === 0
+  const showHistorySkeleton = pageTab === 'history' && historyLoading && !historyLoaded
 
   const activeTabPeriod = pageTab === 'summary' ? period : historyPeriod
   const activeRange = useMemo(
@@ -372,7 +427,10 @@ export default function SummaryPage() {
         (ticket.reporter_name || '').toLowerCase().includes(q)
 
       const matchesProject =
-        historyProjectFilter === 'ALL' || ticket.project_code === historyProjectFilter
+        historyProjectFilter === 'ALL' ||
+        ticket.project_code === historyProjectFilter ||
+        ticket.project_name === historyProjectFilter ||
+        ticket.project_id === historyProjectFilter
 
       return matchesSearch && matchesProject
     })
@@ -849,7 +907,7 @@ export default function SummaryPage() {
           </Card>
         )}
 
-        {loading ? (
+        {showSummarySkeleton || showHistorySkeleton ? (
           <div style={styles.loadingContainer}>
             <PageListSkeleton rows={isMobile ? 6 : 8} />
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
@@ -909,7 +967,11 @@ export default function SummaryPage() {
 
             {historyRange && (
               <p style={styles.historyRangeHint}>
-                טווח: {historyRange.label} · {filteredHistoryTickets.length} תקלות סגורות
+                טווח: {historyRange.label}
+                {historyPeriod !== 'all' ? ' (מסנן פעיל — בחרו "כל הזמנים" לצפייה מלאה)' : ''}
+                {' · '}
+                {filteredHistoryTickets.length} תקלות סגורות
+                {historyProjectFilter !== 'ALL' ? ` · פרויקט: ${historyProjectFilter}` : ''}
               </p>
             )}
 

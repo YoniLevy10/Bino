@@ -34,6 +34,7 @@ function metaErrorHint(code: number | undefined): string {
 
 /**
  * Send to a resident: free text inside Meta's 24h window; Utility template outside it (with fallback).
+ * When `preferTemplate` is true — template first always; free text only as fallback inside 24h session.
  */
 export async function sendResidentTextOrTemplate(
   admin: SupabaseClient,
@@ -49,6 +50,8 @@ export async function sendResidentTextOrTemplate(
     persistOutbound?: boolean
     messageTypeForPersist?: string
     ticketId?: string | null
+    /** Always try Meta template first; free text only as fallback inside 24h session. */
+    preferTemplate?: boolean
   }
 ): Promise<ResidentOutboundResult> {
   const to = normalizePhone(opts.phone.trim())
@@ -115,6 +118,20 @@ export async function sendResidentTextOrTemplate(
       return { sent: true, mode: 'template' }
     }
     return { sent: false, errorMessage: metaErrorHint(132001), metaErrorCode: 132001 }
+  }
+
+  if (opts.preferTemplate) {
+    const templ = await tryTemplate()
+    if (templ.sent) return templ
+    if (inSession) {
+      const text = await tryText()
+      if (text.sent) return text
+    }
+    return {
+      sent: false,
+      errorMessage: templ.errorMessage ?? 'WhatsApp send failed (template and text)',
+      metaErrorCode: templ.metaErrorCode,
+    }
   }
 
   if (inSession) {

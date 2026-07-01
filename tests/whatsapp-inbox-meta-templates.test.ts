@@ -20,7 +20,7 @@ describe('whatsapp inbox meta templates', () => {
     const preview = buildInboxTemplatePreview(tpl, ['יוני', 'נגיע מחר ב-9'])
     expect(preview).toContain('שלום יוני')
     expect(preview).toContain('נגיע מחר ב-9')
-    expect(preview).toContain('משרד')
+    expect(preview).not.toContain('משרד')
   })
 
   it('residentFirstNameForTemplate skips placeholder name', () => {

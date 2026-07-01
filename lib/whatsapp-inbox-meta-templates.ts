@@ -27,11 +27,10 @@ export const WHATSAPP_INBOX_META_TEMPLATES: InboxMetaTemplate[] = [
   {
     id: 'manager_reply',
     label: 'הודעה מהמשרד',
-    description: 'שיחה חופשית דרך תבנית Meta — כשחלון 24 שעות סגור.',
+    description: 'תשובה לדייר דרך תבנית Meta — תוכן ההודעה ב-{{2}}, עובד גם מחוץ ל-24 שעות.',
     language: 'he',
     resolveMetaName: metaTemplateNameManagerReply,
-    preview:
-      'שלום {{שם}},\n\nהודעה ממשרד האחזקה:\n{{הודעה}}\n\nניתן להשיב להודעה זו.',
+    preview: 'שלום {{שם}},\n\n{{הודעה}}',
     params: [
       {
         key: 'resident_name',
@@ -97,7 +96,7 @@ export function buildInboxTemplatePreview(template: InboxMetaTemplate, paramValu
   if (template.id === 'manager_reply') {
     const name = paramValues[0]?.trim() || 'דייר/ה'
     const body = paramValues[1]?.trim() || '[הודעה]'
-    return `שלום ${name},\n\nהודעה ממשרד האחזקה:\n${body}\n\nניתן להשיב להודעה זו.`
+    return `שלום ${name},\n\n${body}`
   }
   if (template.id === 'ticket_closed') {
     const building = paramValues[0]?.trim() || '[שם בניין]'

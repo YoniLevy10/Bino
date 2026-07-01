@@ -36,6 +36,7 @@ import {
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
 import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGate'
 import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
@@ -87,6 +88,34 @@ const emptyForm: ProjectForm = {
   assigned_worker_id: '',
 }
 
+const PROJECTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const PROJECTS_LIST_SELECT =
+  'id, name, project_code, address, address_en, qr_identifier, is_active, created_at, client_id, assigned_worker_id'
+
+type ProjectsCache = {
+  projects: ProjectRow[]
+  workers: WorkerRow[]
+  savedAt: number
+}
+
+function readProjectsCache(clientId: string): ProjectsCache | null {
+  try {
+    const raw = localStorage.getItem(`bamakor_projects_v1_${clientId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as ProjectsCache
+    if (Date.now() - parsed.savedAt > PROJECTS_CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeProjectsCache(clientId: string, data: Omit<ProjectsCache, 'savedAt'>) {
+  try {
+    localStorage.setItem(`bamakor_projects_v1_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
+  } catch {}
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
@@ -120,12 +149,18 @@ export default function ProjectsPage() {
     if (!activeClientId) return
     const { data, error } = await supabase
       .from('projects')
-      .select('*')
+      .select(PROJECTS_LIST_SELECT)
       .eq('client_id', activeClientId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    setProjects((data as ProjectRow[]) || [])
+    const nextProjects = (data as ProjectRow[]) || []
+    setProjects(nextProjects)
+    const cached = readProjectsCache(activeClientId)
+    writeProjectsCache(activeClientId, {
+      projects: nextProjects,
+      workers: cached?.workers ?? workers,
+    })
   }
 
   async function loadWorkers(nextClientId?: string) {
@@ -162,10 +197,17 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     const initialize = async () => {
-      setLoading(true)
+      const fetchedClientId = await loadClientId()
+      const cached = shouldSkipStalePageCache() ? null : readProjectsCache(fetchedClientId)
+      if (cached) {
+        setWorkers(cached.workers)
+        setProjects(cached.projects)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
       await asyncHandler(
         async () => {
-          const fetchedClientId = await loadClientId()
           const [workersResult, projectsResult] = await Promise.all([
             supabase
               .from('workers')
@@ -175,17 +217,20 @@ export default function ProjectsPage() {
               .order('full_name', { ascending: true }),
             supabase
               .from('projects')
-              .select('*')
+              .select(PROJECTS_LIST_SELECT)
               .eq('client_id', fetchedClientId)
               .order('created_at', { ascending: false }),
           ])
           if (workersResult.error) throw workersResult.error
           if (projectsResult.error) throw projectsResult.error
-          setWorkers((workersResult.data as WorkerRow[]) || [])
-          setProjects((projectsResult.data as ProjectRow[]) || [])
+          const nextWorkers = (workersResult.data as WorkerRow[]) || []
+          const nextProjects = (projectsResult.data as ProjectRow[]) || []
+          setWorkers(nextWorkers)
+          setProjects(nextProjects)
+          writeProjectsCache(fetchedClientId, { projects: nextProjects, workers: nextWorkers })
           return true
         },
-        { context: 'טעינת פרויקטים', showErrorToast: true }
+        { context: 'טעינת פרויקטים', showErrorToast: !cached }
       )
       setLoading(false)
     }

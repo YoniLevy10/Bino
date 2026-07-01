@@ -23,9 +23,9 @@ import { interpolateWhatsAppTemplate, interpolateSmsTemplate } from '@/lib/whats
 import { whatsAppTemplatePreviewVars } from '@/lib/whatsapp-template-preview'
 import { ResidentWhatsAppFlowGuide } from '../../components/settings/ResidentWhatsAppFlowGuide'
 import {
-  splitBilingualTemplate,
-  joinBilingualTemplate,
-  type BilingualTemplateParts,
+  splitTrilingualTemplate,
+  joinTrilingualTemplate,
+  type TrilingualTemplateParts,
 } from '@/lib/whatsapp-bilingual-template'
 import { toast } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -54,12 +54,12 @@ const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string
 
 const STEP_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#0d9488', '#0891b2', '#dc2626']
 
-function buildWaBilingualFromDrafts(
+function buildWaTrilingualFromDrafts(
   drafts: Record<WhatsAppTemplateKey, string>
-): Record<WhatsAppTemplateKey, BilingualTemplateParts> {
-  const out = {} as Record<WhatsAppTemplateKey, BilingualTemplateParts>
+): Record<WhatsAppTemplateKey, TrilingualTemplateParts> {
+  const out = {} as Record<WhatsAppTemplateKey, TrilingualTemplateParts>
   for (const k of WHATSAPP_TEMPLATE_KEYS) {
-    out[k] = splitBilingualTemplate(drafts[k] || '')
+    out[k] = splitTrilingualTemplate(drafts[k] || '')
   }
   return out
 }
@@ -90,8 +90,8 @@ export default function WhatsappTemplatesPage() {
   const [drafts, setDrafts] = useState<Record<WhatsAppTemplateKey, string>>(() => ({
     ...WHATSAPP_TEMPLATE_EDITOR_DEFAULTS,
   }))
-  const [waBilingual, setWaBilingual] = useState<Record<WhatsAppTemplateKey, BilingualTemplateParts>>(() =>
-    buildWaBilingualFromDrafts(WHATSAPP_TEMPLATE_EDITOR_DEFAULTS)
+  const [waTrilingual, setWaTrilingual] = useState<Record<WhatsAppTemplateKey, TrilingualTemplateParts>>(() =>
+    buildWaTrilingualFromDrafts(WHATSAPP_TEMPLATE_EDITOR_DEFAULTS)
   )
   const [smsDrafts, setSmsDrafts] = useState<Record<SmsTemplateKey, string>>(() => ({
     ...SMS_TEMPLATE_EDITOR_DEFAULTS,
@@ -105,12 +105,17 @@ export default function WhatsappTemplatesPage() {
   const [extraExpandedKeys, setExtraExpandedKeys] = useState<Set<string>>(new Set())
   const [extraSavingKey, setExtraSavingKey] = useState<string | null>(null)
   const waHeRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
+  const waFrRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
   const waEnRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
-  const waFocusRef = useRef<Partial<Record<WhatsAppTemplateKey, 'he' | 'en'>>>({})
+  const waFocusRef = useRef<Partial<Record<WhatsAppTemplateKey, 'he' | 'fr' | 'en'>>>({})
   const smsTextareaRefs = useRef<Partial<Record<SmsTemplateKey, HTMLTextAreaElement | null>>>({})
 
   const setWaHeRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
     waHeRefs.current[key] = el
+  }, [])
+
+  const setWaFrRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
+    waFrRefs.current[key] = el
   }, [])
 
   const setWaEnRef = useCallback((key: WhatsAppTemplateKey) => (el: HTMLTextAreaElement | null) => {
@@ -157,7 +162,7 @@ export default function WhatsappTemplatesPage() {
         }
         if (!cancelled) {
           setDrafts(next)
-          setWaBilingual(buildWaBilingualFromDrafts(next))
+          setWaTrilingual(buildWaTrilingualFromDrafts(next))
           setSmsDrafts(smsNext)
           setExtraDrafts(extras)
         }
@@ -246,22 +251,23 @@ export default function WhatsappTemplatesPage() {
   }
 
   const previewPairs = useMemo(() => {
-    const m = {} as Record<WhatsAppTemplateKey, BilingualTemplateParts>
+    const m = {} as Record<WhatsAppTemplateKey, TrilingualTemplateParts>
     for (const k of WHATSAPP_TEMPLATE_KEYS) {
       const vars = whatsAppTemplatePreviewVars(k)
-      const { he, en } = splitBilingualTemplate(drafts[k] || '')
+      const { he, fr, en } = splitTrilingualTemplate(drafts[k] || '')
       m[k] = {
         he: interpolateWhatsAppTemplate(he, vars),
+        fr: fr ? interpolateWhatsAppTemplate(fr, vars) : '',
         en: en ? interpolateWhatsAppTemplate(en, vars) : '',
       }
     }
     return m
   }, [drafts])
 
-  function updateWaBilingual(key: WhatsAppTemplateKey, part: 'he' | 'en', value: string) {
-    setWaBilingual((prev) => {
+  function updateWaTrilingual(key: WhatsAppTemplateKey, part: 'he' | 'fr' | 'en', value: string) {
+    setWaTrilingual((prev) => {
       const pair = { ...prev[key], [part]: value }
-      const combined = joinBilingualTemplate(pair.he, pair.en)
+      const combined = joinTrilingualTemplate(pair.he, pair.fr, pair.en)
       setDrafts((d) => ({ ...d, [key]: combined }))
       return { ...prev, [key]: pair }
     })
@@ -304,14 +310,15 @@ export default function WhatsappTemplatesPage() {
 
   function chip(token: string, key: WhatsAppTemplateKey) {
     const part = waFocusRef.current[key] ?? 'he'
-    const ref = part === 'he' ? waHeRefs.current[key] : waEnRefs.current[key]
-    const current = waBilingual[key]?.[part] ?? ''
+    const ref =
+      part === 'he' ? waHeRefs.current[key] : part === 'fr' ? waFrRefs.current[key] : waEnRefs.current[key]
+    const current = waTrilingual[key]?.[part] ?? ''
     return (
       <button
         key={token + key}
         type="button"
         onClick={() =>
-          insertVarAtCursor(ref ?? null, current, token, (next) => updateWaBilingual(key, part, next))
+          insertVarAtCursor(ref ?? null, current, token, (next) => updateWaTrilingual(key, part, next))
         }
         style={styles.chip}
       >
@@ -351,7 +358,7 @@ export default function WhatsappTemplatesPage() {
 
         <p style={styles.editHint}>
           כל הודעת WhatsApp/SMS שנשלחת מהמערכת מופיעה כאן. אחרי שמירה — הטקסט השמור הוא מה שנשלח לדיירים.
-          בתבניות WhatsApp: עברית ואנגלית בשדות נפרדים — בוואטסאפ נשלחות כהודעה אחת (עברית ואז אנגלית).
+          בתבניות WhatsApp: עברית, צרפתית ואנגלית בשדות נפרדים — בוואטסאפ נשלחות כהודעה אחת (עברית, אחר כך צרפתית, אחר כך אנגלית).
           תבניות ישנות מהמסד שלא ברשימה הסטנדרטית מוצגות בסוף העמוד.
         </p>
 
@@ -484,6 +491,14 @@ export default function WhatsappTemplatesPage() {
                               <p style={styles.waText}>{previewPairs[key].he}</p>
                               <span style={styles.waTime}>14:02</span>
                             </div>
+                            {previewPairs[key].fr ? (
+                              <div style={{ ...styles.waBubble, marginTop: 8 }}>
+                                <p style={{ ...styles.waText, direction: 'ltr', textAlign: 'left' }}>
+                                  {previewPairs[key].fr}
+                                </p>
+                                <span style={styles.waTime}>14:02</span>
+                              </div>
+                            ) : null}
                             {previewPairs[key].en ? (
                               <div style={{ ...styles.waBubble, marginTop: 8 }}>
                                 <p style={{ ...styles.waText, direction: 'ltr', textAlign: 'left' }}>
@@ -513,23 +528,36 @@ export default function WhatsappTemplatesPage() {
                               <textarea
                                 ref={setWaHeRef(key)}
                                 dir="rtl"
-                                value={waBilingual[key]?.he ?? ''}
+                                value={waTrilingual[key]?.he ?? ''}
                                 onFocus={() => { waFocusRef.current[key] = 'he' }}
-                                onChange={(e) => updateWaBilingual(key, 'he', e.target.value)}
+                                onChange={(e) => updateWaTrilingual(key, 'he', e.target.value)}
                                 rows={5}
                                 style={styles.textarea}
                               />
                             </div>
                             <div style={styles.bilingualBlock}>
-                              <label style={styles.langLabelEn}>English (optional)</label>
+                              <label style={styles.langLabelEn}>Français</label>
+                              <textarea
+                                ref={setWaFrRef(key)}
+                                dir="ltr"
+                                value={waTrilingual[key]?.fr ?? ''}
+                                onFocus={() => { waFocusRef.current[key] = 'fr' }}
+                                onChange={(e) => updateWaTrilingual(key, 'fr', e.target.value)}
+                                rows={4}
+                                placeholder="Envoyé après l'hébreu dans le même message WhatsApp"
+                                style={{ ...styles.textarea, direction: 'ltr', textAlign: 'left' }}
+                              />
+                            </div>
+                            <div style={styles.bilingualBlock}>
+                              <label style={styles.langLabelEn}>English</label>
                               <textarea
                                 ref={setWaEnRef(key)}
                                 dir="ltr"
-                                value={waBilingual[key]?.en ?? ''}
+                                value={waTrilingual[key]?.en ?? ''}
                                 onFocus={() => { waFocusRef.current[key] = 'en' }}
-                                onChange={(e) => updateWaBilingual(key, 'en', e.target.value)}
+                                onChange={(e) => updateWaTrilingual(key, 'en', e.target.value)}
                                 rows={4}
-                                placeholder="Sent below the Hebrew text in the same WhatsApp message"
+                                placeholder="Sent after French in the same WhatsApp message"
                                 style={{ ...styles.textarea, direction: 'ltr', textAlign: 'left' }}
                               />
                             </div>

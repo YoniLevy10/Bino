@@ -4,7 +4,6 @@ import { fetchAllRows } from '@/lib/supabase/fetch-all-rows'
 import {
   SUMMARY_TICKET_SELECT,
   formatSummaryTicket,
-  ticketRangeOrFilter,
   type RawSummaryTicketRow,
 } from '@/lib/summary-tickets'
 
@@ -30,7 +29,6 @@ export async function GET(req: NextRequest) {
   }
 
   const { admin, clientId } = auth.ctx
-  const rangeFilter = ticketRangeOrFilter(from, to)
 
   try {
     const rows = await fetchAllRows<RawSummaryTicketRow>((fromIdx, toIdx) =>
@@ -41,7 +39,8 @@ export async function GET(req: NextRequest) {
         .is('deleted_at', null)
         .eq('status', 'CLOSED')
         .not('closed_at', 'is', null)
-        .or(rangeFilter)
+        .gte('closed_at', from)
+        .lt('closed_at', to)
         .order('closed_at', { ascending: false })
         .range(fromIdx, toIdx)
     )

@@ -37,13 +37,13 @@ export async function GET(req: NextRequest) {
     const [openRes, treatmentRes, rangeRows] = await Promise.all([
       admin
         .from('tickets')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('client_id', clientId)
         .is('deleted_at', null)
         .eq('status', 'NEW'),
       admin
         .from('tickets')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('client_id', clientId)
         .is('deleted_at', null)
         .in('status', [...TICKET_STATUSES_IN_TREATMENT]),

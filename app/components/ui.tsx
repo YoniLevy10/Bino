@@ -24,6 +24,7 @@ import { isNavItemActive, TENANT_NAV_HREFS } from '@/lib/sidebar-nav'
 import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
+import { navLinkPrefetchHandlers } from '@/lib/route-prefetch'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -292,6 +293,7 @@ function NavSignOutButton({ onAfterSignOut }: { onAfterSignOut?: () => void }) {
 
 export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   const pathname = usePathname()
+  const router = useRouter()
   const { navItems } = useSidebarNav()
   const { displayName, logoUrl } = useClientBranding()
   const [mounted, setMounted] = useState(false)
@@ -357,6 +359,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
               <Link
                 key={item.id}
                 href={item.href}
+                {...navLinkPrefetchHandlers(item.href, router.prefetch)}
                 style={{
                   ...sidebarStyles.navLink,
                   ...(isActive ? sidebarStyles.navLinkActive : {}),
@@ -377,6 +380,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
         <div style={sidebarStyles.settingsNav}>
           <Link
             href="/settings"
+            {...navLinkPrefetchHandlers('/settings', router.prefetch)}
             style={{
               ...sidebarStyles.navLink,
               ...(pathname === '/settings' ? sidebarStyles.navLinkActive : {}),
@@ -608,6 +612,7 @@ export function MobileBottomNav({
   onMoreToggle?: () => void
 } = {}) {
   const { mobileBottomPrimary, mobileBottomMore } = useSidebarNav()
+  const router = useRouter()
   const [moreOpenLocal, setMoreOpenLocal] = useState(false)
   const moreOpen = moreOpenProp ?? moreOpenLocal
   const onMoreToggle = onMoreToggleProp ?? (() => setMoreOpenLocal((o) => !o))
@@ -640,6 +645,7 @@ export function MobileBottomNav({
                     key={item.id}
                     href={item.href}
                     onClick={onMoreToggle}
+                    {...navLinkPrefetchHandlers(item.href, router.prefetch)}
                     style={{
                       ...bottomNavMoreStyles.link,
                       ...(active ? bottomNavStyles.linkActive : {}),
@@ -664,6 +670,7 @@ export function MobileBottomNav({
               <Link
                 key={item.id}
                 href={item.href}
+                {...navLinkPrefetchHandlers(item.href, router.prefetch)}
                 style={{
                   ...bottomNavStyles.link,
                   ...(active ? bottomNavStyles.linkActive : {}),
@@ -1095,6 +1102,7 @@ export function MobileMenu({
   onClose: () => void
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { displayName, logoUrl } = useClientBranding()
   const { navItems } = useSidebarNav()
 
@@ -1143,6 +1151,7 @@ export function MobileMenu({
                   key={item.id}
                   href={item.href}
                   onClick={onClose}
+                  {...navLinkPrefetchHandlers(item.href, router.prefetch)}
                   style={{
                     ...mobileMenuStyles.navLink,
                     ...(isActive ? mobileMenuStyles.navLinkActive : {}),
@@ -1158,6 +1167,7 @@ export function MobileMenu({
             <Link
               href="/settings"
               onClick={onClose}
+              {...navLinkPrefetchHandlers('/settings', router.prefetch)}
               style={{
                 ...mobileMenuStyles.navLink,
                 ...(pathname === '/settings' ? mobileMenuStyles.navLinkActive : {}),

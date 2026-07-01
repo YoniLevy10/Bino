@@ -14,7 +14,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
@@ -106,11 +106,13 @@ type TicketWithProjects = TicketRow & {
 
 const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v2'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+const REFRESH_DEBOUNCE_MS = 30_000
 
 type DashboardCache = {
   tickets: TicketRow[]
   projects: ProjectRow[]
   workersMap: Record<string, string>
+  closedCount: number
   residentsCount: number | null
   workersCount: number | null
   recentActivity: unknown[]
@@ -179,13 +181,109 @@ export default function DashboardPage() {
   }
 
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
+  const lastFetchAtRef = useRef(0)
+  const professionalsLoadedRef = useRef(false)
+  const cacheAuxRef = useRef({
+    residentsCount: null as number | null,
+    workersCount: null as number | null,
+    recentActivity: [] as ActivityItem[],
+  })
+
+  const loadProfessionals = useCallback(async () => {
+    if (professionalsLoadedRef.current) return
+    try {
+      const clientId = await resolveBamakorClientIdForBrowser()
+      const { data, error } = await withClientId(
+        supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
+        clientId
+      )
+        .is('deleted_at', null)
+        .order('full_name', { ascending: true })
+      if (!error) {
+        setProfessionals((data as ProfessionalOption[]) || [])
+        professionalsLoadedRef.current = true
+      }
+    } catch {
+      /* non-critical */
+    }
+  }, [])
+
+  const loadSecondaryData = useCallback(
+    async (ctx: {
+      tickets: TicketRow[]
+      projects: ProjectRow[]
+      workersMap: Record<string, string>
+      closedCount: number
+    }) => {
+      try {
+        const clientId = await resolveBamakorClientIdForBrowser()
+        const [logsResult, resCountResult, wCountResult] = await Promise.all([
+          supabase
+            .from('ticket_logs')
+            .select(
+              `
+              id, action_type, created_at,
+              tickets (
+                ticket_number,
+                description,
+                status,
+                projects (name, project_code)
+              )
+            `
+            )
+            .order('created_at', { ascending: false })
+            .limit(5),
+          withClientId(supabase.from('residents').select('id', { count: 'exact', head: true }), clientId).is(
+            'deleted_at',
+            null
+          ),
+          withClientId(supabase.from('workers').select('id', { count: 'exact', head: true }), clientId).is(
+            'deleted_at',
+            null
+          ),
+        ])
+
+        const resCount = resCountResult.count ?? null
+        const wCount = wCountResult.count ?? null
+        const fromLogs = buildActivityFromLogs(logsResult.data, logsResult.error)
+        const activity =
+          fromLogs.length > 0
+            ? fromLogs
+            : ctx.tickets.slice(0, 5).map((ticket) => ({
+                id: ticket.id,
+                type: (ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
+                ticket_number: ticket.ticket_number,
+                project_label: ticket.project_name || ticket.project_code || '',
+                description: ticket.description,
+                time: formatRelativeTime(ticket.created_at),
+              }))
+
+        setResidentsCount(resCount)
+        setWorkersCount(wCount)
+        setRecentActivity(activity)
+        cacheAuxRef.current = { residentsCount: resCount, workersCount: wCount, recentActivity: activity }
+        writeDashboardCache({
+          tickets: ctx.tickets,
+          projects: ctx.projects,
+          workersMap: ctx.workersMap,
+          closedCount: ctx.closedCount,
+          residentsCount: resCount,
+          workersCount: wCount,
+          recentActivity: activity,
+        })
+      } catch {
+        /* non-critical */
+      }
+    },
+    []
+  )
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
-        const [ticketsResult, closedCountResult, projectsResult, workersResult, professionalsResult, logsResult, resCountResult, wCountResult] = await Promise.all([
+        const [ticketsResult, closedCountResult, projectsResult, workersResult] = await Promise.all([
           withClientId(
             supabase.from('tickets').select(`
               id, ticket_number, project_id, client_id, reporter_phone, description, 
@@ -214,29 +312,6 @@ export default function DashboardPage() {
           )
             .is('deleted_at', null)
             .order('full_name', { ascending: true }),
-          withClientId(
-            supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
-            clientId
-          )
-            .is('deleted_at', null)
-            .order('full_name', { ascending: true }),
-          supabase
-            .from('ticket_logs')
-            .select(
-              `
-              id, action_type, created_at,
-              tickets (
-                ticket_number,
-                description,
-                status,
-                projects (name, project_code)
-              )
-            `
-            )
-            .order('created_at', { ascending: false })
-            .limit(5),
-          withClientId(supabase.from('residents').select('id', { count: 'exact', head: true }), clientId).is('deleted_at', null),
-          withClientId(supabase.from('workers').select('id', { count: 'exact', head: true }), clientId).is('deleted_at', null),
         ])
 
         if (ticketsResult.error) throw ticketsResult.error
@@ -260,46 +335,49 @@ export default function DashboardPage() {
         }))
 
         const map: Record<string, string> = {}
-        setProfessionals(
-          professionalsResult.error
-            ? []
-            : ((professionalsResult.data as ProfessionalOption[]) || [])
-        )
-
         workersResult.data?.forEach((worker: { id: string; full_name: string }) => {
           map[worker.id] = worker.full_name
         })
-        const resCount = resCountResult.count ?? null
-        const wCount = wCountResult.count ?? null
 
-        const fromLogs = buildActivityFromLogs(logsResult.data, logsResult.error)
-        const activity = fromLogs.length > 0
-          ? fromLogs
-          : formatted.slice(0, 5).map((ticket) => ({
-              id: ticket.id,
-              type: (ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
-              ticket_number: ticket.ticket_number,
-              project_label: ticket.project_name || ticket.project_code || '',
-              description: ticket.description,
-              time: formatRelativeTime(ticket.created_at),
-            }))
-
+        const nextClosedCount = closedCountResult.count ?? 0
+        const nextProjects = projectsResult.data || []
         setTickets(formatted)
-        setClosedCount(closedCountResult.count ?? 0)
-        setProjects(projectsResult.data || [])
+        setClosedCount(nextClosedCount)
+        setProjects(nextProjects)
         setWorkersMap(map)
-        setResidentsCount(resCount)
-        setWorkersCount(wCount)
-        setRecentActivity(activity)
+        lastFetchAtRef.current = Date.now()
 
-        writeDashboardCache({ tickets: formatted, projects: projectsResult.data || [], workersMap: map, residentsCount: resCount, workersCount: wCount, recentActivity: activity })
+        writeDashboardCache({
+          tickets: formatted,
+          projects: nextProjects,
+          workersMap: map,
+          closedCount: nextClosedCount,
+          residentsCount: cacheAuxRef.current.residentsCount,
+          workersCount: cacheAuxRef.current.workersCount,
+          recentActivity: cacheAuxRef.current.recentActivity,
+        })
+
+        void loadSecondaryData({
+          tickets: formatted,
+          projects: nextProjects,
+          workersMap: map,
+          closedCount: nextClosedCount,
+        })
 
         return true
       },
       { context: 'טעינת הדשבורד', showErrorToast: true }
     )
     if (!silent) setLoading(false)
-  }, [])
+  }, [loadSecondaryData])
+
+  const debouncedLoadData = useCallback(
+    (silent = false) => {
+      if (Date.now() - lastFetchAtRef.current < REFRESH_DEBOUNCE_MS) return
+      void loadData(silent)
+    },
+    [loadData]
+  )
 
   useEffect(() => {
     const cached = shouldSkipStalePageCache() ? null : readDashboardCache()
@@ -307,9 +385,15 @@ export default function DashboardPage() {
       setTickets(cached.tickets)
       setProjects(cached.projects)
       setWorkersMap(cached.workersMap)
+      setClosedCount(cached.closedCount ?? 0)
       setResidentsCount(cached.residentsCount)
       setWorkersCount(cached.workersCount)
       setRecentActivity(cached.recentActivity as ActivityItem[])
+      cacheAuxRef.current = {
+        residentsCount: cached.residentsCount,
+        workersCount: cached.workersCount,
+        recentActivity: cached.recentActivity as ActivityItem[],
+      }
       setLoading(false)
       void loadData(true)
     } else {
@@ -322,20 +406,20 @@ export default function DashboardPage() {
     const channel = supabase
       .channel('dashboard-tickets-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        void loadData(true)
+        debouncedLoadData(true)
       })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
-  }, [loadData])
+  }, [debouncedLoadData])
 
   // Visibility API — silent refresh when returning to tab
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void loadData(true)
+      if (document.visibilityState === 'visible') debouncedLoadData(true)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [loadData])
+  }, [debouncedLoadData])
 
   function buildActivityFromLogs(
     data: unknown,
@@ -478,6 +562,7 @@ export default function DashboardPage() {
     setDraftDescription(ticket.description || '')
     setDraftStatus(ticket.status)
     setDraftWorkerId(ticket.assigned_worker_id || '')
+    void loadProfessionals()
     void loadTicketDrawerData(ticket.id)
   }
 

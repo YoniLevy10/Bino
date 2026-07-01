@@ -1,19 +1,22 @@
-/** Separator stored in DB between Hebrew and English blocks (shown as one WhatsApp message). */
+/** Separator stored in DB between language blocks (shown as one WhatsApp message). */
 export const BILINGUAL_TEMPLATE_SEPARATOR = '\n\n———\n\n'
 
-export type BilingualTemplateParts = { he: string; en: string }
+export type TrilingualTemplateParts = { he: string; fr: string; en: string }
 
-/** True when the line likely starts the English block (legacy templates in DB). */
-function isLikelyEnglishLine(line: string): boolean {
+/** @deprecated use TrilingualTemplateParts — kept for existing imports */
+export type BilingualTemplateParts = TrilingualTemplateParts
+
+/** True when the line likely starts a Latin-script block (legacy HE+EN templates in DB). */
+function isLikelyLatinLine(line: string): boolean {
   const t = line.trim()
   if (!t) return false
-  return /^({{[^}]+}},?\s*)?[A-Za-z❌✅🖼️📍🚨]/.test(t)
+  return /^({{[^}]+}},?\s*)?[A-Za-zÀ-ÿ❌✅🖼️📍🚨]/.test(t)
 }
 
-function splitLegacyBilingual(raw: string): BilingualTemplateParts | null {
+function splitLegacyBilingual(raw: string): TrilingualTemplateParts | null {
   const lines = raw.split('\n')
   for (let i = 0; i < lines.length; i++) {
-    if (!isLikelyEnglishLine(lines[i])) continue
+    if (!isLikelyLatinLine(lines[i])) continue
     if (i === 0) continue
 
     let blankRunStart = i
@@ -22,33 +25,41 @@ function splitLegacyBilingual(raw: string): BilingualTemplateParts | null {
 
     const he = lines.slice(0, blankRunStart).join('\n').trim()
     const en = lines.slice(i).join('\n').trim()
-    if (he && en) return { he, en }
+    if (he && en) return { he, fr: '', en }
   }
   return null
 }
 
-export function splitBilingualTemplate(text: string): BilingualTemplateParts {
+export function splitTrilingualTemplate(text: string): TrilingualTemplateParts {
   const raw = text.trim()
-  if (!raw) return { he: '', en: '' }
+  if (!raw) return { he: '', fr: '', en: '' }
 
   if (raw.includes(BILINGUAL_TEMPLATE_SEPARATOR)) {
-    const idx = raw.indexOf(BILINGUAL_TEMPLATE_SEPARATOR)
-    return {
-      he: raw.slice(0, idx).trim(),
-      en: raw.slice(idx + BILINGUAL_TEMPLATE_SEPARATOR.length).trim(),
+    const parts = raw.split(BILINGUAL_TEMPLATE_SEPARATOR).map((p) => p.trim())
+    if (parts.length >= 3) {
+      return { he: parts[0], fr: parts[1], en: parts.slice(2).join(BILINGUAL_TEMPLATE_SEPARATOR).trim() }
     }
+    if (parts.length === 2) {
+      return { he: parts[0], fr: '', en: parts[1] }
+    }
+    return { he: parts[0] ?? '', fr: '', en: '' }
   }
 
   const legacy = splitLegacyBilingual(raw)
   if (legacy) return legacy
 
-  return { he: raw, en: '' }
+  return { he: raw, fr: '', en: '' }
 }
 
+/** @deprecated use splitTrilingualTemplate */
+export const splitBilingualTemplate = splitTrilingualTemplate
+
+export function joinTrilingualTemplate(he: string, fr: string, en: string): string {
+  const blocks = [he.trim(), fr.trim(), en.trim()].filter((b) => b.length > 0)
+  return blocks.join(BILINGUAL_TEMPLATE_SEPARATOR)
+}
+
+/** @deprecated use joinTrilingualTemplate */
 export function joinBilingualTemplate(he: string, en: string): string {
-  const h = he.trim()
-  const e = en.trim()
-  if (!h) return e
-  if (!e) return h
-  return `${h}${BILINGUAL_TEMPLATE_SEPARATOR}${e}`
+  return joinTrilingualTemplate(he, '', en)
 }

@@ -125,6 +125,7 @@ type ProjectRow = {
 const statusOptions = OPEN_TICKET_STATUS_FILTER_OPTIONS
 
 const REFRESH_DEBOUNCE_MS = 30_000
+const TICKETS_INITIAL_LIMIT = 200
 
 const MOBILE_QUICK_STATUS_CHIPS: { label: string; value: string }[] = [
   { label: 'הכל', value: 'ALL' },
@@ -190,6 +191,7 @@ export default function TicketsPage() {
   const [workerFilter, setWorkerFilter] = useState('ALL')
   const isMobile = useIsMobile()
   const lastFetchAtRef = useRef(0)
+  const professionalsLoadedRef = useRef(false)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
@@ -254,25 +256,38 @@ export default function TicketsPage() {
     }
   }, [projectFilter, workerFilter, statusFilter, priorityFilter])
 
+  const loadProfessionals = useCallback(async () => {
+    if (professionalsLoadedRef.current) return
+    try {
+      const clientId = tenantClientId || (await resolveBamakorClientIdForBrowser())
+      const { data, error } = await withClientId(
+        supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
+        clientId
+      )
+        .is('deleted_at', null)
+        .order('full_name', { ascending: true })
+      if (!error) {
+        setProfessionals((data as ProfessionalOption[]) || [])
+        professionalsLoadedRef.current = true
+      }
+    } catch {
+      /* non-critical */
+    }
+  }, [tenantClientId])
+
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
         setTenantClientId(clientId)
-        const [ticketsResult, workersResult, professionalsResult, projectsResult] = await Promise.all([
+        const [ticketsResult, workersResult, projectsResult] = await Promise.all([
           withClientId(supabase.from('tickets').select(TICKETS_LIST_SELECT), clientId)
             .is('deleted_at', null)
             .neq('status', 'CLOSED')
             .order('created_at', { ascending: false })
-            .limit(300),
+            .limit(TICKETS_INITIAL_LIMIT),
           withClientId(supabase.from('workers').select('id, full_name, phone, email, role, is_active'), clientId)
-            .is('deleted_at', null)
-            .order('full_name', { ascending: true }),
-          withClientId(
-            supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
-            clientId
-          )
             .is('deleted_at', null)
             .order('full_name', { ascending: true }),
           withClientId(supabase.from('projects').select('id, name, project_code'), clientId).order(
@@ -297,19 +312,14 @@ export default function TicketsPage() {
         )
 
         setTickets(normalizedTickets)
-        setTicketsTruncated(normalizedTickets.length >= 300)
+        setTicketsTruncated(normalizedTickets.length >= TICKETS_INITIAL_LIMIT)
         setWorkers((workersResult.data as WorkerRow[]) || [])
-        setProfessionals(
-          professionalsResult.error
-            ? []
-            : ((professionalsResult.data as ProfessionalOption[]) || [])
-        )
         setProjects((projectsResult.data as ProjectRow[]) || [])
         writeTicketsCache(clientId, {
           tickets: normalizedTickets,
           workers: (workersResult.data as WorkerRow[]) || [],
           projects: (projectsResult.data as ProjectRow[]) || [],
-          ticketsTruncated: normalizedTickets.length >= 300,
+          ticketsTruncated: normalizedTickets.length >= TICKETS_INITIAL_LIMIT,
         })
         lastFetchAtRef.current = Date.now()
         return true
@@ -649,6 +659,7 @@ export default function TicketsPage() {
     setSelectedTicketAttachments([])
     setDescriptionTranslation('')
     setMergeCandidates([])
+    void loadProfessionals()
     loadTicketAttachments(ticket.id)
   }
 

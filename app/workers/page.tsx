@@ -36,6 +36,7 @@ import {
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
 import Link from 'next/link'
 import { usePaidAddons } from '../components/PaidAddonsContext'
@@ -99,6 +100,33 @@ const emptyForm: WorkerForm = {
   hourly_rate: '',
 }
 
+const WORKERS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const WORKERS_LIST_SELECT =
+  'id, full_name, phone, extra_phones, email, role, is_active, hourly_rate, created_at, client_id, access_token'
+
+type WorkersCache = {
+  workers: WorkerRow[]
+  savedAt: number
+}
+
+function readWorkersCache(clientId: string): WorkersCache | null {
+  try {
+    const raw = localStorage.getItem(`bamakor_workers_v1_${clientId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as WorkersCache
+    if (Date.now() - parsed.savedAt > WORKERS_CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeWorkersCache(clientId: string, data: Omit<WorkersCache, 'savedAt'>) {
+  try {
+    localStorage.setItem(`bamakor_workers_v1_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
+  } catch {}
+}
+
 export default function WorkersPage() {
   const { hasAddon, isBootstrapped } = usePaidAddons()
   const [workers, setWorkers] = useState<WorkerRow[]>([])
@@ -139,30 +167,38 @@ export default function WorkersPage() {
 
     const { data, error } = await supabase
       .from('workers')
-      .select('*')
+      .select(WORKERS_LIST_SELECT)
       .eq('client_id', activeClientId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    setWorkers((data as WorkerRow[]) || [])
+    const nextWorkers = (data as WorkerRow[]) || []
+    setWorkers(nextWorkers)
+    writeWorkersCache(activeClientId, { workers: nextWorkers })
   }
 
   useEffect(() => {
     const initialize = async () => {
-      setLoading(true)
+      const fetchedClientId = await loadClientId()
+      const cached = shouldSkipStalePageCache() ? null : readWorkersCache(fetchedClientId)
+      if (cached) {
+        setWorkers(cached.workers)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
       await asyncHandler(
         async () => {
-          const fetchedClientId = await loadClientId()
           await loadWorkers(fetchedClientId)
           return true
         },
-        { context: 'טעינת עובדים', showErrorToast: true }
+        { context: 'טעינת עובדים', showErrorToast: !cached }
       )
       setLoading(false)
     }
     void initialize()
-  }, [clientId])
+  }, [])
 
   function openCreateDrawer() {
     setEditingWorker(null)

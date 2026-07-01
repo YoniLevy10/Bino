@@ -66,8 +66,9 @@ export async function sendTicketResidentWhatsAppReply(
     creds: { phoneNumberId, accessToken },
     failureLog: { clientId: opts.clientId },
     persistOutbound: true,
-    messageTypeForPersist: 'text',
+    messageTypeForPersist: 'template',
     ticketId: opts.ticketId,
+    preferTemplate: true,
   })
 
   return { ...result, reporterPhone }
