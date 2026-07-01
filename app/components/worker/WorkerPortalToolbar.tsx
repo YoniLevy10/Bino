@@ -87,33 +87,30 @@ export function WorkerPortalToolbar({
           {onEnablePush ? (
             <button
               type="button"
-              style={styles.iconBtn(colors)}
+              style={styles.textBtn(colors)}
               onClick={onEnablePush}
               disabled={pushEnabling}
               aria-label="הפעל התראות"
-              title="התראות על תקלות חדשות"
             >
-              {pushEnabling ? '…' : '🔔'}
+              {pushEnabling ? '…' : '🔔 התראות'}
             </button>
           ) : null}
           <button
             type="button"
-            style={styles.iconBtn(colors)}
+            style={styles.textBtn(colors)}
             onClick={onToggleDark}
             aria-label={darkMode ? 'מצב בהיר' : 'מצב כהה'}
-            title={darkMode ? 'מצב בהיר' : 'מצב כהה'}
           >
-            {darkMode ? '☀️' : '🌙'}
+            {darkMode ? '☀️ בהיר' : '🌙 כהה'}
           </button>
           <button
             type="button"
-            style={styles.iconBtn(colors)}
+            style={styles.textBtn(colors)}
             onClick={onRefresh}
             disabled={refreshing}
             aria-label="רענון"
-            title="רענון"
           >
-            {refreshing ? '…' : '↻'}
+            {refreshing ? 'מרענן…' : '↻ רענון'}
           </button>
         </div>
       </div>
@@ -190,18 +187,21 @@ const styles = {
     display: 'flex',
     gap: '4px',
   } as CSSProperties,
-  iconBtn: (c: typeof theme.colors): CSSProperties => ({
+  textBtn: (c: typeof theme.colors): CSSProperties => ({
     background: c.muted,
     border: `1px solid ${c.border}`,
-    borderRadius: '8px',
-    width: '34px',
-    height: '34px',
+    borderRadius: '10px',
+    padding: '8px 10px',
+    minHeight: '40px',
     cursor: 'pointer',
-    fontSize: '16px',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: c.textSecondary,
     lineHeight: 1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    whiteSpace: 'nowrap',
   }),
   cacheBanner: (c: typeof theme.colors): CSSProperties => ({
     fontSize: '11px',

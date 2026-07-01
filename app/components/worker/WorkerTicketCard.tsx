@@ -2,10 +2,9 @@
 
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, PriorityDot, StatusBadge, theme } from '../ui'
-import { WORKER_STATUS_SELECT_OPTIONS, isTicketStatus, ticketStatusLabelHe } from '@/lib/ticket-status'
-import type { TicketStatus } from '@/lib/ticket-status'
+import { isTicketStatus, ticketStatusLabelHe, type TicketStatus } from '@/lib/ticket-status'
 import { formatRelativeTimeHe } from '@/lib/relative-time-he'
-import { googleMapsHref, telHref, wazeHref, whatsAppHref } from '@/lib/contact-links'
+import { googleMapsHref, telHref, wazeHref } from '@/lib/contact-links'
 import { toast } from '@/lib/error-handler'
 
 export type WorkerTicketCardTicket = {
@@ -50,9 +49,19 @@ type WorkerTicketCardProps = {
   attachmentsLoading?: boolean
   onUploadPhoto?: (file: File) => void
   uploadingPhoto?: boolean
-  /** When worker stamp addon is on — hint that NFC visit is recorded at this building */
   showAttendanceHint?: boolean
 }
+
+const QUICK_STATUSES: { value: TicketStatus; label: string; tone: 'primary' | 'muted' | 'success' }[] = [
+  { value: 'IN_PROGRESS', label: 'התחלתי לטפל', tone: 'primary' },
+  { value: 'WAITING_PARTS', label: 'ממתין לחלקים', tone: 'muted' },
+  { value: 'CLOSED', label: 'סיימתי', tone: 'success' },
+]
+
+const MORE_STATUSES: { value: TicketStatus; label: string }[] = [
+  { value: 'SITE_TOUR', label: 'סיור באתר' },
+  { value: 'PROFESSIONAL_ESCORT', label: 'ליווי איש מקצוע' },
+]
 
 function locationLine(ticket: WorkerTicketCardTicket): string {
   const parts: string[] = []
@@ -84,29 +93,23 @@ export function WorkerTicketCard({
   showAttendanceHint = false,
 }: WorkerTicketCardProps) {
   const [descOpen, setDescOpen] = useState(false)
+  const [moreStatusOpen, setMoreStatusOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const desc = ticket.description?.trim() || '—'
   const longDesc = desc.length > 120
   const priority = ticket.priority || 'MEDIUM'
   const relativeWhen = formatRelativeTimeHe(ticket.created_at)
   const loc = locationLine(ticket)
-  const statusOptions = (() => {
-    const opts = [...WORKER_STATUS_SELECT_OPTIONS]
-    if (isTicketStatus(ticket.status) && !opts.some((o) => o.value === ticket.status)) {
-      opts.unshift({ value: ticket.status, label: ticketStatusLabelHe(ticket.status) })
-    }
-    return opts
-  })()
   const tel = telHref(ticket.reporter_phone)
-  const wa = whatsAppHref(
-    ticket.reporter_phone,
-    `שלום, לגבי תקלה #${ticket.ticket_number} ב${ticket.project_name || 'פרויקט'}`
-  )
   const waze = wazeHref(ticket.project_address)
   const maps = googleMapsHref(ticket.project_address)
   const mediaAttachments = attachments.filter(
     (a) => (a.mime_type?.startsWith('image/') || a.mime_type?.startsWith('video/')) && a.public_url
   )
+  const statusBusy = !!busyKey?.startsWith(`${ticket.id}:`)
+  const showMoreStatus =
+    moreStatusOpen ||
+    (isTicketStatus(ticket.status) && MORE_STATUSES.some((s) => s.value === ticket.status))
 
   async function copyTicketNumber() {
     try {
@@ -148,7 +151,7 @@ export function WorkerTicketCard({
           <span style={styles.when(colors)} title={new Date(ticket.created_at).toLocaleString('he-IL')}>
             {relativeWhen}
           </span>
-          <span style={styles.collapseHint(colors)}>▲</span>
+          <span style={styles.collapseHint(colors)}>▲ סגור</span>
         </div>
         {loc ? <div style={styles.compactLoc(colors)}>{loc}</div> : null}
         {showAttendanceHint && loc ? (
@@ -157,144 +160,190 @@ export function WorkerTicketCard({
       </button>
 
       <div style={styles.expandedBody}>
-      {ticket.reporter_name ? (
-        <div style={styles.reporter(colors)}>דיווח: {ticket.reporter_name}</div>
-      ) : null}
-
-      <button type="button" style={styles.numCopyBtn(colors)} onClick={() => void copyTicketNumber()}>
-        העתק מספר #{ticket.ticket_number}
-      </button>
-
-      <p style={descOpen ? styles.descOpen(colors) : styles.descClamp(colors)}>{desc}</p>
-
-      <div style={styles.toolRow}>
-        {longDesc ? (
-          <button type="button" style={styles.linkBtn(colors)} onClick={() => setDescOpen((v) => !v)}>
-            {descOpen ? 'פחות' : 'עוד'}
-          </button>
+        {ticket.reporter_name ? (
+          <div style={styles.reporter(colors)}>דיווח: {ticket.reporter_name}</div>
         ) : null}
-        {desc !== '—' ? (
-          <button type="button" style={styles.linkBtn(colors)} onClick={onTranslate} disabled={translating}>
-            {translating ? 'מתרגם…' : 'תרגום'}
-          </button>
-        ) : null}
-        <span style={styles.statusHint(colors)}>{ticketStatusLabelHe(ticket.status, { feminine: true })}</span>
-      </div>
 
-      {translation ? (
-        <div style={styles.translationBox(colors)}>
-          <div style={styles.translationLabel(colors)}>תרגום</div>
-          <p style={styles.translationText(colors)}>{translation}</p>
-        </div>
-      ) : null}
+        <p style={descOpen ? styles.descOpen(colors) : styles.descClamp(colors)}>{desc}</p>
 
-      {(tel || wa || waze || maps) && (
-        <div style={styles.contactRow}>
-          {tel ? (
-            <a href={tel} style={styles.contactLink(colors)}>
-              התקשר
-            </a>
+        <div style={styles.toolRow}>
+          {longDesc ? (
+            <button type="button" style={styles.linkBtn(colors)} onClick={() => setDescOpen((v) => !v)}>
+              {descOpen ? 'פחות' : 'קרא עוד'}
+            </button>
           ) : null}
-          {wa ? (
-            <a href={wa} target="_blank" rel="noopener noreferrer" style={styles.contactLink(colors)}>
-              WhatsApp
-            </a>
-          ) : null}
-          {waze ? (
-            <a href={waze} target="_blank" rel="noopener noreferrer" style={styles.contactLink(colors)}>
-              Waze
-            </a>
-          ) : null}
-          {maps ? (
-            <a href={maps} target="_blank" rel="noopener noreferrer" style={styles.contactLink(colors)}>
-              מפות
-            </a>
+          {desc !== '—' ? (
+            <button type="button" style={styles.linkBtn(colors)} onClick={onTranslate} disabled={translating}>
+              {translating ? 'מתרגם…' : 'תרגום לעברית'}
+            </button>
           ) : null}
         </div>
-      )}
 
-      <div style={styles.attachSection(colors)}>
-        <div style={styles.attachHead(colors)}>קבצים מצורפים</div>
-        {attachmentsLoading ? (
-          <p style={styles.attachMuted(colors)}>טוען…</p>
-        ) : mediaAttachments.length === 0 ? (
-          <p style={styles.attachMuted(colors)}>אין קבצים</p>
-        ) : (
-          <div style={styles.gallery}>
-            {mediaAttachments.map((a) =>
-              a.mime_type?.startsWith('video/') ? (
-                <div key={a.id} style={styles.videoWrap}>
-                  <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
-                </div>
-              ) : (
-                <a
-                  key={a.id}
-                  href={a.public_url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.thumbWrap}
+        {translation ? (
+          <div style={styles.translationBox(colors)}>
+            <div style={styles.translationLabel(colors)}>תרגום</div>
+            <p style={styles.translationText(colors)}>{translation}</p>
+          </div>
+        ) : null}
+
+        <div style={styles.section(colors)}>
+          <div style={styles.sectionTitle(colors)}>מה הסטטוס?</div>
+          <div style={styles.statusGrid}>
+            {QUICK_STATUSES.map((opt) => {
+              const active = ticket.status === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={statusBusy}
+                  onClick={() => onStatusChange(opt.value)}
+                  style={styles.statusBtn(colors, opt.tone, active)}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
-                </a>
+                  {opt.label}
+                </button>
               )
-            )}
+            })}
+          </div>
+          <button
+            type="button"
+            style={styles.moreStatusToggle(colors)}
+            onClick={() => setMoreStatusOpen((v) => !v)}
+          >
+            {showMoreStatus ? '▼ אפשרויות נוספות' : '▶ אפשרויות נוספות'}
+          </button>
+          {showMoreStatus ? (
+            <div style={styles.moreStatusRow}>
+              {MORE_STATUSES.map((opt) => {
+                const active = ticket.status === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={statusBusy}
+                    onClick={() => onStatusChange(opt.value)}
+                    style={styles.moreStatusBtn(colors, active)}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+          <div style={styles.currentStatus(colors)}>
+            עכשיו: {ticketStatusLabelHe(ticket.status, { feminine: true })}
+          </div>
+        </div>
+
+        {(tel || waze || maps) && (
+          <div style={styles.section(colors)}>
+            <div style={styles.sectionTitle(colors)}>יצירת קשר וניווט</div>
+            <div style={styles.contactRowBig}>
+              {tel ? (
+                <a href={tel} style={styles.contactBtn(colors, 'call')}>
+                  <span style={styles.contactBtnIcon}>📞</span>
+                  <span>התקשר לדייר</span>
+                </a>
+              ) : null}
+              {waze ? (
+                <a href={waze} target="_blank" rel="noopener noreferrer" style={styles.contactBtn(colors, 'nav')}>
+                  <span style={styles.contactBtnIcon}>🗺️</span>
+                  <span>ניווט Waze</span>
+                </a>
+              ) : null}
+              {maps ? (
+                <a href={maps} target="_blank" rel="noopener noreferrer" style={styles.contactBtn(colors, 'nav')}>
+                  <span style={styles.contactBtnIcon}>📍</span>
+                  <span>מפות</span>
+                </a>
+              ) : null}
+            </div>
           </div>
         )}
-        {onUploadPhoto ? (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              capture="environment"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) onUploadPhoto(file)
-                e.target.value = ''
-              }}
-            />
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={uploadingPhoto}
-              onClick={() => fileInputRef.current?.click()}
+
+        <div style={styles.section(colors)}>
+          <div style={styles.sectionTitle(colors)}>שליחת הודעה</div>
+          <div style={styles.messageActions}>
+            {ticket.reporter_phone && onToggleWa ? (
+              <button
+                type="button"
+                onClick={onToggleWa}
+                style={styles.messageCard(colors, expandedWa, 'resident')}
+              >
+                <span style={styles.messageCardTitle(colors)}>הודעה לדייר</span>
+                <span style={styles.messageCardHint(colors)}>ב-WhatsApp — הדייר יראה את ההודעה</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onToggleChat}
+              style={styles.messageCard(colors, expandedChat, 'office')}
             >
-              צילום אחרי תיקון
-            </Button>
-          </>
-        ) : null}
-      </div>
+              <span style={styles.messageCardTitle(colors)}>הודעה למשרד</span>
+              <span style={styles.messageCardHint(colors)}>רק המנהל רואה — לא הדייר</span>
+            </button>
+          </div>
+        </div>
 
-      <div style={styles.actions}>
-        <label style={styles.statusLabel(colors)}>
-          <span style={styles.statusLabelText(colors)}>סטטוס</span>
-          <select
-            value={ticket.status}
-            disabled={!!busyKey}
-            onChange={(e) => onStatusChange(e.target.value as TicketStatus)}
-            style={styles.statusSelect(colors)}
-          >
-            {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button variant="secondary" size="sm" onClick={onToggleChat}>
-          {expandedChat ? 'סגור צ׳אט' : 'צ׳אט'}
-        </Button>
-        {ticket.reporter_phone && onToggleWa ? (
-          <Button variant="secondary" size="sm" onClick={onToggleWa}>
-            {expandedWa ? 'סגור WhatsApp' : 'ענה בוואטסאפ'}
-          </Button>
-        ) : null}
-      </div>
+        {expandedWa && waSlot ? <div style={styles.threadWrap(colors)}>{waSlot}</div> : null}
+        {expandedChat && chatSlot ? <div style={styles.threadWrap(colors)}>{chatSlot}</div> : null}
 
-      {expandedChat && chatSlot ? <div style={styles.chatWrap(colors)}>{chatSlot}</div> : null}
-      {expandedWa && waSlot ? <div style={styles.chatWrap(colors)}>{waSlot}</div> : null}
+        <div style={styles.attachSection(colors)}>
+          <div style={styles.attachHead(colors)}>תמונות מהשטח</div>
+          {attachmentsLoading ? (
+            <p style={styles.attachMuted(colors)}>טוען…</p>
+          ) : mediaAttachments.length === 0 ? (
+            <p style={styles.attachMuted(colors)}>אין תמונות עדיין</p>
+          ) : (
+            <div style={styles.gallery}>
+              {mediaAttachments.map((a) =>
+                a.mime_type?.startsWith('video/') ? (
+                  <div key={a.id} style={styles.videoWrap}>
+                    <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
+                  </div>
+                ) : (
+                  <a
+                    key={a.id}
+                    href={a.public_url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.thumbWrap}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
+                  </a>
+                )
+              )}
+            </div>
+          )}
+          {onUploadPhoto ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) onUploadPhoto(file)
+                  e.target.value = ''
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={uploadingPhoto}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                צלם תמונה אחרי התיקון
+              </Button>
+            </>
+          ) : null}
+        </div>
+
+        <button type="button" style={styles.numCopyBtn(colors)} onClick={() => void copyTicketNumber()}>
+          העתק מספר תקלה #{ticket.ticket_number}
+        </button>
       </div>
     </article>
   )
@@ -312,13 +361,13 @@ const styles = {
     display: 'block',
     width: '100%',
     textAlign: 'right',
-    padding: '10px 12px',
-    borderRadius: '12px',
+    padding: '12px 14px',
+    borderRadius: '14px',
     border: `1px solid ${c.border}`,
-    borderInlineStart: `3px solid ${priorityBorder[priority] || c.border}`,
+    borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     background: c.surface,
     cursor: 'pointer',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   }),
   compactRow: {
     display: 'flex',
@@ -328,7 +377,7 @@ const styles = {
     marginBottom: '4px',
   } as CSSProperties,
   compactLoc: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '11px',
+    fontSize: '12px',
     fontWeight: 600,
     color: c.textMuted,
     marginBottom: '4px',
@@ -343,7 +392,7 @@ const styles = {
     fontWeight: 600,
   }),
   compactDesc: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '12px',
+    fontSize: '13px',
     margin: 0,
     color: c.textSecondary,
     overflow: 'hidden',
@@ -353,62 +402,46 @@ const styles = {
   }),
   card: (c: typeof theme.colors, priority: string): CSSProperties => ({
     padding: 0,
-    borderRadius: '12px',
+    borderRadius: '14px',
     border: `1px solid ${c.border}`,
-    borderInlineStart: `3px solid ${priorityBorder[priority] || c.border}`,
+    borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     background: c.surface,
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
     overflow: 'hidden',
   }),
   collapseHeader: (c: typeof theme.colors): CSSProperties => ({
     display: 'block',
     width: '100%',
     textAlign: 'right',
-    padding: '10px 12px',
+    padding: '12px 14px',
     border: 'none',
     borderBottom: `1px solid ${c.border}`,
     background: c.muted,
     cursor: 'pointer',
   }),
   collapseHint: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '10px',
+    fontSize: '11px',
     color: c.textMuted,
-    marginInlineStart: '4px',
+    marginInlineStart: 'auto',
+    fontWeight: 600,
   }),
   expandedBody: {
-    padding: '10px 12px',
-  } as CSSProperties,
-  topRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexWrap: 'wrap',
-    marginBottom: '6px',
+    padding: '12px 14px 14px',
   } as CSSProperties,
   num: (c: typeof theme.colors): CSSProperties => ({
     fontWeight: 700,
     color: c.primary,
-    fontSize: '14px',
-  }),
-  numBtn: (c: typeof theme.colors): CSSProperties => ({
-    fontWeight: 700,
-    color: c.primary,
-    fontSize: '14px',
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    cursor: 'pointer',
+    fontSize: '15px',
   }),
   numCopyBtn: (c: typeof theme.colors): CSSProperties => ({
     background: 'none',
     border: 'none',
-    padding: 0,
-    marginBottom: '6px',
-    fontSize: '11px',
+    padding: '8px 0 0',
+    fontSize: '12px',
     fontWeight: 600,
-    color: c.primary,
+    color: c.textMuted,
     cursor: 'pointer',
-    textAlign: 'right',
+    textAlign: 'center',
     width: '100%',
   }),
   when: (c: typeof theme.colors): CSSProperties => ({
@@ -416,118 +449,233 @@ const styles = {
     color: c.textMuted,
     marginInlineStart: 'auto',
   }),
-  building: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '11px',
-    fontWeight: 600,
-    color: c.textMuted,
-    marginBottom: '4px',
-  }),
   reporter: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '11px',
-    color: c.textSecondary,
-    marginBottom: '4px',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: c.textPrimary,
+    marginBottom: '8px',
   }),
   descClamp: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '13px',
-    margin: '0 0 6px',
-    lineHeight: 1.35,
+    fontSize: '15px',
+    margin: '0 0 8px',
+    lineHeight: 1.45,
     color: c.textPrimary,
     display: '-webkit-box',
-    WebkitLineClamp: 2,
+    WebkitLineClamp: 3,
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
   }),
   descOpen: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '13px',
-    margin: '0 0 6px',
-    lineHeight: 1.35,
+    fontSize: '15px',
+    margin: '0 0 8px',
+    lineHeight: 1.45,
     color: c.textPrimary,
     whiteSpace: 'pre-wrap',
   }),
   toolRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '12px',
     flexWrap: 'wrap',
-    marginBottom: '8px',
+    marginBottom: '12px',
   } as CSSProperties,
   linkBtn: (c: typeof theme.colors): CSSProperties => ({
     background: 'none',
     border: 'none',
     padding: 0,
-    fontSize: '12px',
+    fontSize: '13px',
     fontWeight: 600,
     color: c.primary,
     cursor: 'pointer',
   }),
-  statusHint: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '11px',
-    color: c.textMuted,
-    marginInlineStart: 'auto',
-  }),
   translationBox: (c: typeof theme.colors): CSSProperties => ({
-    marginBottom: '8px',
-    padding: '8px 10px',
-    borderRadius: '8px',
+    marginBottom: '12px',
+    padding: '10px 12px',
+    borderRadius: '10px',
     background: c.muted,
-    maxHeight: '100px',
+    maxHeight: '120px',
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch',
   }),
   translationLabel: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '10px',
+    fontSize: '11px',
     fontWeight: 700,
     color: c.textMuted,
     marginBottom: '4px',
   }),
   translationText: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '12px',
+    fontSize: '14px',
     margin: 0,
-    lineHeight: 1.4,
+    lineHeight: 1.45,
     color: c.textPrimary,
   }),
-  contactRow: {
+  section: (c: typeof theme.colors): CSSProperties => ({
+    marginBottom: '14px',
+    paddingBottom: '14px',
+    borderBottom: `1px solid ${c.border}`,
+  }),
+  sectionTitle: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '13px',
+    fontWeight: 800,
+    color: c.textPrimary,
+    marginBottom: '10px',
+  }),
+  statusGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '8px',
+  } as CSSProperties,
+  statusBtn: (
+    c: typeof theme.colors,
+    tone: 'primary' | 'muted' | 'success',
+    active: boolean
+  ): CSSProperties => {
+    const palette =
+      tone === 'success'
+        ? { bg: c.successMuted, border: c.success, text: c.success }
+        : tone === 'primary'
+          ? { bg: c.primaryMuted, border: c.primary, text: c.primary }
+          : { bg: c.muted, border: c.border, text: c.textSecondary }
+    return {
+      padding: '12px 8px',
+      borderRadius: '12px',
+      border: `2px solid ${active ? palette.border : c.border}`,
+      background: active ? palette.bg : c.surface,
+      color: active ? palette.text : c.textPrimary,
+      fontSize: '13px',
+      fontWeight: 700,
+      cursor: 'pointer',
+      lineHeight: 1.25,
+      minHeight: '52px',
+    }
+  },
+  moreStatusToggle: (c: typeof theme.colors): CSSProperties => ({
+    marginTop: '8px',
+    background: 'none',
+    border: 'none',
+    padding: '4px 0',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: c.textMuted,
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'right',
+  }),
+  moreStatusRow: {
     display: 'flex',
     gap: '8px',
     flexWrap: 'wrap',
-    marginBottom: '8px',
+    marginTop: '6px',
   } as CSSProperties,
-  contactLink: (c: typeof theme.colors): CSSProperties => ({
+  moreStatusBtn: (c: typeof theme.colors, active: boolean): CSSProperties => ({
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: `1.5px solid ${active ? c.primary : c.border}`,
+    background: active ? c.primaryMuted : c.muted,
+    color: active ? c.primary : c.textSecondary,
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  }),
+  currentStatus: (c: typeof theme.colors): CSSProperties => ({
+    marginTop: '8px',
     fontSize: '12px',
+    color: c.textMuted,
+  }),
+  contactRowBig: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '10px',
+  } as CSSProperties,
+  contactBtn: (c: typeof theme.colors, kind: 'call' | 'nav'): CSSProperties => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    minHeight: '64px',
+    padding: '12px 10px',
+    borderRadius: '12px',
+    border: `1.5px solid ${kind === 'call' ? c.success : c.primary}`,
+    background: kind === 'call' ? c.successMuted : c.primaryMuted,
+    color: kind === 'call' ? c.success : c.primary,
+    fontSize: '14px',
     fontWeight: 700,
-    color: c.primary,
     textDecoration: 'none',
-    padding: '4px 10px',
-    borderRadius: '8px',
-    background: c.primaryMuted,
+    textAlign: 'center',
+    lineHeight: 1.25,
+  }),
+  contactBtnIcon: {
+    fontSize: '22px',
+    lineHeight: 1,
+  } as CSSProperties,
+  messageActions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  } as CSSProperties,
+  messageCard: (
+    c: typeof theme.colors,
+    expanded: boolean,
+    kind: 'resident' | 'office'
+  ): CSSProperties => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '4px',
+    width: '100%',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    border: `2px solid ${expanded ? c.primary : c.border}`,
+    background: expanded ? c.primaryMuted : c.surface,
+    cursor: 'pointer',
+    textAlign: 'right',
+    boxShadow: expanded ? `0 0 0 1px ${c.primary}` : 'none',
+    borderInlineStart: `4px solid ${kind === 'resident' ? '#25D366' : c.primary}`,
+  }),
+  messageCardTitle: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '15px',
+    fontWeight: 800,
+    color: c.textPrimary,
+  }),
+  messageCardHint: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '12px',
+    color: c.textMuted,
+    lineHeight: 1.35,
+  }),
+  threadWrap: (c: typeof theme.colors): CSSProperties => ({
+    marginBottom: '14px',
+    padding: '12px',
+    borderRadius: '12px',
+    background: c.muted,
+    border: `1px solid ${c.border}`,
   }),
   attachSection: (c: typeof theme.colors): CSSProperties => ({
     marginBottom: '8px',
-    padding: '8px 0',
-    borderTop: `1px solid ${c.border}`,
+    paddingTop: '4px',
   }),
   attachHead: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: 700,
-    color: c.textMuted,
-    marginBottom: '6px',
+    color: c.textPrimary,
+    marginBottom: '8px',
   }),
   attachMuted: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '12px',
+    fontSize: '13px',
     color: c.textMuted,
-    margin: '0 0 6px',
+    margin: '0 0 8px',
   }),
   gallery: {
     display: 'flex',
-    gap: '6px',
+    gap: '8px',
     flexWrap: 'wrap',
-    marginBottom: '8px',
+    marginBottom: '10px',
   } as CSSProperties,
   thumbWrap: {
     display: 'block',
-    width: '72px',
-    height: '72px',
-    borderRadius: '8px',
+    width: '80px',
+    height: '80px',
+    borderRadius: '10px',
     overflow: 'hidden',
     flexShrink: 0,
   } as CSSProperties,
@@ -537,9 +685,9 @@ const styles = {
     objectFit: 'cover',
   } as CSSProperties,
   videoWrap: {
-    width: '120px',
-    height: '72px',
-    borderRadius: '8px',
+    width: '128px',
+    height: '80px',
+    borderRadius: '10px',
     overflow: 'hidden',
     flexShrink: 0,
     background: '#000',
@@ -550,32 +698,4 @@ const styles = {
     objectFit: 'cover',
     display: 'block',
   } as CSSProperties,
-  actions: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' } as CSSProperties,
-  statusLabel: (c: typeof theme.colors): CSSProperties => ({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    flex: 1,
-    minWidth: '140px',
-  }),
-  statusLabelText: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '10px',
-    fontWeight: 700,
-    color: c.textMuted,
-  }),
-  statusSelect: (c: typeof theme.colors): CSSProperties => ({
-    width: '100%',
-    padding: '10px 12px',
-    fontSize: '14px',
-    borderRadius: '10px',
-    border: `1px solid ${c.border}`,
-    background: c.surface,
-    color: c.textPrimary,
-    fontWeight: 600,
-  }),
-  chatWrap: (c: typeof theme.colors): CSSProperties => ({
-    marginTop: '8px',
-    paddingTop: '8px',
-    borderTop: `1px solid ${c.border}`,
-  }),
 }

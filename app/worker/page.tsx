@@ -711,47 +711,50 @@ function WorkerPageInner() {
                   uploadingPhoto={uploadingPhotoId === t.id}
                   showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
                   chatSlot={
-                    <>
-                      {chatLoading && expandedChatId === t.id ? (
-                        <div style={styles.chatLoading}><LoadingSpinner /></div>
-                      ) : chatMessages.length === 0 && expandedChatId === t.id ? (
-                        <p style={{ ...styles.chatEmpty, color: palette.textMuted }}>אין הודעות</p>
-                      ) : expandedChatId === t.id ? (
-                        <div style={styles.chatMessages}>
-                          {chatMessages.map((m) => (
-                            <div
-                              key={m.id}
-                              style={
-                                m.sender_name === tokenSession.fullName
-                                  ? { ...styles.chatMine, background: palette.primaryMuted }
-                                  : { ...styles.chatOther, background: palette.muted }
-                              }
-                            >
-                              <div style={{ ...styles.chatSender, color: palette.textMuted }}>{m.sender_name}</div>
-                              <div style={{ ...styles.chatBody, color: palette.textPrimary }}>{m.body}</div>
-                              <div style={{ ...styles.chatTime, color: palette.textMuted }}>
-                                {new Date(m.created_at).toLocaleTimeString('he-IL', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
+                    expandedChatId === t.id ? (
+                      <div style={styles.officeChatWrap}>
+                        <p style={{ ...styles.officeChatBanner, color: palette.textMuted, background: palette.surface }}>
+                          הודעה למשרד בלבד — הדייר לא רואה את זה
+                        </p>
+                        {chatLoading ? (
+                          <div style={styles.chatLoading}><LoadingSpinner /></div>
+                        ) : chatMessages.length === 0 ? (
+                          <p style={{ ...styles.chatEmpty, color: palette.textMuted }}>אין הודעות עדיין — כתבו למטה</p>
+                        ) : (
+                          <div style={styles.chatMessages}>
+                            {chatMessages.map((m) => (
+                              <div
+                                key={m.id}
+                                style={
+                                  m.sender_name === tokenSession.fullName
+                                    ? { ...styles.chatMine, background: palette.primaryMuted }
+                                    : { ...styles.chatOther, background: palette.surface }
+                                }
+                              >
+                                <div style={{ ...styles.chatSender, color: palette.textMuted }}>{m.sender_name}</div>
+                                <div style={{ ...styles.chatBody, color: palette.textPrimary }}>{m.body}</div>
+                                <div style={{ ...styles.chatTime, color: palette.textMuted }}>
+                                  {new Date(m.created_at).toLocaleTimeString('he-IL', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      {expandedChatId === t.id ? (
+                            ))}
+                          </div>
+                        )}
                         <div style={styles.chatInput}>
                           <textarea
                             value={chatBody}
                             onChange={(e) => setChatBody(e.target.value)}
-                            placeholder="הודעה…"
+                            placeholder="כתבו הודעה למשרד…"
                             style={{
                               ...styles.chatTextarea,
                               borderColor: palette.border,
                               background: palette.surface,
                               color: palette.textPrimary,
                             }}
-                            rows={2}
+                            rows={3}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault()
@@ -761,15 +764,15 @@ function WorkerPageInner() {
                           />
                           <Button
                             variant="primary"
-                            size="sm"
+                            size="md"
                             loading={chatSending}
                             onClick={() => void sendChat(t.id)}
                           >
-                            שלח
+                            שלח למשרד
                           </Button>
                         </div>
-                      ) : null}
-                    </>
+                      </div>
+                    ) : null
                   }
                 />
               ))}
@@ -780,13 +783,14 @@ function WorkerPageInner() {
         {confirmCloseId ? (
           <div style={{ ...styles.confirmOverlay, background: palette.overlay }}>
             <div style={{ ...styles.confirmBox, background: palette.surface, borderColor: palette.border }}>
-              <p style={{ ...styles.confirmText, color: palette.textPrimary }}>לסגור את התקלה?</p>
+              <p style={{ ...styles.confirmText, color: palette.textPrimary }}>סיימתם לטפל בתקלה?</p>
+              <p style={{ ...styles.confirmSub, color: palette.textMuted }}>הדייר יקבל הודעה שהתקלה נסגרה</p>
               <div style={styles.confirmActions}>
-                <Button variant="secondary" size="sm" onClick={() => setConfirmCloseId(null)}>
-                  ביטול
+                <Button variant="secondary" size="md" onClick={() => setConfirmCloseId(null)}>
+                  עדיין לא
                 </Button>
-                <Button variant="primary" size="sm" loading={busyKey === `${confirmCloseId}:CLOSED`} onClick={() => void confirmCloseTicket()}>
-                  אישור סיום
+                <Button variant="primary" size="md" loading={busyKey === `${confirmCloseId}:CLOSED`} onClick={() => void confirmCloseTicket()}>
+                  כן, סיימתי
                 </Button>
               </div>
             </div>
@@ -922,17 +926,26 @@ const styles: Record<string, CSSProperties> = {
   },
   muted: { color: theme.colors.textMuted, fontSize: '14px', margin: 0 },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  officeChatWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  officeChatBanner: {
+    margin: 0,
+    padding: '8px 12px',
+    borderRadius: '10px',
+    fontSize: '12px',
+    fontWeight: 600,
+    textAlign: 'center' as const,
+  },
   chatLoading: { display: 'flex', justifyContent: 'center', padding: '12px' },
-  chatEmpty: { fontSize: '13px', color: theme.colors.textMuted, margin: 0, textAlign: 'center' as const },
+  chatEmpty: { fontSize: '14px', color: theme.colors.textMuted, margin: 0, textAlign: 'center' as const },
   chatMessages: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    maxHeight: 'min(36vh, 220px)',
+    gap: '8px',
+    maxHeight: 'min(40vh, 260px)',
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch',
-    marginBottom: '8px',
+    marginBottom: '4px',
   },
   chatMine: {
     alignSelf: 'flex-end', background: theme.colors.primaryMuted,
@@ -945,12 +958,20 @@ const styles: Record<string, CSSProperties> = {
   chatSender: { fontSize: '11px', fontWeight: 600, color: theme.colors.textMuted, marginBottom: '3px' },
   chatBody: { fontSize: '14px', color: theme.colors.textPrimary, lineHeight: 1.4 },
   chatTime: { fontSize: '10px', color: theme.colors.textMuted, marginTop: '4px', textAlign: 'end' as const },
-  chatInput: { display: 'flex', gap: '8px', alignItems: 'flex-end' },
+  chatInput: { display: 'flex', flexDirection: 'column', gap: '10px' },
   chatTextarea: {
-    flex: 1, padding: '10px 12px', fontSize: '14px',
-    borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface, color: theme.colors.textPrimary,
-    resize: 'none' as const, fontFamily: 'inherit', lineHeight: 1.4,
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    padding: '14px 16px',
+    fontSize: '16px',
+    borderRadius: '12px',
+    border: `2px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    color: theme.colors.textPrimary,
+    resize: 'none' as const,
+    fontFamily: 'inherit',
+    lineHeight: 1.45,
+    minHeight: '88px',
   },
   emptyState: {
     textAlign: 'center',
@@ -989,7 +1010,8 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     padding: '16px',
   },
-  confirmText: { margin: '0 0 14px', fontSize: '15px', fontWeight: 600, textAlign: 'center' as const },
+  confirmText: { margin: '0 0 8px', fontSize: '17px', fontWeight: 700, textAlign: 'center' as const },
+  confirmSub: { margin: '0 0 16px', fontSize: '14px', textAlign: 'center' as const, lineHeight: 1.4 },
   confirmActions: { display: 'flex', gap: '8px', justifyContent: 'center' },
   ticket: {
     padding: '14px', borderRadius: theme.radius.md,
