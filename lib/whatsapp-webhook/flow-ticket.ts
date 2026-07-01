@@ -27,6 +27,28 @@ export async function findOpenTicketForReporterInWindow(
   return data as { id: string; ticket_number: number; description: string | null; status: string }
 }
 
+/** Most recent non-closed ticket for this reporter + tenant (no time limit). */
+export async function findOpenTicketForPhone(
+  from: string,
+  supabaseAdmin: SupabaseClient,
+  clientId: string
+): Promise<{ id: string; status: string; created_at: string } | null> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('id, status, created_at')
+    .eq('reporter_phone', from)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+    .neq('status', 'CLOSED')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data?.id || !data?.created_at || !data?.status) return null
+  return data as { id: string; status: string; created_at: string }
+}
+
+/** @deprecated Prefer findOpenTicketForPhone — kept for callers that still use the short window. */
 export async function findRecentTicketForPhone(
   from: string,
   supabaseAdmin: SupabaseClient,

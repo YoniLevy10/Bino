@@ -138,7 +138,7 @@ export function TicketWhatsAppThread({
       if (json.fallback_from_template || json.mode === 'text') {
         toast.success('הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
       } else {
-        toast.success('ההודעה נשלחה דרך תבנית manager_reply — כשהדייר/ה יגיב/תגיב אפשר לכתוב חופשי')
+        toast.success('ההודעה נשלחה דרך תבנית manager_reply')
       }
       setDraft('')
       await loadMessages()
@@ -198,7 +198,7 @@ export function TicketWhatsAppThread({
           שליחה ב-WhatsApp
         </Button>
         <p style={styles.hint}>
-          הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה). עובד גם מחוץ לחלון 24 שעות.
+          הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה).
         </p>
       </div>
     </div>
