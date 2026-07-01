@@ -4,7 +4,7 @@ import { sanitizeString } from '@/lib/api-validation'
 import { updateProfessionalBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { sanitizeExtraPhones } from '@/lib/worker-phones'
+import { normalizeWorkerPhone, parseWorkerPhone, sanitizeExtraPhones } from '@/lib/worker-phones'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 
@@ -45,16 +45,26 @@ export async function PATCH(req: Request) {
       if (!name) return NextResponse.json({ error: 'שם מלא נדרש', requestId }, { status: 400 })
       payload.full_name = name
     }
+    let normalizedPrimary: string | undefined
     if (body.phone !== undefined) {
-      const phoneStr = sanitizeString(body.phone)
-      if (!phoneStr || phoneStr.replace(/\D/g, '').length < 9) {
-        return NextResponse.json({ error: 'מספר טלפון לא תקין', requestId }, { status: 400 })
+      const phoneParsed = parseWorkerPhone(body.phone, 'מספר טלפון ראשי')
+      if (!phoneParsed.ok) {
+        return NextResponse.json({ error: phoneParsed.error, requestId }, { status: 400 })
       }
-      payload.phone = phoneStr
+      normalizedPrimary = phoneParsed.normalized
+      payload.phone = normalizedPrimary
     }
     if (body.extra_phones !== undefined) {
-      const primary = (payload.phone as string) || body.phone || ''
-      const extraSanitized = sanitizeExtraPhones(String(primary), body.extra_phones)
+      const { data: existingPro } = await supabase
+        .from('professionals')
+        .select('phone')
+        .eq('id', professional_id)
+        .eq('client_id', clientId)
+        .maybeSingle()
+      const phoneForExtra =
+        normalizedPrimary ??
+        (normalizeWorkerPhone(existingPro?.phone || '') || existingPro?.phone || '')
+      const extraSanitized = sanitizeExtraPhones(phoneForExtra, body.extra_phones)
       if (!extraSanitized.ok) {
         return NextResponse.json({ error: extraSanitized.error, requestId }, { status: 400 })
       }

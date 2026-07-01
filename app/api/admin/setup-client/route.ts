@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
 import { getSetupPackageNavFeatures } from '@/lib/client-nav-features'
 import { normalizeTier } from '@/lib/plan-limits'
+import { parseWorkerPhone } from '@/lib/worker-phones'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const setupSchema = z.object({
@@ -172,15 +173,30 @@ export async function POST(req: Request) {
     // ── 6. Create workers ─────────────────────────────────────────────────────
     let workersCreated: number = 0
     if (d.workers.length > 0) {
-      const workerInserts = d.workers.map((w) => ({
-        client_id: clientId,
-        organization_id: orgId,
-        full_name: w.full_name,
-        phone: w.phone,
-        email: w.email ?? null,
-        role: w.role ?? null,
-        is_active: true,
-      }))
+      const workerInserts: Array<{
+        client_id: string
+        organization_id: string
+        full_name: string
+        phone: string
+        email: string | null
+        role: string | null
+        is_active: boolean
+      }> = []
+      for (const w of d.workers) {
+        const phoneParsed = parseWorkerPhone(w.phone, 'מספר טלפון עובד')
+        if (!phoneParsed.ok) {
+          return NextResponse.json({ error: phoneParsed.error }, { status: 400 })
+        }
+        workerInserts.push({
+          client_id: clientId,
+          organization_id: orgId,
+          full_name: w.full_name,
+          phone: phoneParsed.normalized,
+          email: w.email ?? null,
+          role: w.role ?? null,
+          is_active: true,
+        })
+      }
       const { data: workerData, error: workerErr } = await supabase
         .from('workers')
         .insert(workerInserts)

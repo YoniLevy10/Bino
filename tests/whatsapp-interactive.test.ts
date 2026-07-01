@@ -3,6 +3,7 @@ import {
   parseProjectListReplyId,
   buildProjectListRows,
   parseConfirmButtonReplyId,
+  parseLanguageButtonReplyId,
 } from '@/lib/whatsapp-interactive'
 
 describe('whatsapp-interactive', () => {
@@ -23,5 +24,12 @@ describe('whatsapp-interactive', () => {
   it('parseConfirmButtonReplyId', () => {
     expect(parseConfirmButtonReplyId('ticket_confirm')).toBe('confirm')
     expect(parseConfirmButtonReplyId('ticket_cancel')).toBe('cancel')
+  })
+
+  it('parseLanguageButtonReplyId', () => {
+    expect(parseLanguageButtonReplyId('lang_he')).toBe('he')
+    expect(parseLanguageButtonReplyId('lang_fr')).toBe('fr')
+    expect(parseLanguageButtonReplyId('lang_en')).toBe('en')
+    expect(parseLanguageButtonReplyId('other')).toBeNull()
   })
 })

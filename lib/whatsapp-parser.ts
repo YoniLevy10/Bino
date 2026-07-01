@@ -9,6 +9,8 @@ export type ParsedWhatsAppMessage = {
   /** Meta interactive list/button reply id */
   interactiveReplyId?: string
   interactiveReplyTitle?: string
+  /** Present when Meta sends type=unsupported (e.g. 131060 placeholder before real media). */
+  unsupportedErrorCode?: number
 }
 
 /**
@@ -93,6 +95,14 @@ export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessa
     messageType: String(message?.type || ''),
     textBody: String((message?.text as Record<string, unknown>)?.body || '').trim(),
     messageId: typeof mid === 'string' && mid.length > 0 ? mid : undefined,
+  }
+
+  if (message?.type === 'unsupported') {
+    const errors = message?.errors as unknown[] | undefined
+    const first = errors?.[0] as { code?: number } | undefined
+    if (typeof first?.code === 'number') {
+      result.unsupportedErrorCode = first.code
+    }
   }
 
   if (message?.type === 'image' && (message?.image as Record<string, unknown>)?.id) {

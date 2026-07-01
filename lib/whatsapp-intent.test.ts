@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeTicketDescription } from './whatsapp-intent'
+import {
+  looksLikeTicketDescription,
+  isClarificationQuestion,
+  isTicketConfirmText,
+} from './whatsapp-intent'
 
 describe('looksLikeTicketDescription', () => {
   it('rejects short greetings', () => {
@@ -19,5 +23,25 @@ describe('looksLikeTicketDescription', () => {
 
   it('rejects status questions', () => {
     expect(looksLikeTicketDescription('מה הסטטוס')).toBe(false)
+  })
+})
+
+describe('isClarificationQuestion', () => {
+  it('detects how-to questions', () => {
+    expect(isClarificationQuestion('איך פותחים תקלה?')).toBe(true)
+    expect(isClarificationQuestion('What should I write?')).toBe(true)
+    expect(isClarificationQuestion('Comment envoyer?')).toBe(true)
+  })
+
+  it('rejects real descriptions', () => {
+    expect(isClarificationQuestion('נזילה במקלחת')).toBe(false)
+  })
+})
+
+describe('isTicketConfirmText', () => {
+  it('accepts yes in three languages', () => {
+    expect(isTicketConfirmText('כן')).toBe(true)
+    expect(isTicketConfirmText('oui')).toBe(true)
+    expect(isTicketConfirmText('yes')).toBe(true)
   })
 })

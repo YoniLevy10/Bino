@@ -1,5 +1,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { getLogger } from '@/lib/logging'
+
+const mediaLogger = getLogger()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -42,75 +45,134 @@ async function cleanupOrphanedStorageFile(filePath: string) {
 /**
  * Download media from WhatsApp/Meta using the media ID
  */
+const MEDIA_DOWNLOAD_RETRY_MS = 1200
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function downloadWhatsAppMediaOnce(
+  mediaId: string,
+  mediaType: 'image' | 'audio' | 'video' | 'document',
+  token: string
+): Promise<{ buffer: Buffer; mimeType: string; fileName: string } | null> {
+  let mediaUrlResponse
+  try {
+    mediaUrlResponse = await fetchWithTimeout(
+      `https://graph.facebook.com/v23.0/${mediaId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+    if (!mediaUrlResponse) {
+      mediaLogger.warn('WA_MEDIA', 'Meta media URL request timed out', { mediaId, mediaType })
+      return null
+    }
+  } catch (fetchErr) {
+    mediaLogger.warn('WA_MEDIA', 'Meta media URL request failed', {
+      mediaId,
+      mediaType,
+      err: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+    })
+    return null
+  }
+
+  if (!mediaUrlResponse.ok) {
+    const errBody = await mediaUrlResponse.text().catch(() => '')
+    mediaLogger.warn('WA_MEDIA', 'Meta media URL request not ok', {
+      mediaId,
+      mediaType,
+      status: mediaUrlResponse.status,
+      body: errBody.slice(0, 300),
+    })
+    return null
+  }
+
+  const mediaData = await mediaUrlResponse.json()
+  const mediaUrl = mediaData?.url
+
+  if (!mediaUrl) {
+    mediaLogger.warn('WA_MEDIA', 'Meta media URL missing in response', { mediaId, mediaType })
+    return null
+  }
+
+  let fileResponse
+  try {
+    fileResponse = await fetchWithTimeout(mediaUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    if (!fileResponse) {
+      mediaLogger.warn('WA_MEDIA', 'Media binary download timed out', { mediaId, mediaType })
+      return null
+    }
+  } catch (fetchErr) {
+    mediaLogger.warn('WA_MEDIA', 'Media binary download failed', {
+      mediaId,
+      mediaType,
+      err: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+    })
+    return null
+  }
+
+  if (!fileResponse.ok) {
+    mediaLogger.warn('WA_MEDIA', 'Media binary download not ok', {
+      mediaId,
+      mediaType,
+      status: fileResponse.status,
+    })
+    return null
+  }
+
+  const arrayBuffer = await fileResponse.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  const contentType = fileResponse.headers.get('content-type') || getMimeType(mediaType)
+  const fileName = `whatsapp_${mediaType}_${Date.now()}.${getExtension(mediaType)}`
+
+  return {
+    buffer,
+    mimeType: contentType,
+    fileName,
+  }
+}
+
+/**
+ * Download media from WhatsApp/Meta using the media ID.
+ * Retries once after a short delay (Meta URLs can be briefly unavailable).
+ */
 export async function downloadWhatsAppMedia(
   mediaId: string,
-  mediaType: 'image' | 'audio' | 'video' | 'document'
+  mediaType: 'image' | 'audio' | 'video' | 'document',
+  /** Per-tenant token from clients.whatsapp_access_token — required for multi-tenant media download. */
+  accessToken?: string
 ): Promise<{ buffer: Buffer; mimeType: string; fileName: string } | null> {
   try {
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN
+    const token = (accessToken || process.env.WHATSAPP_ACCESS_TOKEN || '').trim()
 
-    if (!accessToken) {
-      console.error('❌ DOWNLOAD_FAILURE: Missing WHATSAPP_ACCESS_TOKEN environment variable')
-      return null
-    }
-
-    let mediaUrlResponse
-    try {
-      mediaUrlResponse = await fetchWithTimeout(
-        `https://graph.facebook.com/v23.0/${mediaId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+    if (!token) {
+      mediaLogger.error(
+        'WA_MEDIA',
+        'Missing WhatsApp access token for media download',
+        new Error('missing_whatsapp_access_token'),
+        { mediaId, mediaType, hasTenantToken: Boolean(accessToken?.trim()) }
       )
-      if (!mediaUrlResponse) return null
-    } catch (fetchErr) {
-      console.error('❌ DOWNLOAD_FAILURE: Network error during Meta API media URL request', {
-        mediaId,
-        error: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
-      })
       return null
     }
 
-    if (!mediaUrlResponse.ok) {
-      return null
-    }
+    const first = await downloadWhatsAppMediaOnce(mediaId, mediaType, token)
+    if (first) return first
 
-    const mediaData = await mediaUrlResponse.json()
-    const mediaUrl = mediaData?.url
-
-    if (!mediaUrl) {
-      return null
-    }
-
-    let fileResponse
-    try {
-      fileResponse = await fetchWithTimeout(mediaUrl, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      if (!fileResponse) return null
-    } catch {
-      return null
-    }
-
-    if (!fileResponse.ok) {
-      return null
-    }
-
-    const arrayBuffer = await fileResponse.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    const contentType = fileResponse.headers.get('content-type') || getMimeType(mediaType)
-    const fileName = `whatsapp_${mediaType}_${Date.now()}.${getExtension(mediaType)}`
-
-    return {
-      buffer,
-      mimeType: contentType,
-      fileName,
-    }
-  } catch {
+    await sleepMs(MEDIA_DOWNLOAD_RETRY_MS)
+    return downloadWhatsAppMediaOnce(mediaId, mediaType, token)
+  } catch (err) {
+    mediaLogger.warn('WA_MEDIA', 'Unexpected media download error', {
+      mediaId,
+      mediaType,
+      err: err instanceof Error ? err.message : String(err),
+    })
     return null
   }
 }

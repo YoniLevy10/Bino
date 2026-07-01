@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getLogger } from '@/lib/logging'
 
 /**
  * מונה מפוזר באמצעות `public.api_rate_limits` + RPC `bamakor_rate_limit`.
@@ -21,6 +22,10 @@ export async function checkRateLimit(
   })
 
   if (error) {
+    getLogger().warn('RATE_LIMIT', 'bamakor_rate_limit RPC failed — allowing request', {
+      message: error.message,
+      code: error.code,
+    })
     return { rpcFailed: true, isLimited: false }
   }
 

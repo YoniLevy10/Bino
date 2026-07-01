@@ -63,3 +63,18 @@ export function joinTrilingualTemplate(he: string, fr: string, en: string): stri
 export function joinBilingualTemplate(he: string, en: string): string {
   return joinTrilingualTemplate(he, '', en)
 }
+
+export type ResidentLang = 'he' | 'fr' | 'en'
+
+export function normalizeResidentLang(raw: string | null | undefined): ResidentLang {
+  if (raw === 'fr' || raw === 'en') return raw
+  return 'he'
+}
+
+/** Pick one language block from a trilingual (or legacy bilingual) template string. */
+export function resolveMessageForLanguage(text: string, lang: ResidentLang): string {
+  const { he, fr, en } = splitTrilingualTemplate(text)
+  if (lang === 'fr' && fr.trim()) return fr.trim()
+  if (lang === 'en' && en.trim()) return en.trim()
+  return (he.trim() || fr.trim() || en.trim())
+}

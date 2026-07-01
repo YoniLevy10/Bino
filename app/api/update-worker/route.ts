@@ -4,7 +4,7 @@ import { requireSessionClientId } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { updateWorkerBodySchema } from '@/lib/api-body-schemas'
 import { sanitizeString } from '@/lib/api-validation'
-import { sanitizeExtraPhones } from '@/lib/worker-phones'
+import { normalizeWorkerPhone, parseWorkerPhone, sanitizeExtraPhones } from '@/lib/worker-phones'
 import { logAudit } from '@/lib/audit'
 import { getLogger } from '@/lib/logging'
 
@@ -65,10 +65,22 @@ export async function POST(req: Request) {
 
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (fields.full_name !== undefined) payload.full_name = sanitizeString(fields.full_name)
-    if (fields.phone !== undefined) payload.phone = sanitizeString(fields.phone)
+    let normalizedPrimary: string | undefined
+    if (fields.phone !== undefined) {
+      const phoneParsed = parseWorkerPhone(fields.phone, 'מספר טלפון ראשי')
+      if (!phoneParsed.ok) {
+        return NextResponse.json({ error: phoneParsed.error, requestId }, { status: 400 })
+      }
+      normalizedPrimary = phoneParsed.normalized
+      payload.phone = normalizedPrimary
+    }
     if (fields.extra_phones !== undefined) {
-      const phoneForExtra = fields.phone !== undefined ? sanitizeString(fields.phone) : existing.phone
-      const extraSanitized = sanitizeExtraPhones(phoneForExtra || '', fields.extra_phones)
+      const phoneForExtra =
+        normalizedPrimary ??
+        (fields.phone !== undefined
+          ? ''
+          : normalizeWorkerPhone(existing.phone || '') || existing.phone || '')
+      const extraSanitized = sanitizeExtraPhones(phoneForExtra, fields.extra_phones)
       if (!extraSanitized.ok) {
         return NextResponse.json({ error: extraSanitized.error, requestId }, { status: 400 })
       }

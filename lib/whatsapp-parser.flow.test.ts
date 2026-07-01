@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isAddressLikeText } from './whatsapp-parser'
+import { isAddressLikeText, parseIncomingWhatsAppMessage } from './whatsapp-parser'
 
 describe('isAddressLikeText — problem descriptions must not trigger building search', () => {
   it('short two-word Hebrew problem (user report) is not address-like', () => {
@@ -24,5 +24,61 @@ describe('isAddressLikeText — problem descriptions must not trigger building s
 
   it('address cues are address-like', () => {
     expect(isAddressLikeText('בניין 5 דירה 3')).toBe(true)
+  })
+})
+
+describe('parseIncomingWhatsAppMessage — Meta unsupported placeholder', () => {
+  it('parses type=unsupported with Meta error code 131060', () => {
+    const parsed = parseIncomingWhatsAppMessage({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: 'pnid-1' },
+                messages: [
+                  {
+                    from: '972501234567',
+                    id: 'wamid.unsupported1',
+                    timestamp: '1750090702',
+                    type: 'unsupported',
+                    errors: [{ code: 131060, title: 'Unavailable' }],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    })
+    expect(parsed?.messageType).toBe('unsupported')
+    expect(parsed?.unsupportedErrorCode).toBe(131060)
+  })
+
+  it('parses image media id for follow-up webhook', () => {
+    const parsed = parseIncomingWhatsAppMessage({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: 'pnid-1' },
+                messages: [
+                  {
+                    from: '972501234567',
+                    id: 'wamid.img1',
+                    type: 'image',
+                    image: { id: 'meta-media-123' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    })
+    expect(parsed?.messageType).toBe('image')
+    expect(parsed?.mediaId).toBe('meta-media-123')
+    expect(parsed?.mediaType).toBe('image')
   })
 })

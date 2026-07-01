@@ -16,9 +16,13 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import {
+  fetchWithTimeout,
+  isFetchTimeoutError,
+  MUTATION_FETCH_TIMEOUT_MS,
+} from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
-import { validateRequired, validatePhoneNumber, validateEmail } from '@/lib/validators'
+import { validateRequired, validateEmail } from '@/lib/validators'
 import {
   AppShell,
   MobileHeader,
@@ -43,8 +47,11 @@ import { usePaidAddons } from '../components/PaidAddonsContext'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import {
   collectWorkerPhones,
+  formatWorkerPhoneDisplay,
   formatWorkerPhonesDisplay,
   MAX_WORKER_EXTRA_PHONES,
+  normalizeWorkerPhone,
+  parseWorkerPhone,
   sanitizeExtraPhones,
   workerHasPhone,
 } from '@/lib/worker-phones'
@@ -125,6 +132,34 @@ function writeWorkersCache(clientId: string, data: Omit<WorkersCache, 'savedAt'>
   try {
     localStorage.setItem(`bamakor_workers_v1_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
   } catch {}
+}
+
+async function findWorkerByPhoneAndName(
+  activeClientId: string,
+  phone: string,
+  fullName: string
+): Promise<WorkerRow | null> {
+  const normalized = normalizeWorkerPhone(phone)
+  if (!normalized) return null
+
+  const { data, error } = await supabase
+    .from('workers')
+    .select(WORKERS_LIST_SELECT)
+    .eq('client_id', activeClientId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (error || !data?.length) return null
+
+  const nameNorm = fullName.trim().toLowerCase()
+  return (
+    data.find(
+      (w) =>
+        normalizeWorkerPhone(w.phone || '') === normalized &&
+        w.full_name.trim().toLowerCase() === nameNorm
+    ) ?? null
+  )
 }
 
 export default function WorkersPage() {
@@ -210,8 +245,8 @@ export default function WorkersPage() {
     setEditingWorker(worker)
     setForm({
       full_name: worker.full_name || '',
-      phone: worker.phone || '',
-      extra_phones: [...(worker.extra_phones ?? [])],
+      phone: formatWorkerPhoneDisplay(worker.phone || ''),
+      extra_phones: (worker.extra_phones ?? []).map((p) => formatWorkerPhoneDisplay(p)),
       email: worker.email || '',
       role: worker.role || '',
       is_active: worker.is_active,
@@ -220,11 +255,19 @@ export default function WorkersPage() {
     setDrawerOpen(true)
   }
 
-  function closeDrawer() {
-    if (saving) return
+  function closeDrawer(force = false) {
+    if (saving && !force) return
     setDrawerOpen(false)
     setEditingWorker(null)
     setForm(emptyForm)
+  }
+
+  function prependWorker(worker: WorkerRow) {
+    setWorkers((prev) => {
+      const next = [worker, ...prev.filter((w) => w.id !== worker.id)]
+      if (clientId) writeWorkersCache(clientId, { workers: next })
+      return next
+    })
   }
 
   async function openDetailDrawer(worker: WorkerRow) {
@@ -316,18 +359,35 @@ export default function WorkersPage() {
     }))
   }
 
+  function blurPhoneField(value: string): string {
+    const normalized = normalizeWorkerPhone(value)
+    return normalized ? formatWorkerPhoneDisplay(normalized) : value.trim()
+  }
+
+  function blurPrimaryPhone() {
+    setForm((prev) => ({ ...prev, phone: blurPhoneField(prev.phone) }))
+  }
+
+  function blurExtraPhone(index: number) {
+    setForm((prev) => {
+      const next = [...prev.extra_phones]
+      next[index] = blurPhoneField(next[index] ?? '')
+      return { ...prev, extra_phones: next }
+    })
+  }
+
   function validateForm() {
     const nameError = validateRequired(form.full_name, 'שם')
     if (nameError) return 'נא למלא שם מלא'
-    const phoneError = validatePhoneNumber(form.phone, 'טלפון')
-    if (phoneError) return 'נא להזין מספר טלפון ראשי תקין (לפחות 10 ספרות)'
+    const phoneParsed = parseWorkerPhone(form.phone, 'מספר טלפון ראשי')
+    if (!phoneParsed.ok) return phoneParsed.error
     for (let i = 0; i < form.extra_phones.length; i++) {
       const extra = form.extra_phones[i]?.trim()
       if (!extra) continue
-      const extraError = validatePhoneNumber(extra, `טלפון נוסף ${i + 1}`)
-      if (extraError) return 'מספר טלפון נוסף לא תקין (לפחות 10 ספרות)'
+      const extraParsed = parseWorkerPhone(extra, `טלפון נוסף ${i + 1}`)
+      if (!extraParsed.ok) return extraParsed.error
     }
-    const extraSanitized = sanitizeExtraPhones(form.phone, form.extra_phones)
+    const extraSanitized = sanitizeExtraPhones(phoneParsed.normalized, form.extra_phones)
     if (!extraSanitized.ok) return extraSanitized.error
     if (form.email) {
       const emailError = validateEmail(form.email, 'אימייל')
@@ -338,6 +398,8 @@ export default function WorkersPage() {
   }
 
   async function saveWorker() {
+    if (saving) return
+
     const validationError = validateForm()
     if (validationError) {
       toast.error(validationError)
@@ -347,7 +409,10 @@ export default function WorkersPage() {
     setSaving(true)
     await asyncHandler(
       async () => {
-        const extraSanitized = sanitizeExtraPhones(form.phone, form.extra_phones)
+        const phoneParsed = parseWorkerPhone(form.phone, 'מספר טלפון ראשי')
+        if (!phoneParsed.ok) throw new Error(phoneParsed.error)
+
+        const extraSanitized = sanitizeExtraPhones(phoneParsed.normalized, form.extra_phones)
         if (!extraSanitized.ok) throw new Error(extraSanitized.error)
 
         const hourlyParsed = form.hourly_rate.trim()
@@ -359,7 +424,7 @@ export default function WorkersPage() {
 
         const payload = {
           full_name: form.full_name.trim(),
-          phone: form.phone.trim(),
+          phone: phoneParsed.normalized,
           extra_phones: extraSanitized.phones,
           email: form.email.trim() || null,
           role: form.role.trim() || null,
@@ -368,44 +433,84 @@ export default function WorkersPage() {
           hourly_rate: hourlyParsed,
         }
 
+        const finishCreateSuccess = (worker: WorkerRow) => {
+          prependWorker(worker)
+          toast.success('העובד נוצר')
+          closeDrawer(true)
+          void loadWorkers()
+        }
+
         if (editingWorker) {
-          const res = await fetchWithTimeout('/api/update-worker', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              worker_id: editingWorker.id,
-              full_name: payload.full_name,
-              phone: payload.phone,
-              extra_phones: payload.extra_phones,
-              email: payload.email,
-              role: payload.role,
-              is_active: payload.is_active,
-              hourly_rate: payload.hourly_rate,
-            }),
-          })
+          const res = await fetchWithTimeout(
+            '/api/update-worker',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                worker_id: editingWorker.id,
+                full_name: payload.full_name,
+                phone: payload.phone,
+                extra_phones: payload.extra_phones,
+                email: payload.email,
+                role: payload.role,
+                is_active: payload.is_active,
+                hourly_rate: payload.hourly_rate,
+              }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
           const json = (await res?.json().catch(() => ({}))) as { error?: string }
           if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
           toast.success(TM.workerUpdated)
         } else {
-          const res = await fetchWithTimeout('/api/create-worker', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              full_name: payload.full_name,
-              phone: payload.phone,
-              extra_phones: payload.extra_phones,
-              email: payload.email,
-              role: payload.role,
-              is_active: payload.is_active,
-            }),
-          })
-          const json = await res.json().catch(() => ({}))
-          if (!res.ok) throw new Error((json as { error?: string }).error || 'יצירת עובד נכשלה')
-          toast.success('העובד נוצר')
+          try {
+            const res = await fetchWithTimeout(
+              '/api/create-worker',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  full_name: payload.full_name,
+                  phone: payload.phone,
+                  extra_phones: payload.extra_phones,
+                  email: payload.email,
+                  role: payload.role,
+                  is_active: payload.is_active,
+                }),
+              },
+              MUTATION_FETCH_TIMEOUT_MS
+            )
+            const json = (await res.json().catch(() => ({}))) as {
+              error?: string
+              worker?: WorkerRow
+            }
+            if (!res.ok) throw new Error(json.error || 'יצירת עובד נכשלה')
+            if (json.worker) {
+              finishCreateSuccess(json.worker)
+              return true
+            }
+            toast.success('העובד נוצר')
+          } catch (e) {
+            if (isFetchTimeoutError(e)) {
+              const recovered = await findWorkerByPhoneAndName(
+                clientId,
+                payload.phone,
+                payload.full_name
+              )
+              if (recovered) {
+                finishCreateSuccess(recovered)
+                return true
+              }
+            }
+            throw e
+          }
+          closeDrawer(true)
+          void loadWorkers()
+          return true
         }
 
         await loadWorkers()
-        closeDrawer()
+        closeDrawer(true)
         return true
       },
       { context: 'שמירת עובד', showErrorToast: true }
@@ -727,9 +832,11 @@ export default function WorkersPage() {
               type="tel"
               value={form.phone}
               onChange={(e) => updateForm('phone', e.target.value)}
-              placeholder="מספר אישי / ראשי"
+              onBlur={blurPrimaryPhone}
+              placeholder="05X-XXX-XXXX"
               style={styles.input}
             />
+            <p style={styles.formHint}>05X-XXX-XXXX, 05XXXXXXXX, +972... או 972... (עם או בלי מקפים)</p>
           </div>
 
           <div style={styles.formGroup}>
@@ -754,7 +861,8 @@ export default function WorkersPage() {
                       type="tel"
                       value={extraPhone}
                       onChange={(e) => updateExtraPhone(index, e.target.value)}
-                      placeholder={`טלפון נוסף ${index + 1}`}
+                      onBlur={() => blurExtraPhone(index)}
+                      placeholder="05X-XXX-XXXX"
                       style={{ ...styles.input, flex: 1 }}
                     />
                     <Button variant="ghost" size="sm" type="button" onClick={() => removeExtraPhone(index)}>
@@ -764,6 +872,7 @@ export default function WorkersPage() {
                 ))}
               </div>
             )}
+            <p style={styles.formHint}>05X-XXX-XXXX או 972... (עם או בלי מקפים)</p>
           </div>
 
           <div style={styles.formGroup}>
@@ -815,7 +924,7 @@ export default function WorkersPage() {
           </div>
 
           <div style={styles.drawerActions}>
-            <Button variant="secondary" onClick={closeDrawer}>
+            <Button variant="secondary" onClick={() => closeDrawer()}>
               ביטול
             </Button>
             <Button variant="primary" onClick={saveWorker} loading={saving}>

@@ -14,7 +14,17 @@ import {
   looksLikeTicketDescription,
   resolveTicketPriorityFromResidentMessage,
   statusLabelHe,
+  isClarificationQuestion,
+  isTicketConfirmText,
 } from '@/lib/whatsapp-intent'
+import { resolveMessageForLanguage, normalizeResidentLang, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
+import {
+  getResidentLanguage,
+  saveResidentLanguage,
+  hasExplicitResidentLanguage,
+  preferredLanguageForNewSession,
+} from '@/lib/whatsapp-resident-language'
+import { RESIDENT_UI_COPY, residentGreetingPrefix } from '@/lib/whatsapp-resident-copy'
 import { fetchWithTimeout as fetchTimeout } from '@/lib/fetch-timeout'
 import {
   parseStartCode,
@@ -31,8 +41,10 @@ import type { ProjectRow } from '@/lib/whatsapp-interactive'
 import {
   buildProjectSelectionListPayload,
   buildConfirmTicketButtonsPayload,
+  buildLanguageButtonsPayload,
   parseProjectListReplyId,
   parseConfirmButtonReplyId,
+  parseLanguageButtonReplyId,
 } from '@/lib/whatsapp-interactive'
 import {
   persistWhatsAppMessage,
@@ -54,6 +66,7 @@ import {
   createAttachmentRecord,
 } from '@/lib/whatsapp-media'
 import { getLogger } from '@/lib/logging'
+import { insertOperationalErrorLog } from '@/lib/error-logs-db'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
@@ -61,7 +74,6 @@ import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import {
   findResidentByPhoneClient,
   getOrCreateResident,
-  residentPromptGreetingPrefix,
 } from '@/lib/residents-whatsapp'
 
 const logger = getLogger()
@@ -107,18 +119,53 @@ type WaSendFn = (
   creds?: { phoneNumberId?: string; accessToken?: string },
   vars?: Partial<
     Record<'project_name' | 'ticket_number' | 'description' | 'reporter_name' | 'building_line' | 'list', string>
-  >
+  >,
+  lang?: ResidentLang
 ) => Promise<unknown>
+
+async function logWebhookOperationalError(
+  context: string,
+  message: string,
+  clientId?: string,
+  details?: Record<string, unknown>
+): Promise<void> {
+  await insertOperationalErrorLog({
+    context: `whatsapp_webhook:${context}`,
+    message,
+    clientId: clientId ?? null,
+    details: { ...details, source: 'dispatch-inbound' },
+  })
+}
 
 async function attachWhatsAppMediaToTicket(
   supabaseAdmin: SupabaseClient,
   ticketId: string,
   mediaId: string,
-  mediaKind: WaInboundMediaKind
+  mediaKind: WaInboundMediaKind,
+  accessToken?: string,
+  clientId?: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  if (!accessToken?.trim()) {
+    const reason = 'MISSING_ACCESS_TOKEN'
+    logger.warn('WEBHOOK', 'media attach skipped — no tenant access token', { ticketId, mediaId, mediaKind })
+    void logWebhookOperationalError('media_attach', 'Missing WhatsApp access token for media download', clientId, {
+      ticketId,
+      mediaId,
+      mediaKind,
+      reason,
+    })
+    return { ok: false, reason }
+  }
+
   const config = WA_INBOUND_MEDIA[mediaKind]
-  const mediaData = await downloadWhatsAppMedia(mediaId, config.downloadType)
+  const mediaData = await downloadWhatsAppMedia(mediaId, config.downloadType, accessToken)
   if (!mediaData) {
+    void logWebhookOperationalError('media_download', 'WhatsApp media download failed after retry', clientId, {
+      ticketId,
+      mediaId,
+      mediaKind,
+      reason: 'DOWNLOAD_FAILED',
+    })
     return { ok: false, reason: 'DOWNLOAD_FAILED' }
   }
 
@@ -129,6 +176,12 @@ async function attachWhatsAppMediaToTicket(
     mediaData.mimeType
   )
   if (!uploadResult) {
+    void logWebhookOperationalError('media_upload', 'ticket-attachments storage upload failed', clientId, {
+      ticketId,
+      mediaId,
+      mediaKind,
+      reason: 'STORAGE_UPLOAD_FAILED',
+    })
     return { ok: false, reason: 'STORAGE_UPLOAD_FAILED' }
   }
 
@@ -143,6 +196,13 @@ async function attachWhatsAppMediaToTicket(
     config.attachmentType
   )
   if (!attachmentCreated) {
+    void logWebhookOperationalError('media_db', 'ticket_attachments insert failed', clientId, {
+      ticketId,
+      mediaId,
+      mediaKind,
+      filePath: uploadResult.filePath,
+      reason: 'DB_INSERT_FAILED',
+    })
     return { ok: false, reason: 'DB_INSERT_FAILED' }
   }
 
@@ -157,10 +217,12 @@ async function handleWhatsAppInboundMedia(
   mediaKind: WaInboundMediaKind,
   waRecipient: string,
   sendWa: WaSendFn,
-  residentWhatsAppCreds: { phoneNumberId?: string; accessToken?: string }
+  residentWhatsAppCreds: { phoneNumberId?: string; accessToken?: string },
+  isTestWhatsAppSender: boolean
 ): Promise<void> {
   const config = WA_INBOUND_MEDIA[mediaKind]
   const label = mediaKind === 'video' ? 'video' : 'image'
+  const accessToken = residentWhatsAppCreds.accessToken
 
   const { data: session, error: sessionError } = await supabaseAdmin
     .from('sessions')
@@ -178,7 +240,14 @@ async function handleWhatsAppInboundMedia(
 
   if (session?.active_ticket_id) {
     const ticketId = session.active_ticket_id
-    const result = await attachWhatsAppMediaToTicket(supabaseAdmin, ticketId, mediaId, mediaKind)
+    const result = await attachWhatsAppMediaToTicket(
+      supabaseAdmin,
+      ticketId,
+      mediaId,
+      mediaKind,
+      accessToken,
+      webhookClientId
+    )
 
     if (result.ok) {
       logger.info('WEBHOOK', `${label} attached to ticket`, { ticketId })
@@ -227,6 +296,9 @@ async function handleWhatsAppInboundMedia(
 
     if (stashErr) {
       logger.warn('WEBHOOK', `stash pending ${label} failed`, { err: stashErr.message })
+      try {
+        await sendWa(waRecipient, config.templates.failed, residentWhatsAppCreds)
+      } catch { /* WA send failure is non-fatal */ }
     } else {
       try {
         await sendWa(waRecipient, config.templates.stashed, residentWhatsAppCreds)
@@ -238,7 +310,14 @@ async function handleWhatsAppInboundMedia(
   const recentTicket = await findRecentTicketForPhone(from, supabaseAdmin, webhookClientId)
   if (recentTicket && recentTicket.status !== 'CLOSED') {
     const ticketId = recentTicket.id
-    const result = await attachWhatsAppMediaToTicket(supabaseAdmin, ticketId, mediaId, mediaKind)
+    const result = await attachWhatsAppMediaToTicket(
+      supabaseAdmin,
+      ticketId,
+      mediaId,
+      mediaKind,
+      accessToken,
+      webhookClientId
+    )
 
     if (result.ok) {
       logger.info('WEBHOOK', `${label} attached to recent ticket`, { ticketId })
@@ -255,6 +334,46 @@ async function handleWhatsAppInboundMedia(
     } catch { /* WA send failure is non-fatal */ }
     await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `recent_ticket_${label}_processed_failure`)
     return
+  }
+
+  if (!isTestWhatsAppSender) {
+    const knownResident = await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from)
+    if (knownResident?.project_id) {
+      await supabaseAdmin
+        .from('sessions')
+        .update({
+          is_active: false,
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('phone_number', from)
+        .eq('client_id', webhookClientId)
+        .eq('is_active', true)
+
+      const { error: sessionInsertError } = await supabaseAdmin.from('sessions').insert({
+        phone_number: from,
+        client_id: webhookClientId,
+        project_id: knownResident.project_id,
+        is_active: true,
+        active_ticket_id: null,
+        pending_whatsapp_media_id: mediaId,
+        pending_whatsapp_media_type: mediaKind,
+        last_activity_at: new Date().toISOString(),
+      })
+
+      if (!sessionInsertError) {
+        try {
+          await getOrCreateResident(supabaseAdmin, webhookClientId, from, knownResident.project_id)
+        } catch { /* non-fatal */ }
+        try {
+          await sendWa(waRecipient, config.templates.stashed, residentWhatsAppCreds)
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
+
+      logger.warn('WEBHOOK', `known-resident media session insert failed`, {
+        err: sessionInsertError.message,
+      })
+    }
   }
 
   try {
@@ -344,7 +463,8 @@ async function attachPendingWhatsAppMediaToTicketIfAny(
   from: string,
   clientId: string,
   ticketId: string,
-  supabaseAdmin: SupabaseClient
+  supabaseAdmin: SupabaseClient,
+  accessToken?: string
 ): Promise<boolean> {
   const { data: openSession, error } = await supabaseAdmin
     .from('sessions')
@@ -401,7 +521,14 @@ async function attachPendingWhatsAppMediaToTicketIfAny(
     }
   }
 
-  const result = await attachWhatsAppMediaToTicket(supabaseAdmin, ticketId, pendingId, mediaKind)
+  const result = await attachWhatsAppMediaToTicket(
+    supabaseAdmin,
+    ticketId,
+    pendingId,
+    mediaKind,
+    accessToken,
+    clientId
+  )
   if (!result.ok) {
     logger.warn('WEBHOOK', 'pending media attach failed', { pendingId, ticketId, reason: result.reason })
     return false
@@ -578,18 +705,21 @@ export async function runWhatsAppInboundBackground(
       to: string,
       templateKey: WhatsAppTemplateKey,
       creds?: { phoneNumberId?: string; accessToken?: string },
-      vars: WaTemplateVars = {}
+      vars: WaTemplateVars = {},
+      lang: ResidentLang = residentLang
     ) {
-      const msg = await resolveWhatsAppTemplateMessage(
+      const raw = await resolveWhatsAppTemplateMessage(
         supabaseAdmin,
         webhookClientId,
         templateKey,
         WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[templateKey],
         vars
       )
+      const msg = resolveMessageForLanguage(raw, lang)
       logger.info('WEBHOOK', 'WA template send', {
         requestId,
         templateKey,
+        lang,
         to: isWhatsAppTestSender(to) ? '(test)' : `…${to.slice(-4)}`,
       })
       const result = await sendWhatsAppTextMessage(to, msg, creds, { clientId: webhookClientId })
@@ -608,10 +738,11 @@ export async function runWhatsAppInboundBackground(
       to: string,
       projects: ProjectRow[],
       bodyText: string,
-      creds?: { phoneNumberId?: string; accessToken?: string }
+      creds?: { phoneNumberId?: string; accessToken?: string },
+      lang: ResidentLang = residentLang
     ) {
       if (!creds?.phoneNumberId || !creds?.accessToken) return null
-      const payload = buildProjectSelectionListPayload(to, projects, bodyText)
+      const payload = buildProjectSelectionListPayload(to, projects, bodyText, lang)
       const result = await sendWhatsAppInteractivePayloadWithCredentials(
         creds.phoneNumberId,
         creds.accessToken,
@@ -632,10 +763,35 @@ export async function runWhatsAppInboundBackground(
     async function sendWaConfirmButtons(
       to: string,
       bodyText: string,
+      creds?: { phoneNumberId?: string; accessToken?: string },
+      lang: ResidentLang = residentLang
+    ) {
+      if (!creds?.phoneNumberId || !creds?.accessToken) return null
+      const payload = buildConfirmTicketButtonsPayload(to, bodyText, lang)
+      const result = await sendWhatsAppInteractivePayloadWithCredentials(
+        creds.phoneNumberId,
+        creds.accessToken,
+        payload
+      )
+      void persistWhatsAppMessage(supabaseAdmin, {
+        clientId: webhookClientId,
+        phone: from,
+        direction: 'out',
+        body: bodyText,
+        messageType: 'interactive',
+        interactivePayload: payload.interactive as Record<string, unknown>,
+        waMessageId: extractMetaWaMessageId(result),
+      })
+      return result
+    }
+
+    async function sendWaLanguageButtons(
+      to: string,
       creds?: { phoneNumberId?: string; accessToken?: string }
     ) {
       if (!creds?.phoneNumberId || !creds?.accessToken) return null
-      const payload = buildConfirmTicketButtonsPayload(to, bodyText)
+      const bodyText = 'שלום! בחרו שפה / Choisissez / Choose:'
+      const payload = buildLanguageButtonsPayload(to, bodyText)
       const result = await sendWhatsAppInteractivePayloadWithCredentials(
         creds.phoneNumberId,
         creds.accessToken,
@@ -661,6 +817,14 @@ export async function runWhatsAppInboundBackground(
     const waRecipient = waFrom
     const from = whatsappDbPhoneKey(waFrom)
     const isTestWhatsAppSender = isWhatsAppTestSender(waFrom)
+
+    let session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+    let residentLang: ResidentLang = await getResidentLanguage(
+      supabaseAdmin,
+      webhookClientId,
+      from,
+      session
+    )
 
     void persistWhatsAppMessage(supabaseAdmin, {
       clientId: webhookClientId,
@@ -755,7 +919,15 @@ export async function runWhatsAppInboundBackground(
       } catch { /* WA send failure is non-fatal */ }
     }
 
-    // Location messages: archived — redirect resident to describe in text
+    // Meta sends type=unsupported placeholders (often 131060) before the real image/video webhook — ignore silently.
+    if (messageType === 'unsupported') {
+      logger.info('WEBHOOK', 'Meta unsupported webhook ignored', {
+        requestId,
+        unsupportedErrorCode: parsedMessage.unsupportedErrorCode ?? null,
+      })
+      return
+    }
+
     if (messageType === 'location') {
       try {
         await sendWa(waRecipient, 'redirect_to_text', residentWhatsAppCreds)
@@ -803,7 +975,8 @@ export async function runWhatsAppInboundBackground(
         mediaType as WaInboundMediaKind,
         waRecipient,
         sendWa,
-        residentWhatsAppCreds
+        residentWhatsAppCreds,
+        isTestWhatsAppSender
       )
       return
     }
@@ -840,6 +1013,18 @@ export async function runWhatsAppInboundBackground(
         } catch { /* WA send failure is non-fatal */ }
       }
       return
+    }
+
+    if (interactiveReplyId) {
+      const pickedLang = parseLanguageButtonReplyId(interactiveReplyId)
+      if (pickedLang) {
+        residentLang = pickedLang
+        await saveResidentLanguage(supabaseAdmin, webhookClientId, from, pickedLang, session?.id)
+        try {
+          await sendWa(waRecipient, 'welcome', residentWhatsAppCreds, {}, pickedLang)
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
     }
 
     // Short status keywords — open tickets for this reporter + tenant
@@ -933,6 +1118,14 @@ export async function runWhatsAppInboundBackground(
         logger.warn('WEBHOOK', 'deactivate old sessions failed (continuing)', { err: deactivateError.message })
       }
 
+      const qrLang = await preferredLanguageForNewSession(
+        supabaseAdmin,
+        webhookClientId,
+        from,
+        residentLang
+      )
+      residentLang = qrLang
+
       const { data: createdSession, error: sessionInsertError } = await supabaseAdmin
         .from('sessions')
         .insert({
@@ -941,9 +1134,10 @@ export async function runWhatsAppInboundBackground(
           project_id: project.id,
           is_active: true,
           active_ticket_id: null,
+          preferred_language: qrLang,
           last_activity_at: new Date().toISOString(),
         })
-        .select('id, phone_number, project_id, is_active')
+        .select('id, phone_number, project_id, is_active, preferred_language')
         .single()
 
       if (sessionInsertError) {
@@ -963,11 +1157,13 @@ export async function runWhatsAppInboundBackground(
       }
 
       try {
-        const buildingLine = buildingNumber ? ` (בניין ${buildingNumber})` : ''
+        const buildingLine = buildingNumber
+          ? RESIDENT_UI_COPY[qrLang].buildingLine(buildingNumber)
+          : ''
         await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
           project_name: project.name,
           building_line: buildingLine,
-        })
+        }, qrLang)
       } catch { /* WA send failure is non-fatal */ }
 
       return
@@ -976,7 +1172,8 @@ export async function runWhatsAppInboundBackground(
     const ticketPriority = resolveTicketPriorityFromResidentMessage(textBody)
 
     // סשן פעיל = אחרי סריקת QR או אחרי בחירת בניין בחיפוש (1/2/3 / התאמה אוטומטית)
-    let session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+    session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+    residentLang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, session)
 
     // זיכרון דייר: אם הטלפון כבר ב-residents — דלג על QR / חיפוש בניין
     if (!session && !isTestWhatsAppSender) {
@@ -992,24 +1189,44 @@ export async function runWhatsAppInboundBackground(
           .eq('client_id', webhookClientId)
           .eq('is_active', true)
 
+        const sessionLang = await preferredLanguageForNewSession(
+          supabaseAdmin,
+          webhookClientId,
+          from,
+          residentLang
+        )
+
         const { error: insErr } = await supabaseAdmin.from('sessions').insert({
           phone_number: from,
           client_id: webhookClientId,
           project_id: knownResident.project_id,
           is_active: true,
           active_ticket_id: null,
+          preferred_language: sessionLang,
           last_activity_at: new Date().toISOString(),
         })
 
         if (!insErr) {
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, knownResident.project_id)
           session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+          residentLang = sessionLang
           if (session) {
+            if (isClarificationQuestion(textBody)) {
+              try {
+                await sendWhatsAppTextMessage(
+                  waRecipient,
+                  RESIDENT_UI_COPY[sessionLang].clarificationReply,
+                  residentWhatsAppCreds,
+                  { clientId: webhookClientId }
+                )
+              } catch { /* WA send failure is non-fatal */ }
+              return
+            }
             if (!looksLikeTicketDescription(textBody)) {
               try {
                 await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
-                  reporter_name: residentPromptGreetingPrefix(knownResident.full_name),
-                })
+                  reporter_name: residentGreetingPrefix(sessionLang, knownResident.full_name),
+                }, sessionLang)
               } catch { /* WA send failure is non-fatal */ }
               return
             }
@@ -1044,6 +1261,10 @@ export async function runWhatsAppInboundBackground(
             .eq('client_id', webhookClientId)
             .eq('is_active', true)
 
+          const sessionLang = pendingSelection.preferred_language?.trim()
+            ? normalizeResidentLang(pendingSelection.preferred_language)
+            : residentLang
+
           const { error: sessionCreateError } = await supabaseAdmin
             .from('sessions')
             .insert({
@@ -1052,6 +1273,7 @@ export async function runWhatsAppInboundBackground(
               project_id: selectedProject.id,
               is_active: true,
               active_ticket_id: null,
+              preferred_language: sessionLang,
               last_activity_at: new Date().toISOString(),
             })
             .select()
@@ -1063,6 +1285,7 @@ export async function runWhatsAppInboundBackground(
           }
 
           await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+          residentLang = sessionLang
 
           if (!isTestWhatsAppSender) {
             await getOrCreateResident(supabaseAdmin, webhookClientId, from, selectedProject.id)
@@ -1071,7 +1294,7 @@ export async function runWhatsAppInboundBackground(
           try {
             await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
               project_name: selectedProject.name,
-            })
+            }, sessionLang)
           } catch { /* WA send failure is non-fatal */ }
 
           return
@@ -1102,9 +1325,26 @@ export async function runWhatsAppInboundBackground(
       const addressLike = isAddressLikeText(textBody)
 
       if (!addressLike) {
-        if (isGreetingSmallTalk(textBody)) {
+        if (isClarificationQuestion(textBody)) {
+          const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
           try {
-            await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
+            await sendWhatsAppTextMessage(
+              waRecipient,
+              RESIDENT_UI_COPY[lang].clarificationReply,
+              residentWhatsAppCreds,
+              { clientId: webhookClientId }
+            )
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
+        if (isGreetingSmallTalk(textBody)) {
+          const hasLang = await hasExplicitResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+          try {
+            if (!hasLang) {
+              await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
+            } else {
+              await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
+            }
           } catch { /* WA send failure is non-fatal */ }
           return
         }
@@ -1152,6 +1392,13 @@ export async function runWhatsAppInboundBackground(
           .eq('client_id', webhookClientId)
           .eq('is_active', true)
 
+        const sessionLang = await preferredLanguageForNewSession(
+          supabaseAdmin,
+          webhookClientId,
+          from,
+          residentLang
+        )
+
         const { error: sessionCreateError } = await supabaseAdmin
           .from('sessions')
           .insert({
@@ -1160,6 +1407,7 @@ export async function runWhatsAppInboundBackground(
             project_id: matchedProject.id,
             is_active: true,
             active_ticket_id: null,
+            preferred_language: sessionLang,
             last_activity_at: new Date().toISOString(),
           })
           .select()
@@ -1177,7 +1425,7 @@ export async function runWhatsAppInboundBackground(
         try {
           await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
             project_name: matchedProject.name,
-          })
+          }, sessionLang)
         } catch { /* WA send failure is non-fatal */ }
 
         return
@@ -1188,7 +1436,8 @@ export async function runWhatsAppInboundBackground(
         from,
         searchResults,
         supabaseAdmin,
-        webhookClientId
+        webhookClientId,
+        residentLang
       )
 
       if (!pendingCreated) {
@@ -1203,8 +1452,9 @@ export async function runWhatsAppInboundBackground(
         await sendWaInteractiveList(
           waRecipient,
           searchResults,
-          'מצאנו כמה בניינים תואמים. בחרו מהרשימה:',
-          residentWhatsAppCreds
+          RESIDENT_UI_COPY[residentLang].buildingListBody,
+          residentWhatsAppCreds,
+          residentLang
         )
       } catch { /* WA send failure is non-fatal */ }
 
@@ -1215,6 +1465,11 @@ export async function runWhatsAppInboundBackground(
     // Session is only used to bridge: (project identified) -> (ticket description) -> ticket created.
 
     let ticketDescription: string | null = null
+    const knownResidentForSession =
+      !isTestWhatsAppSender
+        ? await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from, session.project_id ?? undefined)
+        : null
+    const isKnownResident = !!knownResidentForSession
 
     if (interactiveReplyId && session?.id) {
       const confirmAction = parseConfirmButtonReplyId(interactiveReplyId)
@@ -1242,7 +1497,9 @@ export async function runWhatsAppInboundBackground(
             ?.pending_ticket_description?.trim() || null
         if (!ticketDescription) {
           try {
-            await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds)
+            await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
+              reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
+            })
           } catch { /* WA send failure is non-fatal */ }
           return
         }
@@ -1253,12 +1510,45 @@ export async function runWhatsAppInboundBackground(
       }
     }
 
+    if (!ticketDescription && session?.id && isTicketConfirmText(textBody)) {
+      const { data: pendingRow } = await supabaseAdmin
+        .from('sessions')
+        .select('pending_ticket_description')
+        .eq('id', session.id)
+        .maybeSingle()
+      const stashed =
+        (pendingRow as { pending_ticket_description?: string | null } | null)
+          ?.pending_ticket_description?.trim() || null
+      if (stashed) {
+        ticketDescription = stashed
+        await supabaseAdmin
+          .from('sessions')
+          .update({ pending_ticket_description: null, last_activity_at: new Date().toISOString() })
+          .eq('id', session.id)
+      }
+    }
+
     if (!ticketDescription) {
+      if (isClarificationQuestion(textBody)) {
+        try {
+          await sendWhatsAppTextMessage(
+            waRecipient,
+            RESIDENT_UI_COPY[residentLang].clarificationReply,
+            residentWhatsAppCreds,
+            { clientId: webhookClientId }
+          )
+        } catch { /* WA send failure is non-fatal */ }
+        await supabaseAdmin
+          .from('sessions')
+          .update({ last_activity_at: new Date().toISOString() })
+          .eq('id', session.id)
+        return
+      }
+
       if (!looksLikeTicketDescription(textBody)) {
-        const known = await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from)
         try {
           await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
-            reporter_name: residentPromptGreetingPrefix(known?.full_name),
+            reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
           })
         } catch { /* WA send failure is non-fatal */ }
         await supabaseAdmin
@@ -1284,23 +1574,28 @@ export async function runWhatsAppInboundBackground(
         }
       }
 
-      const preview =
-        textBody.length > 180 ? `${textBody.slice(0, 177)}…` : textBody
-      await supabaseAdmin
-        .from('sessions')
-        .update({
-          pending_ticket_description: textBody,
-          last_activity_at: new Date().toISOString(),
-        })
-        .eq('id', session.id)
-      try {
-        await sendWaConfirmButtons(
-          waRecipient,
-          `לאשר פתיחת תקלה?\n\n${preview}`,
-          residentWhatsAppCreds
-        )
-      } catch { /* WA send failure is non-fatal */ }
-      return
+      if (isKnownResident) {
+        ticketDescription = textBody
+      } else {
+        const preview =
+          textBody.length > 180 ? `${textBody.slice(0, 177)}…` : textBody
+        await supabaseAdmin
+          .from('sessions')
+          .update({
+            pending_ticket_description: textBody,
+            last_activity_at: new Date().toISOString(),
+          })
+          .eq('id', session.id)
+        try {
+          await sendWaConfirmButtons(
+            waRecipient,
+            `${RESIDENT_UI_COPY[residentLang].confirmTicketPrefix}\n\n${preview}`,
+            residentWhatsAppCreds,
+            residentLang
+          )
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
     }
 
     if (session.project_id) {
@@ -1346,7 +1641,7 @@ export async function runWhatsAppInboundBackground(
         description: ticketDescription,
         status: 'NEW',
         priority: ticketPriority,
-        language: 'he',
+        language: residentLang,
         source: 'whatsapp',
         building_number: buildingNumber,
       })
@@ -1355,10 +1650,24 @@ export async function runWhatsAppInboundBackground(
 
     if (ticketError) {
       logger.error('WEBHOOK', 'ticket insert failed', new Error(ticketError.message))
+      void logWebhookOperationalError('ticket_create', ticketError.message, webhookClientId, {
+        requestId,
+        phone: from,
+        projectId: session.project_id,
+      })
+      try {
+        await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+      } catch { /* non-fatal */ }
       return
     }
 
-    await attachPendingWhatsAppMediaToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
+    await attachPendingWhatsAppMediaToTicketIfAny(
+      from,
+      webhookClientId,
+      createdTicket.id,
+      supabaseAdmin,
+      residentWhatsAppCreds.accessToken
+    )
     await attachPendingSessionLocationToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
 
     const pendingForApproval =
@@ -1492,26 +1801,32 @@ export async function runWhatsAppInboundBackground(
 
       const projectNameForWa = (projRow as { name?: string } | null)?.name || ''
 
-      const ticketOpenedBody = await resolveWhatsAppTemplateMessage(
-        supabaseAdmin,
-        webhookClientId,
-        'ticket_opened',
-        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['ticket_opened'],
-        {
-          building_line: buildingText,
-          ticket_number: String(createdTicket.ticket_number),
-          description: ticketDescription || '',
-          reporter_name: displayReporterForExternalMessage(waRecipient),
-          project_name: projectNameForWa,
-        }
+      const ticketOpenedBody = resolveMessageForLanguage(
+        await resolveWhatsAppTemplateMessage(
+          supabaseAdmin,
+          webhookClientId,
+          'ticket_opened',
+          WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['ticket_opened'],
+          {
+            building_line: buildingText,
+            ticket_number: String(createdTicket.ticket_number),
+            description: ticketDescription || '',
+            reporter_name: displayReporterForExternalMessage(waRecipient),
+            project_name: projectNameForWa,
+          }
+        ),
+        residentLang
       )
 
       const pendingNote = pendingForApproval
-        ? await resolveWhatsAppTemplateMessage(
-            supabaseAdmin,
-            webhookClientId,
-            'pending_approval_note',
-            WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['pending_approval_note']
+        ? resolveMessageForLanguage(
+            await resolveWhatsAppTemplateMessage(
+              supabaseAdmin,
+              webhookClientId,
+              'pending_approval_note',
+              WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['pending_approval_note']
+            ),
+            residentLang
           )
         : ''
 
@@ -1532,5 +1847,9 @@ export async function runWhatsAppInboundBackground(
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err))
     logger.error('WEBHOOK', 'Inbound background error', e, { requestId })
+    void logWebhookOperationalError('unhandled', e.message, undefined, {
+      requestId,
+      stack: e.stack?.slice(0, 2000),
+    })
   }
 }

@@ -128,10 +128,14 @@ export function TicketWhatsAppThread({
           ),
         }
       )
-      const json = (await res.json()) as { error?: string; mode?: 'text' | 'template' }
+      const json = (await res.json()) as {
+        error?: string
+        mode?: 'text' | 'template'
+        fallback_from_template?: boolean
+      }
       if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
 
-      if (json.mode === 'text') {
+      if (json.fallback_from_template || json.mode === 'text') {
         toast.success('הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
       } else {
         toast.success('ההודעה נשלחה דרך תבנית manager_reply — כשהדייר/ה יגיב/תגיב אפשר לכתוב חופשי')

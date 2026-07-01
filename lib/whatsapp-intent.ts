@@ -115,6 +115,37 @@ export function isEmojiOnlyOrShortAck(text: string): boolean {
   return false
 }
 
+/** Resident tapped confirm or typed yes (he/fr/en). */
+export function isTicketConfirmText(text: string): boolean {
+  const t = text.trim().toLowerCase().replace(/[!?.…,:;'"׳״]/g, '')
+  if (!t || t.length > 12) return false
+  return /^(כן|oui|yes|y|ok|אוקי|אוקיי|okay)$/.test(t)
+}
+
+/** How-to / confusion questions — not a ticket description. */
+export function isClarificationQuestion(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length > 200) return false
+
+  if (
+    /^(איך|מה לעשות|מה לכתוב|מה כותבים|איך פותחים|איך שולחים|מה שולחים)(\s|$|[?؟])/i.test(t) ||
+    /^(comment|quoi faire|que faire|que dois|comment envoyer|comment ouvrir)(\s|$|[?؟])/i.test(t) ||
+    /^(how do i|how to|what should i|what do i|how can i)(\s|$|[?؟])/i.test(t)
+  ) {
+    return true
+  }
+
+  if (looksLikeTicketDescription(t)) return false
+
+  if (t.length <= 80 && /\?$/.test(t) && !isStatusQuestion(t)) {
+    if (/^(מה|איך|למה|האם)\s/i.test(t)) return true
+    if (/^(what|how|why|can i|do i)\s/i.test(t)) return true
+    if (/^(quoi|comment|pourquoi|est-ce)\s/i.test(t)) return true
+  }
+
+  return false
+}
+
 /** True when free text should open a ticket (not greeting, status, etc.). */
 export function looksLikeTicketDescription(text: string): boolean {
   const t = text.trim()

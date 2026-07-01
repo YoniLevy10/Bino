@@ -5,7 +5,7 @@ import { createProfessionalBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-import { sanitizeExtraPhones } from '@/lib/worker-phones'
+import { parseWorkerPhone, sanitizeExtraPhones } from '@/lib/worker-phones'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 
@@ -46,12 +46,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'שם מלא נדרש', requestId }, { status: 400 })
     }
 
-    const phoneStr = sanitizeString(body.phone)
-    if (!phoneStr || phoneStr.replace(/\D/g, '').length < 9) {
-      return NextResponse.json({ error: 'מספר טלפון ראשי נדרש ותקין', requestId }, { status: 400 })
+    const phoneParsed = parseWorkerPhone(body.phone, 'מספר טלפון ראשי')
+    if (!phoneParsed.ok) {
+      return NextResponse.json({ error: phoneParsed.error, requestId }, { status: 400 })
     }
 
-    const extraSanitized = sanitizeExtraPhones(phoneStr, body.extra_phones ?? [])
+    const extraSanitized = sanitizeExtraPhones(phoneParsed.normalized, body.extra_phones ?? [])
     if (!extraSanitized.ok) {
       return NextResponse.json({ error: extraSanitized.error, requestId }, { status: 400 })
     }
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       .insert({
         client_id: clientId,
         full_name: fullName,
-        phone: phoneStr,
+        phone: phoneParsed.normalized,
         extra_phones: extraSanitized.phones,
         trade: body.trade ? sanitizeString(String(body.trade)) : null,
         company_name: body.company_name ? sanitizeString(String(body.company_name)) : null,

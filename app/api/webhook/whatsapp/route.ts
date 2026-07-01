@@ -7,6 +7,7 @@ import { webhookDedupeMessageId } from '@/lib/whatsapp-webhook-dedupe'
 import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
 import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
+import { insertOperationalErrorLog } from '@/lib/error-logs-db'
 import {
   runWhatsAppInboundBackground,
   type WaWebhookTenant,
@@ -110,6 +111,11 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
     logger.error('WEBHOOK', 'WhatsApp webhook POST error', err, { requestId })
+    void insertOperationalErrorLog({
+      context: 'whatsapp_webhook:route',
+      message: err.message,
+      details: { requestId, stack: err.stack?.slice(0, 2000) },
+    })
     return NextResponse.json({ received: true }, { status: 200 })
   }
 }

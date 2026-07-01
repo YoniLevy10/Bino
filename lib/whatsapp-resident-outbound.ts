@@ -3,6 +3,7 @@ import {
   sendWhatsAppTemplateMessageWithCredentials,
   sendWhatsAppTextMessage,
   type WhatsAppFailureLog,
+  type WhatsAppMetaError,
 } from '@/lib/whatsapp-send'
 import {
   extractMetaWaMessageId,
@@ -17,6 +18,9 @@ export type ResidentOutboundResult = {
   mode?: 'text' | 'template'
   errorMessage?: string
   metaErrorCode?: number
+  metaHttpStatus?: number
+  /** Template failed but free-text inside 24h window succeeded. */
+  fallbackFromTemplate?: boolean
 }
 
 type Creds = {
@@ -24,12 +28,21 @@ type Creds = {
   accessToken: string
 }
 
-function metaErrorHint(code: number | undefined): string {
+function metaErrorHint(code: number | undefined, httpStatus?: number): string {
+  if (httpStatus === 404) return 'Meta החזיר 404 — בדקו whatsapp_phone_number_id או שם תבנית manager_reply'
   if (code === 131047) return 'חלון 24 שעות פג — נדרשת תבנית Meta מאושרת'
   if (code === 132001) return 'תבנית Meta לא קיימת או לא מאושרת'
   if (code === 190) return 'טוקן WhatsApp פג — עדכנו בהגדרות'
   if (code === 131026) return 'לא ניתן לשלוח למספר זה'
   return 'שליחת WhatsApp נכשלה'
+}
+
+function metaFailureFields(err?: WhatsAppMetaError) {
+  return {
+    metaErrorCode: err?.metaCode,
+    metaHttpStatus: err?.httpStatus,
+    errorMessage: metaErrorHint(err?.metaCode, err?.httpStatus),
+  }
 }
 
 /**
@@ -69,8 +82,15 @@ export async function sendResidentTextOrTemplate(
 
   const inSession = await isWithinWhatsAppSessionWindow(admin, opts.clientId, to)
 
-  const tryText = async (): Promise<ResidentOutboundResult> => {
-    const wa = await sendWhatsAppTextMessage(to, opts.textBody, creds, failureLog)
+  const tryText = async (logOnFailure = true): Promise<ResidentOutboundResult> => {
+    const metaErr: { current?: WhatsAppMetaError } = {}
+    const wa = await sendWhatsAppTextMessage(
+      to,
+      opts.textBody,
+      creds,
+      { ...failureLog, logOnFailure },
+      metaErr
+    )
     if (wa) {
       if (opts.persistOutbound) {
         void persistWhatsAppMessage(admin, {
@@ -85,10 +105,11 @@ export async function sendResidentTextOrTemplate(
       }
       return { sent: true, mode: 'text' }
     }
-    return { sent: false, errorMessage: metaErrorHint(131047) }
+    return { sent: false, ...metaFailureFields(metaErr.current) }
   }
 
-  const tryTemplate = async (): Promise<ResidentOutboundResult> => {
+  const tryTemplate = async (logOnFailure = true): Promise<ResidentOutboundResult> => {
+    const metaErr: { current?: WhatsAppMetaError } = {}
     logger.info('WA_SEND', 'trying Meta template', {
       clientId: opts.clientId,
       template: opts.templateName,
@@ -100,7 +121,8 @@ export async function sendResidentTextOrTemplate(
       opts.templateParams,
       creds,
       lang,
-      failureLog
+      { ...failureLog, logOnFailure },
+      metaErr
     )
     if (wa) {
       const preview = `[template:${opts.templateName}] ${opts.templateParams.join(' · ')}`
@@ -117,20 +139,21 @@ export async function sendResidentTextOrTemplate(
       }
       return { sent: true, mode: 'template' }
     }
-    return { sent: false, errorMessage: metaErrorHint(132001), metaErrorCode: 132001 }
+    return { sent: false, ...metaFailureFields(metaErr.current) }
   }
 
   if (opts.preferTemplate) {
-    const templ = await tryTemplate()
+    const templ = await tryTemplate(!inSession)
     if (templ.sent) return templ
     if (inSession) {
       const text = await tryText()
-      if (text.sent) return text
+      if (text.sent) return { ...text, fallbackFromTemplate: true }
     }
     return {
       sent: false,
       errorMessage: templ.errorMessage ?? 'WhatsApp send failed (template and text)',
       metaErrorCode: templ.metaErrorCode,
+      metaHttpStatus: templ.metaHttpStatus,
     }
   }
 
@@ -141,17 +164,20 @@ export async function sendResidentTextOrTemplate(
     if (templ.sent) return templ
     return {
       sent: false,
-      errorMessage: 'WhatsApp send failed (text and template)',
+      errorMessage: text.errorMessage ?? templ.errorMessage ?? 'WhatsApp send failed (text and template)',
+      metaErrorCode: text.metaErrorCode ?? templ.metaErrorCode,
+      metaHttpStatus: text.metaHttpStatus ?? templ.metaHttpStatus,
     }
   }
 
   const templ = await tryTemplate()
   if (templ.sent) return templ
   const text = await tryText()
-  if (text.sent) return text
+  if (text.sent) return { ...text, fallbackFromTemplate: true }
   return {
     sent: false,
-    errorMessage: templ.errorMessage ?? 'WhatsApp send failed (template and text)',
-    metaErrorCode: templ.metaErrorCode,
+    errorMessage: templ.errorMessage ?? text.errorMessage ?? 'WhatsApp send failed (template and text)',
+    metaErrorCode: templ.metaErrorCode ?? text.metaErrorCode,
+    metaHttpStatus: templ.metaHttpStatus ?? text.metaHttpStatus,
   }
 }

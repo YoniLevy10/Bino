@@ -53,6 +53,7 @@ export type SessionRow = {
   project_id: string | null
   active_ticket_id: string | null
   is_active: boolean
+  preferred_language?: string | null
   pending_whatsapp_media_id?: string | null
   pending_whatsapp_media_type?: string | null
   pending_apartment_detail?: string | null
@@ -65,7 +66,7 @@ export async function getActiveSession(
 ): Promise<SessionRow | null> {
   const { data, error } = await supabaseAdmin
     .from('sessions')
-    .select('id, phone_number, project_id, active_ticket_id, is_active')
+    .select('id, phone_number, project_id, active_ticket_id, is_active, preferred_language')
     .eq('phone_number', from)
     .eq('client_id', clientId)
     .eq('is_active', true)

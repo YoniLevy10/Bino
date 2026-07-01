@@ -46,11 +46,20 @@ export async function POST(req: Request) {
         result.reporterPhone,
         parsed.data.body,
         result.errorMessage ?? 'ticket reply failed',
-        { send_kind: 'ticket_reply', ticket_id: parsed.data.ticket_id }
+        {
+          send_kind: 'ticket_reply',
+          ticket_id: parsed.data.ticket_id,
+          meta_error_code: result.metaErrorCode,
+          meta_http_status: result.metaHttpStatus,
+        }
       )
     }
     return NextResponse.json(
-      { error: result.errorMessage ?? 'שליחת WhatsApp נכשלה', code: result.metaErrorCode },
+      {
+        error: result.errorMessage ?? 'שליחת WhatsApp נכשלה',
+        code: result.metaErrorCode,
+        meta_http_status: result.metaHttpStatus,
+      },
       { status: 502 }
     )
   }
@@ -59,5 +68,6 @@ export async function POST(req: Request) {
     ok: true,
     mode: result.mode,
     reporter_phone: result.reporterPhone,
+    fallback_from_template: result.fallbackFromTemplate ?? false,
   })
 }

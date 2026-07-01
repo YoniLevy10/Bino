@@ -4,6 +4,14 @@ import { getLogger } from '@/lib/logging'
 
 export type WhatsAppFailureLog = {
   clientId: string
+  /** When false, skip error_logs insert (e.g. before a text fallback retry). Default true. */
+  logOnFailure?: boolean
+}
+
+export type WhatsAppMetaError = {
+  httpStatus: number
+  metaCode?: number
+  message?: string
 }
 
 /** Task 37: WhatsApp Cloud API outbound timeout */
@@ -17,11 +25,26 @@ type WhatsAppTemplateComponent = {
   }>
 }
 
+function captureMetaError(
+  response: Response,
+  data: Record<string, unknown>,
+  metaErrorOut?: { current?: WhatsAppMetaError }
+) {
+  if (!metaErrorOut) return
+  const err = (data as { error?: { code?: number; message?: string } }).error
+  metaErrorOut.current = {
+    httpStatus: response.status,
+    metaCode: err?.code,
+    message: err?.message,
+  }
+}
+
 /** Send using explicit Meta credentials (e.g. from Supabase `clients` row). */
 export async function sendRawWhatsAppPayloadWithCredentials(
   phoneNumberId: string,
   accessToken: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  metaErrorOut?: { current?: WhatsAppMetaError }
 ): Promise<Record<string, unknown> | null> {
   try {
     const response = await fetchWithTimeout(
@@ -41,6 +64,7 @@ export async function sendRawWhatsAppPayloadWithCredentials(
     )
     if (!response) {
       getLogger().error('WA_SEND', 'timeout or network error (credentials)', new Error('timeout'))
+      if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: 'timeout' }
       return null
     }
 
@@ -48,6 +72,7 @@ export async function sendRawWhatsAppPayloadWithCredentials(
 
     if (!response.ok) {
       const metaCode = (data as { error?: { code?: number } }).error?.code
+      captureMetaError(response, data, metaErrorOut)
       if (metaCode === 190) {
         getLogger().error('WA_SEND', 'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately', new Error('token_expired'), { data: JSON.stringify(data) })
       } else {
@@ -59,6 +84,7 @@ export async function sendRawWhatsAppPayloadWithCredentials(
     return data
   } catch (e) {
     getLogger().error('WA_SEND', 'send exception (credentials)', e instanceof Error ? e : new Error(String(e)))
+    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: e instanceof Error ? e.message : String(e) }
     return null
   }
 }
@@ -85,7 +111,8 @@ type WhatsAppCredentials = {
 
 async function sendRawWhatsAppPayload(
   payload: Record<string, unknown>,
-  creds?: WhatsAppCredentials
+  creds?: WhatsAppCredentials,
+  metaErrorOut?: { current?: WhatsAppMetaError }
 ): Promise<Record<string, unknown> | null> {
   const accessToken = creds?.accessToken ?? process.env.WHATSAPP_ACCESS_TOKEN
   const phoneNumberId = creds?.phoneNumberId ?? process.env.WHATSAPP_PHONE_NUMBER_ID
@@ -114,6 +141,7 @@ async function sendRawWhatsAppPayload(
 
     if (!response) {
       getLogger().error('WA_SEND', 'timeout or network error', new Error('timeout'))
+      if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: 'timeout' }
       return null
     }
 
@@ -121,6 +149,7 @@ async function sendRawWhatsAppPayload(
 
     if (!response.ok) {
       const metaCode = (data as { error?: { code?: number } }).error?.code
+      captureMetaError(response, data, metaErrorOut)
       if (metaCode === 190) {
         getLogger().error('WA_SEND', 'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately', new Error('token_expired'), { data: JSON.stringify(data) })
       } else {
@@ -132,6 +161,7 @@ async function sendRawWhatsAppPayload(
     return data
   } catch (e) {
     getLogger().error('WA_SEND', 'send exception', e instanceof Error ? e : new Error(String(e)))
+    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: e instanceof Error ? e.message : String(e) }
     return null
   }
 }
@@ -140,7 +170,8 @@ export async function sendWhatsAppTextMessage(
   to: string,
   body: string,
   creds?: WhatsAppCredentials,
-  failureLog?: WhatsAppFailureLog
+  failureLog?: WhatsAppFailureLog,
+  metaErrorOut?: { current?: WhatsAppMetaError }
 ): Promise<Record<string, unknown> | null> {
   const result = await sendRawWhatsAppPayload(
     {
@@ -150,12 +181,15 @@ export async function sendWhatsAppTextMessage(
         body,
       },
     },
-    creds
+    creds,
+    metaErrorOut
   )
 
-  if (!result && failureLog?.clientId) {
+  if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
     await insertWhatsAppSendFailure(failureLog.clientId, to, body, 'WhatsApp send returned null (timeout/error)', {
       send_kind: 'text',
+      meta_http_status: metaErrorOut?.current?.httpStatus,
+      meta_error_code: metaErrorOut?.current?.metaCode,
     })
   }
 
@@ -220,7 +254,8 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
   bodyParams: string[] = [],
   creds: WhatsAppCredentials,
   languageCode = 'he',
-  failureLog?: WhatsAppFailureLog
+  failureLog?: WhatsAppFailureLog,
+  metaErrorOut?: { current?: WhatsAppMetaError }
 ): Promise<Record<string, unknown> | null> {
   const phoneNumberId = creds.phoneNumberId
   const accessToken = creds.accessToken
@@ -232,10 +267,11 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
   const result = await sendRawWhatsAppPayloadWithCredentials(
     phoneNumberId,
     accessToken,
-    buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode)
+    buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode),
+    metaErrorOut
   )
 
-  if (!result && failureLog?.clientId) {
+  if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
     await insertWhatsAppSendFailure(
       failureLog.clientId,
       to,
@@ -245,6 +281,8 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
         send_kind: 'template',
         template_params: bodyParams,
         template_language: languageCode,
+        meta_http_status: metaErrorOut?.current?.httpStatus,
+        meta_error_code: metaErrorOut?.current?.metaCode,
       }
     )
   }

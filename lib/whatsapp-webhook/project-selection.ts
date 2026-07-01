@@ -48,16 +48,19 @@ export async function createPendingSelection(
   phoneNumber: string,
   candidateProjects: ProjectRow[],
   supabaseAdmin: SupabaseClient,
-  clientId: string
+  clientId: string,
+  preferredLanguage?: string | null
 ): Promise<boolean> {
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
-  const { error } = await supabaseAdmin.from('pending_selections').insert({
+  const row: Record<string, unknown> = {
     phone_number: phoneNumber,
     client_id: clientId,
     candidate_projects: candidateProjects,
     created_at: new Date().toISOString(),
     expires_at: expiresAt,
-  })
+  }
+  if (preferredLanguage) row.preferred_language = preferredLanguage
+  const { error } = await supabaseAdmin.from('pending_selections').insert(row)
   return !error
 }
 
@@ -68,7 +71,7 @@ export async function getPendingSelection(
 ) {
   const { data, error } = await supabaseAdmin
     .from('pending_selections')
-    .select('id, candidate_projects, created_at, expires_at')
+    .select('id, candidate_projects, created_at, expires_at, preferred_language')
     .eq('phone_number', phoneNumber)
     .eq('client_id', clientId)
     .maybeSingle()
@@ -83,6 +86,7 @@ export async function getPendingSelection(
     candidate_projects: ProjectRow[]
     created_at: string
     expires_at: string
+    preferred_language?: string | null
   }
 }
 

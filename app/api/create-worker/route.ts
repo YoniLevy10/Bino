@@ -6,7 +6,7 @@ import { createWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { sanitizeExtraPhones } from '@/lib/worker-phones'
+import { parseWorkerPhone, sanitizeExtraPhones } from '@/lib/worker-phones'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -97,10 +97,20 @@ export async function POST(req: Request) {
       )
     }
 
+    const fullName = sanitizeString(body.full_name)
+    if (!fullName) {
+      return NextResponse.json({ error: 'שם מלא נדרש', requestId }, { status: 400 })
+    }
+
+    const phoneParsed = parseWorkerPhone(body.phone, 'מספר טלפון ראשי')
+    if (!phoneParsed.ok) {
+      return NextResponse.json({ error: phoneParsed.error, requestId }, { status: 400 })
+    }
+
     const payload: Record<string, unknown> = {
       client_id: clientId,
-      full_name: sanitizeString(body.full_name),
-      phone: body.phone ? sanitizeString(body.phone) : null,
+      full_name: fullName,
+      phone: phoneParsed.normalized,
       email: body.email ? sanitizeString(String(body.email)) : null,
       role: body.role ? sanitizeString(String(body.role)) : null,
       is_active: body.is_active !== false,
@@ -108,30 +118,19 @@ export async function POST(req: Request) {
     if (orgId) {
       payload.organization_id = orgId
     }
-
-    const fullName = String(payload.full_name || '')
-    if (!fullName) {
-      return NextResponse.json({ error: 'שם מלא נדרש', requestId }, { status: 400 })
-    }
-    const phoneStr = payload.phone != null ? String(payload.phone) : ''
-    if (phoneStr && phoneStr.replace(/\D/g, '').length < 9) {
-      return NextResponse.json({ error: 'מספר טלפון לא תקין', requestId }, { status: 400 })
-    }
     const emailStr = payload.email != null ? String(payload.email).trim() : ''
     if (emailStr && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
       return NextResponse.json({ error: 'אימייל לא תקין', requestId }, { status: 400 })
     }
 
     const extraRaw = body.extra_phones ?? []
-    const extraSanitized = sanitizeExtraPhones(phoneStr, extraRaw)
+    const extraSanitized = sanitizeExtraPhones(phoneParsed.normalized, extraRaw)
     if (!extraSanitized.ok) {
       return NextResponse.json({ error: extraSanitized.error, requestId }, { status: 400 })
     }
 
     const insertPayload = {
       ...payload,
-      full_name: fullName,
-      phone: phoneStr || null,
       email: emailStr || null,
       extra_phones: extraSanitized.phones,
     }
