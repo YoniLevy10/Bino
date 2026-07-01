@@ -24,7 +24,11 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
   const branding = useClientBranding()
   const [visible, setVisible] = useState(() => shouldShowAppSplash())
   const [barWidth, setBarWidth] = useState(0)
-  const startRef = useRef(Date.now())
+  const startRef = useRef(0)
+
+  useEffect(() => {
+    startRef.current = Date.now()
+  }, [])
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches

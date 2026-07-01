@@ -145,6 +145,17 @@ EXCEPTION
   WHEN undefined_object THEN NULL;
 END $$;
 
+-- Ensure catalog exists (legacy preview branches may have applied old 051 before catalog DDL)
+CREATE TABLE IF NOT EXISTS public.paid_addons_catalog (
+  addon_key TEXT PRIMARY KEY,
+  name_he TEXT NOT NULL,
+  description_he TEXT,
+  price_ils_monthly INTEGER NOT NULL CHECK (price_ils_monthly >= 0),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Paid add-ons catalog seeds
 INSERT INTO public.paid_addons_catalog (addon_key, name_he, description_he, price_ils_monthly, is_active, sort_order)
 VALUES

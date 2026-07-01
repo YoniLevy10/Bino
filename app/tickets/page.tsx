@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -653,14 +654,7 @@ export default function TicketsPage() {
         .order('created_at', { ascending: false })
 
       if (data && data.length > 0) {
-        const attachmentsWithUrls = data.map((attachment: AttachmentRow) => {
-          // Get public URL - bucket is PUBLIC so no signed URL needed
-          const filePath = attachment.file_url || ''
-          const { data: publicUrlData } = supabase.storage
-            .from('ticket-attachments')
-            .getPublicUrl(filePath)
-          return { ...attachment, signed_url: publicUrlData?.publicUrl || null }
-        })
+        const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, data as AttachmentRow[])
         setSelectedTicketAttachments(attachmentsWithUrls)
       } else {
         setSelectedTicketAttachments([])

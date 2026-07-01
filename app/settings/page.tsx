@@ -10,7 +10,6 @@ import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'reac
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
@@ -55,12 +54,12 @@ type ClientRow = {
   sms_on_ticket_open?: boolean | null
   sms_on_ticket_close?: boolean | null
   whatsapp_phone_number_id?: string | null
-  whatsapp_access_token?: string | null
+  whatsapp_access_token_set?: boolean
   sms_sender_name?: string | null
   greeninvoice_enabled?: boolean | null
   greeninvoice_env?: string | null
   greeninvoice_api_key_id?: string | null
-  greeninvoice_api_secret?: string | null
+  greeninvoice_api_secret_set?: boolean
   greeninvoice_business_id?: string | null
   greeninvoice_clearing_plugin?: string | null
   greeninvoice_default_doc_type?: number | null
@@ -119,6 +118,7 @@ function SettingsPageInner() {
   const [waPhoneNumberId, setWaPhoneNumberId] = useState('')
   const [waAccessToken, setWaAccessToken] = useState('')
   const [waTokenLoaded, setWaTokenLoaded] = useState(false)
+  const [whatsappAccessTokenSet, setWhatsappAccessTokenSet] = useState(false)
 
   const [giEnabled, setGiEnabled] = useState(false)
   const [giEnv, setGiEnv] = useState<GreenInvoiceEnv>('production')
@@ -200,17 +200,9 @@ function SettingsPageInner() {
     setSettingsHydrated(false)
     await asyncHandler(
       async () => {
-        const resolvedClientId = await resolveBamakorClientIdForBrowser()
-
-        const { data: row, error: cErr } = await supabase
-          .from('clients')
-          .select(
-            'id, whatsapp_business_phone, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name, sidebar_nav_order, greeninvoice_enabled, greeninvoice_env, greeninvoice_api_key_id, greeninvoice_business_id, greeninvoice_clearing_plugin, greeninvoice_default_doc_type, greeninvoice_vat_type, greeninvoice_send_invoice_email, greeninvoice_remarks_template, greeninvoice_payment_success_url, greeninvoice_payment_failure_url'
-          )
-          .eq('id', resolvedClientId)
-          .maybeSingle()
-
-        if (cErr) throw cErr
+        const res = await fetchWithTimeout('/api/settings/read')
+        const row = (await res.json().catch(() => ({}))) as ClientRow & { error?: string }
+        if (!res.ok) throw new Error(row.error || 'טעינת הגדרות נכשלה')
         if (!row?.id) throw new Error('לא נמצא רשומת לקוח')
 
         setClientId(row.id)
@@ -224,14 +216,15 @@ function SettingsPageInner() {
 
         setWaBusinessPhone(row.whatsapp_business_phone || '')
         setWaPhoneNumberId(row.whatsapp_phone_number_id || '')
-        setWaAccessToken(row.whatsapp_access_token || '')
+        setWaAccessToken('')
+        setWhatsappAccessTokenSet(row.whatsapp_access_token_set === true)
         setWaTokenLoaded(true)
 
         setGiEnabled(row.greeninvoice_enabled === true)
         setGiEnv(row.greeninvoice_env === 'sandbox' ? 'sandbox' : 'production')
         setGiApiKeyId(row.greeninvoice_api_key_id || '')
         setGiApiSecret('')
-        setGiSecretLoaded(Boolean(row.greeninvoice_api_key_id))
+        setGiSecretLoaded(row.greeninvoice_api_secret_set === true)
         setGiBusinessId(row.greeninvoice_business_id || '')
         setGiClearingPlugin(
           row.greeninvoice_clearing_plugin === 'cardcom' ||
@@ -888,7 +881,11 @@ function SettingsPageInner() {
                       value={waAccessToken}
                       onChange={(e) => setWaAccessToken(e.target.value)}
                       style={styles.input}
-                      placeholder={waTokenLoaded && client?.whatsapp_access_token ? 'הזינו טוקן חדש להחלפה' : 'הדביקו טוקן ארוך-טווח'}
+                      placeholder={
+                        waTokenLoaded && whatsappAccessTokenSet
+                          ? 'הזינו טוקן חדש להחלפה'
+                          : 'הדביקו טוקן ארוך-טווח'
+                      }
                       autoComplete="off"
                     />
                     <span style={styles.formHint}>השאירו ריק אם אינכם משנים את הטוקן השמור</span>
@@ -982,7 +979,7 @@ function SettingsPageInner() {
                       onChange={(e) => setGiApiSecret(e.target.value)}
                       style={styles.input}
                       placeholder={
-                        giSecretLoaded && client?.greeninvoice_api_key_id
+                        giSecretLoaded
                           ? 'הזינו סוד חדש להחלפה'
                           : 'מוצג פעם אחת ביצירת המפתח — הדביקו כאן'
                       }

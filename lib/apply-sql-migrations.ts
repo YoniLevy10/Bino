@@ -3,13 +3,13 @@ import { join } from 'path'
 import pg from 'pg'
 
 export const PENDING_MIGRATION_FILES = [
-  '045_professionals.sql',
-  '046_paid_addons.sql',
-  '047_professionals_write_via_api.sql',
-  '047_worker_attendance_nfc.sql',
-  '048_worker_stamp_paid_addon.sql',
+  '066_professionals.sql',
+  '051_paid_addons_catalog.sql',
+  '069_professionals_write_via_api.sql',
+  '070_worker_attendance_nfc.sql',
+  '071_worker_stamp_paid_addon.sql',
   '049_plan_pricing_catalog.sql',
-  '050_paid_addons_full_catalog.sql',
+  '073_paid_addons_full_catalog.sql',
   '060_workers_hourly_rate.sql',
   '061_nfc_sticker_status.sql',
   '062_projects_geofence_optional.sql',

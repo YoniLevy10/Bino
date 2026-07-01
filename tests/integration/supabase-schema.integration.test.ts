@@ -40,11 +40,19 @@ beforeAll(() => {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !serviceKey) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local')
+    console.warn(
+      'Skipping live Supabase integration tests — set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY'
+    )
+    return
   }
   admin = createClient(url, serviceKey)
   if (anonKey) anonClient = createClient(url, anonKey)
 })
+
+const LIVE_SUPABASE = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+const describeLive = LIVE_SUPABASE ? describe : describe.skip
 
 // ג”€ג”€ג”€ Helpers ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 /** Returns true if table is reachable (exists & no error besides RLS). */
@@ -66,7 +74,7 @@ async function columnExists(table: string, col: string): Promise<boolean> {
 }
 
 // ג”€ג”€ג”€ 1. Basic connectivity ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('1. Basic connectivity', () => {
+describeLive('1. Basic connectivity', () => {
   it('connects to Supabase with service role', async () => {
     const { data, error } = await admin.from('clients').select('id').limit(1)
     expect(error).toBeNull()
@@ -75,7 +83,7 @@ describe('1. Basic connectivity', () => {
 })
 
 // ג”€ג”€ג”€ 2. Table existence ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('2. Table existence', () => {
+describeLive('2. Table existence', () => {
   const expectedTables = [
     'clients', 'projects', 'tickets', 'workers', 'sessions', 'residents',
     'ticket_logs', 'ticket_attachments', 'organizations', 'organization_users',
@@ -95,7 +103,7 @@ describe('2. Table existence', () => {
 })
 
 // ג”€ג”€ג”€ 3. Critical columns ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('3. Critical columns', () => {
+describeLive('3. Critical columns', () => {
   const checks: Array<[string, string[]]> = [
     ['clients',           ['id', 'name', 'plan_tier', 'max_workers', 'whatsapp_phone_number_id', 'buildings_allowed']],
     ['organizations',     ['id', 'name', 'slug', 'client_id', 'is_active', 'created_at']],
@@ -131,7 +139,7 @@ describe('3. Critical columns', () => {
 })
 
 // ג”€ג”€ג”€ 4. Tenant resolution chain ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('4. Tenant resolution chain', () => {
+describeLive('4. Tenant resolution chain', () => {
   it('organizations has row with non-null client_id', async () => {
     const { data, error } = await admin
       .from('organizations').select('id, client_id').not('client_id', 'is', null).limit(1)
@@ -161,7 +169,7 @@ describe('4. Tenant resolution chain', () => {
 })
 
 // ג”€ג”€ג”€ 5. Cross-tenant isolation ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('5. Cross-tenant isolation', () => {
+describeLive('5. Cross-tenant isolation', () => {
   const fakeId = '00000000-0000-0000-0000-000000000000'
   const tables = ['tickets', 'workers', 'projects', 'residents']
   for (const table of tables) {
@@ -174,7 +182,7 @@ describe('5. Cross-tenant isolation', () => {
 })
 
 // ג”€ג”€ג”€ 6. Soft delete filter works ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('6. Soft delete', () => {
+describeLive('6. Soft delete', () => {
   const tables = ['tickets', 'workers', 'residents']
   for (const table of tables) {
     it(`${table}: active count ג‰₪ total count (deleted_at filter)`, async () => {
@@ -191,7 +199,7 @@ describe('6. Soft delete', () => {
 })
 
 // ג”€ג”€ג”€ 7. Ticket domain values ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('7. Ticket domain values', () => {
+describeLive('7. Ticket domain values', () => {
   it('all statuses are within valid domain', async () => {
     const valid = new Set<string>([...TICKET_STATUSES])
     const { data, error } = await admin.from('tickets').select('status').limit(500)
@@ -214,7 +222,7 @@ describe('7. Ticket domain values', () => {
 })
 
 // ג”€ג”€ג”€ 8. Plan limits readable ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('8. Plan limits', () => {
+describeLive('8. Plan limits', () => {
   it('clients.plan_tier and max_workers selectable', async () => {
     const { data, error } = await admin
       .from('clients').select('id, plan_tier, max_workers, buildings_allowed').limit(1)
@@ -224,7 +232,7 @@ describe('8. Plan limits', () => {
 })
 
 // ג”€ג”€ג”€ 9. withClientId scoping ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('9. withClientId scoping against real client', () => {
+describeLive('9. withClientId scoping against real client', () => {
   it('tickets scoped by real client_id return no error', async () => {
     const { data: clientData } = await admin.from('clients').select('id').limit(1)
     if (!clientData?.length) { console.warn('No clients'); return }
@@ -239,7 +247,7 @@ describe('9. withClientId scoping against real client', () => {
 })
 
 // ג”€ג”€ג”€ 10. Referential integrity ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('10. Referential integrity', () => {
+describeLive('10. Referential integrity', () => {
   it('no tickets reference non-existent project_id', async () => {
     const { data: tickets } = await admin
       .from('tickets').select('project_id').not('project_id','is',null).is('deleted_at',null).limit(100)
@@ -266,7 +274,7 @@ describe('10. Referential integrity', () => {
 })
 
 // ג”€ג”€ג”€ 11. RLS ג€” anon blocked from tenant data ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
-describe('11. RLS ג€” anon client blocked from tenant data', () => {
+describeLive('11. RLS ג€” anon client blocked from tenant data', () => {
   it('anon cannot read tickets (no auth)', async () => {
     if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
     const { data, error } = await anonClient.from('tickets').select('id').limit(5)
@@ -281,6 +289,38 @@ describe('11. RLS ג€” anon client blocked from tenant data', () => {
     const { data } = await anonClient.from('workers').select('id').limit(5)
     const rowCount = (data as unknown[] | null)?.length ?? 0
     if (rowCount > 0) console.error('נ¨  RLS BREACH: anon client read workers without auth!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read clients (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('clients').select('id, whatsapp_access_token').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon client read clients without auth!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read failed_notifications (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('failed_notifications').select('id').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon read failed_notifications!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read processed_webhooks (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('processed_webhooks').select('message_id').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon read processed_webhooks!')
+    expect(rowCount).toBe(0)
+  })
+
+  it('anon cannot read project_documents (no auth)', async () => {
+    if (!anonClient) { console.warn('No NEXT_PUBLIC_SUPABASE_ANON_KEY ג€” skipping'); return }
+    const { data } = await anonClient.from('project_documents').select('id').limit(5)
+    const rowCount = (data as unknown[] | null)?.length ?? 0
+    if (rowCount > 0) console.error('RLS BREACH: anon read project_documents!')
     expect(rowCount).toBe(0)
   })
 })
