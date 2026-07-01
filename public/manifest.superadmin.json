@@ -26,6 +26,20 @@
       "description": "רשימת לקוחות",
       "url": "/superadmin",
       "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "תפעול",
+      "short_name": "תפעול",
+      "description": "כשלונות ושגיאות",
+      "url": "/superadmin#ops",
+      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "הקמת לקוח",
+      "short_name": "הקמה",
+      "description": "הקמת לקוח חדש",
+      "url": "/admin/setup",
+      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
     }
   ]
 }

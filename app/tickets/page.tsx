@@ -205,6 +205,7 @@ export default function TicketsPage() {
   const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<AttachmentRow[]>([])
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [loadingAttachments, setLoadingAttachments] = useState(false)
+  const [recoveringMedia, setRecoveringMedia] = useState(false)
   const [showAddTicketModal, setShowAddTicketModal] = useState(false)
   const [addTicketForm, setAddTicketForm] = useState({
     project_code: '',
@@ -673,7 +674,7 @@ export default function TicketsPage() {
     setDescriptionTranslation('')
     setMergeCandidates([])
     void loadProfessionals()
-    loadTicketAttachments(ticket.id)
+    loadTicketAttachments(ticket)
   }
 
   function handleTicketRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, ticket: TicketRow) {
@@ -683,13 +684,35 @@ export default function TicketsPage() {
     }
   }
 
-  async function loadTicketAttachments(ticketId: string) {
+  async function tryRecoverWhatsAppMedia(ticketId: string): Promise<boolean> {
+    setRecoveringMedia(true)
+    try {
+      const res = await fetchWithTimeout('/api/tickets/recover-whatsapp-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId }),
+      })
+      const json = (await res.json()) as { recovered?: boolean; error?: string }
+      if (!res.ok || !json.recovered) {
+        if (json.error && res.status !== 404) toast.error(json.error)
+        return false
+      }
+      toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')
+      return true
+    } catch {
+      return false
+    } finally {
+      setRecoveringMedia(false)
+    }
+  }
+
+  async function loadTicketAttachments(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
     setLoadingAttachments(true)
     try {
       const { data } = await supabase
         .from('ticket_attachments')
         .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
-        .eq('ticket_id', ticketId)
+        .eq('ticket_id', ticket.id)
         .order('created_at', { ascending: false })
 
       if (data && data.length > 0) {
@@ -697,6 +720,20 @@ export default function TicketsPage() {
         setSelectedTicketAttachments(attachmentsWithUrls)
       } else {
         setSelectedTicketAttachments([])
+        if (ticket.reporter_phone && ticket.status !== 'CLOSED') {
+          const recovered = await tryRecoverWhatsAppMedia(ticket.id)
+          if (recovered) {
+            const { data: retryData } = await supabase
+              .from('ticket_attachments')
+              .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
+              .eq('ticket_id', ticket.id)
+              .order('created_at', { ascending: false })
+            if (retryData && retryData.length > 0) {
+              const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, retryData as AttachmentRow[])
+              setSelectedTicketAttachments(attachmentsWithUrls)
+            }
+          }
+        }
       }
     } catch {
       setSelectedTicketAttachments([])
@@ -1291,13 +1328,69 @@ export default function TicketsPage() {
       >
         {selectedTicket && (
           <div style={styles.drawerContent}>
+            {/* Attachments — visible from every tab */}
+            {(loadingAttachments || selectedTicketAttachments.length > 0 || (selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED')) && (
+              <div style={{ ...styles.formGroup, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <label style={styles.formLabel}>
+                    קבצים מצורפים
+                    {selectedTicketAttachments.length > 0 ? ` (${selectedTicketAttachments.length})` : ''}
+                  </label>
+                  {selectedTicketAttachments.length === 0 && selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      loading={recoveringMedia}
+                      onClick={() => void loadTicketAttachments(selectedTicket)}
+                    >
+                      שחזר מ-WhatsApp
+                    </Button>
+                  )}
+                </div>
+                {loadingAttachments ? (
+                  <p style={{ color: theme.colors.textMuted, fontSize: 13, margin: 0 }}>טוען קבצים…</p>
+                ) : selectedTicketAttachments.length > 0 ? (
+                  <div style={styles.attachmentGrid}>
+                    {selectedTicketAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        style={{
+                          ...styles.attachmentItem,
+                          cursor: attachment.mime_type?.startsWith('image/') ? 'pointer' : 'default',
+                        }}
+                        onClick={() => {
+                          if (attachment.mime_type?.startsWith('image/') && attachment.signed_url) {
+                            setLightboxImage(attachment.signed_url)
+                          }
+                        }}
+                      >
+                        <TicketAttachmentThumb
+                          mimeType={attachment.mime_type}
+                          url={attachment.signed_url || ''}
+                          fileName={attachment.file_name}
+                          imageStyle={styles.attachmentImage}
+                          videoStyle={styles.attachmentVideo}
+                          fileStyle={styles.attachmentFile}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: theme.colors.textMuted, fontSize: 13, margin: 0 }}>
+                    אין קבצים — המערכת מחפשת מדיה שמורה בסשן WhatsApp. לחצו «שחזר מ-WhatsApp».
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Tabs */}
             <div style={styles.tabBar}>
               <button
                 style={{ ...styles.tab, ...(activeDetailTab === 'details' ? styles.tabActive : styles.tabInactive) }}
                 onClick={() => setActiveDetailTab('details')}
               >
-                פרטים
+                פרטים{selectedTicketAttachments.length > 0 ? ` · ${selectedTicketAttachments.length}` : ''}
               </button>
               <button
                 style={{ ...styles.tab, ...(activeDetailTab === 'chat' ? styles.tabActive : styles.tabInactive) }}
@@ -1450,38 +1543,6 @@ export default function TicketsPage() {
                 }
               }}
             />
-
-            {/* Attachments */}
-            {selectedTicketAttachments.length > 0 && (
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>קבצים מצורפים</label>
-                <div style={styles.attachmentGrid}>
-                  {selectedTicketAttachments.map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      style={{
-                        ...styles.attachmentItem,
-                        cursor: attachment.mime_type?.startsWith('image/') ? 'pointer' : 'default',
-                      }}
-                      onClick={() => {
-                        if (attachment.mime_type?.startsWith('image/') && attachment.signed_url) {
-                          setLightboxImage(attachment.signed_url)
-                        }
-                      }}
-                    >
-                      <TicketAttachmentThumb
-                        mimeType={attachment.mime_type}
-                        url={attachment.signed_url || ''}
-                        fileName={attachment.file_name}
-                        imageStyle={styles.attachmentImage}
-                        videoStyle={styles.attachmentVideo}
-                        fileStyle={styles.attachmentFile}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div style={styles.drawerActions}>
               <Button variant="secondary" onClick={closeDrawer}>

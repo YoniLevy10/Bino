@@ -66,9 +66,11 @@ type Props = {
   opsFeed: OpsFeed | null
   opsLoading: boolean
   opsError: string
+  onResolveError?: (id: string) => Promise<void>
+  resolvingIds?: Set<string>
 }
 
-export function OpsFailuresPanel({ opsFeed, opsLoading, opsError }: Props) {
+export function OpsFailuresPanel({ opsFeed, opsLoading, opsError, onResolveError, resolvingIds }: Props) {
   return (
     <div>
       <h2 style={styles.sectionTitle}>כשלונות אחרונים (חי)</h2>
@@ -100,31 +102,48 @@ export function OpsFailuresPanel({ opsFeed, opsLoading, opsError }: Props) {
         {opsLoading && !opsFeed ? (
           <p style={styles.muted}>טוען...</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['זמן', 'לקוח', 'ערוץ', 'יעד', 'שגיאה'].map((h) => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(opsFeed?.failed_notifications ?? []).map((row) => (
-                  <tr key={row.id}>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap', fontSize: theme.typography.fontSize.xs }}>{formatOpsTime(row.created_at)}</td>
-                    <td style={tdStyle}>{row.client_name ?? '—'}</td>
-                    <td style={tdStyle}>{row.channel}</td>
-                    <td style={{ ...tdStyle, direction: 'ltr', fontSize: theme.typography.fontSize.xs }}>{row.destination ?? '—'}</td>
-                    <td style={{ ...tdStyle, maxWidth: 360 }} title={row.error_message}>{truncateOps(row.error_message, 160)}</td>
+          <>
+            <div className="sa-ops-cards">
+              {(opsFeed?.failed_notifications ?? []).map((row) => (
+                <div key={row.id} className="sa-ops-card">
+                  <div className="sa-ops-card-head">
+                    <span style={styles.opsTime}>{formatOpsTime(row.created_at)}</span>
+                    <span style={styles.opsChannel}>{row.channel}</span>
+                  </div>
+                  <div style={styles.opsClient}>{row.client_name ?? '—'}</div>
+                  {row.destination && (
+                    <div style={styles.opsDest} dir="ltr">{row.destination}</div>
+                  )}
+                  <div style={styles.opsMsg}>{truncateOps(row.error_message, 200)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="sa-ops-table-wrap" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['זמן', 'לקוח', 'ערוץ', 'יעד', 'שגיאה'].map((h) => (
+                      <th key={h} style={thStyle}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(opsFeed?.failed_notifications ?? []).map((row) => (
+                    <tr key={row.id}>
+                      <td style={{ ...tdStyle, whiteSpace: 'nowrap', fontSize: theme.typography.fontSize.xs }}>{formatOpsTime(row.created_at)}</td>
+                      <td style={tdStyle}>{row.client_name ?? '—'}</td>
+                      <td style={tdStyle}>{row.channel}</td>
+                      <td style={{ ...tdStyle, direction: 'ltr', fontSize: theme.typography.fontSize.xs }}>{row.destination ?? '—'}</td>
+                      <td style={{ ...tdStyle, maxWidth: 360 }} title={row.error_message}>{truncateOps(row.error_message, 160)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {(opsFeed?.failed_notifications.length ?? 0) === 0 && !opsLoading && (
               <p style={styles.muted}>אין כשלונות אחרונים</p>
             )}
-          </div>
+          </>
         )}
       </div>
 
@@ -133,44 +152,91 @@ export function OpsFailuresPanel({ opsFeed, opsLoading, opsError }: Props) {
         {opsLoading && !opsFeed ? (
           <p style={styles.muted}>טוען...</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['זמן', 'לקוח', 'הקשר', 'סטטוס', 'הודעה'].map((h) => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(opsFeed?.error_logs ?? []).map((row) => (
-                  <tr key={row.id} style={{ opacity: row.resolved ? 0.65 : 1 }}>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap', fontSize: theme.typography.fontSize.xs }}>{formatOpsTime(row.created_at)}</td>
-                    <td style={tdStyle}>{row.client_name ?? '—'}</td>
-                    <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs }}>{row.context}</td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        background: row.resolved ? theme.colors.successMuted : theme.colors.errorMuted,
-                        color: row.resolved ? theme.colors.success : theme.colors.error,
-                        borderRadius: theme.radius.xs,
-                        padding: '2px 8px',
-                        fontSize: theme.typography.fontSize.xs,
-                        fontWeight: 600,
-                      }}>
-                        {row.resolved ? 'טופל' : 'פתוח'}
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, maxWidth: 400 }} title={row.message}>
-                      {truncateOps(row.message, 180)}
-                    </td>
+          <>
+            <div className="sa-ops-cards">
+              {(opsFeed?.error_logs ?? []).map((row) => (
+                <div key={row.id} className="sa-ops-card" style={{ opacity: row.resolved ? 0.7 : 1 }}>
+                  <div className="sa-ops-card-head">
+                    <span style={styles.opsTime}>{formatOpsTime(row.created_at)}</span>
+                    <span style={{
+                      background: row.resolved ? theme.colors.successMuted : theme.colors.errorMuted,
+                      color: row.resolved ? theme.colors.success : theme.colors.error,
+                      borderRadius: theme.radius.xs,
+                      padding: '2px 8px',
+                      fontSize: theme.typography.fontSize.xs,
+                      fontWeight: 600,
+                    }}>
+                      {row.resolved ? 'טופל' : 'פתוח'}
+                    </span>
+                  </div>
+                  <div style={styles.opsClient}>{row.client_name ?? '—'}</div>
+                  <div style={styles.opsContext}>{row.context}</div>
+                  <div style={styles.opsMsg}>{truncateOps(row.message, 220)}</div>
+                  {!row.resolved && onResolveError && (
+                    <button
+                      type="button"
+                      className="sa-touch-btn sa-ops-resolve-btn"
+                      disabled={resolvingIds?.has(row.id)}
+                      onClick={() => void onResolveError(row.id)}
+                    >
+                      {resolvingIds?.has(row.id) ? 'מסמן…' : 'סמן כטופל'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="sa-ops-table-wrap" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['זמן', 'לקוח', 'הקשר', 'סטטוס', 'הודעה', ''].map((h) => (
+                      <th key={h} style={thStyle}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(opsFeed?.error_logs ?? []).map((row) => (
+                    <tr key={row.id} style={{ opacity: row.resolved ? 0.65 : 1 }}>
+                      <td style={{ ...tdStyle, whiteSpace: 'nowrap', fontSize: theme.typography.fontSize.xs }}>{formatOpsTime(row.created_at)}</td>
+                      <td style={tdStyle}>{row.client_name ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs }}>{row.context}</td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          background: row.resolved ? theme.colors.successMuted : theme.colors.errorMuted,
+                          color: row.resolved ? theme.colors.success : theme.colors.error,
+                          borderRadius: theme.radius.xs,
+                          padding: '2px 8px',
+                          fontSize: theme.typography.fontSize.xs,
+                          fontWeight: 600,
+                        }}>
+                          {row.resolved ? 'טופל' : 'פתוח'}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, maxWidth: 400 }} title={row.message}>
+                        {truncateOps(row.message, 180)}
+                      </td>
+                      <td style={tdStyle}>
+                        {!row.resolved && onResolveError && (
+                          <button
+                            type="button"
+                            className="sa-touch-btn"
+                            disabled={resolvingIds?.has(row.id)}
+                            onClick={() => void onResolveError(row.id)}
+                            style={styles.resolveBtn}
+                          >
+                            {resolvingIds?.has(row.id) ? '…' : 'טופל'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {(opsFeed?.error_logs.length ?? 0) === 0 && !opsLoading && (
               <p style={styles.muted}>אין שגיאות אחרונות</p>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>
@@ -217,4 +283,19 @@ const styles: Record<string, CSSProperties> = {
   },
   cardTitle: { margin: '0 0 12px', fontSize: theme.typography.fontSize.base, fontWeight: 600 },
   muted: { color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.lg, margin: 0 },
+  opsTime: { fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted },
+  opsChannel: { fontSize: theme.typography.fontSize.xs, fontWeight: 600, color: theme.colors.textSecondary },
+  opsClient: { fontSize: theme.typography.fontSize.sm, fontWeight: 600, marginTop: 4 },
+  opsDest: { fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginTop: 2 },
+  opsContext: { fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginTop: 4 },
+  opsMsg: { fontSize: theme.typography.fontSize.sm, marginTop: 8, lineHeight: 1.45 },
+  resolveBtn: {
+    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.xs,
+    padding: '6px 10px',
+    cursor: 'pointer',
+    fontSize: theme.typography.fontSize.xs,
+    minHeight: 36,
+  },
 }

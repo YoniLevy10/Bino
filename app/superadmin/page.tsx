@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useEffect, useCallback, type CSSProperties } from 'react'
+import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
-import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
+import {
+  readAdminSecret,
+  writeAdminSecret,
+  clearAdminSecret,
+  isAdminSecretPersisted,
+} from '@/lib/admin-secret-session'
 import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
 import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
 import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
 import { ClientLogoUpload } from './ClientLogoUpload'
+import { ClientInvitePanel } from './ClientInvitePanel'
+import { ClientRecoverTicketMediaPanel } from './ClientRecoverTicketMediaPanel'
 import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
+import type { OpsFeed } from '@/app/components/superadmin/OpsFailuresPanel'
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
 import {
@@ -129,6 +137,7 @@ function effectiveLimitsForClient(client: ClientRow, catalog: PlanCatalogRow[]) 
 }
 
 type ViewMode = 'clients' | 'ops'
+type ClientFilter = 'all' | 'open_tickets' | 'no_whatsapp' | 'at_worker_limit'
 
 const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter',
@@ -219,6 +228,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 
 export default function SuperAdminPage() {
   const [secret, setSecret] = useState('')
+  const [rememberDevice, setRememberDevice] = useState(false)
   const [unlocked, setUnlocked] = useState(false)
   const [unlockError, setUnlockError] = useState('')
 
@@ -226,6 +236,10 @@ export default function SuperAdminPage() {
   const [planCatalog, setPlanCatalog] = useState<PlanCatalogRow[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
+  const [opsUnresolvedCount, setOpsUnresolvedCount] = useState(0)
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [magicLinks, setMagicLinks] = useState<Record<string, string>>({})
@@ -280,6 +294,7 @@ export default function SuperAdminPage() {
     const stored = readAdminSecret()
     if (!stored) return
     setSecret(stored)
+    setRememberDevice(isAdminSecretPersisted())
     void verifySecret(stored).then((ok) => {
       if (ok) {
         setUnlocked(true)
@@ -287,6 +302,45 @@ export default function SuperAdminPage() {
       }
     })
   }, [verifySecret])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash === '#ops') setViewMode('ops')
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !unlocked) return
+    window.location.hash = viewMode === 'ops' ? '#ops' : ''
+  }, [viewMode, unlocked])
+
+  useEffect(() => {
+    if (!unlocked || !secret) return
+    void fetch('/api/superadmin/ops-feed?limit=5', { headers: { 'x-admin-secret': secret } })
+      .then((r) => r.json())
+      .then((json: OpsFeed) => {
+        setOpsUnresolvedCount(json.counts?.unresolved_errors ?? 0)
+      })
+      .catch(() => {})
+  }, [unlocked, secret])
+
+  const filteredClients = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return clients.filter((c) => {
+      if (q) {
+        const hay = [c.name, c.admin_email ?? '', c.id, c.manager_phone ?? '', c.whatsapp_phone_number_id ?? '']
+          .join(' ')
+          .toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      if (clientFilter === 'open_tickets' && c.open_tickets_count <= 0) return false
+      if (clientFilter === 'no_whatsapp' && c.whatsapp_phone_number_id) return false
+      if (clientFilter === 'at_worker_limit') {
+        const limits = effectiveLimitsForClient(c, planCatalog)
+        if (limits.workers == null || c.workers_active_count < limits.workers) return false
+      }
+      return true
+    })
+  }, [clients, searchQuery, clientFilter, planCatalog])
 
   async function handleUnlock() {
     if (!secret.trim()) {
@@ -299,10 +353,18 @@ export default function SuperAdminPage() {
       setUnlockError('קוד גישה שגוי')
       return
     }
-    writeAdminSecret(trimmed)
+    writeAdminSecret(trimmed, { persist: rememberDevice })
     setSecret(trimmed)
     setUnlocked(true)
     setUnlockError('')
+  }
+
+  function handleLogout() {
+    clearAdminSecret()
+    setSecret('')
+    setUnlocked(false)
+    setRememberDevice(false)
+    setClients([])
   }
 
   function enabledFeaturesForUi(raw: SidebarNavItemId[] | null): SidebarNavItemId[] {
@@ -584,6 +646,14 @@ export default function SuperAdminPage() {
             />
           </div>
           {unlockError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md }}>{unlockError}</p>}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: theme.spacing.lg, fontSize: theme.typography.fontSize.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={rememberDevice}
+              onChange={(e) => setRememberDevice(e.target.checked)}
+            />
+            זכור במכשיר (מתאים ל-PWA בטלפון)
+          </label>
           <LoadingButton
             onClick={handleUnlock}
             className="sa-touch-btn"
@@ -599,7 +669,7 @@ export default function SuperAdminPage() {
 
   // ── Main ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="sa-page" style={pageStyle}>
+    <div className="sa-page sa-page-with-nav" style={pageStyle}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Header */}
@@ -618,6 +688,14 @@ export default function SuperAdminPage() {
                 {loading ? 'טוען...' : 'רענן'}
               </button>
             )}
+            <button
+              type="button"
+              className="sa-touch-btn"
+              onClick={handleLogout}
+              style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}
+            >
+              יציאה
+            </button>
             <a
               href="/admin/setup"
               className="sa-touch-btn"
@@ -658,7 +736,10 @@ export default function SuperAdminPage() {
 
         {viewMode === 'ops' && (
           <>
-            <SuperadminOpsPanel adminSecret={secret} />
+            <SuperadminOpsPanel
+              adminSecret={secret}
+              onCountsChange={(counts) => setOpsUnresolvedCount(counts.unresolved_errors)}
+            />
             <div style={{ marginTop: 24 }}>
               <MetaWhatsAppPendingPanel />
             </div>
@@ -692,8 +773,53 @@ export default function SuperAdminPage() {
           </div>
         )}
 
-        <PlanPricingCatalogAdmin secret={secret} />
-        <PaidAddonsCatalogAdmin secret={secret} />
+        <details className="sa-collapsible">
+          <summary>מנוי ותמחור (גלובלי) ▾</summary>
+          <div className="sa-collapsible-body">
+            <PlanPricingCatalogAdmin secret={secret} />
+          </div>
+        </details>
+        <details className="sa-collapsible">
+          <summary>תוספים בתשלום (גלובלי) ▾</summary>
+          <div className="sa-collapsible-body">
+            <PaidAddonsCatalogAdmin secret={secret} />
+          </div>
+        </details>
+
+        <div className="sa-search-bar">
+          <input
+            type="search"
+            className="sa-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="חיפוש לפי שם, מייל, טלפון…"
+            style={inputStyle}
+          />
+        </div>
+        <div className="sa-filter-chips">
+          {(
+            [
+              { id: 'all' as const, label: 'הכל' },
+              { id: 'open_tickets' as const, label: 'קריאות פתוחות' },
+              { id: 'no_whatsapp' as const, label: 'ללא WhatsApp' },
+              { id: 'at_worker_limit' as const, label: 'מכסת עובדים' },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`sa-filter-chip${clientFilter === f.id ? ' is-active' : ''}`}
+              onClick={() => setClientFilter(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+          {searchQuery || clientFilter !== 'all' ? (
+            <span style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, alignSelf: 'center' }}>
+              {filteredClients.length} / {clients.length}
+            </span>
+          ) : null}
+        </div>
 
         {/* Table */}
         <div style={cardStyle}>
@@ -710,7 +836,7 @@ export default function SuperAdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {clients.map((c) => (
+                  {filteredClients.map((c) => (
                     <>
                       {/* Main row */}
                       <tr
@@ -805,17 +931,34 @@ export default function SuperAdminPage() {
 
                         {/* Actions */}
                         <td className="sa-cell-actions" style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                          {editingId === c.id ? (
-                            <button className="sa-touch-btn" onClick={cancelEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted, fontSize: theme.typography.fontSize.xs, minHeight: 44, padding: '8px 12px' }}>ביטול</button>
-                          ) : (
-                            <button
-                              className="sa-touch-btn"
-                              onClick={() => startEdit(c)}
-                              style={{ background: 'none', border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.xs, padding: '8px 14px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.xs, minHeight: 44 }}
-                            >
-                              ערוך
-                            </button>
-                          )}
+                          <div className="sa-quick-actions">
+                            {c.manager_phone && (
+                              <a
+                                href={`tel:${c.manager_phone}`}
+                                className="sa-quick-btn"
+                                title="התקשר למנהל"
+                                aria-label="התקשר למנהל"
+                              >
+                                📞
+                              </a>
+                            )}
+                            {c.admin_email && (
+                              <button
+                                type="button"
+                                className="sa-quick-btn"
+                                title="Magic Link"
+                                disabled={magicLinkLoading[c.id]}
+                                onClick={() => void getMagicLink(c.id, c.admin_email!)}
+                              >
+                                {magicLinkLoading[c.id] ? '…' : '🔑'}
+                              </button>
+                            )}
+                            {editingId === c.id ? (
+                              <button className="sa-quick-btn" onClick={cancelEdit}>ביטול</button>
+                            ) : (
+                              <button className="sa-quick-btn" onClick={() => startEdit(c)}>ערוך</button>
+                            )}
+                          </div>
                         </td>
                       </tr>
 
@@ -1138,7 +1281,11 @@ export default function SuperAdminPage() {
                                 )}
                               </div>
 
-                              {/* Magic link */}
+                              {/* Magic link + invite */}
+                              <ClientRecoverTicketMediaPanel clientId={c.id} secret={secret} />
+
+                              <ClientInvitePanel clientId={c.id} defaultEmail={c.admin_email} secret={secret} />
+
                               {c.admin_email && (
                                 <div>
                                   <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: theme.spacing.md }}>
@@ -1237,8 +1384,10 @@ export default function SuperAdminPage() {
                   ))}
                 </tbody>
               </table>
-              {clients.length === 0 && !loading && (
-                <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>אין לקוחות</p>
+              {filteredClients.length === 0 && !loading && (
+                <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>
+                  {clients.length === 0 ? 'אין לקוחות' : 'אין תוצאות לחיפוש/סינון'}
+                </p>
               )}
             </div>
           )}
@@ -1246,6 +1395,33 @@ export default function SuperAdminPage() {
           </>
         )}
       </div>
+
+      <nav className="sa-bottom-nav" aria-label="ניווט Super Admin">
+        <button
+          type="button"
+          className={`sa-bottom-nav-btn${viewMode === 'clients' ? ' is-active' : ''}`}
+          onClick={() => setViewMode('clients')}
+        >
+          לקוחות
+        </button>
+        <button
+          type="button"
+          className={`sa-bottom-nav-btn${viewMode === 'ops' ? ' is-active' : ''}`}
+          onClick={() => setViewMode('ops')}
+        >
+          תפעול
+          {opsUnresolvedCount > 0 && (
+            <span className="sa-bottom-badge">{opsUnresolvedCount > 99 ? '99+' : opsUnresolvedCount}</span>
+          )}
+        </button>
+        <a
+          href="/admin/setup"
+          className="sa-bottom-nav-btn"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'inherit' }}
+        >
+          + לקוח
+        </a>
+      </nav>
     </div>
   )
 }
