@@ -231,6 +231,13 @@ export const workerPushSubscribeBodySchema = z.object({
   subscription: pushSubscribeBodySchema.shape.subscription,
 })
 
+/** Worker WhatsApp reply to ticket reporter from personal portal. */
+export const workerWhatsappReplyBodySchema = z.object({
+  token: z.string().uuid(),
+  ticket_id: z.string().uuid(),
+  body: z.string().min(1).max(4096),
+})
+
 /** Worker PATCH ticket status from token portal. */
 export const workerUpdateTicketBodySchema = z.object({
   token: z.string().uuid(),

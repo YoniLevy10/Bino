@@ -35,74 +35,43 @@ import {
   Select,
   SearchInput,
   EmptyState,
-  PriorityDot,
   LoadingSpinner,
   theme
 } from '../components/ui'
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import type { SummaryTicketRow } from '@/lib/summary-tickets'
 import { PageListSkeleton } from '../components/page-skeleton'
 
-const CACHE_KEY = 'bamakor_summary_v2'
+const CACHE_KEY = 'bamakor_summary_meta_v1'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const HISTORY_DISPLAY_LIMIT = 500
+const SUMMARY_FETCH_TIMEOUT_MS = 30_000
 
 type PageTab = 'summary' | 'history'
 
-type SummaryCache = {
-  tickets: TicketRow[]
+type SummaryMetaCache = {
   projects: ProjectRow[]
   workers: WorkerRow[]
   savedAt: number
 }
 
-function readSummaryCache(clientId: string): SummaryCache | null {
+function readSummaryMetaCache(clientId: string): SummaryMetaCache | null {
   try {
     const raw = localStorage.getItem(`${CACHE_KEY}_${clientId}`)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as SummaryCache
+    const parsed = JSON.parse(raw) as SummaryMetaCache
     if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
     return parsed
   } catch { return null }
 }
 
-function writeSummaryCache(clientId: string, data: Omit<SummaryCache, 'savedAt'>) {
+function writeSummaryMetaCache(clientId: string, data: Omit<SummaryMetaCache, 'savedAt'>) {
   try {
     localStorage.setItem(`${CACHE_KEY}_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
   } catch {}
 }
 
-type TicketRow = {
-  id: string
-  ticket_number: number
-  project_id?: string
-  project_code?: string
-  project_name?: string
-  reporter_phone: string
-  reporter_name?: string | null
-  description: string
-  status: string
-  priority?: string
-  assigned_worker_id: string | null
-  building_number?: string | null
-  created_at: string
-  closed_at: string | null
-}
-
-type RawTicketRow = {
-  id: string
-  ticket_number: number
-  project_id?: string
-  projects?: { project_code?: string; name?: string } | { project_code?: string; name?: string }[]
-  reporter_phone: string
-  reporter_name?: string | null
-  description: string
-  status: string
-  priority?: string
-  assigned_worker_id: string | null
-  building_number?: string | null
-  created_at: string
-  closed_at: string | null
-}
+type TicketRow = SummaryTicketRow
 
 type ProjectRow = {
   id: string
@@ -124,16 +93,74 @@ type HistoryProjectGroup = {
   tickets: TicketRow[]
 }
 
+type PeriodValue = 'week' | 'month' | 'all' | 'custom'
+
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+function clampDateRange(range: { from: Date; toExclusive: Date }) {
+  const from = range.from
+  const toExclusive = range.toExclusive
+  if (!(from instanceof Date) || isNaN(from.getTime())) return null
+  if (!(toExclusive instanceof Date) || isNaN(toExclusive.getTime())) return null
+  if (toExclusive <= from) return null
+  return { from, toExclusive }
+}
+
+function resolveDateRange(
+  period: PeriodValue,
+  customFrom: string,
+  customTo: string
+): { label: string; from: Date; toExclusive: Date } | null {
+  const now = new Date()
+  const today = startOfDay(now)
+
+  if (period === 'all') {
+    return { label: 'כל הזמנים', from: new Date(0), toExclusive: new Date(now.getTime() + 1) }
+  }
+
+  if (period === 'week') {
+    const start = new Date(today)
+    start.setDate(today.getDate() - today.getDay())
+    return { label: 'השבוע', from: start, toExclusive: new Date(now.getTime() + 1) }
+  }
+
+  if (period === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { label: 'החודש', from: start, toExclusive: new Date(now.getTime() + 1) }
+  }
+
+  if (!customFrom || !customTo) return null
+  const from = startOfDay(new Date(customFrom))
+  const toInclusive = startOfDay(new Date(customTo))
+  const toExclusive = new Date(toInclusive.getTime() + 24 * 60 * 60 * 1000)
+  const valid = clampDateRange({ from, toExclusive })
+  if (!valid) return null
+  return {
+    label: `מותאם אישית (${from.toLocaleDateString('he-IL')}–${toInclusive.toLocaleDateString('he-IL')})`,
+    from: valid.from,
+    toExclusive: valid.toExclusive,
+  }
+}
+
 export default function SummaryPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [tickets, setTickets] = useState<TicketRow[]>([])
+  const [summaryTickets, setSummaryTickets] = useState<TicketRow[]>([])
+  const [historyTickets, setHistoryTickets] = useState<TicketRow[]>([])
+  const [openNow, setOpenNow] = useState(0)
+  const [assignedNow, setAssignedNow] = useState(0)
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [metaLoading, setMetaLoading] = useState(true)
+  const [summaryLoading, setSummaryLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
+  const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('month')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -166,25 +193,14 @@ export default function SummaryPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
+  const loadMeta = useCallback(async (silent = false) => {
+    if (!silent) setMetaLoading(true)
     try {
       const clientId = await resolveBamakorClientIdForBrowser()
       const [
-        { data: ticketsData, error: ticketsError },
         { data: projectsData, error: projectsError },
         { data: workersData, error: workersError },
       ] = await Promise.all([
-        withClientId(
-          supabase.from('tickets').select(`
-            id, ticket_number, project_id, reporter_phone, reporter_name, description,
-            status, priority, assigned_worker_id, building_number, created_at, closed_at,
-            projects (project_code, name)
-          `),
-          clientId
-        )
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false }),
         withClientId(
           supabase.from('projects').select('id, name, project_code'),
           clientId
@@ -194,148 +210,147 @@ export default function SummaryPage() {
           clientId
         ).is('deleted_at', null),
       ])
-
-      if (ticketsError) throw ticketsError
       if (projectsError) throw projectsError
       if (workersError) throw workersError
 
-      const formattedTickets: TicketRow[] = (ticketsData || []).map((row: RawTicketRow) => ({
-        id: row.id,
-        ticket_number: row.ticket_number,
-        project_id: row.project_id,
-        project_code: Array.isArray(row.projects) ? row.projects?.[0]?.project_code || '' : row.projects?.project_code || '',
-        project_name: Array.isArray(row.projects) ? row.projects?.[0]?.name || '' : row.projects?.name || '',
-        reporter_phone: row.reporter_phone,
-        reporter_name: row.reporter_name,
-        description: row.description,
-        building_number: row.building_number,
-        status: row.status,
-        priority: row.priority,
-        assigned_worker_id: row.assigned_worker_id,
-        created_at: row.created_at,
-        closed_at: row.closed_at,
-      }))
-
       const freshProjects = (projectsData as ProjectRow[]) || []
       const freshWorkers = (workersData as WorkerRow[]) || []
-      setTickets(formattedTickets)
       setProjects(freshProjects)
       setWorkers(freshWorkers)
-      writeSummaryCache(clientId, { tickets: formattedTickets, projects: freshProjects, workers: freshWorkers })
+      writeSummaryMetaCache(clientId, { projects: freshProjects, workers: freshWorkers })
     } catch (err) {
-      console.error('Failed to load summary:', err)
+      console.error('Failed to load summary meta:', err)
     }
-    if (!silent) setLoading(false)
+    if (!silent) setMetaLoading(false)
   }, [])
+
+  const loadSummary = useCallback(async (silent = false) => {
+    const range = resolveDateRange(period, customFrom, customTo)
+    if (!range) {
+      if (!silent) setSummaryLoading(false)
+      return
+    }
+    if (!silent) setSummaryLoading(true)
+    try {
+      const params = new URLSearchParams({
+        from: range.from.toISOString(),
+        to: range.toExclusive.toISOString(),
+      })
+      const res = await fetchWithTimeout(
+        `/api/summary/kpi?${params}`,
+        { credentials: 'include' },
+        SUMMARY_FETCH_TIMEOUT_MS
+      )
+      if (!res.ok) throw new Error('summary kpi failed')
+      const data = (await res.json()) as {
+        openNow: number
+        assignedNow: number
+        ticketsInRange: TicketRow[]
+      }
+      setOpenNow(data.openNow)
+      setAssignedNow(data.assignedNow)
+      setSummaryTickets(data.ticketsInRange)
+    } catch (err) {
+      console.error('Failed to load summary KPIs:', err)
+      if (!silent) toast.error('טעינת הסיכום נכשלה — נסה שוב')
+    }
+    if (!silent) setSummaryLoading(false)
+  }, [period, customFrom, customTo])
+
+  const loadHistory = useCallback(async (silent = false) => {
+    const range = resolveDateRange(historyPeriod, customFrom, customTo)
+    if (!range) {
+      if (!silent) setHistoryLoading(false)
+      return
+    }
+    if (!silent) setHistoryLoading(true)
+    try {
+      const params = new URLSearchParams({
+        from: range.from.toISOString(),
+        to: range.toExclusive.toISOString(),
+      })
+      const res = await fetchWithTimeout(
+        `/api/summary/history?${params}`,
+        { credentials: 'include' },
+        SUMMARY_FETCH_TIMEOUT_MS
+      )
+      if (!res.ok) throw new Error('summary history failed')
+      const data = (await res.json()) as { tickets: TicketRow[] }
+      setHistoryTickets(data.tickets)
+      setHistoryLoaded(true)
+    } catch (err) {
+      console.error('Failed to load summary history:', err)
+      if (!silent) toast.error('טעינת ההיסטוריה נכשלה — נסה שוב')
+    }
+    if (!silent) setHistoryLoading(false)
+  }, [historyPeriod, customFrom, customTo])
 
   useEffect(() => {
     void (async () => {
       try {
         const clientId = await resolveBamakorClientIdForBrowser()
-        const cached = shouldSkipStalePageCache() ? null : readSummaryCache(clientId)
+        const cached = shouldSkipStalePageCache() ? null : readSummaryMetaCache(clientId)
         if (cached) {
-          setTickets(cached.tickets)
           setProjects(cached.projects)
           setWorkers(cached.workers)
-          setLoading(false)
-          void loadData(true)
+          setMetaLoading(false)
+          void loadMeta(true)
         } else {
-          void loadData()
+          void loadMeta()
         }
       } catch {
-        void loadData()
+        void loadMeta()
       }
     })()
-  }, [loadData])
+  }, [loadMeta])
 
-  // Visibility API — silent refresh when returning to tab
+  useEffect(() => {
+    void loadSummary()
+  }, [loadSummary])
+
+  useEffect(() => {
+    if (pageTab !== 'history') return
+    void loadHistory()
+  }, [pageTab, loadHistory])
+
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void loadData(true)
+      if (document.visibilityState !== 'visible') return
+      void loadMeta(true)
+      if (pageTab === 'summary') void loadSummary(true)
+      else void loadHistory(true)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [loadData])
+  }, [loadMeta, loadSummary, loadHistory, pageTab])
 
-  function startOfDay(d: Date) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  }
+  const loading =
+    metaLoading || (pageTab === 'summary' ? summaryLoading : historyLoading)
 
-  function clampDateRange(range: { from: Date; toExclusive: Date }) {
-    const from = range.from
-    const toExclusive = range.toExclusive
-    if (!(from instanceof Date) || isNaN(from.getTime())) return null
-    if (!(toExclusive instanceof Date) || isNaN(toExclusive.getTime())) return null
-    if (toExclusive <= from) return null
-    return { from, toExclusive }
-  }
+  const activeTabPeriod = pageTab === 'summary' ? period : historyPeriod
+  const activeRange = useMemo(
+    () => resolveDateRange(period, customFrom, customTo),
+    [period, customFrom, customTo]
+  )
+  const historyRange = useMemo(
+    () => resolveDateRange(historyPeriod, customFrom, customTo),
+    [historyPeriod, customFrom, customTo]
+  )
 
-  function resolveDateRange(): { label: string; from: Date; toExclusive: Date } | null {
-    const now = new Date()
-    const today = startOfDay(now)
-
-    if (period === 'all') {
-      return { label: 'מתחילת התקופה', from: new Date(0), toExclusive: new Date(now.getTime() + 1) }
-    }
-
-    if (period === 'week') {
-      const start = new Date(today)
-      start.setDate(today.getDate() - today.getDay())
-      return { label: 'השבוע', from: start, toExclusive: new Date(now.getTime() + 1) }
-    }
-
-    if (period === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      return { label: 'החודש', from: start, toExclusive: new Date(now.getTime() + 1) }
-    }
-
-    // custom
-    if (!customFrom || !customTo) return null
-    const from = startOfDay(new Date(customFrom))
-    const toInclusive = startOfDay(new Date(customTo))
-    const toExclusive = new Date(toInclusive.getTime() + 24 * 60 * 60 * 1000)
-    const valid = clampDateRange({ from, toExclusive })
-    if (!valid) return null
-    return {
-      label: `מותאם אישית (${from.toLocaleDateString('he-IL')}–${toInclusive.toLocaleDateString('he-IL')})`,
-      from: valid.from,
-      toExclusive: valid.toExclusive,
-    }
-  }
-
-  const activeRange = useMemo(() => resolveDateRange(), [period, customFrom, customTo])
-
-  const ticketsInRange = useMemo(() => {
-    if (!activeRange) return []
-    return tickets.filter((t) => {
-      const createdInRange =
-        t.created_at &&
-        new Date(t.created_at) >= activeRange.from &&
-        new Date(t.created_at) < activeRange.toExclusive
-      const closedInRange =
-        t.closed_at &&
-        new Date(t.closed_at) >= activeRange.from &&
-        new Date(t.closed_at) < activeRange.toExclusive
-      return Boolean(createdInRange || closedInRange)
-    })
-  }, [tickets, activeRange])
+  const ticketsInRange = summaryTickets
 
   const closedTicketsInRange = useMemo(() => {
     if (!activeRange) return []
-    return tickets
+    return summaryTickets
       .filter((t) => {
         if (!t.closed_at || t.status !== 'CLOSED') return false
         const closedAt = new Date(t.closed_at)
         return closedAt >= activeRange.from && closedAt < activeRange.toExclusive
       })
       .sort((a, b) => new Date(b.closed_at || 0).getTime() - new Date(a.closed_at || 0).getTime())
-  }, [tickets, activeRange])
+  }, [summaryTickets, activeRange])
 
-  const historyRange = activeRange
-
-  const historyClosedTickets = closedTicketsInRange
-
-  const historyTruncated = historyClosedTickets.length > HISTORY_DISPLAY_LIMIT
+  const historyClosedTickets = historyTickets
 
   const historyProjectOptions = useMemo(() => {
     return [
@@ -345,8 +360,7 @@ export default function SummaryPage() {
   }, [projects])
 
   const filteredHistoryTickets = useMemo(() => {
-    const capped = historyClosedTickets.slice(0, HISTORY_DISPLAY_LIMIT)
-    return capped.filter((ticket) => {
+    return historyClosedTickets.filter((ticket) => {
       const q = historySearchTerm.trim().toLowerCase()
       const matchesSearch =
         !q ||
@@ -385,27 +399,24 @@ export default function SummaryPage() {
 
   const closedInRangeCount = useMemo(() => {
     if (!activeRange) return 0
-    return tickets.filter((t) => {
+    return summaryTickets.filter((t) => {
       if (!t.closed_at) return false
       const closedAt = new Date(t.closed_at)
       return closedAt >= activeRange.from && closedAt < activeRange.toExclusive
     }).length
-  }, [tickets, activeRange])
+  }, [summaryTickets, activeRange])
 
   const summary = useMemo(() => {
-    const openNow = tickets.filter((t) => t.status === 'NEW').length
-    const assignedNow = tickets.filter((t) => isTicketInTreatment(t.status)).length
-
     return {
       openedInRange: ticketsInRange.length,
       closedInRange: closedInRangeCount,
       openNow,
       assignedNow,
     }
-  }, [tickets, ticketsInRange.length, closedInRangeCount])
+  }, [ticketsInRange.length, closedInRangeCount, openNow, assignedNow])
 
   const projectStats = useMemo(() => {
-    const sourceTickets = activeRange ? ticketsInRange : tickets
+    const sourceTickets = activeRange ? ticketsInRange : summaryTickets
     return projects
       .map((project) => {
         const projectTickets = sourceTickets.filter(
@@ -424,10 +435,10 @@ export default function SummaryPage() {
         }
       })
       .sort((a, b) => b.total - a.total)
-  }, [projects, tickets, ticketsInRange, activeRange])
+  }, [projects, summaryTickets, ticketsInRange, activeRange])
 
   const workerLoad = useMemo(() => {
-    const sourceTickets = activeRange ? ticketsInRange : tickets
+    const sourceTickets = activeRange ? ticketsInRange : summaryTickets
     return workers
       .map((worker) => {
         const assignedTickets = sourceTickets.filter(
@@ -441,7 +452,7 @@ export default function SummaryPage() {
       })
       .filter((w) => w.assigned_tickets > 0)
       .sort((a, b) => b.assigned_tickets - a.assigned_tickets)
-  }, [workers, tickets, ticketsInRange, activeRange])
+  }, [workers, summaryTickets, ticketsInRange, activeRange])
 
   const projectsRequiringAttention = useMemo(() => {
     return projectStats
@@ -457,8 +468,8 @@ export default function SummaryPage() {
   }, [workers])
 
   const sourceTicketsForExport = useMemo(() => {
-    return activeRange ? ticketsInRange : tickets
-  }, [activeRange, ticketsInRange, tickets])
+    return activeRange ? ticketsInRange : summaryTickets
+  }, [activeRange, ticketsInRange, summaryTickets])
 
   function navigateToTickets(filter?: { status?: string; project?: string; worker?: string }) {
     let url = '/tickets'
@@ -556,11 +567,29 @@ export default function SummaryPage() {
     }
   }
 
+  function toClosedExportTicket(ticket: TicketRow) {
+    return {
+      id: ticket.id,
+      ticket_number: ticket.ticket_number,
+      status: ticket.status,
+      priority: ticket.priority,
+      description: ticket.description,
+      created_at: ticket.created_at,
+      closed_at: ticket.closed_at,
+      building_number: ticket.building_number,
+      reporter_phone: ticket.reporter_phone,
+      reporter_name: ticket.reporter_name,
+      worker_name: ticket.assigned_worker_id
+        ? workerNameById.get(ticket.assigned_worker_id) || ''
+        : '',
+    }
+  }
+
   async function exportProjectHistoryTickets(group: HistoryProjectGroup) {
     setExportingHistoryProjectId(group.projectId)
     try {
       await downloadClosedTicketsExcel({
-        tickets: group.tickets,
+        tickets: group.tickets.map(toClosedExportTicket),
         projectName: group.projectName,
       })
       toast.success(TM.excelExported)
@@ -575,7 +604,7 @@ export default function SummaryPage() {
     setExportingAllHistory(true)
     try {
       await downloadClosedTicketsExcel({
-        tickets: filteredHistoryTickets,
+        tickets: filteredHistoryTickets.map(toClosedExportTicket),
         projectName: historyRange?.label || 'היסטוריה',
         sheetName: 'כל הבניינים',
       })
@@ -707,12 +736,16 @@ export default function SummaryPage() {
             actions={
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <Select
-                  value={period}
-                  onChange={(value) => setPeriod(value as 'week' | 'month' | 'all' | 'custom')}
+                  value={activeTabPeriod}
+                  onChange={(value) => {
+                    const next = value as PeriodValue
+                    if (pageTab === 'summary') setPeriod(next)
+                    else setHistoryPeriod(next)
+                  }}
                   options={[
                     { label: 'השבוע', value: 'week' },
                     { label: 'החודש', value: 'month' },
-                    { label: 'מתחילת התקופה', value: 'all' },
+                    { label: 'כל הזמנים', value: 'all' },
                     { label: 'התאמה אישית', value: 'custom' },
                   ]}
                 />
@@ -735,12 +768,16 @@ export default function SummaryPage() {
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
               <Select
-                value={period}
-                onChange={(value) => setPeriod(value as 'week' | 'month' | 'all' | 'custom')}
+                value={activeTabPeriod}
+                onChange={(value) => {
+                  const next = value as PeriodValue
+                  if (pageTab === 'summary') setPeriod(next)
+                  else setHistoryPeriod(next)
+                }}
                 options={[
                   { label: 'השבוע', value: 'week' },
                   { label: 'החודש', value: 'month' },
-                  { label: 'מתחילת התקופה', value: 'all' },
+                  { label: 'כל הזמנים', value: 'all' },
                   { label: 'התאמה אישית', value: 'custom' },
                 ]}
                 style={{ width: '100%' }}
@@ -780,11 +817,11 @@ export default function SummaryPage() {
               ...(pageTab === 'history' ? styles.pageTabActive : styles.pageTabInactive),
             }}
           >
-            היסטוריה ({historyClosedTickets.length})
+            היסטוריה ({historyLoaded ? historyClosedTickets.length : '…'})
           </button>
         </div>
 
-        {period === 'custom' && (
+        {activeTabPeriod === 'custom' && (
           <Card style={{ marginBottom: '24px' }}>
             <div style={styles.dateRow}>
               <div style={styles.dateField}>
@@ -805,7 +842,7 @@ export default function SummaryPage() {
                   style={styles.dateInput}
                 />
               </div>
-              {!activeRange && (
+              {((pageTab === 'summary' && !activeRange) || (pageTab === 'history' && !historyRange)) && (
                 <div style={styles.dateHint}>בחרו טווח תאריכים תקין (עד תאריך חייב להיות אחרי מתאריך)</div>
               )}
             </div>
@@ -872,14 +909,8 @@ export default function SummaryPage() {
 
             {historyRange && (
               <p style={styles.historyRangeHint}>
-                טווח: {historyRange.label}
+                טווח: {historyRange.label} · {filteredHistoryTickets.length} תקלות סגורות
               </p>
-            )}
-
-            {historyTruncated && (
-              <div style={styles.historyTruncationBanner}>
-                מציג עד {HISTORY_DISPLAY_LIMIT} תקלות סגורות בטווח שנבחר. לדוח מלא — ייצוא לפי בניין או ייצוא הכל.
-              </div>
             )}
 
             {!historyRange ? (
@@ -921,8 +952,8 @@ export default function SummaryPage() {
                             <div style={styles.historyTicketTop}>
                               <span style={styles.historyTicketNumber}>#{ticket.ticket_number}</span>
                               <span style={styles.historyClosedAt}>
-                                {ticket.closed_at
-                                  ? new Date(ticket.closed_at).toLocaleDateString('he-IL')
+                                {ticket.assigned_worker_id
+                                  ? workerNameById.get(ticket.assigned_worker_id) || '—'
                                   : '—'}
                               </span>
                             </div>
@@ -930,6 +961,20 @@ export default function SummaryPage() {
                               {ticket.description?.slice(0, 120)}
                               {(ticket.description?.length || 0) > 120 ? '…' : ''}
                             </p>
+                            <div style={styles.historyTicketDates}>
+                              <span>
+                                נפתחה:{' '}
+                                {ticket.created_at
+                                  ? new Date(ticket.created_at).toLocaleDateString('he-IL')
+                                  : '—'}
+                              </span>
+                              <span>
+                                נסגרה:{' '}
+                                {ticket.closed_at
+                                  ? new Date(ticket.closed_at).toLocaleDateString('he-IL')
+                                  : '—'}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -940,8 +985,9 @@ export default function SummaryPage() {
                             <tr>
                               <th style={styles.th}>#</th>
                               <th style={styles.th}>תיאור</th>
+                              <th style={styles.th}>נפתחה</th>
                               <th style={styles.th}>נסגרה</th>
-                              <th style={styles.th}>עדיפות</th>
+                              <th style={styles.th}>עובד</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -957,12 +1003,19 @@ export default function SummaryPage() {
                                   </span>
                                 </td>
                                 <td style={styles.td}>
+                                  {ticket.created_at
+                                    ? new Date(ticket.created_at).toLocaleString('he-IL')
+                                    : '—'}
+                                </td>
+                                <td style={styles.td}>
                                   {ticket.closed_at
                                     ? new Date(ticket.closed_at).toLocaleString('he-IL')
                                     : '—'}
                                 </td>
                                 <td style={styles.td}>
-                                  <PriorityDot priority={ticket.priority || 'LOW'} />
+                                  {ticket.assigned_worker_id
+                                    ? workerNameById.get(ticket.assigned_worker_id) || '—'
+                                    : '—'}
                                 </td>
                               </tr>
                             ))}
@@ -1639,6 +1692,14 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     color: theme.colors.textSecondary,
     lineHeight: 1.45,
+  },
+  historyTicketDates: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    marginTop: '8px',
+    fontSize: '12px',
+    color: theme.colors.textMuted,
   },
   historyDescText: {
     color: theme.colors.textSecondary,

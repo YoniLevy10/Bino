@@ -12,6 +12,7 @@ export type ClosedTicketExportRow = {
   building_number?: string | null
   reporter_phone?: string | null
   reporter_name?: string | null
+  worker_name?: string | null
 }
 
 const PRIORITY_LABEL_HE: Record<string, string> = {
@@ -26,6 +27,7 @@ export function buildClosedTicketExcelRows(tickets: ClosedTicketExportRow[]) {
     '#': t.ticket_number,
     'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
     'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
+    עובד: t.worker_name || '',
     דירה: t.building_number || '',
     תיאור: t.description || '',
     סטטוס: 'סגור',
@@ -45,8 +47,8 @@ export async function downloadClosedTicketsExcel(options: {
   const rows = buildClosedTicketExcelRows(tickets)
 
   const ws = XLSX.utils.json_to_sheet(rows)
-  const COLS = 8
-  ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 7 }, { wch: 42 }, { wch: 10 }, { wch: 10 }, { wch: 18 }]
+  const COLS = 9
+  ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 7 }, { wch: 42 }, { wch: 10 }, { wch: 10 }, { wch: 18 }]
   ws['!freeze'] = { xSplit: 0, ySplit: 1 }
   if (ws['!ref']) ws['!autofilter'] = { ref: ws['!ref'] as string }
   applyHeaderStyle(ws, COLS)

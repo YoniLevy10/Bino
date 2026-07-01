@@ -17,6 +17,12 @@ export const whatsappSessionQuerySchema = z.object({
   phone: z.string().min(8).max(20),
 })
 
+/** Manager reply to ticket reporter via WhatsApp (ticket drawer). */
+export const whatsappReplyResidentBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  body: z.string().min(1).max(4096),
+})
+
 export const smsCampaignBodySchema = z.object({
   project_id: z.string().uuid(),
   campaign_name: z.string().max(120).optional(),

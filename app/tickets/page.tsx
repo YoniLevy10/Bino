@@ -63,6 +63,7 @@ import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketAttachmentThumb } from '../components/shared/TicketAttachmentThumb'
 import { TicketChat } from '../components/tickets/TicketChat'
+import { TicketWhatsAppThread } from '../components/tickets/TicketWhatsAppThread'
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
 import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
 import {
@@ -218,7 +219,7 @@ export default function TicketsPage() {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
-  const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'chat'>('details')
+  const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'chat' | 'whatsapp'>('details')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1273,10 +1274,26 @@ export default function TicketsPage() {
               >
                 צ׳אט פנימי
               </button>
+              <button
+                style={{ ...styles.tab, ...(activeDetailTab === 'whatsapp' ? styles.tabActive : styles.tabInactive) }}
+                onClick={() => setActiveDetailTab('whatsapp')}
+              >
+                WhatsApp דייר
+              </button>
             </div>
 
             {activeDetailTab === 'chat' && (
               <TicketChat ticketId={selectedTicket.id} clientId={tenantClientId || selectedTicket.client_id || null} />
+            )}
+
+            {activeDetailTab === 'whatsapp' && selectedTicket.reporter_phone && (
+              <TicketWhatsAppThread
+                reporterPhone={selectedTicket.reporter_phone}
+                ticketId={selectedTicket.id}
+              />
+            )}
+            {activeDetailTab === 'whatsapp' && !selectedTicket.reporter_phone && (
+              <p style={{ color: theme.colors.textMuted, fontSize: 13 }}>אין טלפון דייר לתקלה זו.</p>
             )}
 
             {activeDetailTab === 'details' && (<>

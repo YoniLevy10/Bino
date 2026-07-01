@@ -43,6 +43,9 @@ type WorkerTicketCardProps = {
   onStatusChange: (status: TicketStatus) => void
   onToggleChat: () => void
   chatSlot?: ReactNode
+  expandedWa?: boolean
+  onToggleWa?: () => void
+  waSlot?: ReactNode
   attachments?: WorkerAttachment[]
   attachmentsLoading?: boolean
   onUploadPhoto?: (file: File) => void
@@ -71,6 +74,9 @@ export function WorkerTicketCard({
   onStatusChange,
   onToggleChat,
   chatSlot,
+  expandedWa = false,
+  onToggleWa,
+  waSlot,
   attachments = [],
   attachmentsLoading = false,
   onUploadPhoto,
@@ -280,9 +286,15 @@ export function WorkerTicketCard({
         <Button variant="secondary" size="sm" onClick={onToggleChat}>
           {expandedChat ? 'סגור צ׳אט' : 'צ׳אט'}
         </Button>
+        {ticket.reporter_phone && onToggleWa ? (
+          <Button variant="secondary" size="sm" onClick={onToggleWa}>
+            {expandedWa ? 'סגור WhatsApp' : 'ענה בוואטסאפ'}
+          </Button>
+        ) : null}
       </div>
 
       {expandedChat && chatSlot ? <div style={styles.chatWrap(colors)}>{chatSlot}</div> : null}
+      {expandedWa && waSlot ? <div style={styles.chatWrap(colors)}>{waSlot}</div> : null}
       </div>
     </article>
   )

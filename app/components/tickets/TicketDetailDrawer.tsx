@@ -342,7 +342,10 @@ export function TicketDetailDrawer({
           )}
 
           {activeTab === 'whatsapp' && selectedTicket.reporter_phone && (
-            <TicketWhatsAppThread reporterPhone={selectedTicket.reporter_phone} />
+            <TicketWhatsAppThread
+              reporterPhone={selectedTicket.reporter_phone}
+              ticketId={selectedTicket.id}
+            />
           )}
           {activeTab === 'whatsapp' && !selectedTicket.reporter_phone && (
             <p style={{ color: theme.colors.textMuted, fontSize: 13 }}>אין טלפון דייר לתקלה זו.</p>

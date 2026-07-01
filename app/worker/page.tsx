@@ -35,6 +35,10 @@ const WorkerToursPanel = dynamic(
   () => import('../components/worker/WorkerToursPanel').then((m) => ({ default: m.WorkerToursPanel })),
   { loading: () => null }
 )
+const TicketWhatsAppThread = dynamic(
+  () => import('../components/tickets/TicketWhatsAppThread').then((m) => ({ default: m.TicketWhatsAppThread })),
+  { loading: () => <LoadingSpinner /> }
+)
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
 import { WorkerAttendancePanel } from '../components/worker/WorkerAttendancePanel'
 import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
@@ -121,6 +125,7 @@ function WorkerPageInner() {
   const [isMobile, setIsMobile] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [expandedChatId, setExpandedChatId] = useState<string | null>(null)
+  const [expandedWaId, setExpandedWaId] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const [chatBody, setChatBody] = useState('')
@@ -369,10 +374,12 @@ function WorkerPageInner() {
     if (activeTicketId === ticketId) {
       setActiveTicketId(null)
       if (expandedChatId === ticketId) setExpandedChatId(null)
+      if (expandedWaId === ticketId) setExpandedWaId(null)
       return
     }
     setActiveTicketId(ticketId)
     if (expandedChatId && expandedChatId !== ticketId) setExpandedChatId(null)
+    if (expandedWaId && expandedWaId !== ticketId) setExpandedWaId(null)
   }
 
   async function uploadWorkerPhoto(ticketId: string, file: File) {
@@ -443,6 +450,7 @@ function WorkerPageInner() {
     activateTicket(ticketId)
     if (expandedChatId === ticketId) { setExpandedChatId(null); return }
     setExpandedChatId(ticketId)
+    setExpandedWaId(null)
     setChatMessages([])
     setChatBody('')
     if (!tokenSession) return
@@ -454,6 +462,16 @@ function WorkerPageInner() {
       setChatMessages(data.messages || [])
     } catch { setChatMessages([]) }
     finally { setChatLoading(false) }
+  }
+
+  function openWa(ticketId: string) {
+    activateTicket(ticketId)
+    if (expandedWaId === ticketId) {
+      setExpandedWaId(null)
+      return
+    }
+    setExpandedWaId(ticketId)
+    setExpandedChatId(null)
   }
 
   async function sendChat(ticketId: string) {
@@ -678,6 +696,18 @@ function WorkerPageInner() {
                   onTranslate={() => void translateTicket(t.id, t.description || '')}
                   onStatusChange={(status) => handleWorkerStatusChange(t.id, status)}
                   onToggleChat={() => void openChat(t.id)}
+                  expandedWa={expandedWaId === t.id}
+                  onToggleWa={t.reporter_phone ? () => openWa(t.id) : undefined}
+                  waSlot={
+                    expandedWaId === t.id && t.reporter_phone && tokenSession ? (
+                      <TicketWhatsAppThread
+                        reporterPhone={t.reporter_phone}
+                        ticketId={t.id}
+                        mode="worker"
+                        workerToken={tokenSession.token}
+                      />
+                    ) : null
+                  }
                   attachments={attachmentsByTicket[t.id]}
                   attachmentsLoading={attachmentsLoadingId === t.id}
                   onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}

@@ -48,6 +48,7 @@ export async function sendResidentTextOrTemplate(
     failureLog?: WhatsAppFailureLog
     persistOutbound?: boolean
     messageTypeForPersist?: string
+    ticketId?: string | null
   }
 ): Promise<ResidentOutboundResult> {
   const to = normalizePhone(opts.phone.trim())
@@ -76,6 +77,7 @@ export async function sendResidentTextOrTemplate(
           body: opts.textBody,
           messageType: opts.messageTypeForPersist ?? 'text',
           waMessageId: extractMetaWaMessageId(wa),
+          ticketId: opts.ticketId,
         })
       }
       return { sent: true, mode: 'text' }
@@ -107,6 +109,7 @@ export async function sendResidentTextOrTemplate(
           body: preview,
           messageType: 'template',
           waMessageId: extractMetaWaMessageId(wa),
+          ticketId: opts.ticketId,
         })
       }
       return { sent: true, mode: 'template' }

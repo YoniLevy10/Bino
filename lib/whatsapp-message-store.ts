@@ -1,5 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { findResidentByPhoneClient, normalizePhone } from '@/lib/residents-whatsapp'
+
+/** Canonical phone key for whatsapp_conversations — preserves wa_test_* keys. */
+export function whatsAppConversationPhoneKey(phone: string): string {
+  const trimmed = phone.trim()
+  if (trimmed.startsWith('wa_test_')) return trimmed
+  return normalizePhone(trimmed)
+}
+
+async function findConversationIdByPhone(
+  admin: SupabaseClient,
+  clientId: string,
+  phone: string
+): Promise<string | null> {
+  const canonical = whatsAppConversationPhoneKey(phone)
+  const keysToTry = canonical === phone.trim() ? [canonical] : [canonical, phone.trim()]
+  for (const key of keysToTry) {
+    if (!key) continue
+    const { data: conv } = await admin
+      .from('whatsapp_conversations')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('phone', key)
+      .maybeSingle()
+    if (conv?.id) return conv.id as string
+  }
+  return null
+}
+
+export type WhatsAppThreadLoadResult = {
+  conversation_id: string | null
+  messages: Awaited<ReturnType<typeof listWhatsAppMessagesForConversation>>
+}
 import {
   hasDisplayableResidentJoin,
   isDisplayableResidentName,
@@ -44,9 +76,10 @@ export async function persistWhatsAppMessage(
 ): Promise<{ conversationId: string; messageId: string } | null> {
   try {
     const now = new Date().toISOString()
+    const storagePhone = whatsAppConversationPhoneKey(input.phone)
     let residentId = input.residentId ?? null
     if (!residentId) {
-      const resident = await findResidentByPhoneClient(admin, input.clientId, input.phone)
+      const resident = await findResidentByPhoneClient(admin, input.clientId, storagePhone)
       if (resident && isDisplayableResidentName(resident.full_name)) {
         residentId = resident.id
       }
@@ -57,7 +90,7 @@ export async function persistWhatsAppMessage(
       .upsert(
         {
           client_id: input.clientId,
-          phone: input.phone,
+          phone: storagePhone,
           resident_id: residentId,
           last_message_at: now,
           last_message_preview: previewText(input.body),
@@ -216,15 +249,23 @@ export async function listWhatsAppMessagesForPhone(
   phone: string,
   limit = 200
 ) {
-  const { data: conv } = await admin
-    .from('whatsapp_conversations')
-    .select('id')
-    .eq('client_id', clientId)
-    .eq('phone', phone)
-    .maybeSingle()
+  const thread = await loadWhatsAppThreadForPhone(admin, clientId, phone, limit)
+  return thread.messages
+}
 
-  if (!conv?.id) return []
-  return listWhatsAppMessagesForConversation(admin, clientId, conv.id as string, limit)
+/** Same source as inbox — conversation thread for a resident phone (all in/out messages). */
+export async function loadWhatsAppThreadForPhone(
+  admin: SupabaseClient,
+  clientId: string,
+  phone: string,
+  limit = 200
+): Promise<WhatsAppThreadLoadResult> {
+  const conversationId = await findConversationIdByPhone(admin, clientId, phone)
+  if (!conversationId) {
+    return { conversation_id: null, messages: [] }
+  }
+  const messages = await listWhatsAppMessagesForConversation(admin, clientId, conversationId, limit)
+  return { conversation_id: conversationId, messages }
 }
 
 /** True if resident messaged within last 24 hours (Meta session window). */
@@ -233,19 +274,13 @@ export async function isWithinWhatsAppSessionWindow(
   clientId: string,
   phone: string
 ): Promise<boolean> {
-  const { data: conv } = await admin
-    .from('whatsapp_conversations')
-    .select('id')
-    .eq('client_id', clientId)
-    .eq('phone', phone)
-    .maybeSingle()
-
-  if (!conv?.id) return false
+  const conversationId = await findConversationIdByPhone(admin, clientId, phone)
+  if (!conversationId) return false
 
   const { data: lastIn } = await admin
     .from('whatsapp_messages')
     .select('created_at')
-    .eq('conversation_id', conv.id)
+    .eq('conversation_id', conversationId)
     .eq('direction', 'in')
     .order('created_at', { ascending: false })
     .limit(1)
