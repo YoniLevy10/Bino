@@ -1378,7 +1378,7 @@ export default function TicketsPage() {
                   </div>
                 ) : (
                   <p style={{ color: theme.colors.textMuted, fontSize: 13, margin: 0 }}>
-                    אין קבצים — התמונה מופיעה כאן (לא בטאב WhatsApp). אם הדייר/ת שלח/ה — לחצו «שחזר מ-WhatsApp» או בקשו לשלוח שוב.
+                    אין קבצים — המערכת מחפשת מדיה שמורה בסשן WhatsApp. לחצו «שחזר מ-WhatsApp».
                   </p>
                 )}
               </div>

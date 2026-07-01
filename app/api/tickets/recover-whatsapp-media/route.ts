@@ -3,8 +3,7 @@ import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { recoverStashedWhatsAppMediaToTicket } from '@/lib/whatsapp-recover-stashed-media'
-import { fetchTicketReporterPhone } from '@/lib/whatsapp-ticket-reply'
+import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
 
 const bodySchema = z.object({
   ticket_id: z.string().uuid(),
@@ -52,7 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'התקלה סגורה' }, { status: 400 })
   }
 
-  const reporterPhone = await fetchTicketReporterPhone(admin, ticketId, clientId)
+  const reporterPhone = (ticket.reporter_phone as string | null)?.trim() ?? ''
   if (!reporterPhone) {
     return NextResponse.json({ error: 'אין טלפון דייר לתקלה' }, { status: 400 })
   }
@@ -65,7 +64,7 @@ export async function POST(req: Request) {
 
   const accessToken = (clientRow as { whatsapp_access_token?: string | null } | null)?.whatsapp_access_token ?? undefined
 
-  const result = await recoverStashedWhatsAppMediaToTicket(
+  const result = await recoverAllWhatsAppMediaForTicket(
     admin,
     clientId,
     ticketId,
@@ -75,10 +74,10 @@ export async function POST(req: Request) {
 
   if (!result.recovered) {
     const messages: Record<string, string> = {
-      NO_STASHED_MEDIA: 'לא נמצאה תמונה/וידאו שמורים בסשן — בקשו מהדייר/ת לשלוח שוב',
+      NO_STASHED_MEDIA: 'לא נמצאה מדיה שמורה — המערכת מחפשת בסשן וב-storage',
       MISSING_ACCESS_TOKEN: 'חסר WhatsApp access token בהגדרות',
-      ATTACH_FAILED: 'הורדת המדיה מ-Meta נכשלה (ייתכן שפג תוקף) — בקשו לשלוח שוב',
-      SESSION_LOOKUP_FAILED: 'שגיאה בחיפוש סשן',
+      ATTACH_FAILED: 'הורדה מ-Meta נכשלה — ייתכן שפג תוקף מזהה המדיה',
+      NOT_FOUND: 'לא נמצאה מדיה לשחזור',
     }
     return NextResponse.json(
       { recovered: false, reason: result.reason, error: messages[result.reason ?? ''] ?? 'שחזור נכשל' },

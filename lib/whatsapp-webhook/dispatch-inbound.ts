@@ -71,7 +71,7 @@ import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
-import { recoverStashedWhatsAppMediaToTicket } from '@/lib/whatsapp-recover-stashed-media'
+import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import {
   findResidentByPhoneClient,
@@ -337,7 +337,7 @@ async function handleWhatsAppInboundMedia(
   if (openTicket) {
     const ticketId = openTicket.id
 
-    await recoverStashedWhatsAppMediaToTicket(
+    await recoverAllWhatsAppMediaForTicket(
       supabaseAdmin,
       webhookClientId,
       ticketId,

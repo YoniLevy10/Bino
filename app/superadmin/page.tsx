@@ -14,6 +14,7 @@ import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
 import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
 import { ClientLogoUpload } from './ClientLogoUpload'
 import { ClientInvitePanel } from './ClientInvitePanel'
+import { ClientRecoverTicketMediaPanel } from './ClientRecoverTicketMediaPanel'
 import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
 import type { OpsFeed } from '@/app/components/superadmin/OpsFailuresPanel'
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
@@ -1281,6 +1282,8 @@ export default function SuperAdminPage() {
                               </div>
 
                               {/* Magic link + invite */}
+                              <ClientRecoverTicketMediaPanel clientId={c.id} secret={secret} />
+
                               <ClientInvitePanel clientId={c.id} defaultEmail={c.admin_email} secret={secret} />
 
                               {c.admin_email && (
