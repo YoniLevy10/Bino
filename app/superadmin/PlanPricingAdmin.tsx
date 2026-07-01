@@ -137,7 +137,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
   }
 
   return (
-    <div style={panelStyle}>
+    <div className="sa-panel" style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.lg, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={titleStyle}>מנוי ותמחור — מסלולים</h2>
@@ -159,6 +159,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
           value={setupFee}
           onChange={(e) => setSetupFee(e.target.value)}
           style={inputStyle}
+          className="sa-input"
         />
         <div style={{ marginTop: 6, fontSize: 12, color: theme.colors.textMuted }}>
           תצוגה: {formatPlanPriceIls(parseInt(setupFee, 10) || 0)} הקמה
@@ -197,6 +198,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                   <div>
@@ -213,6 +215,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                   <div>
@@ -227,6 +230,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                   <div>
@@ -241,6 +245,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                   <div>
@@ -255,6 +260,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                   <div>
@@ -269,6 +275,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                         }))
                       }
                       style={inputStyle}
+                      className="sa-input"
                     />
                   </div>
                 </div>
@@ -283,6 +290,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
                       }))
                     }
                     style={inputStyle}
+                    className="sa-input"
                   />
                 </div>
                 <div style={{ marginTop: 10, fontSize: 12, color: theme.colors.textMuted }}>
