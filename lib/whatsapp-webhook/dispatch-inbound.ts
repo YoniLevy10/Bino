@@ -37,6 +37,7 @@ import {
   getActiveSession,
   type SessionRow,
 } from '@/lib/whatsapp-webhook'
+import { findOpenTicketForPhone } from '@/lib/whatsapp-webhook/flow-ticket'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
 import {
   buildProjectSelectionListPayload,
@@ -331,6 +332,35 @@ async function handleWhatsAppInboundMedia(
     return
   }
 
+  const openTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
+  if (openTicket) {
+    const ticketId = openTicket.id
+    const result = await attachWhatsAppMediaToTicket(
+      supabaseAdmin,
+      ticketId,
+      mediaId,
+      mediaKind,
+      accessToken,
+      webhookClientId
+    )
+
+    if (result.ok) {
+      logger.info('WEBHOOK', `${label} attached to open ticket`, { ticketId })
+      try {
+        await sendWa(waRecipient, config.templates.attached, residentWhatsAppCreds)
+      } catch { /* WA send failure is non-fatal */ }
+      await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `open_ticket_${label}_processed_success`)
+      return
+    }
+
+    logger.warn('WEBHOOK', `open-ticket ${label} attach failed`, { ticketId, failureReason: result.reason })
+    try {
+      await sendWa(waRecipient, config.templates.failed, residentWhatsAppCreds)
+    } catch { /* WA send failure is non-fatal */ }
+    await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `open_ticket_${label}_processed_failure`)
+    return
+  }
+
   if (session?.project_id && !session.active_ticket_id && session.id) {
     const stashPayload: Record<string, string | null> = {
       pending_whatsapp_media_id: mediaId,
@@ -366,35 +396,6 @@ async function handleWhatsAppInboundMedia(
         await sendWa(waRecipient, config.templates.stashed, residentWhatsAppCreds)
       } catch { /* WA send failure is non-fatal */ }
     }
-    return
-  }
-
-  const recentTicket = await findRecentTicketForPhone(from, supabaseAdmin, webhookClientId)
-  if (recentTicket && recentTicket.status !== 'CLOSED') {
-    const ticketId = recentTicket.id
-    const result = await attachWhatsAppMediaToTicket(
-      supabaseAdmin,
-      ticketId,
-      mediaId,
-      mediaKind,
-      accessToken,
-      webhookClientId
-    )
-
-    if (result.ok) {
-      logger.info('WEBHOOK', `${label} attached to recent ticket`, { ticketId })
-      try {
-        await sendWa(waRecipient, config.templates.attached, residentWhatsAppCreds)
-      } catch { /* WA send failure is non-fatal */ }
-      await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `recent_ticket_${label}_processed_success`)
-      return
-    }
-
-    logger.warn('WEBHOOK', `recent-ticket ${label} attach failed`, { ticketId, failureReason: result.reason })
-    try {
-      await sendWa(waRecipient, config.templates.failed, residentWhatsAppCreds)
-    } catch { /* WA send failure is non-fatal */ }
-    await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `recent_ticket_${label}_processed_failure`)
     return
   }
 
@@ -488,36 +489,6 @@ async function getTicketStatus(ticketId: string, supabaseAdmin: SupabaseClient):
   }
 
   return (data as { status?: string } | null)?.status || null
-}
-
-async function findRecentTicketForPhone(
-  from: string,
-  supabaseAdmin: SupabaseClient,
-  clientId: string
-): Promise<{ id: string; status: string; created_at: string } | null> {
-  // Product rule: sessions reset after ticket creation, but user may send an image immediately after.
-  // So we allow attaching an image to the most recent ticket for this phone within a short window.
-  const windowMinutes = 10
-  const sinceIso = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString()
-
-  const { data, error } = await supabaseAdmin
-    .from('tickets')
-    .select('id, status, created_at')
-    .eq('reporter_phone', from)
-    .eq('client_id', clientId)
-    .is('deleted_at', null)
-    .gte('created_at', sinceIso)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error) {
-    logger.warn('WEBHOOK', 'find recent ticket failed', { err: error.message })
-    return null
-  }
-
-  if (!data?.id || !data?.created_at || !data?.status) return null
-  return data as { id: string; status: string; created_at: string }
 }
 
 /** If the user sent media before the first text in this session, attach it to the new ticket. */
@@ -944,9 +915,9 @@ export async function runWhatsAppInboundBackground(
         return
       }
 
-      const recentTicket = await findRecentTicketForPhone(from, supabaseAdmin, webhookClientId)
-      if (recentTicket && recentTicket.status !== 'CLOSED') {
-        await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, recentTicket.id, loc)
+      const openTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
+      if (openTicket) {
+        await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, openTicket.id, loc)
         try {
           await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
         } catch { /* WA send failure is non-fatal */ }
@@ -1907,7 +1878,7 @@ export async function runWhatsAppInboundBackground(
     } catch { /* WA send failure is non-fatal; ticket was already created */ }
 
     // Product rule: if no image is sent, session must reset after ticket creation confirmation.
-    // If an image is sent right after, it will attach via recent-ticket lookup (short window).
+    // If an image is sent later, it will attach to the most recent open ticket for this phone.
     await resetSessionCompletely(from, supabaseAdmin, webhookClientId, 'ticket_created_text_flow_reset')
 
     return
