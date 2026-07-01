@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
   AppShell,
@@ -304,11 +304,15 @@ function SettingsPageInner() {
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
         }
-        const res = await fetchWithTimeout('/api/settings/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
+        const res = await fetchWithTimeout(
+          '/api/settings/update',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
         toast.success(TM.settingsSaved)
@@ -349,11 +353,15 @@ function SettingsPageInner() {
     await asyncHandler(
       async () => {
         const sidebar_nav_labels = buildNavLabelsPayload()
-        const res = await fetchWithTimeout('/api/settings/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sidebar_nav_order: navOrderDraft, sidebar_nav_labels }),
-        })
+        const res = await fetchWithTimeout(
+          '/api/settings/update',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sidebar_nav_order: navOrderDraft, sidebar_nav_labels }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'שמירה נכשלה'))
         setLocalOrderIds(navOrderDraft)
@@ -384,11 +392,15 @@ function SettingsPageInner() {
         if (waAccessToken.trim()) {
           payload.whatsapp_access_token = waAccessToken.trim()
         }
-        const res = await fetchWithTimeout('/api/settings/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
+        const res = await fetchWithTimeout(
+          '/api/settings/update',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
         toast.success(TM.settingsSaved)
@@ -439,11 +451,15 @@ function SettingsPageInner() {
         if (giApiSecret.trim()) {
           payload.greeninvoice_api_secret = giApiSecret.trim()
         }
-        const res = await fetchWithTimeout('/api/settings/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
+        const res = await fetchWithTimeout(
+          '/api/settings/update',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
         toast.success(TM.settingsSaved)
@@ -530,7 +546,11 @@ function SettingsPageInner() {
     setTestingSms(true)
     await asyncHandler(
       async () => {
-        const res = await fetchWithTimeout('/api/settings/test-sms', { method: 'POST' })
+        const res = await fetchWithTimeout(
+          '/api/settings/test-sms',
+          { method: 'POST' },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = await res.json()
         if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
         toast.success('SMS ניסיון נשלח בהצלחה')
@@ -546,11 +566,15 @@ function SettingsPageInner() {
     setTestingWa(true)
     await asyncHandler(
       async () => {
-        const res = await fetchWithTimeout('/api/settings/test-whatsapp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        })
+        const res = await fetchWithTimeout(
+          '/api/settings/test-whatsapp',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = await res.json()
         if (!res.ok) throw new Error(json.error || 'בדיקה נכשלה')
         toast.success('הודעת בדיקה נשלחה')

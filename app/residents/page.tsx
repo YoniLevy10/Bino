@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { AddResidentModal, type ResidentProjectRow } from '../components/residents/AddResidentModal'
 import { ImportResidentsModal } from '../components/residents/ImportResidentsModal'
@@ -285,11 +285,15 @@ function ResidentsPageInner() {
     setDeletingResident(true)
     setAddError('')
     try {
-      const res = await fetchWithTimeout('/api/update-resident', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resident_id: editResidentId, soft_delete: true }),
-      })
+      const res = await fetchWithTimeout(
+        '/api/update-resident',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resident_id: editResidentId, soft_delete: true }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       const json = (await res?.json().catch(() => ({}))) as { error?: string }
       if (!res?.ok) throw new Error(json.error || 'מחיקת דייר נכשלה')
       setResidents((prev) => prev.filter((x) => x.id !== editResidentId))
@@ -324,20 +328,24 @@ function ResidentsPageInner() {
     setAddError('')
     try {
       if (editResidentId) {
-        const updateRes = await fetchWithTimeout('/api/update-resident', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            resident_id: editResidentId,
-            project_id: projectId,
-            full_name: fullName,
-            phone: normalizeResidentPhone(addPhone) || null,
-            email: addEmail.trim() || null,
-            is_renter: addIsRenter ?? false,
-            apartment_number: addApartment.trim() || null,
-            notes: addNotes.trim() || null,
-          }),
-        })
+        const updateRes = await fetchWithTimeout(
+          '/api/update-resident',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              resident_id: editResidentId,
+              project_id: projectId,
+              full_name: fullName,
+              phone: normalizeResidentPhone(addPhone) || null,
+              email: addEmail.trim() || null,
+              is_renter: addIsRenter ?? false,
+              apartment_number: addApartment.trim() || null,
+              notes: addNotes.trim() || null,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const updateJson = (await updateRes?.json().catch(() => ({}))) as {
           error?: string
           data?: ResidentRow
@@ -357,19 +365,23 @@ function ResidentsPageInner() {
         return
       }
 
-      const insertRes = await fetchWithTimeout('/api/create-resident', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_id: projectId,
-          full_name: fullName,
-          phone: addPhone.trim() || null,
-          email: addEmail.trim() || null,
-          is_renter: addIsRenter ?? false,
-          apartment_number: addApartment.trim() || null,
-          notes: addNotes.trim() || null,
-        }),
-      })
+      const insertRes = await fetchWithTimeout(
+        '/api/create-resident',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: projectId,
+            full_name: fullName,
+            phone: addPhone.trim() || null,
+            email: addEmail.trim() || null,
+            is_renter: addIsRenter ?? false,
+            apartment_number: addApartment.trim() || null,
+            notes: addNotes.trim() || null,
+          }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       const insertData = await insertRes.json()
       if (!insertRes.ok) {
         const msg = insertData?.error || TM.genericSaveError
@@ -582,11 +594,15 @@ function ResidentsPageInner() {
     try {
       const ids = Array.from(selectedIds)
       for (const resident_id of ids) {
-        const res = await fetchWithTimeout('/api/update-resident', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resident_id, soft_delete: true }),
-        })
+        const res = await fetchWithTimeout(
+          '/api/update-resident',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resident_id, soft_delete: true }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = (await res.json().catch(() => ({}))) as { error?: string }
         if (!res.ok) throw new Error(json.error || 'מחיקה נכשלה')
       }

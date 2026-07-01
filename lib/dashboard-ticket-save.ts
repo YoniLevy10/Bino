@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 
 export type SaveDashboardTicketInput = {
   ticketId: string
@@ -32,11 +32,15 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
   const workerChanged = (previousWorkerId || '') !== (draftWorkerId || '')
 
   if (workerChanged && draftWorkerId) {
-    const assignRes = await fetchWithTimeout('/api/assign-ticket', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticket_id: ticketId, worker_id: draftWorkerId }),
-    })
+    const assignRes = await fetchWithTimeout(
+      '/api/assign-ticket',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId, worker_id: draftWorkerId }),
+      },
+      MUTATION_FETCH_TIMEOUT_MS
+    )
     const assignBody = (await assignRes?.json().catch(() => ({}))) as {
       error?: string
       worker_sms_sent?: boolean | null
@@ -60,11 +64,15 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
     updateBody.assigned_worker_id = draftWorkerId
   }
 
-  const updateRes = await fetchWithTimeout('/api/update-ticket', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updateBody),
-  })
+  const updateRes = await fetchWithTimeout(
+    '/api/update-ticket',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateBody),
+    },
+    MUTATION_FETCH_TIMEOUT_MS
+  )
   const updateJson = (await updateRes?.json().catch(() => ({}))) as {
     error?: string
     closed_now?: boolean
