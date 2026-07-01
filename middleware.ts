@@ -27,6 +27,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/report') ||
     pathname === '/privacy' ||
     pathname.startsWith('/admin/') ||
+    pathname.startsWith('/superadmin') ||
     pathname === '/worker-login' ||
     pathname === '/worker' ||
     pathname.startsWith('/worker/') ||
