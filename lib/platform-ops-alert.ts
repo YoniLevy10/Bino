@@ -4,6 +4,9 @@ import { getPublicAppUrl } from '@/lib/public-app-url'
 
 const DEDUP_WINDOW_MS = 30 * 60 * 1000
 
+/** Default inbox when PLATFORM_OPS_EMAIL and VAPID_SUBJECT mailto are unset. */
+const DEFAULT_PLATFORM_OPS_EMAIL = 'levyyoni5@gmail.com'
+
 export type PlatformOpsAlertKind =
   | 'sms_failure'
   | 'whatsapp_failure'
@@ -20,13 +23,13 @@ export type PlatformOpsAlertInput = {
   details?: Record<string, unknown>
 }
 
-function resolveOpsEmail(): string | null {
+function resolveOpsEmail(): string {
   const explicit = (process.env.PLATFORM_OPS_EMAIL || '').trim()
   if (explicit) return explicit
   const vapid = (process.env.VAPID_SUBJECT || '').trim()
   const mailto = vapid.match(/^mailto:(.+)$/i)
   if (mailto?.[1]) return mailto[1].trim()
-  return null
+  return DEFAULT_PLATFORM_OPS_EMAIL
 }
 
 function buildDedupKey(input: PlatformOpsAlertInput): string {
@@ -79,10 +82,6 @@ async function sendOpsEmail(subject: string, text: string): Promise<boolean> {
   const apiKey = (process.env.RESEND_API_KEY || '').trim()
   const from = (process.env.RESEND_FROM_EMAIL || 'Bamakor <office@bamakor.com>').trim()
 
-  if (!to) {
-    console.warn('[platform-ops-alert] PLATFORM_OPS_EMAIL not set — skipping email')
-    return false
-  }
   if (!apiKey) {
     console.warn('[platform-ops-alert] RESEND_API_KEY not set — skipping email')
     return false
@@ -116,7 +115,7 @@ async function sendOpsEmail(subject: string, text: string): Promise<boolean> {
 
 /**
  * Email platform operator on operational failures (not shown in tenant UI).
- * Deduped ~30 min per incident key. Requires PLATFORM_OPS_EMAIL + RESEND_API_KEY.
+ * Deduped ~30 min per incident key. Uses PLATFORM_OPS_EMAIL (or default / VAPID_SUBJECT mailto). Requires RESEND_API_KEY.
  */
 export async function notifyPlatformOps(input: PlatformOpsAlertInput): Promise<void> {
   const dedupKey = buildDedupKey(input)
