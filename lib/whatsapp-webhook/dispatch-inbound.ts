@@ -71,6 +71,7 @@ import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
+import { recoverStashedWhatsAppMediaToTicket } from '@/lib/whatsapp-recover-stashed-media'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import {
   findResidentByPhoneClient,
@@ -335,6 +336,15 @@ async function handleWhatsAppInboundMedia(
   const openTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
   if (openTicket) {
     const ticketId = openTicket.id
+
+    await recoverStashedWhatsAppMediaToTicket(
+      supabaseAdmin,
+      webhookClientId,
+      ticketId,
+      from,
+      accessToken
+    )
+
     const result = await attachWhatsAppMediaToTicket(
       supabaseAdmin,
       ticketId,
@@ -869,7 +879,11 @@ export async function runWhatsAppInboundBackground(
       clientId: webhookClientId,
       phone: from,
       direction: 'in',
-      body: textBody || (interactiveReplyId ? `[${interactiveReplyId}]` : null),
+      body:
+        textBody ||
+        (messageType === 'image' && mediaId ? '📷 תמונה' : null) ||
+        (messageType === 'video' && mediaId ? '🎬 וידאו' : null) ||
+        (interactiveReplyId ? `[${interactiveReplyId}]` : null),
       messageType: messageType || 'text',
       waMessageId: parsedMessage.messageId ?? null,
       interactivePayload: interactiveReplyId

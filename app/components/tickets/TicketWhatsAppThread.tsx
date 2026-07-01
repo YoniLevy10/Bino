@@ -10,7 +10,16 @@ type Message = {
   id: string
   direction: 'in' | 'out'
   body: string | null
+  message_type?: string | null
   created_at: string
+}
+
+function displayWhatsAppBody(m: Message): string {
+  if (m.body?.trim()) return m.body
+  if (m.message_type === 'image') return '📷 תמונה'
+  if (m.message_type === 'video') return '🎬 וידאו'
+  if (m.message_type === 'audio') return '🎵 הודעה קולית'
+  return '—'
 }
 
 type Props = {
@@ -169,7 +178,7 @@ export function TicketWhatsAppThread({
                 ...(m.direction === 'out' ? styles.out : styles.in),
               }}
             >
-              <div>{m.body || '—'}</div>
+              <div>{displayWhatsAppBody(m)}</div>
               <div style={styles.time}>
                 {new Date(m.created_at).toLocaleString('he-IL')}
               </div>
