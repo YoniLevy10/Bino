@@ -1773,54 +1773,50 @@ const selectStyles: Record<string, CSSProperties> = {
 // DRAWER
 // ============================================================================
 
+const DRAWER_FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 function useFocusTrap(
   active: boolean,
   containerRef: React.RefObject<HTMLElement | null>,
-  onEscape: () => void,
-  isMobile = false
+  onEscape: () => void
 ) {
   const onEscapeRef = useRef(onEscape)
   onEscapeRef.current = onEscape
-  const wasActiveRef = useRef(false)
 
   useEffect(() => {
-    if (!active || !containerRef.current) {
-      wasActiveRef.current = false
-      return
-    }
+    if (!active) return
 
     const root = containerRef.current
-    const justOpened = !wasActiveRef.current
-    wasActiveRef.current = true
+    if (!root) return
 
-    const focusables = root.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    const first = focusables[0]
-    const last = focusables[focusables.length - 1]
-
-    // Avoid stealing focus on mobile — iOS PWA bottom sheets break when close button is auto-focused
-    if (justOpened && !isMobile) {
-      first?.focus()
-    }
+    const getFocusables = () =>
+      Array.from(root.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null
+      )
 
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         onEscapeRef.current()
         return
       }
-      if (e.key !== 'Tab' || focusables.length === 0) return
+      if (e.key !== 'Tab') return
+      const focusables = getFocusables()
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault()
-        last?.focus()
+        last.focus()
       } else if (!e.shiftKey && document.activeElement === last) {
         e.preventDefault()
-        first?.focus()
+        first.focus()
       }
     }
+
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [active, containerRef, isMobile])
+  }, [active, containerRef])
 }
 
 export function Drawer({
@@ -1839,11 +1835,11 @@ export function Drawer({
   isMobile?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const mobile = !!isMobile
-  useFocusTrap(open, panelRef, onClose, mobile)
+  useFocusTrap(open, panelRef, onClose)
 
   if (!open) return null
 
+  const mobile = !!isMobile
   const panelStyle: CSSProperties = mobile
     ? drawerStyles.panelMobile
     : { ...drawerStyles.panelSide, width: '480px' }
