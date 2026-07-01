@@ -26,6 +26,7 @@
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
@@ -69,6 +70,7 @@ import {
   ticketStatusLabelHe,
   isTicketInTreatment,
 } from '@/lib/ticket-status'
+import { ticketsListExportFilename } from '@/lib/export-filename'
 
 type TicketRow = {
   id: string
@@ -174,6 +176,7 @@ const TICKETS_LIST_SELECT = `
 `.trim()
 
 export default function TicketsPage() {
+  const router = useRouter()
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
@@ -220,6 +223,13 @@ export default function TicketsPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
+      if (params.get('tab') === 'history') {
+        const redirect = new URLSearchParams()
+        redirect.set('tab', 'history')
+        if (params.get('project')) redirect.set('project', params.get('project')!)
+        router.replace(`/summary?${redirect.toString()}`)
+        return
+      }
       if (params.get('project')) setProjectFilter(decodeURIComponent(params.get('project')!))
       if (params.get('worker')) setWorkerFilter(decodeURIComponent(params.get('worker')!))
       const statusParam = params.get('status')
@@ -229,7 +239,7 @@ export default function TicketsPage() {
       if (params.get('priority')) setPriorityFilter(decodeURIComponent(params.get('priority')!))
       if (params.get('new') === '1') setShowAddTicketModal(true)
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -525,8 +535,12 @@ export default function TicketsPage() {
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'תקלות')
-    const day = new Date().toISOString().slice(0, 10)
-    XLSX.writeFile(wb, `bamakor-tickets-${day}.xlsx`)
+    const exportProjectName =
+      projectFilter !== 'ALL'
+        ? projects.find((p) => p.project_code === projectFilter)?.name
+        : undefined
+    const { downloadExcelWorkbook } = await import('@/lib/excel-download')
+    downloadExcelWorkbook(wb, XLSX, ticketsListExportFilename({ projectName: exportProjectName }))
     toast.success(TM.excelExported)
   }
 
@@ -942,7 +956,7 @@ export default function TicketsPage() {
         {!isMobile && (
           <PageHeader
             title="תקלות"
-            subtitle="ניהול ומעקב אחר תקלות אחזקה"
+            subtitle="ניהול ומעקב אחר תקלות אחזקה פעילות"
             actions={
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <Button
@@ -973,7 +987,7 @@ export default function TicketsPage() {
         </div>
 
         <p style={styles.closedHint}>
-          תקלות סגורות מופיעות בהיסטוריית הפרויקט ובדוח הסיכום — לא ברשימה זו.
+          תקלות סגורות מופיעות בדף הסיכום, בלשונית היסטוריה ובהיסטוריית הפרויקט.
         </p>
 
         {ticketsTruncated && (
@@ -987,7 +1001,7 @@ export default function TicketsPage() {
             marginBottom: '12px',
             direction: 'rtl',
           }}>
-            ⚠️ מציג עד 300 תקלות פעילות אחרונות. תקלות סגורות — בהיסטוריית פרויקט או בדוח סיכום.
+            ⚠️ מציג עד 300 תקלות פעילות אחרונות. תקלות סגורות — בדף הסיכום, לשונית היסטוריה.
           </div>
         )}
 

@@ -292,7 +292,9 @@ export default function ProjectsPage() {
     try {
       const scoped = clientId || (await resolveBamakorClientIdForBrowser())
       const { data, error } = await withClientId(
-        supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
+        supabase.from('tickets').select(
+          'id, ticket_number, status, priority, description, created_at, closed_at, building_number, reporter_phone, reporter_name'
+        ),
         scoped
       )
         .eq('project_id', project.id)
@@ -302,26 +304,11 @@ export default function ProjectsPage() {
 
       if (error) throw error
 
-      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
-      const rows = (data || []).map((t: TicketRow) => ({
-        '#': t.ticket_number,
-        'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
-        'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
-        תיאור: t.description || '',
-        סטטוס: 'סגור',
-        עדיפות: t.priority || '',
-      }))
-
-      const ws = XLSX.utils.json_to_sheet(rows)
-      const COLS = 6
-      ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 42 }, { wch: 10 }, { wch: 10 }]
-      applyHeaderStyle(ws, COLS)
-      applyDataStyles(ws, rows.length, COLS)
-
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'היסטוריה')
-      const day = new Date().toISOString().slice(0, 10)
-      XLSX.writeFile(wb, `bamakor-history-${project.project_code}-${day}.xlsx`)
+      const { downloadClosedTicketsExcel } = await import('@/lib/closed-tickets-excel')
+      await downloadClosedTicketsExcel({
+        tickets: (data as TicketRow[]) || [],
+        projectName: project.name,
+      })
       toast.success(TM.excelExported)
     } catch {
       toast.error('ייצוא היסטוריה נכשל')

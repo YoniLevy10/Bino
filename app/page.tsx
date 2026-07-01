@@ -671,7 +671,7 @@ export default function DashboardPage() {
               <KpiCard label="פעילות" value={stats.total} accent="primary" onClick={() => setActiveKpi('ALL')} />
               <KpiCard label="פתוחות" value={stats.open} accent="warning" onClick={() => setActiveKpi('NEW')} />
               <KpiCard label="בטיפול" value={stats.inProgress} accent="primary" onClick={() => setActiveKpi('IN_PROGRESS')} />
-              <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => router.push('/summary')} />
+              <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => router.push('/summary?tab=history')} />
               {!isMobile && residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} accent="primary" />}
               {!isMobile && workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} accent="success" />}
             </div>

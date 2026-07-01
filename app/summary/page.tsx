@@ -13,7 +13,7 @@
  *  - כפתור Excel בשורת פרויקט → קובץ תקלות לפרויקט בלבד
  *  - שינוי חודש/פרויקט → מחשב מחדש את הדוח
  */
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -33,12 +33,20 @@ import {
   Card,
   Button,
   Select,
+  SearchInput,
+  EmptyState,
+  PriorityDot,
   LoadingSpinner,
   theme
 } from '../components/ui'
+import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
+import { PageListSkeleton } from '../components/page-skeleton'
 
 const CACHE_KEY = 'bamakor_summary_v2'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const HISTORY_DISPLAY_LIMIT = 500
+
+type PageTab = 'summary' | 'history'
 
 type SummaryCache = {
   tickets: TicketRow[]
@@ -70,10 +78,12 @@ type TicketRow = {
   project_code?: string
   project_name?: string
   reporter_phone: string
+  reporter_name?: string | null
   description: string
   status: string
   priority?: string
   assigned_worker_id: string | null
+  building_number?: string | null
   created_at: string
   closed_at: string | null
 }
@@ -84,10 +94,12 @@ type RawTicketRow = {
   project_id?: string
   projects?: { project_code?: string; name?: string } | { project_code?: string; name?: string }[]
   reporter_phone: string
+  reporter_name?: string | null
   description: string
   status: string
   priority?: string
   assigned_worker_id: string | null
+  building_number?: string | null
   created_at: string
   closed_at: string | null
 }
@@ -105,8 +117,16 @@ type WorkerRow = {
   is_active: boolean
 }
 
+type HistoryProjectGroup = {
+  projectId: string
+  projectName: string
+  projectCode: string
+  tickets: TicketRow[]
+}
+
 export default function SummaryPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
@@ -117,6 +137,27 @@ export default function SummaryPage() {
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [pageTab, setPageTab] = useState<PageTab>('summary')
+  const [historySearchTerm, setHistorySearchTerm] = useState('')
+  const [historyProjectFilter, setHistoryProjectFilter] = useState('ALL')
+  const [exportingHistoryProjectId, setExportingHistoryProjectId] = useState<string | null>(null)
+  const [exportingAllHistory, setExportingAllHistory] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'history') setPageTab('history')
+    const project = searchParams.get('project')
+    if (project) setHistoryProjectFilter(decodeURIComponent(project))
+  }, [searchParams])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (pageTab === 'history') params.set('tab', 'history')
+    else params.delete('tab')
+    const qs = params.toString()
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    window.history.replaceState(null, '', newUrl)
+  }, [pageTab])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -136,8 +177,8 @@ export default function SummaryPage() {
       ] = await Promise.all([
         withClientId(
           supabase.from('tickets').select(`
-            id, ticket_number, project_id, reporter_phone, description,
-            status, priority, assigned_worker_id, created_at, closed_at,
+            id, ticket_number, project_id, reporter_phone, reporter_name, description,
+            status, priority, assigned_worker_id, building_number, created_at, closed_at,
             projects (project_code, name)
           `),
           clientId
@@ -165,7 +206,9 @@ export default function SummaryPage() {
         project_code: Array.isArray(row.projects) ? row.projects?.[0]?.project_code || '' : row.projects?.project_code || '',
         project_name: Array.isArray(row.projects) ? row.projects?.[0]?.name || '' : row.projects?.name || '',
         reporter_phone: row.reporter_phone,
+        reporter_name: row.reporter_name,
         description: row.description,
+        building_number: row.building_number,
         status: row.status,
         priority: row.priority,
         assigned_worker_id: row.assigned_worker_id,
@@ -287,6 +330,58 @@ export default function SummaryPage() {
       })
       .sort((a, b) => new Date(b.closed_at || 0).getTime() - new Date(a.closed_at || 0).getTime())
   }, [tickets, activeRange])
+
+  const historyRange = activeRange
+
+  const historyClosedTickets = closedTicketsInRange
+
+  const historyTruncated = historyClosedTickets.length > HISTORY_DISPLAY_LIMIT
+
+  const historyProjectOptions = useMemo(() => {
+    return [
+      { label: 'כל הפרויקטים', value: 'ALL' },
+      ...projects.map((p) => ({ label: p.name, value: p.project_code })),
+    ]
+  }, [projects])
+
+  const filteredHistoryTickets = useMemo(() => {
+    const capped = historyClosedTickets.slice(0, HISTORY_DISPLAY_LIMIT)
+    return capped.filter((ticket) => {
+      const q = historySearchTerm.trim().toLowerCase()
+      const matchesSearch =
+        !q ||
+        String(ticket.ticket_number).includes(q) ||
+        (ticket.project_code || '').toLowerCase().includes(q) ||
+        (ticket.project_name || '').toLowerCase().includes(q) ||
+        (ticket.description || '').toLowerCase().includes(q) ||
+        (ticket.reporter_phone || '').toLowerCase().includes(q) ||
+        (ticket.reporter_name || '').toLowerCase().includes(q)
+
+      const matchesProject =
+        historyProjectFilter === 'ALL' || ticket.project_code === historyProjectFilter
+
+      return matchesSearch && matchesProject
+    })
+  }, [historyClosedTickets, historySearchTerm, historyProjectFilter])
+
+  const historyByProject = useMemo((): HistoryProjectGroup[] => {
+    const map = new Map<string, HistoryProjectGroup>()
+    for (const ticket of filteredHistoryTickets) {
+      const projectId = ticket.project_id || ticket.project_code || 'unknown'
+      const existing = map.get(projectId)
+      if (existing) {
+        existing.tickets.push(ticket)
+      } else {
+        map.set(projectId, {
+          projectId,
+          projectName: ticket.project_name || ticket.project_code || 'ללא פרויקט',
+          projectCode: ticket.project_code || '',
+          tickets: [ticket],
+        })
+      }
+    }
+    return [...map.values()].sort((a, b) => a.projectName.localeCompare(b.projectName, 'he'))
+  }, [filteredHistoryTickets])
 
   const closedInRangeCount = useMemo(() => {
     if (!activeRange) return 0
@@ -450,8 +545,8 @@ export default function SummaryPage() {
       )
       XLSX.utils.book_append_sheet(wb, wsTickets, 'תקלות')
 
-      const safeCode = project.project_code.replace(/[^\w-]+/g, '_') || 'project'
-      downloadExcelWorkbook(wb, XLSX, `summary-${safeCode}-${exportFilenameSuffix()}.xlsx`)
+      const { summaryProjectExportFilename } = await import('@/lib/export-filename')
+      downloadExcelWorkbook(wb, XLSX, summaryProjectExportFilename(project.name, exportFilenameSuffix()))
       toast.success(TM.excelExported)
     } catch (err) {
       console.error('Project Excel export failed:', err)
@@ -459,6 +554,36 @@ export default function SummaryPage() {
     } finally {
       setExporting(false)
     }
+  }
+
+  async function exportProjectHistoryTickets(group: HistoryProjectGroup) {
+    setExportingHistoryProjectId(group.projectId)
+    try {
+      await downloadClosedTicketsExcel({
+        tickets: group.tickets,
+        projectName: group.projectName,
+      })
+      toast.success(TM.excelExported)
+    } catch {
+      toast.error('ייצוא היסטוריה נכשל')
+    }
+    setExportingHistoryProjectId(null)
+  }
+
+  async function exportAllHistoryTickets() {
+    if (filteredHistoryTickets.length === 0) return
+    setExportingAllHistory(true)
+    try {
+      await downloadClosedTicketsExcel({
+        tickets: filteredHistoryTickets,
+        projectName: historyRange?.label || 'היסטוריה',
+        sheetName: 'כל הבניינים',
+      })
+      toast.success(TM.excelExported)
+    } catch {
+      toast.error('ייצוא היסטוריה נכשל')
+    }
+    setExportingAllHistory(false)
   }
 
   async function exportSummaryToExcel() {
@@ -551,19 +676,34 @@ export default function SummaryPage() {
       {isMobile && (
         <MobileHeader
           title="סיכום"
-          subtitle={formatDate()}
-          subtitleSuppressHydrationWarning
+          subtitle={
+            pageTab === 'history'
+              ? `${filteredHistoryTickets.length} סגורות`
+              : formatDate()
+          }
+          subtitleSuppressHydrationWarning={pageTab !== 'history'}
           onMenuClick={() => setMenuOpen(true)}
         />
       )}
 
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div style={styles.content}>
+      <div
+        style={{
+          ...styles.content,
+          ...(isMobile
+            ? { padding: '16px 16px 24px', maxWidth: '100%', minWidth: 0, overflowX: 'hidden' }
+            : {}),
+        }}
+      >
         {!isMobile && (
           <PageHeader
             title="סיכום"
-            subtitle="סקירה תפעולית ומדדי ביצוע"
+            subtitle={
+              pageTab === 'history'
+                ? 'היסטוריית תקלות סגורות לפי בניין'
+                : 'סקירה תפעולית ומדדי ביצוע'
+            }
             actions={
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <Select
@@ -576,21 +716,23 @@ export default function SummaryPage() {
                     { label: 'התאמה אישית', value: 'custom' },
                   ]}
                 />
-                <Button
-                  variant="secondary"
-                  type="button"
-                  disabled={!activeRange || exporting}
-                  loading={exporting}
-                  onClick={() => void exportSummaryToExcel()}
-                >
-                  ייצוא ל-Excel
-                </Button>
+                {pageTab === 'summary' && (
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    disabled={!activeRange || exporting}
+                    loading={exporting}
+                    onClick={() => void exportSummaryToExcel()}
+                  >
+                    ייצוא ל-Excel
+                  </Button>
+                )}
               </div>
             }
           />
         )}
         {isMobile && (
-          <div style={{ marginBottom: '24px', marginTop: '-8px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
               <Select
                 value={period}
@@ -601,20 +743,46 @@ export default function SummaryPage() {
                   { label: 'מתחילת התקופה', value: 'all' },
                   { label: 'התאמה אישית', value: 'custom' },
                 ]}
-                style={{ width: '100%', maxWidth: '360px' }}
+                style={{ width: '100%' }}
               />
-              <Button
-                variant="secondary"
-                type="button"
-                disabled={!activeRange || exporting}
-                loading={exporting}
-                onClick={() => void exportSummaryToExcel()}
-              >
-                ייצוא ל-Excel
-              </Button>
+              {pageTab === 'summary' && (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  disabled={!activeRange || exporting}
+                  loading={exporting}
+                  onClick={() => void exportSummaryToExcel()}
+                  style={{ width: '100%', minHeight: '48px' }}
+                >
+                  ייצוא ל-Excel
+                </Button>
+              )}
             </div>
           </div>
         )}
+
+        <div style={styles.pageTabBar}>
+          <button
+            type="button"
+            onClick={() => setPageTab('summary')}
+            style={{
+              ...styles.pageTab,
+              ...(pageTab === 'summary' ? styles.pageTabActive : styles.pageTabInactive),
+            }}
+          >
+            סיכום
+          </button>
+          <button
+            type="button"
+            onClick={() => setPageTab('history')}
+            style={{
+              ...styles.pageTab,
+              ...(pageTab === 'history' ? styles.pageTabActive : styles.pageTabInactive),
+            }}
+          >
+            היסטוריה ({historyClosedTickets.length})
+          </button>
+        </div>
 
         {period === 'custom' && (
           <Card style={{ marginBottom: '24px' }}>
@@ -646,8 +814,167 @@ export default function SummaryPage() {
 
         {loading ? (
           <div style={styles.loadingContainer}>
-            <LoadingSpinner size="lg" />
+            <PageListSkeleton rows={isMobile ? 6 : 8} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+              <LoadingSpinner size="lg" />
+            </div>
           </div>
+        ) : pageTab === 'history' ? (
+          <Card noPadding>
+            <div
+              style={{
+                ...styles.historyFiltersRow,
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+              }}
+            >
+              <SearchInput
+                value={historySearchTerm}
+                onChange={setHistorySearchTerm}
+                placeholder="חיפוש בהיסטוריה..."
+                style={{ flex: 1, maxWidth: isMobile ? 'none' : '280px', width: isMobile ? '100%' : undefined }}
+              />
+              <Select
+                value={historyProjectFilter}
+                onChange={setHistoryProjectFilter}
+                options={historyProjectOptions}
+                style={{ minWidth: isMobile ? '100%' : '160px' }}
+              />
+              {!isMobile && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  disabled={filteredHistoryTickets.length === 0}
+                  loading={exportingAllHistory}
+                  onClick={() => void exportAllHistoryTickets()}
+                  style={{ minHeight: '48px', flexShrink: 0 }}
+                >
+                  ייצוא הכל
+                </Button>
+              )}
+            </div>
+
+            {isMobile && (
+              <div style={{ padding: '0 16px 12px' }}>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  disabled={filteredHistoryTickets.length === 0}
+                  loading={exportingAllHistory}
+                  onClick={() => void exportAllHistoryTickets()}
+                  style={{ width: '100%', minHeight: '48px' }}
+                >
+                  ייצוא הכל ({filteredHistoryTickets.length})
+                </Button>
+              </div>
+            )}
+
+            {historyRange && (
+              <p style={styles.historyRangeHint}>
+                טווח: {historyRange.label}
+              </p>
+            )}
+
+            {historyTruncated && (
+              <div style={styles.historyTruncationBanner}>
+                מציג עד {HISTORY_DISPLAY_LIMIT} תקלות סגורות בטווח שנבחר. לדוח מלא — ייצוא לפי בניין או ייצוא הכל.
+              </div>
+            )}
+
+            {!historyRange ? (
+              <EmptyState
+                title="בחרו טווח תאריכים"
+                description="הגדירו טווח בחלק העליון כדי לצפות בהיסטוריית תקלות סגורות."
+              />
+            ) : historyByProject.length === 0 ? (
+              <EmptyState
+                title="אין תקלות סגורות"
+                description="נסו לשנות את התקופה, החיפוש או מסנן הפרויקט."
+              />
+            ) : (
+              <div style={styles.historyGroups}>
+                {historyByProject.map((group) => (
+                  <div key={group.projectId} style={styles.historyGroup}>
+                    <div style={styles.historyGroupHeader}>
+                      <div>
+                        <h3 style={styles.historyGroupTitle}>{group.projectName}</h3>
+                        <p style={styles.historyGroupMeta}>
+                          {group.tickets.length} תקלות סגורות
+                          {group.projectCode ? ` · ${group.projectCode}` : ''}
+                        </p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={exportingHistoryProjectId === group.projectId}
+                        onClick={() => void exportProjectHistoryTickets(group)}
+                        style={{ minHeight: '48px' }}
+                      >
+                        ייצוא
+                      </Button>
+                    </div>
+                    {isMobile ? (
+                      <div style={styles.historyMobileList}>
+                        {group.tickets.map((ticket) => (
+                          <div key={ticket.id} style={styles.historyTicketCard}>
+                            <div style={styles.historyTicketTop}>
+                              <span style={styles.historyTicketNumber}>#{ticket.ticket_number}</span>
+                              <span style={styles.historyClosedAt}>
+                                {ticket.closed_at
+                                  ? new Date(ticket.closed_at).toLocaleDateString('he-IL')
+                                  : '—'}
+                              </span>
+                            </div>
+                            <p style={styles.historyTicketDesc}>
+                              {ticket.description?.slice(0, 120)}
+                              {(ticket.description?.length || 0) > 120 ? '…' : ''}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={styles.tableContainer}>
+                        <table style={styles.table}>
+                          <thead>
+                            <tr>
+                              <th style={styles.th}>#</th>
+                              <th style={styles.th}>תיאור</th>
+                              <th style={styles.th}>נסגרה</th>
+                              <th style={styles.th}>עדיפות</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.tickets.map((ticket) => (
+                              <tr key={ticket.id}>
+                                <td style={styles.td}>
+                                  <span style={styles.historyTicketNumber}>{ticket.ticket_number}</span>
+                                </td>
+                                <td style={{ ...styles.td, maxWidth: '420px' }}>
+                                  <span style={styles.historyDescText}>
+                                    {ticket.description?.slice(0, 100)}
+                                    {(ticket.description?.length || 0) > 100 ? '…' : ''}
+                                  </span>
+                                </td>
+                                <td style={styles.td}>
+                                  {ticket.closed_at
+                                    ? new Date(ticket.closed_at).toLocaleString('he-IL')
+                                    : '—'}
+                                </td>
+                                <td style={styles.td}>
+                                  <PriorityDot priority={ticket.priority || 'LOW'} />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         ) : (
           <>
             {/* KPI Cards */}
@@ -677,6 +1004,7 @@ export default function SummaryPage() {
                 label={activeRange ? `נסגרו (${activeRange.label})` : 'נסגרו'}
                 value={summary.closedInRange}
                 accent="success"
+                onClick={() => setPageTab('history')}
               />
             </div>
 
@@ -972,9 +1300,10 @@ const styles: Record<string, CSSProperties> = {
   },
   loadingContainer: {
     display: 'flex',
+    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '80px 0',
+    padding: '64px 16px',
   },
   kpiGrid: {
     display: 'grid',
@@ -1148,6 +1477,7 @@ const styles: Record<string, CSSProperties> = {
   },
   tableContainer: {
     overflowX: 'auto',
+    maxWidth: '100%',
   },
   table: {
     width: '100%',
@@ -1187,5 +1517,134 @@ const styles: Record<string, CSSProperties> = {
   },
   statBadge: {
     fontWeight: 600,
+  },
+  pageTabBar: {
+    display: 'flex',
+    gap: '4px',
+    padding: '4px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.md,
+    marginBottom: '20px',
+  },
+  pageTab: {
+    flex: 1,
+    minHeight: '48px',
+    padding: '12px 8px',
+    fontSize: '14px',
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: theme.radius.sm,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    fontFamily: 'inherit',
+  },
+  pageTabActive: {
+    background: theme.colors.surface,
+    color: theme.colors.primary,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  },
+  pageTabInactive: {
+    background: 'transparent',
+    color: theme.colors.textMuted,
+  },
+  historyFiltersRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '16px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    flexWrap: 'wrap',
+  },
+  historyRangeHint: {
+    margin: '0 16px 8px',
+    fontSize: '13px',
+    color: theme.colors.textMuted,
+    textAlign: 'right',
+  },
+  historyTruncationBanner: {
+    background: '#FFF4E5',
+    border: '1.5px solid #FF9500',
+    borderRadius: '10px',
+    padding: '10px 16px',
+    fontSize: '13px',
+    color: '#7D4700',
+    margin: '0 16px 12px',
+    direction: 'rtl',
+  },
+  historyGroups: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    padding: '16px',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+  },
+  historyGroup: {
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.lg,
+    overflow: 'hidden',
+    background: theme.colors.surface,
+  },
+  historyGroupHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '16px 20px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.muted,
+    flexWrap: 'wrap',
+  },
+  historyGroupTitle: {
+    margin: 0,
+    fontSize: '16px',
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+  },
+  historyGroupMeta: {
+    margin: '4px 0 0',
+    fontSize: '13px',
+    color: theme.colors.textMuted,
+  },
+  historyMobileList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    padding: '12px 16px 20px',
+  },
+  historyTicketCard: {
+    padding: '14px 16px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    minHeight: '48px',
+  },
+  historyTicketTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '6px',
+  },
+  historyTicketNumber: {
+    fontWeight: 600,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  historyClosedAt: {
+    fontSize: '12px',
+    color: theme.colors.textMuted,
+  },
+  historyTicketDesc: {
+    margin: 0,
+    fontSize: '14px',
+    color: theme.colors.textSecondary,
+    lineHeight: 1.45,
+  },
+  historyDescText: {
+    color: theme.colors.textSecondary,
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
 }
