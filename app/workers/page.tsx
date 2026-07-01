@@ -236,12 +236,14 @@ export default function WorkersPage() {
   }, [])
 
   function openCreateDrawer() {
+    closeDetailDrawer()
     setEditingWorker(null)
     setForm(emptyForm)
     setDrawerOpen(true)
   }
 
   function openEditDrawer(worker: WorkerRow) {
+    closeDetailDrawer()
     setEditingWorker(worker)
     setForm({
       full_name: worker.full_name || '',
@@ -271,6 +273,7 @@ export default function WorkersPage() {
   }
 
   async function openDetailDrawer(worker: WorkerRow) {
+    closeDrawer()
     setSelectedWorker(worker)
     setDetailDrawerOpen(true)
     await fetchWorkerTickets(worker.id)
