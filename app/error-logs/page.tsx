@@ -18,7 +18,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   Button,
@@ -47,6 +47,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
 }
 
 export default function ErrorLogsPage() {
+  const { openMenu } = useMobileMenu()
   const [rows, setRows] = useState<Row[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [loading, setLoading] = useState(true)
@@ -54,7 +55,6 @@ export default function ErrorLogsPage() {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [missing, setMissing] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [unresolvedCount, setUnresolvedCount] = useState(0)
 
   const load = useCallback(async () => {
@@ -145,10 +145,9 @@ export default function ErrorLogsPage() {
         <MobileHeader
           title="יומן שגיאות"
           subtitle={missing ? 'טבלה לא מוגדרת' : `${rows.length} רשומות`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

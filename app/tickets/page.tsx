@@ -42,7 +42,7 @@ import { ForwardToProfessionalBlock, type ProfessionalOption } from '../componen
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -190,10 +190,10 @@ export default function TicketsPage() {
   const [projectFilter, setProjectFilter] = useState('ALL')
   const [workerFilter, setWorkerFilter] = useState('ALL')
   const isMobile = useIsMobile()
+  const { openMenu } = useMobileMenu()
   const lastFetchAtRef = useRef(0)
   const professionalsLoadedRef = useRef(false)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
   const [draftPriority, setDraftPriority] = useState<string>('')
   const [draftStatus, setDraftStatus] = useState<string>('')
@@ -862,11 +862,10 @@ export default function TicketsPage() {
         <MobileHeader
           title="תקלות"
           subtitle={`${filteredTickets.length} תקלות`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <Drawer
         open={mobileToolsOpen && isMobile}

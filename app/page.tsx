@@ -29,7 +29,7 @@ import {
 import { 
   AppShell, 
   MobileHeader, 
-  MobileMenu, 
+  useMobileMenu, 
   KpiCard,
   Card,
   Button,
@@ -142,8 +142,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [workersMap, setWorkersMap] = useState<Record<string, string>>({})
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
-  const [menuOpen, setMenuOpen] = useState(false)
   const isMobile = useIsMobile()
+  const { openMenu } = useMobileMenu()
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
   const [closedCount, setClosedCount] = useState(0)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
@@ -697,11 +697,10 @@ export default function DashboardPage() {
           title="לוח בקרה"
           subtitle={formatDate()}
           subtitleSuppressHydrationWarning
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

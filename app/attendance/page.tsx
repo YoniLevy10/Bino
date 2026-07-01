@@ -7,7 +7,7 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   Button,
@@ -61,6 +61,7 @@ function projectName(row: AttendanceEventRow): string {
 }
 
 export default function AttendancePage() {
+  const { openMenu } = useMobileMenu()
   const [events, setEvents] = useState<AttendanceEventRow[]>([])
   const [tagCount, setTagCount] = useState(0)
   const [stickerInstalled, setStickerInstalled] = useState(0)
@@ -74,7 +75,6 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true)
   const [syncFilter, setSyncFilter] = useState('')
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const onStickerProgress = useCallback((installed: number, total: number) => {
@@ -263,10 +263,9 @@ export default function AttendancePage() {
           <MobileHeader
             title="חתמת עובדים"
             subtitle="נוכחות ומשמרות"
-            onMenuClick={() => setMenuOpen(true)}
+            onMenuClick={openMenu}
           />
         )}
-        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
         <div
           style={{
             padding: isMobile ? '16px 16px 32px' : '32px 40px',

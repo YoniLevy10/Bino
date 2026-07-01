@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import type { PaidAddonKey } from '@/lib/paid-addons'
 import { PaidAddonGate } from '@/app/components/PaidAddonGate'
-import { AppShell, MobileHeader, MobileMenu, PageHeader } from '../ui'
+import { AppShell, MobileHeader, useMobileMenu, PageHeader } from '../ui'
 
 type Props = {
   addonKey: PaidAddonKey
@@ -28,7 +28,7 @@ export function AddonFeaturePageShell({
   narrow = false,
 }: Props) {
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { openMenu } = useMobileMenu()
   const maxWidth = contentMaxWidth ?? (narrow ? 720 : 1400)
 
   useEffect(() => {
@@ -45,10 +45,9 @@ export function AddonFeaturePageShell({
           <MobileHeader
             title={title}
             subtitle={mobileSubtitle}
-            onMenuClick={() => setMenuOpen(true)}
+            onMenuClick={openMenu}
           />
         )}
-        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
         <div
           style={{

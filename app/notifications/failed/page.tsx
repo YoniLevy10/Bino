@@ -6,7 +6,7 @@ import { toast } from '@/lib/error-handler'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   LoadingSpinner,
@@ -23,8 +23,8 @@ type FailedRow = {
 }
 
 export default function TenantFailedNotificationsPage() {
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<FailedRow[]>([])
 
@@ -59,10 +59,9 @@ export default function TenantFailedNotificationsPage() {
         <MobileHeader
           title="כשלי הודעות"
           subtitle={`${items.length} רשומות`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={styles.content}>
         {!isMobile && (

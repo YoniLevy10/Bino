@@ -16,7 +16,7 @@ import { TM } from '@/lib/toast-messages'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   Button,
@@ -90,6 +90,7 @@ type OrgUser = {
 
 function SettingsPageInner() {
   const router = useRouter()
+  const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
   const tabFromUrl = searchParams.get('tab') as TabId | null
   const activeTab: TabId =
@@ -101,7 +102,6 @@ function SettingsPageInner() {
   }
 
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const [clientId, setClientId] = useState<string>('')
@@ -615,10 +615,9 @@ function SettingsPageInner() {
         <MobileHeader
           title="הגדרות"
           subtitle="העדפות מערכת"
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{
@@ -1149,8 +1148,8 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    סדר ושמות הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות הראשונות בנייד נשארות:
-                    לוח בקרה, תקלות, פרויקטים והעובדים שלי — שאר הפריטים מופיעים תחת &quot;עוד&quot;.
+                    סדר ושמות הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות בתחתית המסך נשארות:
+                    לוח בקרה, תקלות, פרויקטים והעובדים שלי — כפתור &quot;עוד&quot; או תפריט ההמבורגר פותחים את כל שאר הפריטים.
                   </p>
                   <ul style={styles.navOrderList}>
                     {navOrderDraft.map((id, index) => {

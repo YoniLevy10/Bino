@@ -17,7 +17,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   KpiCard,
@@ -76,8 +76,8 @@ function formatLimitCell(value: number): string {
 }
 
 export default function BillingPage() {
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<Summary | null>(null)
   const { addons, isBootstrapped: addonsReady } = usePaidAddons()
@@ -138,9 +138,8 @@ export default function BillingPage() {
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader title="חיוב ושימוש" subtitle="סיכום למנהל" onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="חיוב ושימוש" subtitle="סיכום למנהל" onMenuClick={openMenu} />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

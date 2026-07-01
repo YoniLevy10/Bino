@@ -4,7 +4,7 @@ import { useState, type CSSProperties } from 'react'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   Button,
@@ -16,8 +16,8 @@ import { toast } from '@/lib/error-handler'
 import { useEffect } from 'react'
 
 export default function AssistantPage() {
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [question, setQuestion] = useState('כמה תקלות פתוחות יש?')
   const [answer, setAnswer] = useState<string | null>(null)
   const [facts, setFacts] = useState<string[]>([])
@@ -53,9 +53,8 @@ export default function AssistantPage() {
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader title="עוזר מנהל" subtitle="תמונת מצב מהירה" onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="עוזר מנהל" subtitle="תמונת מצב מהירה" onMenuClick={openMenu} />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={styles.content}>
         {!isMobile && (

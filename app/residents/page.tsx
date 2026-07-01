@@ -25,7 +25,7 @@ import { ImportResidentsModal } from '../components/residents/ImportResidentsMod
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Card,
   Button,
@@ -100,6 +100,7 @@ export default function ResidentsPage() {
 
 function ResidentsPageInner() {
   const router = useRouter()
+  const { openMenu } = useMobileMenu()
   const [projects, setProjects] = useState<ResidentProjectRow[]>([])
   const [residents, setResidents] = useState<ResidentRow[]>([])
   const [residentsTableMissing, setResidentsTableMissing] = useState(false)
@@ -107,7 +108,6 @@ function ResidentsPageInner() {
   const [searchTerm, setSearchTerm] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('ALL')
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
 
   const [addOpen, setAddOpen] = useState(false)
   const [editResidentId, setEditResidentId] = useState<string | null>(null)
@@ -617,10 +617,9 @@ function ResidentsPageInner() {
         <MobileHeader
           title="דיירים"
           subtitle={`${filtered.length} רשומות`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

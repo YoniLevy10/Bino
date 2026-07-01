@@ -25,7 +25,7 @@ import { CalendarMonthGrid } from '../components/calendar/CalendarMonthGrid'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -68,8 +68,8 @@ const emptyForm = {
 }
 
 export default function CalendarPage() {
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('month')
@@ -288,9 +288,8 @@ export default function CalendarPage() {
     <AppShell isMobile={isMobile}>
       <PaidAddonGate addonKey={PAID_ADDON_KEYS.calendar}>
       {isMobile && (
-        <MobileHeader title="יומן משרד" subtitle={monthRange.label} onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="יומן משרד" subtitle={monthRange.label} onMenuClick={openMenu} />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

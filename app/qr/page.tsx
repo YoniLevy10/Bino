@@ -20,7 +20,7 @@ import { toast } from '@/lib/error-handler'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -49,13 +49,13 @@ type ProjectRow = {
 }
 
 export default function QrPage() {
+  const { openMenu } = useMobileMenu()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [waMeDigits, setWaMeDigits] = useState<string | null>(null)
   const [waPhoneLoading, setWaPhoneLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
@@ -195,11 +195,10 @@ export default function QrPage() {
         <MobileHeader
           title="קודי QR"
           subtitle={`${filteredProjects.length} פרויקטים`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

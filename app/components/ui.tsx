@@ -11,6 +11,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   lazy,
@@ -25,6 +26,7 @@ import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
 import { navLinkPrefetchHandlers } from '@/lib/route-prefetch'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -132,6 +134,25 @@ const AppSearchContext = createContext<{ openSearch: () => void } | null>(null)
 
 export function useAppSearch() {
   return useContext(AppSearchContext)
+}
+
+const MobileMenuContext = createContext<{
+  openMenu: () => void
+  closeMenu: () => void
+  isOpen: boolean
+  bottomNavVisible: boolean
+} | null>(null)
+
+export function useMobileMenu() {
+  const ctx = useContext(MobileMenuContext)
+  if (!ctx) {
+    throw new Error('useMobileMenu must be used within MobileMenuProvider')
+  }
+  return ctx
+}
+
+export function useMobileMenuOptional() {
+  return useContext(MobileMenuContext)
 }
 
 function NavIcon({ type, active }: { type: string; active?: boolean }) {
@@ -596,7 +617,7 @@ const topBarStyles: Record<string, CSSProperties> = {
 // APP SHELL & MOBILE BOTTOM NAV
 // ============================================================================
 
-const BOTTOM_NAV_ROUTES = new Set([...TENANT_NAV_HREFS, '/settings', '/addons'])
+const BOTTOM_NAV_ROUTES = new Set([...TENANT_NAV_HREFS, '/settings', '/addons', '/worker'])
 
 function showMobileBottomNavForPath(pathname: string): boolean {
   if (BOTTOM_NAV_ROUTES.has(pathname)) return true
@@ -604,64 +625,18 @@ function showMobileBottomNavForPath(pathname: string): boolean {
   return false
 }
 
-export function MobileBottomNav({
-  moreOpen: moreOpenProp,
-  onMoreToggle: onMoreToggleProp,
-}: {
-  moreOpen?: boolean
-  onMoreToggle?: () => void
-} = {}) {
+export function MobileBottomNav() {
   const { mobileBottomPrimary, mobileBottomMore } = useSidebarNav()
+  const { openMenu, isOpen: menuOpen } = useMobileMenu()
   const router = useRouter()
-  const [moreOpenLocal, setMoreOpenLocal] = useState(false)
-  const moreOpen = moreOpenProp ?? moreOpenLocal
-  const onMoreToggle = onMoreToggleProp ?? (() => setMoreOpenLocal((o) => !o))
 
   const pathname = usePathname()
   const settingsActive = pathname === '/settings'
-  const moreActive = mobileBottomMore.some((item) => isNavItemActive(pathname, item))
-  const hasMoreItems = mobileBottomMore.length > 0
+  const moreActive =
+    menuOpen || mobileBottomMore.some((item) => isNavItemActive(pathname, item))
 
   return (
     <>
-      {moreOpen && (
-        <>
-          <div
-            style={bottomNavMoreStyles.overlay}
-            onClick={onMoreToggle}
-            aria-hidden
-          />
-          <div
-            style={bottomNavMoreStyles.panel}
-            role="dialog"
-            aria-modal="true"
-            aria-label="עוד אפשרויות"
-          >
-            <div style={bottomNavMoreStyles.grid}>
-              {mobileBottomMore.map((item) => {
-                const active = isNavItemActive(pathname, item)
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    onClick={onMoreToggle}
-                    {...navLinkPrefetchHandlers(item.href, router.prefetch)}
-                    style={{
-                      ...bottomNavMoreStyles.link,
-                      ...(active ? bottomNavStyles.linkActive : {}),
-                    }}
-                  >
-                    <NavIcon type={item.icon} active={active} />
-                    <span style={bottomNavStyles.label}>
-                      {mobileBottomNavLabel(item.href, item.label)}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </>
-      )}
       <nav style={bottomNavStyles.bar} aria-label="ניווט ראשי">
         <div style={bottomNavStyles.scroll}>
           {mobileBottomPrimary.map((item) => {
@@ -685,26 +660,25 @@ export function MobileBottomNav({
               </Link>
             )
           })}
-          {hasMoreItems ? (
-            <button
-              type="button"
-              onClick={onMoreToggle}
-              aria-expanded={moreOpen}
-              aria-label="עוד"
-              style={{
-                ...bottomNavStyles.link,
-                border: 'none',
-                background: moreActive || moreOpen ? theme.colors.primaryMuted : 'transparent',
-                cursor: 'pointer',
-                ...(moreActive || moreOpen ? bottomNavStyles.linkActive : {}),
-              }}
-            >
-              <span style={bottomNavStyles.iconWrap}>
-                <NavIcon type="grid" active={moreActive || moreOpen} />
-              </span>
-              <span style={bottomNavStyles.label}>עוד</span>
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={openMenu}
+            aria-expanded={menuOpen}
+            aria-haspopup="dialog"
+            aria-label="תפריט נוסף"
+            style={{
+              ...bottomNavStyles.link,
+              border: 'none',
+              background: moreActive ? theme.colors.primaryMuted : 'transparent',
+              cursor: 'pointer',
+              ...(moreActive ? bottomNavStyles.linkActive : {}),
+            }}
+          >
+            <span style={bottomNavStyles.iconWrap}>
+              <NavIcon type="grid" active={moreActive} />
+            </span>
+            <span style={bottomNavStyles.label}>עוד</span>
+          </button>
         </div>
         <div style={bottomNavStyles.settingsDivider} aria-hidden />
         <Link
@@ -723,44 +697,6 @@ export function MobileBottomNav({
       </nav>
     </>
   )
-}
-
-const bottomNavMoreStyles: Record<string, CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: theme.colors.overlay,
-    zIndex: 93,
-    animation: 'fadeIn 0.2s ease',
-  },
-  panel: {
-    position: 'fixed',
-    left: 0,
-    right: 0,
-    bottom: 'calc(58px + env(safe-area-inset-bottom, 0px))',
-    zIndex: 94,
-    background: theme.colors.surface,
-    borderTop: `1px solid ${theme.colors.border}`,
-    padding: '12px 16px',
-    boxShadow: '0 -4px 24px rgba(0,0,0,0.08)',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '8px',
-  },
-  link: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '10px 4px',
-    textDecoration: 'none',
-    color: theme.colors.textMuted,
-    borderRadius: theme.radius.md,
-    minHeight: '48px',
-    justifyContent: 'center',
-  },
 }
 
 const bottomNavStyles: Record<string, CSSProperties> = {
@@ -801,16 +737,16 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   link: {
     flex: '0 0 auto',
-    width: '64px',
-    maxWidth: '64px',
+    width: '68px',
+    maxWidth: '68px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: '2px',
     minWidth: 0,
-    minHeight: '48px',
-    padding: '4px 4px',
+    minHeight: '52px',
+    padding: '6px 4px',
     textDecoration: 'none',
     color: theme.colors.textMuted,
     borderRadius: theme.radius.md,
@@ -818,8 +754,8 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   settingsLink: {
     flex: '0 0 auto',
-    width: '64px',
-    maxWidth: '64px',
+    width: '68px',
+    maxWidth: '68px',
   },
   linkActive: {
     color: theme.colors.primary,
@@ -864,17 +800,12 @@ function AppShellInner({
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [moreNavOpen, setMoreNavOpen] = useState(false)
   const openSearch = useCallback(() => setSearchOpen(true), [])
 
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    setMoreNavOpen(false)
-  }, [pathname])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -909,17 +840,14 @@ function AppShellInner({
             marginInlineStart: mobile ? 0 : '240px',
             minWidth: 0,
             textAlign: 'right',
-            paddingBottom: bottomNav ? 'calc(58px + env(safe-area-inset-bottom, 0px))' : undefined,
+              paddingBottom: bottomNav ? 'calc(64px + env(safe-area-inset-bottom, 0px))' : undefined,
+              overflowX: mobile ? 'hidden' : undefined,
+              maxWidth: mobile ? '100%' : undefined,
           }}
         >
           {children}
         </main>
-        {bottomNav ? (
-          <MobileBottomNav
-            moreOpen={moreNavOpen}
-            onMoreToggle={() => setMoreNavOpen((o) => !o)}
-          />
-        ) : null}
+        {bottomNav ? <MobileBottomNav /> : null}
         <BackToTop />
         {mounted && (
           <Suspense fallback={null}>
@@ -948,11 +876,11 @@ function BackToTop() {
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       style={{
         position: 'fixed',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)',
         left: '28px',
         zIndex: 96,
-        width: '44px',
-        height: '44px',
+        width: '48px',
+        height: '48px',
         borderRadius: theme.radius.full,
         background: theme.colors.surface,
         border: `1px solid ${theme.colors.border}`,
@@ -990,7 +918,9 @@ export function MobileHeader({
   onSearchClick?: () => void
 }) {
   const appSearch = useAppSearch()
+  const mobileMenu = useMobileMenuOptional()
   const handleSearch = onSearchClick ?? appSearch?.openSearch
+  const showMenuButton = !!onMenuClick && !mobileMenu?.bottomNavVisible
 
   return (
     <header style={mobileHeaderStyles.container}>
@@ -1021,13 +951,13 @@ export function MobileHeader({
             </svg>
           </button>
         )}
-        {onMenuClick && (
+        {showMenuButton && (
           <button
             type="button"
             onClick={onMenuClick}
             style={mobileHeaderStyles.menuButton}
             aria-label="פתיחת תפריט"
-            aria-expanded={false}
+            aria-expanded={mobileMenu?.isOpen ?? false}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" x2="21" y1="6" y2="6" />
@@ -1080,8 +1010,8 @@ const mobileHeaderStyles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '44px',
-    height: '44px',
+    width: '48px',
+    height: '48px',
     borderRadius: theme.radius.md,
     background: 'transparent',
     color: theme.colors.textSecondary,
@@ -1186,6 +1116,40 @@ export function MobileMenu({
   )
 }
 
+export function MobileMenuProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  const openMenu = useCallback(() => setMenuOpen(true), [])
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+
+  useEffect(() => {
+    const check = () => setIsMobile(getIsMobileViewport())
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
+  const bottomNavVisible = isMobile && showMobileBottomNavForPath(pathname)
+
+  const value = useMemo(
+    () => ({ openMenu, closeMenu, isOpen: menuOpen, bottomNavVisible }),
+    [openMenu, closeMenu, menuOpen, bottomNavVisible]
+  )
+
+  return (
+    <MobileMenuContext.Provider value={value}>
+      {children}
+      {isMobile ? <MobileMenu open={menuOpen} onClose={closeMenu} /> : null}
+    </MobileMenuContext.Provider>
+  )
+}
+
 const mobileMenuStyles: Record<string, CSSProperties> = {
   overlay: {
     position: 'fixed',
@@ -1199,10 +1163,12 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     top: 0,
     insetInlineEnd: 0,
     bottom: 0,
-    width: '280px',
+    width: 'min(300px, 92vw)',
     background: theme.colors.surface,
     zIndex: 201,
     padding: '24px 16px',
+    paddingTop: 'calc(24px + env(safe-area-inset-top, 0px))',
+    paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
     display: 'flex',
     flexDirection: 'column',
     animation: 'slideInFromInlineEnd 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -1274,13 +1240,13 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '10px 12px',
+    padding: '12px 12px',
     borderRadius: theme.radius.md,
     color: theme.colors.textSecondary,
     textDecoration: 'none',
-    fontSize: '14px',
+    fontSize: '15px',
     fontWeight: 500,
-    minHeight: '44px',
+    minHeight: '48px',
     boxSizing: 'border-box',
   },
   navLinkActive: {
@@ -1807,7 +1773,12 @@ const selectStyles: Record<string, CSSProperties> = {
 // DRAWER
 // ============================================================================
 
-function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement | null>, onEscape: () => void) {
+function useFocusTrap(
+  active: boolean,
+  containerRef: React.RefObject<HTMLElement | null>,
+  onEscape: () => void,
+  isMobile = false
+) {
   const onEscapeRef = useRef(onEscape)
   onEscapeRef.current = onEscape
   const wasActiveRef = useRef(false)
@@ -1828,7 +1799,8 @@ function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement
     const first = focusables[0]
     const last = focusables[focusables.length - 1]
 
-    if (justOpened) {
+    // Avoid stealing focus on mobile — iOS PWA bottom sheets break when close button is auto-focused
+    if (justOpened && !isMobile) {
       first?.focus()
     }
 
@@ -1848,7 +1820,7 @@ function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [active, containerRef])
+  }, [active, containerRef, isMobile])
 }
 
 export function Drawer({
@@ -1867,11 +1839,11 @@ export function Drawer({
   isMobile?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
-  useFocusTrap(open, panelRef, onClose)
+  const mobile = !!isMobile
+  useFocusTrap(open, panelRef, onClose, mobile)
 
   if (!open) return null
 
-  const mobile = !!isMobile
   const panelStyle: CSSProperties = mobile
     ? drawerStyles.panelMobile
     : { ...drawerStyles.panelSide, width: '480px' }
@@ -1950,6 +1922,7 @@ const drawerStyles: Record<string, CSSProperties> = {
     boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.12)',
     maxWidth: '100vw',
     boxSizing: 'border-box',
+    WebkitOverflowScrolling: 'touch',
   },
   header: {
     display: 'flex',
@@ -1988,8 +1961,11 @@ const drawerStyles: Record<string, CSSProperties> = {
     flex: 1,
     minHeight: 0,
     overflow: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    overscrollBehavior: 'contain',
     padding: '24px',
     paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
+    touchAction: 'manipulation',
   },
 }
 

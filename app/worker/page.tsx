@@ -13,14 +13,12 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
   PageHeader,
   Button,
   Card,
   LoadingSpinner,
   StatusBadge,
   theme,
-  MobileBottomNav,
 } from '../components/ui'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
@@ -123,7 +121,6 @@ function WorkerPageInner() {
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [expandedChatId, setExpandedChatId] = useState<string | null>(null)
   const [expandedWaId, setExpandedWaId] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
@@ -808,9 +805,8 @@ function WorkerPageInner() {
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader title="עובדי שטח (קישור)" subtitle="שולחים להם SMS עם קישור" onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="עובדי שטח (קישור)" subtitle="שולחים להם SMS עם קישור" />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={styles.page}>
         <PageHeader title="עובדי שטח (קישור)" subtitle="שולחים להם SMS עם קישור" />
@@ -880,8 +876,6 @@ function WorkerPageInner() {
           </>
         )}
       </div>
-
-      {isMobile && <MobileBottomNav />}
     </AppShell>
   )
 }

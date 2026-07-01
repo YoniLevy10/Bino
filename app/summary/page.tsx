@@ -27,7 +27,7 @@ import { downloadExcelWorkbook } from '@/lib/excel-download'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -178,6 +178,7 @@ function resolveDateRange(
 }
 
 export default function SummaryPage() {
+  const { openMenu } = useMobileMenu()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [summaryTickets, setSummaryTickets] = useState<TicketRow[]>([])
@@ -191,8 +192,7 @@ export default function SummaryPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
+    const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
   const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -769,11 +769,9 @@ export default function SummaryPage() {
               : formatDate()
           }
           subtitleSuppressHydrationWarning={pageTab !== 'history'}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

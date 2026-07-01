@@ -22,7 +22,7 @@ import { validateRequired } from '@/lib/validators'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -117,6 +117,7 @@ function writeProjectsCache(clientId: string, data: Omit<ProjectsCache, 'savedAt
 }
 
 export default function ProjectsPage() {
+  const { openMenu } = useMobileMenu()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [clientId, setClientId] = useState<string>('')
@@ -125,8 +126,7 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-
+  
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<ProjectRow | null>(null)
   const [form, setForm] = useState<ProjectForm>(emptyForm)
@@ -513,11 +513,9 @@ export default function ProjectsPage() {
         <MobileHeader
           title="פרויקטים"
           subtitle={`${filteredProjects.length} פרויקטים`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{

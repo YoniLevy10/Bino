@@ -26,7 +26,7 @@ import { validateRequired, validateEmail } from '@/lib/validators'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -163,6 +163,7 @@ async function findWorkerByPhoneAndName(
 }
 
 export default function WorkersPage() {
+  const { openMenu } = useMobileMenu()
   const { hasAddon, isBootstrapped } = usePaidAddons()
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [clientId, setClientId] = useState<string>('')
@@ -173,7 +174,6 @@ export default function WorkersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -673,11 +673,10 @@ export default function WorkersPage() {
         <MobileHeader
           title="העובדים שלי"
           subtitle="מי מטפל בתקלות"
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{
@@ -712,9 +711,6 @@ export default function WorkersPage() {
             <Card noPadding>
               <div style={{ padding: '20px 16px' }}>
                 <PageListSkeleton rows={8} />
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                  <LoadingSpinner />
-                </div>
               </div>
             </Card>
           </>
@@ -822,6 +818,7 @@ export default function WorkersPage() {
               value={form.full_name}
               onChange={(e) => updateForm('full_name', e.target.value)}
               placeholder="שם מלא"
+              autoComplete="name"
               style={styles.input}
             />
           </div>
@@ -830,10 +827,12 @@ export default function WorkersPage() {
             <label style={styles.formLabel}>טלפון ראשי *</label>
             <input
               type="tel"
+              inputMode="tel"
               value={form.phone}
               onChange={(e) => updateForm('phone', e.target.value)}
               onBlur={blurPrimaryPhone}
               placeholder="05X-XXX-XXXX"
+              autoComplete="tel"
               style={styles.input}
             />
             <p style={styles.formHint}>05X-XXX-XXXX, 05XXXXXXXX, +972... או 972... (עם או בלי מקפים)</p>
@@ -1375,8 +1374,12 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
-    fontSize: '15px',
+    fontSize: '16px',
     color: theme.colors.textPrimary,
+    width: '100%',
+    boxSizing: 'border-box',
+    WebkitAppearance: 'none',
+    appearance: 'none',
   },
   checkboxLabel: {
     display: 'flex',

@@ -20,7 +20,7 @@ import {
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   KpiCard,
   Card,
@@ -78,6 +78,7 @@ function isProfessionalsTableMissing(err: { message?: string } | null): boolean 
 }
 
 export default function ProfessionalsPage() {
+  const { openMenu } = useMobileMenu()
   const [rows, setRows] = useState<ProfessionalRow[]>([])
   const [clientId, setClientId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -86,7 +87,6 @@ export default function ProfessionalsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<ProfessionalRow | null>(null)
   const [form, setForm] = useState<ProfessionalForm>(emptyForm)
@@ -325,10 +325,9 @@ export default function ProfessionalsPage() {
         <MobileHeader
           title="אנשי מקצוע"
           subtitle={`${filtered.length} אנשי קשר`}
-          onMenuClick={() => setMenuOpen(true)}
+          onMenuClick={openMenu}
         />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={{ ...styles.content, ...(isMobile ? styles.contentMobile : {}) }}>
         {!isMobile && (

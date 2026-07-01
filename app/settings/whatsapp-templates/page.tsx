@@ -34,7 +34,7 @@ import { TM } from '@/lib/toast-messages'
 import {
   AppShell,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   Button,
   LoadingSpinner,
@@ -83,8 +83,8 @@ function insertVarAtCursor(
 }
 
 export default function WhatsappTemplatesPage() {
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [clientId, setClientId] = useState('')
   const [drafts, setDrafts] = useState<Record<WhatsAppTemplateKey, string>>(() => ({
@@ -330,9 +330,8 @@ export default function WhatsappTemplatesPage() {
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader title="תבניות וואטסאפ" subtitle="הודעות אוטומטיות" onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="תבניות וואטסאפ" subtitle="הודעות אוטומטיות" onMenuClick={openMenu} />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div style={styles.content}>
         {!isMobile && (

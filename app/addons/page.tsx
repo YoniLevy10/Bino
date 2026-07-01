@@ -18,7 +18,7 @@ import {
   AppShell,
   Card,
   MobileHeader,
-  MobileMenu,
+  useMobileMenu,
   PageHeader,
   theme,
 } from '../components/ui'
@@ -94,8 +94,8 @@ function AddonCard({
 
 function AddonsPageInner() {
   const searchParams = useSearchParams()
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [marketingEntry, setMarketingEntry] = useState<PaidAddonDisplayEntry | null>(null)
   const [hoveredId, setHoveredId] = useState<PaidAddonId | null>(null)
   const { isBootstrapped, catalogMissing, addons: entitlements } = usePaidAddons()
@@ -129,9 +129,8 @@ function AddonsPageInner() {
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
-        <MobileHeader title="תוספים" subtitle="הרחבות לחשבון" onMenuClick={() => setMenuOpen(true)} />
+        <MobileHeader title="תוספים" subtitle="הרחבות לחשבון" onMenuClick={openMenu} />
       )}
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{
