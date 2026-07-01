@@ -6,13 +6,21 @@ import { Card, theme } from '../ui'
 
 type Props = {
   onProgress?: (installed: number, total: number) => void
+  installed?: number
+  total?: number
 }
 
-export function AttendanceStickerProgress({ onProgress }: Props) {
-  const [installed, setInstalled] = useState(0)
-  const [total, setTotal] = useState(0)
+export function AttendanceStickerProgress({ onProgress, installed: extInstalled, total: extTotal }: Props) {
+  const [installed, setInstalled] = useState(extInstalled ?? 0)
+  const [total, setTotal] = useState(extTotal ?? 0)
 
   useEffect(() => {
+    if (extInstalled !== undefined && extTotal !== undefined) {
+      setInstalled(extInstalled)
+      setTotal(extTotal)
+      onProgress?.(extInstalled, extTotal)
+      return
+    }
     void (async () => {
       try {
         const res = await fetchWithTimeout('/api/attendance/sticker-progress')
@@ -28,7 +36,7 @@ export function AttendanceStickerProgress({ onProgress }: Props) {
         /* ignore */
       }
     })()
-  }, [onProgress])
+  }, [onProgress, extInstalled, extTotal])
 
   if (total === 0) return null
 

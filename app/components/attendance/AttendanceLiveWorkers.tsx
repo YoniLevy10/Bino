@@ -5,23 +5,39 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { formatAttendanceDateTime } from '@/lib/attendance-display'
 import { Card, theme } from '../ui'
 
-export function AttendanceLiveWorkers() {
-  const [rows, setRows] = useState<{ worker_id: string; started_at: string; workers?: { full_name?: string } | { full_name?: string }[] | null }[]>([])
-  const [loading, setLoading] = useState(true)
+type LiveRow = {
+  worker_id: string
+  started_at: string
+  workers?: { full_name?: string } | { full_name?: string }[] | null
+}
+
+type Props = {
+  workers?: LiveRow[] | null
+  loading?: boolean
+}
+
+export function AttendanceLiveWorkers({ workers: externalWorkers, loading: externalLoading }: Props = {}) {
+  const [rows, setRows] = useState<LiveRow[]>(externalWorkers ?? [])
+  const [loading, setLoading] = useState(externalWorkers === undefined && externalLoading !== false)
 
   useEffect(() => {
+    if (externalWorkers !== undefined) {
+      setRows(externalWorkers ?? [])
+      setLoading(externalLoading ?? false)
+      return
+    }
     void (async () => {
       try {
         const res = await fetchWithTimeout('/api/attendance/live-workers')
         if (res.ok) {
-          const body = (await res.json()) as { workers?: typeof rows }
+          const body = (await res.json()) as { workers?: LiveRow[] }
           setRows(body.workers ?? [])
         }
       } finally {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [externalWorkers, externalLoading])
 
   if (loading || rows.length === 0) return null
 

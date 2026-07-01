@@ -24,7 +24,7 @@ import { AttendanceTodaySummary } from '../components/attendance/AttendanceToday
 import { AttendanceSetupChecklist } from '../components/attendance/AttendanceSetupChecklist'
 import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
 import { AttendanceLiveWorkers } from '../components/attendance/AttendanceLiveWorkers'
-import { AttendanceAnomalies } from '../components/attendance/AttendanceAnomalies'
+import { AttendanceAnomalies, type AttendanceAnomaliesData } from '../components/attendance/AttendanceAnomalies'
 import { AttendanceStickerProgress } from '../components/attendance/AttendanceStickerProgress'
 import { AttendanceHistoryTab } from '../components/attendance/AttendanceHistoryTab'
 import { EVENT_TYPE_HE } from '@/lib/attendance-display'
@@ -65,6 +65,29 @@ function projectName(row: AttendanceEventRow): string {
   return p.name ?? '—'
 }
 
+type DashboardPayload = {
+  events?: AttendanceEventRow[]
+  kpis?: typeof defaultKpis
+  tag_count?: number
+  today_summary?: {
+    active_now: { worker_id: string; full_name: string; started_at: string }[]
+    clocked_in_today: { worker_id: string; full_name: string }[]
+    missing_checkout: { worker_id: string; full_name: string; started_at: string }[]
+  }
+  anomalies?: AttendanceAnomaliesData
+  live_workers?: unknown[]
+  sticker?: { installed: number; total: number }
+  shifts?: unknown[]
+  project_visits?: unknown[]
+}
+
+const defaultKpis = {
+  active_workers_now: 0,
+  clock_ins_today: 0,
+  project_visits_today: 0,
+  pending_review: 0,
+}
+
 export default function AttendancePage() {
   const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
@@ -73,12 +96,14 @@ export default function AttendancePage() {
   const [tagCount, setTagCount] = useState(0)
   const [stickerInstalled, setStickerInstalled] = useState(0)
   const [stickerTotal, setStickerTotal] = useState(0)
-  const [kpis, setKpis] = useState({
-    active_workers_now: 0,
-    clock_ins_today: 0,
-    project_visits_today: 0,
-    pending_review: 0,
-  })
+  const [kpis, setKpis] = useState(defaultKpis)
+  const [todaySummary, setTodaySummary] = useState<DashboardPayload['today_summary'] | null>(null)
+  const [anomalies, setAnomalies] = useState<DashboardPayload['anomalies'] | null>(null)
+  const [liveWorkers, setLiveWorkers] = useState<unknown[] | null>(null)
+  const [prefetchedShifts, setPrefetchedShifts] = useState<unknown[] | null | undefined>(undefined)
+  const [prefetchedVisits, setPrefetchedVisits] = useState<unknown[] | null | undefined>(undefined)
+  const [dashboardVersion, setDashboardVersion] = useState(0)
+  const [dashboardLoaded, setDashboardLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncFilter, setSyncFilter] = useState('')
   const [isMobile, setIsMobile] = useState(false)
@@ -116,21 +141,25 @@ export default function AttendancePage() {
         limit: '500',
       })
       if (syncFilter) params.set('sync_status', syncFilter)
-      const [evRes, tagRes] = await Promise.all([
-        fetchWithTimeout(`/api/attendance/events?${params.toString()}`),
-        fetchWithTimeout('/api/attendance/tags'),
-      ])
-      const evBody = (await evRes.json().catch(() => ({}))) as {
-        events?: AttendanceEventRow[]
-        kpis?: typeof kpis
-        error?: string
-      }
-      if (!evRes.ok) throw new Error(evBody.error || 'טעינה נכשלה')
-      setEvents(evBody.events ?? [])
-      if (evBody.kpis) setKpis(evBody.kpis)
 
-      const tagBody = (await tagRes.json().catch(() => ({}))) as { tags?: unknown[] }
-      if (tagRes.ok) setTagCount((tagBody.tags ?? []).length)
+      const res = await fetchWithTimeout(`/api/attendance/dashboard?${params.toString()}`)
+      const body = (await res.json().catch(() => ({}))) as DashboardPayload & { error?: string }
+      if (!res.ok) throw new Error(body.error || 'טעינה נכשלה')
+
+      setEvents(body.events ?? [])
+      if (body.kpis) setKpis(body.kpis)
+      setTagCount(body.tag_count ?? 0)
+      setTodaySummary(body.today_summary ?? null)
+      setAnomalies(body.anomalies ?? null)
+      setLiveWorkers(body.live_workers ?? [])
+      setPrefetchedShifts(body.shifts ?? [])
+      setPrefetchedVisits(body.project_visits ?? [])
+      if (body.sticker) {
+        setStickerInstalled(body.sticker.installed)
+        setStickerTotal(body.sticker.total)
+      }
+      setDashboardVersion((v) => v + 1)
+      setDashboardLoaded(true)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
     } finally {
@@ -180,7 +209,11 @@ export default function AttendancePage() {
         stickerTotal={stickerTotal}
       />
 
-      <AttendanceStickerProgress onProgress={onStickerProgress} />
+      <AttendanceStickerProgress
+        installed={dashboardLoaded ? stickerInstalled : undefined}
+        total={dashboardLoaded ? stickerTotal : undefined}
+        onProgress={onStickerProgress}
+      />
 
       {kpis.pending_review > 0 ? (
         <Card style={{ marginBottom: 16, borderColor: theme.colors.warning, background: theme.colors.warningMuted }}>
@@ -190,9 +223,16 @@ export default function AttendancePage() {
         </Card>
       ) : null}
 
-      <AttendanceAnomalies />
-      <AttendanceTodaySummary />
-      <AttendanceLiveWorkers />
+      <AttendanceAnomalies data={anomalies} loading={loading} />
+      <AttendanceTodaySummary data={todaySummary} loading={loading} />
+      <AttendanceLiveWorkers
+        workers={
+          liveWorkers as
+            | { worker_id: string; started_at: string; workers?: { full_name?: string } | { full_name?: string }[] | null }[]
+            | null
+        }
+        loading={loading}
+      />
 
       <div style={styles.kpiGrid}>
         <Card style={styles.kpiCard}>
@@ -209,7 +249,12 @@ export default function AttendancePage() {
         </Card>
       </div>
 
-      <AttendanceShiftsReport lockToCurrentMonth />
+      <AttendanceShiftsReport
+        lockToCurrentMonth
+        prefetchedShifts={prefetchedShifts as never}
+        prefetchedVisits={prefetchedVisits as never}
+        prefetchVersion={dashboardVersion}
+      />
 
       <Card>
         <h3 style={styles.sectionTitle}>החתמות החודש ({currentMonthBounds.label})</h3>

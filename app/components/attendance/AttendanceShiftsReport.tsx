@@ -67,9 +67,18 @@ function toDateInput(d: Date): string {
 type AttendanceShiftsReportProps = {
   /** When true — show only the current calendar month (resets automatically each month). */
   lockToCurrentMonth?: boolean
+  /** From /api/attendance/dashboard — skip duplicate fetch when unfiltered. */
+  prefetchedShifts?: ShiftRow[] | null
+  prefetchedVisits?: VisitRow[] | null
+  prefetchVersion?: number
 }
 
-export function AttendanceShiftsReport({ lockToCurrentMonth = false }: AttendanceShiftsReportProps) {
+export function AttendanceShiftsReport({
+  lockToCurrentMonth = false,
+  prefetchedShifts,
+  prefetchedVisits,
+  prefetchVersion = 0,
+}: AttendanceShiftsReportProps) {
   const now = new Date()
   const [dateMode, setDateMode] = useState<'month' | 'range'>('month')
   const [monthKey, setMonthKey] = useState(currentMonthKey(now))
@@ -120,38 +129,55 @@ export function AttendanceShiftsReport({ lockToCurrentMonth = false }: Attendanc
     })()
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        from,
-        to,
-        limit: '2000',
-      })
-      if (workerId) params.set('worker_id', workerId)
+  const load = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const canUsePrefetch =
+        !opts?.force &&
+        lockToCurrentMonth &&
+        !workerId &&
+        prefetchedShifts !== undefined &&
+        prefetchedVisits !== undefined
 
-      const [shRes, evRes] = await Promise.all([
-        fetchWithTimeout(`/api/attendance/shifts?${params.toString()}`),
-        fetchWithTimeout(`/api/attendance/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=500`),
-      ])
+      if (canUsePrefetch) {
+        setShifts(prefetchedShifts ?? [])
+        setVisits(prefetchedVisits ?? [])
+        setLoading(false)
+        return
+      }
 
-      const shBody = (await shRes.json().catch(() => ({}))) as { shifts?: ShiftRow[]; error?: string }
-      if (!shRes.ok) throw new Error(shBody.error || 'טעינה נכשלה')
-      setShifts(shBody.shifts ?? [])
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({
+          from,
+          to,
+          limit: '2000',
+        })
+        if (workerId) params.set('worker_id', workerId)
 
-      const evBody = (await evRes.json().catch(() => ({}))) as { events?: VisitRow[] }
-      const allEvents = evBody.events ?? []
-      setVisits(allEvents.filter((e) => e.event_type === 'project_visit'))
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
-    } finally {
-      setLoading(false)
-    }
-  }, [from, to, workerId])
+        const [shRes, evRes] = await Promise.all([
+          fetchWithTimeout(`/api/attendance/shifts?${params.toString()}`),
+          fetchWithTimeout(`/api/attendance/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=500`),
+        ])
+
+        const shBody = (await shRes.json().catch(() => ({}))) as { shifts?: ShiftRow[]; error?: string }
+        if (!shRes.ok) throw new Error(shBody.error || 'טעינה נכשלה')
+        setShifts(shBody.shifts ?? [])
+
+        const evBody = (await evRes.json().catch(() => ({}))) as { events?: VisitRow[] }
+        const allEvents = evBody.events ?? []
+        setVisits(allEvents.filter((e) => e.event_type === 'project_visit'))
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [from, to, workerId, lockToCurrentMonth, prefetchedShifts, prefetchedVisits]
+  )
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load({ force: !!workerId })
+  }, [load, workerId, prefetchVersion])
 
   const workerSummaries = useMemo(() => {
     const map = new Map<string, { name: string; minutes: number; cost: number }>()
@@ -193,7 +219,7 @@ export function AttendanceShiftsReport({ lockToCurrentMonth = false }: Attendanc
       if (!res.ok) throw new Error(body.error || 'עדכון נכשל')
       toast.success('המשמרת עודכנה')
       setEditingId(null)
-      await load()
+      await load({ force: true })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
     } finally {
@@ -378,7 +404,7 @@ export function AttendanceShiftsReport({ lockToCurrentMonth = false }: Attendanc
         <Button variant="secondary" size="sm" onClick={exportGreenInvoiceCsv}>
           Green Invoice CSV
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => void load()}>
+        <Button variant="secondary" size="sm" onClick={() => void load({ force: true })}>
           רענון
         </Button>
       </div>

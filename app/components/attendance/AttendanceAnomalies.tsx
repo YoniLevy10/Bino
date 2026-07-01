@@ -20,26 +20,41 @@ type ShiftRow = {
   workers?: { full_name?: string } | { full_name?: string }[] | null
 }
 
+export type AttendanceAnomaliesData = {
+  pending_review?: EventRow[]
+  missing_checkout?: ShiftRow[]
+}
+
 function nameOf(w: EventRow['workers']): string {
   if (!w) return '—'
   if (Array.isArray(w)) return w[0]?.full_name ?? '—'
   return w.full_name ?? '—'
 }
 
-export function AttendanceAnomalies() {
-  const [pending, setPending] = useState<EventRow[]>([])
-  const [missing, setMissing] = useState<ShiftRow[]>([])
-  const [loading, setLoading] = useState(true)
+type AnomaliesData = AttendanceAnomaliesData
+
+type Props = {
+  data?: AttendanceAnomaliesData | null
+  loading?: boolean
+}
+
+export function AttendanceAnomalies({ data: external, loading: externalLoading }: Props = {}) {
+  const [pending, setPending] = useState<EventRow[]>(external?.pending_review ?? [])
+  const [missing, setMissing] = useState<ShiftRow[]>(external?.missing_checkout ?? [])
+  const [loading, setLoading] = useState(external === undefined && externalLoading !== false)
 
   useEffect(() => {
+    if (external !== undefined) {
+      setPending(external?.pending_review ?? [])
+      setMissing(external?.missing_checkout ?? [])
+      setLoading(externalLoading ?? false)
+      return
+    }
     void (async () => {
       try {
         const res = await fetchWithTimeout('/api/attendance/anomalies')
         if (res.ok) {
-          const body = (await res.json()) as {
-            pending_review?: EventRow[]
-            missing_checkout?: ShiftRow[]
-          }
+          const body = (await res.json()) as AnomaliesData
           setPending(body.pending_review ?? [])
           setMissing(body.missing_checkout ?? [])
         }
@@ -47,7 +62,7 @@ export function AttendanceAnomalies() {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [external, externalLoading])
 
   if (loading) return null
   if (pending.length === 0 && missing.length === 0) return null

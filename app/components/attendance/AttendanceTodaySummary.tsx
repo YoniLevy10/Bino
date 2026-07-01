@@ -11,11 +11,22 @@ type Summary = {
   missing_checkout: { worker_id: string; full_name: string; started_at: string }[]
 }
 
-export function AttendanceTodaySummary() {
-  const [data, setData] = useState<Summary | null>(null)
-  const [loading, setLoading] = useState(true)
+type Props = {
+  /** When set, skip self-fetch (parent loaded /api/attendance/dashboard). */
+  data?: Summary | null
+  loading?: boolean
+}
+
+export function AttendanceTodaySummary({ data: externalData, loading: externalLoading }: Props = {}) {
+  const [data, setData] = useState<Summary | null>(externalData ?? null)
+  const [loading, setLoading] = useState(externalData === undefined && externalLoading !== false)
 
   useEffect(() => {
+    if (externalData !== undefined) {
+      setData(externalData)
+      setLoading(externalLoading ?? false)
+      return
+    }
     void (async () => {
       try {
         const res = await fetchWithTimeout('/api/attendance/today-summary')
@@ -26,7 +37,7 @@ export function AttendanceTodaySummary() {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [externalData, externalLoading])
 
   if (loading) {
     return (
