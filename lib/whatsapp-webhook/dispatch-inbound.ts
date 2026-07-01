@@ -412,6 +412,25 @@ async function handleWhatsAppInboundMedia(
   if (!isTestWhatsAppSender) {
     const knownResident = await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from)
     if (knownResident?.project_id) {
+      const lateOpenTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
+      if (lateOpenTicket) {
+        const result = await attachWhatsAppMediaToTicket(
+          supabaseAdmin,
+          lateOpenTicket.id,
+          mediaId,
+          mediaKind,
+          accessToken,
+          webhookClientId
+        )
+        if (result.ok) {
+          try {
+            await sendWa(waRecipient, config.templates.attached, residentWhatsAppCreds)
+          } catch { /* WA send failure is non-fatal */ }
+          await resetSessionCompletely(from, supabaseAdmin, webhookClientId, `known_resident_open_ticket_${label}`)
+          return
+        }
+      }
+
       await supabaseAdmin
         .from('sessions')
         .update({
