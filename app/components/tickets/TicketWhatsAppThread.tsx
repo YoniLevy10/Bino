@@ -145,9 +145,9 @@ export function TicketWhatsAppThread({
       if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
 
       if (json.fallback_from_template || json.mode === 'text') {
-        toast.success('הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
+        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
       } else {
-        toast.success('ההודעה נשלחה דרך תבנית manager_reply')
+        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'ההודעה נשלחה דרך תבנית manager_reply')
       }
       setDraft('')
       await loadMessages()
@@ -158,18 +158,29 @@ export function TicketWhatsAppThread({
     }
   }
 
+  const isWorker = mode === 'worker'
+
   return (
     <div style={styles.root}>
-      <div style={styles.sectionLabel}>ענה לדייר בוואטסאפ</div>
+      <div style={isWorker ? styles.sectionLabelWorker : styles.sectionLabel}>
+        {isWorker ? 'שיחה עם הדייר' : 'ענה לדייר בוואטסאפ'}
+      </div>
 
       {loading ? (
-        <p style={styles.muted}>טוען שיחת WhatsApp…</p>
+        <p style={styles.muted}>{isWorker ? 'טוען הודעות…' : 'טוען שיחת WhatsApp…'}</p>
       ) : error ? (
         <p style={styles.err}>{error}</p>
       ) : messages.length === 0 ? (
-        <p style={styles.muted}>אין הודעות WhatsApp שמורות — אפשר לשלוח הודעה ראשונה.</p>
+        <p style={styles.muted}>
+          {isWorker ? 'עדיין אין הודעות — כתבו למטה ושלחו לדייר.' : 'אין הודעות WhatsApp שמורות — אפשר לשלוח הודעה ראשונה.'}
+        </p>
       ) : (
-        <div style={styles.wrap} role="log" aria-label="שיחת WhatsApp עם הדייר" aria-live="polite">
+        <div
+          style={isWorker ? styles.wrapWorker : styles.wrap}
+          role="log"
+          aria-label="שיחת WhatsApp עם הדייר"
+          aria-live="polite"
+        >
           {messages.map((m) => (
             <div
               key={m.id}
@@ -191,24 +202,26 @@ export function TicketWhatsAppThread({
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="כתבו הודעה לדייר/ה…"
-          rows={3}
+          placeholder={isWorker ? 'כתבו כאן הודעה לדייר…' : 'כתבו הודעה לדייר/ה…'}
+          rows={isWorker ? 4 : 3}
           maxLength={4096}
-          style={styles.textarea}
+          style={isWorker ? styles.textareaWorker : styles.textarea}
           disabled={sending}
         />
         <Button
           variant="primary"
-          size="sm"
+          size={isWorker ? 'md' : 'sm'}
           loading={sending}
           disabled={!draft.trim()}
           onClick={() => void sendReply()}
         >
-          שליחה ב-WhatsApp
+          {isWorker ? 'שלח לדייר' : 'שליחה ב-WhatsApp'}
         </Button>
-        <p style={styles.hint}>
-          הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה).
-        </p>
+        {!isWorker ? (
+          <p style={styles.hint}>
+            הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה).
+          </p>
+        ) : null}
       </div>
     </div>
   )
@@ -223,8 +236,22 @@ const styles: Record<string, CSSProperties> = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
+  sectionLabelWorker: {
+    fontSize: 14,
+    fontWeight: 800,
+    color: theme.colors.textPrimary,
+  },
   wrap: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', padding: 4 },
-  bubble: { padding: '8px 10px', borderRadius: 10, fontSize: 13, maxWidth: '90%' },
+  wrapWorker: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    maxHeight: 'min(42vh, 280px)',
+    overflowY: 'auto',
+    padding: 6,
+    WebkitOverflowScrolling: 'touch',
+  },
+  bubble: { padding: '10px 12px', borderRadius: 12, fontSize: 14, maxWidth: '92%', lineHeight: 1.4 },
   in: { alignSelf: 'flex-start', background: theme.colors.muted },
   out: { alignSelf: 'flex-end', background: '#dcf8c6' },
   time: { fontSize: 10, color: theme.colors.textMuted, marginTop: 4 },
@@ -244,6 +271,20 @@ const styles: Record<string, CSSProperties> = {
     minHeight: 72,
     fontFamily: 'inherit',
     lineHeight: 1.4,
+  },
+  textareaWorker: {
+    width: '100%',
+    boxSizing: 'border-box',
+    background: theme.colors.surface,
+    border: `2px solid ${theme.colors.border}`,
+    borderRadius: 12,
+    padding: '14px 16px',
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+    resize: 'vertical',
+    minHeight: 96,
+    fontFamily: 'inherit',
+    lineHeight: 1.45,
   },
   hint: { fontSize: 11, color: theme.colors.textMuted, margin: 0, lineHeight: 1.4 },
 }

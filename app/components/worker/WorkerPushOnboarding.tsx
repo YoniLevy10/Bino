@@ -81,7 +81,7 @@ export function WorkerPushOnboarding({
       }}
     >
       <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, marginBottom: '6px' }}>
-        התראות שיבוץ — חובה
+        קבלו התראה על תקלות חדשות
       </div>
       <p style={{ fontSize: '13px', color: colors.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
         {unsupported
