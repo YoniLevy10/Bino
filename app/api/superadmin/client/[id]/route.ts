@@ -13,10 +13,13 @@ const patchSchema = z.object({
   manager_phone: z.string().max(40).nullable().optional(),
   sms_sender_name: z.string().max(40).nullable().optional(),
   enabled_nav_features: z.array(z.enum(SIDEBAR_NAV_ITEM_IDS)).nullable().optional(),
+  max_workers: z.number().int().min(1).max(99_999).nullable().optional(),
+  buildings_allowed: z.number().int().min(1).max(99_999).nullable().optional(),
+  max_tickets_per_month: z.number().int().min(1).max(999_999).nullable().optional(),
 })
 
 const selectFields =
-  'id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features'
+  'id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features, max_workers, buildings_allowed, max_tickets_per_month'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
@@ -46,6 +49,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
       payload.enabled_nav_features = normalized.value
     }
+  }
+
+  const hasExplicitLimitOverride =
+    parsed.data.max_workers !== undefined ||
+    parsed.data.buildings_allowed !== undefined ||
+    parsed.data.max_tickets_per_month !== undefined
+
+  // Upgrading plan tier should apply new catalog defaults — clear stale per-client caps
+  // unless the admin explicitly sets custom limits in the same request.
+  if (parsed.data.plan_tier !== undefined && !hasExplicitLimitOverride) {
+    payload.max_workers = null
+    payload.buildings_allowed = null
+    payload.max_tickets_per_month = null
   }
 
   if (Object.keys(payload).length === 0) {

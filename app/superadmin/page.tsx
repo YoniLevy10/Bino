@@ -11,7 +11,13 @@ import { ClientLogoUpload } from './ClientLogoUpload'
 import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
-import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
+import {
+  effectiveMaxBuildings,
+  effectiveMaxTicketsPerMonth,
+  effectiveMaxWorkers,
+  normalizeTier,
+  type PlanTier,
+} from '@/lib/plan-limits'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import {
   coreNavFeatureOptions,
@@ -21,6 +27,25 @@ import {
   SETUP_PACKAGE_NAV_FEATURE_IDS,
   type ClientNavFeaturesMode,
 } from '@/lib/client-nav-features'
+
+type PlanCatalogRow = {
+  plan_tier: string
+  workers_max: number | null
+  buildings_max: number | null
+  tickets_per_month_max: number | null
+}
+
+function parseOptionalLimitInput(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const n = Number(trimmed)
+  if (!Number.isFinite(n) || n < 1) throw new Error('מכסות חייבות להיות מספר חיובי')
+  return Math.floor(n)
+}
+
+function formatEffectiveLimit(value: number | null): string {
+  return value == null ? 'ללא הגבלה' : value.toLocaleString('he-IL')
+}
 
 type Project = { id: string; name: string; project_code: string }
 
@@ -35,6 +60,11 @@ type ClientRow = {
   buildings_count: number
   residents_count: number
   open_tickets_count: number
+  workers_active_count: number
+  workers_total_count: number
+  max_workers: number | null
+  buildings_allowed: number | null
+  max_tickets_per_month: number | null
   projects: Project[]
   enabled_nav_features: SidebarNavItemId[] | null
   logo_url?: string | null
@@ -46,6 +76,56 @@ type EditState = {
   whatsapp_phone_number_id: string
   manager_phone: string
   sms_sender_name: string
+  max_workers: string
+  buildings_allowed: string
+  max_tickets_per_month: string
+}
+
+function previewClientLimits(
+  editState: EditState,
+  catalog: PlanCatalogRow[]
+): { workers: number | null; buildings: number | null; tickets: number | null } {
+  const tier = normalizeTier(editState.plan_tier)
+  const catalogRow = catalog.find((row) => row.plan_tier === tier) ?? null
+  let maxWorkers: number | null = null
+  let maxBuildings: number | null = null
+  let maxTickets: number | null = null
+  try {
+    maxWorkers = parseOptionalLimitInput(editState.max_workers)
+    maxBuildings = parseOptionalLimitInput(editState.buildings_allowed)
+    maxTickets = parseOptionalLimitInput(editState.max_tickets_per_month)
+  } catch {
+    return { workers: null, buildings: null, tickets: null }
+  }
+  const clientRow = {
+    id: '',
+    plan_tier: editState.plan_tier,
+    max_workers: maxWorkers,
+    buildings_allowed: maxBuildings,
+    max_tickets_per_month: maxTickets,
+  }
+  return {
+    workers: effectiveMaxWorkers(clientRow, catalogRow),
+    buildings: effectiveMaxBuildings(clientRow, catalogRow),
+    tickets: effectiveMaxTicketsPerMonth(clientRow, catalogRow),
+  }
+}
+
+function effectiveLimitsForClient(client: ClientRow, catalog: PlanCatalogRow[]) {
+  const tier = normalizeTier(client.plan_tier)
+  const catalogRow = catalog.find((row) => row.plan_tier === tier) ?? null
+  const clientRow = {
+    id: client.id,
+    plan_tier: client.plan_tier,
+    max_workers: client.max_workers,
+    buildings_allowed: client.buildings_allowed,
+    max_tickets_per_month: client.max_tickets_per_month,
+  }
+  return {
+    workers: effectiveMaxWorkers(clientRow, catalogRow),
+    buildings: effectiveMaxBuildings(clientRow, catalogRow),
+    tickets: effectiveMaxTicketsPerMonth(clientRow, catalogRow),
+  }
 }
 
 type ViewMode = 'clients' | 'ops'
@@ -142,6 +222,7 @@ export default function SuperAdminPage() {
   const [unlockError, setUnlockError] = useState('')
 
   const [clients, setClients] = useState<ClientRow[]>([])
+  const [planCatalog, setPlanCatalog] = useState<PlanCatalogRow[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
 
@@ -174,10 +255,15 @@ export default function SuperAdminPage() {
     setLoading(true)
     setLoadError('')
     try {
-      const res = await fetch('/api/superadmin/stats', { headers: { 'x-admin-secret': s } })
-      const json = await res.json() as { clients?: ClientRow[]; error?: string }
-      if (!res.ok) { setLoadError(json.error ?? `שגיאה ${res.status}`); return }
-      setClients(json.clients ?? [])
+      const [statsRes, pricingRes] = await Promise.all([
+        fetch('/api/superadmin/stats', { headers: { 'x-admin-secret': s } }),
+        fetch('/api/superadmin/plans/pricing', { headers: { 'x-admin-secret': s } }),
+      ])
+      const statsJson = await statsRes.json() as { clients?: ClientRow[]; error?: string }
+      const pricingJson = await pricingRes.json() as { catalog?: PlanCatalogRow[]; error?: string }
+      if (!statsRes.ok) { setLoadError(statsJson.error ?? `שגיאה ${statsRes.status}`); return }
+      setClients(statsJson.clients ?? [])
+      if (pricingRes.ok) setPlanCatalog(pricingJson.catalog ?? [])
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'שגיאת רשת')
     } finally {
@@ -363,6 +449,9 @@ export default function SuperAdminPage() {
       whatsapp_phone_number_id: c.whatsapp_phone_number_id ?? '',
       manager_phone: c.manager_phone ?? '',
       sms_sender_name: c.sms_sender_name ?? '',
+      max_workers: c.max_workers != null ? String(c.max_workers) : '',
+      buildings_allowed: c.buildings_allowed != null ? String(c.buildings_allowed) : '',
+      max_tickets_per_month: c.max_tickets_per_month != null ? String(c.max_tickets_per_month) : '',
     })
   }
 
@@ -370,6 +459,33 @@ export default function SuperAdminPage() {
     setEditingId(null)
     setEditState(null)
     setSaveError('')
+  }
+
+  function clearLimitOverridesInEdit() {
+    setEditState((s) =>
+      s
+        ? {
+            ...s,
+            max_workers: '',
+            buildings_allowed: '',
+            max_tickets_per_month: '',
+          }
+        : s
+    )
+  }
+
+  function onPlanTierChange(nextTier: string) {
+    setEditState((s) =>
+      s
+        ? {
+            ...s,
+            plan_tier: nextTier,
+            max_workers: '',
+            buildings_allowed: '',
+            max_tickets_per_month: '',
+          }
+        : s
+    )
   }
 
   async function saveEdit() {
@@ -386,13 +502,25 @@ export default function SuperAdminPage() {
           whatsapp_phone_number_id: editState.whatsapp_phone_number_id.trim() || null,
           manager_phone: editState.manager_phone.trim() || null,
           sms_sender_name: editState.sms_sender_name.trim() || null,
+          max_workers: parseOptionalLimitInput(editState.max_workers),
+          buildings_allowed: parseOptionalLimitInput(editState.buildings_allowed),
+          max_tickets_per_month: parseOptionalLimitInput(editState.max_tickets_per_month),
         }),
       })
       const json = await res.json() as { client?: ClientRow; error?: string }
       if (!res.ok) { setSaveError(json.error ?? `שגיאה ${res.status}`); return }
       if (json.client) {
         setClients((prev) => prev.map((c) =>
-          c.id !== editingId ? c : { ...c, ...json.client!, buildings_count: c.buildings_count, residents_count: c.residents_count, open_tickets_count: c.open_tickets_count, projects: c.projects }
+          c.id !== editingId ? c : {
+            ...c,
+            ...json.client!,
+            buildings_count: c.buildings_count,
+            residents_count: c.residents_count,
+            open_tickets_count: c.open_tickets_count,
+            workers_active_count: c.workers_active_count,
+            workers_total_count: c.workers_total_count,
+            projects: c.projects,
+          }
         ))
       }
       cancelEdit()
@@ -540,6 +668,7 @@ export default function SuperAdminPage() {
             {[
               { label: 'לקוחות', value: clients.length },
               { label: 'בניינים', value: clients.reduce((s, c) => s + c.buildings_count, 0) },
+              { label: 'עובדים', value: clients.reduce((s, c) => s + c.workers_active_count, 0) },
               { label: 'דיירים', value: clients.reduce((s, c) => s + c.residents_count, 0) },
               { label: 'קריאות פתוחות', value: clients.reduce((s, c) => s + c.open_tickets_count, 0) },
             ].map((s) => (
@@ -569,7 +698,7 @@ export default function SuperAdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['', 'שם לקוח', 'מייל אדמין', 'תכנית', 'WhatsApp', 'טלפון מנהל', 'SMS שולח', 'בניינים', 'דיירים', 'קריאות', ''].map((h, i) => (
+                    {['', 'שם לקוח', 'מייל אדמין', 'תכנית', 'WhatsApp', 'טלפון מנהל', 'SMS שולח', 'בניינים', 'עובדים', 'דיירים', 'קריאות', ''].map((h, i) => (
                       <th key={i} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -646,6 +775,15 @@ export default function SuperAdminPage() {
                         {/* Buildings */}
                         <td style={{ ...tdStyle, textAlign: 'center' }}>{c.buildings_count}</td>
 
+                        {/* Workers */}
+                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          {(() => {
+                            const limits = effectiveLimitsForClient(c, planCatalog)
+                            const cap = limits.workers
+                            return cap != null ? `${c.workers_active_count}/${cap}` : c.workers_active_count
+                          })()}
+                        </td>
+
                         {/* Residents */}
                         <td style={{ ...tdStyle, textAlign: 'center' }}>{c.residents_count}</td>
 
@@ -674,13 +812,21 @@ export default function SuperAdminPage() {
                       {/* Expanded row */}
                       {expandedId === c.id && (
                         <tr key={`${c.id}-expand`}>
-                          <td colSpan={11} style={{ padding: 0, borderBottom: `1px solid ${theme.colors.borderSubtle}` }}>
+                          <td colSpan={12} style={{ padding: 0, borderBottom: `1px solid ${theme.colors.borderSubtle}` }}>
                             <div style={{ background: theme.colors.muted, padding: theme.spacing.xl, direction: 'rtl' }}>
 
                               {/* Edit form */}
-                              {editingId === c.id && editState && (
+                              {editingId === c.id && editState && (() => {
+                                const preview = previewClientLimits(editState, planCatalog)
+                                return (
                                 <div style={{ marginBottom: theme.spacing.xl, background: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.xl, border: `1.5px solid ${theme.colors.border}` }}>
-                                  <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: theme.spacing.lg }}>עריכת פרטי לקוח</div>
+                                  <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: theme.spacing.lg }}>
+                                    עריכת לקוח — מכסות וחבילה
+                                  </div>
+                                  <p style={{ margin: '0 0 16px', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                                    כאן מגדירים את החבילה והמכסות שחלות על הלקוח. שינוי תכנית מאפס מכסות מותאמות ישנות.
+                                    מכסות מטאב &quot;מנוי ותמחור&quot; נאכפות אוטומטית כשאין override.
+                                  </p>
                                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
                                     {[
                                       { label: 'שם לקוח', key: 'name' as const, placeholder: '' },
@@ -700,18 +846,69 @@ export default function SuperAdminPage() {
                                     ))}
                                     <div>
                                       <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>תכנית</label>
-                                      <select value={editState.plan_tier} onChange={(e) => setEditState((s) => s ? { ...s, plan_tier: e.target.value } : s)} style={inputStyle}>
+                                      <select value={editState.plan_tier} onChange={(e) => onPlanTierChange(e.target.value)} style={inputStyle}>
                                         {PLAN_SETUP_OPTIONS.map((p) => (
                                           <option key={p.value} value={p.value}>{p.label}</option>
                                         ))}
                                       </select>
                                       <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
-                                        מכסות: {planLimitsLine(normalizeTier(editState.plan_tier) as PlanTier)}
+                                        ברירת מחדל בקוד: {planLimitsLine(normalizeTier(editState.plan_tier) as PlanTier)}
+                                      </p>
+                                      <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textSecondary }}>
+                                        עובדים פעילים כעת: {c.workers_active_count}
+                                        {c.max_workers != null ? ` · override שמור: ${c.max_workers}` : ''}
                                       </p>
                                     </div>
+                                    <div>
+                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת עובדים (override)</label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editState.max_workers}
+                                        onChange={(e) => setEditState((s) => s ? { ...s, max_workers: e.target.value } : s)}
+                                        placeholder="ריק = לפי תכנית"
+                                        style={inputStyle}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת בניינים (override)</label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editState.buildings_allowed}
+                                        onChange={(e) => setEditState((s) => s ? { ...s, buildings_allowed: e.target.value } : s)}
+                                        placeholder="ריק = לפי תכנית"
+                                        style={inputStyle}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת תקלות/חודש (override)</label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editState.max_tickets_per_month}
+                                        onChange={(e) => setEditState((s) => s ? { ...s, max_tickets_per_month: e.target.value } : s)}
+                                        placeholder="ריק = לפי תכנית"
+                                        style={inputStyle}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div
+                                    style={{
+                                      marginBottom: theme.spacing.lg,
+                                      padding: '12px 14px',
+                                      borderRadius: theme.radius.md,
+                                      background: theme.colors.primaryMuted,
+                                      fontSize: theme.typography.fontSize.xs,
+                                      color: theme.colors.textPrimary,
+                                      lineHeight: 1.6,
+                                    }}
+                                  >
+                                    <strong>מכסה בפועל אחרי שמירה:</strong>{' '}
+                                    עובדים {formatEffectiveLimit(preview.workers)} · בניינים {formatEffectiveLimit(preview.buildings)} · תקלות/חודש {formatEffectiveLimit(preview.tickets)}
                                   </div>
                                   {saveError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{saveError}</p>}
-                                  <div style={{ display: 'flex', gap: theme.spacing.md }}>
+                                  <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
                                     <LoadingButton
                                       onClick={saveEdit}
                                       loading={saving}
@@ -720,12 +917,20 @@ export default function SuperAdminPage() {
                                     >
                                       שמור
                                     </LoadingButton>
+                                    <button
+                                      type="button"
+                                      onClick={clearLimitOverridesInEdit}
+                                      style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}
+                                    >
+                                      אפס מכסות מותאמות
+                                    </button>
                                     <button onClick={cancelEdit} style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}>
                                       ביטול
                                     </button>
                                   </div>
                                 </div>
-                              )}
+                                )
+                              })()}
 
                               <ClientLogoUpload
                                 clientId={c.id}

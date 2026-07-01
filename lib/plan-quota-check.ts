@@ -4,6 +4,7 @@ import {
   effectiveMaxTicketsPerMonth,
   type ClientPlanRow,
 } from '@/lib/plan-limits'
+import { getPlanPricingRow } from '@/lib/plan-pricing'
 
 export type PlanQuotaCheckResult =
   | { ok: true; client: ClientPlanRow; current: number; max: number | null }
@@ -23,7 +24,7 @@ export async function checkTicketsMonthlyQuota(
     return { ok: false, error: 'לקוח לא נמצא', current: 0, max: null }
   }
 
-  const max = effectiveMaxTicketsPerMonth(client)
+  const max = effectiveMaxTicketsPerMonth(client, await getPlanPricingRow(supabase, client.plan_tier ?? 'starter'))
   const { count, error: countErr } = await supabase
     .from('tickets')
     .select('*', { count: 'exact', head: true })
