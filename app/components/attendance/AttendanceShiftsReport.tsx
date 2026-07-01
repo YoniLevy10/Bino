@@ -5,9 +5,12 @@ import { supabase } from '@/lib/supabase'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import {
+  buildMonthOptions,
+  currentMonthKey,
   formatAttendanceDateTime,
   formatShiftMinutes,
   monthBounds,
+  monthBoundsFromKey,
   SHIFT_STATUS_HE,
 } from '@/lib/attendance-display'
 import { Button, Card, theme } from '../ui'
@@ -57,28 +60,19 @@ function visitProject(row: VisitRow): string {
   return p.name ?? '—'
 }
 
-function buildMonthOptions(count = 12): { value: string; label: string }[] {
-  const now = new Date()
-  const opts: { value: string; label: string }[] = []
-  for (let i = 0; i < count; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const label = d.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
-    opts.push({ value, label })
-  }
-  return opts
-}
-
 function toDateInput(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function AttendanceShiftsReport() {
+type AttendanceShiftsReportProps = {
+  /** When true — show only the current calendar month (resets automatically each month). */
+  lockToCurrentMonth?: boolean
+}
+
+export function AttendanceShiftsReport({ lockToCurrentMonth = false }: AttendanceShiftsReportProps) {
   const now = new Date()
   const [dateMode, setDateMode] = useState<'month' | 'range'>('month')
-  const [monthKey, setMonthKey] = useState(
-    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  )
+  const [monthKey, setMonthKey] = useState(currentMonthKey(now))
   const [fromDate, setFromDate] = useState(toDateInput(new Date(now.getFullYear(), now.getMonth(), 1)))
   const [toDate, setToDate] = useState(toDateInput(now))
   const [workerId, setWorkerId] = useState('')
@@ -96,7 +90,13 @@ export function AttendanceShiftsReport() {
   const monthOptions = buildMonthOptions()
 
   const { from, to, periodLabel } = useMemo(() => {
+    if (lockToCurrentMonth) {
+      const bounds = monthBounds(now.getFullYear(), now.getMonth())
+      return { from: bounds.from, to: bounds.to, periodLabel: bounds.label }
+    }
     if (dateMode === 'month') {
+      const parsed = monthBoundsFromKey(monthKey)
+      if (parsed) return { from: parsed.from, to: parsed.to, periodLabel: parsed.label }
       const [y, m] = monthKey.split('-').map(Number)
       const bounds = monthBounds(y, m - 1)
       return { from: bounds.from, to: bounds.to, periodLabel: bounds.label }
@@ -106,7 +106,7 @@ export function AttendanceShiftsReport() {
       to: `${toDate}T23:59:59.999Z`,
       periodLabel: `${fromDate} — ${toDate}`,
     }
-  }, [dateMode, monthKey, fromDate, toDate])
+  }, [lockToCurrentMonth, dateMode, monthKey, fromDate, toDate])
 
   useEffect(() => {
     void (async () => {
@@ -313,9 +313,11 @@ export function AttendanceShiftsReport() {
 
   return (
     <Card style={{ marginBottom: 16 }}>
-      <h3 style={styles.sectionTitle}>דוח שעות עובדים</h3>
+      <h3 style={styles.sectionTitle}>דוח שעות — חודש נוכחי</h3>
       <p style={styles.hint}>
-        סינון לפי עובד ותקופה. ניתן לערוך משמרות, להוריד Excel/PDF או CSV ל-Green Invoice.
+        {lockToCurrentMonth
+          ? `מציג את ${periodLabel} בלבד. בתחילת כל חודש הנתונים עוברים אוטומטית ללשונית «היסטוריה».`
+          : 'סינון לפי עובד ותקופה. ניתן לערוך משמרות, להוריד Excel/PDF או CSV ל-Green Invoice.'}
       </p>
 
       {workerSummaries.length > 0 ? (
@@ -331,25 +333,31 @@ export function AttendanceShiftsReport() {
       ) : null}
 
       <div style={styles.toolbar}>
-        <select style={styles.select} value={dateMode} onChange={(e) => setDateMode(e.target.value as 'month' | 'range')}>
-          <option value="month">לפי חודש</option>
-          <option value="range">טווח תאריכים</option>
-        </select>
-
-        {dateMode === 'month' ? (
-          <select style={styles.select} value={monthKey} onChange={(e) => setMonthKey(e.target.value)}>
-            {monthOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        ) : (
+        {!lockToCurrentMonth ? (
           <>
-            <input type="date" style={styles.select} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            <span>—</span>
-            <input type="date" style={styles.select} value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <select style={styles.select} value={dateMode} onChange={(e) => setDateMode(e.target.value as 'month' | 'range')}>
+              <option value="month">לפי חודש</option>
+              <option value="range">טווח תאריכים</option>
+            </select>
+
+            {dateMode === 'month' ? (
+              <select style={styles.select} value={monthKey} onChange={(e) => setMonthKey(e.target.value)}>
+                {monthOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input type="date" style={styles.select} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                <span>—</span>
+                <input type="date" style={styles.select} value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              </>
+            )}
           </>
+        ) : (
+          <span style={styles.periodBadge}>{periodLabel}</span>
         )}
 
         <select style={styles.select} value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
@@ -490,4 +498,12 @@ const styles: Record<string, CSSProperties> = {
   },
   editCell: { background: theme.colors.primaryMuted, padding: 12 },
   editRow: { display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' },
+  periodBadge: {
+    padding: '8px 14px',
+    borderRadius: 8,
+    background: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+    fontWeight: 700,
+    fontSize: 14,
+  },
 }
