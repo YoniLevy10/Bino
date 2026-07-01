@@ -20,7 +20,7 @@ import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
   toastReporterClosedNotifySummary,
@@ -616,11 +616,15 @@ export default function DashboardPage() {
   }
 
   async function performCloseTicket(ticketId: string) {
-    const response = await fetchWithTimeout('/api/close-ticket', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticket_id: ticketId }),
-    })
+    const response = await fetchWithTimeout(
+      '/api/close-ticket',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId }),
+      },
+      MUTATION_FETCH_TIMEOUT_MS
+    )
     const closeBody = (await response.json().catch(() => ({}))) as ReporterClosedNotifyApiBody & {
       error?: string
     }
@@ -667,7 +671,11 @@ export default function DashboardPage() {
       if (addTicketReporterName) formData.append('reporter_name', addTicketReporterName)
       if (addTicketReporterPhone) formData.append('reporter_phone', addTicketReporterPhone)
       formData.append('source', 'manual')
-      const response = await fetchWithTimeout('/api/create-ticket', { method: 'POST', body: formData })
+      const response = await fetchWithTimeout(
+        '/api/create-ticket',
+        { method: 'POST', body: formData },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       if (!response.ok) {
         const result = await response.json()
         throw new Error(result.error || TM.genericSaveError)

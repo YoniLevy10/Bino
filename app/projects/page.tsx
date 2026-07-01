@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
 import {
@@ -245,12 +245,14 @@ export default function ProjectsPage() {
   }, [])
 
   function openCreateDrawer() {
+    closeDetailDrawer()
     setEditingProject(null)
     setForm(emptyForm)
     setDrawerOpen(true)
   }
 
   function openEditDrawer(project: ProjectRow) {
+    closeDetailDrawer()
     setEditingProject(project)
     setForm({
       name: project.name || '',
@@ -272,6 +274,7 @@ export default function ProjectsPage() {
   }
 
   async function openDetailDrawer(project: ProjectRow) {
+    closeDrawer()
     setSelectedProject(project)
     setDetailDrawerOpen(true)
     await fetchProjectTickets(project.id)
@@ -396,37 +399,45 @@ export default function ProjectsPage() {
         }
 
         if (editingProject) {
-          const res = await fetchWithTimeout('/api/update-project', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              project_id: editingProject.id,
-              name: payload.name,
-              project_code: payload.project_code,
-              address: payload.address,
-              address_en: payload.address_en,
-              qr_identifier: payload.qr_identifier,
-              is_active: payload.is_active,
-              assigned_worker_id: payload.assigned_worker_id,
-            }),
-          })
+          const res = await fetchWithTimeout(
+            '/api/update-project',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                project_id: editingProject.id,
+                name: payload.name,
+                project_code: payload.project_code,
+                address: payload.address,
+                address_en: payload.address_en,
+                qr_identifier: payload.qr_identifier,
+                is_active: payload.is_active,
+                assigned_worker_id: payload.assigned_worker_id,
+              }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
           const json = (await res?.json().catch(() => ({}))) as { error?: string }
           if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
           toast.success(TM.projectUpdated)
         } else {
-          const res = await fetchWithTimeout('/api/create-project', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: payload.name,
-              project_code: payload.project_code,
-              address: payload.address,
-              address_en: payload.address_en,
-              qr_identifier: payload.qr_identifier,
-              is_active: payload.is_active,
-              assigned_worker_id: payload.assigned_worker_id,
-            }),
-          })
+          const res = await fetchWithTimeout(
+            '/api/create-project',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: payload.name,
+                project_code: payload.project_code,
+                address: payload.address,
+                address_en: payload.address_en,
+                qr_identifier: payload.qr_identifier,
+                is_active: payload.is_active,
+                assigned_worker_id: payload.assigned_worker_id,
+              }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
           const json = await res.json().catch(() => ({}))
           if (!res.ok) throw new Error((json as { error?: string }).error || 'יצירת פרויקט נכשלה')
           toast.success(TM.projectCreated)
@@ -444,11 +455,15 @@ export default function ProjectsPage() {
   async function toggleProjectStatus(project: ProjectRow) {
     await asyncHandler(
       async () => {
-        const res = await fetchWithTimeout('/api/update-project', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_id: project.id, is_active: !project.is_active }),
-        })
+        const res = await fetchWithTimeout(
+          '/api/update-project',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: project.id, is_active: !project.is_active }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
         if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(project.is_active ? TM.projectDeactivated : TM.projectActivated)
@@ -467,11 +482,15 @@ export default function ProjectsPage() {
 
     await asyncHandler(
       async () => {
-        const res = await fetchWithTimeout('/api/delete-project', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_id: project.id }),
-        })
+        const res = await fetchWithTimeout(
+          '/api/delete-project',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: project.id }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = (await res.json().catch(() => ({}))) as { error?: string }
         if (!res.ok) throw new Error(json.error || 'מחיקת פרויקט נכשלה')
         toast.success(TM.projectDeleted)

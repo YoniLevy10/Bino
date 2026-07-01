@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validatePhoneNumber } from '@/lib/validators'
 import {
@@ -212,39 +212,47 @@ export default function ProfessionalsPage() {
         }
 
         if (editing) {
-          const res = await fetchWithTimeout('/api/update-professional', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              professional_id: editing.id,
-              full_name: payload.full_name,
-              phone: payload.phone,
-              extra_phones: payload.extra_phones,
-              trade: payload.trade,
-              company_name: payload.company_name,
-              email: payload.email,
-              notes: payload.notes,
-              is_active: payload.is_active,
-            }),
-          })
+          const res = await fetchWithTimeout(
+            '/api/update-professional',
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                professional_id: editing.id,
+                full_name: payload.full_name,
+                phone: payload.phone,
+                extra_phones: payload.extra_phones,
+                trade: payload.trade,
+                company_name: payload.company_name,
+                email: payload.email,
+                notes: payload.notes,
+                is_active: payload.is_active,
+              }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
           const json = await res.json().catch(() => ({}))
           if (!res.ok) throw new Error((json as { error?: string }).error || 'עדכון נכשל')
           toast.success(TM.professionalUpdated)
         } else {
-          const res = await fetchWithTimeout('/api/create-professional', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              full_name: payload.full_name,
-              phone: payload.phone,
-              extra_phones: payload.extra_phones,
-              trade: payload.trade,
-              company_name: payload.company_name,
-              email: payload.email || '',
-              notes: payload.notes,
-              is_active: payload.is_active,
-            }),
-          })
+          const res = await fetchWithTimeout(
+            '/api/create-professional',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                full_name: payload.full_name,
+                phone: payload.phone,
+                extra_phones: payload.extra_phones,
+                trade: payload.trade,
+                company_name: payload.company_name,
+                email: payload.email || '',
+                notes: payload.notes,
+                is_active: payload.is_active,
+              }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
           const json = await res.json().catch(() => ({}))
           if (!res.ok) throw new Error((json as { error?: string }).error || 'יצירה נכשלה')
           toast.success(TM.professionalCreated)

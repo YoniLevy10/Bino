@@ -32,7 +32,7 @@ import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
   toastReporterClosedNotifySummary,
@@ -240,7 +240,7 @@ export default function TicketsPage() {
         setStatusFilter(decodeURIComponent(statusParam))
       }
       if (params.get('priority')) setPriorityFilter(decodeURIComponent(params.get('priority')!))
-      if (params.get('new') === '1') setShowAddTicketModal(true)
+      if (params.get('new') === '1') openAddTicketDrawer()
     }
   }, [router])
 
@@ -646,12 +646,25 @@ export default function TicketsPage() {
     return 'now'
   }
 
+  function openAddTicketDrawer() {
+    closeDrawer()
+    setMobileToolsOpen(false)
+    setShowAddTicketModal(true)
+  }
+
+  function openMobileToolsDrawer() {
+    closeDrawer()
+    setShowAddTicketModal(false)
+    setMobileToolsOpen(true)
+  }
+
   function openTicket(ticket: TicketRow) {
     if (selectedTicket?.id === ticket.id) {
       closeDrawer()
       return
     }
     setMobileToolsOpen(false)
+    setShowAddTicketModal(false)
     setSelectedTicket(ticket)
     setDraftPriority(ticket.priority || 'LOW')
     setDraftStatus(ticket.status)
@@ -753,11 +766,15 @@ export default function TicketsPage() {
   }
 
   async function performCloseTicket(ticketId: string) {
-    const response = await fetchWithTimeout('/api/close-ticket', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticket_id: ticketId }),
-    })
+    const response = await fetchWithTimeout(
+      '/api/close-ticket',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId }),
+      },
+      MUTATION_FETCH_TIMEOUT_MS
+    )
     const closeBody = (await response.json().catch(() => ({}))) as ReporterClosedNotifyApiBody & {
       error?: string
     }
@@ -837,7 +854,11 @@ export default function TicketsPage() {
       if (addTicketForm.reporter_phone) formData.append('reporter_phone', addTicketForm.reporter_phone)
       formData.append('source', 'manual')
 
-      const response = await fetchWithTimeout('/api/create-ticket', { method: 'POST', body: formData })
+      const response = await fetchWithTimeout(
+        '/api/create-ticket',
+        { method: 'POST', body: formData },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       if (!response.ok) {
         const result = await response.json()
         throw new Error(result.error || TM.genericSaveError)
@@ -950,7 +971,7 @@ export default function TicketsPage() {
 
       {isMobile && (
         <div style={{ padding: '12px 20px 0', display: 'flex', justifyContent: 'flex-start' }}>
-          <Button variant="primary" size="md" onClick={() => setShowAddTicketModal(true)}>
+          <Button variant="primary" size="md" onClick={openAddTicketDrawer}>
             תקלה חדשה
           </Button>
         </div>
@@ -979,7 +1000,7 @@ export default function TicketsPage() {
                 >
                   מחק הכל
                 </Button>
-                <Button variant="primary" onClick={() => setShowAddTicketModal(true)}>
+                <Button variant="primary" onClick={openAddTicketDrawer}>
                   תקלה חדשה
                 </Button>
               </div>
@@ -1053,7 +1074,7 @@ export default function TicketsPage() {
                 variant="secondary"
                 size="md"
                 type="button"
-                onClick={() => setMobileToolsOpen(true)}
+                onClick={openMobileToolsDrawer}
                 style={{ width: '100%' }}
               >
                 סינון וייצוא לאקסל
@@ -1164,7 +1185,7 @@ export default function TicketsPage() {
               title="לא נמצאו תקלות"
               description="נסו לשנות מסננים או לפתוח תקלה חדשה."
               action={
-                <Button variant="primary" onClick={() => setShowAddTicketModal(true)}>
+                <Button variant="primary" onClick={openAddTicketDrawer}>
                   תקלה חדשה
                 </Button>
               }

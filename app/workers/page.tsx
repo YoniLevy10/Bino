@@ -524,11 +524,15 @@ export default function WorkersPage() {
   async function toggleWorkerStatus(worker: WorkerRow) {
     await asyncHandler(
       async () => {
-        const res = await fetchWithTimeout('/api/update-worker', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ worker_id: worker.id, is_active: !worker.is_active }),
-        })
+        const res = await fetchWithTimeout(
+          '/api/update-worker',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ worker_id: worker.id, is_active: !worker.is_active }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
         if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(worker.is_active ? TM.workerDeactivated : TM.workerActivated)
@@ -545,11 +549,15 @@ export default function WorkersPage() {
 
     await asyncHandler(
       async () => {
-        const res = await fetchWithTimeout('/api/update-worker', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ worker_id: worker.id, soft_delete: true }),
-        })
+        const res = await fetchWithTimeout(
+          '/api/update-worker',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ worker_id: worker.id, soft_delete: true }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
         if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
         toast.success(TM.workerDeleted)
@@ -608,11 +616,15 @@ export default function WorkersPage() {
     }
     setTestingSmsWorkerId(worker.id)
     try {
-      const res = await fetchWithTimeout('/api/workers/test-sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ worker_id: worker.id }),
-      })
+      const res = await fetchWithTimeout(
+        '/api/workers/test-sms',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ worker_id: worker.id }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       const json = (await res.json().catch(() => ({}))) as {
         error?: string
         sent?: number
@@ -643,11 +655,15 @@ export default function WorkersPage() {
     }
     setSendingPortalLinkId(worker.id)
     try {
-      const res = await fetchWithTimeout('/api/workers/send-portal-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ worker_id: worker.id }),
-      })
+      const res = await fetchWithTimeout(
+        '/api/workers/send-portal-link',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ worker_id: worker.id }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       const json = (await res.json().catch(() => ({}))) as {
         error?: string
         sent?: number
