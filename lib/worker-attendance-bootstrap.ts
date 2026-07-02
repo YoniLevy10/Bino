@@ -20,16 +20,10 @@ export type AttendanceBootstrapPayload = {
   }
 }
 
-export async function fetchAndCacheWorkerAttendanceBootstrap(
-  accessToken: string
-): Promise<AttendanceBootstrapPayload | null> {
-  const res = await fetchWithTimeout(
-    `/api/worker/attendance/bootstrap?token=${encodeURIComponent(accessToken)}`
-  )
-  if (!res.ok) return null
-  const data = (await res.json()) as AttendanceBootstrapPayload & { error?: string }
-  if (!data.worker_id || !data.client_id) return null
-
+export async function cacheWorkerAttendanceBootstrap(
+  accessToken: string,
+  data: AttendanceBootstrapPayload
+): Promise<void> {
   await initOfflineAttendanceDB()
   await saveWorkerOfflineProfile({
     worker_id: data.worker_id,
@@ -50,6 +44,19 @@ export async function fetchAndCacheWorkerAttendanceBootstrap(
     last_tag_code: null,
   }
   await updateLocalAttendanceState(state)
+}
+
+export async function fetchAndCacheWorkerAttendanceBootstrap(
+  accessToken: string
+): Promise<AttendanceBootstrapPayload | null> {
+  const res = await fetchWithTimeout(
+    `/api/worker/attendance/bootstrap?token=${encodeURIComponent(accessToken)}`
+  )
+  if (!res.ok) return null
+  const data = (await res.json()) as AttendanceBootstrapPayload & { error?: string }
+  if (!data.worker_id || !data.client_id) return null
+
+  await cacheWorkerAttendanceBootstrap(accessToken, data)
 
   return data
 }

@@ -12,18 +12,22 @@ import {
 } from '@/lib/offline-attendance-db'
 import { recordAttendanceScan } from '@/lib/attendance-client'
 import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
-import { fetchAndCacheWorkerAttendanceBootstrap } from '@/lib/worker-attendance-bootstrap'
+import {
+  cacheWorkerAttendanceBootstrap,
+  type AttendanceBootstrapPayload,
+} from '@/lib/worker-attendance-bootstrap'
 import { normalizeTagCode } from '@/lib/nfc-tag-utils'
 
 type ScanPhase = 'loading' | 'ready' | 'done' | 'error' | 'duplicate'
 
 const EVENT_LABELS: Record<string, string> = {
-  clock_in: 'כניסה לעבודה',
-  clock_out: 'יציאה מהעבודה',
-  project_visit: 'ביקור בבניין',
+  clock_in: 'כניסה למשמרת',
+  clock_out: 'יציאה ממשמרת',
 }
 
-function readGeo(): Promise<{ lat: number; lng: number } | null> {
+const REDIRECT_MS = 1500
+
+function readGeo(timeoutMs = 2500): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       resolve(null)
@@ -32,7 +36,7 @@ function readGeo(): Promise<{ lat: number; lng: number } | null> {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => resolve(null),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 120_000 }
+      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 300_000 }
     )
   })
 }
@@ -64,6 +68,7 @@ function NfcScanInner() {
 
       if (fromUrl) writeWorkerToken(token)
 
+      const geoPromise = readGeo()
       await initOfflineAttendanceDB()
 
       let workerId: string
@@ -71,7 +76,11 @@ function NfcScanInner() {
 
       if (online) {
         try {
-          const authRes = await fetchWithTimeout(`/api/worker-auth?token=${encodeURIComponent(token)}`)
+          const [authRes, bootRes] = await Promise.all([
+            fetchWithTimeout(`/api/worker-auth?token=${encodeURIComponent(token)}`),
+            fetchWithTimeout(`/api/worker/attendance/bootstrap?token=${encodeURIComponent(token)}`),
+          ])
+
           if (!authRes.ok) {
             setPhase('error')
             setMessage('הקישור לא תקף')
@@ -85,9 +94,7 @@ function NfcScanInner() {
           }
           workerId = auth.worker_id
           clientId = auth.client_id
-          const bootRes = await fetchWithTimeout(
-            `/api/worker/attendance/bootstrap?token=${encodeURIComponent(token)}`
-          )
+
           if (bootRes.status === 403) {
             setPhase('error')
             setMessage('תוסף חתמת עובדים אינו פעיל')
@@ -99,7 +106,14 @@ function NfcScanInner() {
             setDetail('בדקו חיבור לאינטרנט ונסו שוב.')
             return
           }
-          await fetchAndCacheWorkerAttendanceBootstrap(token)
+
+          const bootData = (await bootRes.json()) as AttendanceBootstrapPayload
+          if (!bootData.worker_id || !bootData.client_id) {
+            setPhase('error')
+            setMessage('לא ניתן לטעון את נתוני ההחתמה')
+            return
+          }
+          await cacheWorkerAttendanceBootstrap(token, bootData)
         } catch {
           setPhase('error')
           setMessage('שגיאת רשת')
@@ -116,7 +130,7 @@ function NfcScanInner() {
         clientId = profile.client_id
       }
 
-      const geo = await readGeo()
+      const geo = await geoPromise
       const source = online ? 'online' : 'offline'
       const recorded = await recordAttendanceScan(workerId, clientId, tagCode, source, geo)
 
@@ -137,32 +151,32 @@ function NfcScanInner() {
         navigator.vibrate([80, 40, 80])
       }
 
-      if (online) {
-        try {
-          const sync = await syncPendingAttendanceEvents(token)
-          const last = sync.results[sync.results.length - 1]
-          if (last?.status === 'pending_review') {
-            setMessage('נשמר — ממתין לאישור משרד')
-          } else if (last?.status === 'conflict' || last?.status === 'rejected') {
-            setMessage('נשמר — דורש בדיקה במשרד')
-          } else {
-            setMessage('נרשם בהצלחה!')
-          }
-        } catch {
-          setMessage('נשמר — יסתנכרן כשהרשת תחזור')
-        }
-      } else {
-        setMessage('נשמר — יסתנכרן כשהרשת תחזור')
-      }
-
       setPhase('done')
       setDetail(
         `${EVENT_LABELS[recorded.event_type] ?? recorded.event_type} · ${recorded.tag.label || recorded.tag.tag_code}`
       )
 
+      if (online) {
+        setMessage('נרשם בהצלחה!')
+        void syncPendingAttendanceEvents(token)
+          .then((sync) => {
+            const last = sync.results[sync.results.length - 1]
+            if (last?.status === 'pending_review') {
+              setMessage('נשמר — ממתין לאישור משרד')
+            } else if (last?.status === 'conflict' || last?.status === 'rejected') {
+              setMessage('נשמר — דורש בדיקה במשרד')
+            }
+          })
+          .catch(() => {
+            setMessage('נשמר — יסתנכרן כשהרשת תחזור')
+          })
+      } else {
+        setMessage('נשמר — יסתנכרן כשהרשת תחזור')
+      }
+
       window.setTimeout(() => {
         window.location.href = '/worker'
-      }, 3000)
+      }, REDIRECT_MS)
     })()
   }, [searchParams, online])
 

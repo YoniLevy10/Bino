@@ -157,7 +157,7 @@ export function WorkerTicketCard({
         </div>
         {loc ? <div style={styles.compactLoc(colors)}>{loc}</div> : null}
         {showAttendanceHint && loc ? (
-          <div style={styles.attendanceHint(colors)}>ביקור בבניין זה נרשם בהחתמת NFC</div>
+          <div style={styles.attendanceHint(colors)}>כניסה ויציאה מהמשמרת — הצמידו את הטלפון למדבקת NFC בבניין</div>
         ) : null}
       </button>
 

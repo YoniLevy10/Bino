@@ -55,10 +55,7 @@ export function resolveEventTypeForTag(
   tagType: 'office' | 'project',
   hasOpenShift: boolean
 ): AttendanceEventType {
-  if (tagType === 'office') {
-    return hasOpenShift ? 'clock_out' : 'clock_in'
-  }
-  return 'project_visit'
+  return hasOpenShift ? 'clock_out' : 'clock_in'
 }
 
 type ProcessCtx = {
