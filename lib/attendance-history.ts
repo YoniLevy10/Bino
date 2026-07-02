@@ -9,6 +9,7 @@ export type AttendanceHistoryShift = {
   ended_at: string | null
   total_minutes: number | null
   status: string
+  admin_note?: string | null
 }
 
 export type AttendanceHistoryWorkerGroup = {

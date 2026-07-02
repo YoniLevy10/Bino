@@ -4,14 +4,7 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { patchWorkerAttendanceShiftBodySchema } from '@/lib/api-body-schemas'
-
-function computeTotalMinutes(startedAt: string, endedAt: string | null): number | null {
-  if (!endedAt) return null
-  const a = new Date(startedAt).getTime()
-  const b = new Date(endedAt).getTime()
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null
-  return Math.round((b - a) / 60_000)
-}
+import { buildManagerShiftPatch } from '@/lib/attendance-shift-patch'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSessionClientId()
@@ -50,25 +43,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'משמרת לא נמצאה' }, { status: 404 })
   }
 
-  const started_at = parsed.data.started_at ?? (existing as { started_at: string }).started_at
-  const ended_at =
-    parsed.data.ended_at !== undefined
-      ? parsed.data.ended_at
-      : ((existing as { ended_at?: string | null }).ended_at ?? null)
+  let shiftPatch: Record<string, unknown>
+  try {
+    shiftPatch = buildManagerShiftPatch(
+      existing as { started_at: string; ended_at: string | null; status: string },
+      parsed.data
+    )
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'נתונים לא תקינים' },
+      { status: 400 }
+    )
+  }
 
   const patch: Record<string, unknown> = {
+    ...shiftPatch,
     updated_at: new Date().toISOString(),
     edited_at: new Date().toISOString(),
     edited_by: auth.ctx.userId,
-  }
-
-  if (parsed.data.started_at) patch.started_at = parsed.data.started_at
-  if (parsed.data.ended_at !== undefined) patch.ended_at = parsed.data.ended_at
-  if (parsed.data.status) patch.status = parsed.data.status
-  if (parsed.data.admin_note !== undefined) patch.admin_note = parsed.data.admin_note
-
-  if (ended_at) {
-    patch.total_minutes = computeTotalMinutes(started_at, ended_at)
   }
 
   const { data: updated, error } = await admin

@@ -20,6 +20,7 @@ type RawShiftRow = {
   ended_at: string | null
   total_minutes: number | null
   status: string
+  admin_note?: string | null
   workers?: { full_name?: string; hourly_rate?: number | null } | { full_name?: string; hourly_rate?: number | null }[] | null
 }
 
@@ -36,6 +37,7 @@ function formatShift(row: RawShiftRow): AttendanceHistoryShift {
     ended_at: row.ended_at,
     total_minutes: row.total_minutes,
     status: row.status,
+    admin_note: row.admin_note ?? null,
   }
 }
 
@@ -76,6 +78,7 @@ export async function GET(req: NextRequest) {
           ended_at,
           total_minutes,
           status,
+          admin_note,
           workers ( full_name, hourly_rate )
         `
         )

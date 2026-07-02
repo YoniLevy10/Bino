@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, Fragment, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/lib/attendance-history'
 import { Button, Card, EmptyState, SearchInput, Select, theme } from '../ui'
 import { PageListSkeleton } from '../page-skeleton'
+import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
 
 type HistoryScope = 'all' | 'month'
 
@@ -37,6 +38,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
   const [loaded, setLoaded] = useState(false)
   const [exportingMonthKey, setExportingMonthKey] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const range = useMemo(() => {
     const currentStart = startOfCurrentMonth()
@@ -242,6 +244,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
         <p style={styles.rangeHint}>
           {range.label} · {filteredShifts.length} משמרות בארכיון
           {searchTerm.trim() ? ` · חיפוש: «${searchTerm.trim()}»` : ''}
+          {' · '}ניתן לערוך שעות בלחיצה על «עריכה» בשורת משמרת
         </p>
       ) : null}
 
@@ -264,6 +267,10 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
               group={monthGroup}
               isMobile={isMobile}
               exporting={exportingMonthKey === monthGroup.monthKey}
+              editingId={editingId}
+              onEdit={(id) => setEditingId(id)}
+              onEditClose={() => setEditingId(null)}
+              onShiftSaved={() => void load()}
               onExport={() => void exportMonthExcel(monthGroup)}
             />
           ))}
@@ -277,11 +284,19 @@ function MonthHistoryGroup({
   group,
   isMobile,
   exporting,
+  editingId,
+  onEdit,
+  onEditClose,
+  onShiftSaved,
   onExport,
 }: {
   group: AttendanceHistoryMonthGroup
   isMobile: boolean
   exporting: boolean
+  editingId: string | null
+  onEdit: (id: string) => void
+  onEditClose: () => void
+  onShiftSaved: () => void | Promise<void>
   onExport: () => void
 }) {
   return (
@@ -321,6 +336,23 @@ function MonthHistoryGroup({
                     {' · '}
                     {SHIFT_STATUS_HE[shift.status] ?? shift.status}
                   </div>
+                  {editingId === shift.id ? (
+                    <div style={styles.mobileEdit}>
+                      <AttendanceShiftEditForm
+                        shift={shift}
+                        compact
+                        onCancel={onEditClose}
+                        onSaved={async () => {
+                          onEditClose()
+                          await onShiftSaved()
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(shift.id)} style={{ marginTop: 8 }}>
+                      עריכה
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -333,18 +365,40 @@ function MonthHistoryGroup({
                     <th style={styles.th}>יציאה</th>
                     <th style={styles.th}>שעות</th>
                     <th style={styles.th}>סטטוס</th>
+                    <th style={styles.th}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {workerGroup.shifts.map((shift) => (
-                    <tr key={shift.id}>
-                      <td style={styles.td}>{formatAttendanceDateTime(shift.started_at)}</td>
-                      <td style={styles.td}>
-                        {shift.ended_at ? formatAttendanceDateTime(shift.ended_at) : '—'}
-                      </td>
-                      <td style={styles.td}>{formatShiftMinutes(shift.total_minutes)}</td>
-                      <td style={styles.td}>{SHIFT_STATUS_HE[shift.status] ?? shift.status}</td>
-                    </tr>
+                    <Fragment key={shift.id}>
+                      <tr>
+                        <td style={styles.td}>{formatAttendanceDateTime(shift.started_at)}</td>
+                        <td style={styles.td}>
+                          {shift.ended_at ? formatAttendanceDateTime(shift.ended_at) : '—'}
+                        </td>
+                        <td style={styles.td}>{formatShiftMinutes(shift.total_minutes)}</td>
+                        <td style={styles.td}>{SHIFT_STATUS_HE[shift.status] ?? shift.status}</td>
+                        <td style={styles.td}>
+                          <Button variant="ghost" size="sm" onClick={() => onEdit(shift.id)}>
+                            עריכה
+                          </Button>
+                        </td>
+                      </tr>
+                      {editingId === shift.id ? (
+                        <tr>
+                          <td colSpan={5} style={styles.editCell}>
+                            <AttendanceShiftEditForm
+                              shift={shift}
+                              onCancel={onEditClose}
+                              onSaved={async () => {
+                                onEditClose()
+                                await onShiftSaved()
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -476,5 +530,16 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '12px',
     color: theme.colors.textMuted,
     lineHeight: 1.4,
+  },
+  mobileEdit: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: theme.radius.md,
+    background: theme.colors.primaryMuted,
+  },
+  editCell: {
+    padding: '12px 20px',
+    background: theme.colors.primaryMuted,
+    borderBottom: `1px solid ${theme.colors.border}`,
   },
 }

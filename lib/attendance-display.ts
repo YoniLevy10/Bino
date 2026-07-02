@@ -101,3 +101,27 @@ export function buildPastMonthOptions(count = 24): { value: string; label: strin
 export function monthKeyFromIso(iso: string): string {
   return monthKeyFromDate(new Date(iso))
 }
+
+/** `datetime-local` input value in the user's local timezone. */
+export function toDatetimeLocalValue(iso: string | Date): string {
+  const d = typeof iso === 'string' ? new Date(iso) : iso
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Parse `datetime-local` string to ISO (local wall-clock → UTC). */
+export function parseDatetimeLocalValue(value: string): string {
+  return new Date(value).toISOString()
+}
+
+/** Decimal hours (e.g. 8.5) from shift minutes. */
+export function minutesToDecimalHours(totalMinutes: number | null | undefined): string {
+  if (totalMinutes == null || !Number.isFinite(totalMinutes)) return ''
+  return (Math.max(0, totalMinutes) / 60).toFixed(2)
+}
+
+export function decimalHoursToMinutes(hours: string): number | null {
+  const n = Number(hours.replace(',', '.').trim())
+  if (!Number.isFinite(n) || n < 0) return null
+  return Math.round(n * 60)
+}

@@ -15,6 +15,7 @@ import {
 } from '@/lib/attendance-display'
 import { Button, Card, theme } from '../ui'
 import { PageListSkeleton } from '../page-skeleton'
+import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
 
 type ShiftRow = {
   id: string
@@ -91,10 +92,6 @@ export function AttendanceShiftsReport({
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editStarted, setEditStarted] = useState('')
-  const [editEnded, setEditEnded] = useState('')
-  const [editNote, setEditNote] = useState('')
-  const [savingEdit, setSavingEdit] = useState(false)
 
   const monthOptions = buildMonthOptions()
 
@@ -197,34 +194,6 @@ export function AttendanceShiftsReport({
 
   function openEdit(row: ShiftRow) {
     setEditingId(row.id)
-    setEditStarted(row.started_at.slice(0, 16))
-    setEditEnded(row.ended_at ? row.ended_at.slice(0, 16) : '')
-    setEditNote(row.admin_note ?? '')
-  }
-
-  async function saveEdit() {
-    if (!editingId) return
-    setSavingEdit(true)
-    try {
-      const res = await fetchWithTimeout(`/api/attendance/shifts/${editingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          started_at: new Date(editStarted).toISOString(),
-          ended_at: editEnded ? new Date(editEnded).toISOString() : null,
-          admin_note: editNote.trim() || null,
-        }),
-      })
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      if (!res.ok) throw new Error(body.error || 'עדכון נכשל')
-      toast.success('המשמרת עודכנה')
-      setEditingId(null)
-      await load({ force: true })
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
-    } finally {
-      setSavingEdit(false)
-    }
   }
 
   function printPdf() {
@@ -342,8 +311,8 @@ export function AttendanceShiftsReport({
       <h3 style={styles.sectionTitle}>דוח שעות — חודש נוכחי</h3>
       <p style={styles.hint}>
         {lockToCurrentMonth
-          ? `מציג את ${periodLabel} בלבד. בתחילת כל חודש הנתונים עוברים אוטומטית ללשונית «היסטוריה».`
-          : 'סינון לפי עובד ותקופה. ניתן לערוך משמרות, להוריד Excel/PDF או CSV ל-Green Invoice.'}
+          ? `מציג את ${periodLabel} בלבד. לחצו «עריכה» בשורת משמרת כדי לתקן שעות כניסה/יציאה או סה״כ שעות לעובד.`
+          : 'סינון לפי עובד ותקופה. לחצו «עריכה» לתיקון שעות, הורדת Excel/PDF או CSV ל-Green Invoice.'}
       </p>
 
       {workerSummaries.length > 0 ? (
@@ -444,26 +413,14 @@ export function AttendanceShiftsReport({
                   {editingId === row.id ? (
                     <tr key={`${row.id}-edit`}>
                       <td colSpan={6} style={styles.editCell}>
-                        <div style={styles.editRow}>
-                          <label>
-                            כניסה
-                            <input type="datetime-local" value={editStarted} onChange={(e) => setEditStarted(e.target.value)} style={styles.select} />
-                          </label>
-                          <label>
-                            יציאה
-                            <input type="datetime-local" value={editEnded} onChange={(e) => setEditEnded(e.target.value)} style={styles.select} />
-                          </label>
-                          <label>
-                            הערה
-                            <input value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.select} />
-                          </label>
-                          <Button variant="primary" size="sm" loading={savingEdit} onClick={() => void saveEdit()}>
-                            שמור
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => setEditingId(null)}>
-                            ביטול
-                          </Button>
-                        </div>
+                        <AttendanceShiftEditForm
+                          shift={row}
+                          onCancel={() => setEditingId(null)}
+                          onSaved={async () => {
+                            setEditingId(null)
+                            await load({ force: true })
+                          }}
+                        />
                       </td>
                     </tr>
                   ) : null}
@@ -523,7 +480,6 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: `1px solid ${theme.colors.border}`,
   },
   editCell: { background: theme.colors.primaryMuted, padding: 12 },
-  editRow: { display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' },
   periodBadge: {
     padding: '8px 14px',
     borderRadius: 8,
