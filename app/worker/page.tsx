@@ -139,7 +139,6 @@ function WorkerPageInner() {
   const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
   const [attachmentsByTicket, setAttachmentsByTicket] = useState<Record<string, WorkerAttachment[]>>({})
   const [attachmentsLoadingId, setAttachmentsLoadingId] = useState<string | null>(null)
-  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null)
   const [pushEnabling, setPushEnabling] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
 
@@ -377,31 +376,6 @@ function WorkerPageInner() {
     setActiveTicketId(ticketId)
     if (expandedChatId && expandedChatId !== ticketId) setExpandedChatId(null)
     if (expandedWaId && expandedWaId !== ticketId) setExpandedWaId(null)
-  }
-
-  async function uploadWorkerPhoto(ticketId: string, file: File) {
-    if (!tokenSession) return
-    setUploadingPhotoId(ticketId)
-    try {
-      const formData = new FormData()
-      formData.append('token', tokenSession.token)
-      formData.append('ticket_id', ticketId)
-      formData.append('file', file)
-      const res = await fetchWithTimeout('/api/worker/attachments', { method: 'POST', body: formData })
-      const json = (await res.json()) as { error?: string; attachment?: WorkerAttachment }
-      if (!res.ok) throw new Error(json.error || 'העלאה נכשלה')
-      if (json.attachment) {
-        setAttachmentsByTicket((prev) => ({
-          ...prev,
-          [ticketId]: [json.attachment as WorkerAttachment, ...(prev[ticketId] || [])],
-        }))
-      }
-      toast.success('תמונה הועלתה')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'העלאה נכשלה')
-    } finally {
-      setUploadingPhotoId(null)
-    }
   }
 
   async function confirmCloseTicket() {
@@ -707,8 +681,6 @@ function WorkerPageInner() {
                   }
                   attachments={attachmentsByTicket[t.id]}
                   attachmentsLoading={attachmentsLoadingId === t.id}
-                  onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
-                  uploadingPhoto={uploadingPhotoId === t.id}
                   showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
                   chatSlot={
                     expandedChatId === t.id ? (
