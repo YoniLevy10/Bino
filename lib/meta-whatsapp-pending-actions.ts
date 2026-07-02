@@ -35,6 +35,14 @@ export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
     href: 'https://business.facebook.com/wa/manage/message-templates/',
   },
   {
+    id: 'worker_completion_photo',
+    title: 'יצירת תבנית worker_completion_photo',
+    description:
+      'Utility · עברית · Header=תמונה דינמית · {{1}}=שם בניין. נדרש לשליחת תמונת סיום תיקון לדייר מחוץ ל-24 שעות.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
     id: 'waba_cleanup',
     title: 'מחיקת 2 חשבונות WABA כפולים',
     description:
@@ -84,4 +92,8 @@ export function metaTemplateNameWorkerAssignment(): string {
 
 export function metaTemplateNameManagerReply(): string {
   return process.env.WHATSAPP_META_TEMPLATE_MANAGER_REPLY?.trim() || 'manager_reply'
+}
+
+export function metaTemplateNameWorkerCompletionPhoto(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_WORKER_COMPLETION_PHOTO?.trim() || 'worker_completion_photo'
 }

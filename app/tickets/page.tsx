@@ -30,6 +30,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
+import { recoverWhatsAppMediaForTicket } from '@/lib/recover-ticket-media-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -687,14 +688,9 @@ export default function TicketsPage() {
   async function tryRecoverWhatsAppMedia(ticketId: string): Promise<boolean> {
     setRecoveringMedia(true)
     try {
-      const res = await fetchWithTimeout('/api/tickets/recover-whatsapp-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_id: ticketId }),
-      })
-      const json = (await res.json()) as { recovered?: boolean; error?: string }
-      if (!res.ok || !json.recovered) {
-        if (json.error && res.status !== 404) toast.error(json.error)
+      const { recovered, error } = await recoverWhatsAppMediaForTicket(ticketId)
+      if (!recovered) {
+        if (error) toast.error(error)
         return false
       }
       toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')

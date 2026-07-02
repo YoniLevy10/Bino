@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, type CSSProperties, type ReactNode } from 'react'
-import { PriorityDot, StatusBadge, theme } from '../ui'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Button, PriorityDot, StatusBadge, theme } from '../ui'
 import { isTicketStatus, ticketStatusLabelHe, type TicketStatus } from '@/lib/ticket-status'
 import { formatRelativeTimeHe } from '@/lib/relative-time-he'
 import { googleMapsHref, telHref, wazeHref } from '@/lib/contact-links'
@@ -47,6 +47,8 @@ type WorkerTicketCardProps = {
   waSlot?: ReactNode
   attachments?: WorkerAttachment[]
   attachmentsLoading?: boolean
+  onUploadPhoto?: (file: File) => void
+  uploadingPhoto?: boolean
   showAttendanceHint?: boolean
 }
 
@@ -86,10 +88,13 @@ export function WorkerTicketCard({
   waSlot,
   attachments = [],
   attachmentsLoading = false,
+  onUploadPhoto,
+  uploadingPhoto = false,
   showAttendanceHint = false,
 }: WorkerTicketCardProps) {
   const [descOpen, setDescOpen] = useState(false)
   const [moreStatusOpen, setMoreStatusOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const desc = ticket.description?.trim() || '—'
   const longDesc = desc.length > 120
   const priority = ticket.priority || 'MEDIUM'
@@ -101,6 +106,8 @@ export function WorkerTicketCard({
   const mediaAttachments = attachments.filter(
     (a) => (a.mime_type?.startsWith('image/') || a.mime_type?.startsWith('video/')) && a.public_url
   )
+  const completionPhotos = mediaAttachments.filter((a) => a.attachment_type === 'worker_completion')
+  const otherMedia = mediaAttachments.filter((a) => a.attachment_type !== 'worker_completion')
   const statusBusy = !!busyKey?.startsWith(`${ticket.id}:`)
   const showMoreStatus =
     moreStatusOpen ||
@@ -282,35 +289,81 @@ export function WorkerTicketCard({
         {expandedWa && waSlot ? <div style={styles.threadWrap(colors)}>{waSlot}</div> : null}
         {expandedChat && chatSlot ? <div style={styles.threadWrap(colors)}>{chatSlot}</div> : null}
 
-        {attachmentsLoading || mediaAttachments.length > 0 ? (
-          <div style={styles.attachSection(colors)}>
-            <div style={styles.attachHead(colors)}>תמונות מהתקלה</div>
-            {attachmentsLoading ? (
-              <p style={styles.attachMuted(colors)}>טוען…</p>
-            ) : (
-              <div style={styles.gallery}>
-                {mediaAttachments.map((a) =>
-                  a.mime_type?.startsWith('video/') ? (
-                    <div key={a.id} style={styles.videoWrap}>
-                      <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
-                    </div>
-                  ) : (
-                    <a
-                      key={a.id}
-                      href={a.public_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.thumbWrap}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
-                    </a>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        ) : null}
+        <div style={styles.attachSection(colors)}>
+          <div style={styles.attachHead(colors)}>תמונות מהשטח</div>
+          {attachmentsLoading ? (
+            <p style={styles.attachMuted(colors)}>טוען…</p>
+          ) : (
+            <>
+              {otherMedia.length > 0 ? (
+                <div style={styles.gallery}>
+                  {otherMedia.map((a) =>
+                    a.mime_type?.startsWith('video/') ? (
+                      <div key={a.id} style={styles.videoWrap}>
+                        <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
+                      </div>
+                    ) : (
+                      <a
+                        key={a.id}
+                        href={a.public_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.thumbWrap}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
+                      </a>
+                    )
+                  )}
+                </div>
+              ) : null}
+              {completionPhotos.length > 0 ? (
+                <>
+                  <p style={styles.attachReady(colors)}>תמונה לדייר מוכנה — תישלח בסגירת התקלה</p>
+                  <div style={styles.gallery}>
+                    {completionPhotos.map((a) => (
+                      <a
+                        key={a.id}
+                        href={a.public_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.thumbWrap}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
+                      </a>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </>
+          )}
+          {onUploadPhoto ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) onUploadPhoto(file)
+                  e.target.value = ''
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={uploadingPhoto}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                צלם תמונה לדייר
+              </Button>
+              <p style={styles.attachHint(colors)}>התמונה תישלח לדייר ב-WhatsApp כשתלחצו &quot;סיימתי&quot;</p>
+            </>
+          ) : null}
+        </div>
 
         <button type="button" style={styles.numCopyBtn(colors)} onClick={() => void copyTicketNumber()}>
           העתק מספר תקלה #{ticket.ticket_number}
@@ -635,6 +688,18 @@ const styles = {
     fontSize: '13px',
     color: c.textMuted,
     margin: '0 0 8px',
+  }),
+  attachReady: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '12px',
+    fontWeight: 600,
+    color: c.success,
+    margin: '0 0 8px',
+  }),
+  attachHint: (c: typeof theme.colors): CSSProperties => ({
+    fontSize: '11px',
+    color: c.textMuted,
+    margin: '8px 0 0',
+    lineHeight: 1.35,
   }),
   gallery: {
     display: 'flex',

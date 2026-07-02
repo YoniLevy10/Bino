@@ -22,7 +22,9 @@ type ShiftRow = {
 
 export type AttendanceAnomaliesData = {
   pending_review?: EventRow[]
+  conflicts?: EventRow[]
   missing_checkout?: ShiftRow[]
+  suspicious?: EventRow[]
 }
 
 function nameOf(w: EventRow['workers']): string {
@@ -40,12 +42,14 @@ type Props = {
 
 export function AttendanceAnomalies({ data: external, loading: externalLoading }: Props = {}) {
   const [pending, setPending] = useState<EventRow[]>(external?.pending_review ?? [])
+  const [conflicts, setConflicts] = useState<EventRow[]>(external?.conflicts ?? [])
   const [missing, setMissing] = useState<ShiftRow[]>(external?.missing_checkout ?? [])
   const [loading, setLoading] = useState(external === undefined && externalLoading !== false)
 
   useEffect(() => {
     if (external !== undefined) {
       setPending(external?.pending_review ?? [])
+      setConflicts(external?.conflicts ?? [])
       setMissing(external?.missing_checkout ?? [])
       setLoading(externalLoading ?? false)
       return
@@ -56,6 +60,7 @@ export function AttendanceAnomalies({ data: external, loading: externalLoading }
         if (res.ok) {
           const body = (await res.json()) as AnomaliesData
           setPending(body.pending_review ?? [])
+          setConflicts(body.conflicts ?? [])
           setMissing(body.missing_checkout ?? [])
         }
       } finally {
@@ -65,7 +70,7 @@ export function AttendanceAnomalies({ data: external, loading: externalLoading }
   }, [external, externalLoading])
 
   if (loading) return null
-  if (pending.length === 0 && missing.length === 0) return null
+  if (pending.length === 0 && conflicts.length === 0 && missing.length === 0) return null
 
   return (
     <Card style={{ marginBottom: 16, borderColor: theme.colors.warning }}>
@@ -77,6 +82,20 @@ export function AttendanceAnomalies({ data: external, loading: externalLoading }
             {missing.map((m) => (
               <li key={m.id}>
                 {nameOf(m.workers)} · נכנס/ה {formatAttendanceDateTime(m.started_at)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {conflicts.length > 0 ? (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>חריגים ({conflicts.length})</div>
+          <ul style={styles.list}>
+            {conflicts.slice(0, 8).map((e) => (
+              <li key={e.id}>
+                {nameOf(e.workers)} · {EVENT_TYPE_HE[e.event_type] ?? e.event_type} ·{' '}
+                {formatAttendanceDateTime(e.client_recorded_at)}
+                {e.suspicious_reason ? ` · ${e.suspicious_reason}` : ''}
               </li>
             ))}
           </ul>

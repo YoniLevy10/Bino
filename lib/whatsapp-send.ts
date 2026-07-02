@@ -20,9 +20,15 @@ const WHATSAPP_API_TIMEOUT_MS = 15_000
 type WhatsAppTemplateComponent = {
   type: string
   parameters?: Array<{
-    type: 'text'
-    text: string
+    type: string
+    text?: string
+    image?: { link: string }
   }>
+}
+
+type WhatsAppTemplateBuildOpts = {
+  bodyParams?: string[]
+  headerImageLink?: string
 }
 
 function captureMetaError(
@@ -102,6 +108,30 @@ export async function sendWhatsAppTextMessageWithCredentials(
       body,
     },
   })
+}
+
+export async function sendWhatsAppImageMessageWithCredentials(
+  phoneNumberId: string,
+  accessToken: string,
+  to: string,
+  imageLink: string,
+  caption?: string,
+  metaErrorOut?: { current?: WhatsAppMetaError }
+): Promise<Record<string, unknown> | null> {
+  const image: Record<string, string> = { link: imageLink }
+  const trimmedCaption = caption?.trim()
+  if (trimmedCaption) image.caption = trimmedCaption.slice(0, 1024)
+
+  return sendRawWhatsAppPayloadWithCredentials(
+    phoneNumberId,
+    accessToken,
+    {
+      to,
+      type: 'image',
+      image,
+    },
+    metaErrorOut
+  )
 }
 
 type WhatsAppCredentials = {
@@ -200,9 +230,18 @@ function buildWhatsAppTemplatePayload(
   to: string,
   templateName: string,
   bodyParams: string[],
-  languageCode: string
+  languageCode: string,
+  opts?: Pick<WhatsAppTemplateBuildOpts, 'headerImageLink'>
 ): Record<string, unknown> {
   const components: WhatsAppTemplateComponent[] = []
+
+  const headerImageLink = opts?.headerImageLink?.trim()
+  if (headerImageLink) {
+    components.push({
+      type: 'header',
+      parameters: [{ type: 'image', image: { link: headerImageLink } }],
+    })
+  }
 
   if (bodyParams.length > 0) {
     components.push({
@@ -279,6 +318,49 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
       'WhatsApp template send returned null (timeout/error)',
       {
         send_kind: 'template',
+        template_params: bodyParams,
+        template_language: languageCode,
+        meta_http_status: metaErrorOut?.current?.httpStatus,
+        meta_error_code: metaErrorOut?.current?.metaCode,
+      }
+    )
+  }
+
+  return result
+}
+
+export async function sendWhatsAppImageTemplateMessageWithCredentials(
+  to: string,
+  templateName: string,
+  imageLink: string,
+  bodyParams: string[] = [],
+  creds: WhatsAppCredentials,
+  languageCode = 'he',
+  failureLog?: WhatsAppFailureLog,
+  metaErrorOut?: { current?: WhatsAppMetaError }
+): Promise<Record<string, unknown> | null> {
+  const phoneNumberId = creds.phoneNumberId
+  const accessToken = creds.accessToken
+  if (!phoneNumberId || !accessToken) {
+    getLogger().warn('WA_SEND', 'image template send skipped: missing credentials')
+    return null
+  }
+
+  const result = await sendRawWhatsAppPayloadWithCredentials(
+    phoneNumberId,
+    accessToken,
+    buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode, { headerImageLink: imageLink }),
+    metaErrorOut
+  )
+
+  if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
+    await insertWhatsAppSendFailure(
+      failureLog.clientId,
+      to,
+      templateName,
+      'WhatsApp image template send returned null (timeout/error)',
+      {
+        send_kind: 'image_template',
         template_params: bodyParams,
         template_language: languageCode,
         meta_http_status: metaErrorOut?.current?.httpStatus,

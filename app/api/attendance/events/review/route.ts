@@ -5,6 +5,7 @@ import { attendanceEventReviewBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { applyShiftWhenEventApproved } from '@/lib/attendance-event-shift-apply'
 
 export async function PATCH(req: Request) {
   const auth = await requireSessionClientId()
@@ -33,6 +34,19 @@ export async function PATCH(req: Request) {
   const addonCheck = await requireClientPaidAddon(admin, auth.ctx.clientId, PAID_ADDON_KEYS.worker_stamp)
   if (!addonCheck.ok) return addonCheck.response
 
+  const { data: existing, error: existingErr } = await admin
+    .from('worker_attendance_events')
+    .select('id, worker_id, event_type, client_recorded_at, tag_id, source, sync_status')
+    .eq('id', event_id)
+    .eq('client_id', auth.ctx.clientId)
+    .maybeSingle()
+
+  if (existingErr || !existing) {
+    return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
+  }
+
+  const previousStatus = (existing as { sync_status?: string }).sync_status
+
   const { data: updated, error } = await admin
     .from('worker_attendance_events')
     .update({
@@ -46,6 +60,20 @@ export async function PATCH(req: Request) {
 
   if (error || !updated) {
     return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
+  }
+
+  if (
+    sync_status === 'synced' &&
+    (previousStatus === 'pending_review' || previousStatus === 'conflict')
+  ) {
+    await applyShiftWhenEventApproved(admin, auth.ctx.clientId, existing as {
+      id: string
+      worker_id: string
+      event_type: string
+      client_recorded_at: string
+      tag_id: string | null
+      source: string | null
+    })
   }
 
   return NextResponse.json({ success: true, event: updated })

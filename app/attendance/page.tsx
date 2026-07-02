@@ -304,7 +304,7 @@ export default function AttendancePage() {
                       {new Date(row.client_recorded_at).toLocaleString('he-IL')}
                     </td>
                     <td style={styles.td}>
-                      {row.sync_status === 'pending_review' ? (
+                      {(row.sync_status === 'pending_review' || row.sync_status === 'conflict') ? (
                         <Button
                           variant="secondary"
                           size="sm"

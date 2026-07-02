@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getLogger } from '@/lib/logging'
+import { autoCloseAllStaleOpenShifts } from '@/lib/attendance-auto-close'
+import { listWorkerStampEnabledClientIds } from '@/lib/worker-stamp-clients'
 
-const STALE_HOURS = 12
-
-/** Mark open shifts older than 12h as missing_checkout. */
+/** Auto-close open shifts older than 10h (no checkout) so workers can clock in again. */
 export async function GET(req: NextRequest) {
   const logger = getLogger()
   if (!verifyCronRequest(req)) {
@@ -14,35 +14,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const admin = getSupabaseAdmin()
-    const cutoff = new Date(Date.now() - STALE_HOURS * 3_600_000).toISOString()
+    const clientIds = await listWorkerStampEnabledClientIds(admin)
+    const { found, closed } = await autoCloseAllStaleOpenShifts(admin, { clientIds })
 
-    const { data: stale, error } = await admin
-      .from('worker_attendance')
-      .select('id, client_id, worker_id, started_at')
-      .eq('status', 'open')
-      .lt('started_at', cutoff)
-
-    if (error) {
-      logger.error('CRON', 'attendance-stale-shifts query failed', new Error(error.message))
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    let updated = 0
-    for (const row of stale ?? []) {
-      const { error: upErr } = await admin
-        .from('worker_attendance')
-        .update({
-          status: 'missing_checkout',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', (row as { id: string }).id)
-        .eq('status', 'open')
-
-      if (!upErr) updated++
-    }
-
-    logger.info('CRON', 'attendance-stale-shifts done', { found: stale?.length ?? 0, updated })
-    return NextResponse.json({ ok: true, found: stale?.length ?? 0, updated })
+    logger.info('CRON', 'attendance-stale-shifts done', { found, closed })
+    return NextResponse.json({ ok: true, found, closed })
   } catch (e) {
     logger.error('CRON', 'attendance-stale-shifts failed', e instanceof Error ? e : new Error(String(e)))
     return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })

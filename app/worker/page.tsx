@@ -139,6 +139,9 @@ function WorkerPageInner() {
   const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
   const [attachmentsByTicket, setAttachmentsByTicket] = useState<Record<string, WorkerAttachment[]>>({})
   const [attachmentsLoadingId, setAttachmentsLoadingId] = useState<string | null>(null)
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null)
+  const [closePhotoFile, setClosePhotoFile] = useState<File | null>(null)
+  const [closePhotoPreview, setClosePhotoPreview] = useState<string | null>(null)
   const [pushEnabling, setPushEnabling] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
 
@@ -378,13 +381,101 @@ function WorkerPageInner() {
     if (expandedWaId && expandedWaId !== ticketId) setExpandedWaId(null)
   }
 
+  function ticketHasCompletionPhoto(ticketId: string): boolean {
+    return (attachmentsByTicket[ticketId] || []).some((a) => a.attachment_type === 'worker_completion')
+  }
+
+  function clearClosePhoto() {
+    setClosePhotoFile(null)
+    setClosePhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }
+
+  function openCloseConfirm(ticketId: string) {
+    clearClosePhoto()
+    setConfirmCloseId(ticketId)
+    if (tokenSession && !attachmentsByTicket[ticketId]) {
+      void loadAttachments(tokenSession.token, ticketId)
+    }
+  }
+
+  async function uploadWorkerPhoto(ticketId: string, file: File) {
+    if (!tokenSession) return
+    setUploadingPhotoId(ticketId)
+    try {
+      const formData = new FormData()
+      formData.append('token', tokenSession.token)
+      formData.append('ticket_id', ticketId)
+      formData.append('file', file)
+      const res = await fetchWithTimeout('/api/worker/attachments', { method: 'POST', body: formData })
+      const json = (await res.json()) as { error?: string; attachment?: WorkerAttachment }
+      if (!res.ok) throw new Error(json.error || 'העלאה נכשלה')
+      if (json.attachment) {
+        setAttachmentsByTicket((prev) => ({
+          ...prev,
+          [ticketId]: [json.attachment as WorkerAttachment, ...(prev[ticketId] || [])],
+        }))
+      }
+      toast.success('תמונה נשמרה — תישלח לדייר בסגירת התקלה')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'העלאה נכשלה')
+    } finally {
+      setUploadingPhotoId(null)
+    }
+  }
+
   async function confirmCloseTicket() {
-    if (!confirmCloseId) return
+    if (!confirmCloseId || !tokenSession) return
     const id = confirmCloseId
+    const hasStagedPhoto = ticketHasCompletionPhoto(id) || !!closePhotoFile
+    if (!hasStagedPhoto) {
+      toast.error('צלמו תמונה לדייר לפני הסגירה')
+      return
+    }
+
+    setBusyKey(`${id}:CLOSED`)
     setConfirmCloseId(null)
-    await setTicketStatus(id, 'CLOSED')
-    setActiveTicketId(null)
-    setExpandedChatId(null)
+    try {
+      const formData = new FormData()
+      formData.append('token', tokenSession.token)
+      formData.append('ticket_id', id)
+      if (closePhotoFile) formData.append('file', closePhotoFile)
+
+      const res = await fetchWithTimeout('/api/worker/complete', { method: 'POST', body: formData })
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        completion_image_sent?: boolean
+        completion_image_error?: string
+        reporter_has_phone?: boolean
+        whatsapp_sent?: boolean
+      }
+      if (!res.ok) throw new Error(json.error || 'סגירה נכשלה')
+
+      removeClosedTicketFromView(id)
+      setActiveTicketId(null)
+      setExpandedChatId(null)
+      setExpandedWaId(null)
+      clearClosePhoto()
+      toast.success(TM.ticketClosed)
+
+      if (json.completion_image_sent) {
+        toast.success('תמונת התיקון נשלחה לדייר')
+      } else if (json.completion_image_error) {
+        toast.error(`תמונה לדייר: ${json.completion_image_error}`)
+      }
+
+      toastReporterClosedNotifySummary({
+        success: true,
+        reporter_has_phone: json.reporter_has_phone,
+        whatsapp_sent: json.whatsapp_sent,
+      })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'סגירה נכשלה')
+    } finally {
+      setBusyKey(null)
+    }
   }
 
   async function enablePush() {
@@ -486,7 +577,7 @@ function WorkerPageInner() {
 
   function handleWorkerStatusChange(ticketId: string, status: TicketStatus) {
     if (status === 'CLOSED') {
-      setConfirmCloseId(ticketId)
+      openCloseConfirm(ticketId)
       return
     }
     void setTicketStatus(ticketId, status)
@@ -681,6 +772,8 @@ function WorkerPageInner() {
                   }
                   attachments={attachmentsByTicket[t.id]}
                   attachmentsLoading={attachmentsLoadingId === t.id}
+                  onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
+                  uploadingPhoto={uploadingPhotoId === t.id}
                   showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
                   chatSlot={
                     expandedChatId === t.id ? (
@@ -756,13 +849,58 @@ function WorkerPageInner() {
           <div style={{ ...styles.confirmOverlay, background: palette.overlay }}>
             <div style={{ ...styles.confirmBox, background: palette.surface, borderColor: palette.border }}>
               <p style={{ ...styles.confirmText, color: palette.textPrimary }}>סיימתם לטפל בתקלה?</p>
-              <p style={{ ...styles.confirmSub, color: palette.textMuted }}>הדייר יקבל הודעה שהתקלה נסגרה</p>
+              <p style={{ ...styles.confirmSub, color: palette.textMuted }}>
+                צלמו תמונה לדייר — היא תישלח ב-WhatsApp ואז התקלה תיסגר. הדייר יקבל גם הודעה שהתקלה נסגרה.
+              </p>
+              {ticketHasCompletionPhoto(confirmCloseId) && !closePhotoPreview ? (
+                <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>יש תמונה מוכנה מהשטח</p>
+              ) : null}
+              {closePhotoPreview ? (
+                <div style={styles.confirmPreviewWrap}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={closePhotoPreview} alt="תצוגה מקדימה" style={styles.confirmPreview} />
+                </div>
+              ) : null}
+              {!ticketHasCompletionPhoto(confirmCloseId) || closePhotoPreview ? (
+                <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.primary }}>
+                  {closePhotoPreview ? 'החלפת תמונה' : 'צלמו תמונה עכשיו'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    capture="environment"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setClosePhotoFile(file)
+                      setClosePhotoPreview((prev) => {
+                        if (prev) URL.revokeObjectURL(prev)
+                        return URL.createObjectURL(file)
+                      })
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              ) : null}
               <div style={styles.confirmActions}>
-                <Button variant="secondary" size="md" onClick={() => setConfirmCloseId(null)}>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => {
+                    setConfirmCloseId(null)
+                    clearClosePhoto()
+                  }}
+                >
                   עדיין לא
                 </Button>
-                <Button variant="primary" size="md" loading={busyKey === `${confirmCloseId}:CLOSED`} onClick={() => void confirmCloseTicket()}>
-                  כן, סיימתי
+                <Button
+                  variant="primary"
+                  size="md"
+                  loading={busyKey === `${confirmCloseId}:CLOSED`}
+                  disabled={!ticketHasCompletionPhoto(confirmCloseId) && !closePhotoFile}
+                  onClick={() => void confirmCloseTicket()}
+                >
+                  שלח לדייר וסגור
                 </Button>
               </div>
             </div>
@@ -984,6 +1122,33 @@ const styles: Record<string, CSSProperties> = {
   },
   confirmText: { margin: '0 0 8px', fontSize: '17px', fontWeight: 700, textAlign: 'center' as const },
   confirmSub: { margin: '0 0 16px', fontSize: '14px', textAlign: 'center' as const, lineHeight: 1.4 },
+  confirmPhotoReady: { margin: '0 0 12px', fontSize: '13px', fontWeight: 700, textAlign: 'center' as const },
+  confirmPreviewWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '12px',
+  },
+  confirmPreview: {
+    width: '100%',
+    maxWidth: '220px',
+    maxHeight: '180px',
+    objectFit: 'cover',
+    borderRadius: theme.radius.md,
+  },
+  confirmPhotoBtn: {
+    display: 'block',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    marginBottom: '16px',
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    border: `2px dashed ${theme.colors.border}`,
+    background: theme.colors.muted,
+    fontSize: '14px',
+    fontWeight: 700,
+    textAlign: 'center' as const,
+    cursor: 'pointer',
+  },
   confirmActions: { display: 'flex', gap: '8px', justifyContent: 'center' },
   ticket: {
     padding: '14px', borderRadius: theme.radius.md,

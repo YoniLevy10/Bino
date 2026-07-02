@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
+import { recoverWhatsAppMediaForTicket } from '@/lib/recover-ticket-media-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -521,7 +522,7 @@ export default function DashboardPage() {
     return attachment.signed_url || attachment.file_url || ''
   }
 
-  async function loadTicketDrawerData(ticketId: string) {
+  async function loadTicketDrawerData(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
     setDrawerLoading(true)
     setTicketLogs([])
     setSelectedTicketAttachments([])
@@ -530,19 +531,34 @@ export default function DashboardPage() {
         supabase
           .from('ticket_logs')
           .select('*')
-          .eq('ticket_id', ticketId)
+          .eq('ticket_id', ticket.id)
           .order('created_at', { ascending: false }),
         supabase
           .from('ticket_attachments')
-          .select('id, ticket_id, file_name, file_url, mime_type, created_at')
-          .eq('ticket_id', ticketId)
+          .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, created_at')
+          .eq('ticket_id', ticket.id)
           .order('created_at', { ascending: false }),
       ])
 
       setTicketLogs((logsResult.data as TicketLog[]) || [])
 
       if (attachResult.error) throw attachResult.error
-      const data = attachResult.data
+      let data = attachResult.data
+      if ((!data || data.length === 0) && ticket.reporter_phone && ticket.status !== 'CLOSED') {
+        const { recovered, error } = await recoverWhatsAppMediaForTicket(ticket.id)
+        if (recovered) {
+          toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')
+          const retry = await supabase
+            .from('ticket_attachments')
+            .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, created_at')
+            .eq('ticket_id', ticket.id)
+            .order('created_at', { ascending: false })
+          data = retry.data ?? []
+        } else if (error) {
+          /* silent — no stashed media */
+        }
+      }
+
       if (data && data.length > 0) {
         const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, data as AttachmentRow[])
         setSelectedTicketAttachments(attachmentsWithUrls)
@@ -563,7 +579,7 @@ export default function DashboardPage() {
     setDraftStatus(ticket.status)
     setDraftWorkerId(ticket.assigned_worker_id || '')
     void loadProfessionals()
-    void loadTicketDrawerData(ticket.id)
+    void loadTicketDrawerData(ticket)
   }
 
   function closeDrawer() {
@@ -918,7 +934,7 @@ export default function DashboardPage() {
           await loadData(true)
           if (selectedTicket) {
             setDraftStatus('PROFESSIONAL_ESCORT')
-            void loadTicketDrawerData(selectedTicket.id)
+            void loadTicketDrawerData(selectedTicket)
           }
         }}
         ticketLogs={ticketLogs}
