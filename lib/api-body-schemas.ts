@@ -358,6 +358,7 @@ export const patchWorkerAttendanceShiftBodySchema = z
   .object({
     started_at: z.string().datetime({ offset: true }).optional(),
     ended_at: z.string().datetime({ offset: true }).nullable().optional(),
+    total_minutes: z.number().int().min(0).max(24 * 60).optional(),
     status: z.enum(['open', 'closed', 'missing_checkout', 'edited', 'pending_review']).optional(),
     admin_note: z.string().max(2000).nullable().optional(),
   })
@@ -365,6 +366,7 @@ export const patchWorkerAttendanceShiftBodySchema = z
     (v) =>
       v.started_at !== undefined ||
       v.ended_at !== undefined ||
+      v.total_minutes !== undefined ||
       v.status !== undefined ||
       v.admin_note !== undefined,
     { message: 'נדרש לפחות שדה אחד' }
