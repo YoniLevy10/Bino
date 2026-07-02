@@ -5,6 +5,7 @@ import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { autoCloseStaleOpenShiftsForWorker } from '@/lib/attendance-auto-close'
 
 function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
 
     const addonCheck = await requireClientPaidAddon(admin, worker.client_id, PAID_ADDON_KEYS.worker_stamp)
     if (!addonCheck.ok) return addonCheck.response
+
+    await autoCloseStaleOpenShiftsForWorker(admin, worker.client_id, worker.id)
 
     const [tagsRes, projectsRes, shiftRes] = await Promise.all([
       admin

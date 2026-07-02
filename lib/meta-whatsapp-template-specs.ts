@@ -110,6 +110,29 @@ export const META_WHATSAPP_TEMPLATE_SPECS: MetaTemplateSpec[] = [
     buttons: null,
     notes: ['כבר מאושר — לעיון בלבד.'],
   },
+  {
+    id: 'worker_completion_photo',
+    metaName: 'worker_completion_photo',
+    status: 'todo',
+    category: 'Utility',
+    language: 'he',
+    languageLabel: 'עברית',
+    purpose: 'תמונת סיום תיקון מעובד לדייר — גם מחוץ לחלון 24 שעות',
+    body:
+      'שלום, התיקון בבניין {{1}} בוצע.\n\n' +
+      'תודה על הדיווח.',
+    variables: [{ index: 1, label: 'שם בניין / פרויקט', sample: 'מקור חיים 40ב' }],
+    header: 'תמונה (Image) — URL דינמי בזמן שליחה',
+    footer: null,
+    buttons: null,
+    notes: [
+      'שם התבנית ב-Meta חייב להיות בדיוק: worker_completion_photo',
+      'קטגוריה Utility — לא Marketing.',
+      'Header מסוג Image (לא טקסט).',
+      'ללא אימוג\'ים.',
+      'נדרש לאישור Meta לפני שליחה מחוץ ל-24 שעות.',
+    ],
+  },
 ]
 
 export function getMetaTemplateSpecById(id: string): MetaTemplateSpec | undefined {

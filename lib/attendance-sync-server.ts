@@ -11,6 +11,7 @@ import {
 } from '@/lib/attendance-types'
 import { normalizeTagCode } from '@/lib/nfc-tag-utils'
 import { DUPLICATE_SCAN_WINDOW_MS } from '@/lib/attendance-duplicate'
+import { autoCloseStaleOpenShiftsForWorker } from '@/lib/attendance-auto-close'
 
 export function computeSyncDelayMinutes(clientRecordedAt: string, serverReceivedAt: Date): number {
   const clientMs = new Date(clientRecordedAt).getTime()
@@ -126,6 +127,8 @@ export async function processAttendanceSyncEvent(
   const timeEval = evaluateClientTimestamp(input.client_recorded_at, serverReceivedAt)
   let sync_status: AttendanceSyncStatus = timeEval.force_review ? 'pending_review' : 'synced'
   let suspicious_reason = timeEval.suspicious_reason
+
+  await autoCloseStaleOpenShiftsForWorker(admin, clientId, workerId, serverReceivedAt)
 
   const { data: openShift } = await admin
     .from('worker_attendance')

@@ -5,13 +5,20 @@ import { loadWhatsAppInboxContext, managerReplyTemplateParams } from '@/lib/what
 import { metaTemplateNameManagerReply } from '@/lib/meta-whatsapp-pending-actions'
 import {
   extractMetaWaMessageId,
+  isWithinWhatsAppSessionWindow,
   listWhatsAppMessagesForPhone,
   loadWhatsAppThreadForPhone,
   persistWhatsAppMessage,
   type WhatsAppThreadLoadResult,
 } from '@/lib/whatsapp-message-store'
-import { sendWhatsAppImageMessageWithCredentials, type WhatsAppMetaError } from '@/lib/whatsapp-send'
+import {
+  sendWhatsAppImageMessageWithCredentials,
+  sendWhatsAppImageTemplateMessageWithCredentials,
+  type WhatsAppMetaError,
+} from '@/lib/whatsapp-send'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { metaTemplateNameWorkerCompletionPhoto } from '@/lib/meta-whatsapp-pending-actions'
+import { getLogger } from '@/lib/logging'
 
 export type TicketReplySendResult = ResidentOutboundResult & {
   reporterPhone?: string
@@ -87,6 +94,26 @@ export type TicketImageSendResult = {
   reporterPhone?: string
   errorMessage?: string
   metaErrorCode?: number
+  mode?: 'text_image' | 'template_image'
+}
+
+async function fetchTicketProjectName(
+  admin: SupabaseClient,
+  ticketId: string,
+  clientId: string
+): Promise<string> {
+  const { data } = await admin
+    .from('tickets')
+    .select('projects(name)')
+    .eq('id', ticketId)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  const projects = (data as { projects?: { name?: string | null } | { name?: string | null }[] | null } | null)
+    ?.projects
+  const name = Array.isArray(projects) ? projects[0]?.name : projects?.name
+  return name?.trim() || 'הבניין'
 }
 
 export async function sendTicketResidentWhatsAppImage(
@@ -116,49 +143,89 @@ export async function sendTicketResidentWhatsAppImage(
     return { sent: false, reporterPhone, errorMessage: 'WhatsApp לא מוגדר ללקוח' }
   }
 
+  const creds = { phoneNumberId, accessToken }
+  const projectName = await fetchTicketProjectName(admin, opts.ticketId, opts.clientId)
+  const caption = opts.caption?.trim() || 'התיקון בוצע. תודה על הדיווח.'
+  const inSession = await isWithinWhatsAppSessionWindow(admin, opts.clientId, reporterPhone)
+  const logger = getLogger()
+
+  const persistImage = (mode: 'text_image' | 'template_image', wa: Record<string, unknown> | null) => {
+    void persistWhatsAppMessage(admin, {
+      clientId: opts.clientId,
+      phone: reporterPhone,
+      direction: 'out',
+      body: mode === 'template_image' ? `[template:${metaTemplateNameWorkerCompletionPhoto()}] ${projectName}` : caption,
+      messageType: 'image',
+      waMessageId: extractMetaWaMessageId(wa),
+      ticketId: opts.ticketId,
+    })
+  }
+
+  if (inSession) {
+    const metaErr: { current?: WhatsAppMetaError } = {}
+    const wa = await sendWhatsAppImageMessageWithCredentials(
+      phoneNumberId,
+      accessToken,
+      reporterPhone,
+      opts.imageLink,
+      caption,
+      metaErr
+    )
+
+    if (wa) {
+      persistImage('text_image', wa)
+      return { sent: true, reporterPhone, mode: 'text_image' }
+    }
+
+    logger.warn('WA_SEND', 'completion image in-session failed, trying template', {
+      clientId: opts.clientId,
+      ticketId: opts.ticketId,
+      error: metaErr.current?.message,
+    })
+  }
+
   const metaErr: { current?: WhatsAppMetaError } = {}
-  const wa = await sendWhatsAppImageMessageWithCredentials(
-    phoneNumberId,
-    accessToken,
+  const wa = await sendWhatsAppImageTemplateMessageWithCredentials(
     reporterPhone,
+    metaTemplateNameWorkerCompletionPhoto(),
     opts.imageLink,
-    opts.caption,
+    [projectName],
+    creds,
+    'he',
+    { clientId: opts.clientId },
     metaErr
   )
 
-  if (!wa) {
-    const errorMessage = metaErr.current?.message ?? 'שליחת תמונה ב-WhatsApp נכשלה'
-    await insertWhatsAppSendFailure(
-      opts.clientId,
-      reporterPhone,
-      opts.caption ?? '[image]',
-      errorMessage,
-      {
-        send_kind: 'worker_completion_image',
-        ticket_id: opts.ticketId,
-        meta_http_status: metaErr.current?.httpStatus,
-        meta_error_code: metaErr.current?.metaCode,
-      }
-    )
-    return {
-      sent: false,
-      reporterPhone,
-      errorMessage,
-      metaErrorCode: metaErr.current?.metaCode,
-    }
+  if (wa) {
+    persistImage('template_image', wa)
+    logger.info('WA_SEND', 'completion image template sent', {
+      clientId: opts.clientId,
+      ticketId: opts.ticketId,
+      inSession,
+    })
+    return { sent: true, reporterPhone, mode: 'template_image' }
   }
 
-  void persistWhatsAppMessage(admin, {
-    clientId: opts.clientId,
-    phone: reporterPhone,
-    direction: 'out',
-    body: opts.caption?.trim() || 'תמונת סיום תיקון',
-    messageType: 'image',
-    waMessageId: extractMetaWaMessageId(wa),
-    ticketId: opts.ticketId,
-  })
+  const errorMessage = metaErr.current?.message ?? 'שליחת תמונה ב-WhatsApp נכשלה'
+  await insertWhatsAppSendFailure(
+    opts.clientId,
+    reporterPhone,
+    caption,
+    errorMessage,
+    {
+      send_kind: 'worker_completion_image',
+      ticket_id: opts.ticketId,
+      meta_http_status: metaErr.current?.httpStatus,
+      meta_error_code: metaErr.current?.metaCode,
+    }
+  )
 
-  return { sent: true, reporterPhone }
+  return {
+    sent: false,
+    reporterPhone,
+    errorMessage,
+    metaErrorCode: metaErr.current?.metaCode,
+  }
 }
 
 export async function listTicketWhatsAppMessages(
