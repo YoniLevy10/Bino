@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, Fragment, type CSSProperties } from 'react'
+import { supabase } from '@/lib/supabase'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import {
@@ -21,6 +22,9 @@ import {
 import { Button, Card, EmptyState, SearchInput, Select, theme } from '../ui'
 import { PageListSkeleton } from '../page-skeleton'
 import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
+import { AttendanceShiftCreateForm } from './AttendanceShiftCreateForm'
+
+type WorkerOpt = { id: string; full_name: string }
 
 type HistoryScope = 'all' | 'month'
 
@@ -39,6 +43,8 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
   const [exportingMonthKey, setExportingMonthKey] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [workers, setWorkers] = useState<WorkerOpt[]>([])
 
   const range = useMemo(() => {
     const currentStart = startOfCurrentMonth()
@@ -59,6 +65,18 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
       label: 'כל החודשים שעברו',
     }
   }, [scope, monthKey, pastMonthOptions])
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from('workers')
+        .select('id, full_name')
+        .is('deleted_at', null)
+        .eq('is_active', true)
+        .order('full_name')
+      setWorkers((data as WorkerOpt[]) ?? [])
+    })()
+  }, [])
 
   const load = useCallback(async () => {
     if (!range) return
@@ -216,6 +234,19 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
           <Button
             variant="secondary"
             size="sm"
+            onClick={() => {
+              setCreating(true)
+              setEditingId(null)
+            }}
+            style={{ minHeight: '48px', flexShrink: 0 }}
+          >
+            הוסף משמרת
+          </Button>
+        ) : null}
+        {!isMobile ? (
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={filteredShifts.length === 0}
             loading={exportingAll}
             onClick={() => void exportAllExcel()}
@@ -227,7 +258,17 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
       </div>
 
       {isMobile ? (
-        <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setCreating(true)
+              setEditingId(null)
+            }}
+            style={{ width: '100%', minHeight: '48px' }}
+          >
+            הוסף משמרת
+          </Button>
           <Button
             variant="secondary"
             disabled={filteredShifts.length === 0}
@@ -244,8 +285,22 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
         <p style={styles.rangeHint}>
           {range.label} · {filteredShifts.length} משמרות בארכיון
           {searchTerm.trim() ? ` · חיפוש: «${searchTerm.trim()}»` : ''}
-          {' · '}ניתן לערוך שעות בלחיצה על «עריכה» בשורת משמרת
+          {' · '}עריכה, מחיקה והוספת משמרות ידנית
         </p>
+      ) : null}
+
+      {creating ? (
+        <div style={styles.createPanel}>
+          <AttendanceShiftCreateForm
+            workers={workers}
+            onCancel={() => setCreating(false)}
+            onCreated={async () => {
+              setCreating(false)
+              await load()
+            }}
+            compact={isMobile}
+          />
+        </div>
       ) : null}
 
       {showSkeleton ? (
@@ -268,7 +323,10 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
               isMobile={isMobile}
               exporting={exportingMonthKey === monthGroup.monthKey}
               editingId={editingId}
-              onEdit={(id) => setEditingId(id)}
+              onEdit={(id) => {
+                setCreating(false)
+                setEditingId(id)
+              }}
               onEditClose={() => setEditingId(null)}
               onShiftSaved={() => void load()}
               onExport={() => void exportMonthExcel(monthGroup)}
@@ -346,6 +404,10 @@ function MonthHistoryGroup({
                           onEditClose()
                           await onShiftSaved()
                         }}
+                        onDeleted={async () => {
+                          onEditClose()
+                          await onShiftSaved()
+                        }}
                       />
                     </div>
                   ) : (
@@ -391,6 +453,10 @@ function MonthHistoryGroup({
                               shift={shift}
                               onCancel={onEditClose}
                               onSaved={async () => {
+                                onEditClose()
+                                await onShiftSaved()
+                              }}
+                              onDeleted={async () => {
                                 onEditClose()
                                 await onShiftSaved()
                               }}
@@ -541,5 +607,12 @@ const styles: Record<string, CSSProperties> = {
     padding: '12px 20px',
     background: theme.colors.primaryMuted,
     borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  createPanel: {
+    margin: '0 16px 16px',
+    padding: 14,
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.primaryMuted,
   },
 }

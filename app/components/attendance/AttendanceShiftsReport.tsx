@@ -16,6 +16,7 @@ import {
 import { Button, Card, theme } from '../ui'
 import { PageListSkeleton } from '../page-skeleton'
 import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
+import { AttendanceShiftCreateForm } from './AttendanceShiftCreateForm'
 
 type ShiftRow = {
   id: string
@@ -92,6 +93,7 @@ export function AttendanceShiftsReport({
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
 
   const monthOptions = buildMonthOptions()
 
@@ -193,6 +195,7 @@ export function AttendanceShiftsReport({
   }, [shifts])
 
   function openEdit(row: ShiftRow) {
+    setCreating(false)
     setEditingId(row.id)
   }
 
@@ -311,8 +314,8 @@ export function AttendanceShiftsReport({
       <h3 style={styles.sectionTitle}>דוח שעות — חודש נוכחי</h3>
       <p style={styles.hint}>
         {lockToCurrentMonth
-          ? `מציג את ${periodLabel} בלבד. לחצו «עריכה» בשורת משמרת כדי לתקן שעות כניסה/יציאה או סה״כ שעות לעובד.`
-          : 'סינון לפי עובד ותקופה. לחצו «עריכה» לתיקון שעות, הורדת Excel/PDF או CSV ל-Green Invoice.'}
+          ? `מציג את ${periodLabel} בלבד. עריכה, מחיקה והוספת משמרות ידנית — «עריכה» או «הוסף משמרת».`
+          : 'סינון לפי עובד ותקופה. עריכה, מחיקה והוספת משמרות ידנית.'}
       </p>
 
       {workerSummaries.length > 0 ? (
@@ -376,7 +379,31 @@ export function AttendanceShiftsReport({
         <Button variant="secondary" size="sm" onClick={() => void load({ force: true })}>
           רענון
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setCreating(true)
+            setEditingId(null)
+          }}
+        >
+          הוסף משמרת
+        </Button>
       </div>
+
+      {creating ? (
+        <div style={styles.createPanel}>
+          <AttendanceShiftCreateForm
+            workers={workers}
+            defaultWorkerId={workerId}
+            onCancel={() => setCreating(false)}
+            onCreated={async () => {
+              setCreating(false)
+              await load({ force: true })
+            }}
+          />
+        </div>
+      ) : null}
 
       {loading ? (
         <PageListSkeleton rows={5} />
@@ -417,6 +444,10 @@ export function AttendanceShiftsReport({
                           shift={row}
                           onCancel={() => setEditingId(null)}
                           onSaved={async () => {
+                            setEditingId(null)
+                            await load({ force: true })
+                          }}
+                          onDeleted={async () => {
                             setEditingId(null)
                             await load({ force: true })
                           }}
@@ -480,6 +511,13 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: `1px solid ${theme.colors.border}`,
   },
   editCell: { background: theme.colors.primaryMuted, padding: 12 },
+  createPanel: {
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 10,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.primaryMuted,
+  },
   periodBadge: {
     padding: '8px 14px',
     borderRadius: 8,
