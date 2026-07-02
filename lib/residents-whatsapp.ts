@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 
 export type ResidentRow = {
   id: string
@@ -16,6 +17,16 @@ export function residentPromptGreetingPrefix(fullName: string | null | undefined
   if (!trimmed || trimmed === 'דייר WhatsApp') return 'שלום, '
   const first = trimmed.split(/\s+/)[0] ?? trimmed
   return `שלום ${first}, `
+}
+
+/** Manager/worker notifications — resident name when known, else phone (or test label). */
+export function reporterDisplayNameForNotification(
+  phone: string,
+  fullName: string | null | undefined
+): string {
+  const trimmed = (fullName ?? '').trim()
+  if (trimmed && trimmed !== 'דייר WhatsApp') return trimmed
+  return displayReporterForExternalMessage(phone)
 }
 
 export function normalizePhone(phone: string): string {

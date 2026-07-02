@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { residentPromptGreetingPrefix } from '@/lib/residents-whatsapp'
+import { residentPromptGreetingPrefix, reporterDisplayNameForNotification } from '@/lib/residents-whatsapp'
 
 describe('residentPromptGreetingPrefix', () => {
   it('uses first name for known residents', () => {
@@ -12,5 +12,19 @@ describe('residentPromptGreetingPrefix', () => {
 
   it('falls back to generic greeting when empty', () => {
     expect(residentPromptGreetingPrefix('')).toBe('שלום, ')
+  })
+})
+
+describe('reporterDisplayNameForNotification', () => {
+  it('shows resident name when known', () => {
+    expect(reporterDisplayNameForNotification('972501234567', 'יוני לוי')).toBe('יוני לוי')
+  })
+
+  it('falls back to phone when name unknown', () => {
+    expect(reporterDisplayNameForNotification('972501234567', null)).toBe('972501234567')
+  })
+
+  it('falls back to phone for placeholder WhatsApp resident', () => {
+    expect(reporterDisplayNameForNotification('972501234567', 'דייר WhatsApp')).toBe('972501234567')
   })
 })
