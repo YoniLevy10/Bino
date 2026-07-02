@@ -5,8 +5,6 @@ import { workerUpdateTicketBodySchema } from '@/lib/api-body-schemas'
 import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { isWorkerSettableStatus } from '@/lib/ticket-status'
-import { getLogger } from '@/lib/logging'
-import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
 
 export async function GET(req: NextRequest) {
   try {
@@ -71,6 +69,16 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
     }
 
+    if (status === 'CLOSED') {
+      return NextResponse.json(
+        {
+          error:
+            'לסגירת תקלה יש לצלם תמונה לדייר וללחוץ «שלח לדייר וסגור» בפורטל העובד',
+        },
+        { status: 400 }
+      )
+    }
+
     const worker = await resolveWorkerFromToken(token)
     if (!worker) {
       return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
@@ -89,16 +97,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'תקלה לא נמצאה או שאינה משויכת אליך' }, { status: 404 })
     }
 
-    const previousStatus = (existing as { status?: string }).status
-
     const payload: Record<string, string | null> = {
       status,
       updated_at: new Date().toISOString(),
-    }
-    if (status === 'CLOSED') {
-      payload.closed_at = new Date().toISOString()
-    } else {
-      payload.closed_at = null
+      closed_at: null,
     }
 
     const { data: updated, error } = await admin
@@ -117,35 +119,6 @@ export async function PATCH(req: NextRequest) {
     }
     if (!updated) {
       return NextResponse.json({ error: 'תקלה לא נמצאה או שאינה משויכת אליך' }, { status: 404 })
-    }
-
-    if (status === 'CLOSED' && previousStatus !== 'CLOSED') {
-      const logger = getLogger()
-      const notify = await notifyReporterIfTicketNewlyClosed(
-        admin,
-        worker.client_id,
-        ticketId,
-        previousStatus
-      )
-      logger.info('WORKER_API', 'Reporter WhatsApp on close (worker/tickets)', {
-        ticket_id: ticketId,
-        whatsappSent: notify?.whatsappSent ?? false,
-      })
-      if (notify?.whatsappError) {
-        logger.warn('WORKER_API', 'Reporter WhatsApp on close failed (worker/tickets)', {
-          ticket_id: ticketId,
-          error: notify.whatsappError,
-        })
-      }
-
-      return NextResponse.json({
-        ok: true,
-        ticket: updated,
-        reporter_has_phone: notify?.reporterHasPhone ?? false,
-        whatsapp_sent: notify?.whatsappSent ?? false,
-        sms_sent: notify?.smsSent ?? false,
-        whatsapp_error: notify?.whatsappError,
-      })
     }
 
     return NextResponse.json({ ok: true, ticket: updated })
