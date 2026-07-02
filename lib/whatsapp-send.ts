@@ -104,6 +104,30 @@ export async function sendWhatsAppTextMessageWithCredentials(
   })
 }
 
+export async function sendWhatsAppImageMessageWithCredentials(
+  phoneNumberId: string,
+  accessToken: string,
+  to: string,
+  imageLink: string,
+  caption?: string,
+  metaErrorOut?: { current?: WhatsAppMetaError }
+): Promise<Record<string, unknown> | null> {
+  const image: Record<string, string> = { link: imageLink }
+  const trimmedCaption = caption?.trim()
+  if (trimmedCaption) image.caption = trimmedCaption.slice(0, 1024)
+
+  return sendRawWhatsAppPayloadWithCredentials(
+    phoneNumberId,
+    accessToken,
+    {
+      to,
+      type: 'image',
+      image,
+    },
+    metaErrorOut
+  )
+}
+
 type WhatsAppCredentials = {
   phoneNumberId?: string
   accessToken?: string
