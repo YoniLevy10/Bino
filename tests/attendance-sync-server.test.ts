@@ -30,13 +30,10 @@ describe('attendance-sync-server', () => {
     expect(r.suspicious_reason).toContain('sync_delay_over_6h')
   })
 
-  it('resolveEventTypeForTag office toggles clock in/out', () => {
+  it('resolveEventTypeForTag toggles clock in/out for office and project', () => {
     expect(resolveEventTypeForTag('office', false)).toBe('clock_in')
     expect(resolveEventTypeForTag('office', true)).toBe('clock_out')
-  })
-
-  it('resolveEventTypeForTag project uses project_visit in MVP', () => {
-    expect(resolveEventTypeForTag('project', false)).toBe('project_visit')
-    expect(resolveEventTypeForTag('project', true)).toBe('project_visit')
+    expect(resolveEventTypeForTag('project', false)).toBe('clock_in')
+    expect(resolveEventTypeForTag('project', true)).toBe('clock_out')
   })
 })
