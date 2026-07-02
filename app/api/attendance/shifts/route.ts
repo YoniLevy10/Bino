@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit, checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { createWorkerAttendanceShiftBodySchema } from '@/lib/api-body-schemas'
+import { buildManualShiftRow } from '@/lib/attendance-shift-manual'
 
 /** Tenant: shift rows for hours report / Excel export. */
 export async function GET(req: NextRequest) {
@@ -34,6 +36,7 @@ export async function GET(req: NextRequest) {
       ended_at,
       total_minutes,
       status,
+      admin_note,
       start_source,
       end_source,
       workers ( full_name, hourly_rate )
@@ -53,4 +56,92 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ shifts: data ?? [] })
+}
+
+/** Manager: create a shift manually (backfill / correction). */
+export async function POST(req: NextRequest) {
+  const auth = await requireSessionClientId()
+  if (!auth.ok) return auth.response
+
+  const admin = auth.ctx.admin
+  const rl = await checkAuthenticatedPostRouteLimit(admin, auth.ctx.userId, 'attendance-shift-create')
+  if (rl.isLimited) {
+    return NextResponse.json({ error: 'יותר מדי בקשות' }, { status: 429 })
+  }
+
+  const addonCheck = await requireClientPaidAddon(admin, auth.ctx.clientId, PAID_ADDON_KEYS.worker_stamp)
+  if (!addonCheck.ok) return addonCheck.response
+
+  let raw: unknown
+  try {
+    raw = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'JSON לא תקין' }, { status: 400 })
+  }
+
+  const parsed = createWorkerAttendanceShiftBodySchema.safeParse(raw)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const { worker_id } = parsed.data
+
+  const { data: worker, error: workerErr } = await admin
+    .from('workers')
+    .select('id')
+    .eq('id', worker_id)
+    .eq('client_id', auth.ctx.clientId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (workerErr || !worker) {
+    return NextResponse.json({ error: 'עובד לא נמצא' }, { status: 404 })
+  }
+
+  let shiftRow
+  try {
+    shiftRow = buildManualShiftRow(parsed.data)
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'נתונים לא תקינים' },
+      { status: 400 }
+    )
+  }
+
+  if (shiftRow.status === 'open') {
+    const { data: openShift } = await admin
+      .from('worker_attendance')
+      .select('id')
+      .eq('client_id', auth.ctx.clientId)
+      .eq('worker_id', worker_id)
+      .eq('status', 'open')
+      .maybeSingle()
+
+    if (openShift) {
+      return NextResponse.json(
+        { error: 'לעובד כבר יש משמרת פתוחה — סגרו אותה לפני פתיחת משמרת חדשה' },
+        { status: 409 }
+      )
+    }
+  }
+
+  const now = new Date().toISOString()
+  const { data: created, error } = await admin
+    .from('worker_attendance')
+    .insert({
+      client_id: auth.ctx.clientId,
+      worker_id,
+      ...shiftRow,
+      edited_at: now,
+      edited_by: auth.ctx.userId,
+      updated_at: now,
+    })
+    .select('id, worker_id, started_at, ended_at, total_minutes, status, admin_note')
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ shift: created }, { status: 201 })
 }

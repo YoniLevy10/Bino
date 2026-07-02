@@ -77,3 +77,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ shift: updated })
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireSessionClientId()
+  if (!auth.ok) return auth.response
+
+  const admin = auth.ctx.admin
+  const rl = await checkAuthenticatedPostRouteLimit(admin, auth.ctx.userId, 'attendance-shift-delete')
+  if (rl.isLimited) {
+    return NextResponse.json({ error: 'יותר מדי בקשות' }, { status: 429 })
+  }
+
+  const addonCheck = await requireClientPaidAddon(admin, auth.ctx.clientId, PAID_ADDON_KEYS.worker_stamp)
+  if (!addonCheck.ok) return addonCheck.response
+
+  const { id } = await params
+
+  const { data: existing, error: fetchErr } = await admin
+    .from('worker_attendance')
+    .select('id')
+    .eq('id', id)
+    .eq('client_id', auth.ctx.clientId)
+    .maybeSingle()
+
+  if (fetchErr || !existing) {
+    return NextResponse.json({ error: 'משמרת לא נמצאה' }, { status: 404 })
+  }
+
+  const { error } = await admin
+    .from('worker_attendance')
+    .delete()
+    .eq('id', id)
+    .eq('client_id', auth.ctx.clientId)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}

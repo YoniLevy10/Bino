@@ -372,6 +372,15 @@ export const patchWorkerAttendanceShiftBodySchema = z
     { message: 'נדרש לפחות שדה אחד' }
   )
 
+export const createWorkerAttendanceShiftBodySchema = z.object({
+  worker_id: z.string().uuid(),
+  started_at: z.string().datetime({ offset: true }),
+  ended_at: z.string().datetime({ offset: true }).nullable().optional(),
+  total_minutes: z.number().int().min(0).max(24 * 60).optional(),
+  status: z.enum(['open', 'closed', 'missing_checkout', 'edited', 'pending_review']).optional(),
+  admin_note: z.string().max(2000).nullable().optional(),
+})
+
 export const sendWorkerAttendanceLinksBodySchema = z.object({
   worker_ids: z.array(z.string().uuid()).min(1).max(100).optional(),
   send_all_active: z.boolean().optional(),

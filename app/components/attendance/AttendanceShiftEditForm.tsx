@@ -7,21 +7,32 @@ import {
   decimalHoursToMinutes,
   minutesToDecimalHours,
   parseDatetimeLocalValue,
+  SHIFT_STATUS_HE,
   toDatetimeLocalValue,
 } from '@/lib/attendance-display'
 import { Button, theme } from '../ui'
+
+const SHIFT_STATUS_OPTIONS = [
+  'open',
+  'closed',
+  'missing_checkout',
+  'edited',
+  'pending_review',
+] as const
 
 export type EditableAttendanceShift = {
   id: string
   started_at: string
   ended_at: string | null
   total_minutes: number | null
+  status: string
   admin_note?: string | null
 }
 
 type AttendanceShiftEditFormProps = {
   shift: EditableAttendanceShift
   onSaved: () => void | Promise<void>
+  onDeleted?: () => void | Promise<void>
   onCancel: () => void
   compact?: boolean
 }
@@ -29,32 +40,34 @@ type AttendanceShiftEditFormProps = {
 export function AttendanceShiftEditForm({
   shift,
   onSaved,
+  onDeleted,
   onCancel,
   compact = false,
 }: AttendanceShiftEditFormProps) {
   const [editStarted, setEditStarted] = useState('')
   const [editEnded, setEditEnded] = useState('')
   const [editHours, setEditHours] = useState('')
+  const [editStatus, setEditStatus] = useState('')
   const [editNote, setEditNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [hoursTouched, setHoursTouched] = useState(false)
 
   useEffect(() => {
     setEditStarted(toDatetimeLocalValue(shift.started_at))
     setEditEnded(shift.ended_at ? toDatetimeLocalValue(shift.ended_at) : '')
     setEditHours(minutesToDecimalHours(shift.total_minutes))
+    setEditStatus(shift.status)
     setEditNote(shift.admin_note ?? '')
     setHoursTouched(false)
-  }, [shift.id, shift.started_at, shift.ended_at, shift.total_minutes, shift.admin_note])
+  }, [shift.id, shift.started_at, shift.ended_at, shift.total_minutes, shift.status, shift.admin_note])
 
   function syncHoursFromTimes(started: string, ended: string) {
     if (!started || !ended) {
       setEditHours('')
       return
     }
-    const mins = Math.round(
-      (new Date(ended).getTime() - new Date(started).getTime()) / 60_000
-    )
+    const mins = Math.round((new Date(ended).getTime() - new Date(started).getTime()) / 60_000)
     if (mins >= 0) setEditHours(minutesToDecimalHours(mins))
   }
 
@@ -91,6 +104,7 @@ export function AttendanceShiftEditForm({
     try {
       const body: Record<string, unknown> = {
         admin_note: editNote.trim() || null,
+        status: editStatus,
       }
 
       if (hoursTouched) {
@@ -116,6 +130,30 @@ export function AttendanceShiftEditForm({
       toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function deleteShift() {
+    if (
+      !window.confirm(
+        'למחוק את המשמרת? הפעולה אינה ניתנת לביטול. שעות העובד בדוח יתעדכנו בהתאם.'
+      )
+    ) {
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const res = await fetchWithTimeout(`/api/attendance/shifts/${shift.id}`, { method: 'DELETE' })
+      const resBody = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) throw new Error(resBody.error || 'מחיקה נכשלה')
+      toast.success('המשמרת נמחקה')
+      if (onDeleted) await onDeleted()
+      else await onSaved()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'מחיקה נכשלה')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -152,16 +190,37 @@ export function AttendanceShiftEditForm({
           style={{ ...styles.input, width: 96 }}
         />
       </label>
+      <label style={styles.label}>
+        סטטוס
+        <select
+          value={editStatus}
+          onChange={(e) => setEditStatus(e.target.value)}
+          style={styles.input}
+        >
+          {SHIFT_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {SHIFT_STATUS_HE[s] ?? s}
+            </option>
+          ))}
+        </select>
+      </label>
       <label style={{ ...styles.label, flex: 1, minWidth: 140 }}>
         הערת מנהל
         <input value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.input} />
       </label>
-      <Button variant="primary" size="sm" loading={saving} onClick={() => void saveEdit()}>
-        שמור
-      </Button>
-      <Button variant="secondary" size="sm" onClick={onCancel}>
-        ביטול
-      </Button>
+      <div style={styles.actions}>
+        <Button variant="primary" size="sm" loading={saving} onClick={() => void saveEdit()}>
+          שמור
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onCancel}>
+          ביטול
+        </Button>
+        {onDeleted ? (
+          <Button variant="ghost" size="sm" loading={deleting} onClick={() => void deleteShift()}>
+            מחק משמרת
+          </Button>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -194,5 +253,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     background: theme.colors.surface,
     minHeight: 40,
+  },
+  actions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
   },
 }
