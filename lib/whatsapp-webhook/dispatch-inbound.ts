@@ -69,13 +69,14 @@ import {
 import { getLogger } from '@/lib/logging'
 import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
-import { isWhatsAppTestSender, whatsappDbPhoneKey, displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
+import { isWhatsAppTestSender, whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import {
   findResidentByPhoneClient,
   getOrCreateResident,
+  reporterDisplayNameForNotification,
 } from '@/lib/residents-whatsapp'
 
 const logger = getLogger()
@@ -1704,12 +1705,23 @@ export async function runWhatsAppInboundBackground(
       buildingNumber = parsedStart?.buildingNumber || null
     }
 
+    const reporterDisplayName = reporterDisplayNameForNotification(
+      waRecipient,
+      knownResidentForSession?.full_name
+    )
+    const reporterNameForTicket =
+      knownResidentForSession?.full_name?.trim() &&
+      knownResidentForSession.full_name.trim() !== 'דייר WhatsApp'
+        ? knownResidentForSession.full_name.trim()
+        : null
+
     const { data: createdTicket, error: ticketError } = await supabaseAdmin
       .from('tickets')
       .insert({
         client_id: webhookClientId,
         project_id: session.project_id,
         reporter_phone: from,
+        reporter_name: reporterNameForTicket,
         description: ticketDescription,
         status: 'NEW',
         priority: ticketPriority,
@@ -1829,7 +1841,7 @@ export async function runWhatsAppInboundBackground(
             building_line: buildingLine,
             ticket_number: String(createdTicket.ticket_number),
             description: ticketDescription || 'ללא פירוט',
-            reporter_name: displayReporterForExternalMessage(waRecipient),
+            reporter_name: reporterDisplayName,
             dashboard_url: getPublicTicketsUrl(),
             client_name: clientName,
           }
@@ -1850,7 +1862,7 @@ export async function runWhatsAppInboundBackground(
               project_name: projectForNotification.name,
               ticket_number: createdTicket.ticket_number,
               description: ticketDescription || 'ללא פירוט',
-              reporter_name: displayReporterForExternalMessage(waRecipient),
+              reporter_name: reporterDisplayName,
               sms_sender_name: smsSenderName,
               client_name: clientName,
             })
@@ -1883,7 +1895,7 @@ export async function runWhatsAppInboundBackground(
             building_line: buildingText,
             ticket_number: String(createdTicket.ticket_number),
             description: ticketDescription || '',
-            reporter_name: displayReporterForExternalMessage(waRecipient),
+            reporter_name: reporterDisplayName,
             project_name: projectNameForWa,
           }
         ),
