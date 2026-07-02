@@ -3,10 +3,11 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getLogger } from '@/lib/logging'
 import { notifyWorkerOpenShiftReminderPush } from '@/lib/push-notifications'
+import { listWorkerStampEnabledClientIds } from '@/lib/worker-stamp-clients'
 
-const REMINDER_HOURS = 10
+const REMINDER_HOURS = 9
 
-/** Push workers who still have an open shift after N hours. */
+/** Push workers who still have an open shift after N hours (before 10h auto-close). */
 export async function GET(req: NextRequest) {
   const logger = getLogger()
   if (!verifyCronRequest(req)) {
@@ -15,13 +16,21 @@ export async function GET(req: NextRequest) {
 
   try {
     const admin = getSupabaseAdmin()
+    const clientIds = await listWorkerStampEnabledClientIds(admin)
+    if (clientIds.length === 0) {
+      return NextResponse.json({ ok: true, reminders: 0 })
+    }
+
     const cutoff = new Date(Date.now() - REMINDER_HOURS * 3_600_000).toISOString()
+    const autoCloseCutoff = new Date(Date.now() - 10 * 3_600_000).toISOString()
 
     const { data: rows, error } = await admin
       .from('worker_attendance')
       .select('id, worker_id, client_id, started_at')
       .eq('status', 'open')
+      .in('client_id', clientIds)
       .lt('started_at', cutoff)
+      .gte('started_at', autoCloseCutoff)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

@@ -140,12 +140,18 @@ export async function processAttendanceSyncEvent(
 
   const hasOpenShift = !!openShift
 
-  if (input.event_type === 'clock_in' && hasOpenShift) {
+  const event_type = resolveEventTypeForTag(tag.tag_type, hasOpenShift)
+
+  if (input.event_type !== event_type) {
+    suspicious_reason = [suspicious_reason, 'event_type_mismatch'].filter(Boolean).join(';')
+  }
+
+  if (event_type === 'clock_in' && hasOpenShift) {
     sync_status = 'conflict'
     suspicious_reason = [suspicious_reason, 'open_shift_exists'].filter(Boolean).join(';')
   }
 
-  if (input.event_type === 'clock_out' && !hasOpenShift) {
+  if (event_type === 'clock_out' && !hasOpenShift) {
     sync_status = sync_status === 'synced' ? 'pending_review' : sync_status
     suspicious_reason = [suspicious_reason, 'no_open_shift'].filter(Boolean).join(';')
   }
@@ -183,7 +189,7 @@ export async function processAttendanceSyncEvent(
       project_id: tag.project_id,
       tag_id: tag.id,
       tag_code: tag.tag_code,
-      event_type: input.event_type,
+      event_type,
       client_action_id: input.client_action_id,
       client_recorded_at: input.client_recorded_at,
       server_received_at: serverReceivedAt.toISOString(),
@@ -214,7 +220,7 @@ export async function processAttendanceSyncEvent(
     return { client_action_id: input.client_action_id, status: sync_status, event_id: eventId, message: suspicious_reason ?? undefined }
   }
 
-  if (input.event_type === 'clock_in' && sync_status === 'synced') {
+  if (event_type === 'clock_in' && sync_status === 'synced') {
     const { error: shiftErr } = await admin.from('worker_attendance').insert({
       client_id: clientId,
       worker_id: workerId,
@@ -232,7 +238,7 @@ export async function processAttendanceSyncEvent(
     }
   }
 
-  if (input.event_type === 'clock_out' && openShift) {
+  if (event_type === 'clock_out' && openShift) {
     const endedAt = input.client_recorded_at
     const startedMs = new Date(openShift.started_at as string).getTime()
     const endedMs = new Date(endedAt).getTime()

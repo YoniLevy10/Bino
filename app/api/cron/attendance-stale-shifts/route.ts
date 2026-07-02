@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getLogger } from '@/lib/logging'
 import { autoCloseAllStaleOpenShifts } from '@/lib/attendance-auto-close'
+import { listWorkerStampEnabledClientIds } from '@/lib/worker-stamp-clients'
 
 /** Auto-close open shifts older than 10h (no checkout) so workers can clock in again. */
 export async function GET(req: NextRequest) {
@@ -13,7 +14,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const admin = getSupabaseAdmin()
-    const { found, closed } = await autoCloseAllStaleOpenShifts(admin)
+    const clientIds = await listWorkerStampEnabledClientIds(admin)
+    const { found, closed } = await autoCloseAllStaleOpenShifts(admin, { clientIds })
 
     logger.info('CRON', 'attendance-stale-shifts done', { found, closed })
     return NextResponse.json({ ok: true, found, closed })

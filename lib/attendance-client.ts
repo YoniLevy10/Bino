@@ -15,10 +15,26 @@ import {
   getOrCreateDeviceId,
   updateLocalAttendanceState,
 } from '@/lib/offline-attendance-db'
+import { isShiftStaleForAutoClose } from '@/lib/attendance-auto-close'
 
 export function findOfflineTag(tags: NfcTagRow[], tagCode: string): NfcTagRow | null {
   const code = normalizeTagCode(tagCode)
   return tags.find((t) => t.is_active && normalizeTagCode(t.tag_code) === code) ?? null
+}
+
+/** Reset stale local open-shift state after 10h so offline scans stay consistent with server. */
+export function normalizeLocalAttendanceState(
+  state: LocalAttendanceState | null
+): LocalAttendanceState | null {
+  if (!state?.has_open_shift || state.last_event_type !== 'clock_in' || !state.last_event_at) {
+    return state
+  }
+  if (!isShiftStaleForAutoClose(state.last_event_at)) return state
+  return {
+    ...state,
+    has_open_shift: false,
+    open_shift_id: null,
+  }
 }
 
 export async function buildAttendanceAction(
@@ -27,12 +43,16 @@ export async function buildAttendanceAction(
   source: AttendanceEventSource,
   geo?: { lat: number; lng: number } | null
 ): Promise<{ event_type: AttendanceEventType; pending: PendingAttendanceEvent }> {
-  const state = (await getLocalAttendanceState(workerId)) ?? {
+  const rawState = (await getLocalAttendanceState(workerId)) ?? {
     has_open_shift: false,
     open_shift_id: null,
     last_event_type: null,
     last_event_at: null,
     last_tag_code: null,
+  }
+  const state = normalizeLocalAttendanceState(rawState) ?? rawState
+  if (state !== rawState) {
+    await updateLocalAttendanceState({ worker_id: workerId, ...state })
   }
 
   const event_type = resolveEventTypeForTag(tag.tag_type, state.has_open_shift)
@@ -100,7 +120,11 @@ export async function recordAttendanceScan(
   const tag = findOfflineTag(tags, tagCode)
   if (!tag) return { ok: false, reason: 'unknown_tag' }
 
-  const state = await getLocalAttendanceState(workerId)
+  const rawState = await getLocalAttendanceState(workerId)
+  const state = normalizeLocalAttendanceState(rawState)
+  if (state && rawState && state !== rawState) {
+    await updateLocalAttendanceState({ worker_id: workerId, ...state })
+  }
   if (isDuplicateScan(state?.last_tag_code, state?.last_event_at, tag.tag_code)) {
     return { ok: false, reason: 'duplicate_scan' }
   }

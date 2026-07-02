@@ -56,10 +56,10 @@ export async function syncPendingAttendanceEvents(accessToken: string): Promise<
   let failed = 0
 
   for (const r of results) {
-    if (r.status === 'synced' || r.status === 'pending_review') {
+    if (r.status === 'synced' || r.status === 'pending_review' || r.status === 'conflict') {
       await markPendingEventSynced(r.client_action_id)
       synced++
-    } else if (r.status === 'rejected' || r.status === 'conflict') {
+    } else if (r.status === 'rejected') {
       await markPendingEventFailed(r.client_action_id, r.message || r.status)
       failed++
     } else {

@@ -37,7 +37,7 @@ https://bamakor.vercel.app/worker/nfc?t=TAG_CODE
 
 | Path | Purpose |
 |------|---------|
-| `/api/cron/attendance-stale-shifts` | Open shift > 12h → missing_checkout |
+| `/api/cron/attendance-stale-shifts` | Open shift > 10h → auto-close as missing_checkout |
 | `/api/cron/attendance-pending-alert` | Daily SMS/email for pending review |
 | `/api/cron/attendance-open-shift-reminder` | Push reminder for long open shifts |
 

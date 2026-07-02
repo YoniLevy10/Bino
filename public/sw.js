@@ -2,7 +2,7 @@
 const CACHE_VERSION = 'bamakor-v6'
 const STATIC_CACHE = `bamakor-static-${CACHE_VERSION}`
 const HTML_CACHE = `bamakor-html-${CACHE_VERSION}`
-const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png']
+const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

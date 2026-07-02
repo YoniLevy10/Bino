@@ -87,15 +87,22 @@ export async function autoCloseStaleOpenShiftsForWorker(
 /** Cron: auto-close all stale open shifts platform-wide. */
 export async function autoCloseAllStaleOpenShifts(
   admin: SupabaseClient,
-  now: Date = new Date()
+  opts?: { clientIds?: string[]; now?: Date }
 ): Promise<{ found: number; closed: number }> {
+  const now = opts?.now ?? new Date()
   const cutoff = new Date(now.getTime() - ATTENDANCE_AUTO_CLOSE_HOURS * 3_600_000).toISOString()
 
-  const { data: stale, error } = await admin
+  let query = admin
     .from('worker_attendance')
     .select('id, started_at, client_id, worker_id')
     .eq('status', 'open')
     .lt('started_at', cutoff)
+
+  if (opts?.clientIds?.length) {
+    query = query.in('client_id', opts.clientIds)
+  }
+
+  const { data: stale, error } = await query
 
   if (error || !stale?.length) {
     return { found: stale?.length ?? 0, closed: 0 }

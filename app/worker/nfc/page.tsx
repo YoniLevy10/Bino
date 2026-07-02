@@ -93,9 +93,13 @@ function NfcScanInner() {
             setMessage('תוסף חתמת עובדים אינו פעיל')
             return
           }
-          if (bootRes.ok) {
-            await fetchAndCacheWorkerAttendanceBootstrap(token)
+          if (!bootRes.ok) {
+            setPhase('error')
+            setMessage('לא ניתן לטעון את נתוני ההחתמה')
+            setDetail('בדקו חיבור לאינטרנט ונסו שוב.')
+            return
           }
+          await fetchAndCacheWorkerAttendanceBootstrap(token)
         } catch {
           setPhase('error')
           setMessage('שגיאת רשת')
