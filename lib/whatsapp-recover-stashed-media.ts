@@ -296,6 +296,20 @@ async function recoverFromPendingSelectionStash(
   return added
 }
 
+/** Inbound media sent shortly before/after ticket open belongs to that ticket. */
+export function isWhatsAppMessageInTicketMediaWindow(
+  messageCreatedAt: string,
+  ticketCreatedAt: string,
+  opts?: { beforeMs?: number; afterMs?: number }
+): boolean {
+  const msgMs = new Date(messageCreatedAt).getTime()
+  const ticketMs = new Date(ticketCreatedAt).getTime()
+  if (!Number.isFinite(msgMs) || !Number.isFinite(ticketMs)) return false
+  const beforeMs = opts?.beforeMs ?? 2 * 60 * 60 * 1000
+  const afterMs = opts?.afterMs ?? 30 * 60 * 1000
+  return msgMs >= ticketMs - beforeMs && msgMs <= ticketMs + afterMs
+}
+
 async function recoverFromWhatsAppMessageLog(
   supabaseAdmin: SupabaseClient,
   clientId: string,
@@ -304,6 +318,14 @@ async function recoverFromWhatsAppMessageLog(
   accessToken: string,
   attachedIds: Set<string>
 ): Promise<number> {
+  const { data: ticket } = await supabaseAdmin
+    .from('tickets')
+    .select('created_at')
+    .eq('id', ticketId)
+    .maybeSingle()
+
+  const ticketCreatedAt = (ticket as { created_at?: string } | null)?.created_at ?? null
+
   const phoneKey = whatsAppConversationPhoneKey(reporterPhoneRaw)
   const { data: conv } = await supabaseAdmin
     .from('whatsapp_conversations')
@@ -316,7 +338,7 @@ async function recoverFromWhatsAppMessageLog(
 
   const { data: messages } = await supabaseAdmin
     .from('whatsapp_messages')
-    .select('message_type, interactive_payload, direction')
+    .select('message_type, interactive_payload, direction, created_at, ticket_id')
     .eq('client_id', clientId)
     .eq('conversation_id', conv.id)
     .eq('direction', 'in')
@@ -325,6 +347,14 @@ async function recoverFromWhatsAppMessageLog(
 
   let added = 0
   for (const row of messages ?? []) {
+    if (row.ticket_id && row.ticket_id !== ticketId) continue
+    if (
+      ticketCreatedAt &&
+      row.created_at &&
+      !isWhatsAppMessageInTicketMediaWindow(row.created_at as string, ticketCreatedAt)
+    ) {
+      continue
+    }
     const messageType = row.message_type as string
     const ref = parseWhatsAppMessageMediaPayload(
       row.interactive_payload as Record<string, unknown> | null
