@@ -41,6 +41,8 @@ import {
   type ResidentJoinSummary,
 } from '@/lib/whatsapp-inbox-display'
 
+import { mergeWhatsAppInteractivePayload } from '@/lib/whatsapp-message-media'
+
 export type WhatsAppMessageDirection = 'in' | 'out'
 
 export type PersistWhatsAppMessageInput = {
@@ -53,6 +55,8 @@ export type PersistWhatsAppMessageInput = {
   interactivePayload?: Record<string, unknown> | null
   ticketId?: string | null
   residentId?: string | null
+  whatsappMediaId?: string | null
+  whatsappMediaKind?: 'image' | 'video' | null
 }
 
 function previewText(body: string | null | undefined, max = 120): string | null {
@@ -105,6 +109,12 @@ export async function persistWhatsAppMessage(
       return null
     }
 
+    const interactivePayload = mergeWhatsAppInteractivePayload(
+      input.interactivePayload,
+      input.whatsappMediaId,
+      input.whatsappMediaKind
+    )
+
     const { data: msg, error: msgErr } = await admin
       .from('whatsapp_messages')
       .insert({
@@ -114,7 +124,7 @@ export async function persistWhatsAppMessage(
         wa_message_id: input.waMessageId ?? null,
         body: input.body ?? null,
         message_type: input.messageType ?? 'text',
-        interactive_payload: input.interactivePayload ?? null,
+        interactive_payload: interactivePayload,
         ticket_id: input.ticketId ?? null,
         status: 'sent',
         created_at: now,

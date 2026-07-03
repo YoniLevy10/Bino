@@ -55,7 +55,7 @@ describe('parseIncomingWhatsAppMessage — Meta unsupported placeholder', () => 
     expect(parsed?.unsupportedErrorCode).toBe(131060)
   })
 
-  it('parses image media id for follow-up webhook', () => {
+  it('parses video media id for follow-up webhook', () => {
     const parsed = parseIncomingWhatsAppMessage({
       entry: [
         {
@@ -66,9 +66,9 @@ describe('parseIncomingWhatsAppMessage — Meta unsupported placeholder', () => 
                 messages: [
                   {
                     from: '972501234567',
-                    id: 'wamid.img1',
-                    type: 'image',
-                    image: { id: 'meta-media-123' },
+                    id: 'wamid.vid1',
+                    type: 'video',
+                    video: { id: 'meta-video-123', caption: 'נזילה בממטרה' },
                   },
                 ],
               },
@@ -77,8 +77,9 @@ describe('parseIncomingWhatsAppMessage — Meta unsupported placeholder', () => 
         },
       ],
     })
-    expect(parsed?.messageType).toBe('image')
-    expect(parsed?.mediaId).toBe('meta-media-123')
-    expect(parsed?.mediaType).toBe('image')
+    expect(parsed?.messageType).toBe('video')
+    expect(parsed?.mediaId).toBe('meta-video-123')
+    expect(parsed?.mediaType).toBe('video')
+    expect(parsed?.textBody).toBe('נזילה בממטרה')
   })
 })

@@ -1332,7 +1332,7 @@ export default function TicketsPage() {
                     קבצים מצורפים
                     {selectedTicketAttachments.length > 0 ? ` (${selectedTicketAttachments.length})` : ''}
                   </label>
-                  {selectedTicketAttachments.length === 0 && selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED' && (
+                  {selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED' && (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -1340,7 +1340,7 @@ export default function TicketsPage() {
                       loading={recoveringMedia}
                       onClick={() => void loadTicketAttachments(selectedTicket)}
                     >
-                      שחזר מ-WhatsApp
+                      שחזר תמונה/וידאו מ-WhatsApp
                     </Button>
                   )}
                 </div>
@@ -1374,7 +1374,7 @@ export default function TicketsPage() {
                   </div>
                 ) : (
                   <p style={{ color: theme.colors.textMuted, fontSize: 13, margin: 0 }}>
-                    אין קבצים — המערכת מחפשת מדיה שמורה בסשן WhatsApp. לחצו «שחזר מ-WhatsApp».
+                    אין קבצים — לחצו «שחזר תמונה/וידאו מ-WhatsApp» (גם בטאב WhatsApp דייר).
                   </p>
                 )}
               </div>
@@ -1410,6 +1410,12 @@ export default function TicketsPage() {
               <TicketWhatsAppThread
                 reporterPhone={selectedTicket.reporter_phone}
                 ticketId={selectedTicket.id}
+                attachments={selectedTicketAttachments}
+                recoveringMedia={recoveringMedia}
+                onRecoverMedia={async () => {
+                  const ok = await tryRecoverWhatsAppMedia(selectedTicket.id)
+                  if (ok) await loadTicketAttachments(selectedTicket)
+                }}
               />
             )}
             {activeDetailTab === 'whatsapp' && !selectedTicket.reporter_phone && (

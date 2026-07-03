@@ -5,12 +5,18 @@ import { supabase } from '@/lib/supabase'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { Button, theme } from '../ui'
+import {
+  threadHasUnrecoveredMedia,
+  unrecoveredMediaLabel,
+  type TicketAttachmentSummary,
+} from '@/lib/whatsapp-thread-media-status'
 
 type Message = {
   id: string
   direction: 'in' | 'out'
   body: string | null
   message_type?: string | null
+  interactive_payload?: Record<string, unknown> | null
   created_at: string
 }
 
@@ -27,6 +33,9 @@ type Props = {
   ticketId: string
   mode?: 'manager' | 'worker'
   workerToken?: string
+  attachments?: TicketAttachmentSummary[]
+  onRecoverMedia?: () => void | Promise<void>
+  recoveringMedia?: boolean
 }
 
 const POLL_MS = 15_000
@@ -36,6 +45,9 @@ export function TicketWhatsAppThread({
   ticketId,
   mode = 'manager',
   workerToken,
+  attachments = [],
+  onRecoverMedia,
+  recoveringMedia = false,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -159,12 +171,33 @@ export function TicketWhatsAppThread({
   }
 
   const isWorker = mode === 'worker'
+  const needsMediaRecover =
+    !isWorker &&
+    !!onRecoverMedia &&
+    threadHasUnrecoveredMedia(messages, attachments)
 
   return (
     <div style={styles.root}>
       <div style={isWorker ? styles.sectionLabelWorker : styles.sectionLabel}>
         {isWorker ? 'שיחה עם הדייר' : 'ענה לדייר בוואטסאפ'}
       </div>
+
+      {needsMediaRecover && (
+        <div style={styles.recoverBar}>
+          <span style={styles.recoverText}>
+            {unrecoveredMediaLabel(messages)} מהשיחה לא צורף לתקלה
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            loading={recoveringMedia}
+            onClick={() => void onRecoverMedia?.()}
+          >
+            שחזר מ-WhatsApp
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <p style={styles.muted}>{isWorker ? 'טוען הודעות…' : 'טוען שיחת WhatsApp…'}</p>
@@ -287,4 +320,16 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.45,
   },
   hint: { fontSize: 11, color: theme.colors.textMuted, margin: 0, lineHeight: 1.4 },
+  recoverBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.warningMuted,
+    border: `1px solid ${theme.colors.warning}`,
+  },
+  recoverText: { fontSize: 13, color: theme.colors.textPrimary, fontWeight: 500 },
 }

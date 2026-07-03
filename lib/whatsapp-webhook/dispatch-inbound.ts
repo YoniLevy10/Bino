@@ -487,6 +487,16 @@ async function handleWhatsAppInboundMedia(
   } catch { /* WA send failure is non-fatal */ }
 }
 
+async function afterResidentSessionCreated(
+  phone: string,
+  sessionId: string | null | undefined,
+  supabaseAdmin: SupabaseClient,
+  clientId: string
+): Promise<void> {
+  if (!sessionId) return
+  await promoteStashedMediaToSession(phone, sessionId, supabaseAdmin, clientId)
+}
+
 async function resetSessionCompletely(
   from: string,
   supabaseAdmin: SupabaseClient,
@@ -964,7 +974,7 @@ export async function runWhatsAppInboundBackground(
         }
 
         if (createdSession?.id) {
-          await promoteStashedMediaToSession(from, createdSession.id, supabaseAdmin, webhookClientId)
+          await afterResidentSessionCreated(from, createdSession.id, supabaseAdmin, webhookClientId)
         }
 
         if (!isTestWhatsAppSender) {
@@ -1040,6 +1050,10 @@ export async function runWhatsAppInboundBackground(
         (interactiveReplyId ? `[${interactiveReplyId}]` : null),
       messageType: messageType || 'text',
       waMessageId: parsedMessage.messageId ?? null,
+      whatsappMediaId:
+        mediaId && (mediaType === 'image' || mediaType === 'video') ? mediaId : null,
+      whatsappMediaKind:
+        mediaType === 'image' || mediaType === 'video' ? mediaType : null,
       interactivePayload: interactiveReplyId
         ? { reply_id: interactiveReplyId, title: parsedMessage.interactiveReplyTitle }
         : null,
@@ -1367,6 +1381,8 @@ export async function runWhatsAppInboundBackground(
 
       logger.info('WEBHOOK', 'session created', { sessionId: createdSession.id, project: project.name })
 
+      await afterResidentSessionCreated(from, createdSession.id, supabaseAdmin, webhookClientId)
+
       if (!isTestWhatsAppSender) {
         try {
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, project.id)
@@ -1429,6 +1445,9 @@ export async function runWhatsAppInboundBackground(
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, knownResident.project_id)
           session = await getActiveSession(from, supabaseAdmin, webhookClientId)
           residentLang = sessionLang
+          if (session?.id) {
+            await afterResidentSessionCreated(from, session.id, supabaseAdmin, webhookClientId)
+          }
           if (session) {
             if (isClarificationQuestion(textBody)) {
               try {
@@ -1507,7 +1526,7 @@ export async function runWhatsAppInboundBackground(
             ? normalizeResidentLang(pendingSelection.preferred_language)
             : residentLang
 
-          const { error: sessionCreateError } = await supabaseAdmin
+          const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
             .from('sessions')
             .insert({
               phone_number: from,
@@ -1518,7 +1537,7 @@ export async function runWhatsAppInboundBackground(
               preferred_language: sessionLang,
               last_activity_at: new Date().toISOString(),
             })
-            .select()
+            .select('id')
             .single()
 
           if (sessionCreateError) {
@@ -1528,6 +1547,8 @@ export async function runWhatsAppInboundBackground(
             } catch { /* WA send failure is non-fatal */ }
             return
           }
+
+          await afterResidentSessionCreated(from, createdSession?.id, supabaseAdmin, webhookClientId)
 
           await clearPendingSelection(from, supabaseAdmin, webhookClientId)
           residentLang = sessionLang
@@ -1580,7 +1601,7 @@ export async function runWhatsAppInboundBackground(
               .eq('client_id', webhookClientId)
               .eq('is_active', true)
 
-            const { error: sessionCreateError } = await supabaseAdmin
+            const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
               .from('sessions')
               .insert({
                 phone_number: from,
@@ -1591,7 +1612,7 @@ export async function runWhatsAppInboundBackground(
                 preferred_language: sessionLang,
                 last_activity_at: new Date().toISOString(),
               })
-              .select()
+              .select('id')
               .single()
 
             if (sessionCreateError) {
@@ -1601,6 +1622,8 @@ export async function runWhatsAppInboundBackground(
               } catch { /* WA send failure is non-fatal */ }
               return
             }
+
+            await afterResidentSessionCreated(from, createdSession?.id, supabaseAdmin, webhookClientId)
 
             if (!isTestWhatsAppSender) {
               await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
@@ -1802,6 +1825,20 @@ export async function runWhatsAppInboundBackground(
       supabaseAdmin,
       residentWhatsAppCreds.accessToken
     )
+    const mediaRecoverResult = await recoverAllWhatsAppMediaForTicket(
+      supabaseAdmin,
+      webhookClientId,
+      createdTicket.id,
+      from,
+      residentWhatsAppCreds.accessToken
+    )
+    if (mediaRecoverResult.recovered && (mediaRecoverResult.attachments_added ?? 0) > 0) {
+      logger.info('WEBHOOK', 'media attached at ticket create via recovery', {
+        ticketId: createdTicket.id,
+        method: mediaRecoverResult.method,
+        added: mediaRecoverResult.attachments_added,
+      })
+    }
     await attachPendingSessionLocationToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
 
     if (session.project_id) {
