@@ -12,7 +12,16 @@
  *
  * קשור ל: /pending-residents (דיירים שדיווחו אך עדיין לא בפנקס)
  */
-import { useEffect, useMemo, useState, Suspense, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  Suspense,
+  startTransition,
+  useDeferredValue,
+  type CSSProperties,
+} from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -36,20 +45,25 @@ import {
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageListSkeleton } from '../components/page-skeleton'
 
-function mainTabStyle(active: boolean): CSSProperties {
-  return {
-    padding: '10px 18px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${active ? theme.colors.primary : theme.colors.border}`,
-    background: active ? theme.colors.primaryMuted : theme.colors.surface,
-    color: active ? theme.colors.primaryText : theme.colors.textSecondary,
-    fontWeight: 600,
-    fontSize: '14px',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-  }
+const MAIN_TAB_ACTIVE: CSSProperties = {
+  padding: '10px 18px',
+  borderRadius: theme.radius.md,
+  border: `1px solid ${theme.colors.primary}`,
+  background: theme.colors.primaryMuted,
+  color: theme.colors.primaryText,
+  fontWeight: 600,
+  fontSize: '14px',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+}
+
+const MAIN_TAB_INACTIVE: CSSProperties = {
+  ...MAIN_TAB_ACTIVE,
+  border: `1px solid ${theme.colors.border}`,
+  background: theme.colors.surface,
+  color: theme.colors.textSecondary,
 }
 
 type ResidentRow = {
@@ -141,22 +155,30 @@ function ResidentsPageInner() {
     if (q) setSearchTerm(q)
   }, [])
 
-  // Sync filter changes to URL
+  // Sync filter changes to URL (debounced — avoids router work on every keystroke)
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (projectFilter !== 'ALL') params.set('project', projectFilter)
-    if (searchTerm.trim()) params.set('q', searchTerm.trim())
-    const qs = params.toString()
-    const newUrl = qs ? `?${qs}` : window.location.pathname
-    router.replace(newUrl, { scroll: false })
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams()
+      if (projectFilter !== 'ALL') params.set('project', projectFilter)
+      if (searchTerm.trim()) params.set('q', searchTerm.trim())
+      const qs = params.toString()
+      const newUrl = qs ? `?${qs}` : window.location.pathname
+      router.replace(newUrl, { scroll: false })
+    }, 300)
+    return () => window.clearTimeout(timer)
   }, [projectFilter, searchTerm, router])
 
   const searchParams = useSearchParams()
-  const [mainTab, setMainTab] = useState<'active' | 'pending'>('active')
+  const [mainTab, setMainTab] = useState<'active' | 'pending'>(() =>
+    searchParams.get('tab') === 'pending' ? 'pending' : 'active'
+  )
+  const [pendingMounted, setPendingMounted] = useState(() => searchParams.get('tab') === 'pending')
+  const deferredSearchTerm = useDeferredValue(searchTerm)
 
-  useEffect(() => {
-    if (searchParams.get('tab') === 'pending') setMainTab('pending')
-  }, [searchParams])
+  const switchMainTab = useCallback((tab: 'active' | 'pending') => {
+    if (tab === 'pending') setPendingMounted(true)
+    startTransition(() => setMainTab(tab))
+  }, [])
   const [pendingItems, setPendingItems] = useState<
     Array<{
       id: string
@@ -174,20 +196,44 @@ function ResidentsPageInner() {
   const [pendingApartments, setPendingApartments] = useState<Record<string, string>>({})
   const [pendingBusyId, setPendingBusyId] = useState<string | null>(null)
 
-  async function loadPending() {
-    setPendingLoading(true)
+  async function loadPending(options?: { silent?: boolean }) {
+    if (!options?.silent) setPendingLoading(true)
     try {
       const res = await fetchWithTimeout('/api/pending-residents')
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'טעינה נכשלה')
       const items = (data.items as typeof pendingItems) || []
-      setPendingItems(items)
-      setPendingBadge(items.length)
+      startTransition(() => {
+        setPendingItems(items)
+        setPendingBadge(items.length)
+      })
     } catch {
-      setPendingItems([])
-      setPendingBadge(0)
+      startTransition(() => {
+        setPendingItems([])
+        setPendingBadge(0)
+      })
     } finally {
-      setPendingLoading(false)
+      if (!options?.silent) setPendingLoading(false)
+    }
+  }
+
+  async function refreshResidentsQuiet() {
+    try {
+      const tenantId = await resolveBamakorClientIdForBrowser()
+      const rRes = await withClientId(
+        supabase
+          .from('residents')
+          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
+        tenantId
+      )
+        .is('deleted_at', null)
+        .order('full_name')
+
+      if (!rRes.error) {
+        startTransition(() => setResidents((rRes.data as ResidentRow[]) || []))
+      }
+    } catch {
+      // keep existing list on background refresh failure
     }
   }
 
@@ -416,13 +462,13 @@ function ResidentsPageInner() {
   }, []) // mount only
 
   useEffect(() => {
-    if (mainTab === 'pending') void loadPending()
+    if (mainTab === 'pending') void loadPending({ silent: pendingItems.length > 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab])
 
   // Refresh pending badge whenever the browser tab regains focus
   useEffect(() => {
-    const onFocus = () => void loadPending()
+    const onFocus = () => void loadPending({ silent: true })
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -451,8 +497,11 @@ function ResidentsPageInner() {
       const data = await res.json()
       if (!res.ok) throw new Error([data.error, data.hint].filter(Boolean).join('\n') || 'פעולה נכשלה')
       toast.success(TM.residentApproved)
-      await loadPending()
-      await load()
+      startTransition(() => {
+        setPendingItems((prev) => prev.filter((p) => p.id !== id))
+        setPendingBadge((prev) => Math.max(0, prev - 1))
+      })
+      void refreshResidentsQuiet()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'פעולה נכשלה')
     } finally {
@@ -471,7 +520,10 @@ function ResidentsPageInner() {
       const data = await res.json()
       if (!res.ok) throw new Error([data.error, data.hint].filter(Boolean).join('\n') || 'פעולה נכשלה')
       toast.success(TM.residentRejected)
-      await loadPending()
+      startTransition(() => {
+        setPendingItems((prev) => prev.filter((p) => p.id !== id))
+        setPendingBadge((prev) => Math.max(0, prev - 1))
+      })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'פעולה נכשלה')
     } finally {
@@ -485,12 +537,21 @@ function ResidentsPageInner() {
     return m
   }, [projects])
 
+  const residentsByPhone = useMemo(() => {
+    const m = new Map<string, ResidentRow>()
+    for (const r of residents) {
+      const digits = (r.phone || '').replace(/\D/g, '')
+      if (digits) m.set(digits, r)
+    }
+    return m
+  }, [residents])
+
   // For each pending item: if its phone already exists in the residents list (any project), return info
   const pendingConflictMap = useMemo(() => {
     const result: Record<string, { residentName: string; projectName: string }> = {}
     for (const p of pendingItems) {
       const pDigits = p.reporter_phone_normalized.replace(/\D/g, '')
-      const match = residents.find((r) => (r.phone || '').replace(/\D/g, '') === pDigits)
+      const match = residentsByPhone.get(pDigits)
       if (match) {
         result[p.id] = {
           residentName: match.full_name,
@@ -499,10 +560,10 @@ function ResidentsPageInner() {
       }
     }
     return result
-  }, [pendingItems, residents, projectName])
+  }, [pendingItems, residentsByPhone, projectName])
 
   const filtered = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase()
+    const q = deferredSearchTerm.trim().toLowerCase()
     return residents.filter((r) => {
       const byProject = projectFilter === 'ALL' || r.project_id === projectFilter
       const text =
@@ -514,7 +575,7 @@ function ResidentsPageInner() {
         (r.notes || '').toLowerCase().includes(q)
       return byProject && text
     })
-  }, [residents, searchTerm, projectFilter])
+  }, [residents, deferredSearchTerm, projectFilter])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -534,8 +595,13 @@ function ResidentsPageInner() {
   }, [filtered, sortKey, sortDir, projectName])
 
   function handleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
-    else { setSortKey(key); setSortDir('asc') }
+    startTransition(() => {
+      if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortKey(key)
+        setSortDir('asc')
+      }
+    })
   }
 
   function sortArrow(key: SortKey) {
@@ -671,101 +737,104 @@ function ResidentsPageInner() {
           <div className="app-error-log-tabs" style={styles.mainTabs}>
             <button
               type="button"
-              style={mainTabStyle(mainTab === 'active')}
-              onClick={() => setMainTab('active')}
+              style={mainTab === 'active' ? MAIN_TAB_ACTIVE : MAIN_TAB_INACTIVE}
+              onClick={() => switchMainTab('active')}
             >
               פעילים
             </button>
             <button
               type="button"
-              style={mainTabStyle(mainTab === 'pending')}
-              onClick={() => setMainTab('pending')}
+              style={mainTab === 'pending' ? MAIN_TAB_ACTIVE : MAIN_TAB_INACTIVE}
+              onClick={() => switchMainTab('pending')}
             >
               ממתינים לאישור
               {pendingBadge > 0 && <span style={styles.pendingBadge}>{pendingBadge}</span>}
             </button>
           </div>
 
-          {mainTab === 'pending' ? (
-            <div style={styles.pendingWrap}>
-              {pendingLoading ? (
-                <div style={styles.loading}>
-                  <LoadingSpinner />
-                </div>
-              ) : pendingItems.length === 0 ? (
-                <p style={styles.empty}>אין בקשות ממתינות.</p>
-              ) : (
-                <div style={styles.pendingList}>
-                  {pendingItems.map((p) => {
-                    const conflict = pendingConflictMap[p.id]
-                    const hasName = !!pendingNames[p.id]?.trim()
-                    return (
-                    <div key={p.id} style={styles.pendingCard}>
-                      {conflict && (
-                        <div style={styles.pendingConflict}>
-                          טלפון זה רשום כבר כדייר &quot;{conflict.residentName}&quot; בבניין {conflict.projectName}
-                        </div>
-                      )}
-                      <div style={styles.pendingRow}>
-                        <span style={styles.pendingLabel}>טלפון</span>
-                        <span>{displayPendingPhone(p.reporter_phone_normalized)}</span>
-                      </div>
-                      <div style={styles.pendingRow}>
-                        <span style={styles.pendingLabel}>פרויקט</span>
-                        <span>{p.project_name}</span>
-                      </div>
-                      {p.ticket_number != null && (
+          {pendingMounted && (
+            <div style={{ display: mainTab === 'pending' ? 'block' : 'none' }}>
+              <div style={styles.pendingWrap}>
+                {pendingLoading && pendingItems.length === 0 ? (
+                  <div style={styles.loading}>
+                    <LoadingSpinner />
+                  </div>
+                ) : pendingItems.length === 0 ? (
+                  <p style={styles.empty}>אין בקשות ממתינות.</p>
+                ) : (
+                  <div style={styles.pendingList}>
+                    {pendingItems.map((p) => {
+                      const conflict = pendingConflictMap[p.id]
+                      const hasName = !!pendingNames[p.id]?.trim()
+                      return (
+                      <div key={p.id} style={styles.pendingCard}>
+                        {conflict && (
+                          <div style={styles.pendingConflict}>
+                            טלפון זה רשום כבר כדייר &quot;{conflict.residentName}&quot; בבניין {conflict.projectName}
+                          </div>
+                        )}
                         <div style={styles.pendingRow}>
-                          <span style={styles.pendingLabel}>תקלה</span>
-                          <span>#{p.ticket_number}</span>
+                          <span style={styles.pendingLabel}>טלפון</span>
+                          <span>{displayPendingPhone(p.reporter_phone_normalized)}</span>
                         </div>
-                      )}
-                      <label style={styles.pendingNameLab}>
-                        שם דייר <span style={{ color: theme.colors.error }}>*</span>
-                      </label>
-                      <input
-                        value={pendingNames[p.id] || ''}
-                        onChange={(e) => setPendingNames((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                        placeholder="שם מלא (חובה)"
-                        style={{
-                          ...styles.pendingInput,
-                          borderColor: !hasName ? theme.colors.error : theme.colors.border,
-                        }}
-                      />
-                      <label style={styles.pendingNameLab}>דירה (אופציונלי)</label>
-                      <input
-                        value={pendingApartments[p.id] || ''}
-                        onChange={(e) => setPendingApartments((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                        placeholder="מספר דירה"
-                        style={styles.pendingInput}
-                      />
-                      <div style={styles.pendingActions}>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={!hasName}
-                          loading={pendingBusyId === p.id}
-                          onClick={() => approvePending(p.id)}
-                        >
-                          אישור
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          loading={pendingBusyId === p.id}
-                          onClick={() => rejectPending(p.id)}
-                        >
-                          דחייה
-                        </Button>
+                        <div style={styles.pendingRow}>
+                          <span style={styles.pendingLabel}>פרויקט</span>
+                          <span>{p.project_name}</span>
+                        </div>
+                        {p.ticket_number != null && (
+                          <div style={styles.pendingRow}>
+                            <span style={styles.pendingLabel}>תקלה</span>
+                            <span>#{p.ticket_number}</span>
+                          </div>
+                        )}
+                        <label style={styles.pendingNameLab}>
+                          שם דייר <span style={{ color: theme.colors.error }}>*</span>
+                        </label>
+                        <input
+                          value={pendingNames[p.id] || ''}
+                          onChange={(e) => setPendingNames((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          placeholder="שם מלא (חובה)"
+                          style={{
+                            ...styles.pendingInput,
+                            borderColor: !hasName ? theme.colors.error : theme.colors.border,
+                          }}
+                        />
+                        <label style={styles.pendingNameLab}>דירה (אופציונלי)</label>
+                        <input
+                          value={pendingApartments[p.id] || ''}
+                          onChange={(e) => setPendingApartments((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          placeholder="מספר דירה"
+                          style={styles.pendingInput}
+                        />
+                        <div style={styles.pendingActions}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={!hasName}
+                            loading={pendingBusyId === p.id}
+                            onClick={() => approvePending(p.id)}
+                          >
+                            אישור
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            loading={pendingBusyId === p.id}
+                            onClick={() => rejectPending(p.id)}
+                          >
+                            דחייה
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    )
-                  })}
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <>
+          )}
+
+          <div style={{ display: mainTab === 'active' ? 'block' : 'none' }}>
           <div style={styles.filters}>
             <SearchInput
               value={searchTerm}
@@ -944,8 +1013,7 @@ function ResidentsPageInner() {
               )}
             </div>
           )}
-            </>
-          )}
+          </div>
         </Card>
       </div>
 
