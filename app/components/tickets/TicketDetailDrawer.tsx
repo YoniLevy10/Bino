@@ -29,6 +29,8 @@ interface AttachmentRow {
   file_url: string | null
   file_size?: number | null
   mime_type: string
+  attachment_type?: string | null
+  whatsapp_media_id?: string | null
   created_at: string
   signed_url?: string | null
 }
@@ -56,6 +58,8 @@ interface TicketDetailDrawerProps {
   selectedTicketAttachments: AttachmentRow[]
   ticketLogs: TicketLog[]
   drawerLoading: boolean
+  loadingAttachments?: boolean
+  recoveringMedia?: boolean
   savingTicket: boolean
   workersMap: Record<string, string>
   professionals?: ProfessionalOption[]
@@ -68,6 +72,7 @@ interface TicketDetailDrawerProps {
   onSelectImage: (url: string) => void
   onCloseTicket: () => void
   getImageUrl: (attachment: AttachmentRow) => string
+  onRecoverMedia?: () => void | Promise<void>
 }
 
 type Tab = 'details' | 'chat' | 'whatsapp'
@@ -81,6 +86,8 @@ export function TicketDetailDrawer({
   selectedTicketAttachments,
   ticketLogs,
   drawerLoading,
+  loadingAttachments = false,
+  recoveringMedia = false,
   savingTicket,
   workersMap,
   professionals = [],
@@ -93,6 +100,7 @@ export function TicketDetailDrawer({
   onSelectImage,
   onCloseTicket,
   getImageUrl,
+  onRecoverMedia,
 }: TicketDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [translating, setTranslating] = useState(false)
@@ -147,6 +155,62 @@ export function TicketDetailDrawer({
     >
       {selectedTicket && (
         <div style={styles.drawerContent}>
+          {(loadingAttachments ||
+            selectedTicketAttachments.length > 0 ||
+            (selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED')) && (
+            <div style={styles.drawerSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={styles.drawerLabel}>
+                  קבצים מצורפים
+                  {selectedTicketAttachments.length > 0 ? ` (${selectedTicketAttachments.length})` : ''}
+                </div>
+                {selectedTicket.reporter_phone &&
+                  selectedTicket.status !== 'CLOSED' &&
+                  onRecoverMedia && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      loading={recoveringMedia}
+                      onClick={() => void onRecoverMedia()}
+                    >
+                      שחזר תמונה/וידאו מ-WhatsApp
+                    </Button>
+                  )}
+              </div>
+              {loadingAttachments ? (
+                <p style={styles.loadingState}>טוען קבצים…</p>
+              ) : selectedTicketAttachments.length > 0 ? (
+                <div style={styles.attachmentGrid}>
+                  {selectedTicketAttachments.map((attachment) => (
+                    <button
+                      key={attachment.id}
+                      onClick={() => {
+                        if (attachment.mime_type.startsWith('image/')) {
+                          onSelectImage(getImageUrl(attachment))
+                        }
+                      }}
+                      style={styles.attachmentThumb}
+                    >
+                      <TicketAttachmentThumb
+                        mimeType={attachment.mime_type}
+                        url={getImageUrl(attachment)}
+                        fileName={attachment.file_name}
+                        imageStyle={styles.attachmentImg}
+                        videoStyle={styles.attachmentVideo}
+                        fileStyle={styles.attachmentFile}
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p style={styles.emptyAttachments}>
+                  אין קבצים — לחצו «שחזר תמונה/וידאו מ-WhatsApp» (גם בטאב WhatsApp דייר).
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Tabs */}
           <div style={styles.tabBar}>
             <button
@@ -256,35 +320,6 @@ export function TicketDetailDrawer({
                 </div>
               </div>
 
-              {/* Attachments */}
-              {selectedTicketAttachments.length > 0 && (
-                <div style={styles.drawerSection}>
-                  <div style={styles.drawerLabel}>קבצים מצורפים</div>
-                  <div style={styles.attachmentGrid}>
-                    {selectedTicketAttachments.map((attachment) => (
-                      <button
-                        key={attachment.id}
-                        onClick={() => {
-                          if (attachment.mime_type.startsWith('image/')) {
-                            onSelectImage(getImageUrl(attachment))
-                          }
-                        }}
-                        style={styles.attachmentThumb}
-                      >
-                        <TicketAttachmentThumb
-                          mimeType={attachment.mime_type}
-                          url={getImageUrl(attachment)}
-                          fileName={attachment.file_name}
-                          imageStyle={styles.attachmentImg}
-                          videoStyle={styles.attachmentVideo}
-                          fileStyle={styles.attachmentFile}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Actions */}
               <div style={styles.drawerActions}>
                 <Button
@@ -345,6 +380,9 @@ export function TicketDetailDrawer({
             <TicketWhatsAppThread
               reporterPhone={selectedTicket.reporter_phone}
               ticketId={selectedTicket.id}
+              attachments={selectedTicketAttachments}
+              recoveringMedia={recoveringMedia}
+              onRecoverMedia={onRecoverMedia}
             />
           )}
           {activeTab === 'whatsapp' && !selectedTicket.reporter_phone && (
@@ -524,6 +562,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     color: theme.colors.textMuted,
     padding: '16px 0',
+  },
+  emptyAttachments: {
+    fontSize: '13px',
+    color: theme.colors.textMuted,
+    margin: 0,
   },
   translationBox: {
     padding: '12px 14px',

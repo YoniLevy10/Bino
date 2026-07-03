@@ -97,6 +97,8 @@ type AttachmentRow = {
   file_url: string | null
   file_size?: number | null
   mime_type: string
+  attachment_type?: string | null
+  whatsapp_media_id?: string | null
   created_at: string
   signed_url?: string | null
 }
@@ -152,6 +154,8 @@ export default function DashboardPage() {
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
   const [ticketLogs, setTicketLogs] = useState<TicketLog[]>([])
   const [drawerLoading, setDrawerLoading] = useState(false)
+  const [loadingAttachments, setLoadingAttachments] = useState(false)
+  const [recoveringMedia, setRecoveringMedia] = useState(false)
   const [savingTicket, setSavingTicket] = useState(false)
   const [closingTicketId, setClosingTicketId] = useState<string | null>(null)
   const [draftDescription, setDraftDescription] = useState('')
@@ -522,55 +526,78 @@ export default function DashboardPage() {
     return attachment.signed_url || attachment.file_url || ''
   }
 
-  async function loadTicketDrawerData(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
-    setDrawerLoading(true)
-    setTicketLogs([])
-    setSelectedTicketAttachments([])
+  async function tryRecoverWhatsAppMedia(ticketId: string): Promise<boolean> {
+    setRecoveringMedia(true)
     try {
-      const [logsResult, attachResult] = await Promise.all([
-        supabase
-          .from('ticket_logs')
-          .select('*')
-          .eq('ticket_id', ticket.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('ticket_attachments')
-          .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, created_at')
-          .eq('ticket_id', ticket.id)
-          .order('created_at', { ascending: false }),
-      ])
+      const { recovered, error } = await recoverWhatsAppMediaForTicket(ticketId)
+      if (!recovered) {
+        if (error) toast.error(error)
+        return false
+      }
+      toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')
+      return true
+    } catch {
+      return false
+    } finally {
+      setRecoveringMedia(false)
+    }
+  }
 
-      setTicketLogs((logsResult.data as TicketLog[]) || [])
+  async function loadTicketAttachments(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
+    setLoadingAttachments(true)
+    try {
+      const { data, error } = await supabase
+        .from('ticket_attachments')
+        .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
+        .eq('ticket_id', ticket.id)
+        .order('created_at', { ascending: false })
 
-      if (attachResult.error) throw attachResult.error
-      let data = attachResult.data
-      if ((!data || data.length === 0) && ticket.reporter_phone && ticket.status !== 'CLOSED') {
-        const { recovered, error } = await recoverWhatsAppMediaForTicket(ticket.id)
+      if (error) throw error
+
+      let rows = data
+      if ((!rows || rows.length === 0) && ticket.reporter_phone && ticket.status !== 'CLOSED') {
+        const recovered = await tryRecoverWhatsAppMedia(ticket.id)
         if (recovered) {
-          toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')
           const retry = await supabase
             .from('ticket_attachments')
-            .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, created_at')
+            .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
             .eq('ticket_id', ticket.id)
             .order('created_at', { ascending: false })
-          data = retry.data ?? []
-        } else if (error) {
-          /* silent — no stashed media */
+          rows = retry.data ?? []
         }
       }
 
-      if (data && data.length > 0) {
-        const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, data as AttachmentRow[])
+      if (rows && rows.length > 0) {
+        const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, rows as AttachmentRow[])
         setSelectedTicketAttachments(attachmentsWithUrls)
       } else {
         setSelectedTicketAttachments([])
       }
     } catch {
-      setTicketLogs([])
       setSelectedTicketAttachments([])
+    } finally {
+      setLoadingAttachments(false)
+    }
+  }
+
+  async function loadTicketDrawerData(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
+    setDrawerLoading(true)
+    setTicketLogs([])
+    setSelectedTicketAttachments([])
+    try {
+      const logsResult = await supabase
+        .from('ticket_logs')
+        .select('*')
+        .eq('ticket_id', ticket.id)
+        .order('created_at', { ascending: false })
+
+      setTicketLogs((logsResult.data as TicketLog[]) || [])
+    } catch {
+      setTicketLogs([])
     } finally {
       setDrawerLoading(false)
     }
+    await loadTicketAttachments(ticket)
   }
 
   function openTicket(ticket: TicketRow) {
@@ -940,6 +967,16 @@ export default function DashboardPage() {
         ticketLogs={ticketLogs}
         selectedTicketAttachments={selectedTicketAttachments}
         drawerLoading={drawerLoading}
+        loadingAttachments={loadingAttachments}
+        recoveringMedia={recoveringMedia}
+        onRecoverMedia={
+          selectedTicket
+            ? async () => {
+                const ok = await tryRecoverWhatsAppMedia(selectedTicket.id)
+                if (ok) await loadTicketAttachments(selectedTicket)
+              }
+            : undefined
+        }
         savingTicket={savingTicket}
         draftDescription={draftDescription}
         draftStatus={draftStatus}
