@@ -24,6 +24,7 @@ import {
   hasExplicitResidentLanguage,
   preferredLanguageForNewSession,
 } from '@/lib/whatsapp-resident-language'
+import { messageContainsBuildingHint } from '@/lib/whatsapp-address-extract'
 import { RESIDENT_UI_COPY, residentGreetingPrefix } from '@/lib/whatsapp-resident-copy'
 import { fetchWithTimeout as fetchTimeout } from '@/lib/fetch-timeout'
 import {
@@ -42,7 +43,11 @@ import { findOpenTicketForPhone } from '@/lib/whatsapp-webhook/flow-ticket'
 import {
   isStashedBuildingSearchRow,
   readStashedBuildingSearchText,
+  readStashedProblemDescription,
   stashBuildingSearchText,
+  stashProblemDescription,
+  stashPreSessionMedia,
+  promoteStashedMediaToSession,
 } from '@/lib/whatsapp-webhook/building-search-stash'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
 import {
@@ -287,7 +292,8 @@ async function handleWhatsAppInboundMedia(
   waRecipient: string,
   sendWa: WaSendFn,
   residentWhatsAppCreds: { phoneNumberId?: string; accessToken?: string },
-  isTestWhatsAppSender: boolean
+  isTestWhatsAppSender: boolean,
+  caption?: string
 ): Promise<void> {
   const config = WA_INBOUND_MEDIA[mediaKind]
   const label = mediaKind === 'video' ? 'video' : 'image'
@@ -474,7 +480,10 @@ async function handleWhatsAppInboundMedia(
   }
 
   try {
-    await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
+    await stashPreSessionMedia(from, mediaId, mediaKind, supabaseAdmin, webhookClientId)
+    if (caption?.trim()) return
+    await sendWa(waRecipient, config.templates.stashed, residentWhatsAppCreds)
+    await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds)
   } catch { /* WA send failure is non-fatal */ }
 }
 
@@ -880,6 +889,8 @@ export async function runWhatsAppInboundBackground(
       return result
     }
 
+    let openTicketAfterBuildingSearch: string | null = null
+
     async function completeBuildingSearchForResident(searchText: string, lang: ResidentLang): Promise<void> {
       residentLang = lang
       let searchResults = await searchProjectsByBuilding(searchText, supabaseAdmin, webhookClientId)
@@ -923,7 +934,14 @@ export async function runWhatsAppInboundBackground(
           lang
         )
 
-        const { error: sessionCreateError } = await supabaseAdmin
+        const stashedDesc = await readStashedProblemDescription(from, supabaseAdmin, webhookClientId)
+        const autoDescription =
+          stashedDesc ||
+          (looksLikeTicketDescription(searchText) && messageContainsBuildingHint(searchText)
+            ? searchText.trim()
+            : null)
+
+        const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
           .from('sessions')
           .insert({
             phone_number: from,
@@ -934,7 +952,7 @@ export async function runWhatsAppInboundBackground(
             preferred_language: sessionLang,
             last_activity_at: new Date().toISOString(),
           })
-          .select()
+          .select('id')
           .single()
 
         if (sessionCreateError) {
@@ -945,8 +963,20 @@ export async function runWhatsAppInboundBackground(
           return
         }
 
+        if (createdSession?.id) {
+          await promoteStashedMediaToSession(from, createdSession.id, supabaseAdmin, webhookClientId)
+        }
+
         if (!isTestWhatsAppSender) {
           await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
+        }
+
+        await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+
+        if (autoDescription) {
+          openTicketAfterBuildingSearch = autoDescription
+          residentLang = sessionLang
+          return
         }
 
         try {
@@ -1153,9 +1183,10 @@ export async function runWhatsAppInboundBackground(
         waRecipient,
         sendWa,
         residentWhatsAppCreds,
-        isTestWhatsAppSender
+        isTestWhatsAppSender,
+        textBody || undefined
       )
-      return
+      if (!textBody) return
     }
 
     if (!textBody) {
@@ -1199,14 +1230,19 @@ export async function runWhatsAppInboundBackground(
         await saveResidentLanguage(supabaseAdmin, webhookClientId, from, pickedLang, session?.id)
         const stashedSearch = await readStashedBuildingSearchText(from, supabaseAdmin, webhookClientId)
         if (stashedSearch) {
-          await clearPendingSelection(from, supabaseAdmin, webhookClientId)
           await completeBuildingSearchForResident(stashedSearch, pickedLang)
+          if (openTicketAfterBuildingSearch) {
+            session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+            residentLang = pickedLang
+          } else {
+            return
+          }
+        } else {
+          try {
+            await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, pickedLang)
+          } catch { /* WA send failure is non-fatal */ }
           return
         }
-        try {
-          await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, pickedLang)
-        } catch { /* WA send failure is non-fatal */ }
-        return
       }
     }
 
@@ -1429,8 +1465,10 @@ export async function runWhatsAppInboundBackground(
           null
         )
         if (!hasLang) {
-          if (isAddressLikeText(textBody)) {
+          if (messageContainsBuildingHint(textBody)) {
             await stashBuildingSearchText(from, textBody, supabaseAdmin, webhookClientId)
+          } else if (looksLikeTicketDescription(textBody)) {
+            await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
           }
           try {
             await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
@@ -1518,7 +1556,7 @@ export async function runWhatsAppInboundBackground(
 
       // Pending selection + non-selection text: refine search or remind
       if (pendingSelection && selectedIndex === null) {
-        if (isAddressLikeText(textBody)) {
+        if (messageContainsBuildingHint(textBody)) {
           const candidates = (pendingSelection.candidate_projects || []).filter(
             (p) => !isStashedBuildingSearchRow(p)
           )
@@ -1615,7 +1653,7 @@ export async function runWhatsAppInboundBackground(
         return
       }
 
-      const addressLike = isAddressLikeText(textBody)
+      const addressLike = messageContainsBuildingHint(textBody)
 
       if (!addressLike) {
         if (isClarificationQuestion(textBody)) {
@@ -1632,6 +1670,14 @@ export async function runWhatsAppInboundBackground(
           } catch { /* WA send failure is non-fatal */ }
           return
         }
+        if (looksLikeTicketDescription(textBody)) {
+          await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
+          const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+          try {
+            await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
         try {
           await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
         } catch { /* WA send failure is non-fatal */ }
@@ -1639,19 +1685,27 @@ export async function runWhatsAppInboundBackground(
       }
 
       await completeBuildingSearchForResident(textBody, residentLang)
-      return
+      if (openTicketAfterBuildingSearch) {
+        session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+        residentLang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, session)
+      } else {
+        return
+      }
     }
+
+    if (!session) return
 
     // Product rule: never keep active_ticket_id for text follow-ups.
     // Session is only used to bridge: (project identified) -> (ticket description) -> ticket created.
 
-    let ticketDescription: string | null = null
+    let ticketDescription: string | null = openTicketAfterBuildingSearch
+
     const knownResidentForSession =
       !isTestWhatsAppSender
         ? await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from, session.project_id ?? undefined)
         : null
 
-    if (!acceptTicketDescriptionInSession(textBody)) {
+    if (!ticketDescription && !acceptTicketDescriptionInSession(textBody)) {
       try {
         await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
           reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
@@ -1663,6 +1717,9 @@ export async function runWhatsAppInboundBackground(
         .eq('id', session.id)
       return
     }
+
+    if (!ticketDescription) ticketDescription = textBody
+    openTicketAfterBuildingSearch = null
 
     if (session.project_id) {
       const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 30, supabaseAdmin)
@@ -1679,8 +1736,6 @@ export async function runWhatsAppInboundBackground(
         return
       }
     }
-
-    ticketDescription = textBody
 
     const { data: existingProject, error: existingProjectError } = await supabaseAdmin
       .from('projects')

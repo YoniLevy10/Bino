@@ -1,8 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
-import { searchProjectsByBuildingFromList, searchProjectsInList } from '@/lib/whatsapp-building-search'
+import { buildBuildingSearchQueries } from '@/lib/whatsapp-address-extract'
+import {
+  rankProjectsByBuildingSearch,
+  searchProjectsByBuildingFromList,
+} from '@/lib/whatsapp-building-search'
 
-export { searchProjectsInList } from '@/lib/whatsapp-building-search'
+export function searchProjectsInList(projects: ProjectRow[], searchText: string): ProjectRow[] {
+  return searchProjectsByBuildingFromListWithVariants(projects, searchText)
+}
 
 export function parseStartCode(text: string) {
   const match = text.trim().toUpperCase().match(/^START_(BMK\d+)(?:_(.+))?$/i)
@@ -18,6 +24,37 @@ export function isNumericSelection(text: string): number | null {
   const n = parseInt(trimmed, 10)
   if (!Number.isFinite(n) || n < 1 || n > 10 || String(n) !== trimmed) return null
   return n
+}
+
+export function searchProjectsByBuildingFromListWithVariants(
+  projects: ProjectRow[],
+  rawText: string
+): ProjectRow[] {
+  const trimmed = rawText.trim()
+  if (trimmed.length < 2 || projects.length === 0) return []
+
+  const queries = buildBuildingSearchQueries(trimmed)
+  const scoreById = new Map<string, { project: ProjectRow; score: number }>()
+
+  for (const query of queries) {
+    const ranked = rankProjectsByBuildingSearch(projects, query)
+    ranked.forEach((project, idx) => {
+      const score = 300 - idx * 10 + Math.min(query.length, 40)
+      const prev = scoreById.get(project.id)
+      if (!prev || score > prev.score) {
+        scoreById.set(project.id, { project, score })
+      }
+    })
+  }
+
+  if (scoreById.size === 0) {
+    return searchProjectsByBuildingFromList(projects, trimmed)
+  }
+
+  return [...scoreById.values()]
+    .sort((a, b) => b.score - a.score)
+    .map((row) => row.project)
+    .slice(0, 10)
 }
 
 export async function searchProjectsByBuilding(
@@ -36,7 +73,7 @@ export async function searchProjectsByBuilding(
 
   if (error) return []
 
-  return searchProjectsByBuildingFromList((projects || []) as ProjectRow[], trimmed)
+  return searchProjectsByBuildingFromListWithVariants((projects || []) as ProjectRow[], trimmed)
 }
 
 export async function createPendingSelection(

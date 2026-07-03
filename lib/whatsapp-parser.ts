@@ -106,14 +106,20 @@ export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessa
   }
 
   if (message?.type === 'image' && (message?.image as Record<string, unknown>)?.id) {
-    result.mediaId = String((message.image as Record<string, unknown>).id)
+    const image = message.image as Record<string, unknown>
+    result.mediaId = String(image.id)
     result.mediaType = 'image'
+    const caption = typeof image.caption === 'string' ? image.caption.trim() : ''
+    if (caption) result.textBody = caption
   } else if (message?.type === 'audio' && (message?.audio as Record<string, unknown>)?.id) {
     result.mediaId = String((message.audio as Record<string, unknown>).id)
     result.mediaType = 'audio'
   } else if (message?.type === 'video' && (message?.video as Record<string, unknown>)?.id) {
-    result.mediaId = String((message.video as Record<string, unknown>).id)
+    const video = message.video as Record<string, unknown>
+    result.mediaId = String(video.id)
     result.mediaType = 'video'
+    const caption = typeof video.caption === 'string' ? video.caption.trim() : ''
+    if (caption) result.textBody = caption
   } else if (message?.type === 'document' && (message?.document as Record<string, unknown>)?.id) {
     result.mediaId = String((message.document as Record<string, unknown>).id)
     result.mediaType = 'document'
