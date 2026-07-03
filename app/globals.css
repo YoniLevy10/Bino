@@ -4,7 +4,7 @@
   /* Apple-Inspired Premium Design System */
   
   /* Typography - Inter/SF Pro style */
-  --font-sans: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-sans: var(--font-heebo), 'Heebo', 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
   
   /* Base Colors - Near-white background, deep charcoal text */

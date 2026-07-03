@@ -17,18 +17,13 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
-import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
-import { recoverWhatsAppMediaForTicket } from '@/lib/recover-ticket-media-client'
-import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
-import {
-  parseTicketIdFromSearchParams,
-  setTicketDeepLinkInUrl,
-  ticketDetailPath,
-} from '@/lib/ticket-deep-link'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
+import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
+import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
+import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
@@ -41,7 +36,8 @@ import {
   Card,
   Button,
   StatusBadge,
-  LoadingSpinner,
+  ErrorState,
+  EmptyState,
   theme 
 } from './components/ui'
 import type { ProfessionalOption } from './components/tickets/ForwardToProfessionalBlock'
@@ -90,23 +86,27 @@ type TicketLog = {
   created_at: string
 }
 
+function mapFetchedTicketRow(fetched: TicketDetailRow): TicketRow {
+  return {
+    id: fetched.id,
+    ticket_number: fetched.ticket_number,
+    project_id: fetched.project_id ?? undefined,
+    project_code: fetched.project_code,
+    project_name: fetched.project_name,
+    client_id: fetched.client_id ?? null,
+    reporter_phone: fetched.reporter_phone || '',
+    description: fetched.description || '',
+    status: fetched.status,
+    priority: fetched.priority ?? undefined,
+    assigned_worker_id: fetched.assigned_worker_id ?? null,
+    created_at: fetched.created_at || '',
+    closed_at: fetched.closed_at ?? null,
+  }
+}
 type ProjectRow = {
   id: string
   name: string
   project_code: string
-}
-
-type AttachmentRow = {
-  id: string
-  ticket_id: string
-  file_name: string | null
-  file_url: string | null
-  file_size?: number | null
-  mime_type: string | null
-  attachment_type?: string | null
-  whatsapp_media_id?: string | null
-  created_at: string | null
-  signed_url?: string | null
 }
 
 type TicketWithProjects = TicketRow & {
@@ -149,6 +149,7 @@ export default function DashboardPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [pageLoadError, setPageLoadError] = useState(false)
   const [workersMap, setWorkersMap] = useState<Record<string, string>>({})
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const isMobile = useIsMobile()
@@ -158,16 +159,21 @@ export default function DashboardPage() {
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
 
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
-  const [ticketLogs, setTicketLogs] = useState<TicketLog[]>([])
-  const [drawerLoading, setDrawerLoading] = useState(false)
-  const [loadingAttachments, setLoadingAttachments] = useState(false)
-  const [recoveringMedia, setRecoveringMedia] = useState(false)
+  const {
+    attachments: selectedTicketAttachments,
+    ticketLogs,
+    loadingAttachments,
+    drawerLoading,
+    recoveringMedia,
+    loadTicketDrawerData,
+    recoverAndReloadAttachments,
+    resetTicketDetailData,
+  } = useTicketDetailData()
   const [savingTicket, setSavingTicket] = useState(false)
   const [closingTicketId, setClosingTicketId] = useState<string | null>(null)
   const [draftDescription, setDraftDescription] = useState('')
   const [draftStatus, setDraftStatus] = useState('NEW')
   const [draftWorkerId, setDraftWorkerId] = useState('')
-  const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<AttachmentRow[]>([])
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
 
   const [showAddTicketModal, setShowAddTicketModal] = useState(false)
@@ -195,7 +201,6 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const lastFetchAtRef = useRef(0)
   const professionalsLoadedRef = useRef(false)
-  const deepLinkHandledRef = useRef<string | null>(null)
   const cacheAuxRef = useRef({
     residentsCount: null as number | null,
     workersCount: null as number | null,
@@ -294,7 +299,7 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
-    await asyncHandler(
+    const result = await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
         const [ticketsResult, closedCountResult, projectsResult, workersResult] = await Promise.all([
@@ -382,6 +387,7 @@ export default function DashboardPage() {
       },
       { context: 'טעינת הדשבורד', showErrorToast: true }
     )
+    setPageLoadError(!result)
     if (!silent) setLoading(false)
   }, [loadSecondaryData])
 
@@ -537,152 +543,40 @@ export default function DashboardPage() {
     return attachment.signed_url || attachment.file_url || ''
   }
 
-  async function tryRecoverWhatsAppMedia(ticketId: string): Promise<boolean> {
-    setRecoveringMedia(true)
-    try {
-      const { recovered, error } = await recoverWhatsAppMediaForTicket(ticketId)
-      if (!recovered) {
-        if (error) toast.error(error)
-        return false
-      }
-      toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')
-      return true
-    } catch {
-      return false
-    } finally {
-      setRecoveringMedia(false)
-    }
-  }
+  const openTicketFnRef = useRef<(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) => void>(() => {})
 
-  async function loadTicketAttachments(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
-    setLoadingAttachments(true)
-    try {
-      const { data, error } = await supabase
-        .from('ticket_attachments')
-        .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
-        .eq('ticket_id', ticket.id)
-        .order('created_at', { ascending: false })
+  const { clearDeepLink, markDeepLink: setTicketDeepLinkForOpen, openTicketById } = useTicketDeepLinkOpen({
+    tickets,
+    selectedTicketId: selectedTicket?.id,
+    onOpenTicket: (ticket, opts) => openTicketFnRef.current(ticket, opts),
+    mapFetchedTicket: mapFetchedTicketRow,
+  })
 
-      if (error) throw error
-
-      let rows = data
-      if ((!rows || rows.length === 0) && ticket.reporter_phone && ticket.status !== 'CLOSED') {
-        const recovered = await tryRecoverWhatsAppMedia(ticket.id)
-        if (recovered) {
-          const retry = await supabase
-            .from('ticket_attachments')
-            .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
-            .eq('ticket_id', ticket.id)
-            .order('created_at', { ascending: false })
-          rows = retry.data ?? []
-        }
-      }
-
-      if (rows && rows.length > 0) {
-        const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, rows as AttachmentRow[])
-        setSelectedTicketAttachments(attachmentsWithUrls)
-      } else {
-        setSelectedTicketAttachments([])
-      }
-    } catch {
-      setSelectedTicketAttachments([])
-    } finally {
-      setLoadingAttachments(false)
-    }
-  }
-
-  async function loadTicketDrawerData(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
-    setDrawerLoading(true)
-    setTicketLogs([])
-    setSelectedTicketAttachments([])
-    try {
-      const logsResult = await supabase
-        .from('ticket_logs')
-        .select('*')
-        .eq('ticket_id', ticket.id)
-        .order('created_at', { ascending: false })
-
-      setTicketLogs((logsResult.data as TicketLog[]) || [])
-    } catch {
-      setTicketLogs([])
-    } finally {
-      setDrawerLoading(false)
-    }
-    await loadTicketAttachments(ticket)
-  }
-
-  function openTicket(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) {
-    setSelectedTicket(ticket)
-    setDraftDescription(ticket.description || '')
-    setDraftStatus(ticket.status)
-    setDraftWorkerId(ticket.assigned_worker_id || '')
-    if (!opts?.skipDeepLink) {
-      setTicketDeepLinkInUrl(ticket.id)
-      deepLinkHandledRef.current = ticket.id
-    }
-    void loadProfessionals()
-    void loadTicketDrawerData(ticket)
-  }
-
-  function openTicketById(ticketId: string) {
-    const fromList = tickets.find((t) => t.id === ticketId)
-    if (fromList) {
-      openTicket(fromList)
-      return
-    }
-    router.push(ticketDetailPath(ticketId))
-  }
-
-  function closeDrawer() {
+  const closeDrawer = useCallback(() => {
     setSelectedTicket(null)
     setDraftDescription('')
     setDraftStatus('NEW')
     setDraftWorkerId('')
-    setSelectedTicketAttachments([])
-    setTicketLogs([])
-    setTicketDeepLinkInUrl(null)
-    deepLinkHandledRef.current = null
-  }
+    resetTicketDetailData()
+    clearDeepLink()
+  }, [resetTicketDetailData, clearDeepLink])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const ticketId = parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
-    if (!ticketId || deepLinkHandledRef.current === ticketId) return
-    if (selectedTicket?.id === ticketId) {
-      deepLinkHandledRef.current = ticketId
-      return
-    }
+  const openTicket = useCallback(
+    (ticket: TicketRow, opts?: { skipDeepLink?: boolean }) => {
+      setSelectedTicket(ticket)
+      setDraftDescription(ticket.description || '')
+      setDraftStatus(ticket.status)
+      setDraftWorkerId(ticket.assigned_worker_id || '')
+      void loadProfessionals()
+      void loadTicketDrawerData(ticket)
+      if (!opts?.skipDeepLink) {
+        setTicketDeepLinkForOpen(ticket.id)
+      }
+    },
+    [loadProfessionals, loadTicketDrawerData, setTicketDeepLinkForOpen]
+  )
 
-    void (async () => {
-      const fromList = tickets.find((t) => t.id === ticketId)
-      if (fromList) {
-        openTicket(fromList, { skipDeepLink: true })
-        return
-      }
-      const clientId = await resolveBamakorClientIdForBrowser()
-      const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
-      if (fetched) {
-        openTicket(
-          {
-            id: fetched.id,
-            ticket_number: fetched.ticket_number,
-            project_id: fetched.project_id ?? undefined,
-            project_code: fetched.project_code,
-            project_name: fetched.project_name,
-            client_id: fetched.client_id ?? null,
-            reporter_phone: fetched.reporter_phone || '',
-            description: fetched.description || '',
-            status: fetched.status,
-            priority: fetched.priority ?? undefined,
-            assigned_worker_id: fetched.assigned_worker_id ?? null,
-            created_at: fetched.created_at || '',
-            closed_at: fetched.closed_at ?? null,
-          },
-          { skipDeepLink: true }
-        )
-      }
-    })()
-  }, [tickets, selectedTicket?.id])
+  openTicketFnRef.current = openTicket
 
   async function saveSelectedTicket() {
     if (!selectedTicket) return
@@ -835,14 +729,21 @@ export default function DashboardPage() {
             }}
           >
          <div style={styles.heroText}>
-  <h1 style={styles.heroTitle} suppressHydrationWarning>
-    {getGreeting()}
-  </h1>
+  {!isMobile && (
+    <h1 style={styles.heroTitle} suppressHydrationWarning>
+      {getGreeting()}
+    </h1>
+  )}
   {openTicketsCount > 0 && (
     <p style={styles.heroStatus}>
       <span style={styles.statusDot} />
       {openTicketsCount} תקלות פתוחות דורשות טיפול
     </p>
+  )}
+  {isMobile && (
+    <Link href="/tickets" style={styles.viewAllLink}>
+      לכל התקלות והפעולות ←
+    </Link>
   )}
 </div>
             {!isMobile && (
@@ -859,10 +760,13 @@ export default function DashboardPage() {
           <div style={styles.loadingContainer}>
             {!isMobile && <PageKpiSkeleton />}
             <PageListSkeleton rows={isMobile ? 6 : 10} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-              <LoadingSpinner size="md" />
-            </div>
           </div>
+        ) : pageLoadError ? (
+          <ErrorState
+            title="לא הצלחנו לטעון את לוח הבקרה"
+            message="בדקו חיבור לאינטרנט ונסו שוב."
+            onRetry={() => void loadData()}
+          />
         ) : (
           <>
             <div style={{
@@ -1043,8 +947,7 @@ export default function DashboardPage() {
         onRecoverMedia={
           selectedTicket
             ? async () => {
-                const ok = await tryRecoverWhatsAppMedia(selectedTicket.id)
-                if (ok) await loadTicketAttachments(selectedTicket)
+                await recoverAndReloadAttachments(selectedTicket)
               }
             : undefined
         }
