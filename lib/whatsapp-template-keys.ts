@@ -430,9 +430,9 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
     'Technical error. Please scan the building QR code or contact the building manager.'
   ),
   selection_invalid: joinTrilingualTemplate(
-    'אנא השיבו רק עם מספר האפשרות המתאים: 1, 2 או 3.',
-    'Veuillez répondre uniquement avec le numéro : 1, 2 ou 3.',
-    'Please reply only with the matching option number: 1, 2, or 3.'
+    'לא הצלחנו לצמצם לבניין אחד.\n\nבחרו מהרשימה «בחר בניין», השיבו 1/2/3, או כתבו כתובת מדויקת יותר (למשל: אלרואי 5 ג).',
+    'Nous n\'avons pas pu cibler un seul bâtiment.\n\nChoisissez dans la liste, répondez 1/2/3, ou précisez l\'adresse (ex. : Alroey 5 G).',
+    'We could not narrow down to one building.\n\nPick from the list, reply 1/2/3, or send a more specific address (e.g. Alroey 5 G).'
   ),
 
   // זרימת תקלה

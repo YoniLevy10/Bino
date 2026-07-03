@@ -30,6 +30,7 @@ import {
   parseStartCode,
   isNumericSelection,
   searchProjectsByBuilding,
+  searchProjectsInList,
   createPendingSelection,
   getPendingSelection,
   clearPendingSelection,
@@ -859,7 +860,7 @@ export async function runWhatsAppInboundBackground(
       creds?: { phoneNumberId?: string; accessToken?: string }
     ) {
       if (!creds?.phoneNumberId || !creds?.accessToken) return null
-      const bodyText = 'שלום! בחרו שפה / Choisissez / Choose:'
+      const bodyText = 'שלום! בחרו שפה / Choisissez votre langue / Choose your language:'
       const payload = buildLanguageButtonsPayload(to, bodyText)
       const result = await sendWhatsAppInteractivePayloadWithCredentials(
         creds.phoneNumberId,
@@ -1310,6 +1311,27 @@ export async function runWhatsAppInboundBackground(
     }
 
     if (!session) {
+      const isKnownResidentEarly =
+        !isTestWhatsAppSender &&
+        !!(await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from))
+      const isProjectListPick =
+        !!interactiveReplyId && parseProjectListReplyId(interactiveReplyId) !== null
+
+      if (!isKnownResidentEarly && !isProjectListPick) {
+        const hasLang = await hasExplicitResidentLanguage(
+          supabaseAdmin,
+          webhookClientId,
+          from,
+          null
+        )
+        if (!hasLang) {
+          try {
+            await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
+      }
+
       // STEP 2.5: PENDING SELECTION (list reply or numeric 1/2/3)
       let selectedIndex: number | null = null
       if (interactiveReplyId) {
@@ -1354,6 +1376,9 @@ export async function runWhatsAppInboundBackground(
 
           if (sessionCreateError) {
             logger.error('WEBHOOK', 'session create from selection failed', new Error(sessionCreateError.message))
+            try {
+              await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+            } catch { /* WA send failure is non-fatal */ }
             return
           }
 
@@ -1385,14 +1410,98 @@ export async function runWhatsAppInboundBackground(
       // Pending selection + non-selection text: refine search or remind
       if (pendingSelection && selectedIndex === null) {
         if (isAddressLikeText(textBody)) {
-          await clearPendingSelection(from, supabaseAdmin, webhookClientId)
-          pendingSelection = null
-        } else {
+          const candidates = pendingSelection.candidate_projects || []
+          const sessionLang = pendingSelection.preferred_language?.trim()
+            ? normalizeResidentLang(pendingSelection.preferred_language)
+            : residentLang
+
+          let refined = searchProjectsInList(candidates, textBody)
+          if (refined.length === 0) {
+            refined = await searchProjectsByBuilding(textBody, supabaseAdmin, webhookClientId)
+          }
+
+          if (refined.length === 1) {
+            const matchedProject = refined[0]
+            await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+
+            await supabaseAdmin
+              .from('sessions')
+              .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
+              .eq('phone_number', from)
+              .eq('client_id', webhookClientId)
+              .eq('is_active', true)
+
+            const { error: sessionCreateError } = await supabaseAdmin
+              .from('sessions')
+              .insert({
+                phone_number: from,
+                client_id: webhookClientId,
+                project_id: matchedProject.id,
+                is_active: true,
+                active_ticket_id: null,
+                preferred_language: sessionLang,
+                last_activity_at: new Date().toISOString(),
+              })
+              .select()
+              .single()
+
+            if (sessionCreateError) {
+              logger.error('WEBHOOK', 'session create from refine failed', new Error(sessionCreateError.message))
+              try {
+                await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+              } catch { /* WA send failure is non-fatal */ }
+              return
+            }
+
+            if (!isTestWhatsAppSender) {
+              await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
+            }
+
+            try {
+              await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
+                project_name: matchedProject.name,
+              }, sessionLang)
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+
+          if (refined.length > 1) {
+            await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+            const pendingCreated = await createPendingSelection(
+              from,
+              refined,
+              supabaseAdmin,
+              webhookClientId,
+              sessionLang
+            )
+            if (!pendingCreated) {
+              try {
+                await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+              } catch { /* WA send failure is non-fatal */ }
+              return
+            }
+            try {
+              await sendWaInteractiveList(
+                waRecipient,
+                refined,
+                RESIDENT_UI_COPY[sessionLang].buildingListBody,
+                residentWhatsAppCreds,
+                sessionLang
+              )
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+
           try {
-            await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
+            await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds, {}, sessionLang)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
+
+        try {
+          await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
+        } catch { /* WA send failure is non-fatal */ }
+        return
       }
 
       const addressLike = isAddressLikeText(textBody)

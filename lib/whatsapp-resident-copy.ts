@@ -12,7 +12,7 @@ export const RESIDENT_UI_COPY: Record<
   }
 > = {
   he: {
-    chooseLanguage: 'שלום! בחרו שפה:',
+    chooseLanguage: 'שלום! בחרו שפה כדי להמשיך:',
     buildingListBody: 'מצאנו כמה בניינים תואמים. בחרו מהרשימה:',
     confirmTicketPrefix: 'לאשר פתיחת תקלה?',
     clarificationReply:
@@ -21,7 +21,7 @@ export const RESIDENT_UI_COPY: Record<
     greetingPrefix: (name) => (name ? `שלום ${name}, ` : 'שלום, '),
   },
   fr: {
-    chooseLanguage: 'Bonjour! Choisissez votre langue:',
+    chooseLanguage: 'Bonjour! Choisissez votre langue pour continuer:',
     buildingListBody: 'Plusieurs immeubles correspondent. Choisissez dans la liste:',
     confirmTicketPrefix: 'Confirmer l\'ouverture du ticket?',
     clarificationReply:
@@ -30,7 +30,7 @@ export const RESIDENT_UI_COPY: Record<
     greetingPrefix: (name) => (name ? `Bonjour ${name}, ` : 'Bonjour, '),
   },
   en: {
-    chooseLanguage: 'Hello! Choose your language:',
+    chooseLanguage: 'Hello! Choose your language to continue:',
     buildingListBody: 'We found several matching buildings. Please pick from the list:',
     confirmTicketPrefix: 'Open a maintenance ticket?',
     clarificationReply:
