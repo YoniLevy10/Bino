@@ -1,5 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
+import { searchProjectsByBuildingFromList, searchProjectsInList } from '@/lib/whatsapp-building-search'
+
+export { searchProjectsInList } from '@/lib/whatsapp-building-search'
 
 export function parseStartCode(text: string) {
   const match = text.trim().toUpperCase().match(/^START_(BMK\d+)(?:_(.+))?$/i)
@@ -25,7 +28,6 @@ export async function searchProjectsByBuilding(
   const trimmed = searchText.trim()
   if (trimmed.length < 2) return []
 
-  const lowerSearch = trimmed.toLowerCase()
   const { data: projects, error } = await supabaseAdmin
     .from('projects')
     .select('id, name, project_code, address')
@@ -34,14 +36,7 @@ export async function searchProjectsByBuilding(
 
   if (error) return []
 
-  return (projects || [])
-    .filter(
-      (p: ProjectRow) =>
-        p.name?.toLowerCase().includes(lowerSearch) ||
-        p.address?.toLowerCase().includes(lowerSearch) ||
-        p.project_code?.toLowerCase().includes(lowerSearch)
-    )
-    .slice(0, 10)
+  return searchProjectsByBuildingFromList((projects || []) as ProjectRow[], trimmed)
 }
 
 export async function createPendingSelection(

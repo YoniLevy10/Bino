@@ -12,6 +12,7 @@ import {
   WHATSAPP_TEMPLATE_VAR_NAMES,
   WHATSAPP_TEMPLATE_JOURNEY,
   WHATSAPP_TEMPLATE_WHEN_SENT,
+  WHATSAPP_ALL_LANGS_PREVIEW_KEYS,
   SMS_TEMPLATE_KEYS,
   type SmsTemplateKey,
   SMS_TEMPLATE_LABELS,
@@ -27,6 +28,7 @@ import {
   joinTrilingualTemplate,
   mergeTrilingualWithDefaults,
   type TrilingualTemplateParts,
+  type ResidentLang,
 } from '@/lib/whatsapp-bilingual-template'
 import { toast } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -54,6 +56,18 @@ const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string
 }
 
 const STEP_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#0d9488', '#0891b2', '#dc2626']
+
+const PREVIEW_LANG_TABS: { id: ResidentLang; label: string }[] = [
+  { id: 'he', label: 'עברית' },
+  { id: 'fr', label: 'Français' },
+  { id: 'en', label: 'English' },
+]
+
+const LANG_FIELD_STYLES: Record<ResidentLang, CSSProperties> = {
+  he: { borderRight: '4px solid #2563eb' },
+  fr: { borderRight: '4px solid #7c3aed' },
+  en: { borderRight: '4px solid #059669' },
+}
 
 function buildWaTrilingualFromDrafts(
   drafts: Record<WhatsAppTemplateKey, string>
@@ -105,6 +119,7 @@ export default function WhatsappTemplatesPage() {
   const [extraDrafts, setExtraDrafts] = useState<Record<string, string>>({})
   const [extraExpandedKeys, setExtraExpandedKeys] = useState<Set<string>>(new Set())
   const [extraSavingKey, setExtraSavingKey] = useState<string | null>(null)
+  const [previewLang, setPreviewLang] = useState<ResidentLang>('he')
   const waHeRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
   const waFrRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
   const waEnRefs = useRef<Partial<Record<WhatsAppTemplateKey, HTMLTextAreaElement | null>>>({})
@@ -323,13 +338,23 @@ export default function WhatsappTemplatesPage() {
 
   function renderWaPreviewBubbles(key: WhatsAppTemplateKey) {
     const parts = previewPairs[key]
-    const langs: { id: 'he' | 'fr' | 'en'; label: string; text: string; dir: 'rtl' | 'ltr' }[] = [
-      { id: 'he', label: 'עברית', text: parts.he, dir: 'rtl' },
-      { id: 'fr', label: 'Français', text: parts.fr, dir: 'ltr' },
-      { id: 'en', label: 'English', text: parts.en, dir: 'ltr' },
-    ]
+    const showAll = WHATSAPP_ALL_LANGS_PREVIEW_KEYS.includes(key)
+    const langs: { id: ResidentLang; label: string; text: string; dir: 'rtl' | 'ltr' }[] = showAll
+      ? [
+          { id: 'he', label: 'עברית', text: parts.he, dir: 'rtl' },
+          { id: 'fr', label: 'Français', text: parts.fr, dir: 'ltr' },
+          { id: 'en', label: 'English', text: parts.en, dir: 'ltr' },
+        ]
+      : [
+          {
+            id: previewLang,
+            label: PREVIEW_LANG_TABS.find((t) => t.id === previewLang)?.label ?? previewLang,
+            text: parts[previewLang] || parts.he,
+            dir: previewLang === 'he' ? 'rtl' : 'ltr',
+          },
+        ]
     return langs.map(({ id, label, text, dir }) => (
-      <div key={id} style={{ ...styles.waBubble, marginTop: id === 'he' ? 0 : 8 }}>
+      <div key={id} style={{ ...styles.waBubble, marginTop: id === langs[0]?.id ? 0 : 8 }}>
         <span style={styles.waLangTag}>{label}</span>
         <p style={{ ...styles.waText, direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left' }}>
           {text || '(לא הוגדר)'}
@@ -387,10 +412,32 @@ export default function WhatsappTemplatesPage() {
         )}
 
         <p style={styles.editHint}>
-          כל הודעת WhatsApp/SMS שנשלחת מהמערכת מופיעה כאן. אחרי שמירה — הטקסט השמור הוא מה שנשלח לדיירים.
-          בתבניות WhatsApp: עברית, צרפתית ואנגלית בשדות נפרדים — בוואטסאפ נשלחות כהודעה אחת (עברית, אחר כך צרפתית, אחר כך אנגלית).
-          תבניות ישנות מהמסד שלא ברשימה הסטנדרטית מוצגות בסוף העמוד.
+          כל הודעת WhatsApp/SMS מהמערכת ניתנת לעריכה כאן. אחרי שמירה — הטקסט השמור נשלח לדיירים.
+          לרוב התבניות: הדייר מקבל <strong>רק את השפה שבחר</strong> (עברית / צרפתית / אנגלית) — השתמשו
+          ב«תצוגה מקדימה לפי שפה» למטה. חריג: <code style={styles.inlineCode}>choose_language</code>{' '}
+          מציג את שלוש השפות יחד לפני הבחירה.
         </p>
+
+        {!loading ? (
+          <div style={styles.previewLangBar}>
+            <span style={styles.previewLangLabel}>תצוגה מקדימה לפי שפה (מה שהדייר יראה):</span>
+            <div style={styles.previewLangTabs}>
+              {PREVIEW_LANG_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setPreviewLang(tab.id)}
+                  style={{
+                    ...styles.previewLangTab,
+                    ...(previewLang === tab.id ? styles.previewLangTabActive : {}),
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {!loading ? <ResidentWhatsAppFlowGuide /> : null}
 
@@ -530,12 +577,16 @@ export default function WhatsappTemplatesPage() {
                             </div>
                             {key === 'resident_prompt' ? (
                               <p style={styles.varHint}>
-                                {'{{reporter_name}}'} מתמלא אוטומטית: &quot;שלום יוני, &quot; לדייר מוכר, או &quot;שלום, &quot; בלי שם.
-                                התצוגה המקדימה למעלה משקפת את זה.
+                                הודעה קצרה כשהבניין כבר זוהה — הדייר רק מתאר את הבעיה.
+                              </p>
+                            ) : WHATSAPP_ALL_LANGS_PREVIEW_KEYS.includes(key) ? (
+                              <p style={styles.varHint}>
+                                תצוגה מקדימה: שלוש השפות יחד (לפני שהדייר בוחר שפה). אחרי הבחירה —
+                                רק השדה הרלוונטי.
                               </p>
                             ) : null}
-                            <div style={styles.bilingualBlock}>
-                              <label style={styles.langLabel}>עברית</label>
+                            <div style={{ ...styles.bilingualBlock, ...LANG_FIELD_STYLES.he }}>
+                              <label style={styles.langLabel}>🇮🇱 עברית — נשלח לדייר שבחר עברית</label>
                               <textarea
                                 ref={setWaHeRef(key)}
                                 dir="rtl"
@@ -546,8 +597,8 @@ export default function WhatsappTemplatesPage() {
                                 style={styles.textarea}
                               />
                             </div>
-                            <div style={styles.bilingualBlock}>
-                              <label style={styles.langLabelEn}>Français</label>
+                            <div style={{ ...styles.bilingualBlock, ...LANG_FIELD_STYLES.fr }}>
+                              <label style={styles.langLabelEn}>🇫🇷 Français — envoyé si langue = fr</label>
                               <textarea
                                 ref={setWaFrRef(key)}
                                 dir="ltr"
@@ -559,8 +610,8 @@ export default function WhatsappTemplatesPage() {
                                 style={{ ...styles.textarea, direction: 'ltr', textAlign: 'left' }}
                               />
                             </div>
-                            <div style={styles.bilingualBlock}>
-                              <label style={styles.langLabelEn}>English</label>
+                            <div style={{ ...styles.bilingualBlock, ...LANG_FIELD_STYLES.en }}>
+                              <label style={styles.langLabelEn}>🇬🇧 English — sent when lang = en</label>
                               <textarea
                                 ref={setWaEnRef(key)}
                                 dir="ltr"
@@ -664,10 +715,38 @@ const styles: Record<string, CSSProperties> = {
   content: { padding: '32px 40px', maxWidth: 820, margin: '0 auto' },
   backLink: { fontSize: 14, fontWeight: 600, color: theme.colors.primary, textDecoration: 'none' },
   editHint: {
-    marginBottom: 20,
+    marginBottom: 12,
     fontSize: 13,
     color: theme.colors.textMuted,
-    lineHeight: 1.5,
+    lineHeight: 1.55,
+  },
+  previewLangBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+    border: `1px solid ${theme.colors.border}`,
+  },
+  previewLangLabel: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary },
+  previewLangTabs: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  previewLangTab: {
+    border: `1px solid ${theme.colors.borderStrong}`,
+    background: theme.colors.surface,
+    borderRadius: theme.radius.full,
+    padding: '6px 14px',
+    fontSize: 13,
+    cursor: 'pointer',
+    color: theme.colors.textSecondary,
+    fontWeight: 600,
+  },
+  previewLangTabActive: {
+    background: theme.colors.primary,
+    color: '#fff',
+    borderColor: theme.colors.primary,
   },
   inlineCode: { fontSize: 12, background: '#f3f4f6', padding: '1px 6px', borderRadius: 4 },
   journey: { display: 'flex', flexDirection: 'column', gap: 40 },
@@ -755,7 +834,14 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 15, lineHeight: 1.5, resize: 'vertical', fontFamily: 'inherit',
     direction: 'rtl',
   },
-  bilingualBlock: { display: 'flex', flexDirection: 'column', gap: 6 },
+  bilingualBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    padding: '10px 12px 10px 8px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+  },
   langLabel: { fontSize: 13, fontWeight: 700, color: theme.colors.textPrimary, textAlign: 'right' },
   langLabelEn: { fontSize: 13, fontWeight: 700, color: theme.colors.textSecondary, textAlign: 'left' },
   varHint: {

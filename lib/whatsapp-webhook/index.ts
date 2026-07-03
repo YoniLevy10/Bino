@@ -2,6 +2,7 @@ export {
   parseStartCode,
   isNumericSelection,
   searchProjectsByBuilding,
+  searchProjectsInList,
   createPendingSelection,
   getPendingSelection,
   clearPendingSelection,

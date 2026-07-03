@@ -12,12 +12,12 @@ import {
   isGreetingSmallTalk,
   isStatusQuestion,
   looksLikeTicketDescription,
+  acceptTicketDescriptionInSession,
   resolveTicketPriorityFromResidentMessage,
   statusLabelHe,
   isClarificationQuestion,
-  isTicketConfirmText,
 } from '@/lib/whatsapp-intent'
-import { resolveMessageForLanguage, normalizeResidentLang, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
+import { resolveMessageForLanguage, normalizeResidentLang, splitTrilingualTemplate, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
 import {
   getResidentLanguage,
   saveResidentLanguage,
@@ -30,6 +30,7 @@ import {
   parseStartCode,
   isNumericSelection,
   searchProjectsByBuilding,
+  searchProjectsInList,
   createPendingSelection,
   getPendingSelection,
   clearPendingSelection,
@@ -38,13 +39,16 @@ import {
   type SessionRow,
 } from '@/lib/whatsapp-webhook'
 import { findOpenTicketForPhone } from '@/lib/whatsapp-webhook/flow-ticket'
+import {
+  isStashedBuildingSearchRow,
+  readStashedBuildingSearchText,
+  stashBuildingSearchText,
+} from '@/lib/whatsapp-webhook/building-search-stash'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
 import {
   buildProjectSelectionListPayload,
-  buildConfirmTicketButtonsPayload,
   buildLanguageButtonsPayload,
   parseProjectListReplyId,
-  parseConfirmButtonReplyId,
   parseLanguageButtonReplyId,
 } from '@/lib/whatsapp-interactive'
 import {
@@ -803,6 +807,21 @@ export async function runWhatsAppInboundBackground(
       return result
     }
 
+    async function resolveWaBodyForLang(
+      templateKey: WhatsAppTemplateKey,
+      lang: ResidentLang,
+      vars: WaTemplateVars = {}
+    ): Promise<string> {
+      const raw = await resolveWhatsAppTemplateMessage(
+        supabaseAdmin,
+        webhookClientId,
+        templateKey,
+        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[templateKey],
+        vars
+      )
+      return resolveMessageForLanguage(raw, lang)
+    }
+
     async function sendWaInteractiveList(
       to: string,
       projects: ProjectRow[],
@@ -829,14 +848,21 @@ export async function runWhatsAppInboundBackground(
       return result
     }
 
-    async function sendWaConfirmButtons(
+    async function sendWaLanguageButtons(
       to: string,
-      bodyText: string,
-      creds?: { phoneNumberId?: string; accessToken?: string },
-      lang: ResidentLang = residentLang
+      creds?: { phoneNumberId?: string; accessToken?: string }
     ) {
       if (!creds?.phoneNumberId || !creds?.accessToken) return null
-      const payload = buildConfirmTicketButtonsPayload(to, bodyText, lang)
+      const raw = await resolveWhatsAppTemplateMessage(
+        supabaseAdmin,
+        webhookClientId,
+        'choose_language',
+        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS.choose_language,
+        {}
+      )
+      const { he, fr, en } = splitTrilingualTemplate(raw)
+      const bodyText = [he, fr, en].filter(Boolean).join('\n')
+      const payload = buildLanguageButtonsPayload(to, bodyText)
       const result = await sendWhatsAppInteractivePayloadWithCredentials(
         creds.phoneNumberId,
         creds.accessToken,
@@ -854,28 +880,106 @@ export async function runWhatsAppInboundBackground(
       return result
     }
 
-    async function sendWaLanguageButtons(
-      to: string,
-      creds?: { phoneNumberId?: string; accessToken?: string }
-    ) {
-      if (!creds?.phoneNumberId || !creds?.accessToken) return null
-      const bodyText = 'שלום! בחרו שפה / Choisissez / Choose:'
-      const payload = buildLanguageButtonsPayload(to, bodyText)
-      const result = await sendWhatsAppInteractivePayloadWithCredentials(
-        creds.phoneNumberId,
-        creds.accessToken,
-        payload
+    async function completeBuildingSearchForResident(searchText: string, lang: ResidentLang): Promise<void> {
+      residentLang = lang
+      let searchResults = await searchProjectsByBuilding(searchText, supabaseAdmin, webhookClientId)
+
+      if (searchResults.length === 0) {
+        try {
+          const trUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=${encodeURIComponent(searchText)}`
+          const trRes = await fetchTimeout(trUrl, {}, 5000)
+          if (trRes) {
+            const trJson = await trRes.json() as unknown[][]
+            const segments = trJson[0] as unknown[][]
+            const hebrew = segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
+            if (hebrew && hebrew !== searchText) {
+              const translatedResults = await searchProjectsByBuilding(hebrew, supabaseAdmin, webhookClientId)
+              if (translatedResults.length > 0) searchResults = translatedResults
+            }
+          }
+        } catch { /* translation failure is non-fatal */ }
+      }
+
+      if (searchResults.length === 0) {
+        try {
+          await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds, {}, lang)
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
+
+      if (searchResults.length === 1) {
+        const matchedProject = searchResults[0]
+        await supabaseAdmin
+          .from('sessions')
+          .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
+          .eq('phone_number', from)
+          .eq('client_id', webhookClientId)
+          .eq('is_active', true)
+
+        const sessionLang = await preferredLanguageForNewSession(
+          supabaseAdmin,
+          webhookClientId,
+          from,
+          lang
+        )
+
+        const { error: sessionCreateError } = await supabaseAdmin
+          .from('sessions')
+          .insert({
+            phone_number: from,
+            client_id: webhookClientId,
+            project_id: matchedProject.id,
+            is_active: true,
+            active_ticket_id: null,
+            preferred_language: sessionLang,
+            last_activity_at: new Date().toISOString(),
+          })
+          .select()
+          .single()
+
+        if (sessionCreateError) {
+          logger.error('WEBHOOK', 'session create from search match failed', new Error(sessionCreateError.message))
+          try {
+            await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
+
+        if (!isTestWhatsAppSender) {
+          await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
+        }
+
+        try {
+          await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
+            project_name: matchedProject.name,
+          }, sessionLang)
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
+
+      const pendingCreated = await createPendingSelection(
+        from,
+        searchResults,
+        supabaseAdmin,
+        webhookClientId,
+        lang
       )
-      void persistWhatsAppMessage(supabaseAdmin, {
-        clientId: webhookClientId,
-        phone: from,
-        direction: 'out',
-        body: bodyText,
-        messageType: 'interactive',
-        interactivePayload: payload.interactive as Record<string, unknown>,
-        waMessageId: extractMetaWaMessageId(result),
-      })
-      return result
+      if (!pendingCreated) {
+        try {
+          await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
+
+      try {
+        await sendWaInteractiveList(
+          waRecipient,
+          searchResults,
+          await resolveWaBodyForLang('building_list_body', lang),
+          residentWhatsAppCreds,
+          lang
+        )
+      } catch { /* WA send failure is non-fatal */ }
     }
 
     // Expire temporary WhatsApp session state if inactive (scoped to this tenant)
@@ -1093,8 +1197,14 @@ export async function runWhatsAppInboundBackground(
       if (pickedLang) {
         residentLang = pickedLang
         await saveResidentLanguage(supabaseAdmin, webhookClientId, from, pickedLang, session?.id)
+        const stashedSearch = await readStashedBuildingSearchText(from, supabaseAdmin, webhookClientId)
+        if (stashedSearch) {
+          await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+          await completeBuildingSearchForResident(stashedSearch, pickedLang)
+          return
+        }
         try {
-          await sendWa(waRecipient, 'welcome', residentWhatsAppCreds, {}, pickedLang)
+          await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, pickedLang)
         } catch { /* WA send failure is non-fatal */ }
         return
       }
@@ -1286,12 +1396,7 @@ export async function runWhatsAppInboundBackground(
           if (session) {
             if (isClarificationQuestion(textBody)) {
               try {
-                await sendWhatsAppTextMessage(
-                  waRecipient,
-                  RESIDENT_UI_COPY[sessionLang].clarificationReply,
-                  residentWhatsAppCreds,
-                  { clientId: webhookClientId }
-                )
+                await sendWa(waRecipient, 'clarification_reply', residentWhatsAppCreds, {}, sessionLang)
               } catch { /* WA send failure is non-fatal */ }
               return
             }
@@ -1310,6 +1415,30 @@ export async function runWhatsAppInboundBackground(
     }
 
     if (!session) {
+      const isKnownResidentEarly =
+        !isTestWhatsAppSender &&
+        !!(await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from))
+      const isProjectListPick =
+        !!interactiveReplyId && parseProjectListReplyId(interactiveReplyId) !== null
+
+      if (!isKnownResidentEarly && !isProjectListPick) {
+        const hasLang = await hasExplicitResidentLanguage(
+          supabaseAdmin,
+          webhookClientId,
+          from,
+          null
+        )
+        if (!hasLang) {
+          if (isAddressLikeText(textBody)) {
+            await stashBuildingSearchText(from, textBody, supabaseAdmin, webhookClientId)
+          }
+          try {
+            await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
+      }
+
       // STEP 2.5: PENDING SELECTION (list reply or numeric 1/2/3)
       let selectedIndex: number | null = null
       if (interactiveReplyId) {
@@ -1322,7 +1451,9 @@ export async function runWhatsAppInboundBackground(
       let pendingSelection = await getPendingSelection(from, supabaseAdmin, webhookClientId)
 
       if (selectedIndex !== null && pendingSelection) {
-        const candidates = pendingSelection.candidate_projects || []
+        const candidates = (pendingSelection.candidate_projects || []).filter(
+          (p) => !isStashedBuildingSearchRow(p)
+        )
 
         if (selectedIndex >= 0 && selectedIndex < candidates.length) {
           const selectedProject = candidates[selectedIndex]
@@ -1354,6 +1485,9 @@ export async function runWhatsAppInboundBackground(
 
           if (sessionCreateError) {
             logger.error('WEBHOOK', 'session create from selection failed', new Error(sessionCreateError.message))
+            try {
+              await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+            } catch { /* WA send failure is non-fatal */ }
             return
           }
 
@@ -1385,14 +1519,100 @@ export async function runWhatsAppInboundBackground(
       // Pending selection + non-selection text: refine search or remind
       if (pendingSelection && selectedIndex === null) {
         if (isAddressLikeText(textBody)) {
-          await clearPendingSelection(from, supabaseAdmin, webhookClientId)
-          pendingSelection = null
-        } else {
+          const candidates = (pendingSelection.candidate_projects || []).filter(
+            (p) => !isStashedBuildingSearchRow(p)
+          )
+          const sessionLang = pendingSelection.preferred_language?.trim()
+            ? normalizeResidentLang(pendingSelection.preferred_language)
+            : residentLang
+
+          let refined = searchProjectsInList(candidates, textBody)
+          if (refined.length === 0) {
+            refined = await searchProjectsByBuilding(textBody, supabaseAdmin, webhookClientId)
+          }
+
+          if (refined.length === 1) {
+            const matchedProject = refined[0]
+            await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+
+            await supabaseAdmin
+              .from('sessions')
+              .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
+              .eq('phone_number', from)
+              .eq('client_id', webhookClientId)
+              .eq('is_active', true)
+
+            const { error: sessionCreateError } = await supabaseAdmin
+              .from('sessions')
+              .insert({
+                phone_number: from,
+                client_id: webhookClientId,
+                project_id: matchedProject.id,
+                is_active: true,
+                active_ticket_id: null,
+                preferred_language: sessionLang,
+                last_activity_at: new Date().toISOString(),
+              })
+              .select()
+              .single()
+
+            if (sessionCreateError) {
+              logger.error('WEBHOOK', 'session create from refine failed', new Error(sessionCreateError.message))
+              try {
+                await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+              } catch { /* WA send failure is non-fatal */ }
+              return
+            }
+
+            if (!isTestWhatsAppSender) {
+              await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
+            }
+
+            try {
+              await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
+                project_name: matchedProject.name,
+              }, sessionLang)
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+
+          if (refined.length > 1) {
+            await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+            const pendingCreated = await createPendingSelection(
+              from,
+              refined,
+              supabaseAdmin,
+              webhookClientId,
+              sessionLang
+            )
+            if (!pendingCreated) {
+              try {
+                await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+              } catch { /* WA send failure is non-fatal */ }
+              return
+            }
+            try {
+              await sendWaInteractiveList(
+                waRecipient,
+                refined,
+                await resolveWaBodyForLang('building_list_body', sessionLang),
+                residentWhatsAppCreds,
+                sessionLang
+              )
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+
           try {
-            await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
+            await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds, {}, sessionLang)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
+
+        try {
+          await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
+        } catch { /* WA send failure is non-fatal */ }
+        return
       }
 
       const addressLike = isAddressLikeText(textBody)
@@ -1401,23 +1621,14 @@ export async function runWhatsAppInboundBackground(
         if (isClarificationQuestion(textBody)) {
           const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
           try {
-            await sendWhatsAppTextMessage(
-              waRecipient,
-              RESIDENT_UI_COPY[lang].clarificationReply,
-              residentWhatsAppCreds,
-              { clientId: webhookClientId }
-            )
+            await sendWa(waRecipient, 'clarification_reply', residentWhatsAppCreds, {}, lang)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
         if (isGreetingSmallTalk(textBody)) {
-          const hasLang = await hasExplicitResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+          const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
           try {
-            if (!hasLang) {
-              await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
-            } else {
-              await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
-            }
+            await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
@@ -1427,110 +1638,7 @@ export async function runWhatsAppInboundBackground(
         return
       }
 
-      let searchResults = await searchProjectsByBuilding(textBody, supabaseAdmin, webhookClientId)
-
-      if (searchResults.length === 0) {
-        // Try translating English input to Hebrew and search again
-        try {
-          const trUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=${encodeURIComponent(textBody)}`
-          const trRes = await fetchTimeout(trUrl, {}, 5000)
-          if (trRes) {
-            const trJson = await trRes.json() as unknown[][]
-            const segments = trJson[0] as unknown[][]
-            const hebrew = segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
-            if (hebrew && hebrew !== textBody) {
-              const translatedResults = await searchProjectsByBuilding(hebrew, supabaseAdmin, webhookClientId)
-              if (translatedResults.length > 0) {
-                searchResults = translatedResults
-              }
-            }
-          }
-        } catch { /* translation failure is non-fatal */ }
-      }
-
-      if (searchResults.length === 0) {
-        try {
-          await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
-
-      if (searchResults.length === 1) {
-        const matchedProject = searchResults[0]
-
-        await supabaseAdmin
-          .from('sessions')
-          .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
-          .eq('phone_number', from)
-          .eq('client_id', webhookClientId)
-          .eq('is_active', true)
-
-        const sessionLang = await preferredLanguageForNewSession(
-          supabaseAdmin,
-          webhookClientId,
-          from,
-          residentLang
-        )
-
-        const { error: sessionCreateError } = await supabaseAdmin
-          .from('sessions')
-          .insert({
-            phone_number: from,
-            client_id: webhookClientId,
-            project_id: matchedProject.id,
-            is_active: true,
-            active_ticket_id: null,
-            preferred_language: sessionLang,
-            last_activity_at: new Date().toISOString(),
-          })
-          .select()
-          .single()
-
-        if (sessionCreateError) {
-          logger.error('WEBHOOK', 'session create from search match failed', new Error(sessionCreateError.message))
-          return
-        }
-
-        if (!isTestWhatsAppSender) {
-          await getOrCreateResident(supabaseAdmin, webhookClientId, from, matchedProject.id)
-        }
-
-        try {
-          await sendWa(waRecipient, 'session_created', residentWhatsAppCreds, {
-            project_name: matchedProject.name,
-          }, sessionLang)
-        } catch { /* WA send failure is non-fatal */ }
-
-        return
-      }
-
-      // Multiple matches — store pending selection and send interactive list (up to 10)
-      const pendingCreated = await createPendingSelection(
-        from,
-        searchResults,
-        supabaseAdmin,
-        webhookClientId,
-        residentLang
-      )
-
-      if (!pendingCreated) {
-        logger.warn('WEBHOOK', 'create pending selection failed, sending technical error')
-        try {
-          await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
-
-      try {
-        await sendWaInteractiveList(
-          waRecipient,
-          searchResults,
-          RESIDENT_UI_COPY[residentLang].buildingListBody,
-          residentWhatsAppCreds,
-          residentLang
-        )
-      } catch { /* WA send failure is non-fatal */ }
-
+      await completeBuildingSearchForResident(textBody, residentLang)
       return
     }
 
@@ -1542,133 +1650,18 @@ export async function runWhatsAppInboundBackground(
       !isTestWhatsAppSender
         ? await findResidentByPhoneClient(supabaseAdmin, webhookClientId, from, session.project_id ?? undefined)
         : null
-    const isKnownResident = !!knownResidentForSession
 
-    if (interactiveReplyId && session?.id) {
-      const confirmAction = parseConfirmButtonReplyId(interactiveReplyId)
-      if (confirmAction === 'cancel') {
-        await supabaseAdmin
-          .from('sessions')
-          .update({
-            pending_ticket_description: null,
-            last_activity_at: new Date().toISOString(),
-          })
-          .eq('id', session.id)
-        try {
-          await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
-      if (confirmAction === 'confirm') {
-        const { data: pendingRow } = await supabaseAdmin
-          .from('sessions')
-          .select('pending_ticket_description')
-          .eq('id', session.id)
-          .maybeSingle()
-        ticketDescription =
-          (pendingRow as { pending_ticket_description?: string | null } | null)
-            ?.pending_ticket_description?.trim() || null
-        if (!ticketDescription) {
-          try {
-            await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
-              reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
-            })
-          } catch { /* WA send failure is non-fatal */ }
-          return
-        }
-        await supabaseAdmin
-          .from('sessions')
-          .update({ pending_ticket_description: null, last_activity_at: new Date().toISOString() })
-          .eq('id', session.id)
-      }
-    }
-
-    if (!ticketDescription && session?.id && isTicketConfirmText(textBody)) {
-      const { data: pendingRow } = await supabaseAdmin
+    if (!acceptTicketDescriptionInSession(textBody)) {
+      try {
+        await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
+          reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
+        })
+      } catch { /* WA send failure is non-fatal */ }
+      await supabaseAdmin
         .from('sessions')
-        .select('pending_ticket_description')
+        .update({ last_activity_at: new Date().toISOString() })
         .eq('id', session.id)
-        .maybeSingle()
-      const stashed =
-        (pendingRow as { pending_ticket_description?: string | null } | null)
-          ?.pending_ticket_description?.trim() || null
-      if (stashed) {
-        ticketDescription = stashed
-        await supabaseAdmin
-          .from('sessions')
-          .update({ pending_ticket_description: null, last_activity_at: new Date().toISOString() })
-          .eq('id', session.id)
-      }
-    }
-
-    if (!ticketDescription) {
-      if (isClarificationQuestion(textBody)) {
-        try {
-          await sendWhatsAppTextMessage(
-            waRecipient,
-            RESIDENT_UI_COPY[residentLang].clarificationReply,
-            residentWhatsAppCreds,
-            { clientId: webhookClientId }
-          )
-        } catch { /* WA send failure is non-fatal */ }
-        await supabaseAdmin
-          .from('sessions')
-          .update({ last_activity_at: new Date().toISOString() })
-          .eq('id', session.id)
-        return
-      }
-
-      if (!looksLikeTicketDescription(textBody)) {
-        try {
-          await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
-            reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
-          })
-        } catch { /* WA send failure is non-fatal */ }
-        await supabaseAdmin
-          .from('sessions')
-          .update({ last_activity_at: new Date().toISOString() })
-          .eq('id', session.id)
-        return
-      }
-
-      if (session.project_id) {
-        const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 30, supabaseAdmin)
-        if (dupTicket) {
-          await supabaseAdmin
-            .from('sessions')
-            .update({ last_activity_at: new Date().toISOString() })
-            .eq('id', session.id)
-          try {
-            await sendWa(waRecipient, 'duplicate_ticket', residentWhatsAppCreds, {
-              ticket_number: String(dupTicket.ticket_number),
-            })
-          } catch { /* WA send failure is non-fatal */ }
-          return
-        }
-      }
-
-      if (isKnownResident) {
-        ticketDescription = textBody
-      } else {
-        const preview =
-          textBody.length > 180 ? `${textBody.slice(0, 177)}…` : textBody
-        await supabaseAdmin
-          .from('sessions')
-          .update({
-            pending_ticket_description: textBody,
-            last_activity_at: new Date().toISOString(),
-          })
-          .eq('id', session.id)
-        try {
-          await sendWaConfirmButtons(
-            waRecipient,
-            `${RESIDENT_UI_COPY[residentLang].confirmTicketPrefix}\n\n${preview}`,
-            residentWhatsAppCreds,
-            residentLang
-          )
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
+      return
     }
 
     if (session.project_id) {
@@ -1686,6 +1679,8 @@ export async function runWhatsAppInboundBackground(
         return
       }
     }
+
+    ticketDescription = textBody
 
     const { data: existingProject, error: existingProjectError } = await supabaseAdmin
       .from('projects')
@@ -1754,15 +1749,15 @@ export async function runWhatsAppInboundBackground(
     )
     await attachPendingSessionLocationToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
 
-    const pendingForApproval =
-      !!session.project_id &&
-      (await queuePendingResidentApproval({
+    if (session.project_id) {
+      void queuePendingResidentApproval({
         supabase: supabaseAdmin,
         clientId: webhookClientId,
         projectId: session.project_id as string,
         ticketId: createdTicket.id,
         waFrom: waRecipient,
-      }))
+      })
+    }
 
     if (session.project_id) {
       const autoAssign = await autoAssignTicketFromProject(supabaseAdmin, {
@@ -1902,21 +1897,9 @@ export async function runWhatsAppInboundBackground(
         residentLang
       )
 
-      const pendingNote = pendingForApproval
-        ? resolveMessageForLanguage(
-            await resolveWhatsAppTemplateMessage(
-              supabaseAdmin,
-              webhookClientId,
-              'pending_approval_note',
-              WHATSAPP_TEMPLATE_EDITOR_DEFAULTS['pending_approval_note']
-            ),
-            residentLang
-          )
-        : ''
-
       await sendWhatsAppTextMessage(
         waRecipient,
-        ticketOpenedBody + pendingNote,
+        ticketOpenedBody,
         residentWhatsAppCreds,
         { clientId: webhookClientId }
       )

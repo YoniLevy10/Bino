@@ -14,9 +14,41 @@ const BASE_PREVIEW: WhatsAppTemplatePreviewVars = {
 
 /** Preview vars that match what the webhook actually injects per template. */
 const PREVIEW_OVERRIDES: Partial<Record<WhatsAppTemplateKey, Partial<WhatsAppTemplatePreviewVars>>> = {
+  choose_language: {
+    project_name: '',
+    ticket_number: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
+  ask_building: {
+    project_name: '',
+    ticket_number: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
+  building_list_body: {
+    project_name: '',
+    ticket_number: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
+  clarification_reply: {
+    project_name: '',
+    ticket_number: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
   welcome: { reporter_name: '', building_line: '' },
   resident_prompt: {
-    reporter_name: 'שלום ישראל, ',
+    reporter_name: '',
     description: '',
     ticket_number: '',
     project_name: '',
