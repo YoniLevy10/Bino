@@ -1,11 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@supabase/supabase-js'
 import { normalizePhone } from '@/lib/residents-whatsapp'
+import { whatsAppConversationPhoneKey } from '@/lib/whatsapp-message-store'
 import {
   downloadWhatsAppMedia,
   uploadWhatsAppMediaToStorage,
   createAttachmentRecord,
 } from '@/lib/whatsapp-media'
+import { parseWhatsAppMessageMediaPayload } from '@/lib/whatsapp-message-media'
+import {
+  readStashedPreSessionMedia,
+  isStashedMediaRow,
+} from '@/lib/whatsapp-webhook/building-search-stash'
+import { getPendingSelection } from '@/lib/whatsapp-webhook/project-selection'
 import { getLogger } from '@/lib/logging'
 
 const logger = getLogger()
@@ -15,9 +22,10 @@ type WaMediaKind = 'image' | 'video'
 export type RecoverMediaResult = {
   recovered: boolean
   reason?: string
-  method?: 'session_stash' | 'storage_orphan'
+  method?: 'session_stash' | 'storage_orphan' | 'message_log' | 'pending_stash'
   sessions_tried?: number
   storage_files_linked?: number
+  attachments_added?: number
 }
 
 /** All phone keys that may appear in sessions vs tickets for the same resident. */
@@ -91,14 +99,33 @@ async function listStashedSessions(
     }))
 }
 
+async function listAttachedWhatsAppMediaIds(
+  supabaseAdmin: SupabaseClient,
+  ticketId: string
+): Promise<Set<string>> {
+  const { data } = await supabaseAdmin
+    .from('ticket_attachments')
+    .select('whatsapp_media_id')
+    .eq('ticket_id', ticketId)
+
+  return new Set(
+    (data ?? [])
+      .map((row) => (row.whatsapp_media_id as string | null)?.trim())
+      .filter((id): id is string => !!id)
+  )
+}
+
 async function attachMediaIdToTicket(
   supabaseAdmin: SupabaseClient,
   ticketId: string,
   mediaId: string,
   mediaKind: WaMediaKind,
   accessToken: string,
-  attachmentType: string
+  attachmentType: string,
+  attachedIds: Set<string>
 ): Promise<boolean> {
+  if (attachedIds.has(mediaId)) return false
+
   const mediaData = await downloadWhatsAppMedia(mediaId, mediaKind, accessToken)
   if (!mediaData) return false
 
@@ -110,7 +137,7 @@ async function attachMediaIdToTicket(
   )
   if (!uploadResult) return false
 
-  return createAttachmentRecord(
+  const ok = await createAttachmentRecord(
     supabaseAdmin,
     ticketId,
     mediaData.fileName,
@@ -120,6 +147,8 @@ async function attachMediaIdToTicket(
     mediaId,
     attachmentType
   )
+  if (ok) attachedIds.add(mediaId)
+  return ok
 }
 
 async function clearSessionStash(supabaseAdmin: SupabaseClient, sessionId: string) {
@@ -191,15 +220,17 @@ async function recoverFromStashedSessions(
   clientId: string,
   ticketId: string,
   reporterPhoneRaw: string,
-  accessToken: string
-): Promise<RecoverMediaResult> {
+  accessToken: string,
+  attachedIds: Set<string>
+): Promise<{ added: number; sessions_tried: number; reason?: string }> {
   const phoneKeys = reporterPhoneLookupKeys(reporterPhoneRaw)
   const sessions = await listStashedSessions(supabaseAdmin, clientId, phoneKeys)
 
   if (sessions.length === 0) {
-    return { recovered: false, reason: 'NO_STASHED_MEDIA', sessions_tried: 0 }
+    return { added: 0, sessions_tried: 0, reason: 'NO_STASHED_MEDIA' }
   }
 
+  let added = 0
   for (const session of sessions) {
     const mediaKind: WaMediaKind = session.pending_whatsapp_media_type === 'video' ? 'video' : 'image'
     const attachmentType = mediaKind === 'video' ? 'whatsapp_video' : 'whatsapp_image'
@@ -210,26 +241,124 @@ async function recoverFromStashedSessions(
       session.pending_whatsapp_media_id,
       mediaKind,
       accessToken,
-      attachmentType
+      attachmentType,
+      attachedIds
     )
 
     if (ok) {
       await clearSessionStash(supabaseAdmin, session.id)
+      added++
       logger.info('WA_RECOVER', 'stashed media recovered to ticket', { ticketId, mediaKind, sessionId: session.id })
-      return { recovered: true, method: 'session_stash', sessions_tried: sessions.length }
     }
   }
 
-  return {
-    recovered: false,
-    reason: 'ATTACH_FAILED',
-    sessions_tried: sessions.length,
+  if (added > 0) return { added, sessions_tried: sessions.length }
+  return { added: 0, sessions_tried: sessions.length, reason: 'ATTACH_FAILED' }
+}
+
+async function recoverFromPendingSelectionStash(
+  supabaseAdmin: SupabaseClient,
+  clientId: string,
+  ticketId: string,
+  reporterPhoneRaw: string,
+  accessToken: string,
+  attachedIds: Set<string>
+): Promise<number> {
+  const phoneKeys = reporterPhoneLookupKeys(reporterPhoneRaw)
+  let added = 0
+
+  for (const phone of phoneKeys) {
+    const media = await readStashedPreSessionMedia(phone, supabaseAdmin, clientId)
+    if (!media) continue
+
+    const attachmentType = media.mediaKind === 'video' ? 'whatsapp_video' : 'whatsapp_image'
+    const ok = await attachMediaIdToTicket(
+      supabaseAdmin,
+      ticketId,
+      media.mediaId,
+      media.mediaKind,
+      accessToken,
+      attachmentType,
+      attachedIds
+    )
+    if (ok) {
+      added++
+      const pending = await getPendingSelection(phone, supabaseAdmin, clientId)
+      if (pending) {
+        const withoutMedia = (pending.candidate_projects || []).filter((p) => !isStashedMediaRow(p))
+        if (withoutMedia.length === 0) {
+          await supabaseAdmin.from('pending_selections').delete().eq('id', pending.id)
+        }
+      }
+    }
   }
+
+  return added
+}
+
+async function recoverFromWhatsAppMessageLog(
+  supabaseAdmin: SupabaseClient,
+  clientId: string,
+  ticketId: string,
+  reporterPhoneRaw: string,
+  accessToken: string,
+  attachedIds: Set<string>
+): Promise<number> {
+  const phoneKey = whatsAppConversationPhoneKey(reporterPhoneRaw)
+  const { data: conv } = await supabaseAdmin
+    .from('whatsapp_conversations')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('phone', phoneKey)
+    .maybeSingle()
+
+  if (!conv?.id) return 0
+
+  const { data: messages } = await supabaseAdmin
+    .from('whatsapp_messages')
+    .select('message_type, interactive_payload, direction')
+    .eq('client_id', clientId)
+    .eq('conversation_id', conv.id)
+    .eq('direction', 'in')
+    .in('message_type', ['image', 'video'])
+    .order('created_at', { ascending: true })
+
+  let added = 0
+  for (const row of messages ?? []) {
+    const messageType = row.message_type as string
+    const ref = parseWhatsAppMessageMediaPayload(
+      row.interactive_payload as Record<string, unknown> | null
+    )
+    if (!ref) continue
+
+    const mediaKind: WaMediaKind =
+      ref.kind === 'video' || messageType === 'video' ? 'video' : 'image'
+    const attachmentType = mediaKind === 'video' ? 'whatsapp_video' : 'whatsapp_image'
+    const ok = await attachMediaIdToTicket(
+      supabaseAdmin,
+      ticketId,
+      ref.mediaId,
+      mediaKind,
+      accessToken,
+      attachmentType,
+      attachedIds
+    )
+    if (ok) {
+      added++
+      logger.info('WA_RECOVER', 'message-log media recovered to ticket', {
+        ticketId,
+        mediaKind,
+        mediaId: ref.mediaId,
+      })
+    }
+  }
+
+  return added
 }
 
 /**
- * Full recovery: stashed WhatsApp session media (Meta download) then storage orphans.
- * Does not require the resident to resend if media id or file still exists.
+ * Full recovery: storage orphans, session stash, pending stash, then WhatsApp message log.
+ * Keeps trying when some attachments exist but video/image from the thread is still missing.
  */
 export async function recoverAllWhatsAppMediaForTicket(
   supabaseAdmin: SupabaseClient,
@@ -238,26 +367,27 @@ export async function recoverAllWhatsAppMediaForTicket(
   reporterPhoneRaw: string,
   accessToken?: string
 ): Promise<RecoverMediaResult> {
-  const { count: existingCount } = await supabaseAdmin
-    .from('ticket_attachments')
-    .select('id', { count: 'exact', head: true })
-    .eq('ticket_id', ticketId)
-
-  if ((existingCount ?? 0) > 0) {
-    return { recovered: true, method: 'session_stash', reason: 'ALREADY_HAS_ATTACHMENTS' }
-  }
+  const attachedIds = await listAttachedWhatsAppMediaIds(supabaseAdmin, ticketId)
+  const hadAttachments = attachedIds.size > 0
+  let attachmentsAdded = 0
 
   const storageLinked = await recoverStorageOrphansForTicket(supabaseAdmin, ticketId)
   if (storageLinked > 0) {
-    return {
-      recovered: true,
-      method: 'storage_orphan',
-      storage_files_linked: storageLinked,
-    }
+    attachmentsAdded += storageLinked
+    const refreshed = await listAttachedWhatsAppMediaIds(supabaseAdmin, ticketId)
+    refreshed.forEach((id) => attachedIds.add(id))
   }
 
   if (!accessToken?.trim()) {
-    return { recovered: false, reason: 'MISSING_ACCESS_TOKEN', storage_files_linked: 0 }
+    if (attachmentsAdded > 0) {
+      return {
+        recovered: true,
+        method: 'storage_orphan',
+        storage_files_linked: storageLinked,
+        attachments_added: attachmentsAdded,
+      }
+    }
+    return { recovered: false, reason: 'MISSING_ACCESS_TOKEN', storage_files_linked: storageLinked }
   }
 
   const stashResult = await recoverFromStashedSessions(
@@ -265,10 +395,49 @@ export async function recoverAllWhatsAppMediaForTicket(
     clientId,
     ticketId,
     reporterPhoneRaw,
-    accessToken
+    accessToken,
+    attachedIds
   )
+  attachmentsAdded += stashResult.added
 
-  if (stashResult.recovered) return stashResult
+  const pendingAdded = await recoverFromPendingSelectionStash(
+    supabaseAdmin,
+    clientId,
+    ticketId,
+    reporterPhoneRaw,
+    accessToken,
+    attachedIds
+  )
+  attachmentsAdded += pendingAdded
+
+  const logAdded = await recoverFromWhatsAppMessageLog(
+    supabaseAdmin,
+    clientId,
+    ticketId,
+    reporterPhoneRaw,
+    accessToken,
+    attachedIds
+  )
+  attachmentsAdded += logAdded
+
+  if (attachmentsAdded > 0) {
+    return {
+      recovered: true,
+      method: logAdded > 0 ? 'message_log' : pendingAdded > 0 ? 'pending_stash' : stashResult.added > 0 ? 'session_stash' : 'storage_orphan',
+      sessions_tried: stashResult.sessions_tried,
+      storage_files_linked: storageLinked,
+      attachments_added: attachmentsAdded,
+    }
+  }
+
+  if (hadAttachments) {
+    return {
+      recovered: false,
+      reason: 'NOT_FOUND',
+      sessions_tried: stashResult.sessions_tried,
+      storage_files_linked: storageLinked,
+    }
+  }
 
   return {
     recovered: false,

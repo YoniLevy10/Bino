@@ -1040,6 +1040,10 @@ export async function runWhatsAppInboundBackground(
         (interactiveReplyId ? `[${interactiveReplyId}]` : null),
       messageType: messageType || 'text',
       waMessageId: parsedMessage.messageId ?? null,
+      whatsappMediaId:
+        mediaId && (mediaType === 'image' || mediaType === 'video') ? mediaId : null,
+      whatsappMediaKind:
+        mediaType === 'image' || mediaType === 'video' ? mediaType : null,
       interactivePayload: interactiveReplyId
         ? { reply_id: interactiveReplyId, title: parsedMessage.interactiveReplyTitle }
         : null,

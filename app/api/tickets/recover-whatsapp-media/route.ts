@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       NO_STASHED_MEDIA: 'לא נמצאה מדיה שמורה — המערכת מחפשת בסשן וב-storage',
       MISSING_ACCESS_TOKEN: 'חסר WhatsApp access token בהגדרות',
       ATTACH_FAILED: 'הורדה מ-Meta נכשלה — ייתכן שפג תוקף מזהה המדיה',
-      NOT_FOUND: 'לא נמצאה מדיה לשחזור',
+      NOT_FOUND: 'לא נמצאה מדיה לשחזור — בהודעות ישנות לפני העדכון ייתכן שמזהה Meta לא נשמר',
     }
     return NextResponse.json(
       { recovered: false, reason: result.reason, error: messages[result.reason ?? ''] ?? 'שחזור נכשל' },
