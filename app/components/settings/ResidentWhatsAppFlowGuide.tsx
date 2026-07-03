@@ -5,28 +5,28 @@ import { theme } from '../ui'
 
 const FLOWS = [
   {
-    title: 'דייר חדש (לא ברשימה)',
+    title: 'דייר חדש — זרימה מהירה',
     color: '#2563eb',
     steps: [
-      { label: 'שלום / לא ברור', template: 'welcome' },
-      { label: 'כתובת או QR', template: 'session_created / building_*' },
-      { label: 'תיאור תקלה', template: 'ticket_opened' },
+      { label: '1. שפה', template: 'choose_language' },
+      { label: '2. כתובת', template: 'ask_building → building_list_body' },
+      { label: '3. תקלה', template: 'session_created → ticket_opened' },
+      { label: '4. מדיה (אופציונלי)', template: 'image_attached / video_attached' },
     ],
   },
   {
-    title: 'דייר מוכר (טלפון ברשימה)',
+    title: 'דייר מוכר',
     color: '#059669',
     steps: [
-      { label: 'שלום / טקסט קצר', template: 'resident_prompt' },
-      { label: 'תיאור תקלה', template: 'ticket_opened' },
+      { label: 'תיאור', template: 'resident_prompt' },
+      { label: 'אישור', template: 'ticket_opened' },
     ],
   },
   {
-    title: 'במהלך / אחרי תקלה',
+    title: 'מעקב',
     color: '#7c3aed',
     steps: [
-      { label: 'שאלת סטטוס', template: 'ticket_status_list / no_open_tickets' },
-      { label: 'תמונה / מיקום', template: 'image_* / location_*' },
+      { label: 'סטטוס', template: 'ticket_status_list / no_open_tickets' },
       { label: 'סגירה', template: 'ticket_closed' },
     ],
   },
@@ -37,10 +37,10 @@ export function ResidentWhatsAppFlowGuide() {
     <div style={styles.wrap}>
       <h2 style={styles.title}>מפת זרימה — דייר ב-WhatsApp</h2>
       <p style={styles.sub}>
-        כל הודעה לדייר מגיעה מתבנית למטה. <strong>דייר מוכר</strong> מדלג על חיפוש בניין;{' '}
-        <strong>דייר חדש</strong> מקבל welcome ואז מזהה בניין. המשתנה{' '}
-        <code style={styles.code}>{'{{reporter_name}}'}</code> ב-resident_prompt מתמלא אוטומטית
-        (למשל &quot;שלום יוני, &quot;).
+        לכל שלב יש תבנית לעריכה למטה. אחרי שהדייר בוחר שפה,{' '}
+        <strong>רק השדה של אותה שפה</strong> נשלח (עברית / Français / English).
+        תבנית <code style={styles.code}>choose_language</code> היא יוצאת דופן — שלוש השפות יחד
+        לפני הבחירה.
       </p>
       <div style={styles.grid}>
         {FLOWS.map((flow) => (
@@ -91,10 +91,14 @@ const styles: Record<string, CSSProperties> = {
   },
   cardTitle: { fontSize: 14, fontWeight: 700, marginBottom: 8 },
   ol: { margin: 0, paddingRight: 18, display: 'flex', flexDirection: 'column', gap: 8 },
-  li: { fontSize: 13, color: theme.colors.textSecondary, lineHeight: 1.4 },
+  li: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
   stepCode: {
-    display: 'block',
-    marginTop: 4,
     fontSize: 11,
     fontFamily: 'monospace',
     color: theme.colors.textMuted,

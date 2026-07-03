@@ -1,6 +1,12 @@
 import { joinTrilingualTemplate } from '@/lib/whatsapp-bilingual-template'
 
 export const WHATSAPP_TEMPLATE_KEYS = [
+  // ── שפה ותחילת זרימה (דייר חדש) ───────────────────────────────────
+  'choose_language',      // כפתורי שפה — לפני בחירה
+  'ask_building',         // אחרי בחירת שפה — בקשת כתובת
+  'building_list_body',   // גוף רשימת בניינים (כפתור «בחר בניין»)
+  'clarification_reply',  // «איך פותחים?» — הנחיה קצרה
+
   // ── קיים (5) ──────────────────────────────────────────────────────
   'welcome',            // הנחיות כלליות
   'ticket_opened',      // אישור פתיחת תקלה המלא
@@ -47,6 +53,9 @@ export const WHATSAPP_TEMPLATE_KEYS = [
 
 export type WhatsAppTemplateKey = (typeof WHATSAPP_TEMPLATE_KEYS)[number]
 
+/** Preview in editor shows all language blocks (resident has not picked a language yet). */
+export const WHATSAPP_ALL_LANGS_PREVIEW_KEYS: WhatsAppTemplateKey[] = ['choose_language']
+
 export const WHATSAPP_TEMPLATE_VAR_NAMES = [
   'project_name',
   'ticket_number',
@@ -71,6 +80,10 @@ export const WHATSAPP_TEMPLATE_CATEGORIES: Record<
   WhatsAppTemplateKey,
   WhatsAppTemplateCategory
 > = {
+  choose_language: 'general',
+  ask_building: 'building',
+  building_list_body: 'building',
+  clarification_reply: 'flow',
   welcome: 'general',
   ticket_opened: 'flow',
   ticket_closed: 'flow',
@@ -121,26 +134,35 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
 }[] = [
   {
     step: 1,
-    title: 'זיהוי בניין',
-    description: 'הדייר שולח הודעה ראשונה — המערכת מנסה לזהות לאיזה בניין הוא שייך',
-    keys: ['welcome', 'qr_invalid', 'project_not_found', 'building_not_found', 'building_multiple_matches', 'selection_invalid'],
+    title: 'שפה וכתובת בניין',
+    description: 'דייר חדש בוחר שפה, שולח כתובת, ובוחר בניין מהרשימה אם צריך',
+    keys: [
+      'choose_language',
+      'ask_building',
+      'building_list_body',
+      'clarification_reply',
+      'building_not_found',
+      'selection_invalid',
+      'qr_invalid',
+      'project_not_found',
+    ],
   },
   {
     step: 2,
-    title: 'פתיחת תקלה',
-    description: 'בניין זוהה — המערכת מבקשת תיאור ופותחת תקלה',
-    keys: ['session_created', 'resident_prompt', 'duplicate_ticket'],
+    title: 'תיאור ופתיחת תקלה',
+    description: 'בניין זוהה — תיאור קצר, תקלה נפתחת, אופציונלי תמונה/סרטון',
+    keys: ['session_created', 'resident_prompt', 'duplicate_ticket', 'ticket_opened'],
   },
   {
     step: 3,
-    title: 'אישור ועדכון',
-    description: 'תקלה נפתחה — אישור לדייר ועדכון לעובד',
-    keys: ['ticket_opened', 'pending_approval_note', 'worker_assigned'],
+    title: 'עדכונים לעובד',
+    description: 'הודעות פנימיות / SMS לצוות (לא לדייר)',
+    keys: ['worker_assigned', 'pending_approval_note'],
   },
   {
     step: 4,
     title: 'מעקב וסגירה',
-    description: 'עדכונים לאורך הטיפול, שאילת סטטוס וסגירת התקלה',
+    description: 'שאילת סטטוס, SLA וסגירת תקלה',
     keys: ['ticket_status_list', 'no_open_tickets', 'ticket_closed', 'sla_escalation_resident'],
   },
   {
@@ -151,15 +173,15 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
   },
   {
     step: 6,
-    title: 'תמונות וסרטונים (לפני/אחרי תקלה)',
-    description: 'תמונה או סרטון לפני פתיחת תקלה נשמרים זמנית; ההנחיה לשליחה מופיעה בהודעת אישור התקלה (ticket_opened)',
-    keys: ['image_stashed', 'image_attached', 'image_failed'],
+    title: 'תמונות וסרטונים',
+    description: 'צירוף מדיה לתקלה פתוחה או שמירה זמנית לפני תיאור',
+    keys: ['image_stashed', 'image_attached', 'image_failed', 'video_stashed', 'video_attached', 'video_failed'],
   },
   {
     step: 7,
     title: 'שגיאות והודעות לא נתמכות',
     description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, מסמך',
-    keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message'],
+    keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message', 'welcome', 'building_multiple_matches'],
   },
 ]
 
@@ -172,7 +194,11 @@ export const WHATSAPP_ARCHIVED_TEMPLATE_KEYS = [
 
 /** הסבר קצר "מתי נשלח?" לכל תבנית */
 export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = {
-  welcome:                 'דייר חדש — ברכה קצרה ("שלום") או הודעה לא ברורה לפני זיהוי בניין',
+  choose_language:         'דייר חדש — כפתורי עברית / Français / English (לפני בחירת שפה)',
+  ask_building:              'מיד אחרי בחירת שפה — בקשת כתובת בניין',
+  building_list_body:        'גוף ההודעה מעל כפתור «בחר בניין» כשיש כמה התאמות',
+  clarification_reply:       'דייר שואל «איך פותחים?» — הנחיה קצרה',
+  welcome:                 'legacy — ברכה כללית (דייר חדש ללא שפה שמורה)',
   qr_invalid:              'נסרק QR אך הפורמט שגוי (לא מתחיל ב-BMK)',
   project_not_found:       'ה-QR תקין אך קוד הפרויקט לא קיים במערכת',
   building_not_found:      'דייר חדש — נשלח כשהטקסט לא נראה ככתובת בניין (לא ברכה קצרה)',
@@ -205,7 +231,11 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
 
 /** כותרת קריאה בעברית לכרטיס בעמוד ההגדרות */
 export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
-  welcome: 'הודעת פתיחה והנחיות (עזרה כללית)',
+  choose_language: 'בחירת שפה — כפתורים (עברית / Français / English)',
+  ask_building: 'בקשת כתובת בניין',
+  building_list_body: 'רשימת בניינים — טקסט מעל הכפתור',
+  clarification_reply: 'הסבר קצר — איך לפתוח תקלה',
+  welcome: 'הודעת פתיחה והנחיות (legacy)',
   ticket_opened: 'אישור פתיחת תקלה (עם כל הפרטים)',
   ticket_closed: 'סגירת תקלה (עדכון לדייר)',
   worker_assigned: 'עדכון לעובד (שיוך / תקלה משויכת)',
@@ -287,6 +317,26 @@ export const SMS_TEMPLATE_EDITOR_DEFAULTS: Record<SmsTemplateKey, string> = {
 
 /** טקסט ברירת מחדל לטעינה ראשונית בעורך (כשאין שורה ב-DB) — עברית | français | English */
 export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, string> = {
+  choose_language: joinTrilingualTemplate(
+    'בחרו שפה:',
+    'Choisissez votre langue:',
+    'Choose your language:'
+  ),
+  ask_building: joinTrilingualTemplate(
+    '📍 כתבו כתובת הבניין (רחוב ומספר):',
+    '📍 Adresse du bâtiment (rue et numéro):',
+    '📍 Building address (street and number):'
+  ),
+  building_list_body: joinTrilingualTemplate(
+    'בחרו בניין:',
+    'Choisissez un immeuble:',
+    'Choose a building:'
+  ),
+  clarification_reply: joinTrilingualTemplate(
+    'כתבו בקצרה מה הבעיה (למשל: נזילה). אפשר גם תמונה.',
+    'Décrivez brièvement le problème (ex: fuite). Photo possible.',
+    'Briefly describe the issue (e.g. leak). You can send a photo.'
+  ),
   welcome: joinTrilingualTemplate(
     'לדיווח תקלה: כתבו בטקסט את תיאור הבעיה, או סרקו את קוד ה־QR בבניין.\n' +
       'אחרי שנפתחה פנייה – אפשר לשלוח גם תמונה או סרטון של התקלה.',

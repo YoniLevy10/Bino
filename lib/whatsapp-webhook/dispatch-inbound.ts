@@ -17,7 +17,7 @@ import {
   statusLabelHe,
   isClarificationQuestion,
 } from '@/lib/whatsapp-intent'
-import { resolveMessageForLanguage, normalizeResidentLang, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
+import { resolveMessageForLanguage, normalizeResidentLang, splitTrilingualTemplate, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
 import {
   getResidentLanguage,
   saveResidentLanguage,
@@ -807,6 +807,21 @@ export async function runWhatsAppInboundBackground(
       return result
     }
 
+    async function resolveWaBodyForLang(
+      templateKey: WhatsAppTemplateKey,
+      lang: ResidentLang,
+      vars: WaTemplateVars = {}
+    ): Promise<string> {
+      const raw = await resolveWhatsAppTemplateMessage(
+        supabaseAdmin,
+        webhookClientId,
+        templateKey,
+        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS[templateKey],
+        vars
+      )
+      return resolveMessageForLanguage(raw, lang)
+    }
+
     async function sendWaInteractiveList(
       to: string,
       projects: ProjectRow[],
@@ -838,7 +853,15 @@ export async function runWhatsAppInboundBackground(
       creds?: { phoneNumberId?: string; accessToken?: string }
     ) {
       if (!creds?.phoneNumberId || !creds?.accessToken) return null
-      const bodyText = 'שלום! בחרו שפה / Choisissez votre langue / Choose your language:'
+      const raw = await resolveWhatsAppTemplateMessage(
+        supabaseAdmin,
+        webhookClientId,
+        'choose_language',
+        WHATSAPP_TEMPLATE_EDITOR_DEFAULTS.choose_language,
+        {}
+      )
+      const { he, fr, en } = splitTrilingualTemplate(raw)
+      const bodyText = [he, fr, en].filter(Boolean).join('\n')
       const payload = buildLanguageButtonsPayload(to, bodyText)
       const result = await sendWhatsAppInteractivePayloadWithCredentials(
         creds.phoneNumberId,
@@ -952,7 +975,7 @@ export async function runWhatsAppInboundBackground(
         await sendWaInteractiveList(
           waRecipient,
           searchResults,
-          RESIDENT_UI_COPY[lang].buildingListBody,
+          await resolveWaBodyForLang('building_list_body', lang),
           residentWhatsAppCreds,
           lang
         )
@@ -1181,12 +1204,7 @@ export async function runWhatsAppInboundBackground(
           return
         }
         try {
-          await sendWhatsAppTextMessage(
-            waRecipient,
-            RESIDENT_UI_COPY[pickedLang].askBuilding,
-            residentWhatsAppCreds,
-            { clientId: webhookClientId }
-          )
+          await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, pickedLang)
         } catch { /* WA send failure is non-fatal */ }
         return
       }
@@ -1378,12 +1396,7 @@ export async function runWhatsAppInboundBackground(
           if (session) {
             if (isClarificationQuestion(textBody)) {
               try {
-                await sendWhatsAppTextMessage(
-                  waRecipient,
-                  RESIDENT_UI_COPY[sessionLang].clarificationReply,
-                  residentWhatsAppCreds,
-                  { clientId: webhookClientId }
-                )
+                await sendWa(waRecipient, 'clarification_reply', residentWhatsAppCreds, {}, sessionLang)
               } catch { /* WA send failure is non-fatal */ }
               return
             }
@@ -1582,7 +1595,7 @@ export async function runWhatsAppInboundBackground(
               await sendWaInteractiveList(
                 waRecipient,
                 refined,
-                RESIDENT_UI_COPY[sessionLang].buildingListBody,
+                await resolveWaBodyForLang('building_list_body', sessionLang),
                 residentWhatsAppCreds,
                 sessionLang
               )
@@ -1608,24 +1621,14 @@ export async function runWhatsAppInboundBackground(
         if (isClarificationQuestion(textBody)) {
           const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
           try {
-            await sendWhatsAppTextMessage(
-              waRecipient,
-              RESIDENT_UI_COPY[lang].clarificationReply,
-              residentWhatsAppCreds,
-              { clientId: webhookClientId }
-            )
+            await sendWa(waRecipient, 'clarification_reply', residentWhatsAppCreds, {}, lang)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
         if (isGreetingSmallTalk(textBody)) {
           const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
           try {
-            await sendWhatsAppTextMessage(
-              waRecipient,
-              RESIDENT_UI_COPY[lang].askBuilding,
-              residentWhatsAppCreds,
-              { clientId: webhookClientId }
-            )
+            await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
