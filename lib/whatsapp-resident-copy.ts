@@ -6,14 +6,16 @@ export const RESIDENT_UI_COPY: Record<
     chooseLanguage: string
     buildingListBody: string
     confirmTicketPrefix: string
+    askBuilding: string
     clarificationReply: string
     buildingLine: (buildingNumber: string) => string
     greetingPrefix: (firstName: string | null) => string
   }
 > = {
   he: {
-    chooseLanguage: 'שלום! בחרו שפה כדי להמשיך:',
-    buildingListBody: 'מצאנו כמה בניינים תואמים. בחרו מהרשימה:',
+    chooseLanguage: 'בחרו שפה:',
+    askBuilding: '📍 כתבו כתובת הבניין (רחוב ומספר):',
+    buildingListBody: 'בחרו בניין:',
     confirmTicketPrefix: 'לאשר פתיחת תקלה?',
     clarificationReply:
       'כתבו בקצרה מה הבעיה (לדוגמה: נזילה במקלחת, דלת לא נסגרת). אפשר גם לשלוח תמונה.',
@@ -21,8 +23,9 @@ export const RESIDENT_UI_COPY: Record<
     greetingPrefix: (name) => (name ? `שלום ${name}, ` : 'שלום, '),
   },
   fr: {
-    chooseLanguage: 'Bonjour! Choisissez votre langue pour continuer:',
-    buildingListBody: 'Plusieurs immeubles correspondent. Choisissez dans la liste:',
+    chooseLanguage: 'Choisissez votre langue:',
+    askBuilding: '📍 Adresse du bâtiment (rue et numéro):',
+    buildingListBody: 'Choisissez un immeuble:',
     confirmTicketPrefix: 'Confirmer l\'ouverture du ticket?',
     clarificationReply:
       'Décrivez brièvement le problème (ex: fuite, porte bloquée). Vous pouvez aussi envoyer une photo.',
@@ -30,8 +33,9 @@ export const RESIDENT_UI_COPY: Record<
     greetingPrefix: (name) => (name ? `Bonjour ${name}, ` : 'Bonjour, '),
   },
   en: {
-    chooseLanguage: 'Hello! Choose your language to continue:',
-    buildingListBody: 'We found several matching buildings. Please pick from the list:',
+    chooseLanguage: 'Choose your language:',
+    askBuilding: '📍 Building address (street and number):',
+    buildingListBody: 'Choose a building:',
     confirmTicketPrefix: 'Open a maintenance ticket?',
     clarificationReply:
       'Briefly describe the issue (e.g. leak, door stuck). You can also send a photo.',

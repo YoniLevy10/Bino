@@ -296,30 +296,9 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
       'After a request is opened, you can also send a photo or video of the issue.'
   ),
   ticket_opened: joinTrilingualTemplate(
-    'התקלה התקבלה בהצלחה.{{building_line}}\n' +
-      'מספר הפנייה שלך: {{ticket_number}}\n\n' +
-      'תיאור: {{description}}\n' +
-      'מדווח: {{reporter_name}}\n' +
-      'פרויקט: {{project_name}}\n\n' +
-      'אפשר גם לשלוח תמונה או סרטון של התקלה — זה יעזור לנו לטפל בה מהר יותר.\n\n' +
-      'נעדכן כשיהיה טיפול.\n' +
-      'לפתיחת תקלה נוספת: סרקו שוב את קוד ה־QR בבניין או כתבו רחוב ומספר בניין.',
-    'Votre demande a bien été reçue.{{building_line}}\n' +
-      'Numéro de demande : {{ticket_number}}\n\n' +
-      'Description : {{description}}\n' +
-      'Signalé par : {{reporter_name}}\n' +
-      'Projet : {{project_name}}\n\n' +
-      'Vous pouvez aussi envoyer une photo ou une vidéo — cela nous aide à traiter plus vite.\n\n' +
-      'Nous vous tiendrons informés.\n' +
-      'Pour une nouvelle demande : scannez à nouveau le QR du bâtiment ou indiquez l\'adresse.',
-    'Your request was received successfully.{{building_line}}\n' +
-      'Your reference number: {{ticket_number}}\n\n' +
-      'Description: {{description}}\n' +
-      'Reported by: {{reporter_name}}\n' +
-      'Project: {{project_name}}\n\n' +
-      'You can also send a photo or video — it helps us resolve the issue faster.\n\n' +
-      'We will update you when there is progress.\n' +
-      'To open another request: scan the building QR code again or send the street address.'
+    '✅ תקלה #{{ticket_number}} נפתחה{{building_line}}\n{{description}}\n\n📷 אפשר לשלוח תמונה או סרטון עכשיו.',
+    '✅ Ticket #{{ticket_number}} ouvert{{building_line}}\n{{description}}\n\n📷 Vous pouvez envoyer une photo ou vidéo.',
+    '✅ Ticket #{{ticket_number}} opened{{building_line}}\n{{description}}\n\n📷 You can send a photo or video now.'
   ),
   ticket_closed: joinTrilingualTemplate(
     '✅ שלום! התקלה שדיווחת בבניין {{project_name}} טופלה וסגורה.\n\n' +
@@ -437,14 +416,14 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
 
   // זרימת תקלה
   session_created: joinTrilingualTemplate(
-    'ברוכים הבאים! כתבו בקצרה את הבעיה ב{{project_name}}{{building_line}} 📝',
-    'Bienvenue ! Décrivez brièvement le problème à {{project_name}}{{building_line}}',
-    'Welcome! Please briefly describe the issue at {{project_name}}{{building_line}}'
+    '{{project_name}}{{building_line}} — מה הבעיה? 📝',
+    '{{project_name}}{{building_line}} — quel est le problème ? 📝',
+    '{{project_name}}{{building_line}} — what is the issue? 📝'
   ),
   resident_prompt: joinTrilingualTemplate(
-    '{{reporter_name}}מה הבעיה? כתבו בקצרה את תיאור התקלה 📝',
-    '{{reporter_name}}Quel est le problème ? Décrivez brièvement la demande.',
-    '{{reporter_name}}What is the issue? Please briefly describe the problem.'
+    'מה הבעיה? 📝',
+    'Quel est le problème ? 📝',
+    'What is the issue? 📝'
   ),
   duplicate_ticket: joinTrilingualTemplate(
     'קיבלנו כבר את הדיווח שלך, מספר תקלה: {{ticket_number}}. נעדכן אותך בהתקדמות.',

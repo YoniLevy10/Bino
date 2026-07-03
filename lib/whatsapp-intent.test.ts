@@ -3,6 +3,7 @@ import {
   looksLikeTicketDescription,
   isClarificationQuestion,
   isTicketConfirmText,
+  acceptTicketDescriptionInSession,
 } from './whatsapp-intent'
 
 describe('looksLikeTicketDescription', () => {
@@ -35,6 +36,18 @@ describe('isClarificationQuestion', () => {
 
   it('rejects real descriptions', () => {
     expect(isClarificationQuestion('נזילה במקלחת')).toBe(false)
+  })
+})
+
+describe('acceptTicketDescriptionInSession', () => {
+  it('accepts short problem descriptions once building is known', () => {
+    expect(acceptTicketDescriptionInSession('נזילה')).toBe(true)
+    expect(acceptTicketDescriptionInSession('דלת')).toBe(true)
+  })
+
+  it('rejects greetings and status questions', () => {
+    expect(acceptTicketDescriptionInSession('שלום')).toBe(false)
+    expect(acceptTicketDescriptionInSession('מה הסטטוס')).toBe(false)
   })
 })
 

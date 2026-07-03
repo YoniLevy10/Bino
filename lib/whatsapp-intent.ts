@@ -157,6 +157,27 @@ export function looksLikeTicketDescription(text: string): boolean {
   return true
 }
 
+/** Permissive check once building is identified — minimize back-and-forth. */
+export function acceptTicketDescriptionInSession(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length < 3) return false
+  if (isStatusQuestion(t)) return false
+  if (isGreetingSmallTalk(t)) return false
+  if (isEmojiOnlyOrShortAck(t)) return false
+  if (isAddressLikeTextForTicketGuard(t)) return false
+  return true
+}
+
+/** Avoid opening a ticket when user repeats a building address in the description step. */
+function isAddressLikeTextForTicketGuard(text: string): boolean {
+  const t = text.trim()
+  if (t.length > 80) return false
+  if (!/\d/.test(t)) return false
+  const words = t.split(/\s+/).filter(Boolean)
+  if (words.length <= 4 && /^(?:רח(?:וב)?|רח׳|בניין|כתובת)/i.test(t)) return true
+  return false
+}
+
 export function statusLabelHe(status: string): string {
   return ticketStatusLabelHe(status, { feminine: true })
 }
