@@ -19,6 +19,12 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 import { recoverWhatsAppMediaForTicket } from '@/lib/recover-ticket-media-client'
+import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
+import {
+  parseTicketIdFromSearchParams,
+  setTicketDeepLinkInUrl,
+  ticketDetailPath,
+} from '@/lib/ticket-deep-link'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -93,13 +99,13 @@ type ProjectRow = {
 type AttachmentRow = {
   id: string
   ticket_id: string
-  file_name: string
+  file_name: string | null
   file_url: string | null
   file_size?: number | null
-  mime_type: string
+  mime_type: string | null
   attachment_type?: string | null
   whatsapp_media_id?: string | null
-  created_at: string
+  created_at: string | null
   signed_url?: string | null
 }
 
@@ -178,6 +184,7 @@ export default function DashboardPage() {
 
   type ActivityItem = {
     id: string
+    ticket_id: string
     type: 'created' | 'updated' | 'closed'
     ticket_number: number
     project_label: string
@@ -188,6 +195,7 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const lastFetchAtRef = useRef(0)
   const professionalsLoadedRef = useRef(false)
+  const deepLinkHandledRef = useRef<string | null>(null)
   const cacheAuxRef = useRef({
     residentsCount: null as number | null,
     workersCount: null as number | null,
@@ -223,11 +231,11 @@ export default function DashboardPage() {
       try {
         const clientId = await resolveBamakorClientIdForBrowser()
         const [logsResult, resCountResult, wCountResult] = await Promise.all([
-          supabase
-            .from('ticket_logs')
-            .select(
-              `
-              id, action_type, created_at,
+        supabase
+          .from('ticket_logs')
+          .select(
+            `
+              id, ticket_id, action_type, created_at,
               tickets (
                 ticket_number,
                 description,
@@ -235,7 +243,7 @@ export default function DashboardPage() {
                 projects (name, project_code)
               )
             `
-            )
+          )
             .order('created_at', { ascending: false })
             .limit(5),
           withClientId(supabase.from('residents').select('id', { count: 'exact', head: true }), clientId).is(
@@ -256,6 +264,7 @@ export default function DashboardPage() {
             ? fromLogs
             : ctx.tickets.slice(0, 5).map((ticket) => ({
                 id: ticket.id,
+                ticket_id: ticket.id,
                 type: (ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
                 ticket_number: ticket.ticket_number,
                 project_label: ticket.project_name || ticket.project_code || '',
@@ -435,6 +444,7 @@ export default function DashboardPage() {
     for (const row of data) {
       const log = row as {
         id: string
+        ticket_id?: string
         action_type?: string | null
         created_at?: string
         tickets?:
@@ -453,7 +463,7 @@ export default function DashboardPage() {
       }
       const rawT = log.tickets
       const ticket = Array.isArray(rawT) ? rawT[0] : rawT
-      if (!ticket || !log.created_at) continue
+      if (!ticket || !log.created_at || !log.ticket_id) continue
       const proj = ticket.projects
       const p = Array.isArray(proj) ? proj[0] : proj
       const project_label = p?.name || p?.project_code || ''
@@ -463,6 +473,7 @@ export default function DashboardPage() {
       else if (at.includes('CREAT') || at.includes('OPEN') || at.includes('NEW')) type = 'created'
       items.push({
         id: log.id,
+        ticket_id: log.ticket_id,
         type,
         ticket_number: ticket.ticket_number ?? 0,
         project_label,
@@ -522,7 +533,7 @@ export default function DashboardPage() {
     return new Date().toLocaleDateString('he-IL', { weekday: 'long', month: 'long', day: 'numeric' })
   }
 
-  function getImageUrl(attachment: AttachmentRow): string {
+  function getImageUrl(attachment: { signed_url?: string | null; file_url?: string | null }): string {
     return attachment.signed_url || attachment.file_url || ''
   }
 
@@ -600,13 +611,26 @@ export default function DashboardPage() {
     await loadTicketAttachments(ticket)
   }
 
-  function openTicket(ticket: TicketRow) {
+  function openTicket(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) {
     setSelectedTicket(ticket)
     setDraftDescription(ticket.description || '')
     setDraftStatus(ticket.status)
     setDraftWorkerId(ticket.assigned_worker_id || '')
+    if (!opts?.skipDeepLink) {
+      setTicketDeepLinkInUrl(ticket.id)
+      deepLinkHandledRef.current = ticket.id
+    }
     void loadProfessionals()
     void loadTicketDrawerData(ticket)
+  }
+
+  function openTicketById(ticketId: string) {
+    const fromList = tickets.find((t) => t.id === ticketId)
+    if (fromList) {
+      openTicket(fromList)
+      return
+    }
+    router.push(ticketDetailPath(ticketId))
   }
 
   function closeDrawer() {
@@ -616,7 +640,49 @@ export default function DashboardPage() {
     setDraftWorkerId('')
     setSelectedTicketAttachments([])
     setTicketLogs([])
+    setTicketDeepLinkInUrl(null)
+    deepLinkHandledRef.current = null
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ticketId = parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
+    if (!ticketId || deepLinkHandledRef.current === ticketId) return
+    if (selectedTicket?.id === ticketId) {
+      deepLinkHandledRef.current = ticketId
+      return
+    }
+
+    void (async () => {
+      const fromList = tickets.find((t) => t.id === ticketId)
+      if (fromList) {
+        openTicket(fromList, { skipDeepLink: true })
+        return
+      }
+      const clientId = await resolveBamakorClientIdForBrowser()
+      const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
+      if (fetched) {
+        openTicket(
+          {
+            id: fetched.id,
+            ticket_number: fetched.ticket_number,
+            project_id: fetched.project_id ?? undefined,
+            project_code: fetched.project_code,
+            project_name: fetched.project_name,
+            client_id: fetched.client_id ?? null,
+            reporter_phone: fetched.reporter_phone || '',
+            description: fetched.description || '',
+            status: fetched.status,
+            priority: fetched.priority ?? undefined,
+            assigned_worker_id: fetched.assigned_worker_id ?? null,
+            created_at: fetched.created_at || '',
+            closed_at: fetched.closed_at ?? null,
+          },
+          { skipDeepLink: true }
+        )
+      }
+    })()
+  }, [tickets, selectedTicket?.id])
 
   async function saveSelectedTicket() {
     if (!selectedTicket) return
@@ -852,7 +918,12 @@ export default function DashboardPage() {
               <Card title="פעילות אחרונה" subtitle="עדכוני תקלות אחרונים">
                 <div style={styles.activityList}>
                   {recentActivity.map((activity) => (
-                    <div key={activity.id} style={styles.activityItem}>
+                    <button
+                      key={activity.id}
+                      type="button"
+                      style={{ ...styles.activityItem, ...styles.activityButton }}
+                      onClick={() => openTicketById(activity.ticket_id)}
+                    >
                       <div style={styles.activityIcon}>
                         {activity.type === 'created' && (
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.success} strokeWidth="2">
@@ -880,7 +951,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div style={styles.activityTime}>{activity.time}</div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </Card>
@@ -1071,6 +1142,7 @@ const styles: Record<string, CSSProperties> = {
   progressLabel: { fontSize: '12px', color: theme.colors.textMuted, flexShrink: 0 },
   activityList: { display: 'flex', flexDirection: 'column', gap: '4px' },
   activityItem: { display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: `1px solid ${theme.colors.border}` },
+  activityButton: { width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'right' as const, fontFamily: 'inherit' },
   activityIcon: { width: '32px', height: '32px', borderRadius: theme.radius.full, background: theme.colors.muted, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   activityContent: { flex: 1, minWidth: 0 },
   activityTitle: { fontSize: '14px', fontWeight: 500, color: theme.colors.textPrimary, display: 'flex', alignItems: 'center', gap: '8px' },

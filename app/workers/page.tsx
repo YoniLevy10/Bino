@@ -12,6 +12,7 @@
  *  - לחיצה על עובד → Drawer עם פרטים + תקלות שמשויכות אליו
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -23,6 +24,7 @@ import {
 } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validateEmail } from '@/lib/validators'
+import { ticketDetailPath } from '@/lib/ticket-deep-link'
 import {
   AppShell,
   MobileHeader,
@@ -163,6 +165,7 @@ async function findWorkerByPhoneAndName(
 }
 
 export default function WorkersPage() {
+  const router = useRouter()
   const { openMenu } = useMobileMenu()
   const { hasAddon, isBootstrapped } = usePaidAddons()
   const [workers, setWorkers] = useState<WorkerRow[]>([])
@@ -1013,13 +1016,18 @@ export default function WorkersPage() {
               ) : (
                 <div style={styles.ticketList}>
                   {workerTickets.slice(0, 5).map((ticket) => (
-                    <div key={ticket.id} style={styles.ticketItem}>
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      style={{ ...styles.ticketItem, ...styles.ticketItemButton }}
+                      onClick={() => router.push(ticketDetailPath(ticket.id))}
+                    >
                       <div>
                         <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
                         <span style={styles.ticketProject}>{ticket.project_name}</span>
                       </div>
                       <StatusBadge status={ticket.status} size="sm" />
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -1491,6 +1499,13 @@ const styles: Record<string, CSSProperties> = {
     padding: '12px',
     background: theme.colors.muted,
     borderRadius: theme.radius.sm,
+  },
+  ticketItemButton: {
+    width: '100%',
+    border: `1px solid ${theme.colors.border}`,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'right' as const,
   },
   ticketNumber: {
     fontSize: '14px',

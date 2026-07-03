@@ -40,6 +40,7 @@ import {
 } from '../components/ui'
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { ticketDetailPath } from '@/lib/ticket-deep-link'
 import type { SummaryTicketRow } from '@/lib/summary-tickets'
 import { PageListSkeleton } from '../components/page-skeleton'
 
@@ -1008,7 +1009,12 @@ export default function SummaryPage() {
                     {isMobile ? (
                       <div style={styles.historyMobileList}>
                         {group.tickets.map((ticket) => (
-                          <div key={ticket.id} style={styles.historyTicketCard}>
+                          <button
+                            key={ticket.id}
+                            type="button"
+                            style={{ ...styles.historyTicketCard, ...styles.historyTicketButton }}
+                            onClick={() => router.push(ticketDetailPath(ticket.id))}
+                          >
                             <div style={styles.historyTicketTop}>
                               <span style={styles.historyTicketNumber}>#{ticket.ticket_number}</span>
                               <span style={styles.historyClosedAt}>
@@ -1035,7 +1041,7 @@ export default function SummaryPage() {
                                   : '—'}
                               </span>
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     ) : (
@@ -1052,7 +1058,11 @@ export default function SummaryPage() {
                           </thead>
                           <tbody>
                             {group.tickets.map((ticket) => (
-                              <tr key={ticket.id}>
+                              <tr
+                                key={ticket.id}
+                                style={styles.historyTableRow}
+                                onClick={() => router.push(ticketDetailPath(ticket.id))}
+                              >
                                 <td style={styles.td}>
                                   <span style={styles.historyTicketNumber}>{ticket.ticket_number}</span>
                                 </td>
@@ -1731,6 +1741,15 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     minHeight: '48px',
+  },
+  historyTicketButton: {
+    width: '100%',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'right' as const,
+  },
+  historyTableRow: {
+    cursor: 'pointer',
   },
   historyTicketTop: {
     display: 'flex',

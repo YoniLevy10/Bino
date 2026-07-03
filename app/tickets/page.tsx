@@ -39,7 +39,7 @@ import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
 } from '@/lib/reporter-closed-notify-toast'
-import { ForwardToProfessionalBlock, type ProfessionalOption } from '../components/tickets/ForwardToProfessionalBlock'
+import { type ProfessionalOption } from '../components/tickets/ForwardToProfessionalBlock'
 import {
   AppShell,
   MobileHeader,
@@ -62,10 +62,14 @@ import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { removeTicketFromListState } from '@/lib/open-tickets'
 import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
-import { TicketAttachmentThumb } from '../components/shared/TicketAttachmentThumb'
-import { TicketChat } from '../components/tickets/TicketChat'
-import { TicketWhatsAppThread } from '../components/tickets/TicketWhatsAppThread'
+import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
+import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
+import {
+  parseTicketIdFromSearchParams,
+  setTicketDeepLinkInUrl,
+} from '@/lib/ticket-deep-link'
+import type { TicketDetailLog } from '@/lib/ticket-detail-types'
 import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
 import {
   OPEN_TICKET_STATUS_FILTER_OPTIONS,
@@ -223,7 +227,9 @@ export default function TicketsPage() {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
-  const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'chat' | 'whatsapp'>('details')
+  const [ticketLogs, setTicketLogs] = useState<TicketDetailLog[]>([])
+  const [drawerLoading, setDrawerLoading] = useState(false)
+  const deepLinkHandledRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -405,6 +411,11 @@ export default function TicketsPage() {
     if (workerFilter !== 'ALL') n++
     return n
   }, [statusFilter, priorityFilter, projectFilter, workerFilter])
+
+  const workersMap = useMemo(
+    () => Object.fromEntries(workers.map((w) => [w.id, w.full_name])),
+    [workers]
+  )
 
   const filteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
@@ -660,7 +671,7 @@ export default function TicketsPage() {
     setMobileToolsOpen(true)
   }
 
-  function openTicket(ticket: TicketRow) {
+  function openTicket(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) {
     if (selectedTicket?.id === ticket.id) {
       closeDrawer()
       return
@@ -674,8 +685,31 @@ export default function TicketsPage() {
     setSelectedTicketAttachments([])
     setDescriptionTranslation('')
     setMergeCandidates([])
+    setTicketLogs([])
+    if (!opts?.skipDeepLink) {
+      setTicketDeepLinkInUrl(ticket.id)
+      deepLinkHandledRef.current = ticket.id
+    }
     void loadProfessionals()
-    loadTicketAttachments(ticket)
+    void loadTicketAttachments(ticket)
+    void loadTicketLogs(ticket.id)
+  }
+
+  async function loadTicketLogs(ticketId: string) {
+    setDrawerLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('ticket_logs')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setTicketLogs((data as TicketDetailLog[]) || [])
+    } catch {
+      setTicketLogs([])
+    } finally {
+      setDrawerLoading(false)
+    }
   }
 
   function handleTicketRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, ticket: TicketRow) {
@@ -745,8 +779,33 @@ export default function TicketsPage() {
     setSelectedTicketAttachments([])
     setDescriptionTranslation('')
     setMergeCandidates([])
-    setActiveDetailTab('details')
+    setTicketLogs([])
+    setTicketDeepLinkInUrl(null)
+    deepLinkHandledRef.current = null
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ticketId = parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
+    if (!ticketId || deepLinkHandledRef.current === ticketId) return
+    if (selectedTicket?.id === ticketId) {
+      deepLinkHandledRef.current = ticketId
+      return
+    }
+
+    void (async () => {
+      const fromList = tickets.find((t) => t.id === ticketId)
+      if (fromList) {
+        openTicket(fromList, { skipDeepLink: true })
+        return
+      }
+      const clientId = tenantClientId || (await resolveBamakorClientIdForBrowser())
+      const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
+      if (fetched) {
+        openTicket(fetched as TicketRow, { skipDeepLink: true })
+      }
+    })()
+  }, [tickets, tenantClientId, selectedTicket?.id])
 
   async function saveTicketChanges() {
     if (!selectedTicket) return
@@ -1315,257 +1374,60 @@ export default function TicketsPage() {
       </div>
 
       {/* Ticket Detail Drawer */}
-      <Drawer
-        open={!!selectedTicket}
-        onClose={closeDrawer}
-        title={selectedTicket ? `תקלה #${selectedTicket.ticket_number}` : ''}
-        subtitle={selectedTicket?.project_name || selectedTicket?.project_code}
+      <TicketDetailDrawer
+        selectedTicket={selectedTicket}
         isMobile={isMobile}
-      >
-        {selectedTicket && (
-          <div style={styles.drawerContent}>
-            {/* Attachments — visible from every tab */}
-            {(loadingAttachments || selectedTicketAttachments.length > 0 || (selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED')) && (
-              <div style={{ ...styles.formGroup, marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <label style={styles.formLabel}>
-                    קבצים מצורפים
-                    {selectedTicketAttachments.length > 0 ? ` (${selectedTicketAttachments.length})` : ''}
-                  </label>
-                  {selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED' && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      type="button"
-                      loading={recoveringMedia}
-                      onClick={() => void loadTicketAttachments(selectedTicket)}
-                    >
-                      שחזר תמונה/וידאו מ-WhatsApp
-                    </Button>
-                  )}
-                </div>
-                {loadingAttachments ? (
-                  <p style={{ color: theme.colors.textMuted, fontSize: 13, margin: 0 }}>טוען קבצים…</p>
-                ) : selectedTicketAttachments.length > 0 ? (
-                  <div style={styles.attachmentGrid}>
-                    {selectedTicketAttachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        style={{
-                          ...styles.attachmentItem,
-                          cursor: attachment.mime_type?.startsWith('image/') ? 'pointer' : 'default',
-                        }}
-                        onClick={() => {
-                          if (attachment.mime_type?.startsWith('image/') && attachment.signed_url) {
-                            setLightboxImage(attachment.signed_url)
-                          }
-                        }}
-                      >
-                        <TicketAttachmentThumb
-                          mimeType={attachment.mime_type}
-                          url={attachment.signed_url || ''}
-                          fileName={attachment.file_name}
-                          imageStyle={styles.attachmentImage}
-                          videoStyle={styles.attachmentVideo}
-                          fileStyle={styles.attachmentFile}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: theme.colors.textMuted, fontSize: 13, margin: 0 }}>
-                    אין קבצים — לחצו «שחזר תמונה/וידאו מ-WhatsApp» (גם בטאב WhatsApp דייר).
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Tabs */}
-            <div style={styles.tabBar}>
-              <button
-                style={{ ...styles.tab, ...(activeDetailTab === 'details' ? styles.tabActive : styles.tabInactive) }}
-                onClick={() => setActiveDetailTab('details')}
-              >
-                פרטים{selectedTicketAttachments.length > 0 ? ` · ${selectedTicketAttachments.length}` : ''}
-              </button>
-              <button
-                style={{ ...styles.tab, ...(activeDetailTab === 'chat' ? styles.tabActive : styles.tabInactive) }}
-                onClick={() => setActiveDetailTab('chat')}
-              >
-                צ׳אט פנימי
-              </button>
-              <button
-                style={{ ...styles.tab, ...(activeDetailTab === 'whatsapp' ? styles.tabActive : styles.tabInactive) }}
-                onClick={() => setActiveDetailTab('whatsapp')}
-              >
-                WhatsApp דייר
-              </button>
-            </div>
-
-            {activeDetailTab === 'chat' && (
-              <TicketChat ticketId={selectedTicket.id} clientId={tenantClientId || selectedTicket.client_id || null} />
-            )}
-
-            {activeDetailTab === 'whatsapp' && selectedTicket.reporter_phone && (
-              <TicketWhatsAppThread
-                reporterPhone={selectedTicket.reporter_phone}
-                ticketId={selectedTicket.id}
-                attachments={selectedTicketAttachments}
-                recoveringMedia={recoveringMedia}
-                onRecoverMedia={async () => {
-                  const ok = await tryRecoverWhatsAppMedia(selectedTicket.id)
-                  if (ok) await loadTicketAttachments(selectedTicket)
-                }}
-              />
-            )}
-            {activeDetailTab === 'whatsapp' && !selectedTicket.reporter_phone && (
-              <p style={{ color: theme.colors.textMuted, fontSize: 13 }}>אין טלפון דייר לתקלה זו.</p>
-            )}
-
-            {activeDetailTab === 'details' && (<>
-            <div style={styles.formGroup}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <label style={styles.formLabel}>תיאור</label>
-                <Button variant="secondary" size="sm" type="button" loading={translating} onClick={translateDescription}>
-                  תרגם לעברית
-                </Button>
-              </div>
-              <div style={styles.descriptionBox}>{selectedTicket.description || '-'}</div>
-              {descriptionTranslation ? (
-                <div style={{ ...styles.descriptionBox, marginTop: '10px', borderInlineStart: `3px solid ${theme.colors.primary}` }}>
-                  <div style={{ fontSize: '12px', color: theme.colors.textMuted, marginBottom: '6px' }}>תרגום</div>
-                  {descriptionTranslation}
-                </div>
-              ) : null}
-            </div>
-
-            {selectedTicket.status !== 'CLOSED' && (
-              <div style={styles.formGroup}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <label style={styles.formLabel}>מיזוג תקלות</label>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    loading={mergeLoading}
-                    onClick={() => loadMergeCandidates(selectedTicket)}
-                  >
-                    טען תקלות פתוחות מאותו בניין
-                  </Button>
-                </div>
-                {mergeCandidates.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                    {mergeCandidates.map((c) => (
-                      <div
-                        key={c.id}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '10px 12px',
-                          background: theme.colors.muted,
-                          borderRadius: theme.radius.md,
-                        }}
-                      >
-                        <span style={{ fontSize: '14px' }}>
-                          #{c.ticket_number} — {(c.description || '').slice(0, 60)}
-                          {(c.description?.length || 0) > 60 ? '…' : ''}
-                        </span>
-                        <Button variant="primary" size="sm" type="button" onClick={() => runMerge(c.id)} loading={savingTicket}>
-                          מזג לכאן
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={styles.formRow}>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>מדווח</label>
-                <div style={styles.formValue}>
-                  {selectedTicket.reporter_name || selectedTicket.reporter_phone || '-'}
-                </div>
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>נוצר</label>
-                <div style={styles.formValue}>
-                  {selectedTicket.created_at ? new Date(selectedTicket.created_at).toLocaleDateString() : '-'}
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>עדיפות</label>
-              <Select
-                value={draftPriority}
-                onChange={setDraftPriority}
-                options={[
-                  { label: 'נמוכה', value: 'LOW' },
-                  { label: 'בינונית', value: 'MEDIUM' },
-                  { label: 'גבוהה', value: 'HIGH' },
-                  { label: 'דחופה', value: 'URGENT' },
-                ]}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>סטטוס</label>
-              <Select
-                value={draftStatus}
-                onChange={setDraftStatus}
-                options={statusOptions.filter(s => s.value !== 'ALL')}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>משויך לעובד</label>
-              <Select
-                value={draftWorkerId}
-                onChange={setDraftWorkerId}
-                options={[
-                  { label: 'לא משויך', value: '' },
-                  ...workers.map((w) => ({ label: w.full_name, value: w.id })),
-                ]}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <ForwardToProfessionalBlock
-              ticketId={selectedTicket.id}
-              professionals={professionals}
-              onForwarded={async () => {
-                await fetchData(true)
-                if (selectedTicket && draftStatus !== 'PROFESSIONAL_ESCORT') {
-                  setDraftStatus('PROFESSIONAL_ESCORT')
-                }
-              }}
-            />
-
-            <div style={styles.drawerActions}>
-              <Button variant="secondary" onClick={closeDrawer}>
-                ביטול
-              </Button>
-              <Button variant="danger" onClick={() => void deleteSingleTicket()} loading={deletingTickets}>
-                מחק תקלה
-              </Button>
-              {selectedTicket.status !== 'CLOSED' && (
-                <Button variant="danger" onClick={() => void handleCloseTicket()} loading={savingTicket}>
-                  סגירת תקלה
-                </Button>
-              )}
-              <Button variant="primary" onClick={saveTicketChanges} loading={savingTicket}>
-                שמירה
-              </Button>
-            </div>
-            </>)}
-          </div>
-        )}
-      </Drawer>
+        draftDescription={selectedTicket?.description || ''}
+        draftWorkerId={draftWorkerId}
+        draftStatus={draftStatus}
+        draftPriority={draftPriority}
+        selectedTicketAttachments={selectedTicketAttachments}
+        ticketLogs={ticketLogs}
+        drawerLoading={drawerLoading}
+        loadingAttachments={loadingAttachments}
+        recoveringMedia={recoveringMedia}
+        savingTicket={savingTicket}
+        deletingTicket={deletingTickets}
+        workersMap={workersMap}
+        professionals={professionals}
+        tenantClientId={tenantClientId || selectedTicket?.client_id || null}
+        reporterName={selectedTicket?.reporter_name}
+        descriptionReadOnly
+        descriptionTranslation={descriptionTranslation}
+        translating={translating}
+        mergeCandidates={mergeCandidates}
+        mergeLoading={mergeLoading}
+        onClose={closeDrawer}
+        onCancel={closeDrawer}
+        onDescriptionChange={() => {}}
+        onWorkerChange={setDraftWorkerId}
+        onStatusChange={setDraftStatus}
+        onPriorityChange={setDraftPriority}
+        onSave={saveTicketChanges}
+        onSelectImage={setLightboxImage}
+        onCloseTicket={() => void handleCloseTicket()}
+        getImageUrl={(a) => a.signed_url || a.file_url || ''}
+        onRecoverMedia={
+          selectedTicket
+            ? async () => {
+                const ok = await tryRecoverWhatsAppMedia(selectedTicket.id)
+                if (ok) await loadTicketAttachments(selectedTicket)
+              }
+            : undefined
+        }
+        onTranslateDescription={translateDescription}
+        onLoadMergeCandidates={
+          selectedTicket ? () => loadMergeCandidates(selectedTicket) : undefined
+        }
+        onMerge={runMerge}
+        onDelete={() => void deleteSingleTicket()}
+        onTicketForwarded={async () => {
+          await fetchData(true)
+          if (selectedTicket && draftStatus !== 'PROFESSIONAL_ESCORT') {
+            setDraftStatus('PROFESSIONAL_ESCORT')
+          }
+        }}
+      />
 
       {/* Add Ticket Modal */}
       <Drawer
