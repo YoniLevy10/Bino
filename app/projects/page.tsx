@@ -12,6 +12,7 @@
  *  - "קוד QR" → מנווט ל-/qr
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -19,6 +20,7 @@ import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
+import { ticketDetailPath } from '@/lib/ticket-deep-link'
 import {
   AppShell,
   MobileHeader,
@@ -117,6 +119,7 @@ function writeProjectsCache(clientId: string, data: Omit<ProjectsCache, 'savedAt
 }
 
 export default function ProjectsPage() {
+  const router = useRouter()
   const { openMenu } = useMobileMenu()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
@@ -891,10 +894,15 @@ export default function ProjectsPage() {
                 ) : (
                   <div style={styles.ticketList}>
                     {projectTickets.map((ticket) => (
-                      <div key={ticket.id} style={styles.ticketItem}>
+                      <button
+                        key={ticket.id}
+                        type="button"
+                        style={{ ...styles.ticketItem, ...styles.ticketItemButton }}
+                        onClick={() => router.push(ticketDetailPath(ticket.id))}
+                      >
                         <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
                         <StatusBadge status={ticket.status} size="sm" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )
@@ -904,7 +912,12 @@ export default function ProjectsPage() {
                 <>
                   <div style={styles.ticketList}>
                     {projectClosedTickets.map((ticket) => (
-                      <div key={ticket.id} style={styles.ticketHistoryItem}>
+                      <button
+                        key={ticket.id}
+                        type="button"
+                        style={{ ...styles.ticketHistoryItem, ...styles.ticketItemButton }}
+                        onClick={() => router.push(ticketDetailPath(ticket.id))}
+                      >
                         <div style={styles.ticketHistoryTop}>
                           <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
                           <StatusBadge status={ticket.status} size="sm" />
@@ -915,7 +928,7 @@ export default function ProjectsPage() {
                         <span style={styles.ticketHistoryDate}>
                           נסגרה: {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('he-IL') : '—'}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                   <Button
@@ -1166,6 +1179,13 @@ const styles: Record<string, CSSProperties> = {
     padding: '12px',
     background: theme.colors.muted,
     borderRadius: theme.radius.sm,
+  },
+  ticketItemButton: {
+    width: '100%',
+    border: `1px solid ${theme.colors.border}`,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'right' as const,
   },
   ticketNumber: {
     fontSize: '14px',

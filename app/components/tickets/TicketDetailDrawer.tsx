@@ -1,81 +1,72 @@
 'use client'
 
 import { useState, type CSSProperties } from 'react'
-import { Drawer, Button, theme } from '../ui'
+import { Drawer, Button, Select, theme } from '../ui'
 import { TicketChat } from './TicketChat'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-
-interface TicketRow {
-  id: string
-  ticket_number: number
-  project_id?: string
-  project_code?: string
-  project_name?: string
-  client_id?: string | null
-  reporter_phone: string
-  description: string
-  status: string
-  assigned_worker_id: string | null
-  created_at: string
-  closed_at: string | null
-}
-
-interface AttachmentRow {
-  id: string
-  ticket_id: string
-  file_name: string
-  file_url: string | null
-  file_size?: number | null
-  mime_type: string
-  attachment_type?: string | null
-  whatsapp_media_id?: string | null
-  created_at: string
-  signed_url?: string | null
-}
-
-interface TicketLog {
-  id: string
-  ticket_id: string
-  action_type: string
-  old_value: string | null
-  new_value: string | null
-  performed_by: string | null
-  notes: string | null
-  created_at: string
-}
-
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
+import type {
+  TicketDetailAttachment,
+  TicketDetailLog,
+  TicketDetailRow,
+  TicketMergeCandidate,
+} from '@/lib/ticket-detail-types'
+
+export type { TicketDetailRow, TicketDetailAttachment, TicketDetailLog }
+
+type Tab = 'details' | 'chat' | 'whatsapp'
+
+const PRIORITY_OPTIONS = [
+  { label: 'נמוכה', value: 'LOW' },
+  { label: 'בינונית', value: 'MEDIUM' },
+  { label: 'גבוהה', value: 'HIGH' },
+  { label: 'דחופה', value: 'URGENT' },
+]
 
 interface TicketDetailDrawerProps {
-  selectedTicket: TicketRow | null
+  selectedTicket: TicketDetailRow | null
   isMobile: boolean
   draftDescription: string
   draftWorkerId: string
   draftStatus: string
-  selectedTicketAttachments: AttachmentRow[]
-  ticketLogs: TicketLog[]
+  draftPriority?: string
+  selectedTicketAttachments: TicketDetailAttachment[]
+  ticketLogs: TicketDetailLog[]
   drawerLoading: boolean
   loadingAttachments?: boolean
   recoveringMedia?: boolean
   savingTicket: boolean
   workersMap: Record<string, string>
   professionals?: ProfessionalOption[]
+  tenantClientId?: string | null
+  reporterName?: string | null
+  /** When true, description is display-only (tickets list save does not edit description). */
+  descriptionReadOnly?: boolean
+  descriptionTranslation?: string
+  translating?: boolean
+  mergeCandidates?: TicketMergeCandidate[]
+  mergeLoading?: boolean
+  deletingTicket?: boolean
   onTicketForwarded?: () => void | Promise<void>
   onClose: () => void
   onDescriptionChange: (value: string) => void
   onWorkerChange: (value: string) => void
   onStatusChange: (value: string) => void
+  onPriorityChange?: (value: string) => void
   onSave: () => void
   onSelectImage: (url: string) => void
   onCloseTicket: () => void
-  getImageUrl: (attachment: AttachmentRow) => string
+  getImageUrl: (attachment: TicketDetailAttachment) => string
   onRecoverMedia?: () => void | Promise<void>
+  onTranslateDescription?: () => void | Promise<void>
+  onLoadMergeCandidates?: () => void | Promise<void>
+  onMerge?: (targetTicketId: string) => void | Promise<void>
+  onDelete?: () => void | Promise<void>
+  onCancel?: () => void
 }
-
-type Tab = 'details' | 'chat' | 'whatsapp'
 
 export function TicketDetailDrawer({
   selectedTicket,
@@ -83,6 +74,7 @@ export function TicketDetailDrawer({
   draftDescription,
   draftWorkerId,
   draftStatus,
+  draftPriority = 'LOW',
   selectedTicketAttachments,
   ticketLogs,
   drawerLoading,
@@ -91,38 +83,61 @@ export function TicketDetailDrawer({
   savingTicket,
   workersMap,
   professionals = [],
+  tenantClientId = null,
+  reporterName,
+  descriptionReadOnly = false,
+  descriptionTranslation = '',
+  translating = false,
+  mergeCandidates = [],
+  mergeLoading = false,
+  deletingTicket = false,
   onTicketForwarded,
   onClose,
   onDescriptionChange,
   onWorkerChange,
   onStatusChange,
+  onPriorityChange,
   onSave,
   onSelectImage,
   onCloseTicket,
   getImageUrl,
   onRecoverMedia,
+  onTranslateDescription,
+  onLoadMergeCandidates,
+  onMerge,
+  onDelete,
+  onCancel,
 }: TicketDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details')
-  const [translating, setTranslating] = useState(false)
-  const [translation, setTranslation] = useState('')
+  const [internalTranslation, setInternalTranslation] = useState('')
 
-  async function translateDescription() {
-    const text = selectedTicket?.description
-    if (!text) return
-    setTranslating(true)
+  const translation = descriptionTranslation || internalTranslation
+  const showRecover =
+    !!selectedTicket?.reporter_phone && selectedTicket.status !== 'CLOSED' && !!onRecoverMedia
+  const showAttachmentsBlock =
+    loadingAttachments ||
+    selectedTicketAttachments.length > 0 ||
+    (!!selectedTicket?.reporter_phone && selectedTicket.status !== 'CLOSED')
+
+  async function translateDescriptionInternal() {
+    if (onTranslateDescription) {
+      await onTranslateDescription()
+      return
+    }
+    const text = descriptionReadOnly ? selectedTicket?.description : draftDescription
+    if (!text?.trim()) return
+    setInternalTranslation('')
     try {
       const res = await fetchWithTimeout('/api/translate-ticket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
-      const json = await res.json() as { translation?: string; error?: string }
+      const json = (await res.json()) as { translation?: string; error?: string }
       if (!res.ok) throw new Error(json.error || 'תרגום נכשל')
-      setTranslation(json.translation || '')
+      setInternalTranslation(json.translation || '')
     } catch {
-      setTranslation('')
-    } finally {
-      setTranslating(false)
+      setInternalTranslation('')
     }
   }
 
@@ -150,33 +165,29 @@ export function TicketDetailDrawer({
       open={!!selectedTicket}
       onClose={onClose}
       title={`תקלה #${selectedTicket?.ticket_number}`}
-      subtitle={selectedTicket?.project_name || 'פרטי בניין'}
+      subtitle={selectedTicket?.project_name || selectedTicket?.project_code || 'פרטי בניין'}
       isMobile={isMobile}
     >
       {selectedTicket && (
         <div style={styles.drawerContent}>
-          {(loadingAttachments ||
-            selectedTicketAttachments.length > 0 ||
-            (selectedTicket.reporter_phone && selectedTicket.status !== 'CLOSED')) && (
+          {showAttachmentsBlock && (
             <div style={styles.drawerSection}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <div style={styles.drawerLabel}>
                   קבצים מצורפים
                   {selectedTicketAttachments.length > 0 ? ` (${selectedTicketAttachments.length})` : ''}
                 </div>
-                {selectedTicket.reporter_phone &&
-                  selectedTicket.status !== 'CLOSED' &&
-                  onRecoverMedia && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      type="button"
-                      loading={recoveringMedia}
-                      onClick={() => void onRecoverMedia()}
-                    >
-                      שחזר תמונה/וידאו מ-WhatsApp
-                    </Button>
-                  )}
+                {showRecover && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    loading={recoveringMedia}
+                    onClick={() => void onRecoverMedia?.()}
+                  >
+                    שחזר תמונה/וידאו מ-WhatsApp
+                  </Button>
+                )}
               </div>
               {loadingAttachments ? (
                 <p style={styles.loadingState}>טוען קבצים…</p>
@@ -185,17 +196,18 @@ export function TicketDetailDrawer({
                   {selectedTicketAttachments.map((attachment) => (
                     <button
                       key={attachment.id}
+                      type="button"
                       onClick={() => {
-                        if (attachment.mime_type.startsWith('image/')) {
+                        if (attachment.mime_type?.startsWith('image/')) {
                           onSelectImage(getImageUrl(attachment))
                         }
                       }}
                       style={styles.attachmentThumb}
                     >
                       <TicketAttachmentThumb
-                        mimeType={attachment.mime_type}
+                        mimeType={attachment.mime_type || ''}
                         url={getImageUrl(attachment)}
-                        fileName={attachment.file_name}
+                        fileName={attachment.file_name || ''}
                         imageStyle={styles.attachmentImg}
                         videoStyle={styles.attachmentVideo}
                         fileStyle={styles.attachmentFile}
@@ -211,21 +223,23 @@ export function TicketDetailDrawer({
             </div>
           )}
 
-          {/* Tabs */}
           <div style={styles.tabBar}>
             <button
+              type="button"
               style={{ ...styles.tab, ...(activeTab === 'details' ? styles.tabActive : styles.tabInactive) }}
               onClick={() => setActiveTab('details')}
             >
-              פרטים
+              פרטים{selectedTicketAttachments.length > 0 ? ` · ${selectedTicketAttachments.length}` : ''}
             </button>
             <button
+              type="button"
               style={{ ...styles.tab, ...(activeTab === 'chat' ? styles.tabActive : styles.tabInactive) }}
               onClick={() => setActiveTab('chat')}
             >
               צ׳אט פנימי
             </button>
             <button
+              type="button"
               style={{ ...styles.tab, ...(activeTab === 'whatsapp' ? styles.tabActive : styles.tabInactive) }}
               onClick={() => setActiveTab('whatsapp')}
             >
@@ -235,6 +249,119 @@ export function TicketDetailDrawer({
 
           {activeTab === 'details' && (
             <>
+              <div style={styles.drawerSection}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={styles.drawerLabel}>תיאור</div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    loading={translating}
+                    onClick={() => void translateDescriptionInternal()}
+                  >
+                    תרגם לעברית
+                  </Button>
+                </div>
+                {descriptionReadOnly ? (
+                  <div style={styles.descriptionBox}>{selectedTicket.description || '—'}</div>
+                ) : (
+                  <textarea
+                    value={draftDescription}
+                    onChange={(e) => onDescriptionChange(e.target.value)}
+                    style={styles.drawerTextarea}
+                    rows={4}
+                  />
+                )}
+                {translation ? (
+                  <div style={styles.translationBox}>
+                    <div style={styles.translationLabel}>תרגום</div>
+                    {translation}
+                  </div>
+                ) : null}
+              </div>
+
+              {onLoadMergeCandidates && selectedTicket.status !== 'CLOSED' && (
+                <div style={styles.drawerSection}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={styles.drawerLabel}>מיזוג תקלות</div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      loading={mergeLoading}
+                      onClick={() => void onLoadMergeCandidates()}
+                    >
+                      טען תקלות פתוחות מאותו בניין
+                    </Button>
+                  </div>
+                  {mergeCandidates.length > 0 && (
+                    <div style={styles.mergeList}>
+                      {mergeCandidates.map((c) => (
+                        <div key={c.id} style={styles.mergeRow}>
+                          <span style={styles.mergeText}>
+                            #{c.ticket_number} — {(c.description || '').slice(0, 60)}
+                            {(c.description?.length || 0) > 60 ? '…' : ''}
+                          </span>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            type="button"
+                            loading={savingTicket}
+                            onClick={() => void onMerge?.(c.id)}
+                          >
+                            מזג לכאן
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={styles.formRow}>
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>מדווח</div>
+                  <div style={styles.drawerValue}>
+                    {reporterName || selectedTicket.reporter_name || selectedTicket.reporter_phone || '—'}
+                  </div>
+                </div>
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>נוצר</div>
+                  <div style={styles.drawerValue}>
+                    {selectedTicket.created_at
+                      ? new Date(selectedTicket.created_at).toLocaleDateString('he-IL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {selectedTicket.reporter_phone && (
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>טלפון מדווח</div>
+                  <a href={`tel:${selectedTicket.reporter_phone}`} style={styles.phoneLink}>
+                    {selectedTicket.reporter_phone}
+                  </a>
+                </div>
+              )}
+
+              {onPriorityChange && (
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>עדיפות</div>
+                  <Select
+                    value={draftPriority}
+                    onChange={onPriorityChange}
+                    options={PRIORITY_OPTIONS}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              )}
+
               <div style={styles.drawerSection}>
                 <div style={styles.drawerLabel}>סטטוס</div>
                 <select
@@ -268,27 +395,6 @@ export function TicketDetailDrawer({
                 </select>
               </div>
 
-              <div style={styles.drawerSection}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={styles.drawerLabel}>תיאור</div>
-                  <Button variant="secondary" size="sm" type="button" loading={translating} onClick={translateDescription}>
-                    תרגם לעברית
-                  </Button>
-                </div>
-                <textarea
-                  value={draftDescription}
-                  onChange={(e) => onDescriptionChange(e.target.value)}
-                  style={styles.drawerTextarea}
-                  rows={4}
-                />
-                {translation && (
-                  <div style={styles.translationBox}>
-                    <div style={styles.translationLabel}>תרגום</div>
-                    {translation}
-                  </div>
-                )}
-              </div>
-
               {onTicketForwarded && (
                 <ForwardToProfessionalBlock
                   ticketId={selectedTicket.id}
@@ -297,51 +403,32 @@ export function TicketDetailDrawer({
                 />
               )}
 
-              <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>טלפון מדווח</div>
-                <a
-                  href={`tel:${selectedTicket.reporter_phone}`}
-                  style={styles.phoneLink}
-                >
-                  {selectedTicket.reporter_phone}
-                </a>
-              </div>
-
-              <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>נוצר</div>
-                <div style={styles.drawerValue}>
-                  {new Date(selectedTicket.created_at).toLocaleDateString('he-IL', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </div>
-              </div>
-
-              {/* Actions */}
               <div style={styles.drawerActions}>
-                <Button
-                  variant="primary"
-                  onClick={onSave}
-                  loading={savingTicket}
-                  style={{ width: '100%' }}
-                >
-                  שמירה
-                </Button>
-                {selectedTicket.status !== 'CLOSED' && (
+                {onCancel && (
+                  <Button variant="secondary" onClick={onCancel} style={{ width: '100%' }}>
+                    ביטול
+                  </Button>
+                )}
+                {onDelete && (
                   <Button
                     variant="danger"
-                    onClick={onCloseTicket}
+                    onClick={() => void onDelete()}
+                    loading={deletingTicket}
                     style={{ width: '100%' }}
                   >
+                    מחק תקלה
+                  </Button>
+                )}
+                {selectedTicket.status !== 'CLOSED' && (
+                  <Button variant="danger" onClick={onCloseTicket} style={{ width: '100%' }}>
                     סגירת תקלה
                   </Button>
                 )}
+                <Button variant="primary" onClick={onSave} loading={savingTicket} style={{ width: '100%' }}>
+                  שמירה
+                </Button>
               </div>
 
-              {/* History */}
               <div style={styles.drawerSection}>
                 <div style={styles.drawerLabel}>היסטוריה</div>
                 {drawerLoading ? (
@@ -373,7 +460,10 @@ export function TicketDetailDrawer({
           )}
 
           {activeTab === 'chat' && (
-            <TicketChat ticketId={selectedTicket.id} clientId={selectedTicket.client_id ?? null} />
+            <TicketChat
+              ticketId={selectedTicket.id}
+              clientId={tenantClientId || selectedTicket.client_id || null}
+            />
           )}
 
           {activeTab === 'whatsapp' && selectedTicket.reporter_phone && (
@@ -432,6 +522,11 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: '8px',
   },
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+  },
   drawerLabel: {
     fontSize: '12px',
     fontWeight: 600,
@@ -442,6 +537,16 @@ const styles: Record<string, CSSProperties> = {
   drawerValue: {
     fontSize: '14px',
     color: theme.colors.textPrimary,
+  },
+  descriptionBox: {
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.surfaceElevated,
+    border: `1px solid ${theme.colors.border}`,
+    fontSize: '14px',
+    color: theme.colors.textPrimary,
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap',
   },
   phoneLink: {
     fontSize: '14px',
@@ -521,6 +626,24 @@ const styles: Record<string, CSSProperties> = {
     padding: '8px',
     textAlign: 'center',
     wordBreak: 'break-word',
+  },
+  mergeList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  mergeRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 12px',
+    background: theme.colors.muted,
+    borderRadius: theme.radius.md,
+  },
+  mergeText: {
+    fontSize: '14px',
+    flex: 1,
   },
   emptyLogs: {
     fontSize: '13px',
