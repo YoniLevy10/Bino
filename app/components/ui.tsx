@@ -768,9 +768,9 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     height: '24px',
   },
   label: {
-    fontSize: '10px',
+    fontSize: '11px',
     fontWeight: 600,
-    lineHeight: 1.2,
+    lineHeight: 1.25,
     textAlign: 'center',
     maxWidth: '100%',
     overflow: 'hidden',
@@ -2250,12 +2250,14 @@ export function SkeletonGrid({ count = 4 }: { count?: number }) {
 // ============================================================================
 
 export function ErrorState({
-  title = 'Something went wrong',
-  message = 'Unable to load data. Please try again.',
+  title = 'משהו השתבש',
+  message = 'לא הצלחנו לטעון את הנתונים. נסו שוב.',
+  retryLabel = 'נסה שוב',
   onRetry,
 }: {
   title?: string
   message?: string
+  retryLabel?: string
   onRetry?: () => void
 }) {
   return (
@@ -2291,22 +2293,9 @@ export function ErrorState({
           </div>
         </div>
         {onRetry && (
-          <button
-            onClick={onRetry}
-            style={{
-              padding: '8px 16px',
-              borderRadius: theme.radius.sm,
-              border: `1px solid ${theme.colors.border}`,
-              background: theme.colors.background,
-              color: theme.colors.textPrimary,
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Try Again
-          </button>
+          <Button variant="secondary" size="sm" type="button" onClick={onRetry}>
+            {retryLabel}
+          </Button>
         )}
       </div>
     </Card>

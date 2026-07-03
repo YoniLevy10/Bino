@@ -876,6 +876,17 @@ function SettingsPageInner() {
             {activeTab === 'whatsapp' && (
               <Card noPadding>
                   <div style={styles.cardInner}>
+                    <div style={styles.waTemplatesLinkBox}>
+                      <div>
+                        <div style={styles.formLabel}>תבניות הודעות לדיירים</div>
+                        <p style={styles.formHint}>
+                          עריכת טקסטים לשלבי onboarding, בחירת בניין, מדיה וסגירה — בדף ייעודי.
+                        </p>
+                      </div>
+                      <Link href="/settings/whatsapp-templates" style={styles.waTemplatesLink}>
+                        לעריכת תבניות →
+                      </Link>
+                    </div>
                     <div style={styles.formGroup}>
                       <label style={styles.formLabel}>מספר וואטסאפ לקישורי QR (wa.me)</label>
                     <input
@@ -1439,6 +1450,26 @@ const styles: Record<string, CSSProperties> = {
   formHint: {
     fontSize: '12px',
     color: theme.colors.textMuted,
+    margin: '4px 0 0',
+  },
+  waTemplatesLinkBox: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px',
+    flexWrap: 'wrap',
+    padding: '14px 16px',
+    marginBottom: '20px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+    border: `1px solid ${theme.colors.border}`,
+  },
+  waTemplatesLink: {
+    color: theme.colors.primary,
+    fontWeight: 600,
+    fontSize: '14px',
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
   },
   inlineLink: {
     color: theme.colors.primary,

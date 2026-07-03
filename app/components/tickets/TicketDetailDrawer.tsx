@@ -8,6 +8,7 @@ import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
+import { TabBar } from '../ui/TabBar'
 import type {
   TicketDetailAttachment,
   TicketDetailLog,
@@ -223,29 +224,19 @@ export function TicketDetailDrawer({
             </div>
           )}
 
-          <div style={styles.tabBar}>
-            <button
-              type="button"
-              style={{ ...styles.tab, ...(activeTab === 'details' ? styles.tabActive : styles.tabInactive) }}
-              onClick={() => setActiveTab('details')}
-            >
-              פרטים{selectedTicketAttachments.length > 0 ? ` · ${selectedTicketAttachments.length}` : ''}
-            </button>
-            <button
-              type="button"
-              style={{ ...styles.tab, ...(activeTab === 'chat' ? styles.tabActive : styles.tabInactive) }}
-              onClick={() => setActiveTab('chat')}
-            >
-              צ׳אט פנימי
-            </button>
-            <button
-              type="button"
-              style={{ ...styles.tab, ...(activeTab === 'whatsapp' ? styles.tabActive : styles.tabInactive) }}
-              onClick={() => setActiveTab('whatsapp')}
-            >
-              WhatsApp דייר
-            </button>
-          </div>
+          <TabBar
+            tabs={[
+              {
+                id: 'details' as const,
+                label: `פרטים${selectedTicketAttachments.length > 0 ? ` · ${selectedTicketAttachments.length}` : ''}`,
+              },
+              { id: 'chat' as const, label: 'צ׳אט פנימי' },
+              { id: 'whatsapp' as const, label: 'WhatsApp דייר' },
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            ariaLabel="פרטי תקלה"
+          />
 
           {activeTab === 'details' && (
             <>

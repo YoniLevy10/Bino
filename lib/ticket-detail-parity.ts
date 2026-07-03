@@ -35,5 +35,5 @@ export const TICKET_DETAIL_NAV_SOURCES = [
   { id: 'summary_history', file: 'app/summary/page.tsx', mustUse: 'ticketDetailPath' },
   { id: 'projects_drawer', file: 'app/projects/page.tsx', mustUse: 'ticketDetailPath' },
   { id: 'workers_drawer', file: 'app/workers/page.tsx', mustUse: 'ticketDetailPath' },
-  { id: 'dashboard_activity', file: 'app/page.tsx', mustUse: 'ticketDetailPath' },
+  { id: 'dashboard_activity', file: 'app/page.tsx', mustUse: 'openTicketById' },
 ] as const

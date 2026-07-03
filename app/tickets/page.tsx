@@ -29,9 +29,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
-import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
-import { recoverWhatsAppMediaForTicket } from '@/lib/recover-ticket-media-client'
-import { withClientId } from '@/lib/supabase/with-client-id'
+import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
+import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
+import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
@@ -54,6 +54,7 @@ import {
   Select,
   Drawer,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
   theme
 } from '../components/ui'
@@ -64,12 +65,7 @@ import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
-import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
-import {
-  parseTicketIdFromSearchParams,
-  setTicketDeepLinkInUrl,
-} from '@/lib/ticket-deep-link'
-import type { TicketDetailLog } from '@/lib/ticket-detail-types'
+import { withClientId } from '@/lib/supabase/with-client-id'
 import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
 import {
   OPEN_TICKET_STATUS_FILTER_OPTIONS,
@@ -189,6 +185,7 @@ export default function TicketsPage() {
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [pageLoadError, setPageLoadError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
@@ -200,6 +197,17 @@ export default function TicketsPage() {
   const professionalsLoadedRef = useRef(false)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
+  const {
+    attachments: selectedTicketAttachments,
+    ticketLogs,
+    loadingAttachments,
+    drawerLoading,
+    recoveringMedia,
+    loadTicketAttachments,
+    loadTicketLogs,
+    recoverAndReloadAttachments,
+    resetTicketDetailData,
+  } = useTicketDetailData()
   const [draftPriority, setDraftPriority] = useState<string>('')
   const [draftStatus, setDraftStatus] = useState<string>('')
   const [draftWorkerId, setDraftWorkerId] = useState<string>('')
@@ -207,10 +215,7 @@ export default function TicketsPage() {
   const [closingTicketId, setClosingTicketId] = useState<string | null>(null)
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(() => new Set())
   const [deletingTickets, setDeletingTickets] = useState(false)
-  const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<AttachmentRow[]>([])
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
-  const [loadingAttachments, setLoadingAttachments] = useState(false)
-  const [recoveringMedia, setRecoveringMedia] = useState(false)
   const [showAddTicketModal, setShowAddTicketModal] = useState(false)
   const [addTicketForm, setAddTicketForm] = useState({
     project_code: '',
@@ -227,9 +232,6 @@ export default function TicketsPage() {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
-  const [ticketLogs, setTicketLogs] = useState<TicketDetailLog[]>([])
-  const [drawerLoading, setDrawerLoading] = useState(false)
-  const deepLinkHandledRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -285,7 +287,7 @@ export default function TicketsPage() {
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
-    await asyncHandler(
+    const result = await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
         setTenantClientId(clientId)
@@ -334,6 +336,7 @@ export default function TicketsPage() {
       },
       { context: 'טעינת תקלות', showErrorToast: true }
     )
+    setPageLoadError(!result)
     if (!silent) setLoading(false)
   }, [])
 
@@ -671,46 +674,61 @@ export default function TicketsPage() {
     setMobileToolsOpen(true)
   }
 
-  function openTicket(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) {
-    if (selectedTicket?.id === ticket.id) {
-      closeDrawer()
-      return
-    }
-    setMobileToolsOpen(false)
-    setShowAddTicketModal(false)
-    setSelectedTicket(ticket)
-    setDraftPriority(ticket.priority || 'LOW')
-    setDraftStatus(ticket.status)
-    setDraftWorkerId(ticket.assigned_worker_id || '')
-    setSelectedTicketAttachments([])
+  const openTicketFnRef = useRef<(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) => void>(() => {})
+
+  const { clearDeepLink, markDeepLink: setTicketDeepLinkForOpen } = useTicketDeepLinkOpen({
+    tickets,
+    selectedTicketId: selectedTicket?.id,
+    onOpenTicket: (ticket, opts) => openTicketFnRef.current(ticket, opts),
+    mapFetchedTicket: (row) => row as TicketRow,
+    resolveClientId: async () => tenantClientId || (await resolveBamakorClientIdForBrowser()),
+  })
+
+  const closeDrawer = useCallback(() => {
+    setSelectedTicket(null)
+    setDraftPriority('')
+    setDraftStatus('')
+    setDraftWorkerId('')
+    resetTicketDetailData()
     setDescriptionTranslation('')
     setMergeCandidates([])
-    setTicketLogs([])
-    if (!opts?.skipDeepLink) {
-      setTicketDeepLinkInUrl(ticket.id)
-      deepLinkHandledRef.current = ticket.id
-    }
-    void loadProfessionals()
-    void loadTicketAttachments(ticket)
-    void loadTicketLogs(ticket.id)
-  }
+    clearDeepLink()
+  }, [resetTicketDetailData, clearDeepLink])
 
-  async function loadTicketLogs(ticketId: string) {
-    setDrawerLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('ticket_logs')
-        .select('*')
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setTicketLogs((data as TicketDetailLog[]) || [])
-    } catch {
-      setTicketLogs([])
-    } finally {
-      setDrawerLoading(false)
-    }
-  }
+  const openTicket = useCallback(
+    (ticket: TicketRow, opts?: { skipDeepLink?: boolean }) => {
+      if (selectedTicket?.id === ticket.id) {
+        closeDrawer()
+        return
+      }
+      setMobileToolsOpen(false)
+      setShowAddTicketModal(false)
+      setSelectedTicket(ticket)
+      setDraftPriority(ticket.priority || 'LOW')
+      setDraftStatus(ticket.status)
+      setDraftWorkerId(ticket.assigned_worker_id || '')
+      resetTicketDetailData()
+      setDescriptionTranslation('')
+      setMergeCandidates([])
+      void loadProfessionals()
+      void loadTicketAttachments(ticket)
+      void loadTicketLogs(ticket.id)
+      if (!opts?.skipDeepLink) {
+        setTicketDeepLinkForOpen(ticket.id)
+      }
+    },
+    [
+      selectedTicket?.id,
+      closeDrawer,
+      loadProfessionals,
+      loadTicketAttachments,
+      loadTicketLogs,
+      resetTicketDetailData,
+      setTicketDeepLinkForOpen,
+    ]
+  )
+
+  openTicketFnRef.current = openTicket
 
   function handleTicketRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, ticket: TicketRow) {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -718,94 +736,6 @@ export default function TicketsPage() {
       openTicket(ticket)
     }
   }
-
-  async function tryRecoverWhatsAppMedia(ticketId: string): Promise<boolean> {
-    setRecoveringMedia(true)
-    try {
-      const { recovered, error } = await recoverWhatsAppMediaForTicket(ticketId)
-      if (!recovered) {
-        if (error) toast.error(error)
-        return false
-      }
-      toast.success('תמונה/וידאו שוחזרו מהסשן וצורפו לתקלה')
-      return true
-    } catch {
-      return false
-    } finally {
-      setRecoveringMedia(false)
-    }
-  }
-
-  async function loadTicketAttachments(ticket: Pick<TicketRow, 'id' | 'reporter_phone' | 'status'>) {
-    setLoadingAttachments(true)
-    try {
-      const { data } = await supabase
-        .from('ticket_attachments')
-        .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
-        .eq('ticket_id', ticket.id)
-        .order('created_at', { ascending: false })
-
-      if (data && data.length > 0) {
-        const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, data as AttachmentRow[])
-        setSelectedTicketAttachments(attachmentsWithUrls)
-      } else {
-        setSelectedTicketAttachments([])
-        if (ticket.reporter_phone && ticket.status !== 'CLOSED') {
-          const recovered = await tryRecoverWhatsAppMedia(ticket.id)
-          if (recovered) {
-            const { data: retryData } = await supabase
-              .from('ticket_attachments')
-              .select('id, ticket_id, file_name, file_url, mime_type, attachment_type, whatsapp_media_id, created_at')
-              .eq('ticket_id', ticket.id)
-              .order('created_at', { ascending: false })
-            if (retryData && retryData.length > 0) {
-              const attachmentsWithUrls = await withSignedAttachmentUrls(supabase, retryData as AttachmentRow[])
-              setSelectedTicketAttachments(attachmentsWithUrls)
-            }
-          }
-        }
-      }
-    } catch {
-      setSelectedTicketAttachments([])
-    }
-    setLoadingAttachments(false)
-  }
-
-  function closeDrawer() {
-    setSelectedTicket(null)
-    setDraftPriority('')
-    setDraftStatus('')
-    setDraftWorkerId('')
-    setSelectedTicketAttachments([])
-    setDescriptionTranslation('')
-    setMergeCandidates([])
-    setTicketLogs([])
-    setTicketDeepLinkInUrl(null)
-    deepLinkHandledRef.current = null
-  }
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const ticketId = parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
-    if (!ticketId || deepLinkHandledRef.current === ticketId) return
-    if (selectedTicket?.id === ticketId) {
-      deepLinkHandledRef.current = ticketId
-      return
-    }
-
-    void (async () => {
-      const fromList = tickets.find((t) => t.id === ticketId)
-      if (fromList) {
-        openTicket(fromList, { skipDeepLink: true })
-        return
-      }
-      const clientId = tenantClientId || (await resolveBamakorClientIdForBrowser())
-      const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
-      if (fetched) {
-        openTicket(fetched as TicketRow, { skipDeepLink: true })
-      }
-    })()
-  }, [tickets, tenantClientId, selectedTicket?.id])
 
   async function saveTicketChanges() {
     if (!selectedTicket) return
@@ -1268,10 +1198,13 @@ export default function TicketsPage() {
           {loading ? (
             <div style={styles.loadingContainer}>
               <PageListSkeleton rows={10} />
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-                <LoadingSpinner />
-              </div>
             </div>
+          ) : pageLoadError ? (
+            <ErrorState
+              title="לא הצלחנו לטעון את התקלות"
+              message="בדקו חיבור לאינטרנט ונסו שוב."
+              onRetry={() => void fetchData()}
+            />
           ) : filteredTickets.length === 0 ? (
             <EmptyState
               title="לא נמצאו תקלות"
@@ -1410,8 +1343,7 @@ export default function TicketsPage() {
         onRecoverMedia={
           selectedTicket
             ? async () => {
-                const ok = await tryRecoverWhatsAppMedia(selectedTicket.id)
-                if (ok) await loadTicketAttachments(selectedTicket)
+                await recoverAndReloadAttachments(selectedTicket)
               }
             : undefined
         }

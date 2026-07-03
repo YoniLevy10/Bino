@@ -24,6 +24,7 @@ import { PageListSkeleton } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
 import { WorkerPortalToolbar, type WorkerTicketFilter, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
+import { ActionConfirmSheet } from '../components/ui/ActionConfirmSheet'
 
 const WorkerTicketCard = dynamic(
   () => import('../components/worker/WorkerTicketCard').then((m) => ({ default: m.WorkerTicketCard })),
@@ -846,65 +847,53 @@ function WorkerPageInner() {
         </div>
 
         {confirmCloseId ? (
-          <div style={{ ...styles.confirmOverlay, background: palette.overlay }}>
-            <div style={{ ...styles.confirmBox, background: palette.surface, borderColor: palette.border }}>
-              <p style={{ ...styles.confirmText, color: palette.textPrimary }}>סיימתם לטפל בתקלה?</p>
-              <p style={{ ...styles.confirmSub, color: palette.textMuted }}>
-                צלמו תמונה לדייר — היא תישלח ב-WhatsApp ואז התקלה תיסגר. הדייר יקבל גם הודעה שהתקלה נסגרה.
-              </p>
-              {ticketHasCompletionPhoto(confirmCloseId) && !closePhotoPreview ? (
-                <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>יש תמונה מוכנה מהשטח</p>
-              ) : null}
-              {closePhotoPreview ? (
-                <div style={styles.confirmPreviewWrap}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={closePhotoPreview} alt="תצוגה מקדימה" style={styles.confirmPreview} />
-                </div>
-              ) : null}
-              {!ticketHasCompletionPhoto(confirmCloseId) || closePhotoPreview ? (
-                <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.primary }}>
-                  {closePhotoPreview ? 'החלפת תמונה' : 'צלמו תמונה עכשיו'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    capture="environment"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      setClosePhotoFile(file)
-                      setClosePhotoPreview((prev) => {
-                        if (prev) URL.revokeObjectURL(prev)
-                        return URL.createObjectURL(file)
-                      })
-                      e.target.value = ''
-                    }}
-                  />
-                </label>
-              ) : null}
-              <div style={styles.confirmActions}>
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() => {
-                    setConfirmCloseId(null)
-                    clearClosePhoto()
-                  }}
-                >
-                  עדיין לא
-                </Button>
-                <Button
-                  variant="primary"
-                  size="md"
-                  loading={busyKey === `${confirmCloseId}:CLOSED`}
-                  disabled={!ticketHasCompletionPhoto(confirmCloseId) && !closePhotoFile}
-                  onClick={() => void confirmCloseTicket()}
-                >
-                  שלח לדייר וסגור
-                </Button>
+          <ActionConfirmSheet
+            open
+            title="סיימתם לטפל בתקלה?"
+            body="צלמו תמונה לדייר — היא תישלח ב-WhatsApp ואז התקלה תיסגר. הדייר יקבל גם הודעה שהתקלה נסגרה."
+            confirmLabel="שלח לדייר וסגור"
+            cancelLabel="עדיין לא"
+            loading={busyKey === `${confirmCloseId}:CLOSED`}
+            confirmDisabled={!ticketHasCompletionPhoto(confirmCloseId) && !closePhotoFile}
+            isMobile={isMobile}
+            panelStyle={{ background: palette.surface }}
+            onCancel={() => {
+              setConfirmCloseId(null)
+              clearClosePhoto()
+            }}
+            onConfirm={() => void confirmCloseTicket()}
+          >
+            {ticketHasCompletionPhoto(confirmCloseId) && !closePhotoPreview ? (
+              <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>יש תמונה מוכנה מהשטח</p>
+            ) : null}
+            {closePhotoPreview ? (
+              <div style={styles.confirmPreviewWrap}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={closePhotoPreview} alt="תצוגה מקדימה" style={styles.confirmPreview} />
               </div>
-            </div>
-          </div>
+            ) : null}
+            {!ticketHasCompletionPhoto(confirmCloseId) || closePhotoPreview ? (
+              <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.primary }}>
+                {closePhotoPreview ? 'החלפת תמונה' : 'צלמו תמונה עכשיו'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setClosePhotoFile(file)
+                    setClosePhotoPreview((prev) => {
+                      if (prev) URL.revokeObjectURL(prev)
+                      return URL.createObjectURL(file)
+                    })
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            ) : null}
+          </ActionConfirmSheet>
         ) : null}
 
         <WorkerPushSync token={tokenSession.token} onEnabled={() => setPushEnabled(true)} />
