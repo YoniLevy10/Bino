@@ -420,7 +420,7 @@ function WorkerPageInner() {
           [ticketId]: [json.attachment as WorkerAttachment, ...(prev[ticketId] || [])],
         }))
       }
-      toast.success('תמונה נשמרה — תישלח לדייר בסגירת התקלה')
+      toast.success('תמונה נשמרה — תישלח לדייר אם תסגרו את התקלה')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'העלאה נכשלה')
       throw e
@@ -449,13 +449,9 @@ function WorkerPageInner() {
   async function confirmCloseTicket() {
     if (!confirmCloseId || !tokenSession) return
     const id = confirmCloseId
-    const hasStagedPhoto = ticketHasCompletionPhoto(id) || !!closePhotoFile
-    if (!hasStagedPhoto) {
-      toast.error('צלמו תמונה לדייר לפני הסגירה')
-      return
-    }
 
     setBusyKey(`${id}:CLOSED`)
+    const hadStagedPhoto = ticketHasCompletionPhoto(id) || !!closePhotoFile
     try {
       const formData = new FormData()
       formData.append('token', tokenSession.token)
@@ -483,7 +479,9 @@ function WorkerPageInner() {
       if (json.completion_image_sent) {
         toast.success('תמונת התיקון נשלחה לדייר')
       } else if (json.completion_image_error) {
-        toast.error(`תמונה לדייר: ${json.completion_image_error}`)
+        toast.error(`תמונה לדייר לא נשלחה: ${json.completion_image_error}`)
+      } else if (hadStagedPhoto) {
+        toast.error('תמונה לדייר לא נשלחה — התקלה נסגרה')
       }
 
       toastReporterClosedNotifySummary({
@@ -871,15 +869,13 @@ function WorkerPageInner() {
         {confirmCloseId ? (
           <ActionConfirmSheet
             open
-            title="סיימתם לטפל בתקלה?"
-            body="שלב 1: צלמו תמונה לדייר. שלב 2: לחצו «שלח לדייר וסגור». התקלה תיסגר והדייר יקבל את התמונה ב-WhatsApp."
-            confirmLabel="שלח לדייר וסגור"
-            cancelLabel="עדיין לא"
+            title="לסגור את התקלה?"
+            body="לחצו «סגור תקלה» — הדייר יקבל הודעה שהטיפול הסתיים. צילום תמונה לדייר הוא אופציונלי."
+            confirmLabel="סגור תקלה"
+            cancelLabel="ביטול"
             loading={busyKey === `${confirmCloseId}:CLOSED`}
-            confirmDisabled={
-              closePhotoUploading ||
-              (!ticketHasCompletionPhoto(confirmCloseId) && !closePhotoFile)
-            }
+            confirmDisabled={false}
+            confirmVariant="primary"
             isMobile={isMobile}
             panelStyle={{ background: palette.surface }}
             onCancel={() => {
@@ -889,17 +885,10 @@ function WorkerPageInner() {
             onConfirm={() => void confirmCloseTicket()}
           >
             {closePhotoUploading ? (
-              <p style={{ ...styles.confirmPhotoReady, color: palette.textMuted }}>מעלה תמונה… המתינו רגע</p>
-            ) : null}
-            {!closePhotoUploading &&
-            !ticketHasCompletionPhoto(confirmCloseId) &&
-            !closePhotoFile ? (
-              <p style={{ ...styles.confirmPhotoNeed, color: palette.warning }}>
-                צלמו תמונה למטה — אז יופעל כפתור «שלח לדייר וסגור»
-              </p>
+              <p style={{ ...styles.confirmPhotoReady, color: palette.textMuted }}>מעלה תמונה… אפשר גם לסגור בלי להמתין</p>
             ) : null}
             {ticketHasCompletionPhoto(confirmCloseId) && !closePhotoPreview ? (
-              <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>תמונה מוכנה — אפשר לסגור</p>
+              <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>יש תמונה — תישלח לדייר עם הסגירה</p>
             ) : null}
             {closePhotoPreview ? (
               <div style={styles.confirmPreviewWrap}>
@@ -907,24 +896,22 @@ function WorkerPageInner() {
                 <img src={closePhotoPreview} alt="תצוגה מקדימה" style={styles.confirmPreview} />
               </div>
             ) : null}
-            {!ticketHasCompletionPhoto(confirmCloseId) || closePhotoPreview ? (
-              <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.primary }}>
-                {closePhotoPreview ? 'החלפת תמונה' : 'צלמו תמונה עכשיו'}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  capture="environment"
-                  style={{ display: 'none' }}
-                  disabled={closePhotoUploading}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file || !confirmCloseId) return
-                    void stageClosePhoto(confirmCloseId, file)
-                    e.target.value = ''
-                  }}
-                />
-              </label>
-            ) : null}
+            <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.textSecondary }}>
+              {closePhotoPreview ? 'החלפת תמונה (אופציונלי)' : 'צלם תמונה לדייר (אופציונלי)'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                capture="environment"
+                style={{ display: 'none' }}
+                disabled={closePhotoUploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file || !confirmCloseId) return
+                  void stageClosePhoto(confirmCloseId, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
           </ActionConfirmSheet>
         ) : null}
 

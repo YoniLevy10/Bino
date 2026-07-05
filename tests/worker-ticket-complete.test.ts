@@ -109,16 +109,20 @@ describe('completeWorkerTicketWithPhoto', () => {
     expect(result.whatsapp_sent).toBe(true)
   })
 
-  it('requires a completion photo before closing', async () => {
+  it('closes ticket without photo when none staged', async () => {
     const admin = makeAdmin({ existingCompletion: null })
 
-    await expect(
-      completeWorkerTicketWithPhoto(admin as never, {
-        clientId: 'c1',
-        workerId: 'w1',
-        ticketId: 't1',
-      })
-    ).rejects.toThrow('חסרה תמונה')
+    const result = await completeWorkerTicketWithPhoto(admin as never, {
+      clientId: 'c1',
+      workerId: 'w1',
+      ticketId: 't1',
+    })
+
+    expect(mockSendImage).not.toHaveBeenCalled()
+    expect(mockNotifyClosed).toHaveBeenCalled()
+    expect(result.completion_image_sent).toBe(false)
+    expect(result.attachment_id).toBeNull()
+    expect(result.whatsapp_sent).toBe(true)
   })
 
   it('still closes ticket when image send fails', async () => {

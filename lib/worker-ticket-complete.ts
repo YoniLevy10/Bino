@@ -123,37 +123,34 @@ export async function completeWorkerTicketWithPhoto(
     attachment = await uploadWorkerCompletionPhoto(admin, opts.ticketId, opts.file)
   } else {
     const latest = await loadLatestWorkerCompletionAttachment(admin, opts.ticketId)
-    if (!latest?.file_url) {
-      throw new Error('חסרה תמונה — צלמו תמונה לדייר לפני הסגירה')
+    if (latest?.file_url) {
+      attachment = {
+        id: latest.id,
+        file_url: latest.file_url,
+        mime_type: latest.mime_type || 'image/jpeg',
+      }
     }
-    attachment = {
-      id: latest.id,
-      file_url: latest.file_url,
-      mime_type: latest.mime_type || 'image/jpeg',
+  }
+
+  let imageSend: Awaited<ReturnType<typeof sendTicketResidentWhatsAppImage>> = { sent: false }
+  if (attachment) {
+    const signedUrl = await createServerSignedAttachmentUrl(admin, attachment.file_url)
+    if (signedUrl) {
+      imageSend = await sendTicketResidentWhatsAppImage(admin, {
+        clientId: opts.clientId,
+        ticketId: opts.ticketId,
+        imageLink: signedUrl,
+        caption: COMPLETION_CAPTION,
+      })
+      if (!imageSend.sent && imageSend.reporterPhone) {
+        logger.warn('WORKER_API', 'Completion photo WhatsApp failed', {
+          ticket_id: opts.ticketId,
+          error: imageSend.errorMessage,
+        })
+      }
+    } else {
+      logger.warn('WORKER_API', 'Completion photo signed URL failed', { ticket_id: opts.ticketId })
     }
-  }
-
-  if (!attachment) {
-    throw new Error('חסרה תמונה — צלמו תמונה לדייר לפני הסגירה')
-  }
-
-  const signedUrl = await createServerSignedAttachmentUrl(admin, attachment.file_url)
-  if (!signedUrl) {
-    throw new Error('לא ניתן לשלוח את התמונה לדייר')
-  }
-
-  const imageSend = await sendTicketResidentWhatsAppImage(admin, {
-    clientId: opts.clientId,
-    ticketId: opts.ticketId,
-    imageLink: signedUrl,
-    caption: COMPLETION_CAPTION,
-  })
-
-  if (!imageSend.sent && imageSend.reporterPhone) {
-    logger.warn('WORKER_API', 'Completion photo WhatsApp failed', {
-      ticket_id: opts.ticketId,
-      error: imageSend.errorMessage,
-    })
   }
 
   const now = new Date().toISOString()
@@ -191,7 +188,7 @@ export async function completeWorkerTicketWithPhoto(
 
   return {
     ok: true,
-    attachment_id: attachment.id,
+    attachment_id: attachment?.id ?? null,
     completion_image_sent: imageSend.sent,
     completion_image_error: imageSend.sent ? undefined : imageSend.errorMessage,
     reporter_has_phone: imageSend.reporterPhone ? true : notify?.reporterHasPhone ?? false,
