@@ -5,6 +5,7 @@ import {
   normalizeTicketDescriptionForCompare,
   parseRecentDuplicateWhatsAppTicketError,
   isBenignWhatsAppTicketDuplicateError,
+  readLastReporterProject,
 } from '@/lib/whatsapp-webhook/flow-ticket'
 
 function mockSupabaseTickets(result: { data: unknown; error: unknown }) {
@@ -96,5 +97,51 @@ describe('duplicate WhatsApp ticket helpers', () => {
       supabase as never
     )
     expect(found).toEqual({ id: 'ticket-29', ticket_number: 29 })
+  })
+})
+
+describe('readLastReporterProject', () => {
+  it('returns latest project for reporter phone', async () => {
+    const supabase = {
+      from: (table: string) => {
+        if (table === 'tickets') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  is: () => ({
+                    not: () => ({
+                      order: () => ({
+                        limit: () => ({
+                          maybeSingle: async () => ({
+                            data: { project_id: 'proj-1' },
+                            error: null,
+                          }),
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }
+        }
+        if (table === 'projects') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { name: 'בניין א' }, error: null }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {}
+      },
+    }
+
+    const result = await readLastReporterProject(supabase as never, 'client-1', '972501234567')
+    expect(result).toEqual({ projectId: 'proj-1', projectName: 'בניין א' })
   })
 })

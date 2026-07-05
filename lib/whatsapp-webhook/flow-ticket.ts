@@ -125,6 +125,38 @@ export async function findRecentTicketForPhone(
   return data as { id: string; status: string; created_at: string }
 }
 
+/** Last project this reporter opened a ticket in — speeds repeat reports for unapproved residents. */
+export async function readLastReporterProject(
+  supabaseAdmin: SupabaseClient,
+  clientId: string,
+  phone: string
+): Promise<{ projectId: string; projectName: string } | null> {
+  const { data: ticketRow, error: ticketErr } = await supabaseAdmin
+    .from('tickets')
+    .select('project_id')
+    .eq('client_id', clientId)
+    .eq('reporter_phone', phone)
+    .is('deleted_at', null)
+    .not('project_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (ticketErr || !ticketRow?.project_id) return null
+  const projectId = ticketRow.project_id as string
+
+  const { data: projectRow } = await supabaseAdmin
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .eq('client_id', clientId)
+    .maybeSingle()
+
+  const projectName = (projectRow as { name?: string | null } | null)?.name?.trim()
+  if (!projectName) return null
+  return { projectId, projectName }
+}
+
 export async function mergeWhatsAppLocationIntoTicketMetadata(
   admin: SupabaseClient,
   ticketId: string,

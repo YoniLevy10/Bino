@@ -16,6 +16,7 @@ import {
   resolveTicketPriorityFromResidentMessage,
   statusLabelHe,
   isClarificationQuestion,
+  inferResidentLanguageFromText,
 } from '@/lib/whatsapp-intent'
 import { resolveMessageForLanguage, normalizeResidentLang, splitTrilingualTemplate, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
 import {
@@ -39,7 +40,7 @@ import {
   getActiveSession,
   type SessionRow,
 } from '@/lib/whatsapp-webhook'
-import { findOpenTicketForPhone, findDuplicateOpenWhatsAppTicket, parseRecentDuplicateWhatsAppTicketError } from '@/lib/whatsapp-webhook/flow-ticket'
+import { findOpenTicketForPhone, findDuplicateOpenWhatsAppTicket, parseRecentDuplicateWhatsAppTicketError, readLastReporterProject } from '@/lib/whatsapp-webhook/flow-ticket'
 import {
   isStashedBuildingSearchRow,
   readStashedBuildingSearchText,
@@ -478,8 +479,10 @@ async function handleWhatsAppInboundMedia(
   try {
     await stashPreSessionMedia(from, mediaId, mediaKind, supabaseAdmin, webhookClientId)
     if (caption?.trim()) return
-    await sendWa(waRecipient, config.templates.stashed, residentWhatsAppCreds)
-    await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds)
+    const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+    try {
+      await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
+    } catch { /* WA send failure is non-fatal */ }
   } catch { /* WA send failure is non-fatal */ }
 }
 
@@ -1448,10 +1451,15 @@ export async function runWhatsAppInboundBackground(
           } else if (looksLikeTicketDescription(textBody)) {
             await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
           }
-          try {
-            await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
-          } catch { /* WA send failure is non-fatal */ }
-          return
+          const inferred = inferResidentLanguageFromText(textBody)
+          if (!inferred) {
+            try {
+              await sendWaLanguageButtons(waRecipient, residentWhatsAppCreds)
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+          await saveResidentLanguage(supabaseAdmin, webhookClientId, from, inferred, null)
+          residentLang = inferred
         }
       }
 
@@ -1524,8 +1532,23 @@ export async function runWhatsAppInboundBackground(
 
       // INVALID SELECTION (outside range while pending exists)
       if (selectedIndex !== null && pendingSelection) {
+        const candidates = (pendingSelection.candidate_projects || []).filter(
+          (p) => !isStashedBuildingSearchRow(p)
+        )
+        const sessionLang = pendingSelection.preferred_language?.trim()
+          ? normalizeResidentLang(pendingSelection.preferred_language)
+          : residentLang
         try {
-          await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds)
+          await sendWa(waRecipient, 'selection_invalid', residentWhatsAppCreds, {}, sessionLang)
+          if (candidates.length > 0) {
+            await sendWaInteractiveList(
+              waRecipient,
+              candidates,
+              await resolveWaBodyForLang('building_list_body', sessionLang),
+              residentWhatsAppCreds,
+              sessionLang
+            )
+          }
         } catch { /* WA send failure is non-fatal */ }
         return
       }
@@ -1645,25 +1668,65 @@ export async function runWhatsAppInboundBackground(
           return
         }
         if (looksLikeTicketDescription(textBody)) {
-          await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
-          const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+          const lastProject = await readLastReporterProject(supabaseAdmin, webhookClientId, from)
+          if (lastProject) {
+            const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+            await supabaseAdmin
+              .from('sessions')
+              .update({ is_active: false, active_ticket_id: null, last_activity_at: new Date().toISOString() })
+              .eq('phone_number', from)
+              .eq('client_id', webhookClientId)
+              .eq('is_active', true)
+
+            const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
+              .from('sessions')
+              .insert({
+                phone_number: from,
+                client_id: webhookClientId,
+                project_id: lastProject.projectId,
+                is_active: true,
+                active_ticket_id: null,
+                preferred_language: lang,
+                last_activity_at: new Date().toISOString(),
+              })
+              .select('id')
+              .single()
+
+            if (!sessionCreateError && createdSession?.id) {
+              await afterResidentSessionCreated(from, createdSession.id, supabaseAdmin, webhookClientId)
+              openTicketAfterBuildingSearch = textBody.trim()
+              session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+              residentLang = lang
+            } else {
+              await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
+              try {
+                await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
+              } catch { /* WA send failure is non-fatal */ }
+              return
+            }
+          } else {
+            await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
+            const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+            try {
+              await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+        }
+        if (!openTicketAfterBuildingSearch) {
           try {
-            await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
+            await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
           } catch { /* WA send failure is non-fatal */ }
           return
         }
-        try {
-          await sendWa(waRecipient, 'building_not_found', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
-
-      await completeBuildingSearchForResident(textBody, residentLang)
-      if (openTicketAfterBuildingSearch) {
-        session = await getActiveSession(from, supabaseAdmin, webhookClientId)
-        residentLang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, session)
       } else {
-        return
+        await completeBuildingSearchForResident(textBody, residentLang)
+        if (openTicketAfterBuildingSearch) {
+          session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+          residentLang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, session)
+        } else {
+          return
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 /** Lightweight intent detection for WhatsApp resident messages (Hebrew-first). */
 
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
+import type { ResidentLang } from '@/lib/whatsapp-bilingual-template'
 
 const GREETING_TOKENS = new Set([
   'שלום',
@@ -102,6 +103,41 @@ export function isPrimarilyEnglishText(text: string): boolean {
   if (hebrew >= 3) return false
   if (latin < 4) return false
   return latin >= hebrew * 2 || (latin > 8 && hebrew === 0)
+}
+
+/** French-heavy free text (common maintenance / address words). */
+export function isPrimarilyFrenchText(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (t.length < 3 || t.length > 500) return false
+  const hebrew = (t.match(/[\u0590-\u05FF]/g) || []).length
+  if (hebrew >= 3) return false
+  if (
+    /\b(fuite|probleme|problème|bonjour|merci|adresse|rue|immeuble|appartement|ascenseur|eau|porte|fenêtre|fenetre|urgent|aide)\b/i.test(
+      t
+    )
+  ) {
+    return true
+  }
+  const latin = (t.match(/[a-zA-ZÀ-ÿ]/g) || []).length
+  const frenchMarkers = (t.match(/[àâçéèêëîïôùûüœæ]/gi) || []).length
+  return latin >= 6 && frenchMarkers >= 1
+}
+
+/**
+ * Infer resident language from first free-text message.
+ * Returns null when ambiguous (show language buttons).
+ */
+export function inferResidentLanguageFromText(text: string): ResidentLang | null {
+  const t = text.trim()
+  if (!t || t.length < 2) return null
+  if (isPrimarilyFrenchText(t)) return 'fr'
+  if (isPrimarilyEnglishText(t)) return 'en'
+  const hebrew = (t.match(/[\u0590-\u05FF]/g) || []).length
+  if (hebrew >= 2) return 'he'
+  const latin = (t.match(/[a-zA-Z]/g) || []).length
+  if (latin >= 4 && hebrew === 0) return 'en'
+  if (hebrew === 0 && latin === 0) return null
+  return 'he'
 }
 
 export function isEmojiOnlyOrShortAck(text: string): boolean {

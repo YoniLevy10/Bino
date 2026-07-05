@@ -83,7 +83,7 @@ export async function createPendingSelection(
   clientId: string,
   preferredLanguage?: string | null
 ): Promise<boolean> {
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+  const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString()
   const row: Record<string, unknown> = {
     phone_number: phoneNumber,
     client_id: clientId,

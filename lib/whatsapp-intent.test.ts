@@ -4,6 +4,7 @@ import {
   isClarificationQuestion,
   isTicketConfirmText,
   acceptTicketDescriptionInSession,
+  inferResidentLanguageFromText,
 } from './whatsapp-intent'
 
 describe('looksLikeTicketDescription', () => {
@@ -56,5 +57,23 @@ describe('isTicketConfirmText', () => {
     expect(isTicketConfirmText('כן')).toBe(true)
     expect(isTicketConfirmText('oui')).toBe(true)
     expect(isTicketConfirmText('yes')).toBe(true)
+  })
+})
+
+describe('inferResidentLanguageFromText', () => {
+  it('defaults Hebrew for Hebrew text', () => {
+    expect(inferResidentLanguageFromText('נזילה ברחוב הרצל 5')).toBe('he')
+  })
+
+  it('detects English', () => {
+    expect(inferResidentLanguageFromText('water leak in the bathroom please help')).toBe('en')
+  })
+
+  it('detects French', () => {
+    expect(inferResidentLanguageFromText('fuite dans la salle de bain')).toBe('fr')
+  })
+
+  it('returns null for ambiguous short input', () => {
+    expect(inferResidentLanguageFromText('👍')).toBe(null)
   })
 })
