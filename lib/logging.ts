@@ -60,14 +60,21 @@ export interface LoggerConfig {
   defaultCategory: string;
 }
 
-export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
-  minLevel: LogLevel.DEBUG,
-  enableConsole: true,
-  enableFile: true,
-  enableRemote: process.env.NODE_ENV === 'production',
-  maxLogSize: 100,
-  defaultCategory: 'APP',
-};
+/** API routes do not run app/layout — they must get sane defaults here (not DEBUG + duplicate console). */
+export function buildDefaultLoggerConfig(): LoggerConfig {
+  const isProd = process.env.NODE_ENV === 'production'
+  const hasRemoteEndpoint = Boolean((process.env.LOGGING_ENDPOINT || '').trim())
+  return {
+    minLevel: isProd ? LogLevel.WARN : LogLevel.DEBUG,
+    enableConsole: true,
+    enableFile: false,
+    enableRemote: isProd && hasRemoteEndpoint,
+    maxLogSize: 100,
+    defaultCategory: 'APP',
+  }
+}
+
+export const DEFAULT_LOGGER_CONFIG: LoggerConfig = buildDefaultLoggerConfig()
 
 // ============================================================================
 // 4. MAIN LOGGER CLASS
@@ -205,14 +212,8 @@ export class Logger {
     console[consoleLevel](formatted);
   }
 
-  private outputToFile(entry: LogEntry): void {
-    // In production, this would write to a file system or log aggregation service
-    // For now, we'll use console.log with a file indicator
-    if (process.env.NODE_ENV === 'production') {
-      const json = JSON.stringify(entry);
-      // Send to logging service (e.g., Winston, Pino, or custom service)
-      console.log(`[FILE LOG] ${json}`);
-    }
+  private outputToFile(_entry: LogEntry): void {
+    // Reserved for a real file / log shipper — never duplicate console in serverless.
   }
 
   private sendToRemote(entries: LogEntry[]): void {
@@ -300,15 +301,15 @@ export class Logger {
 let globalLogger: Logger | null = null;
 
 export function initializeLogger(config?: Partial<LoggerConfig>): Logger {
-  globalLogger = new Logger(config);
-  return globalLogger;
+  globalLogger = new Logger({ ...buildDefaultLoggerConfig(), ...config })
+  return globalLogger
 }
 
 export function getLogger(): Logger {
   if (!globalLogger) {
-    globalLogger = new Logger();
+    globalLogger = new Logger(buildDefaultLoggerConfig())
   }
-  return globalLogger;
+  return globalLogger
 }
 
 // ============================================================================
