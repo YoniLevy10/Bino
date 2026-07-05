@@ -1,23 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import Link from 'next/link'
-import { Inter, Heebo } from "next/font/google";
+import { Heebo } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "./components/ToastContainer";
 import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
-import { UpdateNotification } from "./components/UpdateNotification";
-import { OfflineIndicator } from "./components/OfflineIndicator";
-import { InstallPromptBanner } from "./components/InstallPromptBanner";
+import { DeferredLayoutExtras } from "./components/DeferredLayoutExtras";
 import { initializeLogger } from "@/lib/logging";
 import { AppProviders } from "./components/AppProviders";
-import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const heebo = Heebo({
   variable: "--font-heebo",
@@ -102,17 +92,14 @@ export default function RootLayout({
     <html
       lang="he"
       dir="rtl"
-      className={`${inter.variable} ${heebo.variable} font-sans antialiased bg-background`}
+      className={`${heebo.variable} font-sans antialiased bg-background`}
     >
       <body className="min-h-screen flex flex-col bg-background text-foreground" dir="rtl">
         <RegisterServiceWorker />
-        <OfflineIndicator />
-        <InstallPromptBanner />
-        <UpdateNotification />
         <AppProviders>
           {children}
         </AppProviders>
-        <WorkTimer />
+        <DeferredLayoutExtras />
         <ToastContainer />
         <SpeedInsights />
         <Analytics />

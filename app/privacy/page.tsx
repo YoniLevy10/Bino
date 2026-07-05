@@ -25,7 +25,7 @@ export default async function PrivacyPage() {
         padding: '32px 24px 48px',
         maxWidth: '720px',
         margin: '0 auto',
-        fontFamily: 'var(--font-inter), system-ui, sans-serif',
+        fontFamily: 'var(--font-heebo), system-ui, sans-serif',
         lineHeight: 1.6,
         whiteSpace: 'pre-wrap',
         textAlign: 'right',

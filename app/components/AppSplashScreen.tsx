@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useClientBranding } from './ClientBrandingContext'
 import { markAppSplashComplete, shouldShowAppSplash } from '@/lib/app-splash-session'
+import { tryReadBrandingFromSessionCache, useClientBranding } from './ClientBrandingContext'
 
 /** Keep short so Speed Insights LCP is not blocked on repeat visits. */
-const MIN_VISIBLE_MS = 350
+const MIN_VISIBLE_MS = 200
 const DEFAULT_SPLASH_LOGO = '/apple-icon.png'
 
 const splashLogoStyle = {
@@ -22,7 +22,14 @@ type AppSplashScreenProps = {
 
 export function AppSplashScreen({ ready }: AppSplashScreenProps) {
   const branding = useClientBranding()
-  const [visible, setVisible] = useState(() => shouldShowAppSplash())
+  const [visible, setVisible] = useState(() => {
+    if (!shouldShowAppSplash()) return false
+    if (tryReadBrandingFromSessionCache()) {
+      markAppSplashComplete()
+      return false
+    }
+    return true
+  })
   const [barWidth, setBarWidth] = useState(0)
   const startRef = useRef(0)
 
@@ -59,7 +66,7 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
     const t = window.setTimeout(() => {
       markAppSplashComplete()
       setVisible(false)
-    }, delay + 280)
+    }, delay + 120)
     return () => window.clearTimeout(t)
   }, [ready, visible])
 
