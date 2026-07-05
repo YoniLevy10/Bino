@@ -11,7 +11,8 @@ export const WHATSAPP_READ_TIMEOUT_MS = 25_000
  * Send reply / template — server may call Meta twice (template + text fallback).
  * Must exceed 2× Meta API timeout + DB work.
  */
-export const WHATSAPP_MUTATION_TIMEOUT_MS = 55_000
+/** Template attempt + text fallback can approach 2× Meta API timeout. */
+export const WHATSAPP_MUTATION_TIMEOUT_MS = 60_000
 
 const MUTATION_RETRY_DELAY_MS = 1_500
 const MUTATION_MAX_ATTEMPTS = 2

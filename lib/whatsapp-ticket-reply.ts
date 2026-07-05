@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { normalizePhone } from '@/lib/residents-whatsapp'
+import { sendResidentSMS } from '@/lib/sms-send'
 import { sendResidentTextOrTemplate, type ResidentOutboundResult } from '@/lib/whatsapp-resident-outbound'
 import { loadWhatsAppInboxContext, managerReplyTemplateParams } from '@/lib/whatsapp-inbox-context'
 import { metaTemplateNameManagerReply } from '@/lib/meta-whatsapp-pending-actions'
@@ -24,6 +25,68 @@ export type TicketReplySendResult = ResidentOutboundResult & {
   reporterPhone?: string
 }
 
+const WHATSAPP_TICKET_REPORT_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/** Resident opened this ticket via WhatsApp recently — Meta session usually still open. */
+export function isRecentWhatsAppTicketReport(ticket: {
+  source?: string | null
+  created_at?: string | null
+} | null | undefined): boolean {
+  if (ticket?.source !== 'whatsapp' || !ticket.created_at) return false
+  const ageMs = Date.now() - new Date(ticket.created_at).getTime()
+  return ageMs >= 0 && ageMs < WHATSAPP_TICKET_REPORT_WINDOW_MS
+}
+
+async function fetchTicketReplyContext(
+  admin: SupabaseClient,
+  ticketId: string,
+  clientId: string
+): Promise<{
+  reporter_phone: string | null
+  ticket_number: number | null
+  source: string | null
+  created_at: string | null
+} | null> {
+  const { data } = await admin
+    .from('tickets')
+    .select('reporter_phone, ticket_number, source, created_at')
+    .eq('id', ticketId)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (!data) return null
+  return data as {
+    reporter_phone: string | null
+    ticket_number: number | null
+    source: string | null
+    created_at: string | null
+  }
+}
+
+async function tryResidentSmsTicketReplyFallback(
+  admin: SupabaseClient,
+  opts: {
+    clientId: string
+    reporterPhone: string
+    ticketNumber: number | null
+    body: string
+  }
+): Promise<boolean> {
+  const { data: clientRow } = await admin
+    .from('clients')
+    .select('sms_sender_name')
+    .eq('id', opts.clientId)
+    .maybeSingle()
+
+  const smsSenderName =
+    (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
+  const ticketLabel = opts.ticketNumber ? ` #${opts.ticketNumber}` : ''
+  const smsBody = `עדכון בנושא הפנייה${ticketLabel}: ${opts.body}`.slice(0, 480)
+
+  return sendResidentSMS(opts.reporterPhone, smsBody, smsSenderName, opts.clientId)
+}
+
 export async function fetchTicketReporterPhone(
   admin: SupabaseClient,
   ticketId: string,
@@ -46,8 +109,13 @@ export async function sendTicketResidentWhatsAppReply(
   admin: SupabaseClient,
   opts: { clientId: string; ticketId: string; body: string }
 ): Promise<TicketReplySendResult> {
-  const reporterPhone = await fetchTicketReporterPhone(admin, opts.ticketId, opts.clientId)
-  if (!reporterPhone) {
+  const ticketCtx = await fetchTicketReplyContext(admin, opts.ticketId, opts.clientId)
+  if (!ticketCtx) {
+    return { sent: false, errorMessage: 'תקלה לא נמצאה' }
+  }
+
+  const reporterPhone = normalizePhone((ticketCtx.reporter_phone ?? '').trim())
+  if (!reporterPhone || reporterPhone.startsWith('wa_test_')) {
     return { sent: false, errorMessage: 'אין טלפון דייר לתקלה זו' }
   }
 
@@ -69,6 +137,11 @@ export async function sendTicketResidentWhatsAppReply(
     return { sent: false, errorMessage: 'הודעה ריקה' }
   }
 
+  const inSession = await isWithinWhatsAppSessionWindow(admin, opts.clientId, reporterPhone)
+  const recentlyReported = isRecentWhatsAppTicketReport(ticketCtx)
+  // Recent report → free text first (fast). Older tickets → manager_reply template (Meta allows anytime).
+  const tryFreeTextFirst = inSession || recentlyReported
+
   const ctx = await loadWhatsAppInboxContext(admin, opts.clientId, { phone: reporterPhone })
   const templateParams = managerReplyTemplateParams(ctx, messageBody)
 
@@ -79,12 +152,27 @@ export async function sendTicketResidentWhatsAppReply(
     templateName: metaTemplateNameManagerReply(),
     templateParams,
     creds: { phoneNumberId, accessToken },
-    failureLog: { clientId: opts.clientId },
+    failureLog: { clientId: opts.clientId, logOnFailure: !tryFreeTextFirst },
     persistOutbound: true,
-    messageTypeForPersist: 'template',
+    messageTypeForPersist: tryFreeTextFirst ? 'text' : 'template',
     ticketId: opts.ticketId,
-    preferTemplate: true,
+    preferTemplate: !tryFreeTextFirst,
   })
+
+  if (result.sent) {
+    return { ...result, reporterPhone }
+  }
+
+  const smsSent = await tryResidentSmsTicketReplyFallback(admin, {
+    clientId: opts.clientId,
+    reporterPhone,
+    ticketNumber: ticketCtx.ticket_number,
+    body: messageBody,
+  })
+
+  if (smsSent) {
+    return { sent: true, mode: 'sms_fallback', reporterPhone }
+  }
 
   return { ...result, reporterPhone }
 }

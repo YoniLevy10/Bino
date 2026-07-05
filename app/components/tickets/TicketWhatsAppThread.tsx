@@ -151,15 +151,24 @@ export function TicketWhatsAppThread({
       )
       const json = (await res.json()) as {
         error?: string
-        mode?: 'text' | 'template'
+        code?: number
+        mode?: 'text' | 'template' | 'sms_fallback'
         fallback_from_template?: boolean
       }
-      if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
+      if (!res.ok) {
+        const hint =
+          json.code === 132001
+            ? ' — פנו למשרד (תבנית Meta)'
+            : ''
+        throw new Error((json.error || 'שליחה נכשלה') + hint)
+      }
 
-      if (json.fallback_from_template || json.mode === 'text') {
-        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
+      if (json.mode === 'sms_fallback') {
+        toast.success('ההודעה נשלחה לדייר ב-SMS')
+      } else if (json.fallback_from_template || json.mode === 'text') {
+        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'הודעה נשלחה לדייר ב-WhatsApp')
       } else {
-        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'ההודעה נשלחה דרך תבנית manager_reply')
+        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'ההודעה נשלחה לדייר ב-WhatsApp')
       }
       setDraft('')
       await loadMessages({ silent: true })
@@ -259,12 +268,9 @@ export function TicketWhatsAppThread({
         >
           {isWorker ? 'שלח לדייר' : 'שליחה ב-WhatsApp'}
         </Button>
-        {!isWorker ? (
-          <p style={styles.hint}>
-            הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה).
-            אפשר לשלוח גם כשטעינת ההיסטוריה נכשלה — ההודעה תישלח לדייר.
-          </p>
-        ) : null}
+        <p style={styles.hint}>
+          הדייר כבר דיווח — כתבו ושלחו. ההודעה תגיע ב-WhatsApp; אם לא אפשרי, נשלח SMS גיבוי. הדייר לא צריך לעשות דבר נוסף.
+        </p>
       </div>
     </div>
   )
