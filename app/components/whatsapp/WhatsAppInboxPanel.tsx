@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 
 import { supabase } from '@/lib/supabase'
 
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
 
 import { toast } from '@/lib/error-handler'
 
@@ -156,7 +156,7 @@ export function WhatsAppInboxPanel() {
 
     try {
 
-      const res = await fetchWithTimeout('/api/whatsapp/conversations')
+      const res = await whatsappUiFetch('/api/whatsapp/conversations')
 
       const json = (await res.json()) as { conversations?: Conversation[]; error?: string }
 
@@ -184,7 +184,7 @@ export function WhatsAppInboxPanel() {
 
     try {
 
-      const res = await fetchWithTimeout(`/api/whatsapp/messages?conversation_id=${conversationId}`)
+      const res = await whatsappUiFetch(`/api/whatsapp/messages?conversation_id=${conversationId}`)
 
       const json = (await res.json()) as { messages?: Message[]; error?: string }
 
@@ -212,7 +212,7 @@ export function WhatsAppInboxPanel() {
 
     try {
 
-      const res = await fetchWithTimeout(
+      const res = await whatsappUiFetch(
 
         `/api/whatsapp/session-status?phone=${encodeURIComponent(phone)}`
 
@@ -236,11 +236,17 @@ export function WhatsAppInboxPanel() {
 
     } catch (e) {
 
-      toast.error(e instanceof Error ? e.message : 'בדיקה נכשלה')
+      toast.error(
 
-      setInSession(false)
+        e instanceof Error
 
-      setTemplates([])
+          ? `${e.message} — אפשר לנסות לשלוח הודעה בכל זאת`
+
+          : 'בדיקת חלון 24 שעות נכשלה — אפשר לנסות לשלוח'
+
+      )
+
+      // Keep last known inSession/templates — transient network must not block compose.
 
     } finally {
 
@@ -258,7 +264,7 @@ export function WhatsAppInboxPanel() {
 
     try {
 
-      const res = await fetchWithTimeout(
+      const res = await whatsappUiFetch(
 
         `/api/whatsapp/conversation-context?conversation_id=${conversationId}`
 
@@ -426,15 +432,7 @@ export function WhatsAppInboxPanel() {
 
       if (!inSession) {
 
-        if (!hasManagerReplyTemplate) {
-
-          toast.error('תבנית manager_reply לא מוגדרת — צרו אותה ב-Meta Business Manager')
-
-          return
-
-        }
-
-        const res = await fetchWithTimeout('/api/whatsapp/send-template', {
+        const res = await whatsappUiMutate('/api/whatsapp/send-template', {
 
           method: 'POST',
 
@@ -470,7 +468,7 @@ export function WhatsAppInboxPanel() {
 
       }
 
-      const res = await fetchWithTimeout('/api/whatsapp/send', {
+      const res = await whatsappUiMutate('/api/whatsapp/send', {
 
         method: 'POST',
 
@@ -488,7 +486,37 @@ export function WhatsAppInboxPanel() {
 
           setInSession(false)
 
-          toast.error('חלון 24 שעות נסגר — ההודעה תישלח דרך תבנית Meta')
+          const tplRes = await whatsappUiMutate('/api/whatsapp/send-template', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({
+
+              phone: selected.phone,
+
+              template_id: 'manager_reply',
+
+              params: managerReplyTemplateParams(managerReplyContext(), reply.trim()),
+
+              conversation_id: selected.id,
+
+            }),
+
+          })
+
+          const tplJson = (await tplRes.json()) as { error?: string }
+
+          if (!tplRes.ok) throw new Error(tplJson.error || 'שליחה דרך תבנית נכשלה')
+
+          toast.success('ההודעה נשלחה דרך תבנית Meta')
+
+          setReply('')
+
+          await loadMessages(selected.id)
+
+          await loadConversations()
 
           return
 
@@ -534,7 +562,7 @@ export function WhatsAppInboxPanel() {
 
     try {
 
-      const res = await fetchWithTimeout('/api/whatsapp/send-template', {
+      const res = await whatsappUiMutate('/api/whatsapp/send-template', {
 
         method: 'POST',
 
@@ -752,9 +780,7 @@ export function WhatsAppInboxPanel() {
 
               <div style={styles.compose}>
 
-                {(inSession || hasManagerReplyTemplate) && (
-
-                  <>
+                <>
 
                     <label htmlFor="wa-reply" style={styles.composeLabel}>
 
@@ -835,8 +861,6 @@ export function WhatsAppInboxPanel() {
                     </Button>
 
                   </>
-
-                )}
 
 
 
