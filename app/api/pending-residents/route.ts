@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { normalizeWhatsAppPhoneDigits } from '@/lib/whatsapp-test-phone'
+import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
 import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
 import { pendingResidentsQueryUnavailable } from '@/lib/supabase-table-errors'
 import { checkRateLimitDistributed, sanitizeId, sanitizeString } from '@/lib/api-validation'
@@ -187,13 +188,14 @@ export async function PATCH(req: NextRequest) {
     const phoneDigits = phone.replace(/^\+/, '')
     const { data: existing } = await supabase
       .from('residents')
-      .select('id')
+      .select('id, full_name, normalized_phone, phone')
       .eq('client_id', clientId)
-      .in('phone', [phoneDigits, `+${phoneDigits}`])
+      .eq('project_id', (row as { project_id: string }).project_id)
+      .or(`normalized_phone.eq.${digits},phone.eq.${phoneDigits},phone.eq.+${phoneDigits}`)
       .is('deleted_at', null)
       .maybeSingle()
 
-    if (existing) {
+    if (existing && !isWhatsAppPlaceholderResident(existing as { full_name?: string | null })) {
       logger.warn('RESIDENTS_API', 'Resident with phone already exists - auto-rejecting pending request', { requestId, id, clientId, phone })
       await supabase
         .from('pending_resident_join_requests')
@@ -204,24 +206,45 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת', requestId }, { status: 400 })
     }
 
-    const { error: insErr } = await supabase.from('residents').insert({
-      project_id: (row as { project_id: string }).project_id,
-      client_id: clientId,
-      full_name: fullName,
-      phone,
-      apartment_number: apartmentNumber,
-      notes: 'נוסף לאחר אישור בקשת הצטרפות מוואטסאפ',
-    })
+    if (existing && isWhatsAppPlaceholderResident(existing as { full_name?: string | null })) {
+      const { error: upResidentErr } = await supabase
+        .from('residents')
+        .update({
+          full_name: fullName,
+          phone,
+          apartment_number: apartmentNumber,
+          normalized_phone: digits,
+          notes: 'אושר לאחר בקשת הצטרפות מוואטסאפ',
+        })
+        .eq('id', (existing as { id: string }).id)
+        .eq('client_id', clientId)
 
-    if (insErr) {
-      if (insErr.message?.includes('idx_residents_client_phone_unique')) {
-        logger.warn('RESIDENTS_API', 'Duplicate resident during insert', { requestId, id, clientId, phone, error: insErr.message })
-        audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, 'Duplicate phone detected during insert')
-        return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת', requestId }, { status: 400 })
+      if (upResidentErr) {
+        logger.error('RESIDENTS_API', 'Update placeholder resident failed', new Error(upResidentErr.message), { requestId, id, clientId })
+        audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, upResidentErr.message)
+        return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
       }
-      logger.error('RESIDENTS_API', 'Insert resident failed', new Error(insErr.message), { requestId, id, clientId })
-      audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, insErr.message)
-      return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    } else {
+      const { error: insErr } = await supabase.from('residents').insert({
+        project_id: (row as { project_id: string }).project_id,
+        client_id: clientId,
+        full_name: fullName,
+        phone,
+        normalized_phone: digits,
+        apartment_number: apartmentNumber,
+        notes: 'נוסף לאחר אישור בקשת הצטרפות מוואטסאפ',
+      })
+
+      if (insErr) {
+        if (insErr.message?.includes('idx_residents_client_phone_unique')) {
+          logger.warn('RESIDENTS_API', 'Duplicate resident during insert', { requestId, id, clientId, phone, error: insErr.message })
+          audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, 'Duplicate phone detected during insert')
+          return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת', requestId }, { status: 400 })
+        }
+        logger.error('RESIDENTS_API', 'Insert resident failed', new Error(insErr.message), { requestId, id, clientId })
+        audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, insErr.message)
+        return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      }
     }
 
     const { error: up } = await supabase

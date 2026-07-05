@@ -27,6 +27,7 @@ import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
 import { navLinkPrefetchHandlers } from '@/lib/route-prefetch'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { PullToRefresh } from './PullToRefresh'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -847,7 +848,7 @@ function AppShellInner({
               maxWidth: mobile ? '100%' : undefined,
           }}
         >
-          {children}
+          <PullToRefresh enabled={mobile}>{children}</PullToRefresh>
         </main>
         {bottomNav ? <MobileBottomNav /> : null}
         <BackToTop />

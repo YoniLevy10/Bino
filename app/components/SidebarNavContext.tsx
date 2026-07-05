@@ -34,6 +34,7 @@ import {
 } from '@/lib/sidebar-nav'
 import { NAV_CACHE_PREFIX } from '@/lib/tenant-browser-cache'
 import { usePaidAddons } from './PaidAddonsContext'
+import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 type SidebarNavContextValue = {
   navItems: SidebarNavItem[]
@@ -232,6 +233,12 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [maybeRefetchNav])
+
+  useAppRefreshListener(
+    useCallback(() => {
+      void loadNav({ skipCache: true })
+    }, [loadNav])
+  )
 
   const lockedAddonsCount = useMemo(
     () => getLockedAddonsCountFromEntitlements(addons),
