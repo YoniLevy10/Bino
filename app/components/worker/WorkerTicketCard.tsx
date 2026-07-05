@@ -360,7 +360,9 @@ export function WorkerTicketCard({
               >
                 צלם תמונה לדייר
               </Button>
-              <p style={styles.attachHint(colors)}>התמונה תישלח לדייר ב-WhatsApp כשתלחצו &quot;סיימתי&quot;</p>
+              <p style={styles.attachHint(colors)}>
+                לסגירה: לחצו «סיימתי» למעלה, צלמו תמונה, ואז «שלח לדייר וסגור»
+              </p>
             </>
           ) : null}
         </div>

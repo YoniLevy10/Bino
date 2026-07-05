@@ -4,6 +4,9 @@ export const DEFAULT_FETCH_TIMEOUT_MS = 10_000
 /** Longer timeout for create/update mutations that chain several server DB calls. */
 export const MUTATION_FETCH_TIMEOUT_MS = 30_000
 
+/** Photo upload + WhatsApp send on worker close can take 30–60s on mobile networks. */
+export const WORKER_PHOTO_TIMEOUT_MS = 90_000
+
 export const FETCH_TIMEOUT_USER_MESSAGE = 'הבקשה ארכה זמן מדי — נסה שוב'
 
 export function isFetchTimeoutError(error: unknown): boolean {
