@@ -510,8 +510,11 @@ function WorkerPageInner() {
   }, [tokenSession, loadTicketsToken])
 
   async function openChat(ticketId: string) {
-    activateTicket(ticketId)
-    if (expandedChatId === ticketId) { setExpandedChatId(null); return }
+    if (expandedChatId === ticketId) {
+      setExpandedChatId(null)
+      return
+    }
+    setActiveTicketId(ticketId)
     setExpandedChatId(ticketId)
     setExpandedWaId(null)
     setChatMessages([])
@@ -528,11 +531,11 @@ function WorkerPageInner() {
   }
 
   function openWa(ticketId: string) {
-    activateTicket(ticketId)
     if (expandedWaId === ticketId) {
       setExpandedWaId(null)
       return
     }
+    setActiveTicketId(ticketId)
     setExpandedWaId(ticketId)
     setExpandedChatId(null)
   }

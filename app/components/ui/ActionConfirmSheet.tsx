@@ -1,7 +1,10 @@
 'use client'
 
 import type { CSSProperties, ReactNode } from 'react'
-import { Button, theme } from '../ui'
+import { Button, theme, useMobileMenuOptional } from '../ui'
+
+const MOBILE_BOTTOM_NAV_CLEARANCE =
+  'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
 
 export type ActionConfirmSheetProps = {
   open: boolean
@@ -38,6 +41,8 @@ export function ActionConfirmSheet({
   if (!open) return null
 
   const mobile = !!isMobile
+  const mobileMenu = useMobileMenuOptional()
+  const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible
 
   return (
     <>
@@ -46,6 +51,12 @@ export function ActionConfirmSheet({
         style={{
           ...styles.panel,
           ...(mobile ? styles.panelMobile : styles.panelDesktop),
+          ...(mobile && bottomNavVisible
+            ? {
+                bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
+                paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+              }
+            : {}),
           ...panelStyle,
         }}
         role="dialog"
@@ -82,11 +93,11 @@ const styles: Record<string, CSSProperties> = {
     position: 'fixed',
     inset: 0,
     background: theme.colors.overlay,
-    zIndex: 300,
+    zIndex: 410,
   },
   panel: {
     position: 'fixed',
-    zIndex: 301,
+    zIndex: 411,
     background: theme.colors.surface,
     padding: '24px 20px',
     boxShadow: theme.shadows.xl,

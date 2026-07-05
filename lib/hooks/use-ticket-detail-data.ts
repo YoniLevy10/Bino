@@ -53,18 +53,7 @@ export function useTicketDetailData() {
 
         if (error) throw error
 
-        let rows = data
-        if ((!rows || rows.length === 0) && ticket.reporter_phone && ticket.status !== 'CLOSED') {
-          const recovered = await tryRecoverWhatsAppMedia(ticket.id)
-          if (recovered) {
-            const retry = await supabase
-              .from('ticket_attachments')
-              .select(ATTACHMENT_SELECT)
-              .eq('ticket_id', ticket.id)
-              .order('created_at', { ascending: false })
-            rows = retry.data ?? []
-          }
-        }
+        const rows = data
 
         if (rows && rows.length > 0) {
           const withUrls = await withSignedAttachmentUrls(supabase, rows as TicketDetailAttachment[])
@@ -78,7 +67,7 @@ export function useTicketDetailData() {
         setLoadingAttachments(false)
       }
     },
-    [tryRecoverWhatsAppMedia]
+    []
   )
 
   const loadTicketLogs = useCallback(async (ticketId: string) => {
@@ -110,7 +99,7 @@ export function useTicketDetailData() {
   const recoverAndReloadAttachments = useCallback(
     async (ticket: TicketDetailDataTicketRef) => {
       const ok = await tryRecoverWhatsAppMedia(ticket.id)
-      if (ok) await loadTicketAttachments(ticket)
+      await loadTicketAttachments(ticket)
       return ok
     },
     [loadTicketAttachments, tryRecoverWhatsAppMedia]
