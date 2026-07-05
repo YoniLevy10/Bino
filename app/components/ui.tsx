@@ -21,7 +21,7 @@ import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { useClientBranding } from './ClientBrandingContext'
 import { useSidebarNav } from './SidebarNavContext'
-import { isNavItemActive, TENANT_NAV_HREFS } from '@/lib/sidebar-nav'
+import { isNavItemActive, shouldShowMobileBottomNav } from '@/lib/sidebar-nav'
 import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
@@ -618,14 +618,6 @@ const topBarStyles: Record<string, CSSProperties> = {
 // APP SHELL & MOBILE BOTTOM NAV
 // ============================================================================
 
-const BOTTOM_NAV_ROUTES = new Set([...TENANT_NAV_HREFS, '/settings', '/addons', '/worker'])
-
-function showMobileBottomNavForPath(pathname: string): boolean {
-  if (BOTTOM_NAV_ROUTES.has(pathname)) return true
-  if (pathname === '/settings' || pathname === '/addons') return true
-  return false
-}
-
 export function MobileBottomNav() {
   const { mobileBottomPrimary, mobileBottomMore } = useSidebarNav()
   const { openMenu, isOpen: menuOpen } = useMobileMenu()
@@ -820,7 +812,7 @@ function AppShellInner({
   }, [])
 
   const mobile = mounted ? !!isMobile : false
-  const bottomNav = mobile && showMobileBottomNavForPath(pathname)
+  const bottomNav = mobile && shouldShowMobileBottomNav(pathname)
 
   const showSplash = mounted && shouldShowAppSplash()
 
@@ -1138,7 +1130,7 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
     setMenuOpen(false)
   }, [pathname])
 
-  const bottomNavVisible = isMobile && showMobileBottomNavForPath(pathname)
+  const bottomNavVisible = isMobile && shouldShowMobileBottomNav(pathname)
 
   const value = useMemo(
     () => ({ openMenu, closeMenu, isOpen: menuOpen, bottomNavVisible }),

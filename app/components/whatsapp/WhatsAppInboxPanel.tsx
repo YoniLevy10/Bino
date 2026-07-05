@@ -147,6 +147,16 @@ export function WhatsAppInboxPanel() {
 
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
 
+  useEffect(() => {
+    if (mobilePane !== 'thread') return
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 768px)').matches) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [mobilePane])
+
 
 
   const loadConversations = useCallback(async () => {
@@ -748,7 +758,7 @@ export function WhatsAppInboxPanel() {
 
               </div>
 
-              <div style={styles.messages} role="log" aria-live="polite">
+              <div className="wa-inbox-messages" style={styles.messages} role="log" aria-live="polite">
 
                 {messages.map((m) => (
 
@@ -784,7 +794,7 @@ export function WhatsAppInboxPanel() {
 
 
 
-              <div style={styles.compose}>
+              <div className="wa-inbox-compose" style={styles.compose}>
 
                 <>
 

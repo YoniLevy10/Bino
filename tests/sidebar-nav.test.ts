@@ -5,6 +5,7 @@ import {
   SIDEBAR_NAV_REGISTRY,
   parseSidebarNavOrderFromDb,
   resolveSidebarNavItems,
+  shouldShowMobileBottomNav,
   splitMobileBottomNav,
 } from '@/lib/sidebar-nav'
 
@@ -68,5 +69,16 @@ describe('addon nav hrefs', () => {
   it('routes project-scoped add-ons to dedicated pages', () => {
     expect(SIDEBAR_NAV_REGISTRY.pilot_sms.href).toBe('/pilot-sms')
     expect(SIDEBAR_NAV_REGISTRY.project_documents.href).toBe('/project-documents')
+  })
+})
+
+describe('shouldShowMobileBottomNav', () => {
+  it('hides bottom nav on immersive WhatsApp inbox', () => {
+    expect(shouldShowMobileBottomNav('/whatsapp-inbox')).toBe(false)
+  })
+
+  it('shows bottom nav on primary tenant routes', () => {
+    expect(shouldShowMobileBottomNav('/tickets')).toBe(true)
+    expect(shouldShowMobileBottomNav('/')).toBe(true)
   })
 })

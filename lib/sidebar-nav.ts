@@ -263,3 +263,13 @@ export function splitMobileBottomNav(items: SidebarNavItem[]): {
 export const TENANT_NAV_HREFS = new Set(
   Object.values(SIDEBAR_NAV_REGISTRY).map((item) => item.href)
 )
+
+/** Immersive pages (chat, etc.) — hide the mobile bottom tab bar so compose is not covered. */
+export const MOBILE_BOTTOM_NAV_HIDDEN_HREFS = new Set(['/whatsapp-inbox'])
+
+export function shouldShowMobileBottomNav(pathname: string): boolean {
+  if (MOBILE_BOTTOM_NAV_HIDDEN_HREFS.has(pathname)) return false
+  if (TENANT_NAV_HREFS.has(pathname)) return true
+  if (pathname === '/settings' || pathname === '/addons' || pathname === '/worker') return true
+  return false
+}
