@@ -69,6 +69,7 @@ export async function sendTicketResidentWhatsAppReply(
     return { sent: false, errorMessage: 'הודעה ריקה' }
   }
 
+  const inSession = await isWithinWhatsAppSessionWindow(admin, opts.clientId, reporterPhone)
   const ctx = await loadWhatsAppInboxContext(admin, opts.clientId, { phone: reporterPhone })
   const templateParams = managerReplyTemplateParams(ctx, messageBody)
 
@@ -79,11 +80,12 @@ export async function sendTicketResidentWhatsAppReply(
     templateName: metaTemplateNameManagerReply(),
     templateParams,
     creds: { phoneNumberId, accessToken },
-    failureLog: { clientId: opts.clientId },
+    failureLog: { clientId: opts.clientId, logOnFailure: !inSession },
     persistOutbound: true,
-    messageTypeForPersist: 'template',
+    messageTypeForPersist: inSession ? 'text' : 'template',
     ticketId: opts.ticketId,
-    preferTemplate: true,
+    // Inside Meta 24h window: free text first (fast). Outside: manager_reply template only.
+    preferTemplate: !inSession,
   })
 
   return { ...result, reporterPhone }

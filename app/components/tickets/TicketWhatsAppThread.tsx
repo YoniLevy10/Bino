@@ -151,10 +151,19 @@ export function TicketWhatsAppThread({
       )
       const json = (await res.json()) as {
         error?: string
+        code?: number
         mode?: 'text' | 'template'
         fallback_from_template?: boolean
       }
-      if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
+      if (!res.ok) {
+        const hint =
+          json.code === 132001
+            ? ' — תבנית manager_reply לא מאושרת ב-Meta (נדרש מחוץ ל-24 שעות)'
+            : json.code === 131047
+              ? ' — חלון 24 שעות פג; הדייר/ה צריכ/ה לשלוח הודעה לוואטסאפ של הבניין'
+              : ''
+        throw new Error((json.error || 'שליחה נכשלה') + hint)
+      }
 
       if (json.fallback_from_template || json.mode === 'text') {
         toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
@@ -259,12 +268,11 @@ export function TicketWhatsAppThread({
         >
           {isWorker ? 'שלח לדייר' : 'שליחה ב-WhatsApp'}
         </Button>
-        {!isWorker ? (
-          <p style={styles.hint}>
-            הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה).
-            אפשר לשלוח גם כשטעינת ההיסטוריה נכשלה — ההודעה תישלח לדייר.
-          </p>
-        ) : null}
+        <p style={styles.hint}>
+          {isWorker
+            ? 'בתוך 24 שעות מהודעת הדייר/ה — נשלח טקסט חופשי. אחרת דרך תבנית manager_reply. אפשר לשלוח גם אם ההיסטוריה לא נטענה.'
+            : 'בתוך 24 שעות מהודעת הדייר/ה — טקסט חופשי; אחרת תבנית Meta manager_reply. אפשר לשלוח גם כשטעינת ההיסטוריה נכשלה.'}
+        </p>
       </div>
     </div>
   )
