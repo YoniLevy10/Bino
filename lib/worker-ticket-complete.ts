@@ -58,7 +58,6 @@ async function uploadWorkerCompletionPhoto(
       ticket_id: ticketId,
       file_name: file.name,
       file_url: filePath,
-      file_size: file.size,
       mime_type: file.type,
       attachment_type: 'worker_completion',
     })
@@ -67,6 +66,7 @@ async function uploadWorkerCompletionPhoto(
 
   if (dbError || !row) {
     await admin.storage.from('ticket-attachments').remove([filePath])
+    getLogger().error('WORKER_API', 'completion photo attachment insert failed', dbError ?? new Error('no row'))
     throw new Error('שמירה נכשלה')
   }
 

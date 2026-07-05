@@ -23,6 +23,7 @@ export {
   isBenignWhatsAppTicketDuplicateError,
   normalizeTicketDescriptionForCompare,
   parseRecentDuplicateWhatsAppTicketError,
+  readLastReporterProject,
   mergeWhatsAppLocationIntoTicketMetadata,
   type WaLocation,
 } from '@/lib/whatsapp-webhook/flow-ticket'

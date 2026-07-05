@@ -97,7 +97,6 @@ export async function POST(req: NextRequest) {
         ticket_id: ticketId,
         file_name: file.name,
         file_url: filePath,
-        file_size: file.size,
         mime_type: file.type,
         attachment_type: 'worker_completion',
       })

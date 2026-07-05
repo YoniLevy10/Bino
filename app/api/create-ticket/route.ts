@@ -99,7 +99,6 @@ async function uploadAttachments(
           ticket_id: ticketId,
           file_name: file.name,
           file_url: filePath,
-          file_size: file.size,
           mime_type: file.type,
           attachment_type: 'web_upload',
         })
