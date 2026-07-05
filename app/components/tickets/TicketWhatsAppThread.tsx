@@ -152,23 +152,23 @@ export function TicketWhatsAppThread({
       const json = (await res.json()) as {
         error?: string
         code?: number
-        mode?: 'text' | 'template'
+        mode?: 'text' | 'template' | 'sms_fallback'
         fallback_from_template?: boolean
       }
       if (!res.ok) {
         const hint =
           json.code === 132001
-            ? ' — תבנית manager_reply לא מאושרת ב-Meta (נדרש מחוץ ל-24 שעות)'
-            : json.code === 131047
-              ? ' — חלון 24 שעות פג; הדייר/ה צריכ/ה לשלוח הודעה לוואטסאפ של הבניין'
-              : ''
+            ? ' — פנו למשרד (תבנית Meta)'
+            : ''
         throw new Error((json.error || 'שליחה נכשלה') + hint)
       }
 
-      if (json.fallback_from_template || json.mode === 'text') {
-        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'הודעה נשלחה כהודעה חופשית (גיבוי — תבנית Meta לא זמינה)')
+      if (json.mode === 'sms_fallback') {
+        toast.success('ההודעה נשלחה לדייר ב-SMS')
+      } else if (json.fallback_from_template || json.mode === 'text') {
+        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'הודעה נשלחה לדייר ב-WhatsApp')
       } else {
-        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'ההודעה נשלחה דרך תבנית manager_reply')
+        toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'ההודעה נשלחה לדייר ב-WhatsApp')
       }
       setDraft('')
       await loadMessages({ silent: true })
@@ -269,9 +269,7 @@ export function TicketWhatsAppThread({
           {isWorker ? 'שלח לדייר' : 'שליחה ב-WhatsApp'}
         </Button>
         <p style={styles.hint}>
-          {isWorker
-            ? 'בתוך 24 שעות מהודעת הדייר/ה — נשלח טקסט חופשי. אחרת דרך תבנית manager_reply. אפשר לשלוח גם אם ההיסטוריה לא נטענה.'
-            : 'בתוך 24 שעות מהודעת הדייר/ה — טקסט חופשי; אחרת תבנית Meta manager_reply. אפשר לשלוח גם כשטעינת ההיסטוריה נכשלה.'}
+          הדייר כבר דיווח — כתבו ושלחו. ההודעה תגיע ב-WhatsApp; אם לא אפשרי, נשלח SMS גיבוי. הדייר לא צריך לעשות דבר נוסף.
         </p>
       </div>
     </div>
