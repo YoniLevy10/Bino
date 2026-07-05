@@ -176,6 +176,7 @@ export async function runTicketMediaHealthProbe(admin: SupabaseClient): Promise<
     .eq('resolved', false)
     .gte('created_at', since24h)
     .or('context.eq.whatsapp_webhook:ticket_create,context.ilike.%ticket_create%')
+    .not('message', 'ilike', 'recent_duplicate_whatsapp_ticket%')
 
   const stuckSince = new Date(Date.now() - 2 * 3_600_000).toISOString()
   const { count: stuckMediaSessions } = await admin

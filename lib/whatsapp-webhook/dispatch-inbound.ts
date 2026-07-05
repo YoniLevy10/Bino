@@ -39,7 +39,7 @@ import {
   getActiveSession,
   type SessionRow,
 } from '@/lib/whatsapp-webhook'
-import { findOpenTicketForPhone } from '@/lib/whatsapp-webhook/flow-ticket'
+import { findOpenTicketForPhone, findDuplicateOpenWhatsAppTicket, parseRecentDuplicateWhatsAppTicketError } from '@/lib/whatsapp-webhook/flow-ticket'
 import {
   isStashedBuildingSearchRow,
   readStashedBuildingSearchText,
@@ -616,30 +616,6 @@ async function attachPendingWhatsAppMediaToTicketIfAny(
     return false
   }
   return true
-}
-
-/** Same reporter + tenant, non-closed ticket opened within the last N seconds (duplicate guard). */
-async function findOpenTicketForReporterInWindow(
-  from: string,
-  clientId: string,
-  windowSeconds: number,
-  supabaseAdmin: SupabaseClient
-): Promise<{ id: string; ticket_number: number; description: string | null; status: string } | null> {
-  const sinceIso = new Date(Date.now() - windowSeconds * 1000).toISOString()
-  const { data, error } = await supabaseAdmin
-    .from('tickets')
-    .select('id, ticket_number, description, status')
-    .eq('reporter_phone', from)
-    .eq('client_id', clientId)
-    .is('deleted_at', null)
-    .neq('status', 'CLOSED')
-    .gte('created_at', sinceIso)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error || !data?.id) return null
-  return data as { id: string; ticket_number: number; description: string | null; status: string }
 }
 
 async function mergeWhatsAppLocationIntoTicketMetadata(
@@ -1720,7 +1696,12 @@ export async function runWhatsAppInboundBackground(
     openTicketAfterBuildingSearch = null
 
     if (session.project_id) {
-      const dupTicket = await findOpenTicketForReporterInWindow(from, webhookClientId, 30, supabaseAdmin)
+      const dupTicket = await findDuplicateOpenWhatsAppTicket(
+        from,
+        webhookClientId,
+        ticketDescription,
+        supabaseAdmin
+      )
       if (dupTicket) {
         await supabaseAdmin
           .from('sessions')
@@ -1781,6 +1762,24 @@ export async function runWhatsAppInboundBackground(
       .single()
 
     if (ticketError) {
+      const duplicateTicketNumber = parseRecentDuplicateWhatsAppTicketError(ticketError.message)
+      if (duplicateTicketNumber) {
+        logger.info('WEBHOOK', 'duplicate ticket blocked at insert', {
+          ticketNumber: duplicateTicketNumber,
+          clientId: webhookClientId,
+        })
+        await supabaseAdmin
+          .from('sessions')
+          .update({ last_activity_at: new Date().toISOString() })
+          .eq('id', session.id)
+        try {
+          await sendWa(waRecipient, 'duplicate_ticket', residentWhatsAppCreds, {
+            ticket_number: String(duplicateTicketNumber),
+          })
+        } catch { /* WA send failure is non-fatal */ }
+        return
+      }
+
       logger.error('WEBHOOK', 'ticket insert failed', new Error(ticketError.message))
       void logWebhookOperationalError('ticket_create', ticketError.message, webhookClientId, {
         requestId,
