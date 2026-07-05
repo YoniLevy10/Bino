@@ -4,7 +4,7 @@ import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, PriorityDot, StatusBadge, theme } from '../ui'
 import { isTicketStatus, ticketStatusLabelHe, type TicketStatus } from '@/lib/ticket-status'
 import { formatRelativeTimeHe } from '@/lib/relative-time-he'
-import { googleMapsHref, telHref, wazeHref } from '@/lib/contact-links'
+import { telHref, wazeHref } from '@/lib/contact-links'
 import { toast } from '@/lib/error-handler'
 
 export type WorkerTicketCardTicket = {
@@ -102,7 +102,8 @@ export function WorkerTicketCard({
   const loc = locationLine(ticket)
   const tel = telHref(ticket.reporter_phone)
   const waze = wazeHref(ticket.project_address)
-  const maps = googleMapsHref(ticket.project_address)
+  const hasResidentPhone = !!ticket.reporter_phone && !!onToggleWa
+  const showQuickActions = !!(tel || waze || hasResidentPhone)
   const mediaAttachments = attachments.filter(
     (a) => (a.mime_type?.startsWith('image/') || a.mime_type?.startsWith('video/')) && a.public_url
   )
@@ -188,6 +189,49 @@ export function WorkerTicketCard({
           </div>
         ) : null}
 
+        {showQuickActions ? (
+          <div style={styles.section(colors)}>
+            <div style={styles.sectionTitle(colors)}>מה לעשות?</div>
+            <div
+              style={
+                tel && waze && hasResidentPhone
+                  ? styles.quickActionsThree
+                  : styles.quickActionsRow
+              }
+            >
+              {tel ? (
+                <a href={tel} style={styles.quickBtn(colors, 'call')}>
+                  <span style={styles.quickBtnIcon}>📞</span>
+                  <span>התקשר לדייר</span>
+                </a>
+              ) : null}
+              {waze ? (
+                <a
+                  href={waze}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.quickBtn(colors, 'waze')}
+                >
+                  <span style={styles.quickBtnIcon}>🗺️</span>
+                  <span>ניווט Waze</span>
+                </a>
+              ) : null}
+              {hasResidentPhone ? (
+                <button
+                  type="button"
+                  onClick={onToggleWa}
+                  style={styles.quickBtn(colors, 'whatsapp', expandedWa)}
+                >
+                  <span style={styles.quickBtnIcon}>💬</span>
+                  <span>WhatsApp לדייר</span>
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {expandedWa && waSlot ? <div style={styles.threadWrap(colors)}>{waSlot}</div> : null}
+
         <div style={styles.section(colors)}>
           <div style={styles.sectionTitle(colors)}>מה הסטטוס?</div>
           <div style={styles.statusGrid}>
@@ -236,61 +280,20 @@ export function WorkerTicketCard({
           </div>
         </div>
 
-        {(tel || waze || maps) && (
-          <div style={styles.section(colors)}>
-            <div style={styles.sectionTitle(colors)}>יצירת קשר וניווט</div>
-            <div style={styles.contactRowBig}>
-              {tel ? (
-                <a href={tel} style={styles.contactBtn(colors, 'call')}>
-                  <span style={styles.contactBtnIcon}>📞</span>
-                  <span>התקשר לדייר</span>
-                </a>
-              ) : null}
-              {waze ? (
-                <a href={waze} target="_blank" rel="noopener noreferrer" style={styles.contactBtn(colors, 'nav')}>
-                  <span style={styles.contactBtnIcon}>🗺️</span>
-                  <span>ניווט Waze</span>
-                </a>
-              ) : null}
-              {maps ? (
-                <a href={maps} target="_blank" rel="noopener noreferrer" style={styles.contactBtn(colors, 'nav')}>
-                  <span style={styles.contactBtnIcon}>📍</span>
-                  <span>מפות</span>
-                </a>
-              ) : null}
-            </div>
-          </div>
-        )}
-
-        <div style={styles.section(colors)}>
-          <div style={styles.sectionTitle(colors)}>שליחת הודעה</div>
-          <div style={styles.messageActions}>
-            {ticket.reporter_phone && onToggleWa ? (
-              <button
-                type="button"
-                onClick={onToggleWa}
-                style={styles.messageCard(colors, expandedWa, 'resident')}
-              >
-                <span style={styles.messageCardTitle(colors)}>הודעה לדייר</span>
-                <span style={styles.messageCardHint(colors)}>ב-WhatsApp — הדייר יראה את ההודעה</span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onToggleChat}
-              style={styles.messageCard(colors, expandedChat, 'office')}
-            >
-              <span style={styles.messageCardTitle(colors)}>הודעה למשרד</span>
-              <span style={styles.messageCardHint(colors)}>רק המנהל רואה — לא הדייר</span>
-            </button>
-          </div>
+        <div style={styles.officeRow}>
+          <button
+            type="button"
+            onClick={onToggleChat}
+            style={styles.officeLink(colors, expandedChat)}
+          >
+            {expandedChat ? '▲ סגור הודעה למשרד' : 'הודעה למשרד בלבד (הדייר לא רואה)'}
+          </button>
         </div>
 
-        {expandedWa && waSlot ? <div style={styles.threadWrap(colors)}>{waSlot}</div> : null}
         {expandedChat && chatSlot ? <div style={styles.threadWrap(colors)}>{chatSlot}</div> : null}
 
         <div style={styles.attachSection(colors)}>
-          <div style={styles.attachHead(colors)}>תמונות מהשטח</div>
+          <div style={styles.attachHead(colors)}>תמונה לדייר (לא חובה)</div>
           {attachmentsLoading ? (
             <p style={styles.attachMuted(colors)}>טוען…</p>
           ) : (
@@ -606,66 +609,66 @@ const styles = {
     fontSize: '12px',
     color: c.textMuted,
   }),
-  contactRowBig: {
+  quickActionsThree: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: '10px',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '8px',
   } as CSSProperties,
-  contactBtn: (c: typeof theme.colors, kind: 'call' | 'nav'): CSSProperties => ({
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '4px',
-    minHeight: '64px',
-    padding: '12px 10px',
-    borderRadius: '12px',
-    border: `1.5px solid ${kind === 'call' ? c.success : c.primary}`,
-    background: kind === 'call' ? c.successMuted : c.primaryMuted,
-    color: kind === 'call' ? c.success : c.primary,
-    fontSize: '14px',
-    fontWeight: 700,
-    textDecoration: 'none',
-    textAlign: 'center',
-    lineHeight: 1.25,
-  }),
-  contactBtnIcon: {
-    fontSize: '22px',
+  quickActionsRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+    gap: '8px',
+  } as CSSProperties,
+  quickBtn: (
+    c: typeof theme.colors,
+    kind: 'call' | 'waze' | 'whatsapp',
+    active = false
+  ): CSSProperties => {
+    const palette =
+      kind === 'call'
+        ? { border: c.success, bg: c.successMuted, text: c.success }
+        : kind === 'whatsapp'
+          ? { border: '#25D366', bg: active ? '#dcf8c6' : '#e8f8ee', text: '#128C7E' }
+          : { border: c.primary, bg: c.primaryMuted, text: c.primary }
+    return {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '6px',
+      minHeight: '76px',
+      padding: '10px 6px',
+      borderRadius: '14px',
+      border: `2px solid ${active ? palette.border : palette.border}`,
+      background: palette.bg,
+      color: palette.text,
+      fontSize: '13px',
+      fontWeight: 800,
+      textDecoration: 'none',
+      textAlign: 'center',
+      lineHeight: 1.25,
+      cursor: 'pointer',
+      boxShadow: active ? `0 0 0 2px ${palette.border}33` : 'none',
+    }
+  },
+  quickBtnIcon: {
+    fontSize: '26px',
     lineHeight: 1,
   } as CSSProperties,
-  messageActions: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
+  officeRow: {
+    marginBottom: '12px',
   } as CSSProperties,
-  messageCard: (
-    c: typeof theme.colors,
-    expanded: boolean,
-    kind: 'resident' | 'office'
-  ): CSSProperties => ({
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: '4px',
-    width: '100%',
-    padding: '14px 16px',
-    borderRadius: '12px',
-    border: `2px solid ${expanded ? c.primary : c.border}`,
-    background: expanded ? c.primaryMuted : c.surface,
+  officeLink: (c: typeof theme.colors, expanded: boolean): CSSProperties => ({
+    background: 'none',
+    border: 'none',
+    padding: '6px 0',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: expanded ? c.primary : c.textMuted,
     cursor: 'pointer',
     textAlign: 'right',
-    boxShadow: expanded ? `0 0 0 1px ${c.primary}` : 'none',
-    borderInlineStart: `4px solid ${kind === 'resident' ? '#25D366' : c.primary}`,
-  }),
-  messageCardTitle: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '15px',
-    fontWeight: 800,
-    color: c.textPrimary,
-  }),
-  messageCardHint: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '12px',
-    color: c.textMuted,
-    lineHeight: 1.35,
+    width: '100%',
+    textDecoration: expanded ? 'none' : 'underline',
   }),
   threadWrap: (c: typeof theme.colors): CSSProperties => ({
     marginBottom: '14px',
