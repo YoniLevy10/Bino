@@ -58,6 +58,7 @@ import { TicketMobileCard } from './components/tickets/TicketMobileCard'
 import { CloseTicketConfirmSheet } from './components/tickets/CloseTicketConfirmSheet'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { isTicketInTreatment } from '@/lib/ticket-status'
+import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 type TicketRow = {
   id: string
@@ -397,6 +398,13 @@ export default function DashboardPage() {
       void loadData(silent)
     },
     [loadData]
+  )
+
+  useAppRefreshListener(
+    useCallback(() => {
+      lastFetchAtRef.current = 0
+      void loadData(true)
+    }, [loadData])
   )
 
   useEffect(() => {

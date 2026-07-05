@@ -1,6 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 
+/** Auto-created stub before manager approval — not a listed resident. */
+export const WHATSAPP_PLACEHOLDER_RESIDENT_NAME = 'דייר WhatsApp'
+
+export function isWhatsAppPlaceholderResident(
+  resident: { full_name?: string | null } | null | undefined
+): boolean {
+  const trimmed = (resident?.full_name ?? '').trim()
+  return !trimmed || trimmed === WHATSAPP_PLACEHOLDER_RESIDENT_NAME
+}
+
 export type ResidentRow = {
   id: string
   project_id: string
@@ -68,6 +78,18 @@ export async function findResidentByPhoneClient(
   return data as ResidentRow
 }
 
+/** Listed resident with a real name — excludes WhatsApp auto-stubs. */
+export async function findApprovedResidentByPhoneClient(
+  supabase: SupabaseClient,
+  clientId: string,
+  dbPhone: string,
+  projectId?: string
+): Promise<ResidentRow | null> {
+  const row = await findResidentByPhoneClient(supabase, clientId, dbPhone, projectId)
+  if (!row || isWhatsAppPlaceholderResident(row)) return null
+  return row
+}
+
 export async function getOrCreateResident(
   supabase: SupabaseClient,
   clientId: string,
@@ -94,7 +116,7 @@ export async function getOrCreateResident(
       project_id: projectId,
       phone: dbPhone,
       normalized_phone: normalized,
-      full_name: 'דייר WhatsApp',
+      full_name: WHATSAPP_PLACEHOLDER_RESIDENT_NAME,
     })
     .select('id, project_id, phone, normalized_phone, client_id, full_name, apartment_number')
     .single()

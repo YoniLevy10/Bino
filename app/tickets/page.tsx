@@ -31,6 +31,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
+import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -346,6 +347,13 @@ export default function TicketsPage() {
       void fetchData(silent)
     },
     [fetchData]
+  )
+
+  useAppRefreshListener(
+    useCallback(() => {
+      lastFetchAtRef.current = 0
+      void fetchData(true)
+    }, [fetchData])
   )
 
   useEffect(() => {

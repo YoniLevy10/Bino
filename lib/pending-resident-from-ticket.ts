@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { isWhatsAppTestSender, normalizeWhatsAppPhoneDigits } from '@/lib/whatsapp-test-phone'
+import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
 
 function stripLeadingCountry(d: string): string {
   let x = d
@@ -31,13 +32,17 @@ export async function reporterListedInProjectResidents(
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from('residents')
-    .select('phone')
+    .select('phone, full_name')
     .eq('project_id', projectId)
     .eq('client_id', clientId)
     .is('deleted_at', null)
 
   if (error || !data?.length) return false
-  return data.some((r) => phonesLikelySameResident(String((r as { phone?: string | null }).phone || ''), reporterWaFrom))
+  return data.some((r) => {
+    const row = r as { phone?: string | null; full_name?: string | null }
+    if (isWhatsAppPlaceholderResident(row)) return false
+    return phonesLikelySameResident(String(row.phone || ''), reporterWaFrom)
+  })
 }
 
 /** Returns true if a new pending row was created (not duplicate / error). */
