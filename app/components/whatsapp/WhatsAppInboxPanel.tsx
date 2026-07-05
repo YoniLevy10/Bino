@@ -34,6 +34,8 @@ import {
 
 import { Button, Card, theme } from '../ui'
 
+import { useIsMobile } from '@/lib/use-is-mobile'
+
 
 
 type Conversation = {
@@ -141,6 +143,12 @@ export function WhatsAppInboxPanel() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const messagesLoadSeq = useRef(0)
+
+  const isMobile = useIsMobile()
+
+  const showList = !isMobile || !selectedId
+
+  const showThreadPanel = !isMobile || Boolean(selectedId)
 
 
 
@@ -654,15 +662,29 @@ export function WhatsAppInboxPanel() {
 
     <Card noPadding style={{ overflow: 'hidden' }}>
 
+      {( !isMobile || !selectedId) && (
       <p style={styles.helpBanner}>
 
         בחרו דייר/ה מהרשימה וכתבו הודעה — אין צורך להקליד מספר טלפון.
 
       </p>
+      )}
 
-      <div style={styles.wrap}>
+      <div
+        style={{
+          ...styles.wrap,
+          ...(isMobile ? styles.wrapMobile : {}),
+        }}
+      >
 
-        <aside style={styles.list} aria-label="רשימת דיירים">
+        {showList ? (
+        <aside
+          style={{
+            ...styles.list,
+            ...(isMobile ? styles.listMobile : {}),
+          }}
+          aria-label="רשימת דיירים"
+        >
 
           {loading ? (
 
@@ -707,10 +729,18 @@ export function WhatsAppInboxPanel() {
           )}
 
         </aside>
+        ) : null}
 
 
 
-        <section style={styles.thread} aria-label="שיחה">
+        {showThreadPanel ? (
+        <section
+          style={{
+            ...styles.thread,
+            ...(isMobile ? styles.threadMobile : {}),
+          }}
+          aria-label="שיחה"
+        >
 
           {!selected ? (
 
@@ -728,7 +758,18 @@ export function WhatsAppInboxPanel() {
 
               <div style={styles.threadHeader}>
 
-                <span>{residentLabel(selected)}</span>
+                {isMobile && selected ? (
+                  <button
+                    type="button"
+                    style={styles.backBtn}
+                    onClick={() => setSelectedId(null)}
+                    aria-label="חזרה לרשימת דיירים"
+                  >
+                    → רשימה
+                  </button>
+                ) : null}
+
+                <span style={styles.threadTitle}>{selected ? residentLabel(selected) : ''}</span>
 
                 {!sessionLoading && (
 
@@ -1037,6 +1078,7 @@ export function WhatsAppInboxPanel() {
           )}
 
         </section>
+        ) : null}
 
       </div>
 
@@ -1080,6 +1122,16 @@ const styles: Record<string, CSSProperties> = {
 
   },
 
+  wrapMobile: {
+
+    display: 'flex',
+
+    flexDirection: 'column',
+
+    minHeight: 0,
+
+  },
+
   list: {
 
     borderInlineEnd: `1px solid ${theme.colors.border}`,
@@ -1089,6 +1141,18 @@ const styles: Record<string, CSSProperties> = {
     maxHeight: 560,
 
     background: theme.colors.surface,
+
+  },
+
+  listMobile: {
+
+    borderInlineEnd: 'none',
+
+    maxHeight: 'none',
+
+    flex: 1,
+
+    minHeight: 'min(72vh, 560px)',
 
   },
 
@@ -1130,6 +1194,16 @@ const styles: Record<string, CSSProperties> = {
 
   },
 
+  threadMobile: {
+
+    minHeight: 'min(75vh, 640px)',
+
+    flex: 1,
+
+    width: '100%',
+
+  },
+
   emptyThread: { padding: 32, textAlign: 'center' },
 
   emptyTitle: { fontSize: 16, fontWeight: 600, color: theme.colors.textPrimary, margin: '0 0 8px' },
@@ -1153,6 +1227,30 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
 
   },
+
+  backBtn: {
+
+    border: 'none',
+
+    background: 'transparent',
+
+    color: theme.colors.primary,
+
+    fontSize: 14,
+
+    fontWeight: 700,
+
+    cursor: 'pointer',
+
+    padding: '4px 0',
+
+    fontFamily: 'inherit',
+
+    flexShrink: 0,
+
+  },
+
+  threadTitle: { flex: 1, minWidth: 0, textAlign: 'right' },
 
   badgeOpen: {
 

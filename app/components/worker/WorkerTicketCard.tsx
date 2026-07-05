@@ -122,7 +122,7 @@ export function WorkerTicketCard({
     }
   }
 
-  if (!isActive) {
+  if (!isActive && !expandedWa && !expandedChat) {
     return (
       <button type="button" style={styles.compact(colors, priority)} onClick={onActivate} aria-expanded={false}>
         <div style={styles.compactRow}>
