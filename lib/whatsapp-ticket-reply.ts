@@ -139,7 +139,7 @@ export async function sendTicketResidentWhatsAppReply(
 
   const inSession = await isWithinWhatsAppSessionWindow(admin, opts.clientId, reporterPhone)
   const recentlyReported = isRecentWhatsAppTicketReport(ticketCtx)
-  // Recent report → free text first (fast). Older tickets → manager_reply template (Meta allows anytime).
+  // Resident already reported — free text first while Meta session is likely open; otherwise manager_reply template.
   const tryFreeTextFirst = inSession || recentlyReported
 
   const ctx = await loadWhatsAppInboxContext(admin, opts.clientId, { phone: reporterPhone })
