@@ -15,7 +15,7 @@ export type WhatsAppMetaError = {
 }
 
 /** Task 37: WhatsApp Cloud API outbound timeout */
-const WHATSAPP_API_TIMEOUT_MS = 15_000
+const WHATSAPP_API_TIMEOUT_MS = 28_000
 
 type WhatsAppTemplateComponent = {
   type: string

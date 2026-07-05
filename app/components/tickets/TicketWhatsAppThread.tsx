@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
 import { toast } from '@/lib/error-handler'
 import { Button, theme } from '../ui'
 import {
@@ -52,7 +52,7 @@ export function TicketWhatsAppThread({
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const loadSeq = useRef(0)
@@ -61,14 +61,14 @@ export function TicketWhatsAppThread({
     const seq = ++loadSeq.current
     if (!opts?.silent) {
       setLoading(true)
-      setError(null)
+      setLoadError(null)
     }
     try {
       const url =
         mode === 'worker' && workerToken
           ? `/api/worker/whatsapp-reply?token=${encodeURIComponent(workerToken)}&ticket_id=${encodeURIComponent(ticketId)}`
           : `/api/whatsapp/messages?ticket_id=${encodeURIComponent(ticketId)}`
-      const res = await fetchWithTimeout(url)
+      const res = await whatsappUiFetch(url)
       const json = (await res.json()) as {
         messages?: Message[]
         conversation_id?: string | null
@@ -78,12 +78,12 @@ export function TicketWhatsAppThread({
       if (seq !== loadSeq.current) return
       setMessages(json.messages ?? [])
       setConversationId(json.conversation_id ?? null)
+      setLoadError(null)
     } catch (e) {
       if (seq !== loadSeq.current) return
+      const msg = e instanceof Error ? e.message : 'טעינה נכשלה'
       if (!opts?.silent) {
-        setError(e instanceof Error ? e.message : 'טעינה נכשלה')
-        setMessages([])
-        setConversationId(null)
+        setLoadError(msg)
       }
     } finally {
       if (seq === loadSeq.current && !opts?.silent) {
@@ -137,7 +137,7 @@ export function TicketWhatsAppThread({
 
     setSending(true)
     try {
-      const res = await fetchWithTimeout(
+      const res = await whatsappUiMutate(
         mode === 'worker' ? '/api/worker/whatsapp-reply' : '/api/whatsapp/reply-resident',
         {
           method: 'POST',
@@ -162,7 +162,7 @@ export function TicketWhatsAppThread({
         toast.success(mode === 'worker' ? 'ההודעה נשלחה לדייר' : 'ההודעה נשלחה דרך תבנית manager_reply')
       }
       setDraft('')
-      await loadMessages()
+      await loadMessages({ silent: true })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
     } finally {
@@ -175,6 +175,8 @@ export function TicketWhatsAppThread({
     !isWorker &&
     !!onRecoverMedia &&
     threadHasUnrecoveredMedia(messages, attachments)
+
+  const showEmptyThread = !loading && !loadError && messages.length === 0
 
   return (
     <div style={styles.root}>
@@ -199,15 +201,22 @@ export function TicketWhatsAppThread({
         </div>
       )}
 
-      {loading ? (
+      {loadError ? (
+        <div style={styles.loadErrorBar}>
+          <span style={styles.loadErrorText}>{loadError}</span>
+          <button type="button" style={styles.retryBtn} onClick={() => void loadMessages()}>
+            נסו שוב
+          </button>
+        </div>
+      ) : null}
+
+      {loading && messages.length === 0 ? (
         <p style={styles.muted}>{isWorker ? 'טוען הודעות…' : 'טוען שיחת WhatsApp…'}</p>
-      ) : error ? (
-        <p style={styles.err}>{error}</p>
-      ) : messages.length === 0 ? (
+      ) : showEmptyThread ? (
         <p style={styles.muted}>
           {isWorker ? 'עדיין אין הודעות — כתבו למטה ושלחו לדייר.' : 'אין הודעות WhatsApp שמורות — אפשר לשלוח הודעה ראשונה.'}
         </p>
-      ) : (
+      ) : messages.length > 0 ? (
         <div
           style={isWorker ? styles.wrapWorker : styles.wrap}
           role="log"
@@ -229,7 +238,7 @@ export function TicketWhatsAppThread({
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       <div style={styles.compose}>
         <textarea
@@ -253,6 +262,7 @@ export function TicketWhatsAppThread({
         {!isWorker ? (
           <p style={styles.hint}>
             הטקסט שתכתבו נשלח דרך תבנית Meta manager_reply (שלום + שם הדייר/ה + ההודעה).
+            אפשר לשלוח גם כשטעינת ההיסטוריה נכשלה — ההודעה תישלח לדייר.
           </p>
         ) : null}
       </div>
@@ -289,7 +299,26 @@ const styles: Record<string, CSSProperties> = {
   out: { alignSelf: 'flex-end', background: '#dcf8c6' },
   time: { fontSize: 10, color: theme.colors.textMuted, marginTop: 4 },
   muted: { color: theme.colors.textMuted, fontSize: 13, margin: 0 },
-  err: { color: theme.colors.error, fontSize: 13, margin: 0 },
+  loadErrorBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.warningMuted,
+    border: `1px solid ${theme.colors.warning}`,
+  },
+  loadErrorText: { fontSize: 13, color: theme.colors.textPrimary, flex: 1, minWidth: 160 },
+  retryBtn: {
+    padding: '6px 12px',
+    borderRadius: theme.radius.sm,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
   compose: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, borderTop: `1px solid ${theme.colors.border}` },
   textarea: {
     width: '100%',
