@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
           ? `ALERT: WhatsApp token of ${clientName} expired. Update whatsapp_access_token in Supabase.`
           : `ALERT: Could not verify WhatsApp token for ${clientName}. It may have expired.`
 
-        console.error(`HEALTH_CHECK: ${logMsg}`, { clientId, clientName })
+        logger.warn('CRON', logMsg, { clientId, clientName })
 
         await admin.from('system_logs').insert({
           level: 'error',
@@ -98,7 +98,10 @@ export async function GET(req: NextRequest) {
           const dest = (client.manager_phone as string | null) || getManagerPhoneFromEnv()
           if (dest) {
             await sendManagerSMS(dest, alertMsg, senderName, clientId).catch((e) => {
-              console.error('health-check: SMS alert failed:', e)
+              logger.warn('CRON', 'health-check SMS alert failed', {
+                clientId,
+                detail: e instanceof Error ? e.message : String(e),
+              })
             })
           }
         }

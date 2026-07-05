@@ -7,7 +7,7 @@ import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
 import { UpdateNotification } from "./components/UpdateNotification";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { InstallPromptBanner } from "./components/InstallPromptBanner";
-import { initializeLogger, LogLevel } from "@/lib/logging";
+import { initializeLogger } from "@/lib/logging";
 import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -96,14 +96,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Initialize logger on app startup
-  initializeLogger({
-    minLevel: process.env.NODE_ENV === 'production' ? LogLevel.WARN : LogLevel.DEBUG,
-    enableConsole: true,
-    enableFile: true,
-    enableRemote: process.env.NODE_ENV === 'production',
-    defaultCategory: 'APP',
-  });
+  initializeLogger({ defaultCategory: 'APP' });
 
   return (
     <html

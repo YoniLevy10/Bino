@@ -13,7 +13,7 @@ export async function fetchWithTimeout(
   } catch (err) {
     clearTimeout(timeout)
     if (err && typeof err === 'object' && 'name' in err && (err as { name?: string }).name === 'AbortError') {
-      console.error('⏱️ External API timeout:', url)
+      console.warn('External API timeout:', url)
       return null
     }
     throw err
