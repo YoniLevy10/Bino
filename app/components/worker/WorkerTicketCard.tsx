@@ -55,7 +55,7 @@ type WorkerTicketCardProps = {
 const QUICK_STATUSES: { value: TicketStatus; label: string; tone: 'primary' | 'muted' | 'success' }[] = [
   { value: 'IN_PROGRESS', label: 'התחלתי לטפל', tone: 'primary' },
   { value: 'WAITING_PARTS', label: 'ממתין לחלקים', tone: 'muted' },
-  { value: 'CLOSED', label: 'סיימתי', tone: 'success' },
+  { value: 'CLOSED', label: 'סגור תקלה', tone: 'success' },
 ]
 
 const MORE_STATUSES: { value: TicketStatus; label: string }[] = [
@@ -319,7 +319,7 @@ export function WorkerTicketCard({
               ) : null}
               {completionPhotos.length > 0 ? (
                 <>
-                  <p style={styles.attachReady(colors)}>תמונה לדייר מוכנה — תישלח בסגירת התקלה</p>
+                  <p style={styles.attachReady(colors)}>תמונה שמורה — תישלח לדייר אם תסגרו את התקלה</p>
                   <div style={styles.gallery}>
                     {completionPhotos.map((a) => (
                       <a
@@ -358,9 +358,9 @@ export function WorkerTicketCard({
                 loading={uploadingPhoto}
                 onClick={() => fileInputRef.current?.click()}
               >
-                צלם תמונה לדייר
+                צלם לדייר (לא חובה)
               </Button>
-              <p style={styles.attachHint(colors)}>התמונה תישלח לדייר ב-WhatsApp כשתלחצו &quot;סיימתי&quot;</p>
+              <p style={styles.attachHint(colors)}>אפשר לסגור את התקלה בלי תמונה — «סגור תקלה» למעלה</p>
             </>
           ) : null}
         </div>

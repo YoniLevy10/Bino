@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { toastReporterClosedNotifySummary } from '@/lib/reporter-closed-notify-toast'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -143,6 +143,7 @@ function WorkerPageInner() {
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null)
   const [closePhotoFile, setClosePhotoFile] = useState<File | null>(null)
   const [closePhotoPreview, setClosePhotoPreview] = useState<string | null>(null)
+  const [closePhotoUploading, setClosePhotoUploading] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
 
@@ -410,7 +411,7 @@ function WorkerPageInner() {
       formData.append('token', tokenSession.token)
       formData.append('ticket_id', ticketId)
       formData.append('file', file)
-      const res = await fetchWithTimeout('/api/worker/attachments', { method: 'POST', body: formData })
+      const res = await fetchWithTimeout('/api/worker/attachments', { method: 'POST', body: formData }, WORKER_PHOTO_TIMEOUT_MS)
       const json = (await res.json()) as { error?: string; attachment?: WorkerAttachment }
       if (!res.ok) throw new Error(json.error || 'העלאה נכשלה')
       if (json.attachment) {
@@ -419,32 +420,45 @@ function WorkerPageInner() {
           [ticketId]: [json.attachment as WorkerAttachment, ...(prev[ticketId] || [])],
         }))
       }
-      toast.success('תמונה נשמרה — תישלח לדייר בסגירת התקלה')
+      toast.success('תמונה נשמרה — תישלח לדייר אם תסגרו את התקלה')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'העלאה נכשלה')
+      throw e
     } finally {
       setUploadingPhotoId(null)
+    }
+  }
+
+  async function stageClosePhoto(ticketId: string, file: File) {
+    setClosePhotoFile(file)
+    setClosePhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+    setClosePhotoUploading(true)
+    try {
+      await uploadWorkerPhoto(ticketId, file)
+      setClosePhotoFile(null)
+    } catch {
+      // complete will upload closePhotoFile on confirm
+    } finally {
+      setClosePhotoUploading(false)
     }
   }
 
   async function confirmCloseTicket() {
     if (!confirmCloseId || !tokenSession) return
     const id = confirmCloseId
-    const hasStagedPhoto = ticketHasCompletionPhoto(id) || !!closePhotoFile
-    if (!hasStagedPhoto) {
-      toast.error('צלמו תמונה לדייר לפני הסגירה')
-      return
-    }
 
     setBusyKey(`${id}:CLOSED`)
-    setConfirmCloseId(null)
+    const hadStagedPhoto = ticketHasCompletionPhoto(id) || !!closePhotoFile
     try {
       const formData = new FormData()
       formData.append('token', tokenSession.token)
       formData.append('ticket_id', id)
       if (closePhotoFile) formData.append('file', closePhotoFile)
 
-      const res = await fetchWithTimeout('/api/worker/complete', { method: 'POST', body: formData })
+      const res = await fetchWithTimeout('/api/worker/complete', { method: 'POST', body: formData }, WORKER_PHOTO_TIMEOUT_MS)
       const json = (await res.json().catch(() => ({}))) as {
         error?: string
         completion_image_sent?: boolean
@@ -454,17 +468,20 @@ function WorkerPageInner() {
       }
       if (!res.ok) throw new Error(json.error || 'סגירה נכשלה')
 
+      setConfirmCloseId(null)
+      clearClosePhoto()
       removeClosedTicketFromView(id)
       setActiveTicketId(null)
       setExpandedChatId(null)
       setExpandedWaId(null)
-      clearClosePhoto()
       toast.success(TM.ticketClosed)
 
       if (json.completion_image_sent) {
         toast.success('תמונת התיקון נשלחה לדייר')
       } else if (json.completion_image_error) {
-        toast.error(`תמונה לדייר: ${json.completion_image_error}`)
+        toast.error(`תמונה לדייר לא נשלחה: ${json.completion_image_error}`)
+      } else if (hadStagedPhoto) {
+        toast.error('תמונה לדייר לא נשלחה — התקלה נסגרה')
       }
 
       toastReporterClosedNotifySummary({
@@ -852,12 +869,13 @@ function WorkerPageInner() {
         {confirmCloseId ? (
           <ActionConfirmSheet
             open
-            title="סיימתם לטפל בתקלה?"
-            body="צלמו תמונה לדייר — היא תישלח ב-WhatsApp ואז התקלה תיסגר. הדייר יקבל גם הודעה שהתקלה נסגרה."
-            confirmLabel="שלח לדייר וסגור"
-            cancelLabel="עדיין לא"
+            title="לסגור את התקלה?"
+            body="לחצו «סגור תקלה» — הדייר יקבל הודעה שהטיפול הסתיים. צילום תמונה לדייר הוא אופציונלי."
+            confirmLabel="סגור תקלה"
+            cancelLabel="ביטול"
             loading={busyKey === `${confirmCloseId}:CLOSED`}
-            confirmDisabled={!ticketHasCompletionPhoto(confirmCloseId) && !closePhotoFile}
+            confirmDisabled={false}
+            confirmVariant="primary"
             isMobile={isMobile}
             panelStyle={{ background: palette.surface }}
             onCancel={() => {
@@ -866,8 +884,11 @@ function WorkerPageInner() {
             }}
             onConfirm={() => void confirmCloseTicket()}
           >
+            {closePhotoUploading ? (
+              <p style={{ ...styles.confirmPhotoReady, color: palette.textMuted }}>מעלה תמונה… אפשר גם לסגור בלי להמתין</p>
+            ) : null}
             {ticketHasCompletionPhoto(confirmCloseId) && !closePhotoPreview ? (
-              <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>יש תמונה מוכנה מהשטח</p>
+              <p style={{ ...styles.confirmPhotoReady, color: palette.success }}>יש תמונה — תישלח לדייר עם הסגירה</p>
             ) : null}
             {closePhotoPreview ? (
               <div style={styles.confirmPreviewWrap}>
@@ -875,27 +896,22 @@ function WorkerPageInner() {
                 <img src={closePhotoPreview} alt="תצוגה מקדימה" style={styles.confirmPreview} />
               </div>
             ) : null}
-            {!ticketHasCompletionPhoto(confirmCloseId) || closePhotoPreview ? (
-              <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.primary }}>
-                {closePhotoPreview ? 'החלפת תמונה' : 'צלמו תמונה עכשיו'}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  capture="environment"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    setClosePhotoFile(file)
-                    setClosePhotoPreview((prev) => {
-                      if (prev) URL.revokeObjectURL(prev)
-                      return URL.createObjectURL(file)
-                    })
-                    e.target.value = ''
-                  }}
-                />
-              </label>
-            ) : null}
+            <label style={{ ...styles.confirmPhotoBtn, borderColor: palette.border, color: palette.textSecondary }}>
+              {closePhotoPreview ? 'החלפת תמונה (אופציונלי)' : 'צלם תמונה לדייר (אופציונלי)'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                capture="environment"
+                style={{ display: 'none' }}
+                disabled={closePhotoUploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file || !confirmCloseId) return
+                  void stageClosePhoto(confirmCloseId, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
           </ActionConfirmSheet>
         ) : null}
 
@@ -1115,6 +1131,7 @@ const styles: Record<string, CSSProperties> = {
   confirmText: { margin: '0 0 8px', fontSize: '17px', fontWeight: 700, textAlign: 'center' as const },
   confirmSub: { margin: '0 0 16px', fontSize: '14px', textAlign: 'center' as const, lineHeight: 1.4 },
   confirmPhotoReady: { margin: '0 0 12px', fontSize: '13px', fontWeight: 700, textAlign: 'center' as const },
+  confirmPhotoNeed: { margin: '0 0 12px', fontSize: '14px', fontWeight: 700, textAlign: 'center' as const, lineHeight: 1.45 },
   confirmPreviewWrap: {
     display: 'flex',
     justifyContent: 'center',
