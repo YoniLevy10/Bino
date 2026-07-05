@@ -19,6 +19,10 @@ export {
   findOpenTicketForReporterInWindow,
   findOpenTicketForPhone,
   findRecentTicketForPhone,
+  findDuplicateOpenWhatsAppTicket,
+  isBenignWhatsAppTicketDuplicateError,
+  normalizeTicketDescriptionForCompare,
+  parseRecentDuplicateWhatsAppTicketError,
   mergeWhatsAppLocationIntoTicketMetadata,
   type WaLocation,
 } from '@/lib/whatsapp-webhook/flow-ticket'
