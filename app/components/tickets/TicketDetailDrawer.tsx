@@ -168,6 +168,35 @@ export function TicketDetailDrawer({
       title={`תקלה #${selectedTicket?.ticket_number}`}
       subtitle={selectedTicket?.project_name || selectedTicket?.project_code || 'פרטי בניין'}
       isMobile={isMobile}
+      footer={
+        selectedTicket && activeTab === 'details' ? (
+          <div style={styles.drawerActions}>
+            {onCancel && (
+              <Button variant="secondary" onClick={onCancel} style={{ width: '100%' }}>
+                ביטול
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="danger"
+                onClick={() => void onDelete()}
+                loading={deletingTicket}
+                style={{ width: '100%' }}
+              >
+                מחק תקלה
+              </Button>
+            )}
+            {selectedTicket.status !== 'CLOSED' && (
+              <Button variant="danger" onClick={onCloseTicket} style={{ width: '100%' }}>
+                סגירת תקלה
+              </Button>
+            )}
+            <Button variant="primary" onClick={onSave} loading={savingTicket} style={{ width: '100%' }}>
+              שמירה
+            </Button>
+          </div>
+        ) : undefined
+      }
     >
       {selectedTicket && (
         <div style={styles.drawerContent}>
@@ -394,32 +423,6 @@ export function TicketDetailDrawer({
                 />
               )}
 
-              <div style={styles.drawerActions}>
-                {onCancel && (
-                  <Button variant="secondary" onClick={onCancel} style={{ width: '100%' }}>
-                    ביטול
-                  </Button>
-                )}
-                {onDelete && (
-                  <Button
-                    variant="danger"
-                    onClick={() => void onDelete()}
-                    loading={deletingTicket}
-                    style={{ width: '100%' }}
-                  >
-                    מחק תקלה
-                  </Button>
-                )}
-                {selectedTicket.status !== 'CLOSED' && (
-                  <Button variant="danger" onClick={onCloseTicket} style={{ width: '100%' }}>
-                    סגירת תקלה
-                  </Button>
-                )}
-                <Button variant="primary" onClick={onSave} loading={savingTicket} style={{ width: '100%' }}>
-                  שמירה
-                </Button>
-              </div>
-
               <div style={styles.drawerSection}>
                 <div style={styles.drawerLabel}>היסטוריה</div>
                 {drawerLoading ? (
@@ -577,8 +580,6 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
-    paddingTop: '12px',
-    borderTop: `1px solid ${theme.colors.border}`,
   },
   attachmentGrid: {
     display: 'grid',
