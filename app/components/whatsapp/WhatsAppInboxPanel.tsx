@@ -34,8 +34,6 @@ import {
 
 import { Button, Card, theme } from '../ui'
 
-import { useIsMobile } from '@/lib/use-is-mobile'
-
 
 
 type Conversation = {
@@ -144,15 +142,8 @@ export function WhatsAppInboxPanel() {
 
   const messagesLoadSeq = useRef(0)
 
-  const isMobile = useIsMobile()
-
-  const showList = !isMobile || !selectedId
-
-  const showThreadPanel = !isMobile || Boolean(selectedId)
-
-
-
   const selected = conversations.find((c) => c.id === selectedId) ?? null
+  const mobilePane = selectedId ? 'thread' : 'list'
 
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
 
@@ -662,29 +653,12 @@ export function WhatsAppInboxPanel() {
 
     <Card noPadding style={{ overflow: 'hidden' }}>
 
-      {( !isMobile || !selectedId) && (
-      <p style={styles.helpBanner}>
-
+      <p className="wa-inbox-help-banner" style={styles.helpBanner}>
         בחרו דייר/ה מהרשימה וכתבו הודעה — אין צורך להקליד מספר טלפון.
-
       </p>
-      )}
 
-      <div
-        style={{
-          ...styles.wrap,
-          ...(isMobile ? styles.wrapMobile : {}),
-        }}
-      >
-
-        {showList ? (
-        <aside
-          style={{
-            ...styles.list,
-            ...(isMobile ? styles.listMobile : {}),
-          }}
-          aria-label="רשימת דיירים"
-        >
+      <div className="wa-inbox-wrap" data-mobile-pane={mobilePane}>
+        <aside className="wa-inbox-list" style={styles.list} aria-label="רשימת דיירים">
 
           {loading ? (
 
@@ -729,18 +703,8 @@ export function WhatsAppInboxPanel() {
           )}
 
         </aside>
-        ) : null}
 
-
-
-        {showThreadPanel ? (
-        <section
-          style={{
-            ...styles.thread,
-            ...(isMobile ? styles.threadMobile : {}),
-          }}
-          aria-label="שיחה"
-        >
+        <section className="wa-inbox-thread" style={styles.thread} aria-label="שיחה">
 
           {!selected ? (
 
@@ -758,9 +722,10 @@ export function WhatsAppInboxPanel() {
 
               <div style={styles.threadHeader}>
 
-                {isMobile && selected ? (
+                {selected ? (
                   <button
                     type="button"
+                    className="wa-inbox-back"
                     style={styles.backBtn}
                     onClick={() => setSelectedId(null)}
                     aria-label="חזרה לרשימת דיירים"
@@ -1078,8 +1043,6 @@ export function WhatsAppInboxPanel() {
           )}
 
         </section>
-        ) : null}
-
       </div>
 
     </Card>
@@ -1110,28 +1073,6 @@ const styles: Record<string, CSSProperties> = {
 
   },
 
-  wrap: {
-
-    display: 'grid',
-
-    gridTemplateColumns: 'minmax(240px, 300px) 1fr',
-
-    gap: 0,
-
-    minHeight: 480,
-
-  },
-
-  wrapMobile: {
-
-    display: 'flex',
-
-    flexDirection: 'column',
-
-    minHeight: 0,
-
-  },
-
   list: {
 
     borderInlineEnd: `1px solid ${theme.colors.border}`,
@@ -1141,18 +1082,6 @@ const styles: Record<string, CSSProperties> = {
     maxHeight: 560,
 
     background: theme.colors.surface,
-
-  },
-
-  listMobile: {
-
-    borderInlineEnd: 'none',
-
-    maxHeight: 'none',
-
-    flex: 1,
-
-    minHeight: 'min(72vh, 560px)',
 
   },
 
@@ -1191,16 +1120,6 @@ const styles: Record<string, CSSProperties> = {
     minHeight: 480,
 
     background: theme.colors.surface,
-
-  },
-
-  threadMobile: {
-
-    minHeight: 'min(75vh, 640px)',
-
-    flex: 1,
-
-    width: '100%',
 
   },
 

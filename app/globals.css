@@ -303,3 +303,63 @@ select {
     transform: translateX(0);
   }
 }
+
+/* WhatsApp inbox — CSS master/detail so mobile layout survives JS hydration timing */
+.wa-inbox-wrap {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: 0;
+  min-height: 480px;
+}
+
+.wa-inbox-list {
+  overflow: auto;
+  max-height: 560px;
+}
+
+.wa-inbox-thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+}
+
+.wa-inbox-back {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .wa-inbox-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .wa-inbox-wrap[data-mobile-pane='list'] .wa-inbox-thread {
+    display: none;
+  }
+
+  .wa-inbox-wrap[data-mobile-pane='thread'] .wa-inbox-list {
+    display: none;
+  }
+
+  .wa-inbox-wrap[data-mobile-pane='thread'] .wa-inbox-help-banner {
+    display: none;
+  }
+
+  .wa-inbox-list {
+    border-inline-end: none !important;
+    max-height: none;
+    flex: 1;
+    min-height: min(72vh, 560px);
+  }
+
+  .wa-inbox-thread {
+    min-height: min(75vh, 640px);
+    flex: 1;
+    width: 100%;
+  }
+
+  .wa-inbox-back {
+    display: inline-block;
+  }
+}
