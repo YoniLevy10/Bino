@@ -93,9 +93,13 @@ export function AddTicketModal({
         </div>
         <form
           onSubmit={onSubmit}
-          className={isMobile ? 'app-modal-sheet-scroll' : undefined}
-          style={styles.modalForm}
+          className={isMobile ? 'app-modal-sheet-form' : undefined}
+          style={isMobile ? styles.modalFormMobile : styles.modalForm}
         >
+          <div
+            className={isMobile ? 'app-modal-sheet-scroll' : undefined}
+            style={isMobile ? styles.modalScrollBody : undefined}
+          >
           <div style={styles.formGroup}>
             <label style={styles.formLabel}>פרויקט</label>
             <select
@@ -149,8 +153,12 @@ export function AddTicketModal({
           </div>
 
           {error && <div style={styles.formError}>{error}</div>}
+          </div>
 
-          <div style={styles.modalActions}>
+          <div
+            className={isMobile ? 'app-modal-sheet-footer' : undefined}
+            style={styles.modalActions}
+          >
             <Button variant="secondary" type="button" onClick={onClose}>
               ביטול
             </Button>
@@ -215,6 +223,20 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
   },
   modalForm: {
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  modalFormMobile: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    padding: 0,
+    gap: 0,
+  },
+  modalScrollBody: {
     padding: '20px',
     display: 'flex',
     flexDirection: 'column',

@@ -61,7 +61,10 @@ export function AddonMarketingModal({
           </button>
         </div>
 
-        <div style={styles.body}>
+        <div
+          className={isMobile ? 'app-modal-sheet-scroll' : undefined}
+          style={isMobile ? styles.bodyScroll : styles.body}
+        >
           <div style={styles.previewWrap}>
             <AddonFeaturePreview addonId={entry.id} locked={entry.locked} />
           </div>
@@ -110,7 +113,7 @@ export function AddonMarketingModal({
           )}
         </div>
 
-        <div style={styles.footer}>
+        <div className={isMobile ? 'app-modal-sheet-footer' : undefined} style={styles.footer}>
           <Button variant="secondary" onClick={onClose}>
             סגירה
           </Button>
@@ -187,6 +190,12 @@ const styles: Record<string, CSSProperties> = {
     padding: '16px 20px',
     overflowY: 'auto',
     flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+  bodyScroll: {
+    padding: '16px 20px',
     display: 'flex',
     flexDirection: 'column',
     gap: 14,

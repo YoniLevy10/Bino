@@ -454,6 +454,16 @@ export default function ProfessionalsPage() {
         title={editing ? 'עריכת איש מקצוע' : 'איש מקצוע חדש'}
         subtitle="פרטי קשר ל-SMS בעת העברת תקלה"
         isMobile={isMobile}
+        footer={
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={closeDrawer} disabled={saving}>
+              ביטול
+            </Button>
+            <Button variant="primary" loading={saving} onClick={() => void saveProfessional()}>
+              שמירה
+            </Button>
+          </div>
+        }
       >
         <div style={styles.form}>
           <label style={styles.label}>שם מלא *</label>
@@ -508,9 +518,6 @@ export default function ProfessionalsPage() {
             />
             פעיל (מופיע ברשימת העברה מתקלה)
           </label>
-          <Button variant="primary" loading={saving} onClick={() => void saveProfessional()} style={{ width: '100%' }}>
-            שמירה
-          </Button>
         </div>
       </Drawer>
       </PaidAddonGate>
