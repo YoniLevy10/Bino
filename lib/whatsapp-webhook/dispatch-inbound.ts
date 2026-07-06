@@ -1620,7 +1620,7 @@ export async function runWhatsAppInboundBackground(
         const numericSelection = isNumericSelection(textBody)
         if (numericSelection !== null) selectedIndex = numericSelection - 1
       }
-      let pendingSelection = await getPendingSelection(from, supabaseAdmin, webhookClientId)
+      const pendingSelection = await getPendingSelection(from, supabaseAdmin, webhookClientId)
 
       if (selectedIndex !== null && pendingSelection) {
         const candidates = (pendingSelection.candidate_projects || []).filter(
