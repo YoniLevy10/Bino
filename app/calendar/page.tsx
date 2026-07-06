@@ -440,6 +440,21 @@ export default function CalendarPage() {
         onClose={() => !saving && setDrawerOpen(false)}
         title={editing ? 'עריכת אירוע' : 'אירוע חדש'}
         isMobile={isMobile}
+        footer={
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setDrawerOpen(false)} disabled={saving}>
+              ביטול
+            </Button>
+            {editing ? (
+              <Button variant="danger" onClick={() => void deleteEvent()} disabled={saving}>
+                מחיקה
+              </Button>
+            ) : null}
+            <Button variant="primary" onClick={() => void saveEvent()} disabled={saving}>
+              {saving ? 'שומר…' : 'שמירה'}
+            </Button>
+          </div>
+        }
       >
         <div style={styles.formGroup}>
           <label style={styles.label}>כותרת</label>
@@ -504,19 +519,6 @@ export default function CalendarPage() {
             </a>
           </div>
         ) : null}
-        <div style={{ marginTop: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <Button variant="primary" onClick={() => void saveEvent()} disabled={saving}>
-            {saving ? 'שומר…' : 'שמירה'}
-          </Button>
-          {editing ? (
-            <Button variant="danger" onClick={() => void deleteEvent()} disabled={saving}>
-              מחיקה
-            </Button>
-          ) : null}
-          <Button variant="secondary" onClick={() => setDrawerOpen(false)} disabled={saving}>
-            ביטול
-          </Button>
-        </div>
       </Drawer>
       </PaidAddonGate>
     </AppShell>

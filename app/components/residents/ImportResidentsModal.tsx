@@ -249,7 +249,10 @@ export function ImportResidentsModal({
           </button>
         </div>
 
-        <div className={isMobile ? 'app-modal-sheet-scroll' : undefined} style={scrollAreaStyle}>
+        <div
+          className={isMobile ? 'app-modal-sheet-scroll' : undefined}
+          style={scrollAreaStyle}
+        >
         <div style={styles.body}>
           <div
             style={{
@@ -452,8 +455,9 @@ export function ImportResidentsModal({
 
           {apiError && <div style={styles.errorBox}>{apiError}</div>}
         </div>
+        </div>
 
-        <div style={styles.footer}>
+        <div className={isMobile ? 'app-modal-sheet-footer' : undefined} style={styles.footer}>
           <Button variant="secondary" onClick={close} type="button">
             ביטול
           </Button>
@@ -466,7 +470,6 @@ export function ImportResidentsModal({
           >
             ייבוא
           </Button>
-        </div>
         </div>
       </div>
     </>

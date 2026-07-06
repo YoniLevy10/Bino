@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Button, Card, theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
@@ -37,9 +38,17 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
   const [signUrl, setSignUrl] = useState('')
   const [sendVia, setSendVia] = useState<'none' | 'sms' | 'whatsapp'>('whatsapp')
   const [signSending, setSignSending] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   useFocusTrap(modalRef, signDoc != null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(getIsMobileViewport())
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -200,11 +209,25 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
       )}
 
       {signDoc && (
-        <div style={styles.modalBackdrop} role="presentation">
-          <div ref={modalRef} style={styles.modal} role="dialog" aria-modal="true" aria-labelledby="sign-doc-title">
+        <div
+          className={isMobile ? 'app-modal-backdrop-mobile' : undefined}
+          style={styles.modalBackdrop}
+          role="presentation"
+          onClick={() => setSignDoc(null)}
+        >
+          <div
+            ref={modalRef}
+            className={isMobile ? 'app-modal-sheet-root' : undefined}
+            style={isMobile ? styles.modalMobile : styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sign-doc-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h5 id="sign-doc-title" style={styles.modalTitle}>
               שליחה לחתימה — {signDoc.file_name}
             </h5>
+            <div className={isMobile ? 'app-modal-sheet-scroll' : undefined} style={isMobile ? styles.modalScroll : undefined}>
             <label style={styles.modalLabel} htmlFor="sign-url">קישור חתימה (DocuSign / Comsign)</label>
             <input
               id="sign-url"
@@ -242,7 +265,8 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
               <option value="sms">SMS</option>
               <option value="none">שמירה בלבד (ללא שליחה)</option>
             </select>
-            <div style={styles.modalActions}>
+            </div>
+            <div className={isMobile ? 'app-modal-sheet-footer' : undefined} style={styles.modalActions}>
               <Button variant="secondary" size="sm" onClick={() => setSignDoc(null)}>
                 ביטול
               </Button>
@@ -304,6 +328,16 @@ const styles: Record<string, CSSProperties> = {
     maxWidth: 420,
     width: '100%',
     border: `1px solid ${theme.colors.border}`,
+  },
+  modalMobile: {
+    background: theme.colors.surface,
+    padding: '16px 20px 0',
+    width: '100%',
+    border: `1px solid ${theme.colors.border}`,
+    zIndex: 1001,
+  },
+  modalScroll: {
+    paddingBottom: 8,
   },
   modalTitle: { margin: '0 0 12px', fontSize: 15, fontWeight: 600 },
   modalLabel: { display: 'block', fontSize: 12, marginBottom: 4, color: theme.colors.textMuted },

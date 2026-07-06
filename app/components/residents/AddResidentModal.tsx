@@ -102,10 +102,14 @@ export function AddResidentModal({
 
         <form
           onSubmit={onSubmit}
-          className={isMobile ? 'app-modal-sheet-scroll' : undefined}
-          style={styles.modalForm}
+          className={isMobile ? 'app-modal-sheet-form' : undefined}
+          style={isMobile ? styles.modalFormMobile : styles.modalForm}
         >
-          <div style={styles.formGroup}>
+          <div
+            className={isMobile ? 'app-modal-sheet-scroll' : undefined}
+            style={isMobile ? styles.modalScrollBody : undefined}
+          >
+            <div style={styles.formGroup}>
             <label style={styles.formLabel}>בניין</label>
             <select
               className="app-select-input"
@@ -190,8 +194,12 @@ export function AddResidentModal({
           </div>
 
           {error && <div style={styles.formError}>{error}</div>}
+          </div>
 
-          <div style={styles.modalActions}>
+          <div
+            className={isMobile ? 'app-modal-sheet-footer' : undefined}
+            style={styles.modalActions}
+          >
             <div style={styles.modalActionsStart}>
               {isEdit && onDelete ? (
                 <Button
@@ -267,6 +275,20 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
   },
   modalForm: {
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  modalFormMobile: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    padding: 0,
+    gap: 0,
+  },
+  modalScrollBody: {
     padding: '20px',
     display: 'flex',
     flexDirection: 'column',

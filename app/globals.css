@@ -393,3 +393,64 @@ select {
     display: inline-block;
   }
 }
+
+/* ── Mobile modal sheets (AddResidentModal, AddTicketModal, etc.) ───────────
+   Applied via className when isMobile — bottom sheet above fixed bottom nav. */
+.app-modal-sheet-root {
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px)) !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: min(
+    calc(92dvh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px)),
+    calc(100svh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px))
+  ) !important;
+  border-radius: 16px 16px 0 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.app-modal-sheet-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-modal-sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.app-modal-sheet-footer {
+  flex-shrink: 0;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(26, 26, 46, 0.08);
+  background: #ffffff;
+}
+
+/* Centered backdrop → bottom sheet on narrow viewports */
+@media (max-width: 767px) {
+  .app-modal-backdrop-mobile {
+    align-items: flex-end !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+  }
+
+  .app-modal-backdrop-mobile .app-modal-sheet-root {
+    position: relative !important;
+    bottom: auto !important;
+    max-height: min(
+      calc(88dvh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px)),
+      calc(100svh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px))
+    ) !important;
+  }
+}

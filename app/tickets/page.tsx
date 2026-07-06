@@ -1376,8 +1376,18 @@ export default function TicketsPage() {
         title="תקלה חדשה"
         subtitle="פתיחת פניית אחזקה"
         isMobile={isMobile}
+        footer={
+          <div style={styles.drawerActions}>
+            <Button variant="secondary" type="button" onClick={() => setShowAddTicketModal(false)}>
+              ביטול
+            </Button>
+            <Button variant="primary" type="submit" form="add-ticket-drawer-form" loading={addingTicket}>
+              יצירת תקלה
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleCreateTicket} style={styles.drawerContent}>
+        <form id="add-ticket-drawer-form" onSubmit={handleCreateTicket} style={styles.drawerContent}>
           <div style={styles.formGroup}>
             <label style={styles.formLabel}>פרויקט *</label>
             <Select
@@ -1427,15 +1437,6 @@ export default function TicketsPage() {
           {addTicketError && (
             <p style={styles.errorText}>{addTicketError}</p>
           )}
-
-          <div style={styles.drawerActions}>
-            <Button variant="secondary" type="button" onClick={() => setShowAddTicketModal(false)}>
-              ביטול
-            </Button>
-            <Button variant="primary" type="submit" loading={addingTicket}>
-              יצירת תקלה
-            </Button>
-          </div>
         </form>
       </Drawer>
 
