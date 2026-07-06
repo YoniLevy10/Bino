@@ -38,6 +38,11 @@ export async function POST(req: Request) {
     })
 
     if (!result.ok) {
+      logger.error('RESIDENT_API', 'merge-residents failed', new Error(result.error), {
+        requestId,
+        keep_resident_id,
+        merge_resident_id,
+      })
       return NextResponse.json({ error: result.error, requestId }, { status: result.status })
     }
 
