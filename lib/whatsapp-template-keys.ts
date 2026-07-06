@@ -134,11 +134,10 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
 }[] = [
   {
     step: 1,
-    title: 'שפה וכתובת בניין',
-    description: 'דייר חדש בוחר שפה, שולח כתובת, ובוחר בניין מהרשימה אם צריך',
+    title: 'שפה ובחירת פרויקט',
+    description: 'דייר חדש בוחר שפה, ואז בוחר בניין מרשימת הפרויקטים',
     keys: [
       'choose_language',
-      'ask_building',
       'building_list_body',
       'clarification_reply',
       'building_not_found',
@@ -195,8 +194,8 @@ export const WHATSAPP_ARCHIVED_TEMPLATE_KEYS = [
 /** הסבר קצר "מתי נשלח?" לכל תבנית */
 export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = {
   choose_language:         'דייר חדש — כפתורי עברית / Français / English (לפני בחירת שפה)',
-  ask_building:              'מיד אחרי בחירת שפה — בקשת כתובת בניין',
-  building_list_body:        'גוף ההודעה מעל כפתור «בחר בניין» כשיש כמה התאמות',
+  ask_building:              'legacy — בקשת כתובת בניין (לא בשימוש בזרימה החדשה)',
+  building_list_body:        'גוף ההודעה מעל כפתור «בחר בניין» — רשימת פרויקטים לבחירה',
   clarification_reply:       'דייר שואל «איך פותחים?» — הנחיה קצרה',
   welcome:                 'legacy — ברכה כללית (דייר חדש ללא שפה שמורה)',
   qr_invalid:              'נסרק QR אך הפורמט שגוי (לא מתחיל ב-BMK)',

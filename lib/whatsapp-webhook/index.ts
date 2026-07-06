@@ -3,6 +3,8 @@ export {
   isNumericSelection,
   searchProjectsByBuilding,
   searchProjectsInList,
+  fetchAllProjectsForClient,
+  WA_PROJECT_LIST_MAX_ROWS,
   createPendingSelection,
   getPendingSelection,
   clearPendingSelection,

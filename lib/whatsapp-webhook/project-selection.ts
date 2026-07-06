@@ -57,6 +57,23 @@ export function searchProjectsByBuildingFromListWithVariants(
     .slice(0, 10)
 }
 
+/** WhatsApp interactive list supports at most 10 rows. */
+export const WA_PROJECT_LIST_MAX_ROWS = 10
+
+export async function fetchAllProjectsForClient(
+  supabaseAdmin: SupabaseClient,
+  clientId: string
+): Promise<ProjectRow[]> {
+  const { data: projects, error } = await supabaseAdmin
+    .from('projects')
+    .select('id, name, project_code, address')
+    .eq('client_id', clientId)
+    .order('name', { ascending: true })
+
+  if (error) return []
+  return (projects || []) as ProjectRow[]
+}
+
 export async function searchProjectsByBuilding(
   searchText: string,
   supabaseAdmin: SupabaseClient,
@@ -65,15 +82,8 @@ export async function searchProjectsByBuilding(
   const trimmed = searchText.trim()
   if (trimmed.length < 2) return []
 
-  const { data: projects, error } = await supabaseAdmin
-    .from('projects')
-    .select('id, name, project_code, address')
-    .eq('client_id', clientId)
-    .order('project_code', { ascending: true })
-
-  if (error) return []
-
-  return searchProjectsByBuildingFromListWithVariants((projects || []) as ProjectRow[], trimmed)
+  const projects = await fetchAllProjectsForClient(supabaseAdmin, clientId)
+  return searchProjectsByBuildingFromListWithVariants(projects, trimmed)
 }
 
 export async function createPendingSelection(

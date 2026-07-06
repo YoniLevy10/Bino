@@ -9,7 +9,7 @@ const FLOWS = [
     color: '#2563eb',
     steps: [
       { label: '1. שפה', template: 'choose_language' },
-      { label: '2. כתובת', template: 'ask_building → building_list_body' },
+      { label: '2. פרויקט', template: 'building_list_body' },
       { label: '3. תקלה', template: 'session_created → ticket_opened' },
       { label: '4. מדיה (אופציונלי)', template: 'image_attached / video_attached' },
     ],
