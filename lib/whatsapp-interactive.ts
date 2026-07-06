@@ -5,6 +5,7 @@ export type ProjectRow = {
   name: string
   project_code: string
   address?: string | null
+  address_en?: string | null
 }
 
 const LIST_LABELS: Record<ResidentLang, { button: string; title: string }> = {
@@ -17,6 +18,12 @@ const CONFIRM_LABELS: Record<ResidentLang, { confirm: string; cancel: string }> 
   he: { confirm: 'פתח תקלה', cancel: 'ביטול' },
   fr: { confirm: 'Ouvrir', cancel: 'Annuler' },
   en: { confirm: 'Open ticket', cancel: 'Cancel' },
+}
+
+const LAST_PROJECT_LABELS: Record<ResidentLang, { same: string; other: string }> = {
+  he: { same: 'אותו בניין', other: 'בניין אחר' },
+  fr: { same: 'Même immeuble', other: 'Autre' },
+  en: { same: 'Same building', other: 'Other' },
 }
 
 export function parseProjectListReplyId(replyId: string): number | null {
@@ -35,13 +42,43 @@ export function parseLanguageButtonReplyId(replyId: string): ResidentLang | null
 
 export function buildProjectListRows(projects: ProjectRow[]) {
   return projects.map((project, index) => {
-    const addressText = project.address ? ` — ${project.address}` : ''
+    const streetLine = (project.address || project.address_en || '').trim()
+    const title = streetLine ? streetLine.slice(0, 24) : project.name.slice(0, 24)
+    const description = project.name.slice(0, 72)
     return {
       id: `proj_${index}`,
-      title: project.name.slice(0, 24),
-      description: `${project.project_code}${addressText}`.slice(0, 72),
+      title,
+      description,
     }
   })
+}
+
+export function parseLastProjectButtonReplyId(replyId: string): 'same' | 'other' | null {
+  if (replyId === 'last_proj_same') return 'same'
+  if (replyId === 'last_proj_other') return 'other'
+  return null
+}
+
+export function buildLastProjectConfirmButtonsPayload(
+  to: string,
+  bodyText: string,
+  lang: ResidentLang = 'he'
+): Record<string, unknown> {
+  const labels = LAST_PROJECT_LABELS[lang]
+  return {
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: bodyText.slice(0, 1024) },
+      action: {
+        buttons: [
+          { type: 'reply', reply: { id: 'last_proj_same', title: labels.same.slice(0, 20) } },
+          { type: 'reply', reply: { id: 'last_proj_other', title: labels.other.slice(0, 20) } },
+        ],
+      },
+    },
+  }
 }
 
 export function buildLanguageButtonsPayload(

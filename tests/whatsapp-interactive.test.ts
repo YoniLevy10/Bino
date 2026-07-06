@@ -4,6 +4,7 @@ import {
   buildProjectListRows,
   parseConfirmButtonReplyId,
   parseLanguageButtonReplyId,
+  parseLastProjectButtonReplyId,
 } from '@/lib/whatsapp-interactive'
 
 describe('whatsapp-interactive', () => {
@@ -13,12 +14,19 @@ describe('whatsapp-interactive', () => {
     expect(parseProjectListReplyId('bad')).toBeNull()
   })
 
-  it('buildProjectListRows', () => {
+  it('buildProjectListRows prefers street address as title', () => {
     const rows = buildProjectListRows([
-      { id: '1', name: 'בניין א', project_code: 'BMK1', address: 'רחוב 1' },
+      { id: '1', name: 'פרויקט אלרואי', project_code: 'BMK1', address: 'אלרואי 5' },
     ])
     expect(rows[0].id).toBe('proj_0')
-    expect(rows[0].title).toContain('בניין')
+    expect(rows[0].title).toBe('אלרואי 5')
+    expect(rows[0].description).toBe('פרויקט אלרואי')
+  })
+
+  it('parseLastProjectButtonReplyId', () => {
+    expect(parseLastProjectButtonReplyId('last_proj_same')).toBe('same')
+    expect(parseLastProjectButtonReplyId('last_proj_other')).toBe('other')
+    expect(parseLastProjectButtonReplyId('lang_he')).toBeNull()
   })
 
   it('parseConfirmButtonReplyId', () => {
