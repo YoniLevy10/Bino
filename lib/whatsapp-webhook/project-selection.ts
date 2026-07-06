@@ -66,7 +66,7 @@ export async function fetchAllProjectsForClient(
 ): Promise<ProjectRow[]> {
   const { data: projects, error } = await supabaseAdmin
     .from('projects')
-    .select('id, name, project_code, address')
+    .select('id, name, project_code, address, address_en')
     .eq('client_id', clientId)
     .order('name', { ascending: true })
 

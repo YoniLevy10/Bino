@@ -30,6 +30,13 @@ const PREVIEW_OVERRIDES: Partial<Record<WhatsAppTemplateKey, Partial<WhatsAppTem
     building_line: '',
     list: '',
   },
+  last_project_confirm: {
+    ticket_number: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
   building_list_body: {
     project_name: '',
     ticket_number: '',

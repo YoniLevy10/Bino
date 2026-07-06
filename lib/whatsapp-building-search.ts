@@ -54,7 +54,7 @@ export function tokenizeBuildingSearch(text: string): string[] {
 
 function projectSearchBlob(project: ProjectRow): string {
   return normalizeBuildingSearchText(
-    [project.name, project.address, project.project_code].filter(Boolean).join(' ')
+    [project.name, project.address, project.address_en, project.project_code].filter(Boolean).join(' ')
   )
 }
 
