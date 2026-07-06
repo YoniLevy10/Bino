@@ -71,10 +71,8 @@ export function AddResidentModal({
     return hasPlus ? `+${digits}` : digits
   }
 
-  return (
-    <>
-      <div style={styles.modalOverlay} onClick={onClose} />
-      <div className={isMobile ? 'app-modal-sheet-root' : undefined} style={styles.modal}>
+  const modalPanel = (
+    <div className={isMobile ? 'app-modal-sheet-root' : undefined} style={styles.modal}>
         <div style={styles.modalHeader}>
           <h2 style={styles.modalTitle}>{isEdit ? 'עריכת דייר' : 'הוספת דייר'}</h2>
           <button
@@ -223,7 +221,28 @@ export function AddResidentModal({
             </div>
           </div>
         </form>
+    </div>
+  )
+
+  if (isMobile) {
+    return (
+      <div
+        className="app-modal-backdrop-mobile"
+        style={styles.modalOverlay}
+        onClick={onClose}
+        role="presentation"
+      >
+        <div onClick={(e) => e.stopPropagation()} role="presentation" style={{ width: '100%' }}>
+          {modalPanel}
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <>
+      <div style={styles.modalOverlay} onClick={onClose} />
+      {modalPanel}
     </>
   )
 }

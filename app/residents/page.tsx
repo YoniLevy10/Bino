@@ -26,7 +26,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast } from '@/lib/error-handler'
+import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { AddResidentModal, type ResidentProjectRow } from '../components/residents/AddResidentModal'
@@ -43,7 +43,6 @@ import {
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { formatApiErrorBody } from '@/lib/format-zod-error'
 import { PageListSkeleton } from '../components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
@@ -332,8 +331,8 @@ function ResidentsPageInner() {
         },
         MUTATION_FETCH_TIMEOUT_MS
       )
-      const json = (await res?.json().catch(() => ({}))) as { error?: string }
-      if (!res?.ok) throw new Error(json.error || 'מחיקת דייר נכשלה')
+      const json = (await res?.json().catch(() => ({}))) as { error?: unknown }
+      if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקת דייר נכשלה'))
       setResidents((prev) => prev.filter((x) => x.id !== editResidentId))
       closeResidentModal()
       toast.success('הדייר נמחק')
@@ -389,7 +388,7 @@ function ResidentsPageInner() {
           data?: ResidentRow
         }
         if (!updateRes?.ok) {
-          const msg = formatApiErrorBody(updateJson.error) || TM.genericSaveError
+          const msg = errorMessageFromResponseJson(updateJson, TM.genericSaveError)
           setAddError(msg)
           toast.error(msg)
           return
@@ -421,7 +420,7 @@ function ResidentsPageInner() {
       )
       const insertData = await insertRes.json()
       if (!insertRes.ok) {
-        const msg = formatApiErrorBody(insertData?.error) || TM.genericSaveError
+        const msg = errorMessageFromResponseJson(insertData, TM.genericSaveError)
         setAddError(msg)
         toast.error(msg)
         return
@@ -485,8 +484,11 @@ function ResidentsPageInner() {
           apartment_number: pendingApartments[id]?.trim() || undefined,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error([data.error, data.hint].filter(Boolean).join('\n') || 'פעולה נכשלה')
+      const data = (await res.json()) as { error?: unknown; hint?: string }
+      if (!res.ok) {
+        const msg = errorMessageFromResponseJson(data, 'פעולה נכשלה')
+        throw new Error([msg, data.hint].filter(Boolean).join('\n'))
+      }
       toast.success(TM.residentApproved)
       startTransition(() => {
         setPendingItems((prev) => prev.filter((p) => p.id !== id))
@@ -508,8 +510,11 @@ function ResidentsPageInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'reject' }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error([data.error, data.hint].filter(Boolean).join('\n') || 'פעולה נכשלה')
+      const data = (await res.json()) as { error?: unknown; hint?: string }
+      if (!res.ok) {
+        const msg = errorMessageFromResponseJson(data, 'פעולה נכשלה')
+        throw new Error([msg, data.hint].filter(Boolean).join('\n'))
+      }
       toast.success(TM.residentRejected)
       startTransition(() => {
         setPendingItems((prev) => prev.filter((p) => p.id !== id))
@@ -660,8 +665,8 @@ function ResidentsPageInner() {
           },
           MUTATION_FETCH_TIMEOUT_MS
         )
-        const json = (await res.json().catch(() => ({}))) as { error?: string }
-        if (!res.ok) throw new Error(json.error || 'מחיקה נכשלה')
+        const json = (await res.json().catch(() => ({}))) as { error?: unknown }
+        if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקה נכשלה'))
       }
       setResidents((prev) => prev.filter((r) => !selectedIds.has(r.id)))
       setSelectedIds(new Set())

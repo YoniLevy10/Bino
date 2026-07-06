@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
@@ -687,11 +687,10 @@ export default function DashboardPage() {
         { method: 'POST', body: formData },
         MUTATION_FETCH_TIMEOUT_MS
       )
-      if (!response.ok) {
-        const result = await response.json()
-        throw new Error(result.error || TM.genericSaveError)
-      }
       const result = await response.json()
+      if (!response.ok) {
+        throw new Error(errorMessageFromResponseJson(result, TM.genericSaveError))
+      }
       toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה ✓`)
       setAddTicketProjectCode('')
       setAddTicketDescription('')

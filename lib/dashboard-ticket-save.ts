@@ -1,4 +1,5 @@
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { errorMessageFromResponseJson } from '@/lib/error-handler'
 
 export type SaveDashboardTicketInput = {
   ticketId: string
@@ -42,11 +43,11 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
       MUTATION_FETCH_TIMEOUT_MS
     )
     const assignBody = (await assignRes?.json().catch(() => ({}))) as {
-      error?: string
+      error?: unknown
       worker_sms_sent?: boolean | null
       worker_sms_note?: string
     }
-    if (!assignRes?.ok) throw new Error(assignBody.error || 'שיוך לעובד נכשל')
+    if (!assignRes?.ok) throw new Error(errorMessageFromResponseJson(assignBody, 'שיוך לעובד נכשל'))
     if ((assignBody.worker_sms_sent === false || assignBody.worker_sms_sent === null) && assignBody.worker_sms_note) {
       const { toast } = await import('@/lib/error-handler')
       toast.error(assignBody.worker_sms_note)
@@ -74,19 +75,13 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
     MUTATION_FETCH_TIMEOUT_MS
   )
   const updateJson = (await updateRes?.json().catch(() => ({}))) as {
-    error?: string
+    error?: unknown
     closed_now?: boolean
     reporter_has_phone?: boolean
     whatsapp_sent?: boolean
   }
   if (!updateRes?.ok) {
-    const errMsg =
-      typeof updateJson.error === 'string'
-        ? updateJson.error
-        : updateJson.error && typeof updateJson.error === 'object'
-          ? 'עדכון תקלה נכשל'
-          : 'עדכון תקלה נכשל'
-    throw new Error(errMsg)
+    throw new Error(errorMessageFromResponseJson(updateJson, 'עדכון תקלה נכשל'))
   }
 
   const closedNow = status === 'CLOSED' && input.previousStatus !== 'CLOSED'

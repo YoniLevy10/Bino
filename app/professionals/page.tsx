@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validatePhoneNumber } from '@/lib/validators'
@@ -232,7 +232,7 @@ export default function ProfessionalsPage() {
             MUTATION_FETCH_TIMEOUT_MS
           )
           const json = await res.json().catch(() => ({}))
-          if (!res.ok) throw new Error((json as { error?: string }).error || 'עדכון נכשל')
+          if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'עדכון נכשל'))
           toast.success(TM.professionalUpdated)
         } else {
           const res = await fetchWithTimeout(
@@ -254,7 +254,7 @@ export default function ProfessionalsPage() {
             MUTATION_FETCH_TIMEOUT_MS
           )
           const json = await res.json().catch(() => ({}))
-          if (!res.ok) throw new Error((json as { error?: string }).error || 'יצירה נכשלה')
+          if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'יצירה נכשלה'))
           toast.success(TM.professionalCreated)
         }
 

@@ -7,6 +7,7 @@ import { pendingResidentsQueryUnavailable } from '@/lib/supabase-table-errors'
 import { checkRateLimitDistributed, sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { pendingResidentsApproveBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { formatZodError } from '@/lib/format-zod-error'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 
 const MIGRATION_HINT =
@@ -124,7 +125,7 @@ export async function PATCH(req: NextRequest) {
     const rawBody = await req.json()
     const parsed = pendingResidentsApproveBodySchema.safeParse(rawBody)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      return NextResponse.json({ error: formatZodError(parsed.error), requestId }, { status: 400 })
     }
 
     const id = parsed.data.id

@@ -63,10 +63,8 @@ export function AddTicketModal({
     return s
   }
 
-  return (
-    <>
-      <div style={styles.modalOverlay} onClick={onClose} />
-      <div className={isMobile ? 'app-modal-sheet-root' : undefined} style={styles.modal}>
+  const modalPanel = (
+    <div className={isMobile ? 'app-modal-sheet-root' : undefined} style={styles.modal}>
         <div style={styles.modalHeader}>
           <h2 style={styles.modalTitle}>תקלה חדשה</h2>
           <button
@@ -171,7 +169,28 @@ export function AddTicketModal({
             </Button>
           </div>
         </form>
+    </div>
+  )
+
+  if (isMobile) {
+    return (
+      <div
+        className="app-modal-backdrop-mobile"
+        style={styles.modalOverlay}
+        onClick={onClose}
+        role="presentation"
+      >
+        <div onClick={(e) => e.stopPropagation()} role="presentation" style={{ width: '100%' }}>
+          {modalPanel}
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <>
+      <div style={styles.modalOverlay} onClick={onClose} />
+      {modalPanel}
     </>
   )
 }

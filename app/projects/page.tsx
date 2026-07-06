@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
@@ -189,7 +189,7 @@ export default function ProjectsPage() {
           body: JSON.stringify({ project_id: projectId, assigned_worker_id: workerId || null }),
         })
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
-        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+        if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
         toast.success(TM.projectMaintainerUpdated)
         await loadProjects()
         return true
@@ -421,7 +421,7 @@ export default function ProjectsPage() {
             MUTATION_FETCH_TIMEOUT_MS
           )
           const json = (await res?.json().catch(() => ({}))) as { error?: string }
-          if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+          if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
           toast.success(TM.projectUpdated)
         } else {
           const res = await fetchWithTimeout(
@@ -442,7 +442,7 @@ export default function ProjectsPage() {
             MUTATION_FETCH_TIMEOUT_MS
           )
           const json = await res.json().catch(() => ({}))
-          if (!res.ok) throw new Error((json as { error?: string }).error || 'יצירת פרויקט נכשלה')
+          if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'יצירת פרויקט נכשלה'))
           toast.success(TM.projectCreated)
         }
 
@@ -468,7 +468,7 @@ export default function ProjectsPage() {
           MUTATION_FETCH_TIMEOUT_MS
         )
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
-        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+        if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
         toast.success(project.is_active ? TM.projectDeactivated : TM.projectActivated)
         await loadProjects()
         return true
@@ -495,7 +495,7 @@ export default function ProjectsPage() {
           MUTATION_FETCH_TIMEOUT_MS
         )
         const json = (await res.json().catch(() => ({}))) as { error?: string }
-        if (!res.ok) throw new Error(json.error || 'מחיקת פרויקט נכשלה')
+        if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקת פרויקט נכשלה'))
         toast.success(TM.projectDeleted)
         closeDetailDrawer()
         if (editingProject?.id === project.id) closeDrawer()

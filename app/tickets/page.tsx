@@ -33,7 +33,7 @@ import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
@@ -889,12 +889,11 @@ export default function TicketsPage() {
         { method: 'POST', body: formData },
         MUTATION_FETCH_TIMEOUT_MS
       )
+      const result = await response.json()
       if (!response.ok) {
-        const result = await response.json()
-        throw new Error(result.error || TM.genericSaveError)
+        throw new Error(errorMessageFromResponseJson(result, TM.genericSaveError))
       }
 
-      const result = await response.json()
       toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה ✓`)
       setAddTicketForm({ project_code: '', description: '', reporter_name: '', reporter_phone: '' })
       setShowAddTicketModal(false)

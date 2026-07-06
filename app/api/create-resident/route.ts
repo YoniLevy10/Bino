@@ -4,6 +4,7 @@ import { sanitizeString } from '@/lib/api-validation'
 import { createResidentBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
+import { formatZodError } from '@/lib/format-zod-error'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
 
     const validated = createResidentBodySchema.safeParse(rawBody)
     if (!validated.success) {
-      return NextResponse.json({ error: validated.error.flatten(), requestId }, { status: 400 })
+      return NextResponse.json({ error: formatZodError(validated.error), requestId }, { status: 400 })
     }
 
     const body = validated.data
