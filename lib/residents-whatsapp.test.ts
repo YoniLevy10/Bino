@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { residentPromptGreetingPrefix, reporterDisplayNameForNotification } from '@/lib/residents-whatsapp'
+import {
+  normalizePhone,
+  residentPromptGreetingPrefix,
+  reporterDisplayNameForNotification,
+} from '@/lib/residents-whatsapp'
+
+describe('normalizePhone', () => {
+  it('keeps US numbers as digits', () => {
+    expect(normalizePhone('16503958723')).toBe('16503958723')
+    expect(normalizePhone('+16503958723')).toBe('16503958723')
+  })
+
+  it('normalizes Israeli local numbers', () => {
+    expect(normalizePhone('0548102688')).toBe('972548102688')
+    expect(normalizePhone('972548102688')).toBe('972548102688')
+  })
+})
 
 describe('residentPromptGreetingPrefix', () => {
   it('uses first name for known residents', () => {
