@@ -38,11 +38,11 @@ export function ActionConfirmSheet({
   onConfirm,
   onCancel,
 }: ActionConfirmSheetProps) {
-  if (!open) return null
-
   const mobile = !!isMobile
   const mobileMenu = useMobileMenuOptional()
   const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible
+
+  if (!open) return null
 
   return (
     <>

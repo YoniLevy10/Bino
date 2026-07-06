@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
@@ -244,8 +244,8 @@ export default function CalendarPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           })
-      const body = (await res.json()) as { error?: string }
-      if (!res.ok) throw new Error(typeof body.error === 'string' ? body.error : TM.genericSaveError)
+      const body = (await res.json()) as { error?: unknown }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(body, TM.genericSaveError))
       toast.success(editing ? 'האירוע עודכן ✓' : 'האירוע נוסף ✓')
       setDrawerOpen(false)
       await load()

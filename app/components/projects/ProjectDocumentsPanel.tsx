@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Button, Card, theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
@@ -57,7 +57,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
         `/api/projects/documents?project_id=${encodeURIComponent(projectId)}`
       )
       const json = await res.json() as { documents?: DocRow[]; error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       setDocs(json.documents ?? [])
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
@@ -82,7 +82,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
         body: fd,
       })
       const json = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('הקובץ הועלה')
       await load()
     } catch (e) {
@@ -102,7 +102,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
         body: JSON.stringify({ document_id: doc.id }),
       })
       const json = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('נמחק')
       setDocs((prev) => prev.filter((d) => d.id !== doc.id))
     } catch (e) {
@@ -132,7 +132,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
         }),
       })
       const json = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('בקשת חתימה נשלחה')
       setSignDoc(null)
       setSignerName('')

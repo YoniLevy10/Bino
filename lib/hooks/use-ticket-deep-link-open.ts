@@ -31,7 +31,10 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
   const router = useRouter()
   const deepLinkHandledRef = useRef<string | null>(null)
   const onOpenTicketRef = useRef(onOpenTicket)
-  onOpenTicketRef.current = onOpenTicket
+
+  useEffect(() => {
+    onOpenTicketRef.current = onOpenTicket
+  }, [onOpenTicket])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

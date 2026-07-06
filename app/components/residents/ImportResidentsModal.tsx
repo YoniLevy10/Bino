@@ -4,7 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import * as XLSX from 'xlsx'
 import { Button, theme } from '../ui'
 import type { ResidentProjectRow } from './AddResidentModal'
-import { toast } from '@/lib/error-handler'
+import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 
@@ -187,10 +187,7 @@ export function ImportResidentsModal({
 
       const json: unknown = await res.json()
       if (!res.ok) {
-        const errMsg =
-          typeof (json as { error?: unknown } | null)?.error === 'string'
-            ? String((json as { error?: unknown }).error)
-            : 'ייבוא נכשל'
+        const errMsg = errorMessageFromResponseJson(json as { error?: unknown }, 'ייבוא נכשל')
         setApiError(errMsg)
         toast.error(errMsg)
         return
@@ -220,10 +217,8 @@ export function ImportResidentsModal({
     ? { flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }
     : { maxHeight: 'calc(92vh - 120px)', overflow: 'auto' }
 
-  return (
-    <>
-      <div style={styles.modalOverlay} onClick={close} />
-      <div className={isMobile ? 'app-modal-sheet-root' : undefined} style={styles.modal}>
+  const modalPanel = (
+    <div className={isMobile ? 'app-modal-sheet-root' : undefined} style={styles.modal}>
         <div style={styles.modalHeader}>
           <h2 style={styles.modalTitle}>ייבוא דיירים מקובץ</h2>
           <button
@@ -471,7 +466,28 @@ export function ImportResidentsModal({
             ייבוא
           </Button>
         </div>
+    </div>
+  )
+
+  if (isMobile) {
+    return (
+      <div
+        className="app-modal-backdrop-mobile"
+        style={styles.modalOverlay}
+        onClick={close}
+        role="presentation"
+      >
+        <div onClick={(e) => e.stopPropagation()} role="presentation" style={{ width: '100%' }}>
+          {modalPanel}
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <>
+      <div style={styles.modalOverlay} onClick={close} />
+      {modalPanel}
     </>
   )
 }

@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import {
   fetchWithTimeout,
   isFetchTimeoutError,
@@ -466,7 +466,7 @@ export default function WorkersPage() {
             MUTATION_FETCH_TIMEOUT_MS
           )
           const json = (await res?.json().catch(() => ({}))) as { error?: string }
-          if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+          if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
           toast.success(TM.workerUpdated)
         } else {
           try {
@@ -490,7 +490,7 @@ export default function WorkersPage() {
               error?: string
               worker?: WorkerRow
             }
-            if (!res.ok) throw new Error(json.error || 'יצירת עובד נכשלה')
+            if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'יצירת עובד נכשלה'))
             if (json.worker) {
               finishCreateSuccess(json.worker)
               return true
@@ -537,7 +537,7 @@ export default function WorkersPage() {
           MUTATION_FETCH_TIMEOUT_MS
         )
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
-        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+        if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
         toast.success(worker.is_active ? TM.workerDeactivated : TM.workerActivated)
         await loadWorkers()
         return true
@@ -562,7 +562,7 @@ export default function WorkersPage() {
           MUTATION_FETCH_TIMEOUT_MS
         )
         const json = (await res?.json().catch(() => ({}))) as { error?: string }
-        if (!res?.ok) throw new Error(json.error || TM.genericSaveError)
+        if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
         toast.success(TM.workerDeleted)
         await loadWorkers()
         if (editingWorker?.id === worker.id) closeDrawer()
