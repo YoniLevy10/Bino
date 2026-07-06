@@ -85,6 +85,11 @@ export const updateResidentBodySchema = z.object({
   soft_delete: z.literal(true).optional(),
 })
 
+export const mergeResidentsBodySchema = z.object({
+  keep_resident_id: z.string().uuid(),
+  merge_resident_id: z.string().uuid(),
+})
+
 export const errorLogActionBodySchema = z.union([
   z.object({ id: z.string().uuid(), action: z.literal('resolve') }),
   z.object({ action: z.literal('delete_resolved') }),

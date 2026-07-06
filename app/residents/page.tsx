@@ -43,6 +43,7 @@ import {
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { pickResidentToKeep } from '@/lib/merge-residents'
 import { PageListSkeleton } from '../components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
@@ -131,6 +132,7 @@ function ResidentsPageInner() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkMerging, setBulkMerging] = useState(false)
 
   type SortKey = 'full_name' | 'phone' | 'apartment_number' | 'project'
   type SortDir = 'asc' | 'desc'
@@ -648,6 +650,62 @@ function ResidentsPageInner() {
     }
   }
 
+  async function bulkMerge() {
+    if (selectedIds.size !== 2) return
+    const ids = Array.from(selectedIds)
+    const a = residents.find((r) => r.id === ids[0])
+    const b = residents.find((r) => r.id === ids[1])
+    if (!a || !b) return
+
+    const toMergeRow = (r: ResidentRow) => ({
+      id: r.id,
+      project_id: r.project_id,
+      client_id: r.client_id ?? null,
+      full_name: r.full_name,
+      phone: r.phone,
+      normalized_phone: null,
+      email: r.email ?? null,
+      apartment_number: r.apartment_number,
+      notes: r.notes ?? null,
+      is_renter: r.is_renter ?? false,
+    })
+
+    const { keepId, mergeId } = pickResidentToKeep(toMergeRow(a), toMergeRow(b))
+    const keep = keepId === a.id ? a : b
+    const merge = mergeId === a.id ? a : b
+    if (
+      !window.confirm(
+        `לאחד את "${merge.full_name}" לתוך "${keep.full_name}"?\nהרשומה המאוחדת תכלול את כל הפרטים; הכפילות תימחק.`
+      )
+    ) {
+      return
+    }
+
+    setBulkMerging(true)
+    try {
+      const res = await fetchWithTimeout(
+        '/api/merge-residents',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keep_resident_id: keepId, merge_resident_id: mergeId }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res?.json().catch(() => ({}))) as { error?: unknown; data?: ResidentRow }
+      if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, 'איחוד נכשל'))
+
+      const row = json.data as ResidentRow
+      setResidents((prev) => prev.filter((r) => r.id !== mergeId).map((r) => (r.id === keepId ? row : r)))
+      setSelectedIds(new Set())
+      toast.success('הדיירים אוחדו')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'איחוד נכשל')
+    } finally {
+      setBulkMerging(false)
+    }
+  }
+
   async function bulkDelete() {
     if (selectedIds.size === 0) return
     const count = selectedIds.size
@@ -883,6 +941,11 @@ function ResidentsPageInner() {
                   <Button variant="secondary" size="sm" onClick={() => setSelectedIds(new Set())} type="button">
                     ביטול בחירה
                   </Button>
+                  {selectedIds.size === 2 && (
+                    <Button variant="primary" size="sm" onClick={bulkMerge} loading={bulkMerging} type="button">
+                      איחוד 2 דיירים
+                    </Button>
+                  )}
                   <Button variant="danger" size="sm" onClick={bulkDelete} loading={bulkDeleting} type="button">
                     מחק {selectedIds.size} נבחרים
                   </Button>
