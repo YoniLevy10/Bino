@@ -43,6 +43,7 @@ import {
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { formatApiErrorBody } from '@/lib/format-zod-error'
 import { PageListSkeleton } from '../components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
@@ -76,15 +77,6 @@ type ResidentRow = {
   is_renter?: boolean
   apartment_number: string | null
   notes?: string | null
-}
-
-function normalizeResidentPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (!digits) return ''
-  if (digits.startsWith('972')) return `+${digits}`
-  if (digits.startsWith('0')) return `+972${digits.slice(1)}`
-  if (digits.length === 9 && digits.startsWith('5')) return `+972${digits}`
-  return `+${digits}`
 }
 
 function isResidentsTableMissingError(err: { message?: string } | null): boolean {
@@ -383,7 +375,7 @@ function ResidentsPageInner() {
               resident_id: editResidentId,
               project_id: projectId,
               full_name: fullName,
-              phone: normalizeResidentPhone(addPhone) || null,
+              phone: addPhone.trim() || null,
               email: addEmail.trim() || null,
               is_renter: addIsRenter ?? false,
               apartment_number: addApartment.trim() || null,
@@ -393,12 +385,11 @@ function ResidentsPageInner() {
           MUTATION_FETCH_TIMEOUT_MS
         )
         const updateJson = (await updateRes?.json().catch(() => ({}))) as {
-          error?: string
+          error?: unknown
           data?: ResidentRow
         }
         if (!updateRes?.ok) {
-          const msg =
-            typeof updateJson.error === 'string' ? updateJson.error : TM.genericSaveError
+          const msg = formatApiErrorBody(updateJson.error) || TM.genericSaveError
           setAddError(msg)
           toast.error(msg)
           return
@@ -430,7 +421,7 @@ function ResidentsPageInner() {
       )
       const insertData = await insertRes.json()
       if (!insertRes.ok) {
-        const msg = insertData?.error || TM.genericSaveError
+        const msg = formatApiErrorBody(insertData?.error) || TM.genericSaveError
         setAddError(msg)
         toast.error(msg)
         return
