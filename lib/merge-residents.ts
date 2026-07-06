@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, PostgrestError } from '@supabase/supabase-js'
 import { isWhatsAppPlaceholderResident, normalizePhone } from '@/lib/residents-whatsapp'
 
 export type ResidentMergeRow = {
@@ -76,6 +76,26 @@ function mergedPhoneFields(keep: ResidentMergeRow, merge: ResidentMergeRow): {
   return { phone: phone || null, normalized_phone: normalized }
 }
 
+function mergeErrorMessage(error: PostgrestError, fallback: string): string {
+  if (error.code === '23505') return 'מספר טלפון זה כבר משויך לדייר אחר — לא ניתן לאחד'
+  return fallback
+}
+
+async function repointResidentLinks(
+  supabaseAdmin: SupabaseClient,
+  keepId: string,
+  mergeId: string
+): Promise<void> {
+  for (const table of ['whatsapp_conversations', 'collection_charges'] as const) {
+    const { error } = await supabaseAdmin.from(table).update({ resident_id: keepId }).eq('resident_id', mergeId)
+    if (!error) continue
+    const msg = error.message.toLowerCase()
+    if (msg.includes('does not exist') || msg.includes('schema cache') || msg.includes('could not find')) {
+      continue
+    }
+  }
+}
+
 export async function mergeResidentsForClient(params: {
   supabaseAdmin: SupabaseClient
   clientId: string
@@ -122,23 +142,36 @@ export async function mergeResidentsForClient(params: {
     email: mergeField(keep.email, merge.email),
     apartment_number: mergeField(keep.apartment_number, merge.apartment_number),
     notes: mergeNotes(keep.notes, merge.notes),
-    is_renter: keep.is_renter || merge.is_renter,
+    is_renter: Boolean(keep.is_renter || merge.is_renter),
     updated_at: now,
   }
 
-  await supabaseAdmin.from('whatsapp_conversations').update({ resident_id: keepId }).eq('resident_id', mergeId)
-  await supabaseAdmin.from('collection_charges').update({ resident_id: keepId }).eq('resident_id', mergeId)
+  await repointResidentLinks(supabaseAdmin, keepId, mergeId)
+
+  // Release unique phone keys on the duplicate before updating the kept row.
+  const { error: clearErr } = await supabaseAdmin
+    .from('residents')
+    .update({ phone: null, normalized_phone: null, updated_at: now })
+    .eq('id', mergeId)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+
+  if (clearErr) {
+    return { ok: false, status: 500, error: mergeErrorMessage(clearErr, 'הכנת איחוד נכשלה') }
+  }
 
   const { data: updated, error: upErr } = await supabaseAdmin
     .from('residents')
     .update(payload)
     .eq('id', keepId)
     .eq('client_id', clientId)
+    .is('deleted_at', null)
     .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes')
     .single()
 
   if (upErr || !updated) {
-    return { ok: false, status: 500, error: 'עדכון דייר נכשל' }
+    const msg = upErr ? mergeErrorMessage(upErr, 'עדכון דייר נכשל') : 'עדכון דייר נכשל'
+    return { ok: false, status: 500, error: msg }
   }
 
   const { error: delErr } = await supabaseAdmin
@@ -148,7 +181,7 @@ export async function mergeResidentsForClient(params: {
     .eq('client_id', clientId)
 
   if (delErr) {
-    return { ok: false, status: 500, error: 'מחיקת כפילות נכשלה' }
+    return { ok: false, status: 500, error: mergeErrorMessage(delErr, 'מחיקת כפילות נכשלה') }
   }
 
   return { ok: true, data: updated as ResidentMergeRow }
