@@ -19,6 +19,20 @@ export type ResidentRow = {
   client_id: string | null
   full_name: string
   apartment_number?: string | null
+  is_renter?: boolean | null
+}
+
+function pickResidentFromMatches(rows: ResidentRow[]): ResidentRow | null {
+  if (rows.length === 0) return null
+  if (rows.length === 1) return rows[0]!
+
+  const sorted = [...rows].sort((a, b) => {
+    const aRenter = a.is_renter ? 1 : 0
+    const bRenter = b.is_renter ? 1 : 0
+    if (aRenter !== bRenter) return aRenter - bRenter
+    return (a.apartment_number ?? '').localeCompare(b.apartment_number ?? '', 'he')
+  })
+  return sorted[0]!
 }
 
 /** Prefix for `resident_prompt` — "שלום יוני, " or "שלום, " when name unknown. */
@@ -63,7 +77,7 @@ export async function findResidentByPhoneClient(
 
   let query = supabase
     .from('residents')
-    .select('id, project_id, phone, normalized_phone, client_id, full_name, apartment_number')
+    .select('id, project_id, phone, normalized_phone, client_id, full_name, apartment_number, is_renter')
     .eq('client_id', clientId)
     .eq('normalized_phone', normalized)
     .is('deleted_at', null)
@@ -72,10 +86,10 @@ export async function findResidentByPhoneClient(
     query = query.eq('project_id', projectId)
   }
 
-  const { data, error } = await query.maybeSingle()
+  const { data, error } = await query
 
-  if (error || !data) return null
-  return data as ResidentRow
+  if (error || !data?.length) return null
+  return pickResidentFromMatches(data as ResidentRow[])
 }
 
 /** Listed resident with a real name — excludes WhatsApp auto-stubs. */

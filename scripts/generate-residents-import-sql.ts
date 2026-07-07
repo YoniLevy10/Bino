@@ -66,9 +66,9 @@ function main() {
 -- Run in Supabase SQL Editor. Does NOT create projects — only matches existing project names.
 -- client_id: ${clientId}
 --
--- 1) Review unmatched buildings (should return 0 rows):
---    Run the "preview_unmatched" CTE block below before INSERT.
--- 2) Run full script (BEGIN…COMMIT).
+-- 1) Run data/drop-resident-global-phone-unique.sql (allows same phone in multiple apartments).
+-- 2) Review unmatched buildings (should return 0 rows): data/preview-unmatched-buildings.sql
+-- 3) Run full script (BEGIN…COMMIT).
 
 BEGIN;
 
@@ -128,23 +128,26 @@ not_in_db AS (
     SELECT 1 FROM residents r
     WHERE r.client_id = ${sqlStr(clientId)}::uuid
       AND r.deleted_at IS NULL
+      AND r.project_id = m.project_id
       AND (
-        (m.normalized_phone IS NOT NULL AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone))
+        (
+          m.normalized_phone IS NOT NULL
+          AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone)
+          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+        )
         OR (
           m.normalized_phone IS NULL
           AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
           AND lower(trim(r.full_name)) = lower(trim(m.full_name))
-          AND r.project_id = m.project_id
         )
       )
   )
 ),
 to_insert AS (
   SELECT DISTINCT ON (
-    COALESCE(
-      normalized_phone,
-      'no-phone:' || project_id::text || ':' || lower(trim(apartment_number)) || ':' || lower(trim(full_name))
-    )
+    project_id,
+    lower(trim(apartment_number)),
+    lower(trim(full_name))
   )
     project_id,
     db_project_name,
@@ -157,11 +160,9 @@ to_insert AS (
     is_renter
   FROM not_in_db
   ORDER BY
-    COALESCE(
-      normalized_phone,
-      'no-phone:' || project_id::text || ':' || lower(trim(apartment_number)) || ':' || lower(trim(full_name))
-    ),
-    apartment_number
+    project_id,
+    lower(trim(apartment_number)),
+    lower(trim(full_name))
 )
 INSERT INTO residents (
   client_id,

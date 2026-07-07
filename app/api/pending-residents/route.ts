@@ -237,10 +237,13 @@ export async function PATCH(req: NextRequest) {
       })
 
       if (insErr) {
-        if (insErr.message?.includes('idx_residents_client_phone_unique')) {
+        if (
+          insErr.message?.includes('idx_residents_project_phone_apt_unique') ||
+          insErr.message?.includes('idx_residents_project_phone_no_apt_unique')
+        ) {
           logger.warn('RESIDENTS_API', 'Duplicate resident during insert', { requestId, id, clientId, phone, error: insErr.message })
-          audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, 'Duplicate phone detected during insert')
-          return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים במערכת', requestId }, { status: 400 })
+          audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, 'Duplicate phone in same apartment')
+          return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים בדירה זו בבניין', requestId }, { status: 400 })
         }
         logger.error('RESIDENTS_API', 'Insert resident failed', new Error(insErr.message), { requestId, id, clientId })
         audit.logFailedOperation('APPROVE', 'PENDING_RESIDENT', id, clientId, insErr.message)

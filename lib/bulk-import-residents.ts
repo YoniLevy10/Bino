@@ -274,32 +274,28 @@ export async function bulkImportResidentsFromParsed(
     .eq('client_id', clientId)
     .is('deleted_at', null)
 
-  const existingPhoneKeys = new Set(
-    (existing || [])
-      .filter((r) => r.normalized_phone || r.phone)
-      .flatMap((r) => {
-        const keys: string[] = []
-        if (r.normalized_phone) keys.push(String(r.normalized_phone))
-        if (r.phone) keys.push(String(r.phone).replace(/\D/g, '').replace(/^0/, '972'))
-        return keys
-      })
-  )
-  const existingNameAptKeys = new Set(
-    (existing || []).map(
-      (r) =>
-        `${r.project_id}:${(r.apartment_number || '').trim().toLowerCase()}:${(r.full_name || '').trim().toLowerCase()}`
-    )
+  const existingRowKeys = new Set(
+    (existing || []).map((r) => {
+      const apt = (r.apartment_number || '').trim().toLowerCase()
+      const name = (r.full_name || '').trim().toLowerCase()
+      const phone = r.normalized_phone
+        ? String(r.normalized_phone)
+        : r.phone
+          ? normalizePhone(String(r.phone))
+          : ''
+      if (phone) return `phone:${r.project_id}:${phone}:${apt}`
+      return `name:${r.project_id}:${apt}:${name}`
+    })
   )
 
   const deduped = toInsert.filter((row) => {
-    if (row.normalized_phone) {
-      if (existingPhoneKeys.has(row.normalized_phone)) return false
-      existingPhoneKeys.add(row.normalized_phone)
-      return true
-    }
-    const nameKey = `${row.project_id}:${(row.apartment_number || '').trim().toLowerCase()}:${row.full_name.trim().toLowerCase()}`
-    if (existingNameAptKeys.has(nameKey)) return false
-    existingNameAptKeys.add(nameKey)
+    const apt = (row.apartment_number || '').trim().toLowerCase()
+    const name = row.full_name.trim().toLowerCase()
+    const key = row.normalized_phone
+      ? `phone:${row.project_id}:${row.normalized_phone}:${apt}`
+      : `name:${row.project_id}:${apt}:${name}`
+    if (existingRowKeys.has(key)) return false
+    existingRowKeys.add(key)
     return true
   })
 

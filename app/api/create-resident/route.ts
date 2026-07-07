@@ -59,14 +59,20 @@ export async function POST(req: Request) {
     }
 
     if (normalizedDigits) {
-      const { data: existing, error: existingErr } = await supabase
+      const apt = sanitizeString(body.apartment_number) || ''
+      let dupQuery = supabase
         .from('residents')
         .select('id')
         .eq('client_id', clientId)
         .eq('project_id', body.project_id)
         .eq('normalized_phone', normalizedDigits)
         .is('deleted_at', null)
-        .maybeSingle()
+
+      dupQuery = apt
+        ? dupQuery.eq('apartment_number', apt)
+        : dupQuery.or('apartment_number.is.null,apartment_number.eq.')
+
+      const { data: existing, error: existingErr } = await dupQuery.maybeSingle()
 
       if (existingErr) {
         logger.error('RESIDENTS_API', 'Duplicate resident lookup failed', new Error(existingErr.message), { requestId, clientId })
@@ -74,7 +80,7 @@ export async function POST(req: Request) {
       }
 
       if (existing) {
-        return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים בבניין הזה', requestId }, { status: 400 })
+        return NextResponse.json({ error: 'דייר עם מספר טלפון זה כבר קיים בדירה זו בבניין', requestId }, { status: 400 })
       }
     }
 

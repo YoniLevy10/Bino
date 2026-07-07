@@ -44,11 +44,12 @@ async function findResidentPhoneConflict(
   clientId: string,
   projectId: string,
   phoneFields: ResidentPhoneFields,
+  apartmentNumber: string | null | undefined,
   excludeResidentId: string
 ): Promise<string | null> {
   if (!phoneFields.normalized_phone) return null
 
-  const { data: sameProject, error: projectErr } = await admin
+  let query = admin
     .from('residents')
     .select('id')
     .eq('client_id', clientId)
@@ -56,24 +57,18 @@ async function findResidentPhoneConflict(
     .eq('normalized_phone', phoneFields.normalized_phone)
     .is('deleted_at', null)
     .neq('id', excludeResidentId)
-    .maybeSingle()
+
+  const apt = (apartmentNumber ?? '').trim()
+  if (apt) {
+    query = query.eq('apartment_number', apt)
+  } else {
+    query = query.or('apartment_number.is.null,apartment_number.eq.')
+  }
+
+  const { data: conflicts, error: projectErr } = await query
 
   if (projectErr) return 'שגיאת שרת'
-  if (sameProject) return 'דייר עם מספר טלפון זה כבר קיים בבניין הזה'
-
-  if (phoneFields.phone) {
-    const { data: sameClient, error: clientErr } = await admin
-      .from('residents')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('phone', phoneFields.phone)
-      .is('deleted_at', null)
-      .neq('id', excludeResidentId)
-      .maybeSingle()
-
-    if (clientErr) return 'שגיאת שרת'
-    if (sameClient) return 'מספר טלפון זה כבר משויך לדייר אחר'
-  }
+  if (conflicts?.length) return 'דייר עם מספר טלפון זה כבר קיים בדירה זו בבניין'
 
   return null
 }
@@ -103,7 +98,7 @@ export async function POST(req: Request) {
 
     const { data: existing, error: fetchErr } = await admin
       .from('residents')
-      .select('id, full_name, project_id, phone, normalized_phone')
+      .select('id, full_name, project_id, phone, normalized_phone, apartment_number')
       .eq('id', resident_id)
       .eq('client_id', clientId)
       .is('deleted_at', null)
@@ -166,12 +161,18 @@ export async function POST(req: Request) {
       (phoneFields.phone !== existing.phone ||
         phoneFields.normalized_phone !== existing.normalized_phone)
 
-    if (effectivePhoneFields.normalized_phone && (phoneChanged || projectChanged)) {
+    const effectiveApartment =
+      fields.apartment_number !== undefined
+        ? fields.apartment_number
+        : existing.apartment_number
+
+    if (effectivePhoneFields.normalized_phone && (phoneChanged || projectChanged || fields.apartment_number !== undefined)) {
       const conflict = await findResidentPhoneConflict(
         admin,
         clientId,
         targetProjectId,
         effectivePhoneFields,
+        effectiveApartment,
         resident_id
       )
       if (conflict) {
@@ -206,7 +207,7 @@ export async function POST(req: Request) {
       logger.error('RESIDENT_API', 'Update resident failed', new Error(error.message), { requestId, resident_id })
       if (error.code === '23505') {
         return NextResponse.json(
-          { error: 'מספר טלפון זה כבר משויך לדייר אחר', requestId },
+          { error: 'דייר עם מספר טלפון זה כבר קיים בדירה זו בבניין', requestId },
           { status: 400 }
         )
       }
