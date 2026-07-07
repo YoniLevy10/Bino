@@ -46,6 +46,144 @@ function parseArgs() {
   return { clientId, out }
 }
 
+function buildPdfEnrichedCte(clientId: string, valueLines: string[]): string {
+  const cid = sqlStr(clientId)
+  return `WITH pdf_rows (
+  pdf_project,
+  pdf_project_norm,
+  apartment_number,
+  full_name,
+  phone,
+  normalized_phone,
+  email,
+  is_renter,
+  notes
+) AS (
+  VALUES
+${valueLines.join(',\n')}
+),
+projects_norm AS (
+  SELECT
+    p.id,
+    p.name,
+    lower(
+      trim(
+        regexp_replace(
+          regexp_replace(
+            regexp_replace(trim(regexp_replace(p.name, '\\s+', ' ', 'g')), '\\s+([א-ת])$', '\\1'),
+            '([0-9])\\s+([א-ת])', '\\1\\2', 'g'
+          ),
+          '\\s*-\\s*', ' ', 'g'
+        )
+      )
+    ) AS norm_name
+  FROM projects p
+  WHERE p.client_id = ${cid}::uuid
+    AND p.is_active = true
+),
+matched AS (
+  SELECT
+    pr.*,
+    pn.id AS project_id,
+    pn.name AS db_project_name
+  FROM pdf_rows pr
+  LEFT JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
+),
+enriched AS (
+  SELECT
+    m.*,
+    (
+      m.project_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM residents r
+        WHERE r.client_id = ${cid}::uuid
+          AND r.deleted_at IS NULL
+          AND r.project_id = m.project_id
+          AND (
+            (
+              m.normalized_phone IS NOT NULL
+              AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone)
+              AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+            )
+            OR (
+              m.normalized_phone IS NULL
+              AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+              AND lower(trim(r.full_name)) = lower(trim(m.full_name))
+            )
+          )
+      )
+    ) AS in_db
+  FROM matched m
+)`
+}
+
+function writeVerifySqlFiles(
+  clientId: string,
+  valueLines: string[],
+  rowCount: number,
+  buildingCount: number
+) {
+  const cte = buildPdfEnrichedCte(clientId, valueLines)
+  const header = `-- Bamakor PDF vs DB (${rowCount} rows, ${buildingCount} buildings)
+-- client_id: ${clientId}
+-- Supabase: העתק והרץ קובץ אחד בכל פעם (שאילתה בודדת).
+`
+
+  fs.writeFileSync(
+    path.resolve('data/verify-residents-summary.sql'),
+    `${header}-- שלב 1: סיכום — כמה חסרים?
+${cte}
+SELECT
+  COUNT(*) AS pdf_total_rows,
+  COUNT(*) FILTER (WHERE project_id IS NOT NULL) AS pdf_matched_to_project,
+  COUNT(*) FILTER (WHERE in_db) AS already_in_db,
+  COUNT(*) FILTER (WHERE project_id IS NOT NULL AND NOT in_db) AS missing_count,
+  COUNT(*) FILTER (WHERE project_id IS NULL) AS pdf_unmatched_building_rows
+FROM enriched;
+`
+  )
+
+  fs.writeFileSync(
+    path.resolve('data/verify-residents-missing-list.sql'),
+    `${header}-- שלב 2: רשימת חסרים (ריק = הכל קיים)
+${cte}
+SELECT
+  db_project_name AS building,
+  apartment_number AS apt,
+  full_name,
+  phone,
+  is_renter
+FROM enriched
+WHERE project_id IS NOT NULL AND NOT in_db
+ORDER BY db_project_name, apartment_number, full_name;
+`
+  )
+
+  fs.writeFileSync(
+    path.resolve('data/verify-residents-by-building.sql'),
+    `${header}-- שלב 3: לפי בניין
+${cte}
+SELECT
+  COALESCE(db_project_name, pdf_project) AS building,
+  COUNT(*) AS pdf_rows,
+  COUNT(*) FILTER (WHERE in_db) AS in_db_rows,
+  COUNT(*) FILTER (WHERE project_id IS NOT NULL AND NOT in_db) AS missing_rows
+FROM enriched
+GROUP BY COALESCE(db_project_name, pdf_project)
+ORDER BY 1;
+`
+  )
+
+  fs.writeFileSync(
+    path.resolve('data/verify-residents-missing.sql'),
+    `${header}-- השתמשו ב-3 הקבצים הנפרדים (כל אחד = Run אחד):
+--   1) verify-residents-summary.sql
+--   2) verify-residents-missing-list.sql
+--   3) verify-residents-by-building.sql
+`
+  )
+}
+
 function main() {
   const { clientId, out } = parseArgs()
   const jsonPath = path.resolve('data/parsed-residents.json')
@@ -256,126 +394,10 @@ WHERE d.norm IS NULL;
 `
   fs.writeFileSync(path.resolve('data/preview-unmatched-buildings.sql'), previewSql, 'utf-8')
 
-  const missingSql = `-- Bamakor: PDF residents missing from DB (${rows.length} rows in PDF, ${pdfProjects.size} buildings)
--- client_id: ${clientId}
--- Run the ENTIRE script in Supabase SQL Editor (one click Run).
---
--- Results: summary → missing list → unmatched buildings → per-building counts
-
-DROP TABLE IF EXISTS bamakor_pdf_resident_check;
-
-CREATE TEMP TABLE bamakor_pdf_resident_check AS
-WITH pdf_rows (
-  pdf_project,
-  pdf_project_norm,
-  apartment_number,
-  full_name,
-  phone,
-  normalized_phone,
-  email,
-  is_renter,
-  notes
-) AS (
-  VALUES
-${valueLines.join(',\n')}
-),
-projects_norm AS (
-  SELECT
-    p.id,
-    p.name,
-    lower(
-      trim(
-        regexp_replace(
-          regexp_replace(
-            regexp_replace(trim(regexp_replace(p.name, '\\s+', ' ', 'g')), '\\s+([א-ת])$', '\\1'),
-            '([0-9])\\s+([א-ת])', '\\1\\2', 'g'
-          ),
-          '\\s*-\\s*', ' ', 'g'
-        )
-      )
-    ) AS norm_name
-  FROM projects p
-  WHERE p.client_id = ${sqlStr(clientId)}::uuid
-    AND p.is_active = true
-),
-matched AS (
-  SELECT
-    pr.*,
-    pn.id AS project_id,
-    pn.name AS db_project_name
-  FROM pdf_rows pr
-  LEFT JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
-)
-SELECT
-  m.pdf_project,
-  m.apartment_number,
-  m.full_name,
-  m.phone,
-  m.is_renter,
-  m.project_id,
-  m.db_project_name,
-  (m.project_id IS NOT NULL AND EXISTS (
-    SELECT 1 FROM residents r
-    WHERE r.client_id = ${sqlStr(clientId)}::uuid
-      AND r.deleted_at IS NULL
-      AND r.project_id = m.project_id
-      AND (
-        (
-          m.normalized_phone IS NOT NULL
-          AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone)
-          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
-        )
-        OR (
-          m.normalized_phone IS NULL
-          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
-          AND lower(trim(r.full_name)) = lower(trim(m.full_name))
-        )
-      )
-  )) AS in_db
-FROM matched m;
-
--- ── 1) Summary ─────────────────────────────────────────────────────────────
-SELECT
-  (SELECT COUNT(*) FROM bamakor_pdf_resident_check) AS pdf_total_rows,
-  COUNT(*) FILTER (WHERE project_id IS NOT NULL) AS pdf_matched_to_project,
-  COUNT(*) FILTER (WHERE in_db) AS already_in_db,
-  COUNT(*) FILTER (WHERE project_id IS NOT NULL AND NOT in_db) AS missing_count,
-  COUNT(*) FILTER (WHERE project_id IS NULL) AS pdf_unmatched_building_rows
-FROM bamakor_pdf_resident_check;
-
--- ── 2) Missing residents (run import-residents.sql to add these) ───────────
-SELECT
-  db_project_name AS building,
-  apartment_number AS apt,
-  full_name,
-  phone,
-  is_renter
-FROM bamakor_pdf_resident_check
-WHERE project_id IS NOT NULL AND NOT in_db
-ORDER BY db_project_name, apartment_number, full_name;
-
--- ── 3) PDF rows with no matching project in DB ─────────────────────────────
-SELECT DISTINCT pdf_project AS building_in_pdf_not_in_db
-FROM bamakor_pdf_resident_check
-WHERE project_id IS NULL
-ORDER BY 1;
-
--- ── 4) Count per building: PDF vs DB ─────────────────────────────────────
-SELECT
-  COALESCE(db_project_name, pdf_project) AS building,
-  COUNT(*) AS pdf_rows,
-  COUNT(*) FILTER (WHERE in_db) AS in_db_rows,
-  COUNT(*) FILTER (WHERE project_id IS NOT NULL AND NOT in_db) AS missing_rows
-FROM bamakor_pdf_resident_check
-GROUP BY COALESCE(db_project_name, pdf_project)
-ORDER BY 1;
-
-DROP TABLE IF EXISTS bamakor_pdf_resident_check;
-`
-  fs.writeFileSync(path.resolve('data/verify-residents-missing.sql'), missingSql, 'utf-8')
+  writeVerifySqlFiles(clientId, valueLines, rows.length, pdfProjects.size)
 
   console.log(`Wrote ${rows.length} rows -> ${out}`)
-  console.log(`Wrote verify -> data/verify-residents-missing.sql`)
+  console.log(`Wrote verify -> data/verify-residents-summary.sql (+ missing-list, by-building)`)
   console.log(`PDF buildings: ${pdfProjects.size}`)
 }
 
