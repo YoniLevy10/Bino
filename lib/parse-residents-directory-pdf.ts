@@ -8,8 +8,6 @@
  * - Rows where שם is literally "שכירות" → tenant is in the next columns
  */
 
-import { dbProjectNameForPdfImport } from './residents-directory-project-aliases'
-
 export type ParsedDirectoryResident = {
   project_name: string
   apartment_number: string
@@ -242,23 +240,13 @@ export function matchProjectName(
   pdfName: string,
   dbNames: { id: string; name: string }[]
 ): { id: string; name: string } | null {
-  const norms = [
-    normalizeProjectNameForMatch(pdfName),
-    normalizeProjectNameForMatch(dbProjectNameForPdfImport(pdfName)),
-  ]
-  const uniqueNorms = [...new Set(norms)]
+  const norm = normalizeProjectNameForMatch(pdfName)
+  const exact = dbNames.find((p) => normalizeProjectNameForMatch(p.name) === norm)
+  if (exact) return exact
 
-  for (const norm of uniqueNorms) {
-    const exact = dbNames.find((p) => normalizeProjectNameForMatch(p.name) === norm)
-    if (exact) return exact
-  }
-
-  for (const norm of uniqueNorms) {
-    const loose = dbNames.find((p) => {
-      const db = normalizeProjectNameForMatch(p.name)
-      return db.includes(norm) || norm.includes(db)
-    })
-    if (loose) return loose
-  }
-  return null
+  const loose = dbNames.find((p) => {
+    const db = normalizeProjectNameForMatch(p.name)
+    return db.includes(norm) || norm.includes(db)
+  })
+  return loose || null
 }

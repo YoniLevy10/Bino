@@ -9,7 +9,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { normalizeProjectNameForMatch } from '../lib/parse-residents-directory-pdf'
-import { matchNormForPdfProject, dbProjectNameForPdfImport } from '../lib/residents-directory-project-aliases'
 import { normalizePhone } from '../lib/residents-whatsapp'
 
 type ParsedRow = {
@@ -59,7 +58,7 @@ function main() {
     pdfProjects.add(r.project_name)
     const { phone, normalized } = formatPhone(r.phone)
     valueLines.push(
-      `  (${sqlStr(r.project_name)}, ${sqlStr(matchNormForPdfProject(r.project_name))}, ${sqlStr(r.apartment_number)}, ${sqlStr(r.full_name)}, ${phone ? sqlStr(phone) : 'NULL'}, ${normalized ? sqlStr(normalized) : 'NULL'}, ${r.email ? sqlStr(r.email) : 'NULL'}, ${r.is_renter ? 'true' : 'false'}, ${r.notes ? sqlStr(r.notes) : 'NULL'})`
+      `  (${sqlStr(r.project_name)}, ${sqlStr(normalizeProjectNameForMatch(r.project_name))}, ${sqlStr(r.apartment_number)}, ${sqlStr(r.full_name)}, ${phone ? sqlStr(phone) : 'NULL'}, ${normalized ? sqlStr(normalized) : 'NULL'}, ${r.email ? sqlStr(r.email) : 'NULL'}, ${r.is_renter ? 'true' : 'false'}, ${r.notes ? sqlStr(r.notes) : 'NULL'})`
     )
   }
 
@@ -179,7 +178,7 @@ ORDER BY p.name;
 -- PDF buildings with no matching project (should be empty)
 WITH pdf_projects AS (
   SELECT unnest(ARRAY[
-${[...pdfProjects].map((p) => `    ${sqlStr(matchNormForPdfProject(p))}`).join(',\n')}
+${[...pdfProjects].map((p) => `    ${sqlStr(normalizeProjectNameForMatch(p))}`).join(',\n')}
   ]) AS match_norm
 ),
 projects_norm AS (
@@ -206,16 +205,15 @@ WHERE pn.norm_name IS NULL;
   fs.writeFileSync(path.resolve(out), sql, 'utf-8')
 
   const previewLines = [...pdfProjects].map((p) => {
-    const db = dbProjectNameForPdfImport(p)
-    return `    (${sqlStr(p)}, ${sqlStr(db)}, ${sqlStr(matchNormForPdfProject(p))})`
+    return `    (${sqlStr(p)}, ${sqlStr(normalizeProjectNameForMatch(p))})`
   })
 
   const previewSql = `-- Run BEFORE import — should return 0 rows.
--- PDF name → DB name alias → normalized match key
+-- Rename קוואדרה → מקור חיים first: data/rename-kvadrat-to-makor-chaim.sql
 WITH pdf_map AS (
   SELECT * FROM (VALUES
 ${previewLines.join(',\n')}
-  ) AS t(pdf_name, db_name, match_norm)
+  ) AS t(pdf_name, match_norm)
 ),
 db_norm AS (
   SELECT
@@ -226,7 +224,7 @@ db_norm AS (
   FROM projects
   WHERE client_id = ${sqlStr(clientId)}::uuid AND is_active = true
 )
-SELECT p.pdf_name, p.db_name AS expected_db_name
+SELECT p.pdf_name AS building_in_pdf_not_in_db
 FROM pdf_map p
 LEFT JOIN db_norm d ON d.norm = p.match_norm
 WHERE d.norm IS NULL;
