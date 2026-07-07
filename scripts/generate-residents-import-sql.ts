@@ -9,6 +9,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { normalizeProjectNameForMatch } from '../lib/parse-residents-directory-pdf'
+import { matchNormForPdfProject, dbProjectNameForPdfImport } from '../lib/residents-directory-project-aliases'
 import { normalizePhone } from '../lib/residents-whatsapp'
 
 type ParsedRow = {
@@ -58,7 +59,7 @@ function main() {
     pdfProjects.add(r.project_name)
     const { phone, normalized } = formatPhone(r.phone)
     valueLines.push(
-      `  (${sqlStr(r.project_name)}, ${sqlStr(normalizeProjectNameForMatch(r.project_name))}, ${sqlStr(r.apartment_number)}, ${sqlStr(r.full_name)}, ${phone ? sqlStr(phone) : 'NULL'}, ${normalized ? sqlStr(normalized) : 'NULL'}, ${r.email ? sqlStr(r.email) : 'NULL'}, ${r.is_renter ? 'true' : 'false'}, ${r.notes ? sqlStr(r.notes) : 'NULL'})`
+      `  (${sqlStr(r.project_name)}, ${sqlStr(matchNormForPdfProject(r.project_name))}, ${sqlStr(r.apartment_number)}, ${sqlStr(r.full_name)}, ${phone ? sqlStr(phone) : 'NULL'}, ${normalized ? sqlStr(normalized) : 'NULL'}, ${r.email ? sqlStr(r.email) : 'NULL'}, ${r.is_renter ? 'true' : 'false'}, ${r.notes ? sqlStr(r.notes) : 'NULL'})`
     )
   }
 
@@ -177,10 +178,9 @@ ORDER BY p.name;
 
 -- PDF buildings with no matching project (should be empty)
 WITH pdf_projects AS (
-  SELECT DISTINCT pdf_project_norm FROM (
-    VALUES
-${[...pdfProjects].map((p) => `      (${sqlStr(normalizeProjectNameForMatch(p))})`).join(',\n')}
-  ) v(pdf_project_norm)
+  SELECT unnest(ARRAY[
+${[...pdfProjects].map((p) => `    ${sqlStr(matchNormForPdfProject(p))}`).join(',\n')}
+  ]) AS match_norm
 ),
 projects_norm AS (
   SELECT lower(
@@ -197,13 +197,41 @@ projects_norm AS (
   FROM projects
   WHERE client_id = ${sqlStr(clientId)}::uuid AND is_active = true
 )
-SELECT pp.pdf_project_norm AS unmatched_pdf_building
+SELECT pp.match_norm AS unmatched_pdf_building_norm
 FROM pdf_projects pp
-LEFT JOIN projects_norm pn ON pn.norm_name = pp.pdf_project_norm
+LEFT JOIN projects_norm pn ON pn.norm_name = pp.match_norm
 WHERE pn.norm_name IS NULL;
 `
 
   fs.writeFileSync(path.resolve(out), sql, 'utf-8')
+
+  const previewLines = [...pdfProjects].map((p) => {
+    const db = dbProjectNameForPdfImport(p)
+    return `    (${sqlStr(p)}, ${sqlStr(db)}, ${sqlStr(matchNormForPdfProject(p))})`
+  })
+
+  const previewSql = `-- Run BEFORE import — should return 0 rows.
+-- PDF name → DB name alias → normalized match key
+WITH pdf_map AS (
+  SELECT * FROM (VALUES
+${previewLines.join(',\n')}
+  ) AS t(pdf_name, db_name, match_norm)
+),
+db_norm AS (
+  SELECT
+    name,
+    lower(trim(regexp_replace(regexp_replace(
+      regexp_replace(trim(regexp_replace(name, '\\s+', ' ', 'g')), '\\s+([א-ת])$', '\\1'),
+      '([0-9])\\s+([א-ת])', '\\1\\2', 'g'), '\\s*-\\s*', ' ', 'g'))) AS norm
+  FROM projects
+  WHERE client_id = ${sqlStr(clientId)}::uuid AND is_active = true
+)
+SELECT p.pdf_name, p.db_name AS expected_db_name
+FROM pdf_map p
+LEFT JOIN db_norm d ON d.norm = p.match_norm
+WHERE d.norm IS NULL;
+`
+  fs.writeFileSync(path.resolve('data/preview-unmatched-buildings.sql'), previewSql, 'utf-8')
   console.log(`Wrote ${rows.length} rows -> ${out}`)
   console.log(`PDF buildings: ${pdfProjects.size}`)
 }
