@@ -174,7 +174,7 @@ export async function bulkImportResidentsFromParsed(
     clientId,
     residents,
     purgePlaceholders = false,
-    createMissingProjects = true,
+    createMissingProjects = false,
     dryRun = false,
   } = params
 

@@ -35,21 +35,23 @@ function parseArgs(argv: string[]) {
   let pdf = ''
   let dryRun = false
   let purgePlaceholders = false
+  let createMissingProjects = false
   let clientId = process.env.BAMAKOR_CLIENT_ID || ''
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--dry-run') dryRun = true
     else if (a === '--purge-placeholders') purgePlaceholders = true
+    else if (a === '--create-projects') createMissingProjects = true
     else if (a === '--file' && argv[i + 1]) file = argv[++i]
     else if (a === '--pdf' && argv[i + 1]) pdf = argv[++i]
     else if (a === '--client-id' && argv[i + 1]) clientId = argv[++i]
   }
-  return { file, pdf, dryRun, purgePlaceholders, clientId }
+  return { file, pdf, dryRun, purgePlaceholders, createMissingProjects, clientId }
 }
 
 async function main() {
   loadEnvLocal()
-  const { file, pdf, dryRun, purgePlaceholders, clientId } = parseArgs(process.argv)
+  const { file, pdf, dryRun, purgePlaceholders, createMissingProjects, clientId } = parseArgs(process.argv)
 
   let textPath = file
   if (pdf) {
@@ -87,6 +89,7 @@ async function main() {
     residents,
     dryRun,
     purgePlaceholders,
+    createMissingProjects,
   })
 
   console.log(JSON.stringify(result, null, 2))
