@@ -49,6 +49,31 @@ function scoreHeaderRow(cells: unknown[]): number {
   return score
 }
 
+/** SheetJS-style unique keys when Excel has repeated headers (שם, טלפון, מייל ×2–3). */
+export function uniqueImportHeaderNames(cells: unknown[]): string[] {
+  const counts = new Map<string, number>()
+  return cells.map((cell, i) => {
+    const base = normalizeImportHeader(cell) || `__EMPTY_${i}`
+    const n = counts.get(base) ?? 0
+    counts.set(base, n + 1)
+    return n === 0 ? base : `${base}_${n}`
+  })
+}
+
+/** Common management-company sheet: דירה | שם | טלפון | מייל | שם | טלפון | … */
+export function isDirectoryStyleHeaderRow(cells: unknown[]): boolean {
+  const h = cells.map((c) => normalizeImportHeader(c).toLowerCase())
+  if (h.length < 4) return false
+  const col0 = h[0]
+  const col1 = h[1] || ''
+  const col2 = h[2] || ''
+  return (
+    (col0 === 'דירה' || col0 === 'apartment') &&
+    (col1 === 'שם' || col1.startsWith('שם')) &&
+    (col2.includes('טלפון') || col2 === 'phone')
+  )
+}
+
 export function findResidentsHeaderRowIndex(matrix: unknown[][]): number {
   const scan = Math.min(matrix.length, 15)
   let bestIdx = 0
@@ -66,8 +91,7 @@ export function findResidentsHeaderRowIndex(matrix: unknown[][]): number {
 }
 
 export function matrixToResidentRows(matrix: unknown[][], headerRowIdx: number): ParsedRow[] {
-  const headerCells = (matrix[headerRowIdx] || []).map(normalizeImportHeader)
-  const headers = headerCells.map((h, i) => h || `__EMPTY_${i}`)
+  const headers = uniqueImportHeaderNames(matrix[headerRowIdx] || [])
   const rows: ParsedRow[] = []
 
   for (let r = headerRowIdx + 1; r < matrix.length; r++) {
@@ -107,14 +131,34 @@ export function guessResidentsColumnKey(
   return ''
 }
 
-export function guessResidentsColumnMapping(headers: string[]): ResidentsColumnMapping {
+export function guessResidentsColumnMapping(
+  headers: string[],
+  headerCells?: unknown[]
+): ResidentsColumnMapping {
+  if (headerCells && isDirectoryStyleHeaderRow(headerCells)) {
+    const unique = uniqueImportHeaderNames(headerCells)
+    return {
+      full_name: unique[1] || '',
+      phone: unique[2] || undefined,
+      apartment_number: unique[0] || undefined,
+      notes: undefined,
+      project_code: undefined,
+      project_name: undefined,
+    }
+  }
+
   const guessedFullName = guessResidentsColumnKey(
     headers,
     [/^שם\s*מלא$/i, /^שם\s*דייר$/i, /^name$/i, /full.?name/i, /^שם$/i, /שם/i],
     BUILDING_HEADER
   )
-  const guessedPhone = guessResidentsColumnKey(headers, [/phone/i, /טלפון/])
-  const guessedApt = guessResidentsColumnKey(headers, [/apartment/i, /דירה/])
+  const guessedPhone = guessResidentsColumnKey(headers, [
+    /^טלפון$/i,
+    /^phone$/i,
+    /טלפון/i,
+    /phone/i,
+  ])
+  const guessedApt = guessResidentsColumnKey(headers, [/^דירה$/i, /apartment/i, /דירה/])
   const guessedNotes = guessResidentsColumnKey(headers, [/notes/i, /הערות/])
   const guessedProjectCode = guessResidentsColumnKey(headers, [
     /project.?code/i,
@@ -147,9 +191,10 @@ export function parseResidentsWorkbook(buffer: ArrayBuffer): {
   const ws = wb.Sheets[sheetName]
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' })
   const headerRowIdx = findResidentsHeaderRowIndex(matrix)
+  const headerCells = matrix[headerRowIdx] || []
   const rows = matrixToResidentRows(matrix, headerRowIdx)
-  const headers = inferResidentHeaders(rows)
-  const mapping = guessResidentsColumnMapping(headers)
+  const headers = uniqueImportHeaderNames(headerCells).filter((h) => !h.startsWith('__EMPTY_'))
+  const mapping = guessResidentsColumnMapping(headers, headerCells)
 
   return { rows, headers, mapping }
 }
