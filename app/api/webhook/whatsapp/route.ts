@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveClientIdByWhatsAppPhoneNumberId } from '@/lib/tenant-resolution'
@@ -113,7 +113,23 @@ export async function POST(req: NextRequest) {
       row: tenantResolved.row,
     }
 
-    await runWhatsAppInboundBackground(body, requestId, parsedMessage, supabaseAdmin, tenantPayload)
+    // Respond to Meta immediately; ticket/media/SMS work continues in the background.
+    after(async () => {
+      try {
+        await runWhatsAppInboundBackground(body, requestId, parsedMessage, supabaseAdmin, tenantPayload)
+      } catch (bgError) {
+        const err = bgError instanceof Error ? bgError : new Error(String(bgError))
+        logger.error('WEBHOOK', 'WhatsApp inbound background error', err, { requestId })
+        void logCriticalOperationalFailure({
+          context: 'whatsapp_webhook:background',
+          message: err.message,
+          details: { requestId, stack: err.stack?.slice(0, 2000) },
+          alertKind: 'operational_error',
+          alertTitle: 'שגיאה בעיבוד רקע WhatsApp',
+        })
+      }
+    })
+
     return NextResponse.json({ received: true, status: 'ok' }, { status: 200 })
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error))
