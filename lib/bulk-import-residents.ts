@@ -182,7 +182,7 @@ export async function bulkImportResidentsFromParsed(
     .from('projects')
     .select('id, name, project_code')
     .eq('client_id', clientId)
-    .is('deleted_at', null)
+    .eq('is_active', true)
 
   if (pErr || !projectsData) {
     throw new Error(pErr?.message || 'Failed to load projects')

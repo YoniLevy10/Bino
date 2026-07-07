@@ -578,7 +578,7 @@ projects_norm AS (
     ) AS norm_name
   FROM projects p
   WHERE p.client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid
-    AND p.deleted_at IS NULL
+    AND p.is_active = true
 ),
 matched AS (
   SELECT
@@ -680,7 +680,7 @@ projects_norm AS (
     )
   ) AS norm_name
   FROM projects
-  WHERE client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid AND deleted_at IS NULL
+  WHERE client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid AND is_active = true
 )
 SELECT pp.pdf_project_norm AS unmatched_pdf_building
 FROM pdf_projects pp
