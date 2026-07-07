@@ -121,23 +121,47 @@ matched AS (
   FROM pdf_rows pr
   JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
 ),
-to_insert AS (
+not_in_db AS (
   SELECT m.*
   FROM matched m
   WHERE NOT EXISTS (
     SELECT 1 FROM residents r
     WHERE r.client_id = ${sqlStr(clientId)}::uuid
       AND r.deleted_at IS NULL
-      AND r.project_id = m.project_id
       AND (
-        (m.normalized_phone IS NOT NULL AND r.normalized_phone = m.normalized_phone)
+        (m.normalized_phone IS NOT NULL AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone))
         OR (
           m.normalized_phone IS NULL
           AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
           AND lower(trim(r.full_name)) = lower(trim(m.full_name))
+          AND r.project_id = m.project_id
         )
       )
   )
+),
+to_insert AS (
+  SELECT DISTINCT ON (
+    COALESCE(
+      normalized_phone,
+      'no-phone:' || project_id::text || ':' || lower(trim(apartment_number)) || ':' || lower(trim(full_name))
+    )
+  )
+    project_id,
+    db_project_name,
+    full_name,
+    phone,
+    normalized_phone,
+    email,
+    apartment_number,
+    notes,
+    is_renter
+  FROM not_in_db
+  ORDER BY
+    COALESCE(
+      normalized_phone,
+      'no-phone:' || project_id::text || ':' || lower(trim(apartment_number)) || ':' || lower(trim(full_name))
+    ),
+    apartment_number
 )
 INSERT INTO residents (
   client_id,

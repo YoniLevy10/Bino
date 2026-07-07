@@ -270,14 +270,19 @@ export async function bulkImportResidentsFromParsed(
 
   const { data: existing } = await supabase
     .from('residents')
-    .select('project_id, normalized_phone, full_name, apartment_number')
+    .select('project_id, phone, normalized_phone, full_name, apartment_number')
     .eq('client_id', clientId)
     .is('deleted_at', null)
 
   const existingPhoneKeys = new Set(
     (existing || [])
-      .filter((r) => r.normalized_phone)
-      .map((r) => `${r.project_id}:${r.normalized_phone}`)
+      .filter((r) => r.normalized_phone || r.phone)
+      .flatMap((r) => {
+        const keys: string[] = []
+        if (r.normalized_phone) keys.push(String(r.normalized_phone))
+        if (r.phone) keys.push(String(r.phone).replace(/\D/g, '').replace(/^0/, '972'))
+        return keys
+      })
   )
   const existingNameAptKeys = new Set(
     (existing || []).map(
@@ -288,9 +293,8 @@ export async function bulkImportResidentsFromParsed(
 
   const deduped = toInsert.filter((row) => {
     if (row.normalized_phone) {
-      const key = `${row.project_id}:${row.normalized_phone}`
-      if (existingPhoneKeys.has(key)) return false
-      existingPhoneKeys.add(key)
+      if (existingPhoneKeys.has(row.normalized_phone)) return false
+      existingPhoneKeys.add(row.normalized_phone)
       return true
     }
     const nameKey = `${row.project_id}:${(row.apartment_number || '').trim().toLowerCase()}:${row.full_name.trim().toLowerCase()}`
