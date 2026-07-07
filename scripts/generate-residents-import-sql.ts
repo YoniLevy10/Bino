@@ -258,13 +258,13 @@ WHERE d.norm IS NULL;
 
   const missingSql = `-- Bamakor: PDF residents missing from DB (${rows.length} rows in PDF, ${pdfProjects.size} buildings)
 -- client_id: ${clientId}
--- Run in Supabase SQL Editor BEFORE import-residents.sql.
+-- Run the ENTIRE script in Supabase SQL Editor (one click Run).
 --
--- 1) summary — missing_count should go to 0 after import
--- 2) missing_rows — who will be inserted
--- 3) unmatched_buildings — fix project names first (expect 0 rows)
--- 4) pdf_vs_db_counts — compare per building
+-- Results: summary → missing list → unmatched buildings → per-building counts
 
+DROP TABLE IF EXISTS bamakor_pdf_resident_check;
+
+CREATE TEMP TABLE bamakor_pdf_resident_check AS
 WITH pdf_rows (
   pdf_project,
   pdf_project_norm,
@@ -304,12 +304,17 @@ matched AS (
     pn.id AS project_id,
     pn.name AS db_project_name
   FROM pdf_rows pr
-  JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
-),
-in_db AS (
-  SELECT m.*
-  FROM matched m
-  WHERE EXISTS (
+  LEFT JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
+)
+SELECT
+  m.pdf_project,
+  m.apartment_number,
+  m.full_name,
+  m.phone,
+  m.is_renter,
+  m.project_id,
+  m.db_project_name,
+  (m.project_id IS NOT NULL AND EXISTS (
     SELECT 1 FROM residents r
     WHERE r.client_id = ${sqlStr(clientId)}::uuid
       AND r.deleted_at IS NULL
@@ -326,21 +331,17 @@ in_db AS (
           AND lower(trim(r.full_name)) = lower(trim(m.full_name))
         )
       )
-  )
-),
-missing AS (
-  SELECT m.*
-  FROM matched m
-  WHERE NOT EXISTS (SELECT 1 FROM in_db i WHERE i.pdf_project = m.pdf_project AND i.apartment_number = m.apartment_number AND i.full_name = m.full_name)
-)
+  )) AS in_db
+FROM matched m;
 
 -- ── 1) Summary ─────────────────────────────────────────────────────────────
 SELECT
-  (SELECT COUNT(*) FROM pdf_rows) AS pdf_total_rows,
-  (SELECT COUNT(*) FROM matched) AS pdf_matched_to_project,
-  (SELECT COUNT(*) FROM in_db) AS already_in_db,
-  (SELECT COUNT(*) FROM missing) AS missing_count,
-  (SELECT COUNT(*) FROM pdf_rows) - (SELECT COUNT(*) FROM matched) AS pdf_unmatched_building_rows;
+  (SELECT COUNT(*) FROM bamakor_pdf_resident_check) AS pdf_total_rows,
+  COUNT(*) FILTER (WHERE project_id IS NOT NULL) AS pdf_matched_to_project,
+  COUNT(*) FILTER (WHERE in_db) AS already_in_db,
+  COUNT(*) FILTER (WHERE project_id IS NOT NULL AND NOT in_db) AS missing_count,
+  COUNT(*) FILTER (WHERE project_id IS NULL) AS pdf_unmatched_building_rows
+FROM bamakor_pdf_resident_check;
 
 -- ── 2) Missing residents (run import-residents.sql to add these) ───────────
 SELECT
@@ -349,28 +350,27 @@ SELECT
   full_name,
   phone,
   is_renter
-FROM missing
+FROM bamakor_pdf_resident_check
+WHERE project_id IS NOT NULL AND NOT in_db
 ORDER BY db_project_name, apartment_number, full_name;
 
 -- ── 3) PDF rows with no matching project in DB ─────────────────────────────
-SELECT DISTINCT pr.pdf_project AS building_in_pdf_not_in_db
-FROM pdf_rows pr
-LEFT JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
-WHERE pn.id IS NULL
+SELECT DISTINCT pdf_project AS building_in_pdf_not_in_db
+FROM bamakor_pdf_resident_check
+WHERE project_id IS NULL
 ORDER BY 1;
 
 -- ── 4) Count per building: PDF vs DB ─────────────────────────────────────
 SELECT
-  COALESCE(m.db_project_name, pr.pdf_project) AS building,
-  COUNT(DISTINCT (pr.apartment_number, pr.full_name)) AS pdf_rows,
-  COUNT(DISTINCT (i.apartment_number, i.full_name)) FILTER (WHERE i.full_name IS NOT NULL) AS in_db_rows,
-  COUNT(DISTINCT (miss.apartment_number, miss.full_name)) FILTER (WHERE miss.full_name IS NOT NULL) AS missing_rows
-FROM pdf_rows pr
-LEFT JOIN matched m ON m.pdf_project = pr.pdf_project AND m.apartment_number = pr.apartment_number AND m.full_name = pr.full_name
-LEFT JOIN in_db i ON i.pdf_project = pr.pdf_project AND i.apartment_number = pr.apartment_number AND i.full_name = pr.full_name
-LEFT JOIN missing miss ON miss.pdf_project = pr.pdf_project AND miss.apartment_number = pr.apartment_number AND miss.full_name = pr.full_name
-GROUP BY COALESCE(m.db_project_name, pr.pdf_project)
+  COALESCE(db_project_name, pdf_project) AS building,
+  COUNT(*) AS pdf_rows,
+  COUNT(*) FILTER (WHERE in_db) AS in_db_rows,
+  COUNT(*) FILTER (WHERE project_id IS NOT NULL AND NOT in_db) AS missing_rows
+FROM bamakor_pdf_resident_check
+GROUP BY COALESCE(db_project_name, pdf_project)
 ORDER BY 1;
+
+DROP TABLE IF EXISTS bamakor_pdf_resident_check;
 `
   fs.writeFileSync(path.resolve('data/verify-residents-missing.sql'), missingSql, 'utf-8')
 
