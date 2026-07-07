@@ -638,6 +638,7 @@ SELECT p.name, COUNT(r.id) AS residents
 FROM projects p
 LEFT JOIN residents r ON r.project_id = p.id AND r.deleted_at IS NULL
 WHERE p.client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid
+  AND p.is_active = true
 GROUP BY p.name
 ORDER BY p.name;
 

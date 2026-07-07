@@ -171,6 +171,7 @@ SELECT p.name, COUNT(r.id) AS residents
 FROM projects p
 LEFT JOIN residents r ON r.project_id = p.id AND r.deleted_at IS NULL
 WHERE p.client_id = ${sqlStr(clientId)}::uuid
+  AND p.is_active = true
 GROUP BY p.name
 ORDER BY p.name;
 
