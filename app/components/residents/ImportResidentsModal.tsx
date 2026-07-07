@@ -1,43 +1,18 @@
 'use client'
 
 import { useMemo, useState, type CSSProperties } from 'react'
-import * as XLSX from 'xlsx'
 import { Button, theme } from '../ui'
 import type { ResidentProjectRow } from './AddResidentModal'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import {
+  buildResidentsImportPayload,
+  parseResidentsWorkbook,
+  type ParsedRow,
+  type ResidentsColumnMapping,
+  type ResidentsImportPayloadRow,
+} from '@/lib/import-residents-excel'
 import { TM } from '@/lib/toast-messages'
-
-type ParsedRow = Record<string, unknown>
-
-type Mapping = {
-  project_code?: string
-  project_name?: string
-  full_name: string
-  phone?: string
-  apartment_number?: string
-  notes?: string
-}
-
-function normalizeHeader(h: unknown): string {
-  return (typeof h === 'string' ? h : h == null ? '' : String(h)).trim()
-}
-
-function guessKey(headers: string[], candidates: RegExp[]): string | '' {
-  const lower = headers.map((h) => h.toLowerCase())
-  for (const rx of candidates) {
-    const idx = lower.findIndex((h) => rx.test(h))
-    if (idx >= 0) return headers[idx]
-  }
-  return ''
-}
-
-function sanitizePhone(raw: string) {
-  const trimmed = raw.replace(/\s|-/g, '')
-  const hasPlus = trimmed.startsWith('+')
-  const digits = trimmed.replace(/[^\d]/g, '')
-  return hasPlus ? `+${digits}` : digits
-}
 
 export function ImportResidentsModal({
   open,
@@ -59,7 +34,7 @@ export function ImportResidentsModal({
   const [headers, setHeaders] = useState<string[]>([])
   const [dragOver, setDragOver] = useState(false)
 
-  const [mapping, setMapping] = useState<Mapping>({
+  const [mapping, setMapping] = useState<ResidentsColumnMapping>({
     full_name: '',
   })
 
@@ -67,10 +42,17 @@ export function ImportResidentsModal({
   const [importing, setImporting] = useState(false)
   const [apiError, setApiError] = useState('')
 
-  const preview = useMemo(() => rows.slice(0, 20), [rows])
+  const preview = useMemo(() => {
+    const project = singleProjectId ? projects.find((p) => p.id === singleProjectId) : null
+    return buildResidentsImportPayload(rows, mapping, {
+      forcedProjectCode: project?.project_code || null,
+      forcedProjectName: project?.name || null,
+    }).slice(0, 20)
+  }, [rows, mapping, singleProjectId, projects])
 
   const canImport = useMemo(() => {
     if (rows.length === 0) return false
+    if (!mapping.full_name) return false
     const hasProjectMapping = Boolean(mapping.project_code || mapping.project_name || singleProjectId)
     return hasProjectMapping
   }, [rows.length, mapping, singleProjectId])
@@ -95,36 +77,12 @@ export function ImportResidentsModal({
   async function parseFile(file: File) {
     setApiError('')
     const buf = await file.arrayBuffer()
-    const wb = XLSX.read(buf, { type: 'array' })
-    const sheetName = wb.SheetNames[0]
-    const ws = wb.Sheets[sheetName]
-    const json = XLSX.utils.sheet_to_json<ParsedRow>(ws, { defval: '' })
-    const inferredHeaders = Array.from(
-      new Set(
-        json.flatMap((r) => Object.keys(r).map((k) => normalizeHeader(k))).filter(Boolean)
-      )
-    )
+    const parsed = parseResidentsWorkbook(buf)
 
     setFileName(file.name)
-    setRows(json)
-    setHeaders(inferredHeaders)
-
-    // Guess mapping
-    const guessedFullName = guessKey(inferredHeaders, [/^name$/i, /שם/, /full.?name/i])
-    const guessedPhone = guessKey(inferredHeaders, [/phone/i, /טלפון/])
-    const guessedApt = guessKey(inferredHeaders, [/apartment/i, /דירה/])
-    const guessedNotes = guessKey(inferredHeaders, [/notes/i, /הערות/])
-    const guessedProjectCode = guessKey(inferredHeaders, [/project.?code/i, /קוד.*(פרויקט|בניין)/, /קוד/])
-    const guessedProjectName = guessKey(inferredHeaders, [/project/i, /בניין/])
-
-    setMapping({
-      full_name: guessedFullName || inferredHeaders[0] || '',
-      phone: guessedPhone || undefined,
-      apartment_number: guessedApt || undefined,
-      notes: guessedNotes || undefined,
-      project_code: guessedProjectCode || undefined,
-      project_name: guessedProjectName || undefined,
-    })
+    setRows(parsed.rows)
+    setHeaders(parsed.headers)
+    setMapping(parsed.mapping)
   }
 
   async function onDrop(e: React.DragEvent) {
@@ -141,36 +99,12 @@ export function ImportResidentsModal({
     await parseFile(f)
   }
 
-  function buildPayload() {
+  function buildPayload(): ResidentsImportPayloadRow[] {
     const project = singleProjectId ? projects.find((p) => p.id === singleProjectId) : null
-    const forcedProjectCode = project?.project_code || null
-    const forcedProjectName = project?.name || null
-
-    const out = rows.map((r) => {
-      const phoneRaw = mapping.phone ? String(r[mapping.phone] ?? '').trim() : ''
-      const rawName = mapping.full_name ? String(r[mapping.full_name] ?? '').trim() : ''
-      const fullName = rawName || sanitizePhone(phoneRaw) || ''
-      const apt = mapping.apartment_number ? String(r[mapping.apartment_number] ?? '').trim() : ''
-      const notes = mapping.notes ? String(r[mapping.notes] ?? '').trim() : ''
-
-      const projectCode =
-        forcedProjectCode ||
-        (mapping.project_code ? String(r[mapping.project_code] ?? '').trim() : '')
-      const projectName =
-        forcedProjectName ||
-        (mapping.project_name ? String(r[mapping.project_name] ?? '').trim() : '')
-
-      return {
-        full_name: fullName,
-        phone: phoneRaw ? sanitizePhone(phoneRaw) : '',
-        apartment_number: apt,
-        notes,
-        project_code: projectCode,
-        project_name: projectName,
-      }
+    return buildResidentsImportPayload(rows, mapping, {
+      forcedProjectCode: project?.project_code || null,
+      forcedProjectName: project?.name || null,
     })
-
-    return out
   }
 
   async function doImport() {
@@ -424,21 +358,13 @@ export function ImportResidentsModal({
                   <tbody>
                     {preview.map((r, i) => (
                       <tr key={i}>
-                        <td style={styles.td}>{String(r[mapping.full_name] ?? '')}</td>
-                        <td style={styles.td}>
-                          {mapping.phone ? String(r[mapping.phone] ?? '') : ''}
-                        </td>
-                        <td style={styles.td}>
-                          {mapping.apartment_number ? String(r[mapping.apartment_number] ?? '') : ''}
-                        </td>
+                        <td style={styles.td}>{r.full_name}</td>
+                        <td style={styles.td}>{r.phone}</td>
+                        <td style={styles.td}>{r.apartment_number}</td>
                         <td style={styles.td}>
                           {singleProjectId
                             ? projects.find((p) => p.id === singleProjectId)?.name || ''
-                            : mapping.project_code
-                              ? String(r[mapping.project_code] ?? '')
-                              : mapping.project_name
-                                ? String(r[mapping.project_name] ?? '')
-                                : ''}
+                            : r.project_name || r.project_code || ''}
                         </td>
                       </tr>
                     ))}
