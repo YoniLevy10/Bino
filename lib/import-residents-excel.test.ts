@@ -78,4 +78,34 @@ describe('import-residents-excel', () => {
     const mapping = guessResidentsColumnMapping(['שם', 'טלפון', 'דירה'])
     expect(mapping.full_name).toBe('שם')
   })
+
+  it('reads primary phone when sheet has duplicate טלפון/שם/מייל columns', () => {
+    const { rows, mapping } = parseResidentsWorkbook(
+      workbookBuffer([
+        ['דירה', 'שם', 'טלפון', 'מייל', 'שם', 'טלפון', 'סטטוס', 'בעלים', 'טלפון', 'מייל'],
+        ['1', 'כהן סימון', '050-2377750', 'mscohad@gmail.com', '', '', '', '', '', ''],
+        ['2', 'אסואד מיקי', '054-6649957', 'm@b.com', 'אסואד דינה', '050-8900288', '', '', '', ''],
+      ])
+    )
+
+    expect(mapping.full_name).toBe('שם')
+    expect(mapping.phone).toBe('טלפון')
+    expect(mapping.apartment_number).toBe('דירה')
+
+    const payload = buildResidentsImportPayload(rows, mapping, {
+      forcedProjectName: 'מקור חיים 40 א',
+    })
+
+    expect(payload).toHaveLength(2)
+    expect(payload[0]).toMatchObject({
+      full_name: 'כהן סימון',
+      phone: '0502377750',
+      apartment_number: '1',
+    })
+    expect(payload[1]).toMatchObject({
+      full_name: 'אסואד מיקי',
+      phone: '0546649957',
+      apartment_number: '2',
+    })
+  })
 })
