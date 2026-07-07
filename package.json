@@ -19,7 +19,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "import:residents-pdf": "tsx scripts/import-residents-from-pdf.ts"
+    "import:residents-pdf": "npx tsx scripts/import-residents-from-pdf.ts",
+    "import:residents-sql": "npx tsx scripts/generate-residents-import-sql.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
