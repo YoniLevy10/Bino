@@ -255,7 +255,127 @@ LEFT JOIN db_norm d ON d.norm = p.match_norm
 WHERE d.norm IS NULL;
 `
   fs.writeFileSync(path.resolve('data/preview-unmatched-buildings.sql'), previewSql, 'utf-8')
+
+  const missingSql = `-- Bamakor: PDF residents missing from DB (${rows.length} rows in PDF, ${pdfProjects.size} buildings)
+-- client_id: ${clientId}
+-- Run in Supabase SQL Editor BEFORE import-residents.sql.
+--
+-- 1) summary — missing_count should go to 0 after import
+-- 2) missing_rows — who will be inserted
+-- 3) unmatched_buildings — fix project names first (expect 0 rows)
+-- 4) pdf_vs_db_counts — compare per building
+
+WITH pdf_rows (
+  pdf_project,
+  pdf_project_norm,
+  apartment_number,
+  full_name,
+  phone,
+  normalized_phone,
+  email,
+  is_renter,
+  notes
+) AS (
+  VALUES
+${valueLines.join(',\n')}
+),
+projects_norm AS (
+  SELECT
+    p.id,
+    p.name,
+    lower(
+      trim(
+        regexp_replace(
+          regexp_replace(
+            regexp_replace(trim(regexp_replace(p.name, '\\s+', ' ', 'g')), '\\s+([א-ת])$', '\\1'),
+            '([0-9])\\s+([א-ת])', '\\1\\2', 'g'
+          ),
+          '\\s*-\\s*', ' ', 'g'
+        )
+      )
+    ) AS norm_name
+  FROM projects p
+  WHERE p.client_id = ${sqlStr(clientId)}::uuid
+    AND p.is_active = true
+),
+matched AS (
+  SELECT
+    pr.*,
+    pn.id AS project_id,
+    pn.name AS db_project_name
+  FROM pdf_rows pr
+  JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
+),
+in_db AS (
+  SELECT m.*
+  FROM matched m
+  WHERE EXISTS (
+    SELECT 1 FROM residents r
+    WHERE r.client_id = ${sqlStr(clientId)}::uuid
+      AND r.deleted_at IS NULL
+      AND r.project_id = m.project_id
+      AND (
+        (
+          m.normalized_phone IS NOT NULL
+          AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone)
+          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+        )
+        OR (
+          m.normalized_phone IS NULL
+          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+          AND lower(trim(r.full_name)) = lower(trim(m.full_name))
+        )
+      )
+  )
+),
+missing AS (
+  SELECT m.*
+  FROM matched m
+  WHERE NOT EXISTS (SELECT 1 FROM in_db i WHERE i.pdf_project = m.pdf_project AND i.apartment_number = m.apartment_number AND i.full_name = m.full_name)
+)
+
+-- ── 1) Summary ─────────────────────────────────────────────────────────────
+SELECT
+  (SELECT COUNT(*) FROM pdf_rows) AS pdf_total_rows,
+  (SELECT COUNT(*) FROM matched) AS pdf_matched_to_project,
+  (SELECT COUNT(*) FROM in_db) AS already_in_db,
+  (SELECT COUNT(*) FROM missing) AS missing_count,
+  (SELECT COUNT(*) FROM pdf_rows) - (SELECT COUNT(*) FROM matched) AS pdf_unmatched_building_rows;
+
+-- ── 2) Missing residents (run import-residents.sql to add these) ───────────
+SELECT
+  db_project_name AS building,
+  apartment_number AS apt,
+  full_name,
+  phone,
+  is_renter
+FROM missing
+ORDER BY db_project_name, apartment_number, full_name;
+
+-- ── 3) PDF rows with no matching project in DB ─────────────────────────────
+SELECT DISTINCT pr.pdf_project AS building_in_pdf_not_in_db
+FROM pdf_rows pr
+LEFT JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
+WHERE pn.id IS NULL
+ORDER BY 1;
+
+-- ── 4) Count per building: PDF vs DB ─────────────────────────────────────
+SELECT
+  COALESCE(m.db_project_name, pr.pdf_project) AS building,
+  COUNT(DISTINCT (pr.apartment_number, pr.full_name)) AS pdf_rows,
+  COUNT(DISTINCT (i.apartment_number, i.full_name)) FILTER (WHERE i.full_name IS NOT NULL) AS in_db_rows,
+  COUNT(DISTINCT (miss.apartment_number, miss.full_name)) FILTER (WHERE miss.full_name IS NOT NULL) AS missing_rows
+FROM pdf_rows pr
+LEFT JOIN matched m ON m.pdf_project = pr.pdf_project AND m.apartment_number = pr.apartment_number AND m.full_name = pr.full_name
+LEFT JOIN in_db i ON i.pdf_project = pr.pdf_project AND i.apartment_number = pr.apartment_number AND i.full_name = pr.full_name
+LEFT JOIN missing miss ON miss.pdf_project = pr.pdf_project AND miss.apartment_number = pr.apartment_number AND miss.full_name = pr.full_name
+GROUP BY COALESCE(m.db_project_name, pr.pdf_project)
+ORDER BY 1;
+`
+  fs.writeFileSync(path.resolve('data/verify-residents-missing.sql'), missingSql, 'utf-8')
+
   console.log(`Wrote ${rows.length} rows -> ${out}`)
+  console.log(`Wrote verify -> data/verify-residents-missing.sql`)
   console.log(`PDF buildings: ${pdfProjects.size}`)
 }
 

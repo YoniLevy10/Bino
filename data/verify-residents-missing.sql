@@ -1,20 +1,11 @@
--- Bamakor: import residents from directory PDF (688 rows, 20 buildings)
--- Run in Supabase SQL Editor. Does NOT create projects — only matches existing project names.
+-- Bamakor: PDF residents missing from DB (688 rows in PDF, 20 buildings)
 -- client_id: 7573f5ad-70e5-4357-8fef-1d96ec38d169
+-- Run in Supabase SQL Editor BEFORE import-residents.sql.
 --
--- 1) Run data/drop-resident-global-phone-unique.sql (allows same phone in multiple apartments).
--- 2) Review unmatched buildings (should return 0 rows): data/preview-unmatched-buildings.sql
--- 3) Run full script (BEGIN…COMMIT).
-
-BEGIN;
-
--- Soft-delete empty placeholder rows from failed Excel import (optional)
-UPDATE residents
-SET deleted_at = NOW()
-WHERE client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid
-  AND deleted_at IS NULL
-  AND full_name IN ('דייר ללא שם', 'דייר WhatsApp')
-  AND (phone IS NULL OR phone = '');
+-- 1) summary — missing_count should go to 0 after import
+-- 2) missing_rows — who will be inserted
+-- 3) unmatched_buildings — fix project names first (expect 0 rows)
+-- 4) pdf_vs_db_counts — compare per building
 
 WITH pdf_rows (
   pdf_project,
@@ -744,10 +735,10 @@ matched AS (
   FROM pdf_rows pr
   JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
 ),
-not_in_db AS (
+in_db AS (
   SELECT m.*
   FROM matched m
-  WHERE NOT EXISTS (
+  WHERE EXISTS (
     SELECT 1 FROM residents r
     WHERE r.client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid
       AND r.deleted_at IS NULL
@@ -766,104 +757,46 @@ not_in_db AS (
       )
   )
 ),
-to_insert AS (
-  SELECT DISTINCT ON (
-    project_id,
-    lower(trim(apartment_number)),
-    lower(trim(full_name))
-  )
-    project_id,
-    db_project_name,
-    full_name,
-    phone,
-    normalized_phone,
-    email,
-    apartment_number,
-    notes,
-    is_renter
-  FROM not_in_db
-  ORDER BY
-    project_id,
-    lower(trim(apartment_number)),
-    lower(trim(full_name))
+missing AS (
+  SELECT m.*
+  FROM matched m
+  WHERE NOT EXISTS (SELECT 1 FROM in_db i WHERE i.pdf_project = m.pdf_project AND i.apartment_number = m.apartment_number AND i.full_name = m.full_name)
 )
-INSERT INTO residents (
-  client_id,
-  project_id,
-  full_name,
-  phone,
-  normalized_phone,
-  email,
-  apartment_number,
-  notes,
-  is_renter
-)
+
+-- ── 1) Summary ─────────────────────────────────────────────────────────────
 SELECT
-  '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid,
-  project_id,
+  (SELECT COUNT(*) FROM pdf_rows) AS pdf_total_rows,
+  (SELECT COUNT(*) FROM matched) AS pdf_matched_to_project,
+  (SELECT COUNT(*) FROM in_db) AS already_in_db,
+  (SELECT COUNT(*) FROM missing) AS missing_count,
+  (SELECT COUNT(*) FROM pdf_rows) - (SELECT COUNT(*) FROM matched) AS pdf_unmatched_building_rows;
+
+-- ── 2) Missing residents (run import-residents.sql to add these) ───────────
+SELECT
+  db_project_name AS building,
+  apartment_number AS apt,
   full_name,
   phone,
-  normalized_phone,
-  email,
-  NULLIF(trim(apartment_number), ''),
-  notes,
   is_renter
-FROM to_insert;
+FROM missing
+ORDER BY db_project_name, apartment_number, full_name;
 
-COMMIT;
+-- ── 3) PDF rows with no matching project in DB ─────────────────────────────
+SELECT DISTINCT pr.pdf_project AS building_in_pdf_not_in_db
+FROM pdf_rows pr
+LEFT JOIN projects_norm pn ON pn.norm_name = pr.pdf_project_norm
+WHERE pn.id IS NULL
+ORDER BY 1;
 
--- ── Verification (run after commit) ────────────────────────────────────────
-
--- Count by building
-SELECT p.name, COUNT(r.id) AS residents
-FROM projects p
-LEFT JOIN residents r ON r.project_id = p.id AND r.deleted_at IS NULL
-WHERE p.client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid
-  AND p.is_active = true
-GROUP BY p.name
-ORDER BY p.name;
-
--- PDF buildings with no matching project (should be empty)
-WITH pdf_projects AS (
-  SELECT unnest(ARRAY[
-    'מקור חיים 40א',
-    'מקור חיים 40ב',
-    'מקור חיים 37',
-    'מקור חיים 39',
-    'מקור חיים 41',
-    'מקור חיים 43',
-    'מקור חיים 12א',
-    'אביטל 13א',
-    'אביטל 13ב',
-    'דרך בית לחם 94',
-    'חלץ 10',
-    'חלץ 12',
-    'רות 3',
-    'אפרים 8',
-    'מנשה 8',
-    'ראובן 14',
-    'בוזגלו 4',
-    'מקור חיים 62',
-    'אלרואי 5א',
-    'אלרואי 5ג'
-  ]) AS match_norm
-),
-projects_norm AS (
-  SELECT lower(
-    trim(
-      regexp_replace(
-        regexp_replace(
-          regexp_replace(trim(regexp_replace(name, '\s+', ' ', 'g')), '\s+([א-ת])$', '\1'),
-          '([0-9])\s+([א-ת])', '\1\2', 'g'
-        ),
-        '\s*-\s*', ' ', 'g'
-      )
-    )
-  ) AS norm_name
-  FROM projects
-  WHERE client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid AND is_active = true
-)
-SELECT pp.match_norm AS unmatched_pdf_building_norm
-FROM pdf_projects pp
-LEFT JOIN projects_norm pn ON pn.norm_name = pp.match_norm
-WHERE pn.norm_name IS NULL;
+-- ── 4) Count per building: PDF vs DB ─────────────────────────────────────
+SELECT
+  COALESCE(m.db_project_name, pr.pdf_project) AS building,
+  COUNT(DISTINCT (pr.apartment_number, pr.full_name)) AS pdf_rows,
+  COUNT(DISTINCT (i.apartment_number, i.full_name)) FILTER (WHERE i.full_name IS NOT NULL) AS in_db_rows,
+  COUNT(DISTINCT (miss.apartment_number, miss.full_name)) FILTER (WHERE miss.full_name IS NOT NULL) AS missing_rows
+FROM pdf_rows pr
+LEFT JOIN matched m ON m.pdf_project = pr.pdf_project AND m.apartment_number = pr.apartment_number AND m.full_name = pr.full_name
+LEFT JOIN in_db i ON i.pdf_project = pr.pdf_project AND i.apartment_number = pr.apartment_number AND i.full_name = pr.full_name
+LEFT JOIN missing miss ON miss.pdf_project = pr.pdf_project AND miss.apartment_number = pr.apartment_number AND miss.full_name = pr.full_name
+GROUP BY COALESCE(m.db_project_name, pr.pdf_project)
+ORDER BY 1;

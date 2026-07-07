@@ -586,12 +586,30 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "9",
+    "full_name": "קראני פולק",
+    "phone": "001 (610) 7452658",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יואל הקר"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "10",
     "full_name": "פישר ראובן",
     "phone": "054-660-0112",
     "email": "reuf10@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: לוי דניאל | אימייל בעלים: dlevy@cofigestion.com"
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "10",
+    "full_name": "פישר בת זוג",
+    "phone": "054-6242627",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של פישר ראובן"
   },
   {
     "project_name": "מקור חיים 37",
@@ -623,11 +641,20 @@
   {
     "project_name": "מקור חיים 37",
     "apartment_number": "14",
-    "full_name": "אלבאום אריאל",
+    "full_name": "אלבאום יעל",
     "phone": "052-3328419",
     "email": "ariel@elbaumlaw.co.il",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "14",
+    "full_name": "אלבאום אריאל",
+    "phone": "052-2602897",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אלבאום יעל"
   },
   {
     "project_name": "מקור חיים 37",
@@ -640,12 +667,30 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "15",
+    "full_name": "רוזי נתן",
+    "phone": "054-3344230",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ארנולד נתן"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "16",
     "full_name": "גוגנהיים ג'ק",
     "phone": "001(202)5986864",
     "email": "jack.guggenheim@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "16",
+    "full_name": "גוגנהיים מרים",
+    "phone": "001 (301) 6416667",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גוגנהיים ג'ק"
   },
   {
     "project_name": "מקור חיים 37",
@@ -658,12 +703,30 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "17",
+    "full_name": "סיבוני שני",
+    "phone": "054-5855306",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שמואל סיבוני"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "18",
     "full_name": "סופי יעל ניימן",
     "phone": "052-3796414",
     "email": "msyael@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: גוחין אוריאל | אימייל בעלים: urielg@dotcorp.co.za"
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "18",
+    "full_name": "דוד ניימן",
+    "phone": "054-7496043",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של סופי יעל ניימן"
   },
   {
     "project_name": "מקור חיים 37",
@@ -676,6 +739,15 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "19",
+    "full_name": "לורה יפה",
+    "phone": "058-7137237",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יפה ויין"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "20",
     "full_name": "לוי מרק",
     "phone": "054-5634469",
@@ -685,12 +757,30 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "20",
+    "full_name": "לוי הלן",
+    "phone": "058-4075975",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של לוי מרק"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "21",
     "full_name": "קורמן הווארד",
-    "phone": "054-4793384",
+    "phone": "052-8165997",
     "email": "Hkorman1@comcast.net",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "21",
+    "full_name": "קורמן בת זוג",
+    "phone": "001 (248) 8080456",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של קורמן הווארד"
   },
   {
     "project_name": "מקור חיים 37",
@@ -703,12 +793,30 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "22",
+    "full_name": "גוטמן אילנה",
+    "phone": "054-7795770",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גוטמן נוח"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "23",
     "full_name": "שריזן ברוס",
     "phone": "+1 (248) 417-3470",
     "email": "bdov22@hotmail.com",
     "is_renter": true,
     "notes": "בעל דירה: גולדשטיין אבידב | טלפון בעלים: 050-8549687 | אימייל בעלים: avidav.hadar@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "23",
+    "full_name": "שריזן אסתר",
+    "phone": "001 (248)2524826",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שריזן ברוס"
   },
   {
     "project_name": "מקור חיים 37",
@@ -721,6 +829,15 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "24",
+    "full_name": "האני קלר בלוך",
+    "phone": "054-4452518",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של יואל בלוך"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "25",
     "full_name": "פיקרסקי אלון",
     "phone": "050-7874229",
@@ -730,21 +847,48 @@
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "25",
+    "full_name": "פיקרסקי ליאת",
+    "phone": "050-8946418",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של פיקרסקי אלון"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "26",
     "full_name": "בורשטיין סילבן",
-    "phone": "054-4580052",
+    "phone": "054-6853818",
     "email": "rosysylvain@gmail.com",
     "is_renter": false,
     "notes": ""
   },
   {
     "project_name": "מקור חיים 37",
+    "apartment_number": "26",
+    "full_name": "בורשטיין רוזי",
+    "phone": "054-74004818",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של בורשטיין סילבן"
+  },
+  {
+    "project_name": "מקור חיים 37",
     "apartment_number": "27",
     "full_name": "טולדנו חנה",
-    "phone": "054-5942455",
+    "phone": "058-5810633",
     "email": "ann.toledano@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "27",
+    "full_name": "דניאל טולדנו",
+    "phone": "058-6810633",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של טולדנו חנה"
   },
   {
     "project_name": "מקור חיים 37",
@@ -754,6 +898,15 @@
     "email": "esplumia@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: זגרון אביאל | אימייל בעלים: datsiv26@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 37",
+    "apartment_number": "28",
+    "full_name": "בן שושן מיכאל",
+    "phone": "054-3615749",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של בן שושן ג'ואנה"
   },
   {
     "project_name": "מקור חיים 39",
@@ -766,12 +919,30 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "1",
+    "full_name": "ברגר מיכאל",
+    "phone": "052-7539563",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ברגר יעל"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "2",
     "full_name": "חייט משה אברהם",
     "phone": "058-7850722",
     "email": "Moshavram.hayat@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "2",
+    "full_name": "חייט גאל",
+    "phone": "058-7967821",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של חייט משה אברהם"
   },
   {
     "project_name": "מקור חיים 39",
@@ -784,12 +955,30 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "3",
+    "full_name": "אנסבכר דוד",
+    "phone": "054-2280293",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אנסבכר נעומי"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "4",
     "full_name": "כהן דבי",
     "phone": "054-7668765",
     "email": "debby.cohen@ymail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "4",
+    "full_name": "סמי כהן",
+    "phone": "054-6655707",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של כהן דבי"
   },
   {
     "project_name": "מקור חיים 39",
@@ -802,6 +991,15 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "5",
+    "full_name": "ברמן ג'ודי",
+    "phone": "001 (301) 300 3044",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ברמן דוד"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "6",
     "full_name": "וולף דניס צבי",
     "phone": "052-2389946",
@@ -811,12 +1009,30 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "6",
+    "full_name": "וולף פרנסיז",
+    "phone": "052-4447104",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של וולף דניס צבי"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "7",
     "full_name": "גרינוולד מאיר",
     "phone": "058-7445903",
     "email": "Mhg613@aol.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "7",
+    "full_name": "ציונה גרינוולד",
+    "phone": "058-5617640",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גרינוולד מאיר"
   },
   {
     "project_name": "מקור חיים 39",
@@ -838,12 +1054,30 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "9",
+    "full_name": "אזולאי נטשה",
+    "phone": "050-7583875",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אזולאי יוסף"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "10",
     "full_name": "ברודי דינה",
     "phone": "054-3435771",
     "email": "denasgbrody@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "10",
+    "full_name": "רפי שווייל ברודי",
+    "phone": "058-7166439",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ברודי דינה"
   },
   {
     "project_name": "מקור חיים 39",
@@ -856,6 +1090,15 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "11",
+    "full_name": "רפי שווייל ברודי",
+    "phone": "058-7166439",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ברודי דינה"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "12",
     "full_name": "שלה פביאר",
     "phone": "052-5320482",
@@ -865,12 +1108,30 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "12",
+    "full_name": "דניאל שרייבר",
+    "phone": "054-9222102",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שלה פביאר"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "13",
     "full_name": "אלקיים יוסף",
     "phone": "054-2111256",
     "email": "jelkaim@hotmail.fr",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "13",
+    "full_name": "מוניק אלקיים",
+    "phone": "054-521104",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אלקיים יוסף"
   },
   {
     "project_name": "מקור חיים 39",
@@ -885,10 +1146,19 @@
     "project_name": "מקור חיים 39",
     "apartment_number": "15",
     "full_name": "גרנות יוסי",
-    "phone": "050-2208444",
+    "phone": "050-8685427",
     "email": "yossigranot@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "15",
+    "full_name": "גרנות פנינה",
+    "phone": "050-2208444",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גרנות יוסי"
   },
   {
     "project_name": "מקור חיים 39",
@@ -902,11 +1172,20 @@
   {
     "project_name": "מקור חיים 39",
     "apartment_number": "17",
-    "full_name": "אדוארד מרסי",
+    "full_name": "לנק מרסי",
     "phone": "054-6614866",
     "email": "marcielenk@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: כהן אודליה | טלפון בעלים: 054-4731799 | אימייל בעלים: odeliah7@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "17",
+    "full_name": "אדוארד לנק",
+    "phone": "053-9533407",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של לנק מרסי"
   },
   {
     "project_name": "מקור חיים 39",
@@ -925,6 +1204,15 @@
     "email": "smhome@netvision.net.il",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "19",
+    "full_name": "סודנהלם מיכאל",
+    "phone": "54-5212606",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של סודנהלם שלומית"
   },
   {
     "project_name": "מקור חיים 39",
@@ -955,21 +1243,48 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "22",
+    "full_name": "מרגליות יפי",
+    "phone": "054-5665435",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מרגליות יעקב"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "23",
     "full_name": "בלום אריאל",
-    "phone": "054-7424587",
+    "phone": "054-3067967",
     "email": "gwend@walla.co.il",
     "is_renter": false,
     "notes": ""
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "23",
+    "full_name": "בלום מנו",
+    "phone": "053-7691585",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של בלום אריאל"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "24",
-    "full_name": "יונתן שטרס",
+    "full_name": "ג'וני שטרס",
     "phone": "053-2700459",
     "email": "elishevastross@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: רולנד פרטוק | אימייל בעלים: eli@bbadv.co.il"
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "24",
+    "full_name": "שטרס אלישבע",
+    "phone": "055-9398354",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של ג'וני שטרס"
   },
   {
     "project_name": "מקור חיים 39",
@@ -982,12 +1297,30 @@
   },
   {
     "project_name": "מקור חיים 39",
+    "apartment_number": "25",
+    "full_name": "יעקב הדני",
+    "phone": "052-4295450",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של הדני ניצה"
+  },
+  {
+    "project_name": "מקור חיים 39",
     "apartment_number": "26",
     "full_name": "וייס אבי",
     "phone": "054-5333170",
     "email": "eli@bbadv.co.il",
     "is_renter": true,
     "notes": "בעל דירה: לוי סטפן אילן | אימייל בעלים: eli@bbadv.co.il"
+  },
+  {
+    "project_name": "מקור חיים 39",
+    "apartment_number": "26",
+    "full_name": "וייס רוחי",
+    "phone": "054-7872401",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של וייס אבי"
   },
   {
     "project_name": "מקור חיים 41",
@@ -1963,6 +2296,15 @@
   },
   {
     "project_name": "דרך בית לחם 94",
+    "apartment_number": "1",
+    "full_name": "מיכה",
+    "phone": "054-7887317",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של בת-שבע מגן"
+  },
+  {
+    "project_name": "דרך בית לחם 94",
     "apartment_number": "2",
     "full_name": "הרצל כהן",
     "phone": "0537767788",
@@ -2224,12 +2566,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "1",
+    "full_name": "דוד כהן",
+    "phone": "0033 (660)440265",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יצחק כהן"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "2",
     "full_name": "גיא ווירג'יני כהן",
     "phone": "0543171845",
     "email": "guyltd1@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "2",
+    "full_name": "ווירגיני זוהר כהן",
+    "phone": "054-3171858",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גיא ווירג'יני כהן"
   },
   {
     "project_name": "חלץ 10",
@@ -2242,6 +2602,15 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "3",
+    "full_name": "ניב יהושוע דרייפוס",
+    "phone": "054-3118575",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של גיל יהושע דרייפוס"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "4",
     "full_name": "שלומית קופמן",
     "phone": "0507201469",
@@ -2251,12 +2620,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "4",
+    "full_name": "נתנאל קופמן",
+    "phone": "054-3378909",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של שלומית קופמן"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "5",
     "full_name": "יעל ודניאל חדמי משען",
     "phone": "0587416666",
     "email": "michaany@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "5",
+    "full_name": "דניאל חדמי",
+    "phone": "054-5326683",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יעל ודניאל חדמי משען"
   },
   {
     "project_name": "חלץ 10",
@@ -2287,12 +2674,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "8",
+    "full_name": "טליה יוסף",
+    "phone": "055-6672087",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יוסף דניאל וטליה"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "9",
     "full_name": "דבורה ליפשיץ",
     "phone": "0503822844",
     "email": "dvoralipshitz@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "9",
+    "full_name": "ליפשיץ",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של דבורה ליפשיץ"
   },
   {
     "project_name": "חלץ 10",
@@ -2305,12 +2710,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "10",
+    "full_name": "מישל סבג",
+    "phone": "054-5531429",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גיא סבג"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "11",
     "full_name": "אסתר משה ביטון",
     "phone": "0526130015",
     "email": "ilanab2012@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "11",
+    "full_name": "משה ביטון",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אסתר משה ביטון"
   },
   {
     "project_name": "חלץ 10",
@@ -2332,6 +2755,15 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "13",
+    "full_name": "ברכה ויצחק צוריאל",
+    "phone": "017 (6) 29866",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ג'ררד ובטי ווינדלינג"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "14",
     "full_name": "בנימין מרדכי",
     "phone": "0544534275",
@@ -2347,6 +2779,15 @@
     "email": "itayb@jbank.co.il",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "15",
+    "full_name": "אפרת בן מנחם",
+    "phone": "053-3410091",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של איתי ואפרת בן מנחם"
   },
   {
     "project_name": "חלץ 10",
@@ -2368,12 +2809,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "17",
+    "full_name": "פאולה אן רוזנבלום",
+    "phone": "052-8198363",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של שמואל ופאולה אן רוזנבלום"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "18",
     "full_name": "ירדן דיין",
     "phone": "0535270113",
     "email": "jsdayan@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: לאה )מתווכת שאחראית על הדירה( | טלפון בעלים: 058-5862106 | אימייל בעלים: tivuchlev@gmail.com"
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "18",
+    "full_name": "מיכל דיין",
+    "phone": "053-8506117",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של ירדן דיין"
   },
   {
     "project_name": "חלץ 10",
@@ -2386,6 +2845,15 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "19",
+    "full_name": "יואל ג'ביט",
+    "phone": "058-5147142",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של קים גיביט"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "20",
     "full_name": "סטנלי שרון אפשטיין",
     "phone": "0544759881",
@@ -2395,12 +2863,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "20",
+    "full_name": "סנטלי אפשטיין",
+    "phone": "054-4761855",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של סטנלי שרון אפשטיין"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "21",
     "full_name": "אסתר ובן ציון סלנט",
     "phone": "0547640692",
     "email": "bsalant@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "21",
+    "full_name": "בן ציון",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אסתר ובן ציון סלנט"
   },
   {
     "project_name": "חלץ 10",
@@ -2440,12 +2926,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "25",
+    "full_name": "עמנואל רוזנבליט",
+    "phone": "050-6242743",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מירה רוזנבליט"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "26",
     "full_name": "נטלי רוחמה ופרדי בוקריס",
     "phone": "0585526062",
     "email": "scootercenters@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "26",
+    "full_name": "נטלי בוקריס",
+    "phone": "058-7265255",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של נטלי רוחמה ופרדי בוקריס"
   },
   {
     "project_name": "חלץ 10",
@@ -2467,12 +2971,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "28",
+    "full_name": "ברנדה בראשר ווייל",
+    "phone": "054-557340",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מיכאל ויעקב וייל"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "29",
     "full_name": "אילן וחדוה אלקן",
     "phone": "0505386827",
     "email": "hedva.elkan@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "29",
+    "full_name": "אילן אלקן",
+    "phone": "052-4708802",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אילן וחדוה אלקן"
   },
   {
     "project_name": "חלץ 10",
@@ -2485,12 +3007,30 @@
   },
   {
     "project_name": "חלץ 10",
+    "apartment_number": "30",
+    "full_name": "אהרון שמחה",
+    "phone": "0033 (1) 3234283348",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אהרון שמחה מרסי ריס"
+  },
+  {
+    "project_name": "חלץ 10",
     "apartment_number": "31",
     "full_name": "יהודה ורות וינקלר",
     "phone": "0509240128",
     "email": "ruthvinkler@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 10",
+    "apartment_number": "31",
+    "full_name": "רות וינקלר",
+    "phone": "050-5796374",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יהודה ורות וינקלר"
   },
   {
     "project_name": "חלץ 12",
@@ -2503,12 +3043,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "1",
+    "full_name": "חני שמעוני",
+    "phone": "050-6208188",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של גילי שמעוני"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "2",
-    "full_name": "לירון ומלכי בן זיקרי",
+    "full_name": "לירון בן זיקרי",
     "phone": "0549777444",
     "email": "liron@newdeli.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "2",
+    "full_name": "מלכי בן זיקרי",
+    "phone": "052-3441234",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של לירון בן זיקרי"
   },
   {
     "project_name": "חלץ 12",
@@ -2518,6 +3076,15 @@
     "email": "ainatcd@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "3",
+    "full_name": "דניאל כהן",
+    "phone": "050-8636339",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של עינת ודניאל אהרון כהן"
   },
   {
     "project_name": "חלץ 12",
@@ -2539,6 +3106,15 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "5",
+    "full_name": "דניאל לוי",
+    "phone": "052-8513510",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ליז ודניאל לוי"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "6",
     "full_name": "יונה מנדל",
     "phone": "054-4433027",
@@ -2557,12 +3133,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "7",
+    "full_name": "גייל לסטר",
+    "phone": "054-4634633",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של משה וגייל לסטר"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "8",
     "full_name": "חנה רובי קורליץ",
     "phone": "0587981912",
     "email": "korelitzh@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "8",
+    "full_name": "רובי קורליץ",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של חנה רובי קורליץ"
   },
   {
     "project_name": "חלץ 12",
@@ -2575,12 +3169,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "9",
+    "full_name": "יגאל זדה",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יגאל ושרה זדה"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "10",
     "full_name": "בנלולו אברהם, איזבל אלין",
     "phone": "0538925422",
     "email": "lionelbabel@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "10",
+    "full_name": "אבהרם בנלולו",
+    "phone": "0033 (6) 12187513",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של בנלולו אברהם, איזבל אלין"
   },
   {
     "project_name": "חלץ 12",
@@ -2593,12 +3205,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "11",
+    "full_name": "קורה רבינוביץ",
+    "phone": "054-9356804",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גידעון רבינוביץ"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "12",
     "full_name": "אלן ניסים ומרלין חדד",
     "phone": "0543034203",
     "email": "haddad.alain@sfr.fr",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "12",
+    "full_name": "חדד",
+    "phone": "058-4021696",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אלן ניסים ומרלין חדד"
   },
   {
     "project_name": "חלץ 12",
@@ -2611,12 +3241,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "13",
+    "full_name": "ג'קי אנסבכר",
+    "phone": "054-8141437",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ג'קי ומרטין אנסבכר"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "14",
     "full_name": "ורוניק ומיכאל טייב",
     "phone": "054-6051128",
     "email": "mtaieb@solutionpartners.fr",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "14",
+    "full_name": "מיכאל טייב",
+    "phone": "0033 (6) 60882820",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ורוניק ומיכאל טייב"
   },
   {
     "project_name": "חלץ 12",
@@ -2638,6 +3286,15 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "16",
+    "full_name": "חנה סורקיס",
+    "phone": "052-4235307",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של חנה וראוובן סורקיס"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "17",
     "full_name": "אשר ודניאלה סייה",
     "phone": "0544891145",
@@ -2647,12 +3304,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "17",
+    "full_name": "אשר סייה",
+    "phone": "054-4891145",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אשר ודניאלה סייה"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "18",
     "full_name": "עדינה וחנן מזל",
     "phone": "054-6374751",
     "email": "mazalart@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "18",
+    "full_name": "עדינה מזל",
+    "phone": "054-6374750",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של עדינה וחנן מזל"
   },
   {
     "project_name": "חלץ 12",
@@ -2683,6 +3358,15 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "21",
+    "full_name": "ווינדי שוטנשטיין",
+    "phone": "052-3875143",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ריצ'רד שוטנשטיין"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "22",
     "full_name": "חביב הרווא",
     "phone": "058-7045206",
@@ -2701,12 +3385,30 @@
   },
   {
     "project_name": "חלץ 12",
+    "apartment_number": "23",
+    "full_name": "מרדכי שפיצר",
+    "phone": "052-4209898",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מרדכי שפיצר"
+  },
+  {
+    "project_name": "חלץ 12",
     "apartment_number": "24",
     "full_name": "זייתון יוסף ואליזבט",
     "phone": "0033609526224",
     "email": "vatine@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "חלץ 12",
+    "apartment_number": "24",
+    "full_name": "אלי זייתון",
+    "phone": "058-5195863",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של זייתון יוסף ואליזבט"
   },
   {
     "project_name": "רות 3",
@@ -2838,7 +3540,7 @@
     "project_name": "אפרים 8",
     "apartment_number": "6",
     "full_name": "לביא רחל /אפריים 8",
-    "phone": "",
+    "phone": "054-4468960",
     "email": "rachel.lavie25@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: גרוייר/א6 | טלפון בעלים: +1 (917) 701-2687 | אימייל בעלים: Yessaccounting@yahoo.com"
@@ -2846,8 +3548,8 @@
   {
     "project_name": "אפרים 8",
     "apartment_number": "6",
-    "full_name": "גרוייר/א6",
-    "phone": "+1 (917) 701-2687",
+    "full_name": "איתמר לביא",
+    "phone": "050-6966544",
     "email": "",
     "is_renter": true,
     "notes": "בן/בת זוג של לביא רחל /אפריים 8"
@@ -3043,6 +3745,15 @@
   },
   {
     "project_name": "ראובן 14",
+    "apartment_number": "7",
+    "full_name": "צביקה דיאמנט",
+    "phone": "054-2888126",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של יוכי דיאמנט/ראובן 14"
+  },
+  {
+    "project_name": "ראובן 14",
     "apartment_number": "8",
     "full_name": "ברטמן אוגינה/ראובן 14",
     "phone": "02-6713381",
@@ -3084,14 +3795,14 @@
     "phone": "0533496290",
     "email": "emiliemichelle@hotmail.fr",
     "is_renter": true,
-    "notes": "בעל דירה: שלומי יפא-נתנאל | טלפון בעלים: 0506206839"
+    "notes": "בעל דירה: שלומי יפא-נתנאל | טלפון בעלים: 0506206839 | אימייל בעלים: shlomiyaffe@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
     "apartment_number": "3",
     "full_name": "רחל משעלי",
     "phone": "0544944008",
-    "email": "rachelmishali@93gmail.com",
+    "email": "rachelmishali93@gmail.com",
     "is_renter": false,
     "notes": ""
   },
@@ -3103,6 +3814,15 @@
     "email": "shira56@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "4",
+    "full_name": "אברמוביץ אבינועם",
+    "phone": "050-3622281",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אברמוביץ שירה"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3147,7 +3867,16 @@
     "phone": "0542043800",
     "email": "estherleviner@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: אסתר לוין | טלפון בעלים: 0542043800"
+    "notes": "בעל דירה: אסתר לוין | טלפון בעלים: 0542043800 | אימייל בעלים: estherleviner@gmail.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "9",
+    "full_name": "יהודה שמולוביץ",
+    "phone": "050-2942211",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אסתר לוין"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3157,6 +3886,15 @@
     "email": "david.merran@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: שרה ואנונו )על שם ביתה בטי( | טלפון בעלים: 0502282900"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "10",
+    "full_name": "ג'סיקה מרן",
+    "phone": "053-7915728",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של דוד מרן"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3174,7 +3912,7 @@
     "phone": "0546454875",
     "email": "yoram@hayoun.org",
     "is_renter": true,
-    "notes": "בעל דירה: גיל ואבלין שרעבי | טלפון בעלים: 0587567379"
+    "notes": "בעל דירה: גיל ואבלין שרעבי | טלפון בעלים: 0587567379 | אימייל בעלים: gil.saraby@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3197,11 +3935,20 @@
   {
     "project_name": "בוזגלו 4",
     "apartment_number": "15",
-    "full_name": "אסתר וסיריל בנישו",
+    "full_name": "אסתר בנישו",
     "phone": "0539637931",
     "email": "estherbenichou26@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: דרייפוס | טלפון בעלים: 0544767124"
+    "notes": "בעל דירה: דרייפוס | טלפון בעלים: 0544767124 | אימייל בעלים: dreyfus.annie@gmail.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "15",
+    "full_name": "סיריל בנישו",
+    "phone": "0033 (651) 664802",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אסתר בנישו"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3223,12 +3970,30 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "17",
+    "full_name": "בנימין תורקיה",
+    "phone": "052-6795859",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של בינימין ורימונה תורקיה"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "18",
     "full_name": "ריבי בן נון )גלוקשטיין(",
     "phone": "0545755501",
     "email": "rivi100@netvision.net.il",
     "is_renter": true,
     "notes": "בעל דירה: יואב | טלפון בעלים: 0544240210 | אימייל בעלים: yoav.itz@gmail.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "18",
+    "full_name": "רמי גלוקשטיין",
+    "phone": "052-3356079",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של ריבי בן נון )גלוקשטיין("
   },
   {
     "project_name": "בוזגלו 4",
@@ -3242,11 +4007,20 @@
   {
     "project_name": "בוזגלו 4",
     "apartment_number": "20",
-    "full_name": "עופר ואיריס מזרחי",
+    "full_name": "איריס מזרחי",
     "phone": "0507738758",
     "email": "Irism1250@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: יצחק רבי | טלפון בעלים: 0508828314"
+    "notes": "בעל דירה: יצחק רבי | טלפון בעלים: 0508828314 | אימייל בעלים: rabiitzik@gmail.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "20",
+    "full_name": "עופר מזרחי",
+    "phone": "050-3001661",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של איריס מזרחי"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3255,7 +4029,7 @@
     "phone": "0508442719",
     "email": "naomi.ailin19@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: שירל בוחבוט | טלפון בעלים: 0528749532"
+    "notes": "בעל דירה: שירל בוחבוט | טלפון בעלים: 0528749532 | אימייל בעלים: joseph.bohbot@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3277,12 +4051,21 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "23",
+    "full_name": "דוד חסיד",
+    "phone": "054-8050999",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של רבקה ודוד חסיד"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "24",
     "full_name": "אלישבע מרקופולי",
     "phone": "0546836370",
     "email": "elisheva1.marcopoli@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: יהודית שרם | טלפון בעלים: 0509370951"
+    "notes": "בעל דירה: יהודית שרם | טלפון בעלים: 0509370951 | אימייל בעלים: sroza@bezeqint.net"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3291,7 +4074,16 @@
     "phone": "0545926649",
     "email": "avischamroth@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: יוסף משולם | טלפון בעלים: 039699359/0523320902"
+    "notes": "בעל דירה: יוסף משולם | טלפון בעלים: 039699359/0523320902 | אימייל בעלים: zahavit79@gmail.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "25",
+    "full_name": "קים שמרוט",
+    "phone": "054-9694100",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אבי שמרוטבויס"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3340,12 +4132,30 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "30",
+    "full_name": "עדן זרביד איטח",
+    "phone": "058-6348655",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שמעון זרביד"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "31",
     "full_name": "דניס אטלי",
     "phone": "0542311495",
     "email": "asdattali@hotmail.fr",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "31",
+    "full_name": "סינטיה אטלי",
+    "phone": "050-2404225",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של דניס אטלי"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3376,6 +4186,15 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "34",
+    "full_name": "יואל אקרמן",
+    "phone": "053-7088034",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של רותי ויואל אקרמן"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "35",
     "full_name": "גאן גיסל זרביב",
     "phone": "0542311495",
@@ -3394,12 +4213,30 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "36",
+    "full_name": "0033 (6) 60945778",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אינטרבריק מאיה"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "37",
-    "full_name": "לוטי ואהרון צרני",
+    "full_name": "לוטי צרני",
     "phone": "0586211711",
     "email": "lottiekestenbaum@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: עו\"ד דרייפוס/קוגל | טלפון בעלים: 054-4767124 | אימייל בעלים: dreyfus.annie@gmail.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "37",
+    "full_name": "אהרון צרני",
+    "phone": "058-7908613",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של לוטי צרני"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3408,7 +4245,16 @@
     "phone": "0545249291",
     "email": "yanivb@hotmail.fr",
     "is_renter": true,
-    "notes": "בעל דירה: גילי | טלפון בעלים: 0545648036"
+    "notes": "בעל דירה: גילי | טלפון בעלים: 0545648036 | אימייל בעלים: gil9166@walla.com"
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "38",
+    "full_name": "לבנה",
+    "phone": "054-3126945",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שלאם-ברון יניב"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3453,7 +4299,7 @@
     "phone": "0536729121",
     "email": "noail2626@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: גד שאנאנס | טלפון בעלים: 0547526277"
+    "notes": "בעל דירה: גד שאנאנס | טלפון בעלים: 0547526277 | אימייל בעלים: gad@kerem-nadlan.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3498,7 +4344,7 @@
     "phone": "0546950368",
     "email": "",
     "is_renter": true,
-    "notes": "בעל דירה: יהודית מקוסס | טלפון בעלים: 0542050488"
+    "notes": "בעל דירה: יהודית מקוסס | טלפון בעלים: 0542050488 | אימייל בעלים: yeoudit.mekuazas@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3512,11 +4358,20 @@
   {
     "project_name": "בוזגלו 4",
     "apartment_number": "49",
-    "full_name": "פיליס וג'וני קרוג",
+    "full_name": "פיליס קרוג",
     "phone": "0584678618",
     "email": "phylliskrug@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "49",
+    "full_name": "ג'וני קרוג",
+    "phone": "058-4678618",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של פיליס קרוג"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3547,6 +4402,15 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "52",
+    "full_name": "טיארי טורג'מן",
+    "phone": "050-8909995",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אבבו קורין"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "53",
     "full_name": "ראובן לוי",
     "phone": "053-7088531",
@@ -3565,12 +4429,30 @@
   },
   {
     "project_name": "בוזגלו 4",
+    "apartment_number": "54",
+    "full_name": "שלווה ראוסקי",
+    "phone": "053-2803444",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של דניאל ראוסקי"
+  },
+  {
+    "project_name": "בוזגלו 4",
     "apartment_number": "55",
     "full_name": "דניאל ראוסקי",
     "phone": "0532803455",
-    "email": "dan.our.avr@gmail.com",
+    "email": "chalva.rausky@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "בוזגלו 4",
+    "apartment_number": "55",
+    "full_name": "שלווה ראוסקי",
+    "phone": "053-2803444",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של דניאל ראוסקי"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3588,7 +4470,7 @@
     "phone": "0585404933",
     "email": "annamelloul3@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: אורבך | טלפון בעלים: 0524311921"
+    "notes": "בעל דירה: אורבך | טלפון בעלים: 0524311921 | אימייל בעלים: urbachb@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3597,7 +4479,7 @@
     "phone": "0524398824",
     "email": "lhimber90@yahoo.com",
     "is_renter": true,
-    "notes": "בעל דירה: דניס | טלפון בעלים: 0522389946"
+    "notes": "בעל דירה: דניס | טלפון בעלים: 0522389946 | אימייל בעלים: wolffjrs@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3642,7 +4524,7 @@
     "phone": "0587705566",
     "email": "Mwayache@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: אמיר בן גל | טלפון בעלים: 0508875633"
+    "notes": "בעל דירה: אמיר בן גל | טלפון בעלים: 0508875633 | אימייל בעלים: amiriambengal@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3660,7 +4542,7 @@
     "phone": "0549489656",
     "email": "raphkarp@gmail.com",
     "is_renter": true,
-    "notes": "בעל דירה: שי חורש | טלפון בעלים: 0507769002"
+    "notes": "בעל דירה: שי חורש | טלפון בעלים: 0507769002 | אימייל בעלים: shihoresh@gmail.com"
   },
   {
     "project_name": "בוזגלו 4",
@@ -3691,6 +4573,15 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "1",
+    "full_name": "זאבה מינה",
+    "phone": "050-6207217",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מאיר מינה"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "2",
     "full_name": "אינה ציפריס",
     "phone": "0547008047",
@@ -3701,7 +4592,7 @@
   {
     "project_name": "מקור חיים 62",
     "apartment_number": "3",
-    "full_name": "שוקרון יואן ואביגיל",
+    "full_name": "שוקרון יואן",
     "phone": "0586006466",
     "email": "chocronyoan@gmail.com",
     "is_renter": false,
@@ -3709,12 +4600,30 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "3",
+    "full_name": "אביגיל שוקרון",
+    "phone": "058-7070919",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של שוקרון יואן"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "4",
-    "full_name": "אלכסנדר ורינה רוז",
-    "phone": "0547718424",
+    "full_name": "רינה רוז",
+    "phone": "054-7718423",
     "email": "alexrenee.rose@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "4",
+    "full_name": "טד רוז",
+    "phone": "054-5664498",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של רינה רוז"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3751,6 +4660,15 @@
     "email": "mocarmel@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: משה מדווד | טלפון בעלים: 0545227567 | אימייל בעלים: momomedved@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "8",
+    "full_name": "יעל כרמל",
+    "phone": "054-8007892",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של משה כרמל"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3830,8 +4748,26 @@
     "full_name": "טליה גולדשטיין",
     "phone": "0534435564",
     "email": "taliagoldsteinn@gmail.com",
+    "is_renter": false,
+    "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "001 (201) 6657365",
+    "full_name": "ירדנה זובין",
+    "phone": "001 (514) 6067576",
+    "email": "",
     "is_renter": true,
     "notes": "בעל דירה: אלי וסילביאן וקנין | טלפון בעלים: 0584201249 | אימייל בעלים: meouaknine@hotmail.com"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "001 (201) 6657365",
+    "full_name": "אלי וסילביאן וקנין",
+    "phone": "0584201249",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של ירדנה זובין"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3853,12 +4789,30 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "19",
+    "full_name": "אמיר יצחק",
+    "phone": "050-8937989",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של מרים יצחק"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "20",
     "full_name": "צבי פלנק",
     "phone": "0525544458",
     "email": "noapopper1@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: אייל שוורצמן | טלפון בעלים: 0542021850 | אימייל בעלים: eyalschwartzmann@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "20",
+    "full_name": "נועה פלנק",
+    "phone": "054-9871424",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של צבי פלנק"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3871,12 +4825,30 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "21",
+    "full_name": "אייל שוורצברגר",
+    "phone": "052-5858963",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אילנה וזאב שוורצברג"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "22",
-    "full_name": "אביטל ובנימין בהר",
+    "full_name": "אביטל בהר",
     "phone": "0546948757",
     "email": "avital.lavan@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "22",
+    "full_name": "בנימין בהר",
+    "phone": "054-8006607",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אביטל בהר"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3895,6 +4867,15 @@
     "email": "naomi.dessauer@bigpond.com",
     "is_renter": true,
     "notes": "בעל דירה: נעומי וג'ק דסואר"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "24",
+    "full_name": "נעמי דסוואר",
+    "phone": "61409544104.00",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שרה דסוואר"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3962,11 +4943,20 @@
   {
     "project_name": "מקור חיים 62",
     "apartment_number": "32",
-    "full_name": "גקלין וסקוט כהן",
+    "full_name": "גקלין כהן",
     "phone": "0522071451",
     "email": "scottmichaelgross@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "32",
+    "full_name": "סקוט כהן",
+    "phone": "058-7621555",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גקלין כהן"
   },
   {
     "project_name": "מקור חיים 62",
@@ -3976,6 +4966,15 @@
     "email": "anastasia.bash@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: בירן דניאל | טלפון בעלים: 0506233731 | אימייל בעלים: nobi1980@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "33",
+    "full_name": "אריק אריאל שמחה",
+    "phone": "050-3007703",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אנסטסיה שמחה"
   },
   {
     "project_name": "מקור חיים 62",
@@ -4060,12 +5059,30 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "42",
+    "full_name": "לוי בועז",
+    "phone": "050-6256999",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של רחל לוי"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "43",
     "full_name": "יהודית סויאזוב",
     "phone": "0542893345",
     "email": "ehuditsuyazova@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: שי ואיריס ימין | טלפון בעלים: 0544224349 | אימייל בעלים: shayyamin1967@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "43",
+    "full_name": "צביקה",
+    "phone": "054-2000153",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של יהודית סויאזוב"
   },
   {
     "project_name": "מקור חיים 62",
@@ -4088,11 +5105,20 @@
   {
     "project_name": "מקור חיים 62",
     "apartment_number": "46",
-    "full_name": "לאה וחיים אמסלם",
+    "full_name": "לאה אמסלם",
     "phone": "0528323027",
     "email": "lea3230@walla.com",
     "is_renter": true,
     "notes": "בעל דירה: משפחת גולדברג | טלפון בעלים: 0507432645 | אימייל בעלים: mgolds321@gmail.com"
+  },
+  {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "46",
+    "full_name": "חיים אמסלם",
+    "phone": "050-6209230",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של לאה אמסלם"
   },
   {
     "project_name": "מקור חיים 62",
@@ -4132,8 +5158,17 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "50",
+    "full_name": "אודליה אזולאי",
+    "phone": "054-4353977",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אפרים אזולאי"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "51",
-    "full_name": "מרינה ושמואל מאיר",
+    "full_name": "מרינה מאיר",
     "phone": "0506265008",
     "email": "marina.meir@aguda.co.il",
     "is_renter": false,
@@ -4141,21 +5176,48 @@
   },
   {
     "project_name": "מקור חיים 62",
+    "apartment_number": "51",
+    "full_name": "שמואל מאיר",
+    "phone": "052-8641744",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מרינה מאיר"
+  },
+  {
+    "project_name": "מקור חיים 62",
     "apartment_number": "52",
-    "full_name": "אדלר ויויאן וג'רלד",
+    "full_name": "אדלר ויויאן",
     "phone": "0522633746",
     "email": "fdfeinadv@outlook.com",
     "is_renter": false,
     "notes": ""
   },
   {
+    "project_name": "מקור חיים 62",
+    "apartment_number": "52",
+    "full_name": "ג'רלד אדלר",
+    "phone": "001 (914) 6594834",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אדלר ויויאן"
+  },
+  {
     "project_name": "אלרואי 5א",
     "apartment_number": "1",
     "full_name": "איתמר שחר",
-    "phone": "054-551-2813",
+    "phone": "054-5924873",
     "email": "itam.sh@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: יואל פורט | טלפון בעלים: 0542377976 | אימייל בעלים: jeffreyaport@gmail.com"
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "1",
+    "full_name": "חן שחר",
+    "phone": "054-5512813",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של איתמר שחר"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4168,12 +5230,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "2",
+    "full_name": "אבי רוזנטל",
+    "phone": "054-6249735",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של דבורה קורן"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "3",
-    "full_name": "לרי יעקב פדר",
+    "full_name": "יעקב פדר",
     "phone": "052-255-6114",
     "email": "drfeder3@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "3",
+    "full_name": "רות פדר",
+    "phone": "052-6959958",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יעקב פדר"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4187,20 +5267,38 @@
   {
     "project_name": "אלרואי 5א",
     "apartment_number": "5",
-    "full_name": "מרב למברגר",
-    "phone": "052-655-9944",
+    "full_name": "למברגר",
+    "phone": "054-7566293",
     "email": "merav.lemberger@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: יובל אילון | טלפון בעלים: 0545992942 | אימייל בעלים: yuvaley@gmail.com"
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "5",
+    "full_name": "מרב למברגר",
+    "phone": "052-6559944",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של למברגר"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "6",
-    "full_name": "מרדכי קימלדורפר",
-    "phone": "050-696-4954",
+    "full_name": "ארזה קימלדורפר",
+    "phone": "050-5279515",
     "email": "mkimel@actcom.co.il",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "6",
+    "full_name": "מרדכי קימלדורפר",
+    "phone": "050-6964954",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ארזה קימלדורפר"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4213,6 +5311,15 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "7",
+    "full_name": "יעל אזולאי",
+    "phone": "054-2842096",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של סימון-רחל נאהורי"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "8",
     "full_name": "קנט סטולון",
     "phone": "053-3912132",
@@ -4222,12 +5329,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "8",
+    "full_name": "פיי סטולון",
+    "phone": "053-3913625",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של קנט סטולון"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "9",
     "full_name": "מיכל זופן",
-    "phone": "052-160-1602",
+    "phone": "33689382500",
     "email": "agnes.bloch-zupan@unistra.fr",
     "is_renter": true,
     "notes": "בעל דירה: אניאס בלוך | טלפון בעלים: +33689382500 | אימייל בעלים: agnes.bloch-zupan@unistra.fr"
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "9",
+    "full_name": "052-160-1602",
+    "phone": "",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של מיכל זופן"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4240,12 +5365,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "10",
+    "full_name": "טליה הופמן",
+    "phone": "058-7655024",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של דבי הופמן"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "11",
     "full_name": "הלל נוייר",
     "phone": "0528234849",
     "email": "hcneuer@unwatch.org",
     "is_renter": true,
     "notes": "בעל דירה: דניס לוי | טלפון בעלים: 054-764-7238 | אימייל בעלים: denislevy25@gmail.com"
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "11",
+    "full_name": "הלל נוייר",
+    "phone": "00(417) 93328106",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של הלל נוייר"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4258,12 +5401,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "12",
+    "full_name": "רפא לסר",
+    "phone": "054-6206250",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של חנוך ראפ לסר"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "13",
     "full_name": "רוחמה פרוינד",
     "phone": "054-634-7018",
     "email": "ruchamafr@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "13",
+    "full_name": "מיכל פרוינד",
+    "phone": "054-9140511",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של רוחמה פרוינד"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4285,6 +5446,15 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "15",
+    "full_name": "רותי ויטמן",
+    "phone": "054-5771688",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של איזידור ויטמן"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "16",
     "full_name": "תרצה קאופהר",
     "phone": "054-723-0204",
@@ -4303,6 +5473,15 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "17",
+    "full_name": "מלכה קלטר",
+    "phone": "054-4780570",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של שעיה קלטר"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "18",
     "full_name": "חנה רוזנבאום",
     "phone": "050-894-6533",
@@ -4313,11 +5492,20 @@
   {
     "project_name": "אלרואי 5א",
     "apartment_number": "19",
-    "full_name": "דפנה בן יוחנן",
-    "phone": "054-440-6809",
-    "email": "dafna60@zahav.net.il",
+    "full_name": "הוכבאום נילי",
+    "phone": "053-9295366",
+    "email": "",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "19",
+    "full_name": "054-7952725",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של הוכבאום נילי"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4330,9 +5518,18 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "20",
+    "full_name": "שינא",
+    "phone": "053-7764444",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של בראד רטליף"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "21",
     "full_name": "מקסים קריי",
-    "phone": "16503958723",
+    "phone": "001(6)503958723",
     "email": "maximkr@yahoo.com",
     "is_renter": false,
     "notes": ""
@@ -4357,6 +5554,15 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "23",
+    "full_name": "עובדת זרה- ג'יישרי באברו אודדרה",
+    "phone": "058-6166989",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של טרודי צוקרמן"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "24",
     "full_name": "נורית הס",
     "phone": "054-456-3067",
@@ -4367,7 +5573,7 @@
   {
     "project_name": "אלרואי 5א",
     "apartment_number": "25",
-    "full_name": "ביאנקה הופמן",
+    "full_name": "רן הופמן",
     "phone": "052-681-8296",
     "email": "acdc1220@gmail.com",
     "is_renter": false,
@@ -4375,12 +5581,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "25",
+    "full_name": "ביאנקה הופמן",
+    "phone": "",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של רן הופמן"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "26",
-    "full_name": "סילבי פיליפ במברגר",
+    "full_name": "פיליפ במברגר",
     "phone": "054-523-3838",
     "email": "philippe.bamberger@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "26",
+    "full_name": "סילבי במברגר",
+    "phone": "054-4778565",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של פיליפ במברגר"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4393,12 +5617,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "27",
+    "full_name": "אלכס רגן הרצברגר",
+    "phone": "054-5953191",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של זאב הרצברג"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "28",
     "full_name": "יונתן מורגן",
     "phone": "0508323351",
     "email": "jon.morgan0505@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: אורנה רוזנקרנץ | טלפון בעלים: 050-785-6594 | אימייל בעלים: ornapretty@gmail.com"
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "28",
+    "full_name": "דניאל מורגן",
+    "phone": "058-4561459",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של יונתן מורגן"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4411,12 +5653,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "29",
+    "full_name": "גיורא קולקה",
+    "phone": "050-7372891",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אילת קולקה"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "30",
-    "full_name": "אריה בורנשטיין",
+    "full_name": "יובל בורנשטין",
     "phone": "0547770161",
     "email": "bornltd@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "30",
+    "full_name": "אריה בורנשטיין",
+    "phone": "054-7770165",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של יובל בורנשטין"
   },
   {
     "project_name": "אלרואי 5א",
@@ -4456,12 +5716,30 @@
   },
   {
     "project_name": "אלרואי 5א",
+    "apartment_number": "34",
+    "full_name": "די וורולי",
+    "phone": "054-3431114",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של מיכאל)מישל( די-וורולי"
+  },
+  {
+    "project_name": "אלרואי 5א",
     "apartment_number": "35",
-    "full_name": "פיליפ ומרים שוורץ",
+    "full_name": "מרים שוורץ",
     "phone": "050-599-3781",
     "email": "pschwart3@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: עזרי אביחיל | טלפון בעלים: 052-274-7050 | אימייל בעלים: avikhail@gmail.com"
+  },
+  {
+    "project_name": "אלרואי 5א",
+    "apartment_number": "35",
+    "full_name": "פיליפ שוורץ",
+    "phone": "054-5352683",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של מרים שוורץ"
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4519,6 +5797,15 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "6",
+    "full_name": "איציק נאור",
+    "phone": "050-3961298",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של נטע נאור"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "7",
     "full_name": "פנינה קפלן",
     "phone": "052-8799470",
@@ -4538,7 +5825,7 @@
   {
     "project_name": "אלרואי 5ג",
     "apartment_number": "9",
-    "full_name": "רוברט ולאה )לי( סיימונס",
+    "full_name": "ולאה )לי( סיימונס",
     "phone": "052-4282627",
     "email": "sababob36@gmail.com",
     "is_renter": false,
@@ -4556,11 +5843,20 @@
   {
     "project_name": "אלרואי 5ג",
     "apartment_number": "11",
-    "full_name": "חנה ואדי ריף",
+    "full_name": "חנה ריף",
     "phone": "054-5480051",
     "email": "riffeddie@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "11",
+    "full_name": "אדי ריף",
+    "phone": "053-5252431",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של חנה ריף"
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4609,6 +5905,15 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "16",
+    "full_name": "ראובן אסייג",
+    "phone": "052-5250821",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אוריאל אסייג"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "17",
     "full_name": "אברהם)אבי( ורבקה טלמור",
     "phone": "050-5836868",
@@ -4624,6 +5929,15 @@
     "email": "hagitmeltzer@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "18",
+    "full_name": "חגי מלצר",
+    "phone": "050-2578881",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של חגית וחגי מלצר"
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4645,6 +5959,15 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "20",
+    "full_name": "מרים בר",
+    "phone": "054-5395609",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של ג'ק בר"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "21",
     "full_name": "מרטין פלד פלקס",
     "phone": "050-6203872",
@@ -4663,12 +5986,30 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "22",
+    "full_name": "אליה מלצר",
+    "phone": "050-3605444",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של יהונדב מלצר"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "23",
-    "full_name": "יעל ודניאל בן דיין רובין",
+    "full_name": "דניאל בן דיין רובין",
     "phone": "052-9427001",
     "email": "danielbdextra@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: שרה פלג | טלפון בעלים: 0508699462 | אימייל בעלים: pelegttc@netvision.net.il"
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "23",
+    "full_name": "יעל רובין",
+    "phone": "050-8622587",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של דניאל בן דיין רובין"
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4682,8 +6023,8 @@
   {
     "project_name": "אלרואי 5ג",
     "apartment_number": "24",
-    "full_name": "רוזנצווייג מרסי",
-    "phone": "0546916717",
+    "full_name": "001 (410) 241 5782",
+    "phone": "",
     "email": "",
     "is_renter": true,
     "notes": "בן/בת זוג של מרים וייס"
@@ -4699,6 +6040,15 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "25",
+    "full_name": "אלכסנדרה גור",
+    "phone": "052-8357048",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של טל גור"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "26",
     "full_name": "אודי עמיחי לפיאן",
     "phone": "050-6226105",
@@ -4708,12 +6058,30 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "26",
+    "full_name": "נעמה לפיאן",
+    "phone": "054-6371551",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אודי עמיחי לפיאן"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "27",
     "full_name": "אליעם אורי",
     "phone": "055-6895500",
     "email": "ettiori@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: יוסף סיטון )הטלפון של הבן( | טלפון בעלים: 0586730730"
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "27",
+    "full_name": "אסתר",
+    "phone": "050-5607146",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של אליעם אורי"
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4727,11 +6095,20 @@
   {
     "project_name": "אלרואי 5ג",
     "apartment_number": "29",
-    "full_name": "גילה אמאטי ועמית איזנמן",
+    "full_name": "גילה אמאטי",
     "phone": "054-4994732",
     "email": "ghila.amati@gmail.com",
     "is_renter": false,
     "notes": ""
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "29",
+    "full_name": "עמית איזנמן",
+    "phone": "052-2993090",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של גילה אמאטי"
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4741,6 +6118,15 @@
     "email": "jonathan.roland@sale-moor.co.uk",
     "is_renter": true,
     "notes": "בעל דירה: קרנר עמיחי ומרים | טלפון בעלים: 0522753920 | אימייל בעלים: kerneram@netvision.net.il"
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "30",
+    "full_name": "יוני נויימן",
+    "phone": "0044 (77) 29644431",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של יונתן רולנד )יהונתן ניומן("
   },
   {
     "project_name": "אלרואי 5ג",
@@ -4771,12 +6157,30 @@
   },
   {
     "project_name": "אלרואי 5ג",
+    "apartment_number": "33",
+    "full_name": "דגמר שטראוס יערי",
+    "phone": "052-2860011",
+    "email": "",
+    "is_renter": false,
+    "notes": "בן/בת זוג של אהוד יערי"
+  },
+  {
+    "project_name": "אלרואי 5ג",
     "apartment_number": "34",
-    "full_name": "סטויארט וסיליה לאסט",
+    "full_name": "קטי הבת",
     "phone": "0542188965",
     "email": "katylast02@gmail.com",
     "is_renter": true,
     "notes": "בעל דירה: אמנון אנג'ל | טלפון בעלים: 054-4370370 | אימייל בעלים: amnona6@gmail.com"
+  },
+  {
+    "project_name": "אלרואי 5ג",
+    "apartment_number": "34",
+    "full_name": "סטיוארט לאסט",
+    "phone": "055-7740604",
+    "email": "",
+    "is_renter": true,
+    "notes": "בן/בת זוג של קטי הבת"
   },
   {
     "project_name": "אלרואי 5ג",

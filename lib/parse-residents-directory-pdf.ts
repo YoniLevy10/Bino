@@ -57,6 +57,13 @@ function isProjectHeaderLine(line: string): boolean {
   const t = line.trim()
   if (!t || PAGE_MARK.test(t) || t.startsWith('דירה\t')) return false
   if (/^\d/.test(t)) return false
+  // Real building headers include a street number (מקור חיים 40א, בוזגלו 4, …).
+  if (!/\d/.test(t)) return false
+  // Owner/contact lines mis-extracted as headers: "Name\tphone"
+  if (t.includes('\t')) {
+    const afterTab = t.split('\t').slice(1).join('\t').trim()
+    if (isPhoneLike(afterTab) || isEmailLike(afterTab)) return false
+  }
   return true
 }
 

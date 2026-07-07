@@ -56,6 +56,21 @@ describe('parse-residents-directory-pdf', () => {
     })
   })
 
+  it('does not treat person-name lines as building headers', () => {
+    const text = `מקור חיים 62
+דירה\tשם\tטלפון
+17\tטליה גולדשטיין\t0534435564\ttaliagoldsteinn@gmail.com
+
+אמה שור
+
+001 (201) 6657365\tירדנה זובין\t001 (514) 6067576\tשכירות\tאלי וסילביאן וקנין\t0584201249\tmeouaknine@hotmail.com
+18\tזבולון מנחם עוז רוח\t0539451448\tzevulunozruach@gmail.com`
+
+    const rows = parseResidentsDirectoryPdfText(text)
+    expect(rows.every((r) => r.project_name === 'מקור חיים 62')).toBe(true)
+    expect(rows.find((r) => r.full_name === 'אמה שור')).toBeUndefined()
+  })
+
   it('normalizes project names for matching', () => {
     expect(normalizeProjectNameForMatch('מקור חיים 40 א')).toBe('מקור חיים 40א')
     expect(normalizeProjectNameForMatch('אלרואי 5 א')).toBe('אלרואי 5א')
