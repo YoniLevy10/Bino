@@ -99,18 +99,8 @@ enriched AS (
         WHERE r.client_id = ${cid}::uuid
           AND r.deleted_at IS NULL
           AND r.project_id = m.project_id
-          AND (
-            (
-              m.normalized_phone IS NOT NULL
-              AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone)
-              AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
-            )
-            OR (
-              m.normalized_phone IS NULL
-              AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
-              AND lower(trim(r.full_name)) = lower(trim(m.full_name))
-            )
-          )
+          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+          AND lower(trim(r.full_name)) = lower(trim(m.full_name))
       )
     ) AS in_db
   FROM matched m
@@ -267,18 +257,8 @@ not_in_db AS (
     WHERE r.client_id = ${sqlStr(clientId)}::uuid
       AND r.deleted_at IS NULL
       AND r.project_id = m.project_id
-      AND (
-        (
-          m.normalized_phone IS NOT NULL
-          AND (r.normalized_phone = m.normalized_phone OR r.phone = m.phone)
-          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
-        )
-        OR (
-          m.normalized_phone IS NULL
-          AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
-          AND lower(trim(r.full_name)) = lower(trim(m.full_name))
-        )
-      )
+      AND lower(trim(coalesce(r.apartment_number, ''))) = lower(trim(m.apartment_number))
+      AND lower(trim(r.full_name)) = lower(trim(m.full_name))
   )
 ),
 to_insert AS (
