@@ -1,6 +1,6 @@
--- החלת ניקוי כפילויות (שאילתה אחת בתוך transaction)
+-- מחק כפילויות: אותו בניין + דירה + שם (שומר שורה אחת — הטלפון הכי טוב)
 -- client_id: 7573f5ad-70e5-4357-8fef-1d96ec38d169
--- הרץ רק אחרי שבדקת את cleanup-resident-duplicates.sql (preview)
+-- הרץ פעם אחת ב-Supabase SQL Editor
 
 BEGIN;
 

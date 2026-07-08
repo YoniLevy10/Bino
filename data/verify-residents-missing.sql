@@ -1,7 +1,0 @@
--- Bamakor PDF vs DB (688 rows, 20 buildings)
--- client_id: 7573f5ad-70e5-4357-8fef-1d96ec38d169
--- Supabase: העתק והרץ קובץ אחד בכל פעם (שאילתה בודדת).
--- השתמשו ב-3 הקבצים הנפרדים (כל אחד = Run אחד):
---   1) verify-residents-summary.sql
---   2) verify-residents-missing-list.sql
---   3) verify-residents-by-building.sql

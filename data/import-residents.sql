@@ -1,10 +1,6 @@
--- Bamakor: import residents from directory PDF (688 rows, 20 buildings)
--- Run in Supabase SQL Editor. Does NOT create projects — only matches existing project names.
+-- Bamakor: import missing residents from directory PDF (688 rows, 20 buildings)
 -- client_id: 7573f5ad-70e5-4357-8fef-1d96ec38d169
---
--- 1) Run data/drop-resident-global-phone-unique.sql (allows same phone in multiple apartments).
--- 2) Review unmatched buildings (should return 0 rows): data/preview-unmatched-buildings.sql
--- 3) Run full script (BEGIN…COMMIT).
+-- ראה data/README.md — מוסיף רק מי שחסר (לפי בניין+דירה+שם). הרץ BEGIN…COMMIT.
 
 BEGIN;
 
@@ -801,59 +797,3 @@ SELECT
 FROM to_insert;
 
 COMMIT;
-
--- ── Verification (run after commit) ────────────────────────────────────────
-
--- Count by building
-SELECT p.name, COUNT(r.id) AS residents
-FROM projects p
-LEFT JOIN residents r ON r.project_id = p.id AND r.deleted_at IS NULL
-WHERE p.client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid
-  AND p.is_active = true
-GROUP BY p.name
-ORDER BY p.name;
-
--- PDF buildings with no matching project (should be empty)
-WITH pdf_projects AS (
-  SELECT unnest(ARRAY[
-    'מקור חיים 40א',
-    'מקור חיים 40ב',
-    'מקור חיים 37',
-    'מקור חיים 39',
-    'מקור חיים 41',
-    'מקור חיים 43',
-    'מקור חיים 12א',
-    'אביטל 13א',
-    'אביטל 13ב',
-    'דרך בית לחם 94',
-    'חלץ 10',
-    'חלץ 12',
-    'רות 3',
-    'אפרים 8',
-    'מנשה 8',
-    'ראובן 14',
-    'בוזגלו 4',
-    'מקור חיים 62',
-    'אלרואי 5א',
-    'אלרואי 5ג'
-  ]) AS match_norm
-),
-projects_norm AS (
-  SELECT lower(
-    trim(
-      regexp_replace(
-        regexp_replace(
-          regexp_replace(trim(regexp_replace(name, '\s+', ' ', 'g')), '\s+([א-ת])$', '\1'),
-          '([0-9])\s+([א-ת])', '\1\2', 'g'
-        ),
-        '\s*-\s*', ' ', 'g'
-      )
-    )
-  ) AS norm_name
-  FROM projects
-  WHERE client_id = '7573f5ad-70e5-4357-8fef-1d96ec38d169'::uuid AND is_active = true
-)
-SELECT pp.match_norm AS unmatched_pdf_building_norm
-FROM pdf_projects pp
-LEFT JOIN projects_norm pn ON pn.norm_name = pp.match_norm
-WHERE pn.norm_name IS NULL;
