@@ -43,8 +43,6 @@ export async function GET(req: NextRequest) {
         details: {
           status: report.status,
           metrics: report.metrics,
-          health_url: '/health',
-          api_url: '/api/health/tickets',
         },
       })
     }
@@ -57,7 +55,7 @@ export async function GET(req: NextRequest) {
       kind: 'operational_error',
       title: 'בדיקת בריאות תקלות — חריגה',
       message: msg,
-      details: { health_url: '/health' },
+      details: { source: 'cron.ticket-health' },
     })
     return NextResponse.json({ status: 'error', detail: msg }, { status: 503 })
   }
