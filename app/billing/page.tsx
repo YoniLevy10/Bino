@@ -25,7 +25,7 @@ import {
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plan-pricing'
@@ -150,13 +150,7 @@ export default function BillingPage() {
         {!isMobile && <PageHeader title="חיוב ושימוש" subtitle="תוכנית חודשית ומדדי צריכה" />}
 
         {loading ? (
-          <div style={styles.loading}>
-            <PageKpiSkeletonN columns={3} />
-            <PageListSkeleton rows={6} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-              <LoadingSpinner size="md" />
-            </div>
-          </div>
+          <PageTransitionLoader />
         ) : !data ? null : (
           <>
             {data.plan && (

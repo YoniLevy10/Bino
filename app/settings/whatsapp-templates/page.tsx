@@ -43,7 +43,7 @@ import {
   LoadingSpinner,
   theme,
 } from '../../components/ui'
-import { PageListSkeleton } from '../../components/page-skeleton'
+import { PageTransitionLoader } from '../../components/page-skeleton'
 
 const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string> = {
   project_name: 'מגדלי הים התיכון',
@@ -442,10 +442,7 @@ export default function WhatsappTemplatesPage() {
         {!loading ? <ResidentWhatsAppFlowGuide /> : null}
 
         {loading ? (
-          <div style={{ padding: 48, display: 'flex', justifyContent: 'center', flexDirection: 'column', gap: 20 }}>
-            <PageListSkeleton rows={6} />
-            <div style={{ display: 'flex', justifyContent: 'center' }}><LoadingSpinner size="md" /></div>
-          </div>
+          <PageTransitionLoader />
         ) : (
           <div style={styles.journey}>
             {/* SMS Templates Section */}

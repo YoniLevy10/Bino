@@ -118,7 +118,7 @@ export function TicketDetailDrawer({
   const showAttachmentsBlock =
     loadingAttachments ||
     selectedTicketAttachments.length > 0 ||
-    (!!selectedTicket?.reporter_phone && selectedTicket.status !== 'CLOSED')
+    !!selectedTicket?.reporter_phone
 
   async function translateDescriptionInternal() {
     if (onTranslateDescription) {

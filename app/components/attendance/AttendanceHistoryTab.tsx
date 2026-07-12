@@ -20,7 +20,7 @@ import {
   type AttendanceHistoryShift,
 } from '@/lib/attendance-history'
 import { Button, Card, EmptyState, SearchInput, Select, theme } from '../ui'
-import { PageListSkeleton } from '../page-skeleton'
+import { PageTransitionLoader } from '../page-skeleton'
 import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
 import { AttendanceShiftCreateForm } from './AttendanceShiftCreateForm'
 
@@ -304,9 +304,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
       ) : null}
 
       {showSkeleton ? (
-        <div style={{ padding: 16 }}>
-          <PageListSkeleton rows={isMobile ? 6 : 8} />
-        </div>
+        <PageTransitionLoader />
       ) : !range ? (
         <EmptyState title="בחרו חודש" description="בחרו חודש מהרשימה כדי לצפות בארכיון." />
       ) : historyByMonth.length === 0 ? (

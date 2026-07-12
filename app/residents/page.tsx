@@ -44,7 +44,7 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { pickResidentToKeep } from '@/lib/merge-residents'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
   padding: '10px 18px',
@@ -923,12 +923,7 @@ function ResidentsPageInner() {
           </div>
 
           {loading ? (
-            <div style={styles.loading}>
-              <PageListSkeleton rows={10} />
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                <LoadingSpinner size="md" />
-              </div>
-            </div>
+            <PageTransitionLoader />
           ) : residentsTableMissing ? (
             <div style={styles.friendlyEmpty}>
               <p style={styles.friendlyEmptyTitle}>טבלת הדיירים עדיין לא הוגדרה במערכת.</p>

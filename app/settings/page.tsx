@@ -25,7 +25,7 @@ import {
 } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { useSidebarNav } from '../components/SidebarNavContext'
 import { usePaidAddons } from '../components/PaidAddonsContext'
 import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
@@ -661,12 +661,7 @@ function SettingsPageInner() {
         </p>
 
         {loading ? (
-          <div style={styles.loadingContainer}>
-            <PageListSkeleton rows={5} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-              <LoadingSpinner size="lg" />
-            </div>
-          </div>
+          <PageTransitionLoader />
         ) : (
           <>
             <div className="app-error-log-tabs" style={styles.tabBar} role="tablist" aria-label="הגדרות">

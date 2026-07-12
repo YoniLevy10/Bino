@@ -1,9 +1,5 @@
-import { PageListSkeleton } from '../../components/page-skeleton'
+import { PageTransitionLoader } from '../../components/PageTransitionLoader'
 
 export default function WhatsappTemplatesLoading() {
-  return (
-    <div dir="rtl" style={{ padding: '32px 40px', maxWidth: 820, margin: '0 auto' }}>
-      <PageListSkeleton rows={8} />
-    </div>
-  )
+  return <PageTransitionLoader />
 }
