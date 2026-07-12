@@ -22,6 +22,7 @@ import {
   PageHeader,
   Card,
   Button,
+  ErrorState,
   LoadingSpinner,
   theme,
 } from '../components/ui'
@@ -51,6 +52,7 @@ export default function ErrorLogsPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [missing, setMissing] = useState(false)
@@ -60,6 +62,7 @@ export default function ErrorLogsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     setMissing(false)
+    setLoadError(false)
     try {
       const clientId = await resolveBamakorClientIdForBrowser()
       const { count: openCount } = await withClientId(
@@ -79,11 +82,15 @@ export default function ErrorLogsPage() {
           setRows([])
           setMissing(true)
         } else {
+          setLoadError(true)
           toast.error(error.message)
         }
         return
       }
       setRows((data as Row[]) || [])
+    } catch (e) {
+      setLoadError(true)
+      toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
     } finally {
       setLoading(false)
     }
@@ -205,6 +212,12 @@ export default function ErrorLogsPage() {
         <Card noPadding>
           {loading ? (
             <PageTransitionLoader />
+          ) : loadError && rows.length === 0 ? (
+            <ErrorState
+              title="לא הצלחנו לטעון את יומן השגיאות"
+              message="בדקו חיבור לאינטרנט ונסו שוב."
+              onRetry={() => void load()}
+            />
           ) : missing ? (
             <p style={styles.empty}>הריצו את המיגרציה supabase/migrations/020_saas_audit_features.sql ב-Supabase.</p>
           ) : rows.length === 0 ? (

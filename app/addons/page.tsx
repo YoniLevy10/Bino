@@ -272,16 +272,6 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     color: theme.colors.textMuted,
   },
-  skeletonGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-    gap: 20,
-  },
-  skeletonCard: {
-    height: 320,
-    borderRadius: theme.radius.lg,
-    background: theme.colors.muted,
-  },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',

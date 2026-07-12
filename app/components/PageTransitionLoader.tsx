@@ -13,7 +13,7 @@ const logoStyle = {
   boxShadow: '0 6px 24px rgba(26, 26, 46, 0.08)',
 }
 
-export function PageTransitionLoader() {
+export function PageTransitionLoader({ compact = false }: { compact?: boolean }) {
   const { logoUrl: ctxLogoUrl } = useClientBranding()
   const [cachedBranding] = useState(() => tryReadBrandingFromSessionCache())
   const src = ctxLogoUrl || cachedBranding?.logoUrl || DEFAULT_LOGO
@@ -23,13 +23,13 @@ export function PageTransitionLoader() {
       dir="rtl"
       className="bamakor-page-loader"
       style={{
-        minHeight: '60vh',
+        minHeight: compact ? 200 : '60vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 20,
-        padding: 24,
+        gap: compact ? 12 : 20,
+        padding: compact ? 16 : 24,
         background: 'var(--color-background, #F9F9FB)',
       }}
       aria-busy="true"

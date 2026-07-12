@@ -14,7 +14,7 @@
  *  - שינוי חודש/פרויקט → מחשב מחדש את הדוח
  */
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -35,15 +35,19 @@ import {
   Select,
   SearchInput,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
   theme
 } from '../components/ui'
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import type { SummaryTicketRow } from '@/lib/summary-tickets'
+import { summaryTicketToDetail, ticketDetailToSummaryRow } from '@/lib/summary-ticket-detail'
 import { useManagerTicketDrawer } from '@/lib/hooks/use-manager-ticket-drawer'
-import { PageTransitionLoader } from '../components/page-skeleton'
+import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
+import { PageTransitionLoader, SectionLoader } from '../components/page-skeleton'
 import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
+import { ImageLightbox } from '../components/shared/ImageLightbox'
 
 const CACHE_KEY = 'bamakor_summary_meta_v1'
 const KPI_CACHE_KEY = 'bamakor_summary_kpi_v1'
@@ -190,9 +194,13 @@ export default function SummaryPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [metaLoading, setMetaLoading] = useState(true)
+  const [metaLoadError, setMetaLoadError] = useState(false)
   const [summaryLoading, setSummaryLoading] = useState(true)
+  const [summaryLoadError, setSummaryLoadError] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyLoadError, setHistoryLoadError] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
     const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
   const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('all')
@@ -253,8 +261,10 @@ export default function SummaryPage() {
       setProjects(freshProjects)
       setWorkers(freshWorkers)
       writeSummaryMetaCache(clientId, { projects: freshProjects, workers: freshWorkers })
+      setMetaLoadError(false)
     } catch (err) {
       console.error('Failed to load summary meta:', err)
+      if (!silent) setMetaLoadError(true)
     }
     if (!silent) setMetaLoading(false)
   }, [])
@@ -307,9 +317,13 @@ export default function SummaryPage() {
         assignedNow: data.assignedNow,
         ticketsInRange: data.ticketsInRange,
       })
+      setSummaryLoadError(false)
     } catch (err) {
       console.error('Failed to load summary KPIs:', err)
-      if (!silent) toast.error('טעינת הסיכום נכשלה — נסה שוב')
+      if (!silent && !showedCachedKpi) {
+        setSummaryLoadError(true)
+        toast.error('טעינת הסיכום נכשלה — נסה שוב')
+      }
     }
     if (!silent) setSummaryLoading(false)
   }, [period, customFrom, customTo])
@@ -335,9 +349,13 @@ export default function SummaryPage() {
       const data = (await res.json()) as { tickets: TicketRow[] }
       setHistoryTickets(data.tickets)
       setHistoryLoaded(true)
+      setHistoryLoadError(false)
     } catch (err) {
       console.error('Failed to load summary history:', err)
-      if (!silent) toast.error('טעינת ההיסטוריה נכשלה — נסה שוב')
+      if (!silent) {
+        setHistoryLoadError(true)
+        toast.error('טעינת ההיסטוריה נכשלה — נסה שוב')
+      }
     }
     if (!silent) setHistoryLoading(false)
   }, [historyPeriod, customFrom, customTo])
@@ -381,8 +399,13 @@ export default function SummaryPage() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [loadMeta, loadSummary, loadHistory, pageTab])
 
-  const showSummarySkeleton = pageTab === 'summary' && summaryLoading && summaryTickets.length === 0
-  const showHistorySkeleton = pageTab === 'history' && historyLoading && !historyLoaded
+  const showSummarySkeleton = pageTab === 'summary' && summaryLoading && summaryTickets.length === 0 && !summaryLoadError
+  const showHistoryInlineLoader = pageTab === 'history' && historyLoading && !historyLoaded && !historyLoadError
+
+  const allTicketsForDeepLink = useMemo(
+    () => [...summaryTickets, ...historyTickets],
+    [summaryTickets, historyTickets]
+  )
 
   const activeTabPeriod = pageTab === 'summary' ? period : historyPeriod
   const activeRange = useMemo(
@@ -536,6 +559,7 @@ export default function SummaryPage() {
 
   const {
     selectedTicket,
+    openingTicketId,
     selectedTicketAttachments,
     ticketLogs,
     loadingAttachments,
@@ -554,6 +578,43 @@ export default function SummaryPage() {
     setDraftPriority,
     recoverAndReloadAttachments,
   } = useManagerTicketDrawer({ onRefresh: refreshSummaryData })
+
+  const openTicketFnRef = useRef<(ticket: SummaryTicketRow, opts?: { skipDeepLink?: boolean }) => void>(() => {})
+
+  const { clearDeepLink, markDeepLink } = useTicketDeepLinkOpen({
+    tickets: allTicketsForDeepLink,
+    selectedTicketId: selectedTicket?.id,
+    onOpenTicket: (ticket, opts) => openTicketFnRef.current(ticket, opts),
+    onCloseDrawer: () => closeDrawer(),
+    mapFetchedTicket: ticketDetailToSummaryRow,
+  })
+
+  const handleCloseDrawer = useCallback(() => {
+    closeDrawer()
+    clearDeepLink()
+  }, [closeDrawer, clearDeepLink])
+
+  const handleOpenTicket = useCallback(
+    (ticket: SummaryTicketRow, opts?: { skipDeepLink?: boolean }) => {
+      openTicketRow(ticket)
+      if (!opts?.skipDeepLink) {
+        markDeepLink(ticket.id)
+      }
+    },
+    [openTicketRow, markDeepLink]
+  )
+
+  openTicketFnRef.current = handleOpenTicket
+
+  function ticketRowStyle(ticketId: string): CSSProperties {
+    const opening = openingTicketId === ticketId
+    const selected = selectedTicket?.id === ticketId
+    return {
+      ...styles.historyTicketButton,
+      ...(opening ? styles.ticketRowOpening : {}),
+      ...(selected ? styles.ticketRowSelected : {}),
+    }
+  }
 
   const sourceTicketsForExport = useMemo(() => {
     return activeRange ? ticketsInRange : summaryTickets
@@ -935,8 +996,14 @@ export default function SummaryPage() {
           </Card>
         )}
 
-        {showSummarySkeleton || showHistorySkeleton ? (
+        {showSummarySkeleton ? (
           <PageTransitionLoader />
+        ) : summaryLoadError && pageTab === 'summary' && summaryTickets.length === 0 ? (
+          <ErrorState
+            title="לא הצלחנו לטעון את הסיכום"
+            message="בדקו חיבור לאינטרנט ונסו שוב."
+            onRetry={() => void loadSummary()}
+          />
         ) : pageTab === 'history' ? (
           <Card noPadding>
             <div
@@ -998,7 +1065,15 @@ export default function SummaryPage() {
               </p>
             )}
 
-            {!historyRange ? (
+            {showHistoryInlineLoader ? (
+              <SectionLoader />
+            ) : historyLoadError && !historyLoaded ? (
+              <ErrorState
+                title="לא הצלחנו לטעון את ההיסטוריה"
+                message="בדקו חיבור לאינטרנט ונסו שוב."
+                onRetry={() => void loadHistory()}
+              />
+            ) : !historyRange ? (
               <EmptyState
                 title="בחרו טווח תאריכים"
                 description="הגדירו טווח בחלק העליון כדי לצפות בהיסטוריית תקלות סגורות."
@@ -1036,8 +1111,8 @@ export default function SummaryPage() {
                           <button
                             key={ticket.id}
                             type="button"
-                            style={{ ...styles.historyTicketCard, ...styles.historyTicketButton }}
-                            onClick={() => openTicketRow(ticket)}
+                            style={{ ...styles.historyTicketCard, ...ticketRowStyle(ticket.id) }}
+                            onClick={() => handleOpenTicket(ticket)}
                           >
                             <div style={styles.historyTicketTop}>
                               <span style={styles.historyTicketNumber}>#{ticket.ticket_number}</span>
@@ -1085,7 +1160,7 @@ export default function SummaryPage() {
                               <tr
                                 key={ticket.id}
                                 style={styles.historyTableRow}
-                                onClick={() => openTicketRow(ticket)}
+                                onClick={() => handleOpenTicket(ticket)}
                               >
                                 <td style={styles.td}>
                                   <span style={styles.historyTicketNumber}>{ticket.ticket_number}</span>
@@ -1167,10 +1242,10 @@ export default function SummaryPage() {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => openTicketRow(t)}
+                      onClick={() => handleOpenTicket(t)}
                       style={{
                         ...styles.historyTicketCard,
-                        ...styles.historyTicketButton,
+                        ...ticketRowStyle(t.id),
                         padding: '12px',
                       }}
                     >
@@ -1427,14 +1502,14 @@ export default function SummaryPage() {
         workersMap={workersMap}
         reporterName={selectedTicket?.reporter_name}
         descriptionReadOnly
-        onClose={closeDrawer}
-        onCancel={closeDrawer}
+        onClose={handleCloseDrawer}
+        onCancel={handleCloseDrawer}
         onDescriptionChange={() => {}}
         onWorkerChange={setDraftWorkerId}
         onStatusChange={setDraftStatus}
         onPriorityChange={setDraftPriority}
         onSave={() => void saveTicket()}
-        onSelectImage={() => {}}
+        onSelectImage={setLightboxImage}
         onCloseTicket={() => void closeTicket()}
         getImageUrl={(a) => a.signed_url || a.file_url || ''}
         onRecoverMedia={
@@ -1445,6 +1520,7 @@ export default function SummaryPage() {
             : undefined
         }
       />
+      <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />
     </AppShell>
   )
 }
@@ -1814,9 +1890,20 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     fontFamily: 'inherit',
     textAlign: 'right' as const,
+    border: 'none',
+    transition: 'background 0.15s ease, opacity 0.15s ease',
+  },
+  ticketRowOpening: {
+    opacity: 0.65,
+    pointerEvents: 'none' as const,
+  },
+  ticketRowSelected: {
+    background: theme.colors.primaryMuted,
+    borderColor: theme.colors.primary,
   },
   historyTableRow: {
     cursor: 'pointer',
+    transition: 'background 0.15s ease',
   },
   historyTicketTop: {
     display: 'flex',

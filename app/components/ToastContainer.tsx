@@ -7,6 +7,48 @@
 
 import React from 'react';
 import { Toast, registerToastHandler } from '@/lib/error-handler';
+import { theme } from './ui';
+
+const TOAST_Z_INDEX = 350;
+
+type ToastStyle = { bg: string; border: string; text: string };
+
+const toastStyles: Record<Toast['type'], ToastStyle> = {
+  success: {
+    bg: theme.colors.successMuted,
+    border: theme.colors.success,
+    text: theme.colors.textPrimary,
+  },
+  error: {
+    bg: theme.colors.errorMuted,
+    border: theme.colors.error,
+    text: theme.colors.textPrimary,
+  },
+  warning: {
+    bg: theme.colors.warningMuted,
+    border: theme.colors.warning,
+    text: theme.colors.textPrimary,
+  },
+  info: {
+    bg: theme.colors.infoMuted,
+    border: theme.colors.info,
+    text: theme.colors.textPrimary,
+  },
+};
+
+function getIcon(type: Toast['type']) {
+  switch (type) {
+    case 'success':
+      return '✓';
+    case 'error':
+      return '✕';
+    case 'warning':
+      return '⚠';
+    case 'info':
+    default:
+      return 'ℹ';
+  }
+}
 
 export const ToastContainer = () => {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
@@ -15,13 +57,11 @@ export const ToastContainer = () => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Register handler on mount
   React.useEffect(() => {
     registerToastHandler({
       show: (toast: Toast) => {
         setToasts((prev) => [...prev, toast]);
 
-        // Auto-remove after duration
         if (toast.duration && toast.duration > 0) {
           setTimeout(() => {
             removeToast(toast.id);
@@ -31,78 +71,72 @@ export const ToastContainer = () => {
     });
   }, [removeToast]);
 
-  const getBackgroundColor = (type: Toast['type']) => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-50 border-green-200';
-      case 'error':
-        return 'bg-red-50 border-red-200';
-      case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
-      case 'info':
-      default:
-        return 'bg-blue-50 border-blue-200';
-    }
-  };
-
-  const getTextColor = (type: Toast['type']) => {
-    switch (type) {
-      case 'success':
-        return 'text-green-800';
-      case 'error':
-        return 'text-red-800';
-      case 'warning':
-        return 'text-yellow-800';
-      case 'info':
-      default:
-        return 'text-blue-800';
-    }
-  };
-
-  const getIcon = (type: Toast['type']) => {
-    switch (type) {
-      case 'success':
-        return '✓';
-      case 'error':
-        return '✕';
-      case 'warning':
-        return '⚠';
-      case 'info':
-      default:
-        return 'ℹ';
-    }
-  };
-
   return (
     <div
-      className="fixed end-4 z-[200] space-y-2 max-w-sm"
-      style={{ bottom: 'calc(74px + env(safe-area-inset-bottom, 0px))' }}
       dir="rtl"
       role="status"
       aria-live="polite"
       aria-atomic="false"
+      style={{
+        position: 'fixed',
+        insetInlineEnd: 16,
+        bottom: 'calc(74px + env(safe-area-inset-bottom, 0px))',
+        zIndex: TOAST_Z_INDEX,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        maxWidth: 384,
+        pointerEvents: 'none',
+      }}
     >
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`
-            border rounded-lg p-4 flex items-start gap-3
-            animate-in fade-in slide-in-from-bottom-4 duration-300
-            ${getBackgroundColor(toast.type)}
-          `}
-        >
-          <span className={`font-bold text-lg shrink-0 ${getTextColor(toast.type)}`}>
-            {getIcon(toast.type)}
-          </span>
-          <p className={`flex-1 text-sm ${getTextColor(toast.type)}`}>{toast.message}</p>
-          <button
-            onClick={() => removeToast(toast.id)}
-            className={`text-xl leading-none shrink-0 ${getTextColor(toast.type)} hover:opacity-70`}
+      {toasts.map((toast) => {
+        const style = toastStyles[toast.type] || toastStyles.info;
+        return (
+          <div
+            key={toast.id}
+            style={{
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: 16,
+              borderRadius: theme.radius.md,
+              border: `1px solid ${style.border}`,
+              background: style.bg,
+              color: style.text,
+              boxShadow: theme.shadows.md,
+              animation: 'fadeIn 0.2s ease',
+            }}
           >
-            ×
-          </button>
-        </div>
-      ))}
+            <span style={{ fontWeight: 700, fontSize: 18, flexShrink: 0, color: style.border }}>
+              {getIcon(toast.type)}
+            </span>
+            <p style={{ flex: 1, margin: 0, fontSize: 14, lineHeight: 1.4 }}>{toast.message}</p>
+            <button
+              type="button"
+              onClick={() => removeToast(toast.id)}
+              aria-label="סגירה"
+              style={{
+                fontSize: 20,
+                lineHeight: 1,
+                flexShrink: 0,
+                background: 'transparent',
+                border: 'none',
+                color: style.text,
+                cursor: 'pointer',
+                padding: 4,
+                minWidth: 44,
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 };
