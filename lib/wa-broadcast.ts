@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
-import { sendRawWhatsAppPayloadWithCredentials } from '@/lib/whatsapp-send'
+import { sendRawWhatsAppPayloadWithCredentials, type WhatsAppMetaError } from '@/lib/whatsapp-send'
+import { formatWhatsAppTemplateFailureMessage } from '@/lib/whatsapp-meta-errors'
 import { buildInboxTemplatePreview } from '@/lib/whatsapp-inbox-meta-templates'
 import {
   extractMetaWaMessageId,
@@ -125,6 +126,7 @@ export async function runWhatsAppBroadcast(
       : []
 
   for (const recipient of list) {
+    const metaErr: { current?: WhatsAppMetaError } = {}
     const result = await sendRawWhatsAppPayloadWithCredentials(phoneNumberId, accessToken, {
       to: recipient.normalized_phone,
       type: 'template',
@@ -133,7 +135,7 @@ export async function runWhatsAppBroadcast(
         language: { code: lang },
         components,
       },
-    })
+    }, metaErr)
     if (result) {
       sent++
       await persistWhatsAppMessage(admin, {
@@ -147,12 +149,24 @@ export async function runWhatsAppBroadcast(
       })
     } else {
       failed++
+      const failureMessage =
+        formatWhatsAppTemplateFailureMessage(metaName, metaErr.current) ||
+        `Broadcast template "${metaName}" failed`
       await insertWhatsAppSendFailure(
         opts.clientId,
         recipient.normalized_phone,
-        previewBody,
-        `Broadcast template "${metaName}" failed`,
-        { send_kind: 'template', template_name: metaName }
+        metaName,
+        failureMessage,
+        {
+          send_kind: 'template',
+          template_name: metaName,
+          template_params: trimmedParams,
+          template_language: lang,
+          preview_body: previewBody,
+          meta_http_status: metaErr.current?.httpStatus,
+          meta_error_code: metaErr.current?.metaCode,
+          meta_error_message: metaErr.current?.message,
+        }
       )
     }
     await new Promise((r) => setTimeout(r, 300))

@@ -12,6 +12,7 @@ import {
 } from '@/lib/whatsapp-message-store'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 import { getLogger } from '@/lib/logging'
+import { whatsAppMetaErrorHint } from '@/lib/whatsapp-meta-errors'
 
 export type ResidentOutboundResult = {
   sent: boolean
@@ -28,20 +29,11 @@ type Creds = {
   accessToken: string
 }
 
-function metaErrorHint(code: number | undefined, httpStatus?: number): string {
-  if (httpStatus === 404) return 'Meta החזיר 404 — בדקו whatsapp_phone_number_id או שם תבנית manager_reply'
-  if (code === 131047) return 'לא ניתן לשלוח ב-WhatsApp כרגע — נסו שוב או פנו למשרד'
-  if (code === 132001) return 'תבנית Meta לא קיימת או לא מאושרת'
-  if (code === 190) return 'טוקן WhatsApp פג — עדכנו בהגדרות'
-  if (code === 131026) return 'לא ניתן לשלוח למספר זה'
-  return 'שליחת WhatsApp נכשלה'
-}
-
 function metaFailureFields(err?: WhatsAppMetaError) {
   return {
     metaErrorCode: err?.metaCode,
     metaHttpStatus: err?.httpStatus,
-    errorMessage: metaErrorHint(err?.metaCode, err?.httpStatus),
+    errorMessage: whatsAppMetaErrorHint(err?.metaCode, err?.httpStatus),
   }
 }
 
