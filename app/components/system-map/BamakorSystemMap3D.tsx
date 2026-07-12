@@ -194,11 +194,11 @@ export function BamakorSystemMap3D() {
   const dragRef = useRef({ x: 0, y: 0, rotX: -18, rotY: 32 })
   const frameRef = useRef<number | null>(null)
 
-  const tick = useCallback(() => {
+  const tick = useCallback(function animate() {
     if (autoRotate && !dragging) {
       setRotY((y) => y + 0.12)
     }
-    frameRef.current = requestAnimationFrame(tick)
+    frameRef.current = requestAnimationFrame(animate)
   }, [autoRotate, dragging])
 
   useEffect(() => {
