@@ -85,7 +85,6 @@ test.describe('הפניות auth — דפים מוגנים', () => {
     '/qr',
     '/summary',
     '/settings',
-    '/error-logs',
     '/pending-residents',
     '/addons',
     '/calendar',
@@ -95,8 +94,6 @@ test.describe('הפניות auth — דפים מוגנים', () => {
     '/project-documents',
     '/whatsapp-inbox',
     '/campaigns',
-    '/assistant',
-    '/notifications/failed',
   ]
 
   for (const route of protectedRoutes) {
@@ -136,25 +133,18 @@ test.describe('דף login — UX', () => {
 })
 
 // ─────────────────────────────────────────────────────────────
-// Health endpoint
+// Removed public diagnostics — must not be exposed
 // ─────────────────────────────────────────────────────────────
 
-test.describe('API health', () => {
-  test('GET /api/health מחזיר 200', async ({ request }) => {
+test.describe('API diagnostics removed', () => {
+  test('GET /api/health דורש auth (לא ציבורי)', async ({ request }) => {
     const res = await request.get('/api/health')
-    expect(res.status()).toBe(200)
+    expect(res.status()).toBe(401)
   })
 
-  test('GET /api/health לא מדליף stack trace', async ({ request }) => {
-    const res = await request.get('/api/health')
-    const json = await res.json()
-    expect(JSON.stringify(json)).not.toMatch(/stack|Error:|at Object\./i)
-  })
-
-  test('POST /api/health מחזיר 405 (method not allowed)', async ({ request }) => {
-    const res = await request.post('/api/health', { data: {} })
-    // 405 or 404 — לא 200 ולא 500
-    expect([404, 405]).toContain(res.status())
+  test('POST /api/assistant/query דורש auth', async ({ request }) => {
+    const res = await request.post('/api/assistant/query', { data: { question: 'כמה תקלות?' } })
+    expect(res.status()).toBe(401)
   })
 })
 

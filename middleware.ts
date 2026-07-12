@@ -20,7 +20,6 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/worker/') ||
     pathname.startsWith('/api/superadmin/') ||
     pathname.startsWith('/api/admin/') ||
-    pathname === '/api/health' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||
@@ -126,8 +125,26 @@ export async function middleware(req: NextRequest) {
     return pendingResponse
   }
 
-  // Platform diagnostics — not for tenant dashboards (alerts go to PLATFORM_OPS_EMAIL).
-  if (pathname === '/error-logs' || pathname === '/failed-notifications') {
+  // Platform / marketing / diagnostic routes — not exposed to tenants (ops via superadmin + email).
+  const blockedAuxPaths = [
+    '/system-map',
+    '/health',
+    '/assistant',
+    '/error-logs',
+    '/failed-notifications',
+    '/notifications/failed',
+    '/api/health',
+    '/api/assistant/query',
+    '/api/notifications/failed',
+    '/api/error-logs',
+    '/api/failed-notifications',
+  ] as const
+  if (
+    blockedAuxPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  ) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
     const url = req.nextUrl.clone()
     url.pathname = '/'
     pendingResponse = NextResponse.redirect(url)

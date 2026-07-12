@@ -46,10 +46,6 @@ export const documentSignRequestBodySchema = z
     message: 'document_id or document_path required',
   })
 
-export const assistantQueryBodySchema = z.object({
-  question: z.string().min(2).max(500),
-})
-
 export const emailSendBodySchema = z.object({
   to: z.string().email(),
   subject: z.string().min(1).max(200),

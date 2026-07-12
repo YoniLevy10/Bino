@@ -144,7 +144,6 @@ test.describe('הפניות auth — דפים מוגנים', () => {
     '/qr',
     '/summary',
     '/settings',
-    '/error-logs',
     '/pending-residents',
     '/onboarding',
     '/addons',
@@ -268,30 +267,13 @@ test.describe('/admin/setup — ויזארד הקמת לקוח', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════
-// API Health Endpoint
+// Removed public diagnostics
 // ═══════════════════════════════════════════════════════════════
 
-test.describe('API /health', () => {
-  test('GET /api/health מחזיר 200', async ({ request }) => {
+test.describe('API diagnostics removed', () => {
+  test('GET /api/health דורש auth (לא ציבורי)', async ({ request }) => {
     const res = await request.get('/api/health')
-    expect(res.status()).toBe(200)
-  })
-
-  test('GET /api/health — body הוא JSON תקין', async ({ request }) => {
-    const res = await request.get('/api/health')
-    const json = await res.json()
-    expect(typeof json).toBe('object')
-  })
-
-  test('GET /api/health — לא מדליף stack trace', async ({ request }) => {
-    const res = await request.get('/api/health')
-    const text = await res.text()
-    expect(text).not.toMatch(/Error:|at Object\.|stack/i)
-  })
-
-  test('POST /api/health — מחזיר 404 או 405 (method not allowed)', async ({ request }) => {
-    const res = await request.post('/api/health', { data: {} })
-    expect([404, 405]).toContain(res.status())
+    expect(res.status()).toBe(401)
   })
 })
 
@@ -445,16 +427,6 @@ test.describe('/summary — redirect', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════
-// Error logs — redirect
-// ═══════════════════════════════════════════════════════════════
-
-test.describe('/error-logs — redirect', () => {
-  test('/error-logs ללא auth → /login', async ({ page }) => {
-    await expectRedirectToLogin(page, '/error-logs')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════
 // Pending residents — redirect
 // ═══════════════════════════════════════════════════════════════
 
@@ -547,12 +519,6 @@ test.describe('קבצים סטטיים ציבוריים', () => {
 // ═══════════════════════════════════════════════════════════════
 
 test.describe('Content-Type headers', () => {
-  test('/api/health מחזיר Content-Type: application/json', async ({ request }) => {
-    const res = await request.get('/api/health')
-    const ct = res.headers()['content-type'] ?? ''
-    expect(ct).toContain('application/json')
-  })
-
   test('/api/admin/setup-client (POST 401) מחזיר JSON', async ({ request }) => {
     const res = await request.post('/api/admin/setup-client', { data: {} })
     const ct = res.headers()['content-type'] ?? ''

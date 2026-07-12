@@ -744,12 +744,6 @@ function SettingsPageInner() {
                     />
                     <span>שלח SMS בסגירת תקלה</span>
                   </label>
-                  <p style={{ ...styles.formHint, marginTop: 16 }}>
-                    <Link href="/notifications/failed" style={styles.inlineLink}>
-                      הודעות SMS / WhatsApp שנכשלו
-                    </Link>
-                    {' — תור כשלונות ללקוח (לא כולל התראות פלטפורמה פנימיות).'}
-                  </p>
                   <div
                     style={{
                       marginTop: '20px',
