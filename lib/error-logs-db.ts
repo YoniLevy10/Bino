@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { PlatformOpsAlertKind } from '@/lib/platform-ops-alert'
+import { isNonRetryableWhatsAppMetaError } from '@/lib/whatsapp-meta-errors'
 
 export async function insertOperationalErrorLog(args: {
   context: string
@@ -63,21 +64,31 @@ export async function insertWhatsAppSendFailure(
 ): Promise<void> {
   try {
     const admin = getSupabaseAdmin()
+    const metaErrorCode =
+      typeof detailsExtra?.meta_error_code === 'number' ? detailsExtra.meta_error_code : undefined
+    const skipRetry = isNonRetryableWhatsAppMetaError(metaErrorCode)
+    const details = {
+      client_id: clientId,
+      to: to.slice(0, 64),
+      body: body.slice(0, 4000),
+      ...detailsExtra,
+    }
+
     const { error } = await admin.from('error_logs').insert({
       context: 'whatsapp_send',
       message: errorMessage.slice(0, 8000),
       client_id: clientId,
-      details: {
-        client_id: clientId,
-        to: to.slice(0, 64),
-        body: body.slice(0, 4000),
-        ...detailsExtra,
-      },
+      details,
       resolved: false,
-      whatsapp_attempts: 1,
+      whatsapp_attempts: skipRetry ? 3 : 1,
     })
     if (error) {
       console.error('insertWhatsAppSendFailure:', error.message)
+      return
+    }
+
+    if (skipRetry) {
+      void notifyWhatsAppSendRetriesExhausted(clientId, to, errorMessage, details)
     }
   } catch (e) {
     console.error('insertWhatsAppSendFailure', e)

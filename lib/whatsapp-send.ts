@@ -1,17 +1,17 @@
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
 import { getLogger } from '@/lib/logging'
+import {
+  formatWhatsAppTemplateFailureMessage,
+  type WhatsAppMetaError,
+} from '@/lib/whatsapp-meta-errors'
+
+export type { WhatsAppMetaError }
 
 export type WhatsAppFailureLog = {
   clientId: string
   /** When false, skip error_logs insert (e.g. before a text fallback retry). Default true. */
   logOnFailure?: boolean
-}
-
-export type WhatsAppMetaError = {
-  httpStatus: number
-  metaCode?: number
-  message?: string
 }
 
 /** Task 37: WhatsApp Cloud API outbound timeout */
@@ -311,17 +311,22 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
   )
 
   if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
+    const failureMessage =
+      formatWhatsAppTemplateFailureMessage(templateName, metaErrorOut?.current) ||
+      'WhatsApp template send returned null (timeout/error)'
     await insertWhatsAppSendFailure(
       failureLog.clientId,
       to,
       templateName,
-      'WhatsApp template send returned null (timeout/error)',
+      failureMessage,
       {
         send_kind: 'template',
+        template_name: templateName,
         template_params: bodyParams,
         template_language: languageCode,
         meta_http_status: metaErrorOut?.current?.httpStatus,
         meta_error_code: metaErrorOut?.current?.metaCode,
+        meta_error_message: metaErrorOut?.current?.message,
       }
     )
   }
@@ -354,17 +359,23 @@ export async function sendWhatsAppImageTemplateMessageWithCredentials(
   )
 
   if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
+    const failureMessage =
+      formatWhatsAppTemplateFailureMessage(templateName, metaErrorOut?.current) ||
+      'WhatsApp image template send returned null (timeout/error)'
     await insertWhatsAppSendFailure(
       failureLog.clientId,
       to,
       templateName,
-      'WhatsApp image template send returned null (timeout/error)',
+      failureMessage,
       {
         send_kind: 'image_template',
+        template_name: templateName,
         template_params: bodyParams,
         template_language: languageCode,
+        header_image_link: imageLink,
         meta_http_status: metaErrorOut?.current?.httpStatus,
         meta_error_code: metaErrorOut?.current?.metaCode,
+        meta_error_message: metaErrorOut?.current?.message,
       }
     )
   }
