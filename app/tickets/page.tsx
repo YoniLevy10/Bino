@@ -31,6 +31,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
+import { parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
@@ -62,7 +63,6 @@ import {
 import { useIsMobile } from '@/lib/use-is-mobile'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { removeTicketFromListState } from '@/lib/open-tickets'
-import { PageListSkeleton } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
@@ -233,6 +233,14 @@ export default function TicketsPage() {
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
+  const [pendingDeepLinkTicket, setPendingDeepLinkTicket] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
+  })
+
+  useEffect(() => {
+    if (selectedTicket) setPendingDeepLinkTicket(null)
+  }, [selectedTicket?.id])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1205,9 +1213,9 @@ export default function TicketsPage() {
           )}
 
           {/* Table */}
-          {loading ? (
+          {loading && !selectedTicket && !pendingDeepLinkTicket ? (
             <div style={styles.loadingContainer}>
-              <PageListSkeleton rows={10} />
+              <LoadingSpinner size="lg" />
             </div>
           ) : pageLoadError ? (
             <ErrorState

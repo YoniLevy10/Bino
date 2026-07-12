@@ -27,12 +27,17 @@ export const TICKET_DETAIL_ENTRY_POINTS = [
     pageFile: 'app/tickets/page.tsx',
     drawerComponent: 'TicketDetailDrawer',
   },
+  {
+    id: 'summary',
+    pageFile: 'app/summary/page.tsx',
+    drawerComponent: 'TicketDetailDrawer',
+  },
 ] as const
 
 /** Navigation sources that must deep-link into ticket detail. */
 export const TICKET_DETAIL_NAV_SOURCES = [
   { id: 'global_search', file: 'app/components/GlobalSearch.tsx', mustUse: 'ticketDetailPath' },
-  { id: 'summary_history', file: 'app/summary/page.tsx', mustUse: 'ticketDetailPath' },
+  { id: 'summary_history', file: 'app/summary/page.tsx', mustUse: 'openTicketRow (inline drawer)' },
   { id: 'projects_drawer', file: 'app/projects/page.tsx', mustUse: 'ticketDetailPath' },
   { id: 'workers_drawer', file: 'app/workers/page.tsx', mustUse: 'ticketDetailPath' },
   { id: 'dashboard_activity', file: 'app/page.tsx', mustUse: 'openTicketById' },

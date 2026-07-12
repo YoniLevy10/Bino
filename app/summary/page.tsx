@@ -40,9 +40,9 @@ import {
 } from '../components/ui'
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { ticketDetailPath } from '@/lib/ticket-deep-link'
 import type { SummaryTicketRow } from '@/lib/summary-tickets'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { useManagerTicketDrawer } from '@/lib/hooks/use-manager-ticket-drawer'
+import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 
 const CACHE_KEY = 'bamakor_summary_meta_v1'
 const KPI_CACHE_KEY = 'bamakor_summary_kpi_v1'
@@ -402,13 +402,6 @@ export default function SummaryPage() {
     )
   }, [summaryTickets, activeRange])
 
-  const openSummaryTicket = useCallback(
-    (ticketId: string) => {
-      router.push(ticketDetailPath(ticketId))
-    },
-    [router]
-  )
-
   const historyClosedTickets = historyTickets
 
   const historyProjectOptions = useMemo(() => {
@@ -528,6 +521,38 @@ export default function SummaryPage() {
     for (const worker of workers) map.set(worker.id, worker.full_name)
     return map
   }, [workers])
+
+  const workersMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const worker of workers) map[worker.id] = worker.full_name
+    return map
+  }, [workers])
+
+  const refreshSummaryData = useCallback(async () => {
+    await loadSummary(true)
+    if (pageTab === 'history') await loadHistory(true)
+  }, [loadSummary, loadHistory, pageTab])
+
+  const {
+    selectedTicket,
+    selectedTicketAttachments,
+    ticketLogs,
+    loadingAttachments,
+    drawerLoading,
+    recoveringMedia,
+    draftWorkerId,
+    draftStatus,
+    draftPriority,
+    savingTicket,
+    openTicketRow,
+    closeDrawer,
+    saveTicket,
+    closeTicket,
+    setDraftWorkerId,
+    setDraftStatus,
+    setDraftPriority,
+    recoverAndReloadAttachments,
+  } = useManagerTicketDrawer({ onRefresh: refreshSummaryData })
 
   const sourceTicketsForExport = useMemo(() => {
     return activeRange ? ticketsInRange : summaryTickets
@@ -911,10 +936,7 @@ export default function SummaryPage() {
 
         {showSummarySkeleton || showHistorySkeleton ? (
           <div style={styles.loadingContainer}>
-            <PageListSkeleton rows={isMobile ? 6 : 8} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-              <LoadingSpinner size="lg" />
-            </div>
+            <LoadingSpinner size="lg" />
           </div>
         ) : pageTab === 'history' ? (
           <Card noPadding>
@@ -1016,7 +1038,7 @@ export default function SummaryPage() {
                             key={ticket.id}
                             type="button"
                             style={{ ...styles.historyTicketCard, ...styles.historyTicketButton }}
-                            onClick={() => router.push(ticketDetailPath(ticket.id))}
+                            onClick={() => openTicketRow(ticket)}
                           >
                             <div style={styles.historyTicketTop}>
                               <span style={styles.historyTicketNumber}>#{ticket.ticket_number}</span>
@@ -1064,7 +1086,7 @@ export default function SummaryPage() {
                               <tr
                                 key={ticket.id}
                                 style={styles.historyTableRow}
-                                onClick={() => router.push(ticketDetailPath(ticket.id))}
+                                onClick={() => openTicketRow(ticket)}
                               >
                                 <td style={styles.td}>
                                   <span style={styles.historyTicketNumber}>{ticket.ticket_number}</span>
@@ -1146,7 +1168,7 @@ export default function SummaryPage() {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => openSummaryTicket(t.id)}
+                      onClick={() => openTicketRow(t)}
                       style={{
                         ...styles.historyTicketCard,
                         ...styles.historyTicketButton,
@@ -1389,6 +1411,41 @@ export default function SummaryPage() {
           </>
         )}
       </div>
+
+      <TicketDetailDrawer
+        selectedTicket={selectedTicket}
+        isMobile={isMobile}
+        draftDescription={selectedTicket?.description || ''}
+        draftWorkerId={draftWorkerId}
+        draftStatus={draftStatus}
+        draftPriority={draftPriority}
+        selectedTicketAttachments={selectedTicketAttachments}
+        ticketLogs={ticketLogs}
+        drawerLoading={drawerLoading}
+        loadingAttachments={loadingAttachments}
+        recoveringMedia={recoveringMedia}
+        savingTicket={savingTicket}
+        workersMap={workersMap}
+        reporterName={selectedTicket?.reporter_name}
+        descriptionReadOnly
+        onClose={closeDrawer}
+        onCancel={closeDrawer}
+        onDescriptionChange={() => {}}
+        onWorkerChange={setDraftWorkerId}
+        onStatusChange={setDraftStatus}
+        onPriorityChange={setDraftPriority}
+        onSave={() => void saveTicket()}
+        onSelectImage={() => {}}
+        onCloseTicket={() => void closeTicket()}
+        getImageUrl={(a) => a.signed_url || a.file_url || ''}
+        onRecoverMedia={
+          selectedTicket
+            ? async () => {
+                await recoverAndReloadAttachments(selectedTicket)
+              }
+            : undefined
+        }
+      />
     </AppShell>
   )
 }
