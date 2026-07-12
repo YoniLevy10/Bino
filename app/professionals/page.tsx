@@ -33,7 +33,7 @@ import {
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
@@ -361,14 +361,7 @@ export default function ProfessionalsPage() {
 
         <PaidAddonGate addonKey={PAID_ADDON_KEYS.professionals}>
         {loading ? (
-          <>
-            <PageKpiSkeletonN columns={3} />
-            <Card noPadding>
-              <div style={{ padding: 20 }}>
-                <PageListSkeleton rows={6} />
-              </div>
-            </Card>
-          </>
+          <PageTransitionLoader />
         ) : (
           <>
             <div style={styles.kpiGrid}>

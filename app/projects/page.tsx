@@ -39,7 +39,7 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGate'
 import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
 import { ProjectPilotSmsPanel } from '../components/projects/ProjectPilotSmsPanel'
@@ -560,17 +560,7 @@ export default function ProjectsPage() {
         )}
 
         {loading ? (
-          <>
-            <PageKpiSkeletonN columns={isMobile ? 3 : 3} />
-            <Card noPadding>
-              <div style={{ padding: '20px 16px' }}>
-                <PageListSkeleton rows={8} />
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                  <LoadingSpinner />
-                </div>
-              </div>
-            </Card>
-          </>
+          <PageTransitionLoader />
         ) : (
           <>
         {/* KPI Cards */}

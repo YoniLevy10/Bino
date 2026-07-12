@@ -14,7 +14,7 @@ import {
   SHIFT_STATUS_HE,
 } from '@/lib/attendance-display'
 import { Button, Card, theme } from '../ui'
-import { PageListSkeleton } from '../page-skeleton'
+import { PageTransitionLoader } from '../page-skeleton'
 import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
 import { AttendanceShiftCreateForm } from './AttendanceShiftCreateForm'
 
@@ -406,7 +406,7 @@ export function AttendanceShiftsReport({
       ) : null}
 
       {loading ? (
-        <PageListSkeleton rows={5} />
+        <PageTransitionLoader />
       ) : shifts.length === 0 ? (
         <p style={styles.hint}>אין משמרות בתקופה — עדיין לא נרשמו כניסות/יציאות.</p>
       ) : (

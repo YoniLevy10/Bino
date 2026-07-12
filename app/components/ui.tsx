@@ -1476,9 +1476,9 @@ export function Button({
   }
 
   const sizeStyles: Record<string, CSSProperties> = {
-    sm: { padding: '8px 14px', fontSize: '13px', height: '34px' },
-    md: { padding: '10px 18px', fontSize: '15px', height: '40px' },
-    lg: { padding: '12px 24px', fontSize: '16px', height: '48px' },
+    sm: { padding: '10px 16px', fontSize: '14px', minHeight: '44px', height: 'auto' },
+    md: { padding: '10px 18px', fontSize: '15px', minHeight: '44px', height: 'auto' },
+    lg: { padding: '12px 24px', fontSize: '16px', minHeight: '48px', height: 'auto' },
   }
 
   return (
@@ -1571,7 +1571,6 @@ const badgeStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     borderRadius: theme.radius.full,
     fontWeight: 600,
-    textTransform: 'capitalize',
     letterSpacing: '0.01em',
   },
 }
@@ -1700,7 +1699,8 @@ const filterTabStyles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
   },
   tab: {
-    padding: '8px 16px',
+    padding: '10px 16px',
+    minHeight: '44px',
     borderRadius: theme.radius.sm,
     border: 'none',
     background: 'transparent',
@@ -1882,6 +1882,11 @@ export function Drawer({
         aria-labelledby="drawer-title"
       >
         <div style={drawerStyles.header}>
+          {mobile && (
+            <div style={drawerStyles.dragHandleWrap} aria-hidden>
+              <div style={drawerStyles.dragHandle} />
+            </div>
+          )}
           <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: '8px' }}>
             <h2 id="drawer-title" style={drawerStyles.title}>
               {title}
@@ -1955,6 +1960,21 @@ const drawerStyles: Record<string, CSSProperties> = {
     paddingTop: 'calc(24px + env(safe-area-inset-top))',
     borderBottom: `1px solid ${theme.colors.border}`,
     flexShrink: 0,
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
+  dragHandleWrap: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    paddingBottom: '8px',
+    flexBasis: '100%',
+  },
+  dragHandle: {
+    width: '40px',
+    height: '4px',
+    borderRadius: theme.radius.full,
+    background: theme.colors.borderStrong,
   },
   title: {
     fontSize: '20px',
@@ -2165,77 +2185,6 @@ const activityStyles: Record<string, CSSProperties> = {
     fontSize: '12px',
     color: theme.colors.textMuted,
   },
-}
-
-// ============================================================================
-// SKELETON COMPONENTS
-// ============================================================================
-
-export function Skeleton({
-  width = '100%',
-  height = '20px',
-  borderRadius = theme.radius.sm,
-}: {
-  width?: string | number
-  height?: string | number
-  borderRadius?: string
-}) {
-  return (
-    <div style={{
-      width: typeof width === 'number' ? `${width}px` : width,
-      height: typeof height === 'number' ? `${height}px` : height,
-      borderRadius,
-      background: `linear-gradient(90deg, ${theme.colors.muted} 25%, ${theme.colors.border} 50%, ${theme.colors.muted} 75%)`,
-      backgroundSize: '200% 100%',
-      animation: 'shimmer 1.5s infinite',
-    }} />
-  )
-}
-
-export function SkeletonCard() {
-  return (
-    <Card>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <Skeleton width="40%" height="14px" />
-        <Skeleton width="60%" height="28px" />
-        <Skeleton width="30%" height="12px" />
-      </div>
-    </Card>
-  )
-}
-
-export function SkeletonTable({ rows = 5 }: { rows?: number }) {
-  return (
-    <Card>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <Skeleton width="30%" height="20px" />
-        {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <Skeleton width="5%" height="16px" />
-            <Skeleton width="25%" height="16px" />
-            <Skeleton width="20%" height="16px" />
-            <Skeleton width="15%" height="24px" borderRadius={theme.radius.full} />
-            <Skeleton width="15%" height="16px" />
-            <Skeleton width="10%" height="16px" />
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
-}
-
-export function SkeletonGrid({ count = 4 }: { count?: number }) {
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-      gap: '16px',
-    }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <SkeletonCard key={i} />
-      ))}
-    </div>
-  )
 }
 
 // ============================================================================

@@ -24,3 +24,12 @@ export function setTicketDeepLinkInUrl(ticketId: string | null): void {
   const next = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
   window.history.replaceState(null, '', next)
 }
+
+/** Push a history entry so the browser back button closes the drawer. */
+export function pushTicketDeepLinkInUrl(ticketId: string): void {
+  if (typeof window === 'undefined') return
+  const params = new URLSearchParams(window.location.search)
+  params.set(TICKET_DEEP_LINK_PARAM, ticketId)
+  const qs = params.toString()
+  window.history.pushState(null, '', `${window.location.pathname}?${qs}`)
+}

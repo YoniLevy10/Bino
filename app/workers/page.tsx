@@ -38,12 +38,13 @@ import {
   Select,
   Drawer,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import Link from 'next/link'
 import { usePaidAddons } from '../components/PaidAddonsContext'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
@@ -171,6 +172,7 @@ export default function WorkersPage() {
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [clientId, setClientId] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [sendingPortalLinkId, setSendingPortalLinkId] = useState<string | null>(null)
   const [testingSmsWorkerId, setTestingSmsWorkerId] = useState<string | null>(null)
@@ -226,13 +228,14 @@ export default function WorkersPage() {
       } else {
         setLoading(true)
       }
-      await asyncHandler(
+      const result = await asyncHandler(
         async () => {
           await loadWorkers(fetchedClientId)
           return true
         },
         { context: 'טעינת עובדים', showErrorToast: !cached }
       )
+      setLoadError(!result)
       setLoading(false)
     }
     void initialize()
@@ -728,14 +731,28 @@ export default function WorkersPage() {
         )}
 
         {loading ? (
-          <>
-            <PageKpiSkeletonN columns={3} />
-            <Card noPadding>
-              <div style={{ padding: '20px 16px' }}>
-                <PageListSkeleton rows={8} />
-              </div>
-            </Card>
-          </>
+          <PageTransitionLoader />
+        ) : loadError && workers.length === 0 ? (
+          <ErrorState
+            title="לא הצלחנו לטעון את העובדים"
+            message="בדקו חיבור לאינטרנט ונסו שוב."
+            onRetry={() => {
+              setLoadError(false)
+              setLoading(true)
+              void (async () => {
+                const fetchedClientId = await loadClientId()
+                const result = await asyncHandler(
+                  async () => {
+                    await loadWorkers(fetchedClientId)
+                    return true
+                  },
+                  { context: 'טעינת עובדים', showErrorToast: true }
+                )
+                setLoadError(!result)
+                setLoading(false)
+              })()
+            }}
+          />
         ) : (
           <>
         {/* KPI Cards */}

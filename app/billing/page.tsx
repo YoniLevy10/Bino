@@ -21,11 +21,12 @@ import {
   PageHeader,
   Card,
   KpiCard,
+  ErrorState,
   LoadingSpinner,
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plan-pricing'
@@ -79,6 +80,7 @@ export default function BillingPage() {
   const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [data, setData] = useState<Summary | null>(null)
   const { addons, isBootstrapped: addonsReady } = usePaidAddons()
   const [planTier, setPlanTier] = useState<PlanTier | null>(null)
@@ -96,7 +98,7 @@ export default function BillingPage() {
   useEffect(() => {
     void (async () => {
       setLoading(true)
-      await asyncHandler(
+      const result = await asyncHandler(
         async () => {
           const [summaryRes, pricingRes] = await Promise.all([
             fetchWithTimeout('/api/billing/summary'),
@@ -129,6 +131,7 @@ export default function BillingPage() {
         },
         { context: 'טעינת חיוב', showErrorToast: true }
       )
+      setLoadError(!result)
       setLoading(false)
     })()
   }, [])
@@ -150,14 +153,54 @@ export default function BillingPage() {
         {!isMobile && <PageHeader title="חיוב ושימוש" subtitle="תוכנית חודשית ומדדי צריכה" />}
 
         {loading ? (
-          <div style={styles.loading}>
-            <PageKpiSkeletonN columns={3} />
-            <PageListSkeleton rows={6} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-              <LoadingSpinner size="md" />
-            </div>
-          </div>
-        ) : !data ? null : (
+          <PageTransitionLoader />
+        ) : loadError || !data ? (
+          <ErrorState
+            title="לא הצלחנו לטעון את נתוני החיוב"
+            message="בדקו חיבור לאינטרנט ונסו שוב."
+            onRetry={() => {
+              setLoadError(false)
+              setLoading(true)
+              void (async () => {
+                const result = await asyncHandler(
+                  async () => {
+                    const [summaryRes, pricingRes] = await Promise.all([
+                      fetchWithTimeout('/api/billing/summary'),
+                      fetchWithTimeout('/api/billing/pricing'),
+                    ])
+                    const json = (await summaryRes.json()) as Summary & { error?: string }
+                    if (!summaryRes.ok) throw new Error(json.error || 'טעינה נכשלה')
+                    setData({
+                      ticketsThisMonth: json.ticketsThisMonth,
+                      residentsTotal: json.residentsTotal,
+                      workersActive: json.workersActive,
+                      buildingsActive: json.buildingsActive,
+                      ticketsByWeek: json.ticketsByWeek || [],
+                      plan: json.plan,
+                      plans: json.plans,
+                    })
+                    const pricingJson = (await pricingRes.json()) as {
+                      plan_tier?: PlanTier
+                      currentPlan?: PlanPricingCatalogRow
+                      catalog?: PlanPricingCatalogRow[]
+                      setup_fee_ils?: number
+                    }
+                    if (pricingRes.ok) {
+                      if (pricingJson.plan_tier) setPlanTier(pricingJson.plan_tier)
+                      setCurrentPlan(pricingJson.currentPlan ?? null)
+                      setPlanCatalog(pricingJson.catalog || [])
+                      if (typeof pricingJson.setup_fee_ils === 'number') setSetupFeeIls(pricingJson.setup_fee_ils)
+                    }
+                    return true
+                  },
+                  { context: 'טעינת חיוב', showErrorToast: true }
+                )
+                setLoadError(!result)
+                setLoading(false)
+              })()
+            }}
+          />
+        ) : (
           <>
             {data.plan && (
               <Card noPadding style={{ marginBottom: 20 }}>

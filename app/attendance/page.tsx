@@ -15,7 +15,7 @@ import {
   Button,
   theme,
 } from '../components/ui'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { AttendanceHelpSteps } from '../components/attendance/AttendanceHelpSteps'
@@ -279,7 +279,7 @@ export default function AttendancePage() {
         </div>
 
         {loading ? (
-          <PageListSkeleton rows={6} />
+          <PageTransitionLoader />
         ) : events.length === 0 ? (
           <p style={styles.hint}>עדיין אין החתמות החודש — אחרי שהעובדים יצמידו את הטלפון למדבקה, יופיעו כאן.</p>
         ) : (

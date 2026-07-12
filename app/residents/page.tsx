@@ -38,13 +38,14 @@ import {
   PageHeader,
   Card,
   Button,
+  ErrorState,
   SearchInput,
   LoadingSpinner,
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { pickResidentToKeep } from '@/lib/merge-residents'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
   padding: '10px 18px',
@@ -111,6 +112,7 @@ function ResidentsPageInner() {
   const [residents, setResidents] = useState<ResidentRow[]>([])
   const [residentsTableMissing, setResidentsTableMissing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('ALL')
   const [isMobile, setIsMobile] = useState(false)
@@ -233,6 +235,7 @@ function ResidentsPageInner() {
   async function load() {
     setLoading(true)
     setResidentsTableMissing(false)
+    setLoadError(false)
     try {
       const tenantId = await resolveBamakorClientIdForBrowser()
       const [pRes, rRes, pendingRes] = await Promise.all([
@@ -259,6 +262,7 @@ function ResidentsPageInner() {
       } else {
         setResidents((rRes.data as ResidentRow[]) || [])
       }
+      setLoadError(false)
 
       try {
         const data = await pendingRes.json()
@@ -275,6 +279,7 @@ function ResidentsPageInner() {
         setPendingBadge(0)
       }
     } catch (e) {
+      setLoadError(true)
       toast.error(e instanceof Error ? e.message : TM.genericLoadError)
     }
     setLoading(false)
@@ -923,12 +928,13 @@ function ResidentsPageInner() {
           </div>
 
           {loading ? (
-            <div style={styles.loading}>
-              <PageListSkeleton rows={10} />
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                <LoadingSpinner size="md" />
-              </div>
-            </div>
+            <PageTransitionLoader />
+          ) : loadError && residents.length === 0 && !residentsTableMissing ? (
+            <ErrorState
+              title="לא הצלחנו לטעון את הדיירים"
+              message="בדקו חיבור לאינטרנט ונסו שוב."
+              onRetry={() => void load()}
+            />
           ) : residentsTableMissing ? (
             <div style={styles.friendlyEmpty}>
               <p style={styles.friendlyEmptyTitle}>טבלת הדיירים עדיין לא הוגדרה במערכת.</p>

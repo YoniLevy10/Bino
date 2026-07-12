@@ -22,6 +22,7 @@ import {
   PageHeader,
   theme,
 } from '../components/ui'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { usePaidAddons } from '../components/PaidAddonsContext'
 
 function AddonCard({
@@ -170,11 +171,7 @@ function AddonsPageInner() {
         </div>
 
         {loading ? (
-          <div style={styles.skeletonGrid}>
-            {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} style={styles.skeletonCard} />
-            ))}
-          </div>
+          <PageTransitionLoader />
         ) : catalogMissing ? (
           <Card>
             <p style={styles.muted}>
@@ -274,16 +271,6 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     fontSize: '14px',
     color: theme.colors.textMuted,
-  },
-  skeletonGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-    gap: 20,
-  },
-  skeletonCard: {
-    height: 320,
-    borderRadius: theme.radius.lg,
-    background: theme.colors.muted,
   },
   grid: {
     display: 'grid',

@@ -34,7 +34,7 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { digitsForWaMeLink } from '@/lib/wa-me-phone'
 
 type ProjectRow = {
@@ -272,12 +272,7 @@ export default function QrPage() {
           </div>
 
           {loading ? (
-            <div style={styles.loadingContainer}>
-              <PageListSkeleton rows={8} />
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-                <LoadingSpinner />
-              </div>
-            </div>
+            <PageTransitionLoader />
           ) : filteredProjects.length === 0 ? (
             <EmptyState
               title="לא נמצאו פרויקטים"

@@ -36,7 +36,7 @@ import {
   Select,
   theme,
 } from '../components/ui'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
@@ -315,14 +315,7 @@ export default function CalendarPage() {
         )}
 
         {loading ? (
-          <>
-            <PageKpiSkeletonN columns={3} />
-            <Card noPadding>
-              <div style={{ padding: '20px' }}>
-                <PageListSkeleton rows={6} />
-              </div>
-            </Card>
-          </>
+          <PageTransitionLoader />
         ) : (
           <>
             {isMobile && (

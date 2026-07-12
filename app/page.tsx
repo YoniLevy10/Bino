@@ -50,7 +50,7 @@ const AddTicketModal = dynamic(
   () => import('./components/tickets/AddTicketModal').then((m) => ({ default: m.AddTicketModal })),
   { loading: () => null }
 )
-import { PageKpiSkeleton, PageListSkeleton } from './components/page-skeleton'
+import { PageTransitionLoader } from './components/page-skeleton'
 import { ImageLightbox } from './components/shared/ImageLightbox'
 import { useIsMobile } from '@/lib/use-is-mobile'
 import { removeTicketFromListState } from '@/lib/open-tickets'
@@ -764,10 +764,7 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <div style={styles.loadingContainer}>
-            {!isMobile && <PageKpiSkeleton />}
-            <PageListSkeleton rows={isMobile ? 6 : 10} />
-          </div>
+          <PageTransitionLoader />
         ) : pageLoadError ? (
           <ErrorState
             title="לא הצלחנו לטעון את לוח הבקרה"
