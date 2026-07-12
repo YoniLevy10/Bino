@@ -28,6 +28,16 @@ jobs:
       - name: Unit tests
         run: npm test -- --exclude tests/integration/**
 
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E — ticket media flows (chromium)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+        run: npx playwright test tests/e2e/report-ticket-media.spec.ts tests/e2e/worker-ticket-comms.spec.ts --project=chromium
+
       - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
