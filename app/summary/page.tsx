@@ -395,16 +395,19 @@ export default function SummaryPage() {
 
   const ticketsInRange = summaryTickets
 
-  const closedTicketsInRange = useMemo(() => {
+  const ticketsInRangeSorted = useMemo(() => {
     if (!activeRange) return []
-    return summaryTickets
-      .filter((t) => {
-        if (!t.closed_at || t.status !== 'CLOSED') return false
-        const closedAt = new Date(t.closed_at)
-        return closedAt >= activeRange.from && closedAt < activeRange.toExclusive
-      })
-      .sort((a, b) => new Date(b.closed_at || 0).getTime() - new Date(a.closed_at || 0).getTime())
+    return [...summaryTickets].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
   }, [summaryTickets, activeRange])
+
+  const openSummaryTicket = useCallback(
+    (ticketId: string) => {
+      router.push(ticketDetailPath(ticketId))
+    },
+    [router]
+  )
 
   const historyClosedTickets = historyTickets
 
@@ -1131,34 +1134,42 @@ export default function SummaryPage() {
               />
             </div>
 
-            {closedTicketsInRange.length > 0 && (
+            {ticketsInRangeSorted.length > 0 && (
               <Card
-                title="תקלות שנסגרו בטווח"
-                subtitle={activeRange ? activeRange.label : ''}
+                title="תקלות בטווח"
+                subtitle={activeRange ? `${activeRange.label} · לחצו לצפייה בצ׳אט והערות` : ''}
                 noPadding
                 style={{ marginBottom: '24px' }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 16px 16px' }}>
-                  {closedTicketsInRange.slice(0, isMobile ? 8 : 12).map((t) => (
-                    <div
+                  {ticketsInRangeSorted.slice(0, isMobile ? 8 : 12).map((t) => (
+                    <button
                       key={t.id}
+                      type="button"
+                      onClick={() => openSummaryTicket(t.id)}
                       style={{
+                        ...styles.historyTicketCard,
+                        ...styles.historyTicketButton,
                         padding: '12px',
-                        borderRadius: theme.radius.md,
-                        border: `1px solid ${theme.colors.border}`,
-                        textAlign: 'right',
                       }}
                     >
-                      <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                        #{t.ticket_number} · {t.project_name || t.project_code}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px' }}>
+                          #{t.ticket_number} · {t.project_name || t.project_code}
+                        </div>
+                        <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>
+                          {ticketStatusLabelHe(t.status)}
+                        </span>
                       </div>
                       <div style={{ fontSize: '13px', color: theme.colors.textSecondary, marginTop: '4px' }}>
                         {t.description?.slice(0, 70)}{(t.description?.length || 0) > 70 ? '…' : ''}
                       </div>
                       <div style={{ fontSize: '12px', color: theme.colors.textMuted, marginTop: '6px' }}>
-                        נסגרה: {t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '—'}
+                        {t.status === 'CLOSED' && t.closed_at
+                          ? `נסגרה: ${new Date(t.closed_at).toLocaleString('he-IL')}`
+                          : `נפתחה: ${new Date(t.created_at).toLocaleString('he-IL')}`}
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </Card>

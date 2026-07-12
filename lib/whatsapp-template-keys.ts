@@ -216,7 +216,7 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   worker_assigned:         'נשלח לעובד (SMS) כשתקלה משויכת אליו',
   no_open_tickets:         'דייר שאל "מה הסטטוס?" אך אין לו תקלה פתוחה',
   ticket_status_list:      'דייר שאל על סטטוס — יש לו תקלות פתוחות ({{list}})',
-  sla_escalation_resident: 'cron SLA — תקלה פתוחה זמן רב, עדכון לדייר שהיא עדיין בטיפול',
+  sla_escalation_resident: 'תיבת WhatsApp ידנית — לא נשלח אוטומטית (תזכורות SLA רק למנהל)',
   ticket_closed:           'המנהלת סגרה תקלה — נשלח לדייר שדיווח עליה',
   image_stashed:           'דייר שלח תמונה לפני שפתח תקלה — מבקשים תיאור טקסט',
   image_attached:          'תמונה צורפה בהצלחה לתקלה פתוחה',

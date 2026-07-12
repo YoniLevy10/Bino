@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
@@ -29,6 +29,7 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
   resolveClientId,
 }: UseTicketDeepLinkOpenOptions<T>) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const deepLinkHandledRef = useRef<string | null>(null)
   const onOpenTicketRef = useRef(onOpenTicket)
 
@@ -38,7 +39,9 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const ticketId = parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
+    const ticketId =
+      parseTicketIdFromSearchParams(searchParams) ||
+      parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
     if (!ticketId || deepLinkHandledRef.current === ticketId) return
     if (selectedTicketId === ticketId) {
       deepLinkHandledRef.current = ticketId
@@ -48,16 +51,18 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
     void (async () => {
       const fromList = tickets.find((t) => t.id === ticketId)
       if (fromList) {
+        deepLinkHandledRef.current = ticketId
         onOpenTicketRef.current(fromList, { skipDeepLink: true })
         return
       }
       const clientId = resolveClientId ? await resolveClientId() : await resolveBamakorClientIdForBrowser()
       const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
       if (fetched) {
+        deepLinkHandledRef.current = ticketId
         onOpenTicketRef.current(mapFetchedTicket(fetched), { skipDeepLink: true })
       }
     })()
-  }, [tickets, selectedTicketId, mapFetchedTicket, resolveClientId])
+  }, [tickets, selectedTicketId, mapFetchedTicket, resolveClientId, searchParams])
 
   function markDeepLink(ticketId: string) {
     setTicketDeepLinkInUrl(ticketId)

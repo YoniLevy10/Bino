@@ -4,6 +4,7 @@ import {
   post019SmsOnce,
   SMS_019_SENDER,
 } from '@/lib/sms-019-core'
+import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
 
 const RETRIES = 3
 const BETWEEN_MS = 2000
@@ -117,6 +118,12 @@ export async function send019StaffSms(
   }
   if (!message) {
     console.error('❌ SMS_SEND_FAILURE: message is empty')
+    return false
+  }
+
+  const shabbatReason = shabbatMessagingBlockReason()
+  if (shabbatReason) {
+    console.log('📱 SMS_SHABBAT_SKIP', { channel: ctx.channel, destination: phoneNumber, reason: shabbatReason })
     return false
   }
 

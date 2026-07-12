@@ -3,10 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { sendManagerSMS } from '@/lib/sms-send'
 import { getLogger } from '@/lib/logging'
-import { resolveWhatsAppTemplateMessage } from '@/lib/whatsapp-templates'
-import { WHATSAPP_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
-import { sendResidentTextOrTemplate } from '@/lib/whatsapp-resident-outbound'
-import { metaTemplateNameSlaEscalation } from '@/lib/meta-whatsapp-pending-actions'
+import { isOutboundMessagingBlocked } from '@/lib/shabbat-messaging-gate'
 
 /** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
 const MAX_FIRST_ALERTS_PER_RUN = 10
@@ -21,15 +18,13 @@ function hoursAgo(ts: string): number {
 
 type ClientCreds = {
   manager_phone: string | null
-  whatsapp_phone_number_id: string | null
-  whatsapp_access_token: string | null
   sms_sender_name: string | null
 }
 
 async function getClientCreds(admin: ReturnType<typeof getSupabaseAdmin>, clientId: string): Promise<ClientCreds | null> {
   const { data } = await admin
     .from('clients')
-    .select('manager_phone, whatsapp_phone_number_id, whatsapp_access_token, sms_sender_name')
+    .select('manager_phone, sms_sender_name')
     .eq('id', clientId)
     .maybeSingle()
   return data as ClientCreds | null
@@ -45,8 +40,7 @@ async function sendManagerSlaSms(
   clientId: string
 ): Promise<boolean> {
   try {
-    await sendManagerSMS(phone, message, smsSenderName, clientId)
-    return true
+    return await sendManagerSMS(phone, message, smsSenderName, clientId)
   } catch (e) {
     logger.warn('CRON', `${label} SMS failed`, { ticketId, err: e instanceof Error ? e.message : String(e) })
     return false
@@ -59,14 +53,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  if (isOutboundMessagingBlocked()) {
+    logger.info('CRON', 'sla-check skipped — Shabbat')
+    return NextResponse.json({ ok: true, skipped: 'shabbat', firstAlerts: 0, managerReminders: 0, smsSent: 0 })
+  }
+
   try {
     const admin = getSupabaseAdmin()
     const minCreatedAt = new Date(Date.now() - SLA_TICKET_MAX_AGE_DAYS * 86_400_000).toISOString()
 
-    // Fetch open, non-deleted tickets within SLA tracking window
     const { data: tickets, error } = await admin
       .from('tickets')
-      .select('id, ticket_number, created_at, project_id, client_id, reporter_phone, sla_alerted, sla_alerted_at, escalated_at, description')
+      .select('id, ticket_number, created_at, project_id, client_id, sla_alerted, sla_alerted_at, escalated_at, description')
       .is('deleted_at', null)
       .neq('status', 'CLOSED')
       .gte('created_at', minCreatedAt)
@@ -76,7 +74,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const stats = { firstAlerts: 0, escalations: 0, smsSent: 0, capped: false }
+    const stats = { firstAlerts: 0, managerReminders: 0, smsSent: 0, capped: false }
 
     for (const row of tickets ?? []) {
       const pid = row.project_id as string | null
@@ -105,9 +103,8 @@ export async function GET(req: NextRequest) {
       const escalatedAt = row.escalated_at as string | null
       const projectName = (project.name as string) || ''
       const ticketNum = String(row.ticket_number)
-      const reporterPhone = (row.reporter_phone as string | null)?.trim() || null
 
-      // ── 1. FIRST SLA ALERT (SMS to manager only — no emoji, capped per run) ──
+      // ── 1. FIRST SLA ALERT — SMS to manager only ──
       if (!alerted && openHours >= slaH && managerPhone) {
         if (stats.firstAlerts >= MAX_FIRST_ALERTS_PER_RUN) {
           stats.capped = true
@@ -138,58 +135,27 @@ export async function GET(req: NextRequest) {
         stats.firstAlerts++
       }
 
-      // ── 2. ESCALATION — 24h after first alert (WA to resident only; no manager SMS) ──
-      if (alerted && alertedAt && !escalatedAt && hoursAgo(alertedAt) >= 24) {
-        let waAttempted = false
-        let waSent = false
+      // ── 2. MANAGER REMINDER — 24h after first alert (no resident messages) ──
+      if (alerted && alertedAt && !escalatedAt && hoursAgo(alertedAt) >= 24 && managerPhone) {
+        const msg =
+          `תזכורת SLA: תקלה #${ticketNum} ב${projectName}\n` +
+          `עדיין פתוחה ${Math.floor(openHours)} שעות.\n` +
+          `${(row.description as string | null)?.slice(0, 80) ?? '-'}\n` +
+          `נא לטפל בדחיפות.`
 
-        // WhatsApp to resident (plain text, no emoji)
-        if (reporterPhone && clientCreds.whatsapp_phone_number_id && clientCreds.whatsapp_access_token) {
-          waAttempted = true
-          try {
-            const descSnippet = ((row.description as string | null) ?? '-').slice(0, 60)
-            const residentMsg = await resolveWhatsAppTemplateMessage(
-              admin,
-              clientId,
-              'sla_escalation_resident',
-              WHATSAPP_TEMPLATE_EDITOR_DEFAULTS.sla_escalation_resident,
-              {
-                ticket_number: String(ticketNum),
-                description: descSnippet,
-              }
-            )
-            const wa = await sendResidentTextOrTemplate(admin, {
-              clientId,
-              phone: reporterPhone,
-              textBody: residentMsg,
-              templateName: metaTemplateNameSlaEscalation(),
-              templateParams: [String(ticketNum), descSnippet],
-              creds: {
-                phoneNumberId: clientCreds.whatsapp_phone_number_id,
-                accessToken: clientCreds.whatsapp_access_token,
-              },
-              failureLog: { clientId },
-              persistOutbound: true,
-            })
-            waSent = wa.sent
-            if (!wa.sent) {
-              logger.warn('CRON', 'Escalation resident WA failed', {
-                ticketId: row.id,
-                error: wa.errorMessage,
-              })
-            }
-          } catch (e) {
-            logger.warn('CRON', 'Escalation resident WA failed', {
-              ticketId: row.id,
-              err: e instanceof Error ? e.message : String(e),
-            })
-          }
-        }
+        const sent = await sendManagerSlaSms(
+          managerPhone,
+          msg,
+          clientCreds.sms_sender_name ?? null,
+          'SLA-reminder',
+          logger,
+          row.id as string,
+          clientId
+        )
+        if (sent) stats.smsSent++
 
-        if (!waAttempted || waSent) {
-          await admin.from('tickets').update({ escalated_at: new Date().toISOString() }).eq('id', row.id as string)
-          stats.escalations++
-        }
+        await admin.from('tickets').update({ escalated_at: new Date().toISOString() }).eq('id', row.id as string)
+        stats.managerReminders++
       }
     }
 

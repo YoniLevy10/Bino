@@ -257,11 +257,14 @@ export default function TicketsPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const existing = new URLSearchParams(window.location.search)
       const params = new URLSearchParams()
       if (projectFilter !== 'ALL') params.set('project', projectFilter)
       if (workerFilter !== 'ALL') params.set('worker', workerFilter)
       if (statusFilter !== 'ALL') params.set('status', statusFilter)
       if (priorityFilter !== 'ALL') params.set('priority', priorityFilter)
+      const ticketParam = existing.get('ticket')
+      if (ticketParam) params.set('ticket', ticketParam)
       const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname
       window.history.replaceState(null, '', newUrl)
     }
