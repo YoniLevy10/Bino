@@ -102,7 +102,7 @@ async function ensureProjectsForImport(
   }
 ): Promise<{ projects: ProjectRow[]; created: string[]; unmatched: string[] }> {
   const { clientId, pdfProjectNames, createMissingProjects, dryRun } = params
-  let projects = [...params.projects]
+  const projects = [...params.projects]
   const created: string[] = []
   const unmatched: string[] = []
 
