@@ -42,8 +42,15 @@ function ReportPageContent() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loadingProjects, setLoadingProjects] = useState(false)
 
-  const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+  const SUPPORTED_MIME_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'video/mp4',
+    'video/webm',
+  ] as const
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+  const MAX_VIDEO_SIZE = 15 * 1024 * 1024
   const MAX_FILES = 3
 
   useEffect(() => {
@@ -126,18 +133,20 @@ function ReportPageContent() {
 
     // Validate file count
     if (selectedFiles.length + files.length > MAX_FILES) {
-      setImageUploadError(`Maximum ${MAX_FILES} images allowed`)
+      setImageUploadError(`Maximum ${MAX_FILES} files allowed`)
       return
     }
 
     // Validate each file
     for (const file of files) {
-      if (!SUPPORTED_MIME_TYPES.includes(file.type)) {
-        setImageUploadError('Only JPG, PNG, and WebP images are supported')
+      if (!SUPPORTED_MIME_TYPES.includes(file.type as (typeof SUPPORTED_MIME_TYPES)[number])) {
+        setImageUploadError('Only JPG, PNG, WebP images and MP4/WebM videos are supported')
         return
       }
-      if (file.size > MAX_FILE_SIZE) {
-        setImageUploadError(`File "${file.name}" is too large (max 5MB)`)
+      const maxSize = file.type.startsWith('video/') ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
+      if (file.size > maxSize) {
+        const maxMb = Math.round(maxSize / (1024 * 1024))
+        setImageUploadError(`File "${file.name}" is too large (max ${maxMb}MB)`)
         return
       }
     }
@@ -359,16 +368,17 @@ function ReportPageContent() {
 
             <div style={styles.field}>
               <label htmlFor="images" style={styles.label}>
-                Upload Images (optional)
+                Upload Photos or Videos (optional)
               </label>
               <p style={styles.fieldHint}>
-                Upload up to {MAX_FILES} photos to help describe the issue. JPG, PNG, WebP max 5MB each.
+                Upload up to {MAX_FILES} files to help describe the issue. Photos max 5MB, videos max
+                15MB (MP4/WebM).
               </p>
               <input
                 id="images"
                 type="file"
                 multiple
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
                 onChange={handleFileSelect}
                 style={styles.fileInput}
               />
@@ -377,12 +387,20 @@ function ReportPageContent() {
                 <div style={styles.filePreviewContainer}>
                   {selectedFiles.map((file, idx) => (
                     <div key={idx} style={styles.filePreview}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Preview ${idx + 1}`}
-                        style={styles.filePreviewImg}
-                      />
+                      {file.type.startsWith('video/') ? (
+                        <video
+                          src={URL.createObjectURL(file)}
+                          controls
+                          style={styles.filePreviewImg}
+                        />
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${idx + 1}`}
+                          style={styles.filePreviewImg}
+                        />
+                      )}
                       <div style={styles.filePreviewName}>{file.name}</div>
                       <button
                         type="button"
