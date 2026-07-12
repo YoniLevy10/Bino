@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Drawer, Button, Select, theme } from '../ui'
 import { TicketChat } from './TicketChat'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
@@ -111,6 +111,11 @@ export function TicketDetailDrawer({
 }: TicketDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [internalTranslation, setInternalTranslation] = useState('')
+
+  useEffect(() => {
+    setActiveTab('details')
+    setInternalTranslation('')
+  }, [selectedTicket?.id])
 
   const translation = descriptionTranslation || internalTranslation
   const showRecover =
@@ -338,7 +343,7 @@ export function TicketDetailDrawer({
                 </div>
               )}
 
-              <div style={styles.formRow}>
+              <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
                 <div style={styles.drawerSection}>
                   <div style={styles.drawerLabel}>מדווח</div>
                   <div style={styles.drawerValue}>
@@ -520,6 +525,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '16px',
+  },
+  formRowMobile: {
+    gridTemplateColumns: '1fr',
   },
   drawerLabel: {
     fontSize: '12px',

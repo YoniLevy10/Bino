@@ -18,4 +18,9 @@ export function PageKpiSkeletonN(_props?: { columns?: number }) {
   return <PageTransitionLoader />
 }
 
+/** Inline section loader — keeps tabs/filters visible while content loads. */
+export function SectionLoader() {
+  return <PageTransitionLoader compact />
+}
+
 export { PageTransitionLoader }

@@ -26,7 +26,9 @@ describe('ticket detail parity contract', () => {
   it('uses shared ticket detail data hook on dashboard and /tickets', () => {
     for (const entry of TICKET_DETAIL_ENTRY_POINTS) {
       const source = readRepoFile(entry.pageFile)
-      expect(source).toContain('useTicketDetailData')
+      const dataHook =
+        'dataHook' in entry && entry.dataHook ? entry.dataHook : 'useTicketDetailData'
+      expect(source).toContain(dataHook)
       expect(source).toContain(entry.drawerComponent)
       expect(source).toContain('onRecoverMedia')
       expect(source).toContain('ticketLogs')
