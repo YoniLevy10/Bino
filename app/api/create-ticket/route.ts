@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
@@ -11,6 +10,7 @@ import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 import { checkTicketsMonthlyQuota } from '@/lib/plan-quota-check'
+import { uploadTicketAttachments } from '@/lib/ticket-attachment-upload'
 
 function parseStartCode(message: string) {
   const match = message.trim().toUpperCase().match(/^START_(BMK\d+)(?:_(.+))?$/i)
@@ -34,102 +34,6 @@ type TicketRequestBody = {
   building_number?: unknown
   /** דיווח ציבורי: מזהה לקוח מהקישור (?client=) */
   client_id?: unknown
-}
-
-async function uploadAttachments(
-  supabaseAdmin: SupabaseClient,
-  ticketId: string,
-  files: File[]
-): Promise<{ success: number; failed: number; warning?: string }> {
-  let successCount = 0
-  let failCount = 0
-
-  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
-
-  for (const file of files) {
-    try {
-      // Validate file size
-      if (file.size > MAX_FILE_SIZE) {
-        console.error(`❌ File ${file.name} exceeds 5MB limit (size: ${file.size} bytes)`)
-        failCount++
-        continue
-      }
-
-      // Validate file type
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        console.error(`❌ File type ${file.type} not allowed for ${file.name}`)
-        failCount++
-        continue
-      }
-
-      // Generate unique file path
-      const timestamp = Date.now()
-      const randomStr = Math.random().toString(36).substring(7)
-      const extension = file.name.split('.').pop()
-      const filePath = `${ticketId}/${timestamp}-${randomStr}.${extension}`
-
-      // Upload to Supabase Storage
-      const arrayBuffer = await file.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from('ticket-attachments')
-        .upload(filePath, uint8Array, {
-          contentType: file.type,
-          upsert: false,
-        })
-
-      if (uploadError) {
-        console.error(`❌ Failed to upload file ${file.name} to storage:`, {
-          error: uploadError,
-          filePath,
-          ticketId,
-          fileSize: file.size,
-          mimeType: file.type,
-        })
-        failCount++
-        continue
-      }
-
-      // Create attachment record in database
-      const { error: dbError } = await supabaseAdmin
-        .from('ticket_attachments')
-        .insert({
-          ticket_id: ticketId,
-          file_name: file.name,
-          file_url: filePath,
-          mime_type: file.type,
-          attachment_type: 'web_upload',
-        })
-
-      if (dbError) {
-        console.error(`❌ Failed to create attachment record for ${file.name}:`, {
-          error: dbError.message,
-          code: dbError.code,
-          details: dbError.details,
-          ticketId,
-          filePath,
-        })
-        // Try to delete the uploaded file to avoid orphaned storage
-        await supabaseAdmin.storage.from('ticket-attachments').remove([filePath])
-        failCount++
-        continue
-      }
-
-      successCount++
-    } catch (err) {
-      console.error(`❌ Unexpected error uploading ${file.name}:`, err)
-      failCount++
-    }
-  }
-
-  const warning =
-    failCount > 0
-      ? `⚠️ ${failCount} of ${files.length} image(s) failed to upload. Ticket created successfully.`
-      : undefined
-
-  return { success: successCount, failed: failCount, warning }
 }
 
 export async function POST(req: Request) {
@@ -347,7 +251,12 @@ export async function POST(req: Request) {
       // Handle file attachments if present
       let imageUploadWarning: string | undefined
       if (files.length > 0) {
-        const uploadResult = await uploadAttachments(supabaseAdmin, createdTicket.id, files)
+        const uploadResult = await uploadTicketAttachments(
+          supabaseAdmin,
+          createdTicket.id,
+          files,
+          'web'
+        )
         imageUploadWarning = uploadResult.warning
       }
 

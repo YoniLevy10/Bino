@@ -8,6 +8,19 @@
  * getSingletonClientId() — cache קצר-מועד בזיכרון לאותו process (SSR).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createProcessMemoryCache } from '@/lib/process-memory-cache'
+
+const WHATSAPP_TENANT_CACHE_TTL_MS = 60_000
+
+const whatsappTenantCache = createProcessMemoryCache<{
+  clientId: string
+  row: Record<string, unknown>
+}>(WHATSAPP_TENANT_CACHE_TTL_MS)
+
+/** Test hook — clear cached WhatsApp tenant rows. */
+export function clearWhatsAppTenantCache(): void {
+  whatsappTenantCache.clear()
+}
 
 /**
  * כל מזהי הלקוחות (clients.id) שמשתמש מחובר משויך אליהם.
@@ -95,6 +108,12 @@ export async function resolveClientIdByWhatsAppPhoneNumberId(
   admin: SupabaseClient,
   phoneNumberId: string
 ): Promise<{ clientId: string; row: Record<string, unknown> } | null> {
+  const cacheKey = phoneNumberId.trim()
+  if (cacheKey) {
+    const cached = whatsappTenantCache.get(cacheKey)
+    if (cached) return cached
+  }
+
   const { data: rows, error } = await admin
     .from('clients')
     .select('id, name, sms_sender_name, whatsapp_phone_number_id, whatsapp_access_token, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close')
@@ -109,7 +128,11 @@ export async function resolveClientIdByWhatsAppPhoneNumberId(
         .select('id, name, sms_sender_name, whatsapp_phone_number_id, whatsapp_access_token, manager_phone, default_worker_phone, sms_on_ticket_open, sms_on_ticket_close')
         .eq('id', fallback)
         .maybeSingle()
-      if (one) return { clientId: fallback, row: one as Record<string, unknown> }
+      if (one) {
+        const resolved = { clientId: fallback, row: one as Record<string, unknown> }
+        if (cacheKey) whatsappTenantCache.set(cacheKey, resolved)
+        return resolved
+      }
     }
     return null
   }
@@ -123,5 +146,7 @@ export async function resolveClientIdByWhatsAppPhoneNumberId(
 
   const row = rows[0] as Record<string, unknown>
   const id = row.id as string
-  return { clientId: id, row }
+  const resolved = { clientId: id, row }
+  if (cacheKey) whatsappTenantCache.set(cacheKey, resolved)
+  return resolved
 }
