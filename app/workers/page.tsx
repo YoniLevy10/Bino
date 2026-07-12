@@ -43,7 +43,7 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
-import { PageKpiSkeletonN, PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import Link from 'next/link'
 import { usePaidAddons } from '../components/PaidAddonsContext'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
@@ -728,14 +728,7 @@ export default function WorkersPage() {
         )}
 
         {loading ? (
-          <>
-            <PageKpiSkeletonN columns={3} />
-            <Card noPadding>
-              <div style={{ padding: '20px 16px' }}>
-                <PageListSkeleton rows={8} />
-              </div>
-            </Card>
-          </>
+          <PageTransitionLoader />
         ) : (
           <>
         {/* KPI Cards */}

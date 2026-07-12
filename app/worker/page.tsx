@@ -20,7 +20,7 @@ import {
   StatusBadge,
   theme,
 } from '../components/ui'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
 import { WorkerPortalToolbar, type WorkerTicketFilter, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
@@ -921,7 +921,7 @@ function WorkerPageInner() {
     )
   }
   if (!tokenChecked || !sessionResolved) {
-    return <PageListSkeleton />
+    return <PageTransitionLoader />
   }
 
   return (
@@ -1171,7 +1171,7 @@ const styles: Record<string, CSSProperties> = {
 
 export default function WorkerPage() {
   return (
-    <Suspense fallback={<PageListSkeleton />}>
+    <Suspense fallback={<PageTransitionLoader />}>
       <WorkerPageInner />
     </Suspense>
   )

@@ -63,6 +63,7 @@ import {
 import { useIsMobile } from '@/lib/use-is-mobile'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { removeTicketFromListState } from '@/lib/open-tickets'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
@@ -1214,9 +1215,7 @@ export default function TicketsPage() {
 
           {/* Table */}
           {loading && !selectedTicket && !pendingDeepLinkTicket ? (
-            <div style={styles.loadingContainer}>
-              <LoadingSpinner size="lg" />
-            </div>
+            <PageTransitionLoader />
           ) : pageLoadError ? (
             <ErrorState
               title="לא הצלחנו לטעון את התקלות"

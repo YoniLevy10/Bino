@@ -26,7 +26,7 @@ import {
   theme,
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { PageListSkeleton } from '../components/page-skeleton'
+import { PageTransitionLoader } from '../components/page-skeleton'
 
 type Row = {
   id: string
@@ -204,12 +204,7 @@ export default function ErrorLogsPage() {
 
         <Card noPadding>
           {loading ? (
-            <div style={styles.loading}>
-              <PageListSkeleton rows={6} />
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-                <LoadingSpinner />
-              </div>
-            </div>
+            <PageTransitionLoader />
           ) : missing ? (
             <p style={styles.empty}>הריצו את המיגרציה supabase/migrations/020_saas_audit_features.sql ב-Supabase.</p>
           ) : rows.length === 0 ? (

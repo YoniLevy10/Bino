@@ -42,6 +42,7 @@ import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import type { SummaryTicketRow } from '@/lib/summary-tickets'
 import { useManagerTicketDrawer } from '@/lib/hooks/use-manager-ticket-drawer'
+import { PageTransitionLoader } from '../components/page-skeleton'
 import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 
 const CACHE_KEY = 'bamakor_summary_meta_v1'
@@ -935,9 +936,7 @@ export default function SummaryPage() {
         )}
 
         {showSummarySkeleton || showHistorySkeleton ? (
-          <div style={styles.loadingContainer}>
-            <LoadingSpinner size="lg" />
-          </div>
+          <PageTransitionLoader />
         ) : pageTab === 'history' ? (
           <Card noPadding>
             <div
