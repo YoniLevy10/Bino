@@ -880,7 +880,9 @@ export async function runWhatsAppInboundBackground(
 
     async function finalizeProjectSelection(
       matchedProject: ProjectRow,
-      lang: ResidentLang
+      lang: ResidentLang,
+      /** Original resident text — used to auto-open when one message has both address + fault. */
+      sourceText?: string | null
     ): Promise<void> {
       residentLang = lang
       await supabaseAdmin
@@ -898,6 +900,14 @@ export async function runWhatsAppInboundBackground(
       )
 
       const stashedDesc = await readStashedProblemDescription(from, supabaseAdmin, webhookClientId)
+      const combinedSource = sourceText?.trim() || null
+      const autoDescription =
+        stashedDesc ||
+        (combinedSource &&
+        looksLikeTicketDescription(combinedSource) &&
+        messageContainsBuildingHint(combinedSource)
+          ? combinedSource
+          : null)
 
       const { data: createdSession, error: sessionCreateError } = await supabaseAdmin
         .from('sessions')
@@ -927,8 +937,8 @@ export async function runWhatsAppInboundBackground(
 
       await clearPendingSelection(from, supabaseAdmin, webhookClientId)
 
-      if (stashedDesc) {
-        openTicketAfterBuildingSearch = stashedDesc
+      if (autoDescription) {
+        openTicketAfterBuildingSearch = autoDescription
         residentLang = sessionLang
         return
       }
@@ -1039,7 +1049,7 @@ export async function runWhatsAppInboundBackground(
       }
 
       if (searchResults.length === 1) {
-        await finalizeProjectSelection(searchResults[0], lang)
+        await finalizeProjectSelection(searchResults[0], lang, searchText)
         return
       }
 
@@ -1678,7 +1688,7 @@ export async function runWhatsAppInboundBackground(
           }
 
           if (refined.length === 1) {
-            await finalizeProjectSelection(refined[0], sessionLang)
+            await finalizeProjectSelection(refined[0], sessionLang, textBody)
             if (openTicketAfterBuildingSearch) {
               session = await getActiveSession(from, supabaseAdmin, webhookClientId)
               residentLang = sessionLang
