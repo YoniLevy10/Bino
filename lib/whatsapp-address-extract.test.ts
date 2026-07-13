@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
   buildBuildingSearchQueries,
   extractAddressTail,
+  extractInlineAddressPhrases,
   messageContainsBuildingHint,
   normalizeAttachedEntrance,
 } from './whatsapp-address-extract'
-import { rankProjectsByBuildingSearch } from './whatsapp-building-search'
+import { isNearTokenMatch, rankProjectsByBuildingSearch } from './whatsapp-building-search'
 import type { ProjectRow } from './whatsapp-interactive'
 
 const alroeyProjects: ProjectRow[] = [
@@ -23,6 +24,30 @@ const alroeyProjects: ProjectRow[] = [
   },
 ]
 
+const heletzProjects: ProjectRow[] = [
+  {
+    id: 'h12',
+    name: 'חלץ 12',
+    project_code: 'BMK201',
+    address: 'חלץ 12',
+    address_en: 'Heletz 12',
+  },
+  {
+    id: 'hz12',
+    name: 'הרצל 12',
+    project_code: 'BMK202',
+    address: 'הרצל 12',
+    address_en: 'Herzl 12',
+  },
+  {
+    id: 'w12',
+    name: 'ויצמן 12',
+    project_code: 'BMK203',
+    address: 'ויצמן 12',
+    address_en: 'Weizmann 12',
+  },
+]
+
 describe('normalizeAttachedEntrance', () => {
   it('splits 5ג into 5 ג', () => {
     expect(normalizeAttachedEntrance('דוד אלרואי 5ג')).toBe('דוד אלרואי 5 ג')
@@ -32,6 +57,14 @@ describe('normalizeAttachedEntrance', () => {
 describe('extractAddressTail', () => {
   it('pulls address from problem + address message', () => {
     expect(extractAddressTail('נזילה בממטרה דוד אלרואי 5ג')).toBe('אלרואי 5 ג')
+  })
+})
+
+describe('extractInlineAddressPhrases', () => {
+  it('pulls mid-sentence English street + number', () => {
+    const msg = 'Hi, the doors of the right lift in Helets 12 is making lots of noises'
+    const phrases = extractInlineAddressPhrases(msg)
+    expect(phrases.some((p) => /helets\s*12/i.test(p))).toBe(true)
   })
 })
 
@@ -59,6 +92,12 @@ describe('buildBuildingSearchQueries — real resident messages', () => {
     const combined = rankProjectsByBuildingSearch(alroeyProjects, 'דוד אלרואי 5 ג')
     expect(combined[0]?.id).toBe('2')
   })
+
+  it('includes mid-sentence Helets 12 for English lift reports', () => {
+    const msg = 'Hi, the doors of the right lift in Helets 12 is making lots of noises'
+    const queries = buildBuildingSearchQueries(msg)
+    expect(queries.some((q) => /helets\s*12/i.test(q))).toBe(true)
+  })
 })
 
 describe('messageContainsBuildingHint', () => {
@@ -68,5 +107,21 @@ describe('messageContainsBuildingHint', () => {
 
   it('does not treat pure problem text as address', () => {
     expect(messageContainsBuildingHint('יש ממטרה שיוצאת משליטה')).toBe(false)
+  })
+})
+
+describe('building search typo + ranking', () => {
+  it('treats Helets ≈ Heletz', () => {
+    expect(isNearTokenMatch('heletz 12', 'helets')).toBe(true)
+  })
+
+  it('resolves English lift report with typo to חלץ 12 only', () => {
+    const msg = 'Hi, the doors of the right lift in Helets 12 is making lots of noises'
+    const ranked = rankProjectsByBuildingSearch(heletzProjects, 'Helets 12')
+    expect(ranked.map((p) => p.id)).toEqual(['h12'])
+
+    // Full message via shorter inline query must not match every *12 building
+    const fromFull = rankProjectsByBuildingSearch(heletzProjects, msg)
+    expect(fromFull.map((p) => p.id)).toEqual(['h12'])
   })
 })

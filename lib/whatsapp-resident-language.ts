@@ -11,6 +11,8 @@ async function readPendingLanguage(
     .select('preferred_language, expires_at')
     .eq('phone_number', phone)
     .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (!data) return null
@@ -88,6 +90,8 @@ export async function saveResidentLanguage(
     .select('id')
     .eq('phone_number', phone)
     .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (existing?.id) {

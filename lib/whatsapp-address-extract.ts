@@ -36,6 +36,34 @@ export function extractAddressTail(text: string): string | null {
   return null
 }
 
+/**
+ * Street+number phrases anywhere in the message (not only at the end).
+ * Covers English mid-sentence forms like "…lift in Helets 12 is making…".
+ */
+export function extractInlineAddressPhrases(text: string): string[] {
+  const cleaned = stripNoiseForAddress(text)
+  const found: string[] = []
+  const seen = new Set<string>()
+
+  const add = (value: string) => {
+    const trimmed = value.trim()
+    if (trimmed.length < 2) return
+    const key = normalizeBuildingSearchText(trimmed)
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    found.push(trimmed)
+  }
+
+  // 1–3 name tokens + house number (+ optional Hebrew entrance letter)
+  const pattern =
+    /(?:[\u0590-\u05FFa-zA-Z']+\s+){0,2}[\u0590-\u05FFa-zA-Z']+\s+\d+(?:\s*[א-ת])?/gu
+  for (const match of cleaned.matchAll(pattern)) {
+    add(match[0])
+  }
+
+  return found
+}
+
 /** Ordered unique search queries — broad first, then narrower extractions. */
 export function buildBuildingSearchQueries(raw: string): string[] {
   const queries: string[] = []
@@ -55,6 +83,10 @@ export function buildBuildingSearchQueries(raw: string): string[] {
 
   const tail = extractAddressTail(cleaned)
   if (tail) add(tail)
+
+  for (const phrase of extractInlineAddressPhrases(cleaned)) {
+    add(phrase)
+  }
 
   if (LEADING_PERSON_NAME.test(cleaned)) {
     add(cleaned.replace(LEADING_PERSON_NAME, '').trim())

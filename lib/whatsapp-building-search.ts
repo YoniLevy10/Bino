@@ -58,6 +58,40 @@ function projectSearchBlob(project: ProjectRow): string {
   )
 }
 
+/** One-edit typo tolerance for Latin street names (e.g. Helets ↔ Heletz). */
+export function isNearTokenMatch(haystack: string, token: string): boolean {
+  if (!token || token.length < 5 || /^\d+$/.test(token)) return false
+  if (haystack.includes(token)) return true
+  const words = haystack.split(/\s+/).filter((w) => w.length >= 4)
+  for (const word of words) {
+    if (Math.abs(word.length - token.length) > 1) continue
+    if (levenshteinDistance(word, token) <= 1) return true
+  }
+  return false
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0
+  if (a.length === 0) return b.length
+  if (b.length === 0) return a.length
+  const prev = new Array(b.length + 1)
+  const curr = new Array(b.length + 1)
+  for (let j = 0; j <= b.length; j++) prev[j] = j
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+    }
+    for (let j = 0; j <= b.length; j++) prev[j] = curr[j]
+  }
+  return prev[b.length]
+}
+
+function tokenMatchesBlob(blob: string, token: string): boolean {
+  return blob.includes(token) || isNearTokenMatch(blob, token)
+}
+
 function scoreProjectMatch(project: ProjectRow, tokens: string[], rawQuery: string): number {
   if (tokens.length === 0) return 0
   const blob = projectSearchBlob(project)
@@ -69,16 +103,28 @@ function scoreProjectMatch(project: ProjectRow, tokens: string[], rawQuery: stri
 
   let score = 0
   for (const token of tokens) {
-    if (blob.includes(token)) score += token.length >= 3 ? 10 : 5
+    if (blob.includes(token)) {
+      score += token.length >= 3 ? 10 : 5
+    } else if (isNearTokenMatch(blob, token)) {
+      score += 8
+    }
   }
 
   const entranceHint = extractEntranceHint(rawQuery)
   if (entranceHint && blob.includes(entranceHint)) score += 15
 
+  // When the resident typed a street-like name, do not match on house number alone.
+  const nameTokens = tokens.filter((t) => t.length >= 4 && !/^\d+$/.test(t))
+  if (nameTokens.length > 0) {
+    const matchedNames = nameTokens.filter((t) => tokenMatchesBlob(blob, t))
+    if (matchedNames.length === 0) return 0
+    score += matchedNames.length * 5
+  }
+
   // Require at least one "strong" token (3+ chars or digits) to match
   const strongTokens = tokens.filter((t) => t.length >= 3 || /^\d+$/.test(t))
   if (strongTokens.length === 0) return score >= 5 ? score : 0
-  const matchedStrong = strongTokens.filter((t) => blob.includes(t)).length
+  const matchedStrong = strongTokens.filter((t) => tokenMatchesBlob(blob, t)).length
   if (matchedStrong === 0) return 0
   if (matchedStrong === strongTokens.length) score += 20
   return score

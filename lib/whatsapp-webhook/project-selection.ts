@@ -93,6 +93,9 @@ export async function createPendingSelection(
   clientId: string,
   preferredLanguage?: string | null
 ): Promise<boolean> {
+  // Always replace — duplicate pending rows make maybeSingle/getPendingSelection fail silently.
+  await clearPendingSelection(phoneNumber, supabaseAdmin, clientId)
+
   const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString()
   const row: Record<string, unknown> = {
     phone_number: phoneNumber,
@@ -116,6 +119,8 @@ export async function getPendingSelection(
     .select('id, candidate_projects, created_at, expires_at, preferred_language')
     .eq('phone_number', phoneNumber)
     .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (error || !data) return null
