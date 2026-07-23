@@ -53,6 +53,11 @@ function ReportPageContent() {
   const MAX_VIDEO_SIZE = 15 * 1024 * 1024
   const MAX_FILES = 3
 
+  // Keep URL ?project= in sync — useState(initial) alone can miss late searchParams hydration.
+  useEffect(() => {
+    if (paramProjectCode) setSelectedProjectCode(paramProjectCode)
+  }, [paramProjectCode])
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350)
     return () => clearTimeout(t)
@@ -123,9 +128,11 @@ function ReportPageContent() {
     prevSearchResultsRef.current = searchResults
   }, [searchResults])
 
+  const effectiveProjectCode = selectedProjectCode || paramProjectCode
+
   const canSubmit = useMemo(() => {
-    return Boolean(selectedProjectCode && description.trim().length >= 3)
-  }, [selectedProjectCode, description])
+    return Boolean(effectiveProjectCode && description.trim().length >= 3)
+  }, [effectiveProjectCode, description])
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
@@ -166,7 +173,7 @@ function ReportPageContent() {
     setImageUploadError('')
 
     // Validation
-    const projectError = validateRequired(selectedProjectCode || '', 'Building')
+    const projectError = validateRequired(effectiveProjectCode || '', 'Building')
     if (projectError) {
       setErrorMessage(projectError.message)
       return
