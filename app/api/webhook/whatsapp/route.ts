@@ -44,7 +44,11 @@ export async function POST(req: NextRequest) {
     const metaSecret = (process.env.WHATSAPP_APP_SECRET || '').trim()
     const sigHdr = req.headers.get('x-hub-signature-256')
 
-    if (metaSecret && !verifyWhatsAppWebhookSignature(rawBody, sigHdr, metaSecret)) {
+    if (!metaSecret) {
+      logger.error('WEBHOOK', 'WHATSAPP_APP_SECRET missing', new Error('meta_secret_unset'), { requestId })
+      return NextResponse.json({ error: 'webhook not configured' }, { status: 503 })
+    }
+    if (!verifyWhatsAppWebhookSignature(rawBody, sigHdr, metaSecret)) {
       logger.error('WEBHOOK', 'invalid signature', new Error('meta_signature_mismatch'), { requestId })
       return NextResponse.json({ error: 'invalid signature' }, { status: 403 })
     }

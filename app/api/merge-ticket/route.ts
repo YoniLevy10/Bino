@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { mergeTicketsBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { mergeTicketsForClient } from '@/lib/merge-tickets'
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'internal' }, { status: 500 })
     }
 
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
     const bamakorClientId = auth.ctx.clientId
 

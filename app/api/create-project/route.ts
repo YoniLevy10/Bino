@@ -6,14 +6,14 @@ import { sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { createProjectBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 
 export async function POST(req: Request) {
   const logger = getLogger()
   const audit = getAuditLogger()
   const requestId = `create-project-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
 
     const supabase = getSupabaseAdmin()

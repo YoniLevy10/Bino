@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 
@@ -11,7 +11,7 @@ const bodySchema = z.object({ professional_id: z.string().uuid() })
 export async function POST(req: Request) {
   const requestId = `delete-professional-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('admin')
     if (!auth.ok) return auth.response
 
     const parsed = bodySchema.safeParse(await req.json())

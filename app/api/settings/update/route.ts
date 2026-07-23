@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { settingsUpdateBodySchema } from '@/lib/api-body-schemas'
 import { logAudit } from '@/lib/audit'
 import { formatZodError } from '@/lib/format-zod-error'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('admin')
   if (!auth.ok) return auth.response
   const { clientId, userId } = auth.ctx
 

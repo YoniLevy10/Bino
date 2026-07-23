@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp-send'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { settingsTestWhatsAppBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const audit = getAuditLogger()
   const requestId = `test-whatsapp-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('admin')
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 

@@ -14,7 +14,10 @@ export function getEnvReadinessFlags(): EnvReadinessFlag[] {
   flags.push({
     key: 'WHATSAPP_APP_SECRET',
     ok: whatsappSecret.length > 0,
-    hint: whatsappSecret.length > 0 ? undefined : 'Webhook signature verification disabled until set in Vercel',
+    hint:
+      whatsappSecret.length > 0
+        ? undefined
+        : 'Required — WhatsApp webhook POSTs return 503 until set in Vercel',
   })
 
   const cronSecret = (process.env.CRON_SECRET || '').trim()

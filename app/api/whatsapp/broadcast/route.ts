@@ -23,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.whatsapp_inbox)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.whatsapp_inbox, 'manager')
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

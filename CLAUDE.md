@@ -132,11 +132,13 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `ADMIN_SETUP_SECRET` | Superadmin routes secret |
 | `BAMAKOR_CLIENT_ID` | Dev fallback client ID |
 
-### Still missing
+### Still missing / verify in Vercel
 
 | Variable | How to get |
 |----------|-----------|
-| `WHATSAPP_APP_SECRET` | Meta Developer Console → App → Settings → Basic → App Secret |
+| `WHATSAPP_APP_SECRET` | **Required** — Meta Developer Console → App → Settings → Basic → App Secret. Without it, WhatsApp webhook POSTs return 503. |
+| `GREENINVOICE_WEBHOOK_SECRET` | Shared bearer secret for `/api/webhook/greeninvoice` (optional until collections go live) |
+| `DOCUMENT_SIGN_WEBHOOK_SECRET` | Shared bearer secret for `/api/webhook/document-sign` |
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |

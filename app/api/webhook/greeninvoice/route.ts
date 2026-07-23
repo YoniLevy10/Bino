@@ -1,16 +1,31 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
+import { secureStringEqual } from '@/lib/secure-compare'
 
 /**
  * Morning (Green Invoice) webhook receiver — payment / document events.
  * Configure in Morning: Settings → Webhooks → callback URL = /api/webhook/greeninvoice
+ * Auth: Authorization Bearer GREENINVOICE_WEBHOOK_SECRET (required).
  *
  * MVP: acknowledge and log payload. Payment status updates will be wired when /collections ships.
  */
 export async function POST(req: Request) {
   const logger = getLogger()
   try {
+    const secret = (process.env.GREENINVOICE_WEBHOOK_SECRET || '').trim()
+    if (!secret) {
+      return NextResponse.json({ error: 'webhook not configured' }, { status: 503 })
+    }
+
+    const auth = req.headers.get('authorization') || ''
+    const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+    const alt = (req.headers.get('x-webhook-secret') || '').trim()
+    const provided = bearer || alt
+    if (!provided || !secureStringEqual(provided, secret)) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+
     const rawBody = await req.text()
     let payload: unknown = null
     try {

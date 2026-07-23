@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { OrgUserRole } from '@/lib/org-roles'
 
-export type OrgUserRole = 'admin' | 'manager' | 'viewer'
+export type { OrgUserRole }
 
 export async function inviteUserToClientOrganization(
   admin: SupabaseClient,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import {
   CLIENT_LOGOS_BUCKET,
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const audit = getAuditLogger()
   const requestId = `upload-logo-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('admin')
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 

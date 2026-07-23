@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { deleteProjectBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 
 /**
  * Delete a project: soft-delete tickets & residents (`deleted_at`);
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const audit = getAuditLogger()
   const requestId = `delete-project-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('admin')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

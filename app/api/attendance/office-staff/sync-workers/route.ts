@@ -7,7 +7,7 @@ import { syncWorkersToOfficeStaff } from '@/lib/office-attendance'
 /** Import active workers (עובדים) into office_staff for QR station clock-in. */
 export async function POST() {
   try {
-    const auth = await requireSessionClientIdWithNavFeature('attendance')
+    const auth = await requireSessionClientIdWithNavFeature('attendance', 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { getLogger } from '@/lib/logging'
 import { notifyReporterTicketClosed } from '@/lib/reporter-ticket-closed-notify'
 import { ticketIdBodySchema } from '@/lib/api-body-schemas'
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
     const bamakorClientId = auth.ctx.clientId
 

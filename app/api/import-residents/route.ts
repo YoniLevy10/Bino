@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeString } from '@/lib/api-validation'
 import { importResidentsBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 
 type ImportRow = {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const requestId = `import-residents-${Date.now()}`
 
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
 
     const bamakorClientId = auth.ctx.clientId

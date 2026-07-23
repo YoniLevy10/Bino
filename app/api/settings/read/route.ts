@@ -35,5 +35,6 @@ export async function GET() {
     ...row,
     whatsapp_access_token_set,
     greeninvoice_api_secret_set,
+    org_role: auth.ctx.role,
   })
 }

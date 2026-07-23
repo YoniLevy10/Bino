@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeString } from '@/lib/api-validation'
 import { updateProfessionalBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { normalizeWorkerPhone, parseWorkerPhone, sanitizeExtraPhones } from '@/lib/worker-phones'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
@@ -11,7 +11,7 @@ import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 export async function PATCH(req: Request) {
   const requestId = `update-professional-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
 
     let rawBody: unknown

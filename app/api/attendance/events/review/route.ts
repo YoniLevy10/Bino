@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { attendanceEventReviewBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
@@ -8,7 +8,7 @@ import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { applyShiftWhenEventApproved } from '@/lib/attendance-event-shift-apply'
 
 export async function PATCH(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('manager')
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
