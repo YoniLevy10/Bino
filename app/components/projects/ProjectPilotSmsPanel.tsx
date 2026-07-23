@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { buildPilotAnnouncementSms, stripEmojiForSms } from '@/lib/pilot-announcement-message'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
+import { supabase } from '@/lib/supabase'
 import { Button, Card, theme } from '../ui'
 
 const SMS_SOFT_LIMIT = 900
@@ -20,21 +21,64 @@ type PreviewResult = {
 }
 
 export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
+  const [whatsappBotPhone, setWhatsappBotPhone] = useState<string | null>(null)
   const [messageText, setMessageText] = useState(() => buildPilotAnnouncementSms())
   const [preview, setPreview] = useState<PreviewResult | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    setMessageText(buildPilotAnnouncementSms())
-    setPreview(null)
+    let cancelled = false
+    async function loadBotPhoneAndTemplate() {
+      setPreview(null)
+      let phone: string | null = null
+      try {
+        const { data: project } = await supabase
+          .from('projects')
+          .select('client_id')
+          .eq('id', projectId)
+          .maybeSingle()
+
+        const clientId = (project as { client_id?: string } | null)?.client_id
+        if (clientId) {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('whatsapp_business_phone, manager_phone, default_worker_phone')
+            .eq('id', clientId)
+            .maybeSingle()
+
+          const row = client as {
+            whatsapp_business_phone?: string | null
+            manager_phone?: string | null
+            default_worker_phone?: string | null
+          } | null
+
+          phone =
+            row?.whatsapp_business_phone?.trim() ||
+            row?.manager_phone?.trim() ||
+            row?.default_worker_phone?.trim() ||
+            null
+        }
+      } catch {
+        phone = null
+      }
+
+      if (cancelled) return
+      setWhatsappBotPhone(phone)
+      setMessageText(buildPilotAnnouncementSms({ whatsappBotPhone: phone }))
+    }
+
+    void loadBotPhoneAndTemplate()
+    return () => {
+      cancelled = true
+    }
   }, [projectId])
 
   const sanitizedLength = useMemo(() => stripEmojiForSms(messageText).length, [messageText])
   const overLimit = sanitizedLength > SMS_SOFT_LIMIT
 
   function resetMessage() {
-    setMessageText(buildPilotAnnouncementSms())
+    setMessageText(buildPilotAnnouncementSms({ whatsappBotPhone }))
     setPreview(null)
   }
 
@@ -110,8 +154,13 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
   return (
     <Card
       title="הודעת פתיחה לדיירים"
-      subtitle="ערכו את הטקסט לפני השליחה — רב-לשוני (עברית, אנגלית, צרפתית), ללא אימוג'י (דרישת 019SMS)"
+      subtitle="ערכו את הטקסט לפני השליחה — כולל מספר הוואטסאפ של הבוט, רב-לשוני, ללא אימוג'י (דרישת 019SMS)"
     >
+      {!whatsappBotPhone && (
+        <p style={styles.warn}>
+          לא נמצא מספר וואטסאפ בהגדרות הלקוח — מומלץ למלא &quot;מספר וואטסאפ לקישורי QR&quot; בהגדרות כדי שהמספר יופיע בהודעה.
+        </p>
+      )}
       <label style={styles.label} htmlFor={`pilot-sms-${projectId}`}>
         תוכן ההודעה
       </label>
@@ -122,7 +171,7 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
           setMessageText(e.target.value)
           setPreview(null)
         }}
-        rows={14}
+        rows={16}
         style={styles.textarea}
         dir="auto"
         spellCheck
@@ -155,6 +204,15 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
 }
 
 const styles: Record<string, CSSProperties> = {
+  warn: {
+    margin: '0 0 12px',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.warningMuted,
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    lineHeight: 1.45,
+  },
   label: {
     display: 'block',
     fontSize: 13,
@@ -176,7 +234,7 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     color: theme.colors.textPrimary,
     resize: 'vertical',
-    minHeight: 220,
+    minHeight: 240,
   },
   metaRow: {
     display: 'flex',

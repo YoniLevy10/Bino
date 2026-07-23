@@ -13,6 +13,12 @@ type ProjectRow = {
   client_id?: string
 }
 
+type ClientBranding = {
+  id: string
+  name: string | null
+  logo_url: string | null
+}
+
 function IntakePageContent() {
   const searchParams = useSearchParams()
   const paramProjectCode = (searchParams.get('project') || '').toUpperCase()
@@ -26,6 +32,7 @@ function IntakePageContent() {
   }, [clientFromUrl])
 
   const [project, setProject] = useState<ProjectRow | null>(null)
+  const [branding, setBranding] = useState<ClientBranding | null>(null)
   const [loadingProject, setLoadingProject] = useState(true)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -37,25 +44,42 @@ function IntakePageContent() {
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    async function loadProject() {
+    async function loadProjectAndBranding() {
       setLoadingProject(true)
       try {
         await asyncHandler(
           async () => {
             if (!effectiveClientId || !paramProjectCode) {
               setProject(null)
+              setBranding(null)
               return
             }
-            const url = new URL('/api/public/projects', window.location.origin)
-            url.searchParams.set('client_id', effectiveClientId)
-            url.searchParams.set('project', paramProjectCode)
-            const res = await fetchWithTimeout(url.toString())
-            if (!res.ok) {
-              const j = await res.json().catch(() => ({}))
+
+            const projectUrl = new URL('/api/public/projects', window.location.origin)
+            projectUrl.searchParams.set('client_id', effectiveClientId)
+            projectUrl.searchParams.set('project', paramProjectCode)
+
+            const brandingUrl = new URL('/api/public/client-branding', window.location.origin)
+            brandingUrl.searchParams.set('client_id', effectiveClientId)
+
+            const [projectRes, brandingRes] = await Promise.all([
+              fetchWithTimeout(projectUrl.toString()),
+              fetchWithTimeout(brandingUrl.toString()),
+            ])
+
+            if (!projectRes.ok) {
+              const j = await projectRes.json().catch(() => ({}))
               throw new Error((j as { error?: string }).error || 'טעינת הבניין נכשלה')
             }
-            const j = (await res.json()) as { projects?: ProjectRow[] }
-            setProject(j.projects?.[0] || null)
+            const projectJson = (await projectRes.json()) as { projects?: ProjectRow[] }
+            setProject(projectJson.projects?.[0] || null)
+
+            if (brandingRes.ok) {
+              const brandingJson = (await brandingRes.json()) as { client?: ClientBranding }
+              setBranding(brandingJson.client || null)
+            } else {
+              setBranding(null)
+            }
           },
           { context: 'טעינת בניין', showErrorToast: false }
         )
@@ -63,7 +87,7 @@ function IntakePageContent() {
         setLoadingProject(false)
       }
     }
-    loadProject()
+    loadProjectAndBranding()
   }, [effectiveClientId, paramProjectCode])
 
   const canSubmit =
@@ -127,9 +151,18 @@ function IntakePageContent() {
     <main style={styles.page} dir="rtl">
       <div style={styles.wrapper}>
         <div style={styles.brandRow}>
-          <div style={styles.logoBox}>B</div>
+          {branding?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logo_url}
+              alt={branding.name || 'לוגו לקוח'}
+              style={styles.logoImage}
+            />
+          ) : (
+            <div style={styles.logoBox}>B</div>
+          )}
           <div>
-            <div style={styles.brandTitle}>Bamakor</div>
+            <div style={styles.brandTitle}>{branding?.name?.trim() || 'Bamakor'}</div>
             <div style={styles.brandSubtitle}>רישום דייר לבניין</div>
           </div>
         </div>
@@ -319,6 +352,16 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     fontWeight: 800,
     fontSize: '18px',
+    flexShrink: 0,
+  },
+  logoImage: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    objectFit: 'contain',
+    background: '#FFFFFF',
+    border: '1px solid #E5E7EB',
+    flexShrink: 0,
   },
   brandTitle: {
     fontSize: '20px',
