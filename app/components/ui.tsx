@@ -28,6 +28,7 @@ import { ticketStatusLabelHe } from '@/lib/ticket-status'
 import { navLinkPrefetchHandlers } from '@/lib/route-prefetch'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PullToRefresh } from './PullToRefresh'
+import { PageViewTracker } from './PageViewTracker'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -819,6 +820,7 @@ function AppShellInner({
   return (
     <AppSearchContext.Provider value={{ openSearch }}>
       {showSplash ? <AppSplashScreen ready={isBootstrapped} /> : null}
+      <PageViewTracker />
       <div
         dir="rtl"
         style={{ display: 'flex', minHeight: '100vh', background: theme.colors.background }}

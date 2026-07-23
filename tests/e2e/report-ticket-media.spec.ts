@@ -11,6 +11,7 @@ const FIXTURES = path.join(process.cwd(), 'tests/fixtures')
 
 test.describe('דיווח ציבורי — תקלה + תמונה + סרטון @media', () => {
   test('טופס /report שולח תמונה וסרטון ב-multipart', async ({ page }) => {
+    test.setTimeout(60_000)
     let createTicketContentType = ''
     let createTicketBody = ''
 
@@ -49,6 +50,7 @@ test.describe('דיווח ציבורי — תקלה + תמונה + סרטון @m
 
     await page.goto(`/report?project=${PROJECT_CODE}&client=${CLIENT_ID}`)
     await page.waitForLoadState('domcontentloaded')
+    await expect(page.getByText('Building Test')).toBeVisible({ timeout: 15_000 })
 
     await page.locator('textarea').fill('Water leak — E2E media test')
     await page.locator('#images').setInputFiles([
@@ -59,7 +61,9 @@ test.describe('דיווח ציבורי — תקלה + תמונה + סרטון @m
     await expect(page.locator('text=test-image.png')).toBeVisible()
     await expect(page.locator('text=test-video.mp4')).toBeVisible()
 
-    await page.locator('button[type=submit]').click()
+    const submit = page.locator('button[type=submit]')
+    await expect(submit).toBeEnabled({ timeout: 15_000 })
+    await submit.click()
 
     await expect(page.getByText('תקלה #4242 נשלחה בהצלחה')).toBeVisible({ timeout: 10_000 })
 

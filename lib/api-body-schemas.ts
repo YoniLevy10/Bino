@@ -2,6 +2,12 @@ import { z } from 'zod'
 import { sidebarNavOrderSchema, sidebarNavLabelsSchema } from '@/lib/sidebar-nav'
 import { TICKET_STATUSES } from '@/lib/ticket-status'
 
+/** Beacon for dashboard tab analytics (optional nav_id; server can derive from path). */
+export const pageViewBodySchema = z.object({
+  path: z.string().min(1).max(200),
+  nav_id: z.string().min(1).max(80).optional(),
+})
+
 /** שיוך תקלה לעובד (לוח בקרה). */
 export const assignWorkerBodySchema = z.object({
   ticket_id: z.string().uuid(),
