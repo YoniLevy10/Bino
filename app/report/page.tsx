@@ -196,7 +196,7 @@ function ReportPageContent() {
       async () => {
         const formData = new FormData()
         formData.append('client_id', effectiveClientId)
-        formData.append('project_code', selectedProjectCode)
+        formData.append('project_code', effectiveProjectCode)
         formData.append('description', description.trim())
         formData.append('reporter_name', reporterName.trim() || '')
         formData.append('source', 'web_form')
@@ -243,8 +243,8 @@ function ReportPageContent() {
     setLoading(false)
   }
 
-  const selectedProject = selectedProjectCode
-    ? projects.find((p) => p.project_code === selectedProjectCode)
+  const selectedProject = effectiveProjectCode
+    ? projects.find((p) => p.project_code === effectiveProjectCode)
     : null
 
   return (

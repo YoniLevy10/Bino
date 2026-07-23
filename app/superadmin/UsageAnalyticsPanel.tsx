@@ -22,13 +22,16 @@ const signalColor: Record<string, string> = {
 export function UsageAnalyticsPanel({ secret }: { secret: string }) {
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
   const [report, setReport] = useState<UsageAnalyticsReport | null>(null)
 
   const load = useCallback(async () => {
     if (!secret.trim()) return
     setLoading(true)
     setError(null)
+    setExportMsg(null)
     try {
       const res = await fetchWithTimeout(
         `/api/superadmin/usage?days=${days}`,
@@ -50,6 +53,22 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
     }
   }, [secret, days])
 
+  const exportExcel = useCallback(async () => {
+    if (!report) return
+    setExporting(true)
+    setExportMsg(null)
+    setError(null)
+    try {
+      const { downloadUsageAnalyticsExcel } = await import('@/lib/usage-analytics-export')
+      const filename = await downloadUsageAnalyticsExcel(report)
+      setExportMsg(`הקובץ ירד: ${filename}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ייצוא Excel נכשל')
+    } finally {
+      setExporting(false)
+    }
+  }, [report])
+
   useEffect(() => {
     void load()
   }, [load])
@@ -65,7 +84,7 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
             מבוסס על נתונים אמיתיים ב-DB (תקלות, דיירים, תוספים וכו׳) + כניסות ללשוניות כשיש מעקב
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
@@ -79,8 +98,23 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
           <button type="button" onClick={() => void load()} disabled={loading} style={btnStyle}>
             {loading ? 'טוען…' : 'רענון'}
           </button>
+          <button
+            type="button"
+            onClick={() => void exportExcel()}
+            disabled={!report || loading || exporting}
+            style={btnSecondaryStyle}
+            title="ייצוא Excel של כל המיצוי (פיצ׳רים, לשוניות, לקוחות, תובנות)"
+          >
+            {exporting ? 'מייצא…' : 'ייצוא Excel'}
+          </button>
         </div>
       </div>
+
+      {exportMsg && (
+        <div style={{ ...bannerStyle, background: theme.colors.primaryMuted, borderColor: theme.colors.border, color: theme.colors.textSecondary }}>
+          {exportMsg}
+        </div>
+      )}
 
       {error && (
         <div style={{ ...bannerStyle, background: theme.colors.errorMuted, borderColor: theme.colors.error, color: theme.colors.error }}>
@@ -256,6 +290,12 @@ const btnStyle: CSSProperties = {
   fontWeight: 600,
   fontSize: 14,
   cursor: 'pointer',
+}
+
+const btnSecondaryStyle: CSSProperties = {
+  ...btnStyle,
+  background: theme.colors.surface,
+  color: theme.colors.primary,
 }
 
 const bannerStyle: CSSProperties = {
