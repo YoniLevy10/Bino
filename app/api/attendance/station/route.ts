@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sanitizeId } from '@/lib/api-validation'
 import { listActiveOfficeStaff, resolveClientByStationToken } from '@/lib/office-attendance'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { checkIpGetRouteLimit } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,13 +11,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'קישור לא תקין' }, { status: 400 })
     }
 
+    const admin = getSupabaseAdmin()
+    const ipFwd =
+      (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip') ||
+      'unknown'
+    const rl = await checkIpGetRouteLimit(admin, ipFwd, 'attendance-station')
+    if (rl.isLimited) {
+      return NextResponse.json({ error: 'יותר מדי בקשות, נסה שוב בעוד דקה' }, { status: 429 })
+    }
+
     const client = await resolveClientByStationToken(st)
     if (!client) {
       return NextResponse.json({ error: 'תחנת כניסה לא נמצאה' }, { status: 404 })
     }
 
     const staff = await listActiveOfficeStaff(client.clientId)
-    const admin = getSupabaseAdmin()
     const { data: openRows } = await admin
       .from('office_time_entries')
       .select('staff_id, clock_in_at')

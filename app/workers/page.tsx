@@ -70,7 +70,6 @@ type WorkerRow = {
   hourly_rate?: number | null
   created_at: string
   client_id: string
-  access_token?: string | null
 }
 
 type TicketRow = {
@@ -112,7 +111,7 @@ const emptyForm: WorkerForm = {
 
 const WORKERS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const WORKERS_LIST_SELECT =
-  'id, full_name, phone, extra_phones, email, role, is_active, hourly_rate, created_at, client_id, access_token'
+  'id, full_name, phone, extra_phones, email, role, is_active, hourly_rate, created_at, client_id'
 
 type WorkersCache = {
   workers: WorkerRow[]
@@ -121,7 +120,7 @@ type WorkersCache = {
 
 function readWorkersCache(clientId: string): WorkersCache | null {
   try {
-    const raw = localStorage.getItem(`bamakor_workers_v1_${clientId}`)
+    const raw = localStorage.getItem(`bamakor_workers_v2_${clientId}`)
     if (!raw) return null
     const parsed = JSON.parse(raw) as WorkersCache
     if (Date.now() - parsed.savedAt > WORKERS_CACHE_TTL_MS) return null
@@ -133,7 +132,7 @@ function readWorkersCache(clientId: string): WorkersCache | null {
 
 function writeWorkersCache(clientId: string, data: Omit<WorkersCache, 'savedAt'>) {
   try {
-    localStorage.setItem(`bamakor_workers_v1_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
+    localStorage.setItem(`bamakor_workers_v2_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
   } catch {}
 }
 
@@ -600,18 +599,24 @@ export default function WorkersPage() {
     })
   }, [workers, searchTerm, statusFilter])
 
-  function copyWorkerFieldLink(worker: WorkerRow, e?: MouseEvent) {
+  async function copyWorkerFieldLink(worker: WorkerRow, e?: MouseEvent) {
     e?.stopPropagation()
-    const token = worker.access_token
-    if (!token) {
-      toast.error('אין טוקן לעובד')
-      return
+    try {
+      const res = await fetchWithTimeout('/api/workers/portal-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ worker_id: worker.id }),
+      })
+      const json = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !json.url) {
+        toast.error(json.error || 'לא ניתן להפיק קישור')
+        return
+      }
+      await navigator.clipboard.writeText(json.url)
+      toast.success('הקישור הועתק')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'העתקה נכשלה')
     }
-    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/worker?token=${encodeURIComponent(token)}`
-    void navigator.clipboard.writeText(url).then(
-      () => toast.success('הקישור הועתק'),
-      () => toast.error('העתקה נכשלה')
-    )
   }
 
   async function sendWorkerTestSms(worker: WorkerRow, e?: MouseEvent) {

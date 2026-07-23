@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit, checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
 /** Manager: create a shift manually (backfill / correction). */
 export async function POST(req: NextRequest) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('manager')
   if (!auth.ok) return auth.response
 
   const admin = auth.ctx.admin

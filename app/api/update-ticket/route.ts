@@ -4,7 +4,7 @@ import { getLogger, getAuditLogger } from '@/lib/logging'
 import { sanitizeString } from '@/lib/api-validation'
 import { updateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { logAudit } from '@/lib/audit'
 import { isTicketStatus } from '@/lib/ticket-status'
 import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
     const bamakorClientId = auth.ctx.clientId
 

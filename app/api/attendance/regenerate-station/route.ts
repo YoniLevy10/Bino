@@ -7,7 +7,7 @@ import { getOfficeAttendanceScanUrl } from '@/lib/public-app-url'
 export async function POST() {
   const requestId = `regen-station-${Date.now()}`
   try {
-    const auth = await requireSessionClientIdWithNavFeature('attendance')
+    const auth = await requireSessionClientIdWithNavFeature('attendance', 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

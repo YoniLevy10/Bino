@@ -83,7 +83,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents, 'manager')
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
@@ -163,7 +163,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents, 'manager')
   if (!auth.ok) return auth.response
 
   let body: unknown

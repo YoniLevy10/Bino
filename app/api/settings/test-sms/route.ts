@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
 
 export async function POST() {
   const requestId = `test-sms-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('admin')
     if (!auth.ok) return auth.response
     const { clientId } = auth.ctx
 

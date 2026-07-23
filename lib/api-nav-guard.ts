@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionMinRole } from '@/lib/api-auth'
 import { assertClientNavFeatureEnabled } from '@/lib/client-nav-features'
+import type { OrgUserRole } from '@/lib/org-roles'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
-export async function requireSessionClientIdWithNavFeature(featureId: SidebarNavItemId) {
-  const auth = await requireSessionClientId()
+export async function requireSessionClientIdWithNavFeature(
+  featureId: SidebarNavItemId,
+  minRole?: OrgUserRole
+) {
+  const auth = minRole ? await requireSessionMinRole(minRole) : await requireSessionClientId()
   if (!auth.ok) return auth
 
   const blocked = await assertClientNavFeatureEnabled(

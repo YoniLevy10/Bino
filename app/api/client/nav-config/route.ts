@@ -31,5 +31,6 @@ export async function GET() {
     sidebar_nav_order: parseSidebarNavOrderFromDb(row.sidebar_nav_order),
     sidebar_nav_labels: parseSidebarNavLabelsFromDb(row.sidebar_nav_labels),
     enabled_nav_features: parseEnabledNavFeaturesFromDb(row.enabled_nav_features),
+    org_role: auth.ctx.role,
   })
 }

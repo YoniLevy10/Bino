@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { updateResidentBodySchema } from '@/lib/api-body-schemas'
 import { sanitizeString } from '@/lib/api-validation'
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   const requestId = `update-resident-${Date.now()}`
 
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 

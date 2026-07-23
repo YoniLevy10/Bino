@@ -11,7 +11,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const requestId = `attendance-entry-${Date.now()}`
   try {
     const { id } = await ctx.params
-    const auth = await requireSessionClientIdWithNavFeature('attendance')
+    const auth = await requireSessionClientIdWithNavFeature('attendance', 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

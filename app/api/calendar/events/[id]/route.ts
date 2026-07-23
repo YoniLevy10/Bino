@@ -11,7 +11,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const requestId = `calendar-patch-${Date.now()}`
   try {
     const { id } = await ctx.params
-    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar, 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()
@@ -71,7 +71,7 @@ export async function DELETE(_req: Request, ctx: RouteCtx) {
   const requestId = `calendar-del-${Date.now()}`
   try {
     const { id } = await ctx.params
-    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar, 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

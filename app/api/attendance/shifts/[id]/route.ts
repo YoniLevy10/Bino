@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
@@ -7,7 +7,7 @@ import { patchWorkerAttendanceShiftBodySchema } from '@/lib/api-body-schemas'
 import { buildManagerShiftPatch } from '@/lib/attendance-shift-patch'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('manager')
   if (!auth.ok) return auth.response
 
   const admin = auth.ctx.admin
@@ -79,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('manager')
   if (!auth.ok) return auth.response
 
   const admin = auth.ctx.admin

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getAuditLogger } from '@/lib/logging'
 import {
@@ -16,7 +16,7 @@ import { testGreenInvoiceConnection } from '@/lib/greeninvoice-client'
 export async function POST() {
   const audit = getAuditLogger()
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('admin')
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 

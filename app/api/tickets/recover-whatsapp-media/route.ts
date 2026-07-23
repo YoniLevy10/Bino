@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
 
@@ -11,7 +11,7 @@ const bodySchema = z.object({
 
 /** Try to attach WhatsApp media that was stashed in session to an open ticket. */
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('manager')
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

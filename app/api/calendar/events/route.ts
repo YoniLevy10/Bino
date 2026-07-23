@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const requestId = `calendar-event-${Date.now()}`
   try {
-    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
+    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar, 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

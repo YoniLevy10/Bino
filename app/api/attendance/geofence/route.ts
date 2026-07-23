@@ -7,7 +7,7 @@ import { officeGeofenceBodySchema } from '@/lib/api-body-schemas'
 export async function PATCH(req: Request) {
   const requestId = `geofence-${Date.now()}`
   try {
-    const auth = await requireSessionClientIdWithNavFeature('attendance')
+    const auth = await requireSessionClientIdWithNavFeature('attendance', 'manager')
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

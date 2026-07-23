@@ -6,7 +6,7 @@ import { sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { createWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { parseWorkerPhone, sanitizeExtraPhones } from '@/lib/worker-phones'
 
 export async function POST(req: Request) {
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
 
     let supabase

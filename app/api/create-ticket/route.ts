@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
+import { forbiddenRoleResponse, roleAtLeast } from '@/lib/org-roles'
 import { sanitizeId } from '@/lib/api-validation'
 import { createTicketJsonBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit, checkIpPostRouteLimit } from '@/lib/rate-limit'
@@ -67,20 +68,29 @@ export async function POST(req: Request) {
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData()
 
-      // Extract text fields
-      body = {
-        message: formData.get('message') || '',
-        phone: formData.get('phone') || '',
-        description: formData.get('description') || '',
-        reporter_name: formData.get('reporter_name') || '',
-        reporter_phone: formData.get('reporter_phone') || '',
-        source: formData.get('source') || '',
-        project_code: formData.get('project_code') || '',
-        building_number: formData.get('building_number') || '',
-        client_id: formData.get('client_id') || '',
+      const formStr = (key: string) => {
+        const v = formData.get(key)
+        if (typeof v !== 'string') return undefined
+        const t = v.trim()
+        return t.length ? t : undefined
       }
+      const formFields = {
+        message: formStr('message'),
+        phone: formStr('phone'),
+        description: formStr('description'),
+        reporter_name: formStr('reporter_name'),
+        reporter_phone: formStr('reporter_phone'),
+        source: formStr('source'),
+        project_code: formStr('project_code'),
+        building_number: formStr('building_number'),
+        client_id: formStr('client_id'),
+      }
+      const jp = createTicketJsonBodySchema.safeParse(formFields)
+      if (!jp.success) {
+        return NextResponse.json({ error: jp.error.flatten() }, { status: 400 })
+      }
+      body = jp.data as unknown as TicketRequestBody
 
-      // Extract file attachments
       const attachmentFiles = formData.getAll('attachments')
       files = attachmentFiles.filter((f) => f instanceof File) as File[]
     } else {
@@ -108,6 +118,9 @@ export async function POST(req: Request) {
     const auth = await requireSessionClientId()
     let bamakorClientId: string | null = null
     if (auth.ok) {
+      if (!roleAtLeast(auth.ctx.role, 'manager')) {
+        return forbiddenRoleResponse()
+      }
       bamakorClientId = auth.ctx.clientId
     } else {
       const fromBody = sanitizeId(body?.client_id)

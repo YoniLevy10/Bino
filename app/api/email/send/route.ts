@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { emailSendBodySchema } from '@/lib/whatsapp-api-schemas'
 import { sendResendEmail } from '@/lib/email-resend'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionMinRole('manager')
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

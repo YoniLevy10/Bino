@@ -7,7 +7,6 @@ import {
   readAdminSecret,
   writeAdminSecret,
   clearAdminSecret,
-  isAdminSecretPersisted,
 } from '@/lib/admin-secret-session'
 import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
 import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
@@ -229,7 +228,6 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 
 export default function SuperAdminPage() {
   const [secret, setSecret] = useState('')
-  const [rememberDevice, setRememberDevice] = useState(false)
   const [unlocked, setUnlocked] = useState(false)
   const [unlockError, setUnlockError] = useState('')
 
@@ -295,7 +293,6 @@ export default function SuperAdminPage() {
     const stored = readAdminSecret()
     if (!stored) return
     setSecret(stored)
-    setRememberDevice(isAdminSecretPersisted())
     void verifySecret(stored).then((ok) => {
       if (ok) {
         setUnlocked(true)
@@ -355,7 +352,7 @@ export default function SuperAdminPage() {
       setUnlockError('קוד גישה שגוי')
       return
     }
-    writeAdminSecret(trimmed, { persist: rememberDevice })
+    writeAdminSecret(trimmed)
     setSecret(trimmed)
     setUnlocked(true)
     setUnlockError('')
@@ -365,7 +362,6 @@ export default function SuperAdminPage() {
     clearAdminSecret()
     setSecret('')
     setUnlocked(false)
-    setRememberDevice(false)
     setClients([])
   }
 
@@ -648,14 +644,6 @@ export default function SuperAdminPage() {
             />
           </div>
           {unlockError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md }}>{unlockError}</p>}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: theme.spacing.lg, fontSize: theme.typography.fontSize.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={rememberDevice}
-              onChange={(e) => setRememberDevice(e.target.checked)}
-            />
-            זכור במכשיר (מתאים ל-PWA בטלפון)
-          </label>
           <LoadingButton
             onClick={handleUnlock}
             className="sa-touch-btn"

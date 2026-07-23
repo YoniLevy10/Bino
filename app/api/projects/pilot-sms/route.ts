@@ -7,7 +7,7 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.pilot_sms)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.pilot_sms, 'manager')
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
+import { secureStringEqual } from '@/lib/secure-compare'
 
 const logger = getLogger()
 
@@ -19,7 +20,8 @@ export async function POST(req: Request) {
   }
 
   const auth = req.headers.get('authorization') || ''
-  if (auth !== `Bearer ${secret}`) {
+  const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+  if (!bearer || !secureStringEqual(bearer, secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

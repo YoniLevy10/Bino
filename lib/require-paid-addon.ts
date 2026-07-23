@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { requireSessionClientId, type SessionClientContext } from '@/lib/api-auth'
+import {
+  requireSessionClientId,
+  requireSessionMinRole,
+  type SessionClientContext,
+} from '@/lib/api-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import type { OrgUserRole } from '@/lib/org-roles'
 import {
   addonRequiredMessageHe,
   clientHasPaidAddon,
@@ -40,11 +45,12 @@ export async function requireClientPaidAddon(
   }
 }
 
-/** Session auth + paid add-on check for API routes. */
+/** Session auth + paid add-on check for API routes. Optional min org role for mutations. */
 export async function requireSessionClientPaidAddon(
-  addonKey: PaidAddonKey
+  addonKey: PaidAddonKey,
+  minRole?: OrgUserRole
 ): Promise<{ ok: true; ctx: SessionClientContext } | { ok: false; response: NextResponse }> {
-  const auth = await requireSessionClientId()
+  const auth = minRole ? await requireSessionMinRole(minRole) : await requireSessionClientId()
   if (!auth.ok) return auth
 
   const admin = getSupabaseAdmin()

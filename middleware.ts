@@ -16,6 +16,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith('/api/webhook/whatsapp') ||
     pathname.startsWith('/api/webhook/greeninvoice') ||
+    pathname.startsWith('/api/webhook/document-sign') ||
     pathname.startsWith('/api/public/') ||
     pathname.startsWith('/api/worker-auth') ||
     pathname.startsWith('/api/worker/') ||

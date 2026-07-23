@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { translateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionMinRole } from '@/lib/api-auth'
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 
 async function googleTranslate(text: string): Promise<string> {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const logger = getLogger()
   const requestId = `translate-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionMinRole('manager')
     if (!auth.ok) return auth.response
 
     let supabaseAdmin
