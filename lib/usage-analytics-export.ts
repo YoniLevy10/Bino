@@ -19,11 +19,11 @@ export async function downloadUsageAnalyticsExcel(report: UsageAnalyticsReport):
 
   const metaRows = [
     {
-      הופק_בתאריך: new Date(report.generated_at).toLocaleString('he-IL'),
-      חלון_ימים: report.lookback_days,
-      מספר_לקוחות: report.client_count,
-      page_views_זמין: report.page_views.available ? 'כן' : 'לא',
-      הערת_page_views: report.page_views.note,
+      'הופק בתאריך': new Date(report.generated_at).toLocaleString('he-IL'),
+      'חלון ימים': report.lookback_days,
+      'מספר לקוחות': report.client_count,
+      'page views זמין': report.page_views.available ? 'כן' : 'לא',
+      'הערת page views': report.page_views.note,
     },
   ]
 
@@ -35,12 +35,12 @@ export async function downloadUsageAnalyticsExcel(report: UsageAnalyticsReport):
   const featureRows = report.features.map((f) => ({
     דירוג: f.rank,
     מפתח: f.key,
-    פיצ׳ר: f.label,
+    'שם פיצר': f.label,
     סטטוס: SIGNAL_HE[f.signal] ?? f.signal,
-    לקוחות_בחלון: f.clients_recent,
-    לקוחות_הכל: f.clients_ever,
-    אירועים_בחלון: f.recent_events,
-    אירועים_הכל: f.total_events,
+    'לקוחות בחלון': f.clients_recent,
+    'לקוחות הכל': f.clients_ever,
+    'אירועים בחלון': f.recent_events,
+    'אירועים הכל': f.total_events,
   }))
 
   const pageViewRows =
@@ -51,18 +51,18 @@ export async function downloadUsageAnalyticsExcel(report: UsageAnalyticsReport):
           צפיות: r.views,
           לקוחות: r.clients,
         }))
-      : [{ מפתח: '—', לשונית: report.page_views.note, צפיות: 0, לקוחות: 0 }]
+      : [{ מפתח: '-', לשונית: report.page_views.note, צפיות: 0, לקוחות: 0 }]
 
   const clientRows = report.clients.map((c) => {
     const row: Record<string, string | number> = {
       לקוח: c.name,
       מזהה: c.client_id,
       מסלול: c.plan_tier ?? '',
-      תקלה_אחרונה: c.last_ticket_at
+      'תקלה אחרונה': c.last_ticket_at
         ? new Date(c.last_ticket_at).toLocaleDateString('he-IL')
         : '',
-      פיצ׳רים_פעילים: c.active_features.join(', '),
-      תוספים_בלי_שימוש: c.unused_enabled_addons.join(', '),
+      'פיצרים פעילים': c.active_features.join(', '),
+      'תוספים בלי שימוש': c.unused_enabled_addons.join(', '),
     }
     for (const [key, val] of Object.entries(c.counts)) {
       if (key.startsWith('page:')) continue
@@ -75,7 +75,7 @@ export async function downloadUsageAnalyticsExcel(report: UsageAnalyticsReport):
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metaRows), 'Meta')
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(insightRows), 'תובנות')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(featureRows), 'פיצ׳רים')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(featureRows), 'פיצרים')
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pageViewRows), 'לשוניות')
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientRows), 'לקוחות')
 
