@@ -287,6 +287,17 @@ export const createResidentBodySchema = z.object({
   notes: z.string().max(2000).nullable().optional(),
 })
 
+/** Public resident intake survey (max ~5 fields). Phone required. */
+export const publicResidentIntakeBodySchema = z.object({
+  client_id: z.string().uuid(),
+  project_code: z.string().min(1).max(40),
+  full_name: z.string().min(1).max(200),
+  phone: z.string().min(6).max(40),
+  apartment_number: z.string().min(1).max(20),
+  email: z.union([z.string().email().max(320), z.literal('')]).nullable().optional(),
+  is_renter: z.boolean().optional(),
+})
+
 /** שליחת קישור לאזור האישי של עובד שטח ב-SMS. */
 export const sendWorkerPortalLinkBodySchema = z.object({
   worker_id: z.string().uuid(),

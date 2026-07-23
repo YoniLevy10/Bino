@@ -162,8 +162,8 @@ describe('POST /api/create-ticket — web form media', () => {
     const mp4 = fixture('test-video.mp4')
 
     const res = await postWebFormTicket([
-      new File([png], 'test-image.png', { type: 'image/png' }),
-      new File([mp4], 'test-video.mp4', { type: 'video/mp4' }),
+      new File([new Uint8Array(png)], 'test-image.png', { type: 'image/png' }),
+      new File([new Uint8Array(mp4)], 'test-video.mp4', { type: 'video/mp4' }),
     ])
 
     expect(res.status).toBe(200)
@@ -197,8 +197,8 @@ describe('POST /api/create-ticket — web form media', () => {
     const png = fixture('test-image.png')
 
     const res = await postWebFormTicket([
-      new File([png], 'ok.png', { type: 'image/png' }),
-      new File([Buffer.alloc(10)], 'bad.exe', { type: 'application/x-msdownload' }),
+      new File([new Uint8Array(png)], 'ok.png', { type: 'image/png' }),
+      new File([new Uint8Array(10)], 'bad.exe', { type: 'application/x-msdownload' }),
     ])
 
     expect(res.status).toBe(200)

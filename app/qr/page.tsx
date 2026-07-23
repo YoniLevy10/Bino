@@ -3,9 +3,10 @@
 /**
  * דף קודי QR – הצגת קודי QR לכל פרויקט עבור דיווח תקלות.
  *
- * כל פרויקט מקבל שני קישורים:
+ * כל פרויקט מקבל שלושה קישורים:
  *  - WhatsApp QR: https://wa.me/{phone}?text=START_{PROJECT_CODE}  → מתחיל שיחת WhatsApp עם הבוט
  *  - Web QR: {APP_URL}/report?project={code}&client={clientId}  → טופס דיווח ווב
+ *  - Intake: {APP_URL}/intake?project={code}&client={clientId}  → סקר רישום דיירים
  *
  * מציג: גריד קארדים עם QR גרפי (qrcode.react), כפתורי הורדת PNG, ועמוד הדפסה.
  *
@@ -36,6 +37,8 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { digitsForWaMeLink } from '@/lib/wa-me-phone'
+import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
+import { buildResidentIntakeUrl } from '@/lib/resident-intake'
 
 type ProjectRow = {
   id: string
@@ -141,6 +144,17 @@ export default function QrPage() {
   function buildReportLink(project: ProjectRow) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
     return `${baseUrl}/report?project=${encodeURIComponent(project.project_code)}&client=${encodeURIComponent(project.client_id)}`
+  }
+
+  function buildIntakeLink(project: ProjectRow) {
+    return buildResidentIntakeUrl({
+      projectCode: project.project_code,
+      clientId: project.client_id,
+      baseUrl:
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : ''),
+    })
   }
 
   function downloadQr(projectCode: string) {
@@ -457,12 +471,30 @@ export default function QrPage() {
               </Button>
               <Button
                 variant="secondary"
+                onClick={() => copyText(buildIntakeLink(selectedProject), 'קישור סקר דיירים הועתק')}
+                style={{ flex: 1 }}
+              >
+                העתקת סקר דיירים
+              </Button>
+            </div>
+
+            <div style={styles.actionButtons}>
+              <Button
+                variant="secondary"
                 onClick={() => downloadQr(selectedProject.project_code)}
                 style={{ flex: 1 }}
               >
                 הורדת QR
               </Button>
             </div>
+
+            {!drawerInactive && (
+              <ProjectResidentIntakePanel
+                projectCode={selectedProject.project_code}
+                clientId={selectedProject.client_id}
+                projectName={selectedProject.name}
+              />
+            )}
 
             <div style={styles.primaryActions}>
               <a
@@ -486,6 +518,14 @@ export default function QrPage() {
                 style={styles.secondaryLink}
               >
                 דף דיווח
+              </a>
+              <a
+                href={buildIntakeLink(selectedProject)}
+                target="_blank"
+                rel="noreferrer"
+                style={styles.secondaryLink}
+              >
+                סקר דיירים
               </a>
             </div>
           </div>

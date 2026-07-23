@@ -94,10 +94,11 @@ test.describe('דיווח ציבורי — תקלה + תמונה + סרטון @m
         project_code: process.env.E2E_PROJECT_CODE || PROJECT_CODE,
         description: 'Playwright live media test',
         source: 'web_form',
+        // Playwright typings allow one file per field; cast to send two attachments.
         attachments: [
           { name: 'attachments', mimeType: 'image/png', buffer: await readFixture(png) },
           { name: 'attachments', mimeType: 'video/mp4', buffer: await readFixture(mp4) },
-        ],
+        ] as unknown as { name: string; mimeType: string; buffer: Buffer },
       },
     })
 

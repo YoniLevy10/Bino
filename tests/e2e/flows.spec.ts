@@ -57,6 +57,14 @@ test.describe('דפים ציבוריים', () => {
     expect(body.trim().length).toBeGreaterThanOrEqual(10)
   })
 
+  test('דף /intake עולה (סקר רישום דיירים ציבורי)', async ({ page }) => {
+    await page.goto('/intake?project=TEST&client=00000000-0000-0000-0000-000000000000')
+    await page.waitForLoadState('domcontentloaded')
+    const body = await page.locator('body').innerText()
+    expect(body.trim().length).toBeGreaterThanOrEqual(10)
+    expect(body).toMatch(/סקר דיירים|בניין|Bamakor/)
+  })
+
   test('דף /privacy עולה', async ({ page }) => {
     await page.goto('/privacy')
     await page.waitForLoadState('domcontentloaded')

@@ -43,6 +43,7 @@ import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGate'
 import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
 import { ProjectPilotSmsPanel } from '../components/projects/ProjectPilotSmsPanel'
+import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 type ProjectRow = {
@@ -827,6 +828,12 @@ export default function ProjectsPage() {
                 </span>
               </div>
             </div>
+
+            <ProjectResidentIntakePanel
+              projectCode={selectedProject.project_code}
+              clientId={selectedProject.client_id}
+              projectName={selectedProject.name}
+            />
 
             <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.pilot_sms}>
               <ProjectPilotSmsPanel
