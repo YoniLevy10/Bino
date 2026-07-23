@@ -146,20 +146,25 @@ export const settingsUpdateBodySchema = z
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'אין שדות לעדכון' })
 
+/** UUID-shaped id accepted by sanitizeId / Postgres (not only RFC variant bits). */
+const looseUuid = z
+  .string()
+  .regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
+
 /** גוף JSON ל-create-ticket: דף דיווח (project/building) או זרימת WhatsApp דרך API (טלפון). */
 export const createTicketJsonBodySchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().max(20000).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   project_code: z.string().max(40).optional(),
-  building_id: z.string().uuid().optional(),
+  building_id: looseUuid.optional(),
   message: z.string().max(8000).nullable().optional(),
   phone: z.string().max(40).nullable().optional(),
   reporter_name: z.string().max(255).nullable().optional(),
   reporter_phone: z.string().max(40).nullable().optional(),
   building_number: z.string().max(80).nullable().optional(),
   source: z.string().max(80).optional(),
-  client_id: z.string().uuid().optional(),
+  client_id: looseUuid.optional(),
 })
 
 export const ticketIdBodySchema = z.object({
