@@ -1,4 +1,4 @@
-﻿-- Revoke PostgREST-exposed RPCs and legacy archive views (security audit follow-up).
+-- Revoke PostgREST-exposed RPCs and legacy archive views (security audit follow-up).
 -- Admin routes use getSupabaseAdmin() (service_role); these must not be callable from anon/authenticated.
 
 REVOKE EXECUTE ON FUNCTION public.bamakor_reset_client_tickets(uuid) FROM anon, authenticated;
