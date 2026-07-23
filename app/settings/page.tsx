@@ -48,6 +48,8 @@ import {
 } from '@/lib/greeninvoice-config'
 type ClientRow = {
   id: string
+  name?: string | null
+  logo_url?: string | null
   whatsapp_business_phone?: string | null
   manager_phone?: string | null
   default_worker_phone?: string | null
@@ -113,6 +115,9 @@ function SettingsPageInner() {
   const [smsSenderName, setSmsSenderName] = useState('')
   const [smsOnOpen, setSmsOnOpen] = useState(true)
   const [smsOnClose, setSmsOnClose] = useState(true)
+  const [clientName, setClientName] = useState('')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
 
   const [waBusinessPhone, setWaBusinessPhone] = useState('')
   const [waPhoneNumberId, setWaPhoneNumberId] = useState('')
@@ -207,6 +212,8 @@ function SettingsPageInner() {
 
         setClientId(row.id)
         setClient(row)
+        setClientName(row.name?.trim() || '')
+        setLogoUrl(row.logo_url?.trim() || null)
 
         setManagerPhone(row.manager_phone || '')
         setDefaultWorkerPhone(row.default_worker_phone || '')
@@ -542,6 +549,34 @@ function SettingsPageInner() {
     }
   }
 
+  async function uploadClientLogo(file: File) {
+    if (!clientId) return
+    setLogoUploading(true)
+    await asyncHandler(
+      async () => {
+        const form = new FormData()
+        form.append('file', file)
+        const res = await fetchWithTimeout(
+          '/api/settings/upload-logo',
+          { method: 'POST', body: form },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+        if (!res.ok || !json.url) throw new Error(json.error || 'העלאת לוגו נכשלה')
+        setLogoUrl(json.url)
+        try {
+          localStorage.removeItem(`bamakor_branding_v1_${clientId}`)
+        } catch {
+          /* ignore */
+        }
+        toast.success('הלוגו עודכן — יופיע גם בסקר הדיירים')
+        return true
+      },
+      { context: 'העלאת לוגו נכשלה', showErrorToast: true }
+    )
+    setLogoUploading(false)
+  }
+
   async function testSms() {
     setTestingSms(true)
     await asyncHandler(
@@ -685,6 +720,51 @@ function SettingsPageInner() {
             {activeTab === 'notifications' && (
               <Card noPadding>
                 <div style={styles.cardInner}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>לוגו לקוח (סקר דיירים + סרגל)</label>
+                    <p style={styles.fieldHint}>
+                      PNG/JPEG/WEBP עד 2MB. הלוגו מוצג בדף סקר הרישום הציבורי ובסרגל הצד.
+                      {clientName ? ` לקוח: ${clientName}.` : ''}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={logoUrl || '/apple-icon.png'}
+                        alt={clientName || 'לוגו'}
+                        width={56}
+                        height={56}
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: theme.radius.md,
+                          objectFit: 'contain',
+                          border: `1px solid ${theme.colors.border}`,
+                          background: theme.colors.muted,
+                        }}
+                      />
+                      <div>
+                        <input
+                          id="settings-client-logo"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) void uploadClientLogo(file)
+                            e.target.value = ''
+                          }}
+                        />
+                        <LoadingButton
+                          size="sm"
+                          loading={logoUploading}
+                          loadingText="מעלה..."
+                          onClick={() => document.getElementById('settings-client-logo')?.click()}
+                        >
+                          {logoUrl ? 'החלף לוגו' : 'העלה לוגו'}
+                        </LoadingButton>
+                      </div>
+                    </div>
+                  </div>
                   <div style={styles.formGroup}>
                     <label style={styles.formLabel}>טלפון מנהל</label>
                     <input

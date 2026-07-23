@@ -151,16 +151,13 @@ function IntakePageContent() {
     <main style={styles.page} dir="rtl">
       <div style={styles.wrapper}>
         <div style={styles.brandRow}>
-          {branding?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={branding.logo_url}
-              alt={branding.name || 'לוגו לקוח'}
-              style={styles.logoImage}
-            />
-          ) : (
-            <div style={styles.logoBox}>B</div>
-          )}
+          {/* Prefer clients.logo_url; otherwise same app icon as dashboard sidebar (not red B). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={branding?.logo_url || '/apple-icon.png'}
+            alt={branding?.name?.trim() || 'Bamakor'}
+            style={styles.logoImage}
+          />
           <div>
             <div style={styles.brandTitle}>{branding?.name?.trim() || 'Bamakor'}</div>
             <div style={styles.brandSubtitle}>רישום דייר לבניין</div>
@@ -340,19 +337,6 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '12px',
     marginBottom: '20px',
-  },
-  logoBox: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg, #C1121F 0%, #8F0B16 100%)',
-    color: '#FFFFFF',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 800,
-    fontSize: '18px',
-    flexShrink: 0,
   },
   logoImage: {
     width: '48px',

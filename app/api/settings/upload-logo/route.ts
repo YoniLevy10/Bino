@@ -6,6 +6,7 @@ import { getLogger, getAuditLogger } from '@/lib/logging'
 import {
   CLIENT_LOGOS_BUCKET,
   clientLogoExtension,
+  ensureClientLogosBucket,
   resolveClientLogoMime,
   validateClientLogoFile,
 } from '@/lib/client-logo-upload'
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
 
     const ext = clientLogoExtension(mime!)
     const path = `${clientId}/logo-${Date.now()}.${ext}`
+
+    await ensureClientLogosBucket(admin)
 
     const { error: upErr } = await admin.storage.from(CLIENT_LOGOS_BUCKET).upload(path, buf, {
       contentType: mime!,

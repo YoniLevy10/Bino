@@ -3,6 +3,8 @@ import { CLIENT_GREENINVOICE_SETTINGS_SELECT } from '@/lib/greeninvoice-credenti
 /** Safe client fields for browser / tenant reads (no API secrets). */
 export const CLIENT_SETTINGS_SAFE_SELECT = [
   'id',
+  'name',
+  'logo_url',
   'whatsapp_business_phone',
   'manager_phone',
   'default_worker_phone',
