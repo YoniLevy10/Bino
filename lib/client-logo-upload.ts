@@ -1,6 +1,28 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export const CLIENT_LOGOS_BUCKET = 'client-logos'
 export const CLIENT_LOGO_MAX_BYTES = 2 * 1024 * 1024
 export const CLIENT_LOGO_ALLOWED_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
+
+/**
+ * Ensure the public client-logos bucket exists (idempotent).
+ * Needed when migration 058 was not applied on the remote project.
+ */
+export async function ensureClientLogosBucket(admin: SupabaseClient): Promise<void> {
+  const { data: buckets, error: listErr } = await admin.storage.listBuckets()
+  if (listErr) {
+    // Best-effort — upload will surface a clearer error if the bucket is still missing.
+    return
+  }
+  const exists = (buckets || []).some((b) => b.id === CLIENT_LOGOS_BUCKET || b.name === CLIENT_LOGOS_BUCKET)
+  if (exists) return
+
+  await admin.storage.createBucket(CLIENT_LOGOS_BUCKET, {
+    public: true,
+    fileSizeLimit: CLIENT_LOGO_MAX_BYTES,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+  })
+}
 
 function mimeFromFileName(fileName: string): string | null {
   const lower = fileName.trim().toLowerCase()

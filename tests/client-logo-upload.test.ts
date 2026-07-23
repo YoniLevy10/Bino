@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { resolveClientLogoMime, validateClientLogoFile } from '@/lib/client-logo-upload'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  CLIENT_LOGOS_BUCKET,
+  ensureClientLogosBucket,
+  resolveClientLogoMime,
+  validateClientLogoFile,
+} from '@/lib/client-logo-upload'
 
 describe('client-logo-upload', () => {
   it('infers jpeg from file name when browser sends empty type', () => {
@@ -16,5 +21,34 @@ describe('client-logo-upload', () => {
   it('rejects unknown mime', () => {
     const blob = new Blob(['x'], { type: 'text/plain' })
     expect(validateClientLogoFile(1, resolveClientLogoMime(blob, 'notes.txt'))).toMatch(/לא נתמך/)
+  })
+
+  it('creates client-logos bucket when missing', async () => {
+    const createBucket = vi.fn().mockResolvedValue({ data: { name: CLIENT_LOGOS_BUCKET }, error: null })
+    const admin = {
+      storage: {
+        listBuckets: vi.fn().mockResolvedValue({ data: [], error: null }),
+        createBucket,
+      },
+    }
+    await ensureClientLogosBucket(admin as never)
+    expect(createBucket).toHaveBeenCalledWith(
+      CLIENT_LOGOS_BUCKET,
+      expect.objectContaining({ public: true })
+    )
+  })
+
+  it('skips create when bucket already exists', async () => {
+    const createBucket = vi.fn()
+    const admin = {
+      storage: {
+        listBuckets: vi
+          .fn()
+          .mockResolvedValue({ data: [{ id: CLIENT_LOGOS_BUCKET, name: CLIENT_LOGOS_BUCKET }], error: null }),
+        createBucket,
+      },
+    }
+    await ensureClientLogosBucket(admin as never)
+    expect(createBucket).not.toHaveBeenCalled()
   })
 })
