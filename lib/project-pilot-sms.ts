@@ -94,7 +94,26 @@ export async function runProjectPilotSms(params: {
   dryRun?: boolean
   message?: string | null
 }): Promise<PilotSmsRunResult> {
-  const message = resolvePilotSmsMessage(params.message)
+  let whatsappBotPhone: string | null = null
+  if (!(params.message ?? '').trim()) {
+    const { data: client } = await params.admin
+      .from('clients')
+      .select('whatsapp_business_phone, manager_phone, default_worker_phone')
+      .eq('id', params.clientId)
+      .maybeSingle()
+    const row = client as {
+      whatsapp_business_phone?: string | null
+      manager_phone?: string | null
+      default_worker_phone?: string | null
+    } | null
+    whatsappBotPhone =
+      row?.whatsapp_business_phone?.trim() ||
+      row?.manager_phone?.trim() ||
+      row?.default_worker_phone?.trim() ||
+      null
+  }
+
+  const message = resolvePilotSmsMessage(params.message, { whatsappBotPhone })
   const { recipients, skippedNoPhone } = await listPilotSmsRecipients(
     params.admin,
     params.clientId,

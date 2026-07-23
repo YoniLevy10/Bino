@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildResidentIntakePath,
   buildResidentIntakeShareMessage,
+  buildResidentIntakeShareTemplate,
   buildResidentIntakeUrl,
   buildResidentIntakeWhatsAppShareUrl,
+  resolveResidentIntakeShareMessage,
 } from '@/lib/resident-intake'
 
 describe('resident intake helpers', () => {
@@ -31,6 +33,19 @@ describe('resident intake helpers', () => {
     expect(msg).toContain('הרצל 12')
     expect(msg).toContain('https://bamakor.vercel.app/intake?project=H12&client=c1')
     expect(msg).not.toMatch(/\p{Extended_Pictographic}/u)
+  })
+
+  it('resolves editable template placeholders and appends missing url', () => {
+    const msg = resolveResidentIntakeShareMessage('שלום לדיירי {project}', {
+      projectName: 'בניין א',
+      intakeUrl: 'https://example.com/intake',
+    })
+    expect(msg).toContain('בניין א')
+    expect(msg).toContain('https://example.com/intake')
+  })
+
+  it('default template keeps {url} placeholder for editing', () => {
+    expect(buildResidentIntakeShareTemplate('בניין')).toContain('{url}')
   })
 
   it('builds wa.me share url without phone (group picker)', () => {

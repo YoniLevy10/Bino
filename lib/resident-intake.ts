@@ -10,6 +10,11 @@ export type ResidentIntakeLinkParams = {
   baseUrl?: string
 }
 
+export const RESIDENT_INTAKE_SHARE_PLACEHOLDERS = {
+  project: '{project}',
+  url: '{url}',
+} as const
+
 export function buildResidentIntakePath(projectCode: string, clientId: string): string {
   const code = projectCode.trim().toUpperCase()
   const client = clientId.trim()
@@ -26,18 +31,54 @@ export function buildResidentIntakeUrl(params: ResidentIntakeLinkParams): string
   return base ? `${base}${path}` : path
 }
 
+/** Default WhatsApp-group template. Placeholders: {project}, {url} */
+export function buildResidentIntakeShareTemplate(projectName?: string): string {
+  const name = (projectName || '').trim() || 'הבניין'
+  return [
+    `שלום,`,
+    `אנא מלאו את פרטי הדייר בקישור הקצר הבא עבור ${name}.`,
+    `זה לוקח פחות מדקה ועוזר לנו לעדכן את רשימת הדיירים במערכת התחזוקה.`,
+    `{url}`,
+  ].join('\n')
+}
+
 /** Plain Hebrew text for managers to paste into a WhatsApp group (no emoji). */
 export function buildResidentIntakeShareMessage(params: {
   projectName: string
   intakeUrl: string
 }): string {
+  return resolveResidentIntakeShareMessage(buildResidentIntakeShareTemplate(params.projectName), {
+    projectName: params.projectName,
+    intakeUrl: params.intakeUrl,
+  })
+}
+
+/**
+ * Apply placeholders in an editable template.
+ * Always ensures the intake URL appears in the final message.
+ */
+export function resolveResidentIntakeShareMessage(
+  template: string,
+  params: { projectName: string; intakeUrl: string }
+): string {
   const name = params.projectName.trim() || 'הבניין'
-  return [
-    `שלום,`,
-    `אנא מלאו את פרטי הדייר בקישור הקצר הבא עבור ${name}.`,
-    `זה לוקח פחות מדקה ועוזר לנו לעדכן את רשימת הדיירים במערכת התחזוקה.`,
-    params.intakeUrl,
-  ].join('\n')
+  const url = params.intakeUrl.trim()
+  let text = (template || '')
+    .replaceAll('{project}', name)
+    .replaceAll('{url}', url)
+    .trim()
+
+  if (!text) {
+    return buildResidentIntakeShareMessage({ projectName: name, intakeUrl: url })
+  }
+  if (url && !text.includes(url)) {
+    text = `${text}\n${url}`
+  }
+  return text
+}
+
+export function intakeShareTemplateStorageKey(clientId: string, projectCode: string): string {
+  return `bamakor:intake-share-template:${clientId}:${projectCode.trim().toUpperCase()}`
 }
 
 /** Opens WhatsApp with prefilled text so the manager can pick a group/chat. */
