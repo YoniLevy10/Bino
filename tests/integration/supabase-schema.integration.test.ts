@@ -91,6 +91,7 @@ describeLive('2. Table existence', () => {
     'whatsapp_templates', 'audit_log', 'billing_events', 'push_subscriptions',
     'processed_webhooks', 'failed_notifications', 'api_rate_limit',
     'worker_nfc_tags', 'worker_attendance_events', 'worker_attendance',
+    'feature_page_views',
   ]
 
   for (const table of expectedTables) {

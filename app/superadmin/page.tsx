@@ -16,6 +16,7 @@ import { ClientLogoUpload } from './ClientLogoUpload'
 import { ClientInvitePanel } from './ClientInvitePanel'
 import { ClientRecoverTicketMediaPanel } from './ClientRecoverTicketMediaPanel'
 import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
+import { UsageAnalyticsPanel } from './UsageAnalyticsPanel'
 import type { OpsFeed } from '@/app/components/superadmin/OpsFailuresPanel'
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
@@ -136,7 +137,7 @@ function effectiveLimitsForClient(client: ClientRow, catalog: PlanCatalogRow[]) 
   }
 }
 
-type ViewMode = 'clients' | 'ops'
+type ViewMode = 'clients' | 'ops' | 'usage'
 type ClientFilter = 'all' | 'open_tickets' | 'no_whatsapp' | 'at_worker_limit'
 
 const PLAN_LABELS: Record<string, string> = {
@@ -306,11 +307,12 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (window.location.hash === '#ops') setViewMode('ops')
+    if (window.location.hash === '#usage') setViewMode('usage')
   }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !unlocked) return
-    window.location.hash = viewMode === 'ops' ? '#ops' : ''
+    window.location.hash = viewMode === 'ops' ? '#ops' : viewMode === 'usage' ? '#usage' : ''
   }, [viewMode, unlocked])
 
   useEffect(() => {
@@ -710,6 +712,7 @@ export default function SuperAdminPage() {
           {(
             [
               { id: 'clients' as const, label: 'לקוחות' },
+              { id: 'usage' as const, label: 'שימוש' },
               { id: 'ops' as const, label: 'תפעול' },
             ] as const
           ).map((tab) => (
@@ -746,6 +749,8 @@ export default function SuperAdminPage() {
             <AdminQuickLinks />
           </>
         )}
+
+        {viewMode === 'usage' && <UsageAnalyticsPanel secret={secret} />}
 
         {viewMode === 'clients' && (
           <>
@@ -1403,6 +1408,13 @@ export default function SuperAdminPage() {
           onClick={() => setViewMode('clients')}
         >
           לקוחות
+        </button>
+        <button
+          type="button"
+          className={`sa-bottom-nav-btn${viewMode === 'usage' ? ' is-active' : ''}`}
+          onClick={() => setViewMode('usage')}
+        >
+          שימוש
         </button>
         <button
           type="button"
