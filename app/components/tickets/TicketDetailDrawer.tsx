@@ -142,15 +142,13 @@ export function TicketDetailDrawer({
   const [internalTranslation, setInternalTranslation] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [attachmentsOpen, setAttachmentsOpen] = useState(false)
 
   useEffect(() => {
     setActiveTab('details')
     setInternalTranslation('')
     setAdvancedOpen(false)
     setHistoryOpen(false)
-    setAttachmentsOpen(selectedTicketAttachments.length > 0)
-  }, [selectedTicket?.id, selectedTicketAttachments.length])
+  }, [selectedTicket?.id])
 
   const translation = descriptionTranslation || internalTranslation
   const showRecover =
@@ -201,13 +199,11 @@ export function TicketDetailDrawer({
   }
 
   const hasAdvancedActions = !!(
-    onTranslateDescription ||
     onLoadMergeCandidates ||
     onTicketForwarded ||
     onPriorityChange ||
     onDelete ||
-    onCancel ||
-    showRecover
+    onCancel
   )
 
   return (
@@ -251,7 +247,18 @@ export function TicketDetailDrawer({
           {activeTab === 'details' && (
             <>
               <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>תיאור</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={styles.drawerLabel}>תיאור</div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    loading={translating}
+                    onClick={() => void translateDescriptionInternal()}
+                  >
+                    תרגם לעברית
+                  </Button>
+                </div>
                 {descriptionReadOnly ? (
                   <div style={styles.descriptionBox}>{selectedTicket.description || '—'}</div>
                 ) : (
@@ -336,12 +343,24 @@ export function TicketDetailDrawer({
               )}
 
               {showAttachmentsBlock && (
-                <CollapsibleSection
-                  title="קבצים מצורפים"
-                  badge={hasAttachments ? String(selectedTicketAttachments.length) : undefined}
-                  open={attachmentsOpen}
-                  onToggle={() => setAttachmentsOpen((v) => !v)}
-                >
+                <div style={styles.drawerSection}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={styles.drawerLabel}>
+                      מדיה / קבצים מצורפים
+                      {hasAttachments ? ` (${selectedTicketAttachments.length})` : ''}
+                    </div>
+                    {showRecover && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        type="button"
+                        loading={recoveringMedia}
+                        onClick={() => void onRecoverMedia?.()}
+                      >
+                        שחזר מ-WhatsApp
+                      </Button>
+                    )}
+                  </div>
                   {loadingAttachments ? (
                     <p style={styles.loadingState}>טוען קבצים…</p>
                   ) : hasAttachments ? (
@@ -370,10 +389,10 @@ export function TicketDetailDrawer({
                     </div>
                   ) : (
                     <p style={styles.emptyAttachments}>
-                      אין קבצים — ניתן לשחזר מ-WhatsApp תחת פעולות מתקדמות או בטאב WhatsApp דייר.
+                      אין קבצים עדיין — לחצו «שחזר מ-WhatsApp», או פתחו את טאב WhatsApp דייר.
                     </p>
                   )}
-                </CollapsibleSection>
+                </div>
               )}
 
               {(hasAdvancedActions || ticketLogs.length > 0 || drawerLoading) && (
@@ -382,21 +401,6 @@ export function TicketDetailDrawer({
                   open={advancedOpen}
                   onToggle={() => setAdvancedOpen((v) => !v)}
                 >
-                  {(onTranslateDescription || !descriptionReadOnly) && (
-                    <div style={styles.drawerSection}>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        type="button"
-                        loading={translating}
-                        onClick={() => void translateDescriptionInternal()}
-                        style={{ width: '100%' }}
-                      >
-                        תרגם לעברית
-                      </Button>
-                    </div>
-                  )}
-
                   {onPriorityChange && (
                     <div style={styles.drawerSection}>
                       <div style={styles.drawerLabel}>עדיפות</div>
@@ -406,21 +410,6 @@ export function TicketDetailDrawer({
                         options={PRIORITY_OPTIONS}
                         style={{ width: '100%' }}
                       />
-                    </div>
-                  )}
-
-                  {showRecover && (
-                    <div style={styles.drawerSection}>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        type="button"
-                        loading={recoveringMedia}
-                        onClick={() => void onRecoverMedia?.()}
-                        style={{ width: '100%' }}
-                      >
-                        שחזר תמונה/וידאו מ-WhatsApp
-                      </Button>
                     </div>
                   )}
 
