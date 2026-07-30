@@ -495,13 +495,13 @@ export function CollectionsBoard() {
           רענון
         </Button>
         <Link
-          href="/settings?tab=greeninvoice"
+          href="/settings?tab=morning"
           style={{
             ...styles.settingsLink,
             marginInlineStart: isMobile ? 0 : 'auto',
           }}
         >
-          הגדרות חשבונית ירוקה
+          הגדרות Morning
         </Link>
       </div>
 

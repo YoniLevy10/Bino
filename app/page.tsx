@@ -176,6 +176,7 @@ export default function DashboardPage() {
   const [draftStatus, setDraftStatus] = useState('NEW')
   const [draftWorkerId, setDraftWorkerId] = useState('')
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const [selectedMediaKind, setSelectedMediaKind] = useState<'image' | 'video'>('image')
 
   const [showAddTicketModal, setShowAddTicketModal] = useState(false)
   const [addTicketProjectCode, setAddTicketProjectCode] = useState('')
@@ -964,7 +965,10 @@ export default function DashboardPage() {
         onDescriptionChange={setDraftDescription}
         onStatusChange={setDraftStatus}
         onWorkerChange={setDraftWorkerId}
-        onSelectImage={setSelectedImageUrl}
+        onSelectImage={(url, kind = 'image') => {
+          setSelectedMediaKind(kind)
+          setSelectedImageUrl(url)
+        }}
         onCloseTicket={handleCloseTicket}
         getImageUrl={getImageUrl}
         isMobile={isMobile}
@@ -1011,7 +1015,11 @@ export default function DashboardPage() {
         }}
       />
 
-      <ImageLightbox imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
+      <ImageLightbox
+        imageUrl={selectedImageUrl}
+        mediaKind={selectedMediaKind}
+        onClose={() => setSelectedImageUrl(null)}
+      />
     </AppShell>
   )
 }

@@ -48,10 +48,19 @@ describe('client nav features', () => {
     expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'calendar')).toBe(false)
   })
 
-  it('setup package is default order minus premium', () => {
-    const expected = DEFAULT_SIDEBAR_NAV_ORDER.filter(
-      (id) => !PREMIUM_NAV_FEATURE_IDS.includes(id)
-    )
-    expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toEqual(expected)
+  it('setup package keeps free tools even when they are not top-level sidebar items', () => {
+    expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toEqual([
+      'dashboard',
+      'tickets',
+      'projects',
+      'residents',
+      'workers',
+      'summary',
+      'qr',
+      'whatsapp_templates',
+      'pending_residents',
+    ])
+    // Sidebar default is curated separately and may omit QR/templates/pending.
+    expect(DEFAULT_SIDEBAR_NAV_ORDER).not.toContain('qr')
   })
 })

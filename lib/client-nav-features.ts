@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   ADDON_ONLY_SIDEBAR_NAV_IDS,
-  DEFAULT_SIDEBAR_NAV_ORDER,
   isInternalSidebarNavItemId,
   isSidebarNavItemId,
   SIDEBAR_NAV_ITEM_IDS,
@@ -23,12 +22,19 @@ export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = ADDON_ONLY_S
 
 /**
  * Default allowlist for new clients (setup / onboarding).
- * Derived from full nav minus premium — keep in sync via tests.
+ * Includes free tools that are not top-level sidebar items (QR, templates, pending).
  */
-export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] =
-  DEFAULT_SIDEBAR_NAV_ORDER.filter(
-    (id) => !PREMIUM_NAV_FEATURE_IDS.includes(id)
-  ) as SidebarNavItemId[]
+export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
+  'dashboard',
+  'tickets',
+  'projects',
+  'residents',
+  'workers',
+  'summary',
+  'qr',
+  'whatsapp_templates',
+  'pending_residents',
+]
 
 export function getSetupPackageNavFeatures(): SidebarNavItemId[] {
   return [...SETUP_PACKAGE_NAV_FEATURE_IDS]

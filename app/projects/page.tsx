@@ -44,6 +44,7 @@ import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGat
 import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
 import { ProjectPilotSmsPanel } from '../components/projects/ProjectPilotSmsPanel'
 import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
+import { CollapsibleSection } from '../components/shared/CollapsibleSection'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 type ProjectRow = {
@@ -138,9 +139,10 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
   const [projectTickets, setProjectTickets] = useState<TicketRow[]>([])
   const [projectClosedTickets, setProjectClosedTickets] = useState<TicketRow[]>([])
-  const [projectTicketsTab, setProjectTicketsTab] = useState<'active' | 'history'>('active')
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [exportingHistory, setExportingHistory] = useState(false)
+  const [projectAdvancedOpen, setProjectAdvancedOpen] = useState(false)
+  const [projectHistoryOpen, setProjectHistoryOpen] = useState(false)
 
   async function loadClientId() {
     const id = await resolveBamakorClientIdForBrowser()
@@ -281,15 +283,18 @@ export default function ProjectsPage() {
     closeDrawer()
     setSelectedProject(project)
     setDetailDrawerOpen(true)
+    setProjectAdvancedOpen(false)
+    setProjectHistoryOpen(false)
     await fetchProjectTickets(project.id)
   }
 
   function closeDetailDrawer() {
     setDetailDrawerOpen(false)
     setSelectedProject(null)
+    setProjectAdvancedOpen(false)
+    setProjectHistoryOpen(false)
     setProjectTickets([])
     setProjectClosedTickets([])
-    setProjectTicketsTab('active')
   }
 
   async function fetchProjectOpenTickets(projectId: string) {
@@ -472,6 +477,9 @@ export default function ProjectsPage() {
         if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, TM.genericSaveError))
         toast.success(project.is_active ? TM.projectDeactivated : TM.projectActivated)
         await loadProjects()
+        setSelectedProject((prev) =>
+          prev && prev.id === project.id ? { ...prev, is_active: !project.is_active } : prev
+        )
         return true
       },
       { context: 'Failed to update project status', showErrorToast: true }
@@ -621,30 +629,17 @@ export default function ProjectsPage() {
                   data-ui="card"
                 >
                   <div style={styles.projectHeader}>
-                    <div>
-                      <div style={styles.projectName}>{project.name}</div>
-                    </div>
+                    <div style={styles.projectName}>{project.name}</div>
                     <StatusBadge status={project.is_active ? 'ACTIVE' : 'INACTIVE'} size="sm" />
                   </div>
 
                   <div style={styles.projectMeta}>
-                    <div style={styles.metaItem}>
-                      <span style={styles.metaLabel}>כתובת</span>
-                      <span style={styles.metaValue}>
-                        {project.address || '-'}
-                        {project.address_en && (
-                          <span style={{ display: 'block', direction: 'ltr', fontSize: '12px', color: '#6B7280' }}>
-                            {project.address_en}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div style={styles.metaItem}>
-                      <span style={styles.metaLabel}>קוד התחלה</span>
-                      <span style={styles.metaCode}>
-                        {project.qr_identifier || `START_${project.project_code}`}
-                      </span>
-                    </div>
+                    {project.address ? (
+                      <div style={styles.metaItem}>
+                        <span style={styles.metaLabel}>כתובת</span>
+                        <span style={styles.metaValue}>{project.address}</span>
+                      </div>
+                    ) : null}
                     <div style={styles.metaItem}>
                       <span style={styles.metaLabel}>עובד אחזקה</span>
                       <span style={styles.metaValue}>
@@ -653,29 +648,6 @@ export default function ProjectsPage() {
                           : 'לא שויך'}
                       </span>
                     </div>
-                    <div style={styles.metaItem} onClick={(e) => e.stopPropagation()}>
-                      <span style={styles.metaLabel}>שינוי שיבוץ</span>
-                      <div style={{ flex: 1, minWidth: 0, maxWidth: '240px' }}>
-                        <Select
-                          value={project.assigned_worker_id || ''}
-                          onChange={(value) => updateProjectAssignedWorker(project.id, value)}
-                          options={[
-                            { label: 'לא שויך', value: '' },
-                            ...workers.map((w) => ({ label: w.full_name, value: w.id })),
-                          ]}
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={styles.projectActions} onClick={(e) => e.stopPropagation()}>
-                    <Button variant="secondary" size="sm" onClick={() => openEditDrawer(project)}>
-                      עריכה
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => toggleProjectStatus(project)}>
-                      {project.is_active ? 'השבתה' : 'הפעלה'}
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -801,7 +773,7 @@ export default function ProjectsPage() {
         open={detailDrawerOpen}
         onClose={closeDetailDrawer}
         title={selectedProject?.name || ''}
-        subtitle={selectedProject?.name}
+        subtitle={selectedProject?.project_code || selectedProject?.name}
         isMobile={isMobile}
       >
         {selectedProject && (
@@ -827,118 +799,112 @@ export default function ProjectsPage() {
                   {selectedProject.qr_identifier || `START_${selectedProject.project_code}`}
                 </span>
               </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>עובד אחזקה</span>
+                <div style={{ flex: 1, minWidth: 0, maxWidth: '260px' }} onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={selectedProject.assigned_worker_id || ''}
+                    onChange={(value) => {
+                      void updateProjectAssignedWorker(selectedProject.id, value).then(() => {
+                        setSelectedProject((prev) =>
+                          prev ? { ...prev, assigned_worker_id: value || null } : prev
+                        )
+                      })
+                    }}
+                    options={[
+                      { label: 'לא שויך', value: '' },
+                      ...workers.map((w) => ({ label: w.full_name, value: w.id })),
+                    ]}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
             </div>
-
-            <ProjectResidentIntakePanel
-              projectCode={selectedProject.project_code}
-              clientId={selectedProject.client_id}
-              projectName={selectedProject.name}
-            />
-
-            <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.pilot_sms}>
-              <ProjectPilotSmsPanel
-                projectId={selectedProject.id}
-                projectName={selectedProject.name}
-              />
-            </PaidAddonFeatureGate>
-
-            <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.project_documents}>
-              <ProjectDocumentsPanel projectId={selectedProject.id} />
-            </PaidAddonFeatureGate>
 
             <div style={styles.ticketsSection}>
               <div style={styles.ticketsSectionHeader}>
-                <h4 style={styles.ticketsSectionTitle}>תקלות</h4>
+                <h4 style={styles.ticketsSectionTitle}>תקלות פעילות</h4>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = `/tickets?project=${encodeURIComponent(selectedProject.project_code)}`}
+                  onClick={() => {
+                    window.location.href = `/tickets?project=${encodeURIComponent(selectedProject.project_code)}`
+                  }}
                 >
-                  פעילות
+                  לכל התקלות
                 </Button>
-              </div>
-
-              <div style={styles.projectTicketTabs}>
-                <button
-                  type="button"
-                  onClick={() => setProjectTicketsTab('active')}
-                  style={{
-                    ...styles.projectTicketTab,
-                    ...(projectTicketsTab === 'active' ? styles.projectTicketTabActive : {}),
-                  }}
-                >
-                  פעילות ({projectTickets.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProjectTicketsTab('history')}
-                  style={{
-                    ...styles.projectTicketTab,
-                    ...(projectTicketsTab === 'history' ? styles.projectTicketTabActive : {}),
-                  }}
-                >
-                  היסטוריה ({projectClosedTickets.length})
-                </button>
               </div>
 
               {loadingTickets ? (
                 <div style={styles.loadingSmall}>
                   <LoadingSpinner size="sm" />
                 </div>
-              ) : projectTicketsTab === 'active' ? (
-                projectTickets.length === 0 ? (
-                  <p style={styles.emptyText}>אין תקלות פעילות לפרויקט זה</p>
-                ) : (
-                  <div style={styles.ticketList}>
-                    {projectTickets.map((ticket) => (
-                      <button
-                        key={ticket.id}
-                        type="button"
-                        style={{ ...styles.ticketItem, ...styles.ticketItemButton }}
-                        onClick={() => router.push(ticketDetailPath(ticket.id))}
-                      >
-                        <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                        <StatusBadge status={ticket.status} size="sm" />
-                      </button>
-                    ))}
-                  </div>
-                )
-              ) : projectClosedTickets.length === 0 ? (
-                <p style={styles.emptyText}>אין תקלות סגורות בהיסטוריה</p>
+              ) : projectTickets.length === 0 ? (
+                <p style={styles.emptyText}>אין תקלות פעילות לפרויקט זה</p>
               ) : (
-                <>
-                  <div style={styles.ticketList}>
-                    {projectClosedTickets.map((ticket) => (
-                      <button
-                        key={ticket.id}
-                        type="button"
-                        style={{ ...styles.ticketHistoryItem, ...styles.ticketItemButton }}
-                        onClick={() => router.push(ticketDetailPath(ticket.id))}
-                      >
-                        <div style={styles.ticketHistoryTop}>
-                          <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                          <StatusBadge status={ticket.status} size="sm" />
-                        </div>
-                        <p style={styles.ticketHistoryDesc}>
-                          {ticket.description?.slice(0, 80)}{(ticket.description?.length || 0) > 80 ? '…' : ''}
-                        </p>
-                        <span style={styles.ticketHistoryDate}>
-                          נסגרה: {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('he-IL') : '—'}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    loading={exportingHistory}
-                    onClick={() => void exportProjectHistory(selectedProject)}
-                    style={{ marginTop: '12px', width: '100%' }}
-                  >
-                    ייצוא היסטוריה ל-Excel
-                  </Button>
-                </>
+                <div style={styles.ticketList}>
+                  {projectTickets.map((ticket) => (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      style={{ ...styles.ticketItem, ...styles.ticketItemButton }}
+                      onClick={() => router.push(ticketDetailPath(ticket.id))}
+                    >
+                      <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
+                      <StatusBadge status={ticket.status} size="sm" />
+                    </button>
+                  ))}
+                </div>
               )}
+
+              <CollapsibleSection
+                title="היסטוריית תקלות"
+                badge={projectClosedTickets.length > 0 ? String(projectClosedTickets.length) : undefined}
+                open={projectHistoryOpen}
+                onToggle={() => setProjectHistoryOpen((v) => !v)}
+              >
+                {loadingTickets ? (
+                  <div style={styles.loadingSmall}>
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : projectClosedTickets.length === 0 ? (
+                  <p style={styles.emptyText}>אין תקלות סגורות בהיסטוריה</p>
+                ) : (
+                  <>
+                    <div style={styles.ticketList}>
+                      {projectClosedTickets.map((ticket) => (
+                        <button
+                          key={ticket.id}
+                          type="button"
+                          style={{ ...styles.ticketHistoryItem, ...styles.ticketItemButton }}
+                          onClick={() => router.push(ticketDetailPath(ticket.id))}
+                        >
+                          <div style={styles.ticketHistoryTop}>
+                            <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
+                            <StatusBadge status={ticket.status} size="sm" />
+                          </div>
+                          <p style={styles.ticketHistoryDesc}>
+                            {ticket.description?.slice(0, 80)}
+                            {(ticket.description?.length || 0) > 80 ? '…' : ''}
+                          </p>
+                          <span style={styles.ticketHistoryDate}>
+                            נסגרה: {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('he-IL') : '—'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={exportingHistory}
+                      onClick={() => void exportProjectHistory(selectedProject)}
+                      style={{ width: '100%' }}
+                    >
+                      ייצוא היסטוריה ל-Excel
+                    </Button>
+                  </>
+                )}
+              </CollapsibleSection>
             </div>
 
             <div style={styles.drawerActions}>
@@ -947,21 +913,54 @@ export default function ProjectsPage() {
               </Button>
               <Button
                 variant="primary"
-                onClick={() => window.location.href = `/qr?project=${encodeURIComponent(selectedProject.project_code)}`}
+                onClick={() => {
+                  window.location.href = `/qr?project=${encodeURIComponent(selectedProject.project_code)}`
+                }}
               >
                 צפייה ב-QR
               </Button>
             </div>
 
-            <div style={styles.dangerZone}>
+            <CollapsibleSection
+              title="פעולות מתקדמות"
+              open={projectAdvancedOpen}
+              onToggle={() => setProjectAdvancedOpen((v) => !v)}
+            >
+              <ProjectResidentIntakePanel
+                projectCode={selectedProject.project_code}
+                clientId={selectedProject.client_id}
+                projectName={selectedProject.name}
+              />
+
+              <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.pilot_sms}>
+                <ProjectPilotSmsPanel
+                  projectId={selectedProject.id}
+                  projectName={selectedProject.name}
+                />
+              </PaidAddonFeatureGate>
+
+              <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.project_documents}>
+                <ProjectDocumentsPanel projectId={selectedProject.id} />
+              </PaidAddonFeatureGate>
+
               <Button
-                variant="danger"
-                onClick={() => deleteProject(selectedProject)}
+                variant="secondary"
+                onClick={() => void toggleProjectStatus(selectedProject)}
                 style={{ width: '100%' }}
               >
-                מחיקת פרויקט לצמיתות
+                {selectedProject.is_active ? 'השבתת פרויקט' : 'הפעלת פרויקט'}
               </Button>
-            </div>
+
+              <div style={styles.dangerZone}>
+                <Button
+                  variant="danger"
+                  onClick={() => deleteProject(selectedProject)}
+                  style={{ width: '100%' }}
+                >
+                  מחיקת פרויקט לצמיתות
+                </Button>
+              </div>
+            </CollapsibleSection>
           </div>
         )}
       </Drawer>

@@ -9,8 +9,7 @@
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
@@ -26,18 +25,7 @@ import {
 import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageTransitionLoader } from '../components/page-skeleton'
-import { useSidebarNav } from '../components/SidebarNavContext'
-import { usePaidAddons } from '../components/PaidAddonsContext'
-import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
-import {
-  DEFAULT_SIDEBAR_NAV_ORDER,
-  parseSidebarNavOrderFromDb,
-  parseSidebarNavLabelsFromDb,
-  resolveSidebarNavOrderIds,
-  SIDEBAR_NAV_REGISTRY,
-  type SidebarNavItemId,
-  type SidebarNavLabels,
-} from '@/lib/sidebar-nav'
+import { CollapsibleSection } from '../components/shared/CollapsibleSection'
 import {
   GREENINVOICE_CLEARING_LABELS,
   GREENINVOICE_DOC_TYPE_LABELS,
@@ -73,14 +61,22 @@ type ClientRow = {
 }
 
 const TABS = [
+  { id: 'general', label: 'כללי' },
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
-  { id: 'greeninvoice', label: 'חשבונית ירוקה' },
-  { id: 'navigation', label: 'תפריט צד' },
+  { id: 'morning', label: 'Morning' },
   { id: 'team', label: 'משתמשי משרד' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
+
+/** Legacy tab ids: navigation removed; greeninvoice renamed to morning. */
+function resolveSettingsTab(raw: string | null): TabId {
+  if (raw === 'navigation') return 'general'
+  if (raw === 'greeninvoice') return 'morning'
+  if (raw && TABS.some((t) => t.id === raw)) return raw as TabId
+  return 'general'
+}
 
 type OrgUser = {
   id: string
@@ -94,9 +90,7 @@ function SettingsPageInner() {
   const router = useRouter()
   const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
-  const tabFromUrl = searchParams.get('tab') as TabId | null
-  const activeTab: TabId =
-    tabFromUrl && TABS.some((t) => t.id === tabFromUrl) ? tabFromUrl : 'notifications'
+  const activeTab = resolveSettingsTab(searchParams.get('tab'))
 
   function goTab(id: TabId) {
     router.replace(`/settings?tab=${encodeURIComponent(id)}`, { scroll: false })
@@ -107,7 +101,6 @@ function SettingsPageInner() {
   const [loading, setLoading] = useState(true)
 
   const [clientId, setClientId] = useState<string>('')
-  const [client, setClient] = useState<ClientRow | null>(null)
   const [settingsHydrated, setSettingsHydrated] = useState(false)
 
   const [managerPhone, setManagerPhone] = useState('')
@@ -139,14 +132,17 @@ function SettingsPageInner() {
   const [giRemarksTemplate, setGiRemarksTemplate] = useState('')
   const [giPaymentSuccessUrl, setGiPaymentSuccessUrl] = useState('')
   const [giPaymentFailureUrl, setGiPaymentFailureUrl] = useState('')
+  const [giAdvancedOpen, setGiAdvancedOpen] = useState(false)
   const [savingGreeninvoice, setSavingGreeninvoice] = useState(false)
   const [testingGi, setTestingGi] = useState(false)
 
+  const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingNotifications, setSavingNotifications] = useState(false)
   const [savingWhatsapp, setSavingWhatsapp] = useState(false)
   const [testingWa, setTestingWa] = useState(false)
   const [testingSms, setTestingSms] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
+  const [notifToolsOpen, setNotifToolsOpen] = useState(false)
   const [emailTo, setEmailTo] = useState('')
   const [emailSubject, setEmailSubject] = useState('')
   const [emailBody, setEmailBody] = useState('')
@@ -159,22 +155,6 @@ function SettingsPageInner() {
   const [inviteRole, setInviteRole] = useState<'viewer' | 'manager' | 'admin'>('viewer')
   const [inviting, setInviting] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
-
-  const [navOrderDraft, setNavOrderDraft] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
-  const [navLabelsDraft, setNavLabelsDraft] = useState<Record<string, string>>({})
-  const [savingNav, setSavingNav] = useState(false)
-  const { setLocalOrderIds, refreshNav } = useSidebarNav()
-  const { addons } = usePaidAddons()
-
-  const enabledAddonNavIds = useMemo(
-    () => navIdsForEnabledAddonKeys(addons.filter((a) => a.enabled).map((a) => a.addon_key)),
-    [addons]
-  )
-
-  const addonOnlyNavIds = useMemo(
-    () => enabledAddonNavIds.filter((id) => !navOrderDraft.includes(id)),
-    [enabledAddonNavIds, navOrderDraft]
-  )
 
   const [origin, setOrigin] = useState('')
 
@@ -200,6 +180,15 @@ function SettingsPageInner() {
     [origin]
   )
 
+  const defaultPaySuccessUrl = useMemo(
+    () => (origin ? `${origin}/pay/success` : '/pay/success'),
+    [origin]
+  )
+  const defaultPayFailureUrl = useMemo(
+    () => (origin ? `${origin}/pay/failure` : '/pay/failure'),
+    [origin]
+  )
+
   async function load() {
     setLoading(true)
     setSettingsHydrated(false)
@@ -211,7 +200,6 @@ function SettingsPageInner() {
         if (!row?.id) throw new Error('לא נמצא רשומת לקוח')
 
         setClientId(row.id)
-        setClient(row)
         setClientName(row.name?.trim() || '')
         setLogoUrl(row.logo_url?.trim() || null)
 
@@ -255,33 +243,6 @@ function SettingsPageInner() {
         setGiPaymentSuccessUrl(row.greeninvoice_payment_success_url || '')
         setGiPaymentFailureUrl(row.greeninvoice_payment_failure_url || '')
         setGiBusinesses([])
-
-        const parsedOrder = parseSidebarNavOrderFromDb(
-          (row as { sidebar_nav_order?: unknown }).sidebar_nav_order
-        )
-        setNavOrderDraft(
-          parsedOrder ? resolveSidebarNavOrderIds(parsedOrder) : [...DEFAULT_SIDEBAR_NAV_ORDER]
-        )
-
-        let parsedLabels: SidebarNavLabels = {}
-        try {
-          const navRes = await fetchWithTimeout('/api/client/nav-config')
-          const navJson = (await navRes.json().catch(() => ({}))) as {
-            sidebar_nav_labels?: unknown
-            error?: string
-          }
-          if (navRes.ok) {
-            parsedLabels = parseSidebarNavLabelsFromDb(navJson.sidebar_nav_labels)
-          }
-        } catch {
-          /* nav labels optional — phones must still load */
-        }
-
-        const labelDraft: Record<string, string> = {}
-        for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
-          labelDraft[id] = parsedLabels[id] ?? SIDEBAR_NAV_REGISTRY[id].label
-        }
-        setNavLabelsDraft(labelDraft)
         setSettingsHydrated(true)
 
         return true
@@ -296,6 +257,38 @@ function SettingsPageInner() {
     void load()
   }, [])
 
+  async function saveGeneral() {
+    if (!clientId || !settingsHydrated) {
+      toast.error('ההגדרות טרם נטענו — רעננו את הדף לפני שמירה')
+      return
+    }
+    setSavingGeneral(true)
+    await asyncHandler(
+      async () => {
+        const payload = {
+          manager_phone: managerPhone.trim() || null,
+          default_worker_phone: defaultWorkerPhone.trim() || null,
+        }
+        const res = await fetchWithTimeout(
+          '/api/settings/update',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
+        toast.success(TM.settingsSaved)
+        await load()
+        return true
+      },
+      { context: 'שמירה נכשלה', showErrorToast: true }
+    )
+    setSavingGeneral(false)
+  }
+
   async function saveNotifications() {
     if (!clientId || !settingsHydrated) {
       toast.error('ההגדרות טרם נטענו — רעננו את הדף לפני שמירה')
@@ -305,8 +298,6 @@ function SettingsPageInner() {
     await asyncHandler(
       async () => {
         const payload = {
-          manager_phone: managerPhone.trim() || null,
-          default_worker_phone: defaultWorkerPhone.trim() || null,
           sms_sender_name: smsSenderName.trim() || null,
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
@@ -329,62 +320,6 @@ function SettingsPageInner() {
       { context: 'שמירה נכשלה', showErrorToast: true }
     )
     setSavingNotifications(false)
-  }
-
-  function moveNavItem(index: number, direction: -1 | 1) {
-    setNavOrderDraft((prev) => {
-      const next = [...prev]
-      const target = index + direction
-      if (target < 0 || target >= next.length) return prev
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
-  }
-
-  function buildNavLabelsPayload(): SidebarNavLabels {
-    const out: SidebarNavLabels = {}
-    for (const [id, label] of Object.entries(navLabelsDraft)) {
-      if (!(id in SIDEBAR_NAV_REGISTRY)) continue
-      const trimmed = label.trim()
-      const defaultLabel = SIDEBAR_NAV_REGISTRY[id as SidebarNavItemId].label
-      if (trimmed && trimmed !== defaultLabel) {
-        out[id as SidebarNavItemId] = trimmed
-      }
-    }
-    return out
-  }
-
-  async function saveNavigation() {
-    if (!clientId) return
-    setSavingNav(true)
-    await asyncHandler(
-      async () => {
-        const sidebar_nav_labels = buildNavLabelsPayload()
-        const res = await fetchWithTimeout(
-          '/api/settings/update',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sidebar_nav_order: navOrderDraft, sidebar_nav_labels }),
-          },
-          MUTATION_FETCH_TIMEOUT_MS
-        )
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'שמירה נכשלה'))
-        setLocalOrderIds(navOrderDraft)
-        await refreshNav()
-        const labelPayload = buildNavLabelsPayload()
-        const labelDraft: Record<string, string> = {}
-        for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
-          labelDraft[id] = labelPayload[id] ?? SIDEBAR_NAV_REGISTRY[id].label
-        }
-        setNavLabelsDraft(labelDraft)
-        toast.success(TM.settingsSaved)
-        return true
-      },
-      { context: 'שמירת סדר התפריט נכשלה', showErrorToast: true }
-    )
-    setSavingNav(false)
   }
 
   async function saveWhatsapp() {
@@ -473,7 +408,7 @@ function SettingsPageInner() {
         await load()
         return true
       },
-      { context: 'שמירת הגדרות חשבונית ירוקה נכשלה', showErrorToast: true }
+      { context: 'שמירת הגדרות Morning נכשלה', showErrorToast: true }
     )
     setSavingGreeninvoice(false)
   }
@@ -687,7 +622,7 @@ function SettingsPageInner() {
         }}
       >
         {!isMobile && (
-          <PageHeader title="הגדרות" subtitle="התראות ווואטסאפ" />
+          <PageHeader title="הגדרות" subtitle="כללי, התראות ווואטסאפ" />
         )}
 
         <p style={{ margin: '0 0 16px', fontSize: '14px', color: theme.colors.textMuted }}>
@@ -717,7 +652,7 @@ function SettingsPageInner() {
               ))}
             </div>
 
-            {activeTab === 'notifications' && (
+            {activeTab === 'general' && (
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <div style={styles.formGroup}>
@@ -785,27 +720,23 @@ function SettingsPageInner() {
                       placeholder="אופציונלי"
                     />
                   </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מזהה שולח SMS (019) — פר לקוח</label>
-                    <input
-                      type="text"
-                      value={smsSenderName}
-                      onChange={(e) => setSmsSenderName(e.target.value)}
-                      style={styles.input}
-                      placeholder="לדוגמה: Bamakor או 0501234567 (עד 11 תווים לטיניים/ספרות)"
-                      maxLength={11}
-                      dir="ltr"
-                    />
-                    <p style={styles.fieldHint}>
-                      מה שיופיע לנמען בשדה &quot;מאת&quot; בהודעת SMS. <strong>חייב להיות אותיות לטיניות/ספרות בלבד</strong>, 3–11 תווים (לדוגמה: Bamakor).
-                      תווים בעברית יימחקו אוטומטית — אם ריק תישלח עם שולח &quot;Bamakor&quot;.
-                    </p>
-                    {smsSenderName && /[^\x00-\x7F]/.test(smsSenderName) && (
-                      <p style={{ ...styles.fieldHint, color: theme.colors.warning, fontWeight: 600 }}>
-                        ⚠️ השם מכיל תווים לא תקינים — לאחר שמירה ישלח SMS עם שולח &quot;Bamakor&quot;
-                      </p>
-                    )}
+                  <div style={styles.drawerActions}>
+                    <LoadingButton
+                      variant="primary"
+                      onClick={saveGeneral}
+                      loading={savingGeneral}
+                      loadingText="שומר..."
+                    >
+                      שמור שינויים
+                    </LoadingButton>
                   </div>
+                </div>
+              </Card>
+            )}
+
+            {activeTab === 'notifications' && (
+              <Card noPadding>
+                <div style={styles.cardInner}>
                   <label style={styles.checkboxLabel}>
                     <input
                       type="checkbox"
@@ -824,101 +755,115 @@ function SettingsPageInner() {
                     />
                     <span>שלח SMS בסגירת תקלה</span>
                   </label>
-                  <div
-                    style={{
-                      marginTop: '20px',
-                      paddingTop: '20px',
-                      borderTop: `1px solid ${theme.colors.border}`,
-                    }}
-                  >
-                    <label style={styles.formLabel}>התראות דחיפה (PWA)</label>
-                    <p style={styles.formHint}>
-                      קבלת התראה כשנפתחת תקלה חדשה. נדרשים מפתחות VAPID בשרת (ציבורי גם ב־NEXT_PUBLIC).
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>מספר שולח SMS (019) — אופציונלי</label>
+                    <input
+                      type="tel"
+                      value={smsSenderName}
+                      onChange={(e) => setSmsSenderName(e.target.value)}
+                      style={styles.input}
+                      placeholder="05xxxxxxxx או 9725xxxxxxxx"
+                      maxLength={15}
+                      dir="ltr"
+                    />
+                    <p style={styles.fieldHint}>
+                      019SMS מקבל רק מספר טלפון כשולח (למשל 972559899132). שמות אלפביתיים כמו Bamakor
+                      נכשלים בשקט. השאירו ריק לשימוש בשולח ברירת המחדל של המערכת.
                     </p>
-                    <LoadingButton
-                      variant="secondary"
-                      type="button"
-                      onClick={enablePushNotifications}
-                      loading={pushEnabling}
-                      loadingText="מפעיל..."
-                    >
-                      הפעל התראות
-                    </LoadingButton>
+                    {smsSenderName.trim() &&
+                      !/^(\+?972|0)?5\d{8}$/.test(smsSenderName.replace(/[\s-]/g, '')) && (
+                      <p style={{ ...styles.fieldHint, color: theme.colors.warning, fontWeight: 600 }}>
+                        נראה שלא מספר ישראלי תקין — לאחר שמירה יישלח עם שולח ברירת המחדל של המערכת
+                      </p>
+                    )}
                   </div>
-                  <div
-                    style={{
-                      marginTop: '20px',
-                      paddingTop: '20px',
-                      borderTop: `1px solid ${theme.colors.border}`,
-                    }}
+                  <CollapsibleSection
+                    title="כלים לבדיקה"
+                    open={notifToolsOpen}
+                    onToggle={() => setNotifToolsOpen((v) => !v)}
                   >
-                    <label style={styles.formLabel}>שליחת מייל (Resend)</label>
-                    <p style={styles.formHint}>
-                      דורש RESEND_API_KEY בשרת. Gmail/Outlook inbox — שלב עתידי (Coexistence / OAuth).
-                    </p>
-                    <div style={styles.formGroup}>
-                      <input
-                        type="email"
-                        value={emailTo}
-                        onChange={(e) => setEmailTo(e.target.value)}
-                        style={styles.input}
-                        placeholder="נמען@example.com"
-                        dir="ltr"
-                        aria-label="כתובת מייל נמען"
-                      />
+                    <div>
+                      <label style={styles.formLabel}>התראות דחיפה (PWA)</label>
+                      <p style={styles.formHint}>
+                        קבלת התראה כשנפתחת תקלה חדשה. נדרשים מפתחות VAPID בשרת.
+                      </p>
+                      <LoadingButton
+                        variant="secondary"
+                        type="button"
+                        onClick={enablePushNotifications}
+                        loading={pushEnabling}
+                        loadingText="מפעיל..."
+                      >
+                        הפעל התראות
+                      </LoadingButton>
                     </div>
-                    <div style={styles.formGroup}>
-                      <input
-                        value={emailSubject}
-                        onChange={(e) => setEmailSubject(e.target.value)}
-                        style={styles.input}
-                        placeholder="נושא"
-                        aria-label="נושא המייל"
-                      />
+                    <div>
+                      <label style={styles.formLabel}>שליחת מייל (Resend)</label>
+                      <p style={styles.formHint}>דורש RESEND_API_KEY בשרת.</p>
+                      <div style={styles.formGroup}>
+                        <input
+                          type="email"
+                          value={emailTo}
+                          onChange={(e) => setEmailTo(e.target.value)}
+                          style={styles.input}
+                          placeholder="נמען@example.com"
+                          dir="ltr"
+                          aria-label="כתובת מייל נמען"
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <input
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                          style={styles.input}
+                          placeholder="נושא"
+                          aria-label="נושא המייל"
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <textarea
+                          value={emailBody}
+                          onChange={(e) => setEmailBody(e.target.value)}
+                          style={{ ...styles.input, minHeight: 80 }}
+                          placeholder="גוף ההודעה"
+                          aria-label="גוף המייל"
+                        />
+                      </div>
+                      <LoadingButton
+                        variant="secondary"
+                        type="button"
+                        loading={emailSending}
+                        loadingText="שולח..."
+                        onClick={async () => {
+                          if (!emailTo.trim() || !emailSubject.trim() || !emailBody.trim()) {
+                            toast.error('נא למלא נמען, נושא וגוף')
+                            return
+                          }
+                          setEmailSending(true)
+                          try {
+                            const res = await fetchWithTimeout('/api/email/send', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                to: emailTo.trim(),
+                                subject: emailSubject.trim(),
+                                body: emailBody.trim(),
+                              }),
+                            })
+                            const json = (await res.json()) as { error?: string }
+                            if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
+                            toast.success('המייל נשלח')
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
+                          } finally {
+                            setEmailSending(false)
+                          }
+                        }}
+                      >
+                        שלח מייל
+                      </LoadingButton>
                     </div>
-                    <div style={styles.formGroup}>
-                      <textarea
-                        value={emailBody}
-                        onChange={(e) => setEmailBody(e.target.value)}
-                        style={{ ...styles.input, minHeight: 80 }}
-                        placeholder="גוף ההודעה"
-                        aria-label="גוף המייל"
-                      />
-                    </div>
-                    <LoadingButton
-                      variant="secondary"
-                      type="button"
-                      loading={emailSending}
-                      loadingText="שולח..."
-                      onClick={async () => {
-                        if (!emailTo.trim() || !emailSubject.trim() || !emailBody.trim()) {
-                          toast.error('נא למלא נמען, נושא וגוף')
-                          return
-                        }
-                        setEmailSending(true)
-                        try {
-                          const res = await fetchWithTimeout('/api/email/send', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              to: emailTo.trim(),
-                              subject: emailSubject.trim(),
-                              body: emailBody.trim(),
-                            }),
-                          })
-                          const json = (await res.json()) as { error?: string }
-                          if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
-                          toast.success('המייל נשלח')
-                        } catch (e) {
-                          toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
-                        } finally {
-                          setEmailSending(false)
-                        }
-                      }}
-                    >
-                      שלח מייל
-                    </LoadingButton>
-                  </div>
+                  </CollapsibleSection>
                   <div style={styles.drawerActions}>
                     <LoadingButton
                       variant="secondary"
@@ -1025,12 +970,19 @@ function SettingsPageInner() {
               </Card>
             )}
 
-            {activeTab === 'greeninvoice' && (
+            {activeTab === 'morning' && (
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    חיבור ל-Morning (חשבונית ירוקה) לגביית ועד — מפתחות API, סליקה ומסמכים. נדרש מנוי Best+ ב-Morning
-                    ופלאגין סליקה פעיל (Cardcom / Isracard / Grow).
+                    חיבור חשבון Morning שלכם לגביית ועד ב-Bamakor: יצירת חיובים, קישורי תשלום לדיירים
+                    (/pay/…) ועדכון אוטומטי כששולם. נדרש מנוי Best+ ופלאגין סליקה פעיל (Cardcom / Isracard / Grow).
+                  </p>
+                  <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                    אחרי שמירה ובדיקת חיבור —{' '}
+                    <Link href="/collections" style={styles.inlineLink}>
+                      לגביית ועד
+                    </Link>
+                    .
                   </p>
 
                   <div style={styles.formGroup}>
@@ -1041,7 +993,7 @@ function SettingsPageInner() {
                         onChange={(e) => setGiEnabled(e.target.checked)}
                         style={styles.checkbox}
                       />
-                      הפעל גבייה דרך חשבונית ירוקה
+                      הפעל חיבור Morning לגביית ועד
                     </label>
                   </div>
 
@@ -1117,103 +1069,7 @@ function SettingsPageInner() {
                   </div>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>פלאגין סליקה ב-Morning</label>
-                    <select
-                      value={giClearingPlugin}
-                      onChange={(e) =>
-                        setGiClearingPlugin(e.target.value as GreenInvoiceClearingPlugin | '')
-                      }
-                      style={styles.input}
-                    >
-                      <option value="">— לא נבחר / לא ידוע —</option>
-                      {(Object.keys(GREENINVOICE_CLEARING_LABELS) as GreenInvoiceClearingPlugin[]).map(
-                        (key) => (
-                          <option key={key} value={key}>
-                            {GREENINVOICE_CLEARING_LABELS[key]}
-                          </option>
-                        )
-                      )}
-                    </select>
-                    <span style={styles.formHint}>
-                      מידע לתיעוד בלבד — הסליקה מוגדרת בחשבון Morning, לא במערכת Bamakor.
-                    </span>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>סוג מסמך ברירת מחדל לחיוב</label>
-                    <select
-                      value={giDocType}
-                      onChange={(e) => setGiDocType(Number(e.target.value) as 300 | 305 | 320)}
-                      style={styles.input}
-                    >
-                      {Object.entries(GREENINVOICE_DOC_TYPE_LABELS).map(([code, label]) => (
-                        <option key={code} value={code}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>הצהרת מע&quot;מ במסמך</label>
-                    <select
-                      value={giVatType}
-                      onChange={(e) => setGiVatType(Number(e.target.value) as 0 | 1 | 2)}
-                      style={styles.input}
-                    >
-                      {Object.entries(GREENINVOICE_VAT_TYPE_LABELS).map(([code, label]) => (
-                        <option key={code} value={code}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>הערות קבועות במסמך (תבנית)</label>
-                    <textarea
-                      value={giRemarksTemplate}
-                      onChange={(e) => setGiRemarksTemplate(e.target.value)}
-                      style={{ ...styles.input, minHeight: '80px', resize: 'vertical' }}
-                      placeholder="למשל: דמי ועד בית — חודש {month}/{year}"
-                      maxLength={2000}
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.checkboxLabel}>
-                      <input
-                        type="checkbox"
-                        checked={giSendEmail}
-                        onChange={(e) => setGiSendEmail(e.target.checked)}
-                        style={styles.checkbox}
-                      />
-                      שלח מסמך במייל לדייר (כש-Morning תומך)
-                    </label>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>כתובת חזרה אחרי תשלום מוצלח (אופציונלי)</label>
-                    <input
-                      value={giPaymentSuccessUrl}
-                      onChange={(e) => setGiPaymentSuccessUrl(e.target.value)}
-                      style={styles.input}
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>כתובת חזרה אחרי תשלום שנכשל (אופציונלי)</label>
-                    <input
-                      value={giPaymentFailureUrl}
-                      onChange={(e) => setGiPaymentFailureUrl(e.target.value)}
-                      style={styles.input}
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Webhook URL (קריאה בלבד)</label>
+                    <label style={styles.formLabel}>Webhook URL (לעדכון תשלומים בגבייה)</label>
                     <div style={styles.readonlyRow}>
                       <input readOnly value={greeninvoiceWebhookUrl} style={{ ...styles.input, flex: 1 }} />
                       <Button variant="secondary" type="button" onClick={copyGreeninvoiceWebhook}>
@@ -1222,9 +1078,119 @@ function SettingsPageInner() {
                     </div>
                     <span style={styles.formHint}>
                       הגדירו ב-Morning → Webhooks. אם הוגדר GREENINVOICE_WEBHOOK_SECRET בשרת, הוסיפו
-                      ?token=... לכתובת. מעדכן אוטומטית סטטוס שולם בגביית ועד.
+                      ?token=... לכתובת. מעדכן אוטומטית סטטוס «שולם» בגביית ועד.
                     </span>
                   </div>
+
+                  <CollapsibleSection
+                    title="הגדרות מתקדמות"
+                    open={giAdvancedOpen}
+                    onToggle={() => setGiAdvancedOpen((v) => !v)}
+                  >
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>פלאגין סליקה ב-Morning</label>
+                      <select
+                        value={giClearingPlugin}
+                        onChange={(e) =>
+                          setGiClearingPlugin(e.target.value as GreenInvoiceClearingPlugin | '')
+                        }
+                        style={styles.input}
+                      >
+                        <option value="">— לא נבחר / לא ידוע —</option>
+                        {(Object.keys(GREENINVOICE_CLEARING_LABELS) as GreenInvoiceClearingPlugin[]).map(
+                          (key) => (
+                            <option key={key} value={key}>
+                              {GREENINVOICE_CLEARING_LABELS[key]}
+                            </option>
+                          )
+                        )}
+                      </select>
+                      <span style={styles.formHint}>
+                        מידע לתיעוד בלבד — הסליקה מוגדרת בחשבון Morning, לא במערכת Bamakor.
+                      </span>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>סוג מסמך ברירת מחדל לחיוב</label>
+                      <select
+                        value={giDocType}
+                        onChange={(e) => setGiDocType(Number(e.target.value) as 300 | 305 | 320)}
+                        style={styles.input}
+                      >
+                        {Object.entries(GREENINVOICE_DOC_TYPE_LABELS).map(([code, label]) => (
+                          <option key={code} value={code}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>הצהרת מע&quot;מ במסמך</label>
+                      <select
+                        value={giVatType}
+                        onChange={(e) => setGiVatType(Number(e.target.value) as 0 | 1 | 2)}
+                        style={styles.input}
+                      >
+                        {Object.entries(GREENINVOICE_VAT_TYPE_LABELS).map(([code, label]) => (
+                          <option key={code} value={code}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>הערות קבועות במסמך (תבנית)</label>
+                      <textarea
+                        value={giRemarksTemplate}
+                        onChange={(e) => setGiRemarksTemplate(e.target.value)}
+                        style={{ ...styles.input, minHeight: '80px', resize: 'vertical' }}
+                        placeholder="למשל: דמי ועד בית — חודש {month}/{year}"
+                        maxLength={2000}
+                      />
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.checkboxLabel}>
+                        <input
+                          type="checkbox"
+                          checked={giSendEmail}
+                          onChange={(e) => setGiSendEmail(e.target.checked)}
+                          style={styles.checkbox}
+                        />
+                        שלח מסמך במייל לדייר (כש-Morning תומך)
+                      </label>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום מוצלח</label>
+                      <input
+                        value={giPaymentSuccessUrl}
+                        onChange={(e) => setGiPaymentSuccessUrl(e.target.value)}
+                        style={styles.input}
+                        placeholder={defaultPaySuccessUrl}
+                        dir="ltr"
+                      />
+                      <span style={styles.formHint}>
+                        ריק = ברירת מחדל של Bamakor ({defaultPaySuccessUrl}) — דף אחרי תשלום בטופס Morning.
+                      </span>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום שנכשל</label>
+                      <input
+                        value={giPaymentFailureUrl}
+                        onChange={(e) => setGiPaymentFailureUrl(e.target.value)}
+                        style={styles.input}
+                        placeholder={defaultPayFailureUrl}
+                        dir="ltr"
+                      />
+                      <span style={styles.formHint}>
+                        ריק = ברירת מחדל של Bamakor ({defaultPayFailureUrl}).
+                      </span>
+                    </div>
+                  </CollapsibleSection>
 
                   <div style={styles.drawerActions}>
                     <LoadingButton
@@ -1243,107 +1209,6 @@ function SettingsPageInner() {
                       loadingText="שומר..."
                     >
                       שמור שינויים
-                    </LoadingButton>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === 'navigation' && (
-              <Card noPadding>
-                <div style={styles.cardInner}>
-                  <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    סדר ושמות הלשוניות בתפריט הצד (ובתפריט הנייד) לכל משתמשי הלקוח. ארבע הלשוניות בתחתית המסך נשארות:
-                    לוח בקרה, תקלות, פרויקטים והעובדים שלי — כפתור &quot;עוד&quot; או תפריט ההמבורגר פותחים את כל שאר הפריטים.
-                  </p>
-                  <ul style={styles.navOrderList}>
-                    {navOrderDraft.map((id, index) => {
-                      const item = SIDEBAR_NAV_REGISTRY[id]
-                      return (
-                        <li key={id} style={styles.navOrderRow}>
-                          <span style={styles.navOrderIndex}>{index + 1}</span>
-                          <input
-                            type="text"
-                            value={navLabelsDraft[id] ?? item.label}
-                            onChange={(e) =>
-                              setNavLabelsDraft((prev) => ({ ...prev, [id]: e.target.value }))
-                            }
-                            style={styles.navLabelInput}
-                            aria-label={`שם תצוגה: ${item.label}`}
-                          />
-                          <div style={styles.navOrderActions}>
-                            <button
-                              type="button"
-                              style={styles.navOrderBtn}
-                              disabled={index === 0}
-                              onClick={() => moveNavItem(index, -1)}
-                              aria-label={`העלה את ${item.label}`}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              type="button"
-                              style={styles.navOrderBtn}
-                              disabled={index === navOrderDraft.length - 1}
-                              onClick={() => moveNavItem(index, 1)}
-                              aria-label={`הורד את ${item.label}`}
-                            >
-                              ↓
-                            </button>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  {addonOnlyNavIds.length > 0 ? (
-                    <div style={{ marginTop: 16 }}>
-                      <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: theme.colors.textPrimary }}>
-                        תוספים פעילים (שם בתפריט)
-                      </p>
-                      <ul style={styles.navOrderList}>
-                        {addonOnlyNavIds.map((id) => {
-                          const item = SIDEBAR_NAV_REGISTRY[id]
-                          return (
-                            <li key={id} style={styles.navOrderRow}>
-                              <span style={styles.navOrderIndex}>+</span>
-                              <input
-                                type="text"
-                                value={navLabelsDraft[id] ?? item.label}
-                                onChange={(e) =>
-                                  setNavLabelsDraft((prev) => ({ ...prev, [id]: e.target.value }))
-                                }
-                                style={styles.navLabelInput}
-                                aria-label={`שם תצוגה: ${item.label}`}
-                              />
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    </div>
-                  ) : null}
-                  <div style={styles.drawerActions}>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setNavOrderDraft([...DEFAULT_SIDEBAR_NAV_ORDER])
-                        const labelDraft: Record<string, string> = {}
-                        for (const id of Object.keys(SIDEBAR_NAV_REGISTRY) as SidebarNavItemId[]) {
-                          labelDraft[id] = SIDEBAR_NAV_REGISTRY[id].label
-                        }
-                        setNavLabelsDraft(labelDraft)
-                      }}
-                    >
-                      איפוס לברירת מחדל
-                    </Button>
-                    <LoadingButton
-                      variant="primary"
-                      type="button"
-                      onClick={saveNavigation}
-                      loading={savingNav}
-                      loadingText="שומר..."
-                    >
-                      שמור תפריט
                     </LoadingButton>
                   </div>
                 </div>
@@ -1584,61 +1449,5 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
     color: theme.colors.primary,
     textDecoration: 'none',
-  },
-  navOrderList: {
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  navOrderRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  navOrderIndex: {
-    width: '28px',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: theme.colors.textMuted,
-    flexShrink: 0,
-  },
-  navOrderLabel: {
-    flex: 1,
-    fontSize: '15px',
-    fontWeight: 500,
-    color: theme.colors.textPrimary,
-  },
-  navLabelInput: {
-    flex: 1,
-    padding: '10px 12px',
-    fontSize: '14px',
-    fontWeight: 600,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.md,
-    background: theme.colors.surface,
-    color: theme.colors.textPrimary,
-    minWidth: 0,
-  },
-  navOrderActions: {
-    display: 'flex',
-    gap: '6px',
-    flexShrink: 0,
-  },
-  navOrderBtn: {
-    width: '36px',
-    height: '36px',
-    borderRadius: theme.radius.sm,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
-    fontSize: '16px',
-    cursor: 'pointer',
-    color: theme.colors.textSecondary,
   },
 }
