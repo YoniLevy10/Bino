@@ -74,6 +74,16 @@ describe('resolveSidebarNavItems', () => {
     ])
   })
 
+  it('strips qr/templates/pending from sidebar even if in custom order', () => {
+    const items = resolveSidebarNavItems(
+      ['qr', 'whatsapp_templates', 'pending_residents', ...DEFAULT_SIDEBAR_NAV_ORDER],
+      null
+    )
+    expect(items.map((i) => i.id)).not.toContain('qr')
+    expect(items.map((i) => i.id)).not.toContain('whatsapp_templates')
+    expect(items.map((i) => i.id)).not.toContain('pending_residents')
+  })
+
   it('strips internal diagnostics ids from db payload', () => {
     const parsed = parseSidebarNavOrderFromDb([
       'tickets',
@@ -82,16 +92,6 @@ describe('resolveSidebarNavItems', () => {
       'projects',
     ])
     expect(parsed).toEqual(['tickets', 'projects'])
-  })
-
-  it('keeps qr / templates / pending out of the sidebar', () => {
-    const items = resolveSidebarNavItems(
-      ['qr', 'whatsapp_templates', 'pending_residents', ...DEFAULT_SIDEBAR_NAV_ORDER],
-      null
-    )
-    expect(items.map((i) => i.id)).not.toContain('qr')
-    expect(items.map((i) => i.id)).not.toContain('whatsapp_templates')
-    expect(items.map((i) => i.id)).not.toContain('pending_residents')
   })
 })
 
