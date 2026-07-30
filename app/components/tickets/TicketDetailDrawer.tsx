@@ -357,7 +357,7 @@ export function TicketDetailDrawer({
                         loading={recoveringMedia}
                         onClick={() => void onRecoverMedia?.()}
                       >
-                        שחזר מ-WhatsApp
+                        שחזר תמונה/וידאו מ-WhatsApp
                       </Button>
                     )}
                   </div>
@@ -389,7 +389,7 @@ export function TicketDetailDrawer({
                     </div>
                   ) : (
                     <p style={styles.emptyAttachments}>
-                      אין קבצים עדיין — לחצו «שחזר מ-WhatsApp», או פתחו את טאב WhatsApp דייר.
+                      אין קבצים עדיין — לחצו «שחזר תמונה/וידאו מ-WhatsApp», או פתחו את טאב WhatsApp דייר.
                     </p>
                   )}
                 </div>
