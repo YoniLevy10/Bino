@@ -21,7 +21,7 @@ import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { useClientBranding } from './ClientBrandingContext'
 import { useSidebarNav } from './SidebarNavContext'
-import { isNavItemActive, shouldShowMobileBottomNav } from '@/lib/sidebar-nav'
+import { isNavItemActive, shouldShowMobileBottomNav, splitSidebarNavSections } from '@/lib/sidebar-nav'
 import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
@@ -322,6 +322,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   const [mounted, setMounted] = useState(false)
   const [userEmail, setUserEmail] = useState('')
   const [userInitials, setUserInitials] = useState('?')
+  const [opsOpen, setOpsOpen] = useState(false)
 
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -343,9 +344,41 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
     }).catch(() => {})
   }, [])
 
+  const { primary, secondary, extras, addons } = useMemo(() => splitSidebarNavSections(navItems), [navItems])
+  const opsItems = useMemo(() => [...secondary, ...extras], [secondary, extras])
+  const opsHasActive = opsItems.some((item) => isNavItemActive(pathname, item))
+
+  useEffect(() => {
+    if (opsHasActive) setOpsOpen(true)
+  }, [opsHasActive])
+
   // Avoid dev-time hydration mismatches (Turbopack/HMR) by not SSR-rendering the menu.
   if (hidden) return null
   if (!mounted) return <aside style={{ display: 'none' }} aria-hidden="true" />
+
+  function renderNavLink(item: (typeof navItems)[number]) {
+    const isActive = isNavItemActive(pathname, item)
+    return (
+      <Link
+        key={item.id}
+        href={item.href}
+        {...navLinkPrefetchHandlers(item.href, router.prefetch)}
+        style={{
+          ...sidebarStyles.navLink,
+          ...(isActive ? sidebarStyles.navLinkActive : {}),
+          ...(item.locked ? sidebarStyles.navLinkLocked : {}),
+        }}
+      >
+        <NavIcon type={item.icon} active={isActive} />
+        <span style={sidebarStyles.navLabel}>
+          {item.label}
+          {item.locked && (
+            <span style={sidebarStyles.navLockBadge}>בתשלום</span>
+          )}
+        </span>
+      </Link>
+    )
+  }
 
   return (
     <aside style={sidebarStyles.container}>
@@ -376,29 +409,27 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
 
       <div style={sidebarStyles.navColumn}>
         <nav style={sidebarStyles.nav}>
-          {navItems.map((item) => {
-            const isActive = isNavItemActive(pathname, item)
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                {...navLinkPrefetchHandlers(item.href, router.prefetch)}
+          {primary.map(renderNavLink)}
+          {opsItems.length > 0 && (
+            <div style={sidebarStyles.opsGroup}>
+              <button
+                type="button"
+                onClick={() => setOpsOpen((v) => !v)}
                 style={{
-                  ...sidebarStyles.navLink,
-                  ...(isActive ? sidebarStyles.navLinkActive : {}),
-                  ...(item.locked ? sidebarStyles.navLinkLocked : {}),
+                  ...sidebarStyles.opsToggle,
+                  ...(opsHasActive ? sidebarStyles.opsToggleActive : {}),
                 }}
+                aria-expanded={opsOpen}
               >
-                <NavIcon type={item.icon} active={isActive} />
-                <span style={sidebarStyles.navLabel}>
-                  {item.label}
-                  {item.locked && (
-                    <span style={sidebarStyles.navLockBadge}>בתשלום</span>
-                  )}
+                <span>תפעול</span>
+                <span aria-hidden style={sidebarStyles.opsChevron}>
+                  {opsOpen ? '▾' : '◂'}
                 </span>
-              </Link>
-            )
-          })}
+              </button>
+              {opsOpen ? <div style={sidebarStyles.opsList}>{opsItems.map(renderNavLink)}</div> : null}
+            </div>
+          )}
+          {addons ? renderNavLink(addons) : null}
         </nav>
         <div style={sidebarStyles.settingsNav}>
           <Link
@@ -487,6 +518,44 @@ const sidebarStyles: Record<string, CSSProperties> = {
     WebkitOverflowScrolling: 'touch',
   },
   nav: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  opsGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    marginTop: '4px',
+  },
+  opsToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    border: 'none',
+    background: 'transparent',
+    color: theme.colors.textMuted,
+    fontSize: '12px',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase' as const,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    minHeight: '40px',
+    boxSizing: 'border-box' as const,
+  },
+  opsToggleActive: {
+    color: theme.colors.primary,
+  },
+  opsChevron: {
+    fontSize: '12px',
+    lineHeight: 1,
+  },
+  opsList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',

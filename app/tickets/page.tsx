@@ -232,6 +232,7 @@ export default function TicketsPage() {
   const [mergeCandidates, setMergeCandidates] = useState<TicketRow[]>([])
   const [mergeLoading, setMergeLoading] = useState(false)
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
+  const [desktopToolsOpen, setDesktopToolsOpen] = useState(false)
   const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
   const [pendingDeepLinkTicket, setPendingDeepLinkTicket] = useState<string | null>(() => {
@@ -685,13 +686,22 @@ export default function TicketsPage() {
   function openAddTicketDrawer() {
     closeDrawer()
     setMobileToolsOpen(false)
+    setDesktopToolsOpen(false)
     setShowAddTicketModal(true)
   }
 
   function openMobileToolsDrawer() {
     closeDrawer()
     setShowAddTicketModal(false)
+    setDesktopToolsOpen(false)
     setMobileToolsOpen(true)
+  }
+
+  function openDesktopToolsMenu() {
+    closeDrawer()
+    setShowAddTicketModal(false)
+    setMobileToolsOpen(false)
+    setDesktopToolsOpen((v) => !v)
   }
 
   const openTicketFnRef = useRef<(ticket: TicketRow, opts?: { skipDeepLink?: boolean }) => void>(() => {})
@@ -932,8 +942,8 @@ export default function TicketsPage() {
       <Drawer
         open={mobileToolsOpen && isMobile}
         onClose={() => setMobileToolsOpen(false)}
-        title="סינון וייצוא"
-        subtitle="התאימו את הרשימה או הורידו קובץ"
+        title="כלים וסינון"
+        subtitle="סינון, ייצוא ומחיקה"
         isMobile={isMobile}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -1031,16 +1041,83 @@ export default function TicketsPage() {
             title="תקלות"
             subtitle="ניהול ומעקב אחר תקלות אחזקה פעילות"
             actions={
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  loading={deletingTickets}
-                  disabled={stats.total === 0}
-                  onClick={() => void deleteAllTickets()}
-                >
-                  מחק הכל
-                </Button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
+                  <Button variant="secondary" size="sm" type="button" onClick={openDesktopToolsMenu}>
+                    כלים
+                  </Button>
+                  {desktopToolsOpen && (
+                    <>
+                      <div
+                        role="presentation"
+                        onClick={() => setDesktopToolsOpen(false)}
+                        style={{
+                          position: 'fixed',
+                          inset: 0,
+                          zIndex: 40,
+                        }}
+                      />
+                      <div
+                        role="menu"
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 6px)',
+                          insetInlineEnd: 0,
+                          zIndex: 50,
+                          minWidth: '200px',
+                          padding: '8px',
+                          background: theme.colors.surface,
+                          border: `1px solid ${theme.colors.border}`,
+                          borderRadius: theme.radius.md,
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                        }}
+                      >
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          type="button"
+                          style={{ width: '100%', justifyContent: 'flex-start' }}
+                          onClick={() => {
+                            exportToExcel()
+                            setDesktopToolsOpen(false)
+                          }}
+                        >
+                          ייצוא Excel
+                        </Button>
+                        {selectedTicketIds.size > 0 && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            type="button"
+                            style={{ width: '100%', justifyContent: 'flex-start' }}
+                            loading={deletingTickets}
+                            onClick={() => {
+                              void deleteSelectedTickets().then(() => setDesktopToolsOpen(false))
+                            }}
+                          >
+                            מחק נבחרים ({selectedTicketIds.size})
+                          </Button>
+                        )}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          type="button"
+                          style={{ width: '100%', justifyContent: 'flex-start' }}
+                          loading={deletingTickets}
+                          disabled={stats.total === 0}
+                          onClick={() => {
+                            void deleteAllTickets().then(() => setDesktopToolsOpen(false))
+                          }}
+                        >
+                          מחק הכל
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <Button variant="primary" onClick={openAddTicketDrawer}>
                   תקלה חדשה
                 </Button>
@@ -1118,7 +1195,7 @@ export default function TicketsPage() {
                 onClick={openMobileToolsDrawer}
                 style={{ width: '100%' }}
               >
-                סינון וייצוא לאקסל
+                כלים וסינון
                 {activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </Button>
             </div>
@@ -1133,30 +1210,6 @@ export default function TicketsPage() {
                 placeholder="חיפוש תקלות..."
                 style={{ flex: 1, maxWidth: '320px' }}
               />
-              <Button variant="secondary" size="sm" type="button" onClick={exportToExcel}>
-                ייצוא Excel
-              </Button>
-              {selectedTicketIds.size > 0 && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  type="button"
-                  loading={deletingTickets}
-                  onClick={() => void deleteSelectedTickets()}
-                >
-                  מחק נבחרים ({selectedTicketIds.size})
-                </Button>
-              )}
-              <Button
-                variant="danger"
-                size="sm"
-                type="button"
-                loading={deletingTickets}
-                disabled={stats.total === 0}
-                onClick={() => void deleteAllTickets()}
-              >
-                מחק הכל
-              </Button>
               <div style={{
                 ...styles.filterGroup,
                 flexWrap: 'nowrap',

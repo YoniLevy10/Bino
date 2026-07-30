@@ -62,6 +62,57 @@ export const MOBILE_BOTTOM_PRIMARY_IDS: readonly SidebarNavItemId[] = [
   'workers',
 ]
 
+/**
+ * Core daily sidebar items — always shown at the top of the desktop sidebar.
+ * Secondary (תפעול) items render under a collapsible group.
+ */
+export const PRIMARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
+  'dashboard',
+  'tickets',
+  'projects',
+  'residents',
+  'workers',
+]
+
+/** Ops / less-frequent tools — shown under "תפעול" when present in resolved nav. */
+export const SECONDARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
+  'qr',
+  'whatsapp_templates',
+  'pending_residents',
+  'summary',
+]
+
+export function isPrimarySidebarNavId(id: string): boolean {
+  return (PRIMARY_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
+}
+
+export function isSecondarySidebarNavId(id: string): boolean {
+  return (SECONDARY_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
+}
+
+export function splitSidebarNavSections(items: SidebarNavItem[]): {
+  primary: SidebarNavItem[]
+  secondary: SidebarNavItem[]
+  /** Paid addons / other extras that appear via custom order — keep under תפעול. */
+  extras: SidebarNavItem[]
+  addons: SidebarNavItem | null
+} {
+  const primary: SidebarNavItem[] = []
+  const secondary: SidebarNavItem[] = []
+  const extras: SidebarNavItem[] = []
+  let addons: SidebarNavItem | null = null
+  for (const item of items) {
+    if (item.id === 'addons') {
+      addons = item
+      continue
+    }
+    if (isPrimarySidebarNavId(item.id)) primary.push(item)
+    else if (isSecondarySidebarNavId(item.id)) secondary.push(item)
+    else extras.push(item)
+  }
+  return { primary, secondary, extras, addons }
+}
+
 export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   dashboard: { id: 'dashboard', href: '/', label: 'לוח בקרה', icon: 'home' },
   tickets: { id: 'tickets', href: '/tickets', label: 'תקלות', icon: 'ticket' },
@@ -117,7 +168,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   },
 }
 
-/** Default sidebar order (excludes add-on-only routes). */
+/** Default sidebar order — daily core first, then ops tools (excludes add-on-only routes). */
 export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'dashboard',
   'tickets',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Drawer, Button, Select, theme } from '../ui'
 import { TicketChat } from './TicketChat'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
@@ -69,6 +69,35 @@ interface TicketDetailDrawerProps {
   onCancel?: () => void
 }
 
+function CollapsibleSection({
+  title,
+  open,
+  onToggle,
+  children,
+  badge,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+  badge?: string
+}) {
+  return (
+    <div style={styles.collapseWrap}>
+      <button type="button" onClick={onToggle} style={styles.collapseToggle} aria-expanded={open}>
+        <span style={styles.collapseTitle}>
+          {title}
+          {badge ? <span style={styles.collapseBadge}>{badge}</span> : null}
+        </span>
+        <span style={styles.collapseChevron} aria-hidden>
+          {open ? '▾' : '◂'}
+        </span>
+      </button>
+      {open ? <div style={styles.collapseBody}>{children}</div> : null}
+    </div>
+  )
+}
+
 export function TicketDetailDrawer({
   selectedTicket,
   isMobile,
@@ -111,19 +140,24 @@ export function TicketDetailDrawer({
 }: TicketDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [internalTranslation, setInternalTranslation] = useState('')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false)
 
   useEffect(() => {
     setActiveTab('details')
     setInternalTranslation('')
-  }, [selectedTicket?.id])
+    setAdvancedOpen(false)
+    setHistoryOpen(false)
+    setAttachmentsOpen(selectedTicketAttachments.length > 0)
+  }, [selectedTicket?.id, selectedTicketAttachments.length])
 
   const translation = descriptionTranslation || internalTranslation
   const showRecover =
     !!selectedTicket?.reporter_phone && selectedTicket.status !== 'CLOSED' && !!onRecoverMedia
+  const hasAttachments = selectedTicketAttachments.length > 0
   const showAttachmentsBlock =
-    loadingAttachments ||
-    selectedTicketAttachments.length > 0 ||
-    !!selectedTicket?.reporter_phone
+    loadingAttachments || hasAttachments || (!!selectedTicket?.reporter_phone && showRecover)
 
   async function translateDescriptionInternal() {
     if (onTranslateDescription) {
@@ -166,6 +200,16 @@ export function TicketDetailDrawer({
     }
   }
 
+  const hasAdvancedActions = !!(
+    onTranslateDescription ||
+    onLoadMergeCandidates ||
+    onTicketForwarded ||
+    onPriorityChange ||
+    onDelete ||
+    onCancel ||
+    showRecover
+  )
+
   return (
     <Drawer
       open={!!selectedTicket}
@@ -176,21 +220,6 @@ export function TicketDetailDrawer({
       footer={
         selectedTicket && activeTab === 'details' ? (
           <div style={styles.drawerActions}>
-            {onCancel && (
-              <Button variant="secondary" onClick={onCancel} style={{ width: '100%' }}>
-                ביטול
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="danger"
-                onClick={() => void onDelete()}
-                loading={deletingTicket}
-                style={{ width: '100%' }}
-              >
-                מחק תקלה
-              </Button>
-            )}
             {selectedTicket.status !== 'CLOSED' && (
               <Button variant="danger" onClick={onCloseTicket} style={{ width: '100%' }}>
                 סגירת תקלה
@@ -205,64 +234,11 @@ export function TicketDetailDrawer({
     >
       {selectedTicket && (
         <div style={styles.drawerContent}>
-          {showAttachmentsBlock && (
-            <div style={styles.drawerSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={styles.drawerLabel}>
-                  קבצים מצורפים
-                  {selectedTicketAttachments.length > 0 ? ` (${selectedTicketAttachments.length})` : ''}
-                </div>
-                {showRecover && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    loading={recoveringMedia}
-                    onClick={() => void onRecoverMedia?.()}
-                  >
-                    שחזר תמונה/וידאו מ-WhatsApp
-                  </Button>
-                )}
-              </div>
-              {loadingAttachments ? (
-                <p style={styles.loadingState}>טוען קבצים…</p>
-              ) : selectedTicketAttachments.length > 0 ? (
-                <div style={styles.attachmentGrid}>
-                  {selectedTicketAttachments.map((attachment) => (
-                    <button
-                      key={attachment.id}
-                      type="button"
-                      onClick={() => {
-                        if (attachment.mime_type?.startsWith('image/')) {
-                          onSelectImage(getImageUrl(attachment))
-                        }
-                      }}
-                      style={styles.attachmentThumb}
-                    >
-                      <TicketAttachmentThumb
-                        mimeType={attachment.mime_type || ''}
-                        url={getImageUrl(attachment)}
-                        fileName={attachment.file_name || ''}
-                        imageStyle={styles.attachmentImg}
-                        videoStyle={styles.attachmentVideo}
-                        fileStyle={styles.attachmentFile}
-                      />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p style={styles.emptyAttachments}>
-                  אין קבצים — לחצו «שחזר תמונה/וידאו מ-WhatsApp» (גם בטאב WhatsApp דייר).
-                </p>
-              )}
-            </div>
-          )}
-
           <TabBar
             tabs={[
               {
                 id: 'details' as const,
-                label: `פרטים${selectedTicketAttachments.length > 0 ? ` · ${selectedTicketAttachments.length}` : ''}`,
+                label: `פרטים${hasAttachments ? ` · ${selectedTicketAttachments.length}` : ''}`,
               },
               { id: 'chat' as const, label: 'צ׳אט פנימי' },
               { id: 'whatsapp' as const, label: 'WhatsApp דייר' },
@@ -275,18 +251,7 @@ export function TicketDetailDrawer({
           {activeTab === 'details' && (
             <>
               <div style={styles.drawerSection}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <div style={styles.drawerLabel}>תיאור</div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    loading={translating}
-                    onClick={() => void translateDescriptionInternal()}
-                  >
-                    תרגם לעברית
-                  </Button>
-                </div>
+                <div style={styles.drawerLabel}>תיאור</div>
                 {descriptionReadOnly ? (
                   <div style={styles.descriptionBox}>{selectedTicket.description || '—'}</div>
                 ) : (
@@ -304,88 +269,6 @@ export function TicketDetailDrawer({
                   </div>
                 ) : null}
               </div>
-
-              {onLoadMergeCandidates && selectedTicket.status !== 'CLOSED' && (
-                <div style={styles.drawerSection}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <div style={styles.drawerLabel}>מיזוג תקלות</div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      type="button"
-                      loading={mergeLoading}
-                      onClick={() => void onLoadMergeCandidates()}
-                    >
-                      טען תקלות פתוחות מאותו בניין
-                    </Button>
-                  </div>
-                  {mergeCandidates.length > 0 && (
-                    <div style={styles.mergeList}>
-                      {mergeCandidates.map((c) => (
-                        <div key={c.id} style={styles.mergeRow}>
-                          <span style={styles.mergeText}>
-                            #{c.ticket_number} — {(c.description || '').slice(0, 60)}
-                            {(c.description?.length || 0) > 60 ? '…' : ''}
-                          </span>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            type="button"
-                            loading={savingTicket}
-                            onClick={() => void onMerge?.(c.id)}
-                          >
-                            מזג לכאן
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
-                <div style={styles.drawerSection}>
-                  <div style={styles.drawerLabel}>מדווח</div>
-                  <div style={styles.drawerValue}>
-                    {reporterName || selectedTicket.reporter_name || selectedTicket.reporter_phone || '—'}
-                  </div>
-                </div>
-                <div style={styles.drawerSection}>
-                  <div style={styles.drawerLabel}>נוצר</div>
-                  <div style={styles.drawerValue}>
-                    {selectedTicket.created_at
-                      ? new Date(selectedTicket.created_at).toLocaleDateString('he-IL', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : '—'}
-                  </div>
-                </div>
-              </div>
-
-              {selectedTicket.reporter_phone && (
-                <div style={styles.drawerSection}>
-                  <div style={styles.drawerLabel}>טלפון מדווח</div>
-                  <a href={`tel:${selectedTicket.reporter_phone}`} style={styles.phoneLink}>
-                    {selectedTicket.reporter_phone}
-                  </a>
-                </div>
-              )}
-
-              {onPriorityChange && (
-                <div style={styles.drawerSection}>
-                  <div style={styles.drawerLabel}>עדיפות</div>
-                  <Select
-                    value={draftPriority}
-                    onChange={onPriorityChange}
-                    options={PRIORITY_OPTIONS}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-              )}
 
               <div style={styles.drawerSection}>
                 <div style={styles.drawerLabel}>סטטוס</div>
@@ -420,41 +303,225 @@ export function TicketDetailDrawer({
                 </select>
               </div>
 
-              {onTicketForwarded && (
-                <ForwardToProfessionalBlock
-                  ticketId={selectedTicket.id}
-                  professionals={professionals}
-                  onForwarded={onTicketForwarded}
-                />
+              <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>מדווח</div>
+                  <div style={styles.drawerValue}>
+                    {reporterName || selectedTicket.reporter_name || selectedTicket.reporter_phone || '—'}
+                  </div>
+                </div>
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>נוצר</div>
+                  <div style={styles.drawerValue}>
+                    {selectedTicket.created_at
+                      ? new Date(selectedTicket.created_at).toLocaleDateString('he-IL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {selectedTicket.reporter_phone && (
+                <div style={styles.drawerSection}>
+                  <div style={styles.drawerLabel}>טלפון מדווח</div>
+                  <a href={`tel:${selectedTicket.reporter_phone}`} style={styles.phoneLink}>
+                    {selectedTicket.reporter_phone}
+                  </a>
+                </div>
               )}
 
-              <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>היסטוריה</div>
-                {drawerLoading ? (
-                  <div style={styles.loadingState}>טוען...</div>
-                ) : ticketLogs.length === 0 ? (
-                  <div style={styles.emptyLogs}>אין היסטוריה</div>
-                ) : (
-                  <div style={styles.logsList}>
-                    {ticketLogs.map((log) => (
-                      <div key={log.id} style={styles.logItem}>
-                        <div style={styles.logHeader}>
-                          <span style={styles.logAction}>{formatLogTitle(log.action_type)}</span>
-                          <span style={styles.logTime}>
-                            {new Date(log.created_at).toLocaleDateString('he-IL', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+              {showAttachmentsBlock && (
+                <CollapsibleSection
+                  title="קבצים מצורפים"
+                  badge={hasAttachments ? String(selectedTicketAttachments.length) : undefined}
+                  open={attachmentsOpen}
+                  onToggle={() => setAttachmentsOpen((v) => !v)}
+                >
+                  {loadingAttachments ? (
+                    <p style={styles.loadingState}>טוען קבצים…</p>
+                  ) : hasAttachments ? (
+                    <div style={styles.attachmentGrid}>
+                      {selectedTicketAttachments.map((attachment) => (
+                        <button
+                          key={attachment.id}
+                          type="button"
+                          onClick={() => {
+                            if (attachment.mime_type?.startsWith('image/')) {
+                              onSelectImage(getImageUrl(attachment))
+                            }
+                          }}
+                          style={styles.attachmentThumb}
+                        >
+                          <TicketAttachmentThumb
+                            mimeType={attachment.mime_type || ''}
+                            url={getImageUrl(attachment)}
+                            fileName={attachment.file_name || ''}
+                            imageStyle={styles.attachmentImg}
+                            videoStyle={styles.attachmentVideo}
+                            fileStyle={styles.attachmentFile}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={styles.emptyAttachments}>
+                      אין קבצים — ניתן לשחזר מ-WhatsApp תחת פעולות מתקדמות או בטאב WhatsApp דייר.
+                    </p>
+                  )}
+                </CollapsibleSection>
+              )}
+
+              {(hasAdvancedActions || ticketLogs.length > 0 || drawerLoading) && (
+                <CollapsibleSection
+                  title="פעולות מתקדמות"
+                  open={advancedOpen}
+                  onToggle={() => setAdvancedOpen((v) => !v)}
+                >
+                  {(onTranslateDescription || !descriptionReadOnly) && (
+                    <div style={styles.drawerSection}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        type="button"
+                        loading={translating}
+                        onClick={() => void translateDescriptionInternal()}
+                        style={{ width: '100%' }}
+                      >
+                        תרגם לעברית
+                      </Button>
+                    </div>
+                  )}
+
+                  {onPriorityChange && (
+                    <div style={styles.drawerSection}>
+                      <div style={styles.drawerLabel}>עדיפות</div>
+                      <Select
+                        value={draftPriority}
+                        onChange={onPriorityChange}
+                        options={PRIORITY_OPTIONS}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  )}
+
+                  {showRecover && (
+                    <div style={styles.drawerSection}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        type="button"
+                        loading={recoveringMedia}
+                        onClick={() => void onRecoverMedia?.()}
+                        style={{ width: '100%' }}
+                      >
+                        שחזר תמונה/וידאו מ-WhatsApp
+                      </Button>
+                    </div>
+                  )}
+
+                  {onLoadMergeCandidates && selectedTicket.status !== 'CLOSED' && (
+                    <div style={styles.drawerSection}>
+                      <div style={styles.drawerLabel}>מיזוג תקלות</div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        type="button"
+                        loading={mergeLoading}
+                        onClick={() => void onLoadMergeCandidates()}
+                        style={{ width: '100%' }}
+                      >
+                        טען תקלות פתוחות מאותו בניין
+                      </Button>
+                      {mergeCandidates.length > 0 && (
+                        <div style={styles.mergeList}>
+                          {mergeCandidates.map((c) => (
+                            <div key={c.id} style={styles.mergeRow}>
+                              <span style={styles.mergeText}>
+                                #{c.ticket_number} — {(c.description || '').slice(0, 60)}
+                                {(c.description?.length || 0) > 60 ? '…' : ''}
+                              </span>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                type="button"
+                                loading={savingTicket}
+                                onClick={() => void onMerge?.(c.id)}
+                              >
+                                מזג לכאן
+                              </Button>
+                            </div>
+                          ))}
                         </div>
-                        {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
+                      )}
+                    </div>
+                  )}
+
+                  {onTicketForwarded && (
+                    <ForwardToProfessionalBlock
+                      ticketId={selectedTicket.id}
+                      professionals={professionals}
+                      onForwarded={onTicketForwarded}
+                    />
+                  )}
+
+                  <CollapsibleSection
+                    title="היסטוריה"
+                    badge={ticketLogs.length > 0 ? String(ticketLogs.length) : undefined}
+                    open={historyOpen}
+                    onToggle={() => setHistoryOpen((v) => !v)}
+                  >
+                    {drawerLoading ? (
+                      <div style={styles.loadingState}>טוען...</div>
+                    ) : ticketLogs.length === 0 ? (
+                      <div style={styles.emptyLogs}>אין היסטוריה</div>
+                    ) : (
+                      <div style={styles.logsList}>
+                        {ticketLogs.map((log) => (
+                          <div key={log.id} style={styles.logItem}>
+                            <div style={styles.logHeader}>
+                              <span style={styles.logAction}>{formatLogTitle(log.action_type)}</span>
+                              <span style={styles.logTime}>
+                                {new Date(log.created_at).toLocaleDateString('he-IL', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                            {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    )}
+                  </CollapsibleSection>
+
+                  {(onCancel || onDelete) && (
+                    <div style={styles.advancedDanger}>
+                      {onCancel && (
+                        <Button variant="secondary" onClick={onCancel} style={{ width: '100%' }}>
+                          ביטול
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="danger"
+                          onClick={() => void onDelete()}
+                          loading={deletingTicket}
+                          style={{ width: '100%' }}
+                        >
+                          מחק תקלה
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </CollapsibleSection>
+              )}
             </>
           )}
 
@@ -488,33 +555,6 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
-  },
-  tabBar: {
-    display: 'flex',
-    gap: '4px',
-    padding: '4px',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.md,
-  },
-  tab: {
-    flex: 1,
-    padding: '8px 0',
-    fontSize: '14px',
-    fontWeight: 500,
-    border: 'none',
-    borderRadius: theme.radius.sm,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-    fontFamily: 'inherit',
-  },
-  tabActive: {
-    background: theme.colors.surface,
-    color: theme.colors.primary,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  },
-  tabInactive: {
-    background: 'transparent',
-    color: theme.colors.textMuted,
   },
   drawerSection: {
     display: 'flex',
@@ -589,6 +629,68 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: '10px',
   },
+  collapseWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+    background: theme.colors.surface,
+  },
+  collapseToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    width: '100%',
+    padding: '12px 14px',
+    border: 'none',
+    background: theme.colors.muted,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'right',
+  },
+  collapseTitle: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+  },
+  collapseBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '20px',
+    height: '20px',
+    padding: '0 6px',
+    borderRadius: theme.radius.sm,
+    background: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  collapseChevron: {
+    color: theme.colors.textMuted,
+    fontSize: '14px',
+    lineHeight: 1,
+  },
+  collapseBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    padding: '14px',
+    borderTop: `1px solid ${theme.colors.border}`,
+  },
+  advancedDanger: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    paddingTop: '4px',
+    borderTop: `1px solid ${theme.colors.border}`,
+  },
   attachmentGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
@@ -648,7 +750,7 @@ const styles: Record<string, CSSProperties> = {
   emptyLogs: {
     fontSize: '13px',
     color: theme.colors.textMuted,
-    padding: '16px 0',
+    padding: '8px 0',
   },
   logsList: {
     display: 'flex',
@@ -684,7 +786,8 @@ const styles: Record<string, CSSProperties> = {
   loadingState: {
     fontSize: '13px',
     color: theme.colors.textMuted,
-    padding: '16px 0',
+    padding: '8px 0',
+    margin: 0,
   },
   emptyAttachments: {
     fontSize: '13px',

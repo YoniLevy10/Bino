@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   ADDON_ONLY_SIDEBAR_NAV_IDS,
   DEFAULT_SIDEBAR_NAV_ORDER,
+  PRIMARY_SIDEBAR_NAV_IDS,
   SIDEBAR_NAV_REGISTRY,
   parseSidebarNavOrderFromDb,
   resolveSidebarNavItems,
   shouldShowMobileBottomNav,
   splitMobileBottomNav,
+  splitSidebarNavSections,
 } from '@/lib/sidebar-nav'
+import { appendAddonsNavAlways, injectPaidAddonNavItems } from '@/lib/addons-nav'
 
 describe('resolveSidebarNavItems', () => {
   it('uses default order when custom order is null', () => {
@@ -62,6 +65,31 @@ describe('splitMobileBottomNav', () => {
     expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'projects', 'workers'])
     expect(more.some((i) => i.id === 'summary')).toBe(true)
     expect(more.some((i) => i.id === 'dashboard')).toBe(false)
+  })
+})
+
+describe('splitSidebarNavSections', () => {
+  it('keeps daily core as primary and ops tools under secondary', () => {
+    const items = appendAddonsNavAlways(resolveSidebarNavItems(null))
+    const { primary, secondary, extras, addons } = splitSidebarNavSections(items)
+    expect(primary.map((i) => i.id)).toEqual([...PRIMARY_SIDEBAR_NAV_IDS])
+    expect(secondary.map((i) => i.id)).toEqual([
+      'qr',
+      'whatsapp_templates',
+      'pending_residents',
+      'summary',
+    ])
+    expect(extras).toEqual([])
+    expect(addons?.id).toBe('addons')
+  })
+})
+
+describe('injectPaidAddonNavItems', () => {
+  it('does not auto-inject enabled addons into the sidebar', () => {
+    const base = resolveSidebarNavItems(null)
+    const withInject = injectPaidAddonNavItems(base, ['calendar', 'campaigns'])
+    expect(withInject.map((i) => i.id)).toEqual(base.map((i) => i.id))
+    expect(withInject.map((i) => i.id)).not.toContain('calendar')
   })
 })
 
