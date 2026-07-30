@@ -40,10 +40,10 @@ export function TicketAttachmentThumb({
     return (
       <video
         src={url}
-        controls
+        muted
         preload="metadata"
         playsInline
-        style={videoStyle}
+        style={{ ...videoStyle, pointerEvents: 'none' }}
         aria-label={fileName || 'סרטון מצורף'}
       />
     )

@@ -27,7 +27,7 @@ export const SIDEBAR_NAV_ITEM_IDS = [
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
 
 /**
- * Premium / add-on routes — never in tenant sidebar (access via /addons and deep links).
+ * Premium / add-on routes — access via /addons unless pinned into TENANT_SIDEBAR_NAV_IDS.
  * Keep in sync with PREMIUM_NAV_FEATURE_IDS in client-nav-features.ts.
  */
 export const ADDON_ONLY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
@@ -62,6 +62,63 @@ export const MOBILE_BOTTOM_PRIMARY_IDS: readonly SidebarNavItemId[] = [
   'workers',
 ]
 
+/**
+ * Tenant sidebar allowlist (order = default).
+ * Paid entries (WhatsApp inbox, attendance, collections) appear only when enabled.
+ * Everything else lives under /addons — not as top-level sidebar items.
+ */
+export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
+  'dashboard',
+  'tickets',
+  'projects',
+  'residents',
+  'workers',
+  'whatsapp_inbox',
+  'attendance',
+  'collections',
+  'summary',
+]
+
+/** @deprecated use TENANT_SIDEBAR_NAV_IDS — kept as alias for primary flat sidebar. */
+export const PRIMARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = TENANT_SIDEBAR_NAV_IDS
+
+/** No secondary "תפעול" group — remaining tools are under תוספים. */
+export const SECONDARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = []
+
+export function isTenantSidebarNavId(id: string): boolean {
+  return (TENANT_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
+}
+
+export function isPrimarySidebarNavId(id: string): boolean {
+  return isTenantSidebarNavId(id)
+}
+
+export function isSecondarySidebarNavId(id: string): boolean {
+  return (SECONDARY_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
+}
+
+export function splitSidebarNavSections(items: SidebarNavItem[]): {
+  primary: SidebarNavItem[]
+  secondary: SidebarNavItem[]
+  extras: SidebarNavItem[]
+  addons: SidebarNavItem | null
+} {
+  const primary: SidebarNavItem[] = []
+  const secondary: SidebarNavItem[] = []
+  const extras: SidebarNavItem[] = []
+  let addons: SidebarNavItem | null = null
+  for (const item of items) {
+    if (item.id === 'addons') {
+      addons = item
+      continue
+    }
+    if (isPrimarySidebarNavId(item.id)) primary.push(item)
+    else if (isSecondarySidebarNavId(item.id)) secondary.push(item)
+    else extras.push(item)
+  }
+  return { primary, secondary, extras, addons }
+}
+
 export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   dashboard: { id: 'dashboard', href: '/', label: 'לוח בקרה', icon: 'home' },
   tickets: { id: 'tickets', href: '/tickets', label: 'תקלות', icon: 'ticket' },
@@ -70,7 +127,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   workers: { id: 'workers', href: '/workers', label: 'העובדים שלי', icon: 'users' },
   summary: { id: 'summary', href: '/summary', label: 'סיכום', icon: 'chart' },
   calendar: { id: 'calendar', href: '/calendar', label: 'יומן משרד', icon: 'grid' },
-  attendance: { id: 'attendance', href: '/attendance', label: 'חתמת עובדים', icon: 'clock' },
+  attendance: { id: 'attendance', href: '/attendance', label: 'החתמת עובדים', icon: 'clock' },
   professionals: { id: 'professionals', href: '/professionals', label: 'אנשי מקצוע', icon: 'users' },
   qr: { id: 'qr', href: '/qr', label: 'קודי QR', icon: 'qr' },
   whatsapp_templates: {
@@ -117,18 +174,11 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   },
 }
 
-/** Default sidebar order (excludes add-on-only routes). */
-export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
-  'dashboard',
-  'tickets',
-  'projects',
-  'residents',
-  'workers',
-  'qr',
-  'whatsapp_templates',
-  'pending_residents',
-  'summary',
-]
+/**
+ * Default sidebar order.
+ * Addon-only ids in this list (WhatsApp / attendance / collections) render only when enabled.
+ */
+export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [...TENANT_SIDEBAR_NAV_IDS]
 
 export type SidebarNavLabels = Partial<Record<SidebarNavItemId, string>>
 
@@ -208,6 +258,8 @@ export function resolveSidebarNavItems(
   )
 
   const includeId = (id: SidebarNavItemId): boolean => {
+    // Only the curated tenant sidebar list — rest stays under /addons.
+    if (!isTenantSidebarNavId(id)) return false
     if (isAddonOnlySidebarNavId(id) && !paidNavIds?.has(id)) return false
     if (allowedSet && !allowedSet.has(id)) return false
     return true
@@ -226,6 +278,14 @@ export function resolveSidebarNavItems(
       result.push(SIDEBAR_NAV_REGISTRY[id])
     }
   }
+
+  // Keep curated order even when DB custom order still has summary early
+  // and newly enabled addons are appended later.
+  result.sort((a, b) => {
+    const ai = TENANT_SIDEBAR_NAV_IDS.indexOf(a.id as SidebarNavItemId)
+    const bi = TENANT_SIDEBAR_NAV_IDS.indexOf(b.id as SidebarNavItemId)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
 
   return applySidebarNavLabels(result, customLabels)
 }

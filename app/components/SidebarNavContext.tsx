@@ -172,10 +172,12 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         const parsedOrder = parseSidebarNavOrderFromDb(json.sidebar_nav_order)
         const parsedEnabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
         const parsedLabels = parseSidebarNavLabelsFromDb(json.sidebar_nav_labels)
-        const resolved = resolveSidebarNavItems(parsedOrder, parsedEnabled)
-        const nextIds = resolved
-          .map((item) => item.id)
-          .filter((id): id is SidebarNavItemId => id !== 'addons')
+        // Keep addon ids from DB order so enabled tenants can pin them via settings;
+        // resolveSidebarNavItems filters by paidNavIds at render time.
+        const nextIds =
+          parsedOrder && parsedOrder.length > 0
+            ? parsedOrder
+            : [...DEFAULT_SIDEBAR_NAV_ORDER]
         applyNavState(nextIds, parsedEnabled, parsedLabels)
         writeNavCache(clientId, {
           orderIds: nextIds,

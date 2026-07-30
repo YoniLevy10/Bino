@@ -1,7 +1,5 @@
 import type { AddonEntitlement } from '@/lib/paid-addons'
-import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
 import {
-  SIDEBAR_NAV_REGISTRY,
   type SidebarNavItem,
   type SidebarNavItemId,
 } from '@/lib/sidebar-nav'
@@ -42,25 +40,19 @@ export function appendAddonsNavIfNeeded(
   return appendAddonsNavAlways(items)
 }
 
+/**
+ * Paid add-ons stay on `/addons` by default (see ADDON_ONLY_SIDEBAR_NAV_IDS).
+ * Do not auto-inject every enabled addon into the top-level sidebar — that
+ * balloons the nav. Custom `sidebar_nav_order` can still pin specific addons
+ * via `resolveSidebarNavItems(..., paidNavIds)`.
+ *
+ * Kept as a no-op for call-site compatibility.
+ */
 export function injectPaidAddonNavItems(
   items: SidebarNavItem[],
-  enabledAddonKeys: Iterable<string>
+  _enabledAddonKeys: Iterable<string>
 ): SidebarNavItem[] {
-  const paidNavIds = navIdsForEnabledAddonKeys(enabledAddonKeys)
-  const seen = new Set(items.map((item) => item.id))
-  const toInject: SidebarNavItem[] = []
-  for (const id of paidNavIds) {
-    if (!seen.has(id)) {
-      toInject.push(SIDEBAR_NAV_REGISTRY[id])
-      seen.add(id)
-    }
-  }
-  if (toInject.length === 0) return items
-  const addonsIdx = items.findIndex((item) => item.id === 'addons')
-  if (addonsIdx >= 0) {
-    return [...items.slice(0, addonsIdx), ...toInject, ...items.slice(addonsIdx)]
-  }
-  return [...items, ...toInject]
+  return items
 }
 
 export function enabledAddonKeysFromEntitlements(addons: AddonEntitlement[]): string[] {

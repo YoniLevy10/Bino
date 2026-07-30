@@ -11,14 +11,14 @@ function CollectionsPlaceholder() {
     <Card noPadding>
       <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <p style={{ margin: 0, fontSize: '15px', color: theme.colors.textPrimary, lineHeight: 1.6 }}>
-          גביית ועד דרך Morning (חשבונית ירוקה) — שלב ההקמה הושלם. חיובים, קישורי תשלום ושליחה לדיירים
-          יתווספו כאן בשלב הבא.
+          גביית ועד דרך Morning — חשבונות, קישורי תשלום ושליחה לדיירים. לפני שימוש יש לחבר את חשבון
+          Morning בהגדרות (מפתחות API ו-webhook).
         </p>
         <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-          לפני שימוש: הגדירו מפתחות API, סליקה ומסמכים ב-
-          <Link href="/settings?tab=greeninvoice" style={{ color: theme.colors.primary, fontWeight: 600 }}>
+          הגדרות חיבור:
+          <Link href="/settings?tab=morning" style={{ color: theme.colors.primary, fontWeight: 600 }}>
             {' '}
-            הגדרות → חשבונית ירוקה
+            הגדרות → Morning
           </Link>
           .
         </p>
@@ -32,8 +32,8 @@ function CollectionsPageInner() {
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.collections}
       title="גביית ועד"
-      mobileSubtitle="חיוב דיירים דרך חשבונית ירוקה"
-      desktopSubtitle="חיוב דיירים וקישורי תשלום דרך Morning (חשבונית ירוקה)"
+      mobileSubtitle="חיוב דיירים דרך Morning"
+      desktopSubtitle="חיוב דיירים וקישורי תשלום דרך Morning"
     >
       <CollectionsPlaceholder />
     </AddonFeaturePageShell>

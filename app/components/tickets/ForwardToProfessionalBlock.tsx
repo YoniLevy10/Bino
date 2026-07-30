@@ -6,8 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
 import { usePaidAddons } from '../PaidAddonsContext'
-import { PAID_ADDON_KEYS, formatAddonPriceDisplay } from '@/lib/paid-addons'
-import Link from 'next/link'
+import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 export type ProfessionalOption = {
   id: string
@@ -24,7 +23,7 @@ type Props = {
 }
 
 export function ForwardToProfessionalBlock({ ticketId, professionals, onForwarded }: Props) {
-  const { hasAddon, getAddon, isBootstrapped } = usePaidAddons()
+  const { hasAddon, isBootstrapped } = usePaidAddons()
   const [professionalId, setProfessionalId] = useState('')
   const [note, setNote] = useState('')
   const [setEscort, setSetEscort] = useState(true)
@@ -36,20 +35,9 @@ export function ForwardToProfessionalBlock({ ticketId, professionals, onForwarde
     return null
   }
 
+  // Locked upsell lives on /addons — keep ticket drawer free of marketing clutter.
   if (!hasAddon(PAID_ADDON_KEYS.professionals)) {
-    const addon = getAddon(PAID_ADDON_KEYS.professionals)
-    return (
-      <div style={styles.section}>
-        <div style={styles.label}>העברה לאיש מקצוע</div>
-        <p style={styles.hint}>
-          תוסף בתשלום — {addon?.name_he || 'אנשי מקצוע'}{' '}
-          ({formatAddonPriceDisplay(addon?.price_ils_monthly ?? 0)}).{' '}
-          <Link href="/addons" style={styles.link}>
-            לפרטים והפעלה
-          </Link>
-        </p>
-      </div>
-    )
+    return null
   }
 
   async function handleForward() {
