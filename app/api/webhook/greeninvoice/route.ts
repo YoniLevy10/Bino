@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
 import { markChargePaidByMorningIds } from '@/lib/collection-charge-ops'
+import {
+  authorizeGreenInvoiceWebhook,
+  extractGreenInvoiceWebhookIds,
+} from '@/lib/greeninvoice-webhook'
 
 /**
  * Morning (Green Invoice) webhook — payment / document events.
@@ -11,46 +15,6 @@ import { markChargePaidByMorningIds } from '@/lib/collection-charge-ops'
  * Morning does not sign webhooks; verify via shared query token.
  * Body may be JSON or application/x-www-form-urlencoded.
  */
-
-function extractIds(payload: unknown): { paymentIds: string[]; documentIds: string[] } {
-  const paymentIds: string[] = []
-  const documentIds: string[] = []
-
-  if (!payload || typeof payload !== 'object') return { paymentIds, documentIds }
-  const obj = payload as Record<string, unknown>
-
-  const pushId = (v: unknown, into: string[]) => {
-    if (typeof v === 'string' && v.trim()) into.push(v.trim())
-  }
-
-  // payment/receive style
-  pushId(obj.id, paymentIds)
-  pushId(obj.paymentId, paymentIds)
-  pushId(obj.productId, paymentIds)
-  pushId(obj.documentId, documentIds)
-
-  if (Array.isArray(obj.transactions)) {
-    for (const tx of obj.transactions) {
-      if (tx && typeof tx === 'object') {
-        pushId((tx as { id?: unknown }).id, paymentIds)
-      }
-    }
-  }
-
-  // document/created style — id is document id; type is numeric doc type
-  if (typeof obj.type === 'number' || typeof obj.number === 'number') {
-    pushId(obj.id, documentIds)
-  }
-
-  // Nested data / body wrappers
-  if (obj.data && typeof obj.data === 'object') {
-    const nested = extractIds(obj.data)
-    paymentIds.push(...nested.paymentIds)
-    documentIds.push(...nested.documentIds)
-  }
-
-  return { paymentIds, documentIds }
-}
 
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()
@@ -63,7 +27,6 @@ async function parsePayload(req: Request): Promise<unknown> {
     params.forEach((value, key) => {
       asObj[key] = value
     })
-    // Morning sometimes puts JSON in a single field
     for (const key of ['payload', 'data', 'json', 'body']) {
       const raw = asObj[key]
       if (raw?.trim().startsWith('{')) {
@@ -74,7 +37,6 @@ async function parsePayload(req: Request): Promise<unknown> {
         }
       }
     }
-    // Try parse entire values that look like JSON
     for (const value of Object.values(asObj)) {
       if (value.trim().startsWith('{')) {
         try {
@@ -94,26 +56,24 @@ async function parsePayload(req: Request): Promise<unknown> {
   }
 }
 
-function authorizeWebhook(req: Request): boolean {
-  const expected = (process.env.GREENINVOICE_WEBHOOK_SECRET || '').trim()
-  if (!expected) {
-    // Secret not configured — accept (dev / early MVP) but log
-    return true
-  }
+function isAuthorized(req: Request): boolean {
   const url = new URL(req.url)
-  const token = (url.searchParams.get('token') || req.headers.get('x-webhook-token') || '').trim()
-  return token === expected
+  return authorizeGreenInvoiceWebhook({
+    expectedSecret: process.env.GREENINVOICE_WEBHOOK_SECRET,
+    tokenFromQuery: url.searchParams.get('token'),
+    tokenFromHeader: req.headers.get('x-webhook-token'),
+  })
 }
 
 export async function POST(req: Request) {
   const logger = getLogger()
   try {
-    if (!authorizeWebhook(req)) {
+    if (!isAuthorized(req)) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
 
     const payload = await parsePayload(req)
-    const ids = extractIds(payload)
+    const ids = extractGreenInvoiceWebhookIds(payload)
 
     logger.info('WEBHOOK', 'Green Invoice webhook received', {
       paymentIds: ids.paymentIds.slice(0, 5),
@@ -127,14 +87,6 @@ export async function POST(req: Request) {
     const admin = getSupabaseAdmin()
     const { matched } = await markChargePaidByMorningIds(admin, ids)
 
-    // Heuristic: if payment receive has top-level id and no match yet, also try as document id
-    if (matched === 0 && ids.paymentIds.length > 0) {
-      await markChargePaidByMorningIds(admin, {
-        paymentIds: [],
-        documentIds: ids.paymentIds,
-      })
-    }
-
     return NextResponse.json({ ok: true, matched })
   } catch (e) {
     console.error('[webhook/greeninvoice]', e)
@@ -144,7 +96,7 @@ export async function POST(req: Request) {
 
 /** Some providers verify webhook URL with GET. */
 export async function GET(req: Request) {
-  if (!authorizeWebhook(req)) {
+  if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
   return NextResponse.json({ ok: true, service: 'greeninvoice-webhook' })

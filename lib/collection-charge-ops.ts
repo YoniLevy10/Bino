@@ -376,16 +376,11 @@ export async function markChargePaidByMorningIds(
         status: 'paid' satisfies CollectionChargeStatus,
         paid_at: paidAt,
         updated_at: paidAt,
-        greeninvoice_document_id: uniqueDocIds[0],
       })
       .in('greeninvoice_document_id', uniqueDocIds)
       .neq('status', 'paid')
       .select('id')
     matched += data?.length ?? 0
-
-    // Also try matching payment form product/session via document webhook id stored later
-    // Some payment webhooks put document id in `id` without prior document_id on charge —
-    // try updating by payment id already done above.
   }
 
   return { matched }

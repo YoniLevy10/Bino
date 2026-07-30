@@ -204,6 +204,7 @@ export function CollectionsBoard() {
   }
 
   async function openBulk() {
+    setCreateOpen(false)
     setBulkResult(null)
     setBulkOpen(true)
     const pid = bulkProjectId || projectFilter || projects[0]?.id || ''
@@ -337,6 +338,7 @@ export function CollectionsBoard() {
   }
 
   async function openCreate() {
+    setBulkOpen(false)
     setCreateOpen(true)
     const pid = cProjectId || projectFilter || projects[0]?.id || ''
     setCProjectId(pid)
@@ -478,7 +480,13 @@ export function CollectionsBoard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ ...styles.toolbar, flexDirection: isMobile ? 'column' : 'row' }}>
+      <div
+        style={{
+          ...styles.toolbar,
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
+        }}
+      >
         <Button onClick={() => void openBulk()}>שליחה מרוכזת לבניין</Button>
         <Button variant="secondary" onClick={() => void openCreate()}>
           חיוב בודד
@@ -486,7 +494,13 @@ export function CollectionsBoard() {
         <Button variant="secondary" onClick={() => void refresh()}>
           רענון
         </Button>
-        <Link href="/settings?tab=greeninvoice" style={styles.settingsLink}>
+        <Link
+          href="/settings?tab=greeninvoice"
+          style={{
+            ...styles.settingsLink,
+            marginInlineStart: isMobile ? 0 : 'auto',
+          }}
+        >
           הגדרות חשבונית ירוקה
         </Link>
       </div>
@@ -635,7 +649,22 @@ export function CollectionsBoard() {
         </div>
       )}
 
-      <Drawer open={bulkOpen} onClose={() => setBulkOpen(false)} title="שליחה מרוכזת לבניין">
+      <Drawer
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        title="שליחה מרוכזת לבניין"
+        isMobile={isMobile}
+        footer={
+          <div style={styles.drawerActions}>
+            <Button variant="secondary" onClick={() => setBulkOpen(false)}>
+              סגור
+            </Button>
+            <Button disabled={bulkSending} onClick={() => void submitBulk()}>
+              {bulkSending ? 'שולח...' : 'צור ושלח'}
+            </Button>
+          </div>
+        }
+      >
         <div style={styles.form}>
           <label style={styles.label}>בניין</label>
           <Select
@@ -729,19 +758,25 @@ export function CollectionsBoard() {
           </div>
 
           {bulkResult && <p style={styles.result}>{bulkResult}</p>}
-
-          <div style={styles.drawerActions}>
-            <Button variant="secondary" onClick={() => setBulkOpen(false)}>
-              סגור
-            </Button>
-            <Button disabled={bulkSending} onClick={() => void submitBulk()}>
-              {bulkSending ? 'שולח...' : 'צור ושלח'}
-            </Button>
-          </div>
         </div>
       </Drawer>
 
-      <Drawer open={createOpen} onClose={() => setCreateOpen(false)} title="חיוב בודד">
+      <Drawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="חיוב בודד"
+        isMobile={isMobile}
+        footer={
+          <div style={styles.drawerActions}>
+            <Button variant="secondary" disabled={cSaving} onClick={() => void submitCreate(false)}>
+              שמור טיוטה
+            </Button>
+            <Button disabled={cSaving} onClick={() => void submitCreate(true)}>
+              צור ושלח
+            </Button>
+          </div>
+        }
+      >
         <div style={styles.form}>
           <label style={styles.label}>בניין</label>
           <Select
@@ -785,14 +820,6 @@ export function CollectionsBoard() {
             placeholder="2026-07"
             style={styles.textInput}
           />
-          <div style={styles.drawerActions}>
-            <Button variant="secondary" disabled={cSaving} onClick={() => void submitCreate(false)}>
-              שמור טיוטה
-            </Button>
-            <Button disabled={cSaving} onClick={() => void submitCreate(true)}>
-              צור ושלח
-            </Button>
-          </div>
         </div>
       </Drawer>
     </div>
@@ -819,7 +846,6 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     fontSize: 14,
     fontWeight: 600,
-    marginInlineStart: 'auto',
   },
   chips: {
     display: 'flex',
@@ -947,7 +973,7 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     gap: 10,
     justifyContent: 'flex-end',
-    marginTop: 8,
+    flexWrap: 'wrap',
   },
   result: {
     margin: 0,
