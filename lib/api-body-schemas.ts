@@ -482,3 +482,43 @@ export const deleteTicketsBodySchema = z.union([
     delete_all: z.literal(true),
   }),
 ])
+
+/** גביית ועד — יצירת חיוב בודד (טיוטה או שליחה מיידית). */
+export const createCollectionChargeBodySchema = z.object({
+  project_id: z.string().uuid(),
+  resident_id: z.string().uuid(),
+  title: z.string().min(1).max(300),
+  amount: z.number().positive().max(1_000_000),
+  description: z.string().max(2000).nullable().optional(),
+  period_label: z.string().max(40).nullable().optional(),
+  send: z.boolean().optional(),
+  send_sms: z.boolean().optional(),
+})
+
+export const sendCollectionChargeBodySchema = z.object({
+  charge_id: z.string().uuid(),
+  send_sms: z.boolean().optional(),
+})
+
+export const resendCollectionChargeBodySchema = z.object({
+  charge_id: z.string().uuid(),
+})
+
+export const cancelCollectionChargeBodySchema = z.object({
+  charge_id: z.string().uuid(),
+})
+
+const bulkSendItemSchema = z.object({
+  resident_id: z.string().uuid(),
+  amount: z.number().positive().max(1_000_000),
+})
+
+/** גביית ועד — יצירה + שליחה מרוכזת לפרויקט. */
+export const bulkSendCollectionChargesBodySchema = z.object({
+  project_id: z.string().uuid(),
+  period_label: z.string().max(40).nullable().optional(),
+  title_template: z.string().min(1).max(300),
+  description: z.string().max(2000).nullable().optional(),
+  items: z.array(bulkSendItemSchema).min(1).max(500),
+  send_sms: z.boolean().optional(),
+})

@@ -188,6 +188,8 @@ export type GreenInvoicePaymentFormRequest = {
   }
   successUrl?: string | null
   failureUrl?: string | null
+  /** Morning payment form notify callback (webhook). */
+  notifyUrl?: string | null
 }
 
 export type GreenInvoicePaymentFormResult = {
@@ -214,6 +216,7 @@ export async function getGreenInvoicePaymentForm(
   if (request.client) body.client = request.client
   if (request.successUrl) body.successUrl = request.successUrl
   if (request.failureUrl) body.failureUrl = request.failureUrl
+  if (request.notifyUrl) body.notifyUrl = request.notifyUrl
 
   const res = await greenInvoiceFetch<GreenInvoicePaymentFormResult>(
     credentials,

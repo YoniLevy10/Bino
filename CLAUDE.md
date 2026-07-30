@@ -140,3 +140,4 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
+| `GREENINVOICE_WEBHOOK_SECRET` | Random secret; append as `?token=` on Morning webhook URL (`/api/webhook/greeninvoice`) |

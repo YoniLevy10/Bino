@@ -39,3 +39,8 @@ export function getWorkerAttendanceScanUrl(tagCode: string, accessToken?: string
   if (token) params.set('token', token)
   return `${base}/worker/nfc?${params.toString()}`
 }
+
+/** Public Bamakor-hosted payment landing for a collection charge token. */
+export function getPublicPayUrl(publicToken: string): string {
+  return `${getPublicAppBaseUrl()}/pay/${encodeURIComponent(publicToken.trim())}`
+}
