@@ -3,13 +3,18 @@
 import { type CSSProperties } from 'react'
 import { theme } from '../ui'
 
+export type LightboxMediaKind = 'image' | 'video'
+
 interface ImageLightboxProps {
   imageUrl: string | null
+  /** Defaults to image — set `video` to play fullscreen like photo enlarge. */
+  mediaKind?: LightboxMediaKind | null
   onClose: () => void
 }
 
-export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
+export function ImageLightbox({ imageUrl, mediaKind = 'image', onClose }: ImageLightboxProps) {
   if (!imageUrl) return null
+  const kind = mediaKind === 'video' ? 'video' : 'image'
 
   return (
     <>
@@ -30,12 +35,24 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
             <path d="m6 6 12 12" />
           </svg>
         </button>
-        <img
-          src={imageUrl}
-          alt="קובץ מצורף"
-          style={styles.lightboxImg}
-          onClick={(e) => e.stopPropagation()}
-        />
+        {kind === 'video' ? (
+          <video
+            src={imageUrl}
+            controls
+            autoPlay
+            playsInline
+            style={styles.lightboxMedia}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt="קובץ מצורף"
+            style={styles.lightboxMedia}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
       </div>
     </>
   )
@@ -68,10 +85,12 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     padding: 8,
   },
-  lightboxImg: {
+  lightboxMedia: {
     maxWidth: '90vw',
     maxHeight: '85vh',
     objectFit: 'contain',
     borderRadius: theme.radius.lg,
+    background: '#000',
+    display: 'block',
   },
 }

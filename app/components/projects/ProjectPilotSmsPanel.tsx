@@ -152,14 +152,9 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
   }
 
   return (
-    <Card
-      title="הודעת פתיחה לדיירים"
-      subtitle="ערכו את הטקסט לפני השליחה — כולל מספר הוואטסאפ של הבוט, רב-לשוני, ללא אימוג'י (דרישת 019SMS)"
-    >
+    <Card title="הודעת פתיחה לדיירים" subtitle="SMS לכל דיירי הבניין עם טלפון">
       {!whatsappBotPhone && (
-        <p style={styles.warn}>
-          לא נמצא מספר וואטסאפ בהגדרות הלקוח — מומלץ למלא &quot;מספר וואטסאפ לקישורי QR&quot; בהגדרות כדי שהמספר יופיע בהודעה.
-        </p>
+        <p style={styles.warn}>חסר מספר וואטסאפ בהגדרות — מומלץ למלא כדי שיופיע בהודעה.</p>
       )}
       <label style={styles.label} htmlFor={`pilot-sms-${projectId}`}>
         תוכן ההודעה
@@ -171,7 +166,7 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
           setMessageText(e.target.value)
           setPreview(null)
         }}
-        rows={16}
+        rows={8}
         style={styles.textarea}
         dir="auto"
         spellCheck
@@ -234,7 +229,7 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     color: theme.colors.textPrimary,
     resize: 'vertical',
-    minHeight: 240,
+    minHeight: 140,
   },
   metaRow: {
     display: 'flex',

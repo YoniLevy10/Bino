@@ -96,9 +96,7 @@ export function ProjectResidentIntakePanel({ projectCode, clientId, projectName 
     <div style={styles.panel}>
       <div style={styles.header}>
         <h4 style={styles.title}>סקר רישום דיירים</h4>
-        <p style={styles.hint}>
-          קישור קצר (עד 5 שאלות) לשליחה לקבוצת הוואטסאפ של הבניין — הדיירים ממלאים בעצמם.
-        </p>
+        <p style={styles.hint}>קישור קצר לשליחה לקבוצת הוואטסאפ של הבניין.</p>
       </div>
 
       <div style={styles.linkBox} dir="ltr">
@@ -106,16 +104,13 @@ export function ProjectResidentIntakePanel({ projectCode, clientId, projectName 
       </div>
 
       <label style={styles.label} htmlFor={`intake-share-${projectCode}`}>
-        תבנית הודעה לשליחה (ניתן לערוך)
+        הודעה לשליחה
       </label>
-      <p style={styles.placeholderHint}>
-        אפשר להשתמש ב־{'{project}'} לשם הבניין ו־{'{url}'} לקישור. אם אין קישור בטקסט — נוסיף אותו אוטומטית.
-      </p>
       <textarea
         id={`intake-share-${projectCode}`}
         value={template}
         onChange={(e) => onTemplateChange(e.target.value)}
-        rows={6}
+        rows={4}
         style={styles.textarea}
         dir="auto"
         spellCheck
@@ -124,11 +119,6 @@ export function ProjectResidentIntakePanel({ projectCode, clientId, projectName 
         <button type="button" onClick={resetTemplate} style={styles.linkBtn}>
           איפוס לברירת מחדל
         </button>
-      </div>
-
-      <div style={styles.previewBox}>
-        <div style={styles.previewLabel}>תצוגה מקדימה</div>
-        <pre style={styles.previewText}>{shareMessage}</pre>
       </div>
 
       <div style={styles.actions}>
@@ -192,12 +182,6 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
     color: theme.colors.textPrimary,
   },
-  placeholderHint: {
-    margin: '-4px 0 0',
-    fontSize: 12,
-    color: theme.colors.textMuted,
-    lineHeight: 1.45,
-  },
   textarea: {
     width: '100%',
     boxSizing: 'border-box',
@@ -212,7 +196,7 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     color: theme.colors.textPrimary,
     resize: 'vertical',
-    minHeight: 120,
+    minHeight: 88,
   },
   metaRow: {
     display: 'flex',
@@ -226,26 +210,6 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 600,
-  },
-  previewBox: {
-    padding: 12,
-    borderRadius: theme.radius.md,
-    background: '#FFFFFF',
-    border: `1px dashed ${theme.colors.border}`,
-  },
-  previewLabel: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: theme.colors.textMuted,
-    marginBottom: 8,
-  },
-  previewText: {
-    margin: 0,
-    whiteSpace: 'pre-wrap',
-    fontFamily: 'inherit',
-    fontSize: 13,
-    lineHeight: 1.5,
-    color: theme.colors.textPrimary,
   },
   actions: {
     display: 'flex',

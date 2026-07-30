@@ -218,6 +218,7 @@ export default function TicketsPage() {
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(() => new Set())
   const [deletingTickets, setDeletingTickets] = useState(false)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const [lightboxKind, setLightboxKind] = useState<'image' | 'video'>('image')
   const [showAddTicketModal, setShowAddTicketModal] = useState(false)
   const [addTicketForm, setAddTicketForm] = useState({
     project_code: '',
@@ -1407,7 +1408,10 @@ export default function TicketsPage() {
         onStatusChange={setDraftStatus}
         onPriorityChange={setDraftPriority}
         onSave={saveTicketChanges}
-        onSelectImage={setLightboxImage}
+        onSelectImage={(url, kind = 'image') => {
+          setLightboxKind(kind)
+          setLightboxImage(url)
+        }}
         onCloseTicket={() => void handleCloseTicket()}
         getImageUrl={(a) => a.signed_url || a.file_url || ''}
         onRecoverMedia={
@@ -1513,7 +1517,11 @@ export default function TicketsPage() {
         }}
       />
 
-      <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />
+      <ImageLightbox
+        imageUrl={lightboxImage}
+        mediaKind={lightboxKind}
+        onClose={() => setLightboxImage(null)}
+      />
     </AppShell>
   )
 }

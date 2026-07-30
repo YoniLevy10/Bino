@@ -201,6 +201,7 @@ export default function SummaryPage() {
   const [historyLoadError, setHistoryLoadError] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const [lightboxKind, setLightboxKind] = useState<'image' | 'video'>('image')
   const [isMobile, setIsMobile] = useState(false)
     const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
   const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('all')
@@ -1509,7 +1510,10 @@ export default function SummaryPage() {
         onStatusChange={setDraftStatus}
         onPriorityChange={setDraftPriority}
         onSave={() => void saveTicket()}
-        onSelectImage={setLightboxImage}
+        onSelectImage={(url, kind = 'image') => {
+          setLightboxKind(kind)
+          setLightboxImage(url)
+        }}
         onCloseTicket={() => void closeTicket()}
         getImageUrl={(a) => a.signed_url || a.file_url || ''}
         onRecoverMedia={
@@ -1520,7 +1524,11 @@ export default function SummaryPage() {
             : undefined
         }
       />
-      <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />
+      <ImageLightbox
+        imageUrl={lightboxImage}
+        mediaKind={lightboxKind}
+        onClose={() => setLightboxImage(null)}
+      />
     </AppShell>
   )
 }

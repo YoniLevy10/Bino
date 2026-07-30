@@ -279,6 +279,14 @@ export function resolveSidebarNavItems(
     }
   }
 
+  // Keep curated order even when DB custom order still has summary early
+  // and newly enabled addons are appended later.
+  result.sort((a, b) => {
+    const ai = TENANT_SIDEBAR_NAV_IDS.indexOf(a.id as SidebarNavItemId)
+    const bi = TENANT_SIDEBAR_NAV_IDS.indexOf(b.id as SidebarNavItemId)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
+
   return applySidebarNavLabels(result, customLabels)
 }
 

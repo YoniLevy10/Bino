@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Drawer, Button, Select, theme } from '../ui'
-import { TicketChat } from './TicketChat'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
 import { CollapsibleSection } from '../shared/CollapsibleSection'
@@ -19,7 +18,7 @@ import type {
 
 export type { TicketDetailRow, TicketDetailAttachment, TicketDetailLog }
 
-type Tab = 'details' | 'chat' | 'whatsapp'
+type Tab = 'details' | 'whatsapp'
 
 const PRIORITY_OPTIONS = [
   { label: 'נמוכה', value: 'LOW' },
@@ -59,7 +58,7 @@ interface TicketDetailDrawerProps {
   onStatusChange: (value: string) => void
   onPriorityChange?: (value: string) => void
   onSave: () => void
-  onSelectImage: (url: string) => void
+  onSelectImage: (url: string, mediaKind?: 'image' | 'video') => void
   onCloseTicket: () => void
   getImageUrl: (attachment: TicketDetailAttachment) => string
   onRecoverMedia?: () => void | Promise<void>
@@ -85,7 +84,7 @@ export function TicketDetailDrawer({
   savingTicket,
   workersMap,
   professionals = [],
-  tenantClientId = null,
+  tenantClientId: _tenantClientId = null,
   reporterName,
   descriptionReadOnly = false,
   descriptionTranslation = '',
@@ -208,7 +207,6 @@ export function TicketDetailDrawer({
                 id: 'details' as const,
                 label: `פרטים${hasAttachments ? ` · ${selectedTicketAttachments.length}` : ''}`,
               },
-              { id: 'chat' as const, label: 'צ׳אט פנימי' },
               { id: 'whatsapp' as const, label: 'WhatsApp דייר' },
             ]}
             activeTab={activeTab}
@@ -342,8 +340,11 @@ export function TicketDetailDrawer({
                           key={attachment.id}
                           type="button"
                           onClick={() => {
-                            if (attachment.mime_type?.startsWith('image/')) {
-                              onSelectImage(getImageUrl(attachment))
+                            const mime = attachment.mime_type || ''
+                            if (mime.startsWith('image/')) {
+                              onSelectImage(getImageUrl(attachment), 'image')
+                            } else if (mime.startsWith('video/')) {
+                              onSelectImage(getImageUrl(attachment), 'video')
                             }
                           }}
                           style={styles.attachmentThumb}
@@ -484,13 +485,6 @@ export function TicketDetailDrawer({
                 </CollapsibleSection>
               )}
             </>
-          )}
-
-          {activeTab === 'chat' && (
-            <TicketChat
-              ticketId={selectedTicket.id}
-              clientId={tenantClientId || selectedTicket.client_id || null}
-            />
           )}
 
           {activeTab === 'whatsapp' && selectedTicket.reporter_phone && (

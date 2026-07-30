@@ -44,15 +44,34 @@ describe('resolveSidebarNavItems', () => {
     expect(paid.map((i) => i.id)).not.toContain('calendar')
   })
 
-  it('applies custom order among allowed ids and appends missing defaults', () => {
+  it('applies curated tenant order (custom order cannot float summary above addons)', () => {
     const items = resolveSidebarNavItems(['summary', 'tickets', 'dashboard'])
-    expect(items[0].id).toBe('summary')
-    expect(items[1].id).toBe('tickets')
-    expect(items[2].id).toBe('dashboard')
-    expect(items.map((i) => i.id)).toEqual(
-      expect.arrayContaining(['projects', 'residents', 'workers'])
+    expect(items.map((i) => i.id)).toEqual([
+      'dashboard',
+      'tickets',
+      'projects',
+      'residents',
+      'workers',
+      'summary',
+    ])
+  })
+
+  it('keeps summary after pinned paid addons even if custom order puts it early', () => {
+    const items = resolveSidebarNavItems(
+      ['dashboard', 'tickets', 'projects', 'residents', 'workers', 'summary'],
+      null,
+      new Set(['whatsapp_inbox', 'attendance'] as const)
     )
-    expect(items.map((i) => i.id)).toHaveLength(FREE_SIDEBAR_IDS.length)
+    expect(items.map((i) => i.id)).toEqual([
+      'dashboard',
+      'tickets',
+      'projects',
+      'residents',
+      'workers',
+      'whatsapp_inbox',
+      'attendance',
+      'summary',
+    ])
   })
 
   it('strips internal diagnostics ids from db payload', () => {
