@@ -15,6 +15,7 @@ export async function middleware(req: NextRequest) {
   // Also: /api/superadmin/* and /api/admin/* use x-admin-secret auth, not Supabase cookies
   if (
     pathname.startsWith('/api/webhook/whatsapp') ||
+    pathname.startsWith('/api/webhook/greeninvoice') ||
     pathname.startsWith('/api/public/') ||
     pathname.startsWith('/api/worker-auth') ||
     pathname.startsWith('/api/worker/') ||
@@ -25,6 +26,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/cron/') ||
     pathname.startsWith('/report') ||
     pathname.startsWith('/intake') ||
+    pathname.startsWith('/pay') ||
     pathname === '/privacy' ||
     pathname.startsWith('/admin/') ||
     pathname.startsWith('/superadmin') ||

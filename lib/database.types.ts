@@ -366,6 +366,7 @@ export type Database = {
       collection_charges: {
         Row: {
           amount: number
+          batch_id: string | null
           client_id: string
           created_at: string
           created_by: string | null
@@ -378,7 +379,9 @@ export type Database = {
           greeninvoice_payment_url: string | null
           id: string
           paid_at: string | null
+          period_label: string | null
           project_id: string | null
+          public_token: string
           resident_id: string | null
           sent_at: string | null
           status: string
@@ -387,6 +390,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          batch_id?: string | null
           client_id: string
           created_at?: string
           created_by?: string | null
@@ -399,7 +403,9 @@ export type Database = {
           greeninvoice_payment_url?: string | null
           id?: string
           paid_at?: string | null
+          period_label?: string | null
           project_id?: string | null
+          public_token?: string
           resident_id?: string | null
           sent_at?: string | null
           status?: string
@@ -408,6 +414,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          batch_id?: string | null
           client_id?: string
           created_at?: string
           created_by?: string | null
@@ -420,7 +427,9 @@ export type Database = {
           greeninvoice_payment_url?: string | null
           id?: string
           paid_at?: string | null
+          period_label?: string | null
           project_id?: string | null
+          public_token?: string
           resident_id?: string | null
           sent_at?: string | null
           status?: string

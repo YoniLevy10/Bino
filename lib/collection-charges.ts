@@ -18,6 +18,14 @@ export const COLLECTION_CHARGE_STATUS_LABELS: Record<CollectionChargeStatus, str
   cancelled: 'בוטל',
 }
 
+export const COLLECTION_CHARGE_STATUS_COLORS: Record<CollectionChargeStatus, string> = {
+  draft: '#64748b',
+  sent: '#2563eb',
+  paid: '#16a34a',
+  failed: '#dc2626',
+  cancelled: '#94a3b8',
+}
+
 export type CollectionChargeRow = {
   id: string
   client_id: string
@@ -28,6 +36,9 @@ export type CollectionChargeRow = {
   amount: number
   currency: string
   status: CollectionChargeStatus
+  public_token: string
+  batch_id: string | null
+  period_label: string | null
   greeninvoice_client_id: string | null
   greeninvoice_document_id: string | null
   greeninvoice_document_number: number | null
@@ -38,4 +49,54 @@ export type CollectionChargeRow = {
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+export const COLLECTION_CHARGE_LIST_SELECT = `
+  id, client_id, project_id, resident_id, title, description, amount, currency, status,
+  public_token, batch_id, period_label,
+  greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
+  greeninvoice_payment_url, greeninvoice_payment_id,
+  sent_at, paid_at, created_by, created_at, updated_at,
+  residents ( id, full_name, phone, apartment_number, normalized_phone ),
+  projects ( id, name )
+`.replace(/\s+/g, ' ').trim()
+
+export type CollectionChargeListItem = CollectionChargeRow & {
+  residents?: {
+    id: string
+    full_name: string
+    phone: string | null
+    apartment_number: string | null
+    normalized_phone: string | null
+  } | null
+  projects?: {
+    id: string
+    name: string
+  } | null
+}
+
+export function isCollectionChargeStatus(v: unknown): v is CollectionChargeStatus {
+  return typeof v === 'string' && (COLLECTION_CHARGE_STATUSES as readonly string[]).includes(v)
+}
+
+export function formatChargeAmountIls(amount: number): string {
+  return `₪${Number(amount).toLocaleString('he-IL', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`
+}
+
+export function buildPaymentSmsBody(opts: {
+  residentName: string
+  title: string
+  amount: number
+  payUrl: string
+}): string {
+  const name = opts.residentName.trim() || 'דייר/ת'
+  const title = opts.title.trim() || 'חיוב'
+  return [
+    `שלום ${name},`,
+    `לתשלום: ${title} בסך ${formatChargeAmountIls(opts.amount)}.`,
+    `לתשלום מאובטח: ${opts.payUrl}`,
+  ].join('\n')
 }

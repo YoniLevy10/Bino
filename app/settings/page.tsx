@@ -1221,7 +1221,8 @@ function SettingsPageInner() {
                       </Button>
                     </div>
                     <span style={styles.formHint}>
-                      הגדירו ב-Morning → Webhooks — לעדכון סטטוס תשלום אוטומטי (בקרוב).
+                      הגדירו ב-Morning → Webhooks. אם הוגדר GREENINVOICE_WEBHOOK_SECRET בשרת, הוסיפו
+                      ?token=... לכתובת. מעדכן אוטומטית סטטוס שולם בגביית ועד.
                     </span>
                   </div>
 
