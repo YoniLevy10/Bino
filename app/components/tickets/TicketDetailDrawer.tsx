@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Drawer, Button, Select, theme } from '../ui'
 import { TicketChat } from './TicketChat'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
+import { CollapsibleSection } from '../shared/CollapsibleSection'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
@@ -67,35 +68,6 @@ interface TicketDetailDrawerProps {
   onMerge?: (targetTicketId: string) => void | Promise<void>
   onDelete?: () => void | Promise<void>
   onCancel?: () => void
-}
-
-function CollapsibleSection({
-  title,
-  open,
-  onToggle,
-  children,
-  badge,
-}: {
-  title: string
-  open: boolean
-  onToggle: () => void
-  children: ReactNode
-  badge?: string
-}) {
-  return (
-    <div style={styles.collapseWrap}>
-      <button type="button" onClick={onToggle} style={styles.collapseToggle} aria-expanded={open}>
-        <span style={styles.collapseTitle}>
-          {title}
-          {badge ? <span style={styles.collapseBadge}>{badge}</span> : null}
-        </span>
-        <span style={styles.collapseChevron} aria-hidden>
-          {open ? '▾' : '◂'}
-        </span>
-      </button>
-      {open ? <div style={styles.collapseBody}>{children}</div> : null}
-    </div>
-  )
 }
 
 export function TicketDetailDrawer({
