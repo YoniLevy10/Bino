@@ -64,15 +64,16 @@ const TABS = [
   { id: 'general', label: 'כללי' },
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
-  { id: 'greeninvoice', label: 'חשבונית ירוקה' },
+  { id: 'morning', label: 'Morning' },
   { id: 'team', label: 'משתמשי משרד' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
-/** Legacy `?tab=navigation` redirected after sidebar order became fixed. */
+/** Legacy tab ids: navigation removed; greeninvoice renamed to morning. */
 function resolveSettingsTab(raw: string | null): TabId {
   if (raw === 'navigation') return 'general'
+  if (raw === 'greeninvoice') return 'morning'
   if (raw && TABS.some((t) => t.id === raw)) return raw as TabId
   return 'general'
 }
@@ -176,6 +177,15 @@ function SettingsPageInner() {
 
   const greeninvoiceWebhookUrl = useMemo(
     () => (origin ? `${origin}/api/webhook/greeninvoice` : '/api/webhook/greeninvoice'),
+    [origin]
+  )
+
+  const defaultPaySuccessUrl = useMemo(
+    () => (origin ? `${origin}/pay/success` : '/pay/success'),
+    [origin]
+  )
+  const defaultPayFailureUrl = useMemo(
+    () => (origin ? `${origin}/pay/failure` : '/pay/failure'),
     [origin]
   )
 
@@ -398,7 +408,7 @@ function SettingsPageInner() {
         await load()
         return true
       },
-      { context: 'שמירת הגדרות חשבונית ירוקה נכשלה', showErrorToast: true }
+      { context: 'שמירת הגדרות Morning נכשלה', showErrorToast: true }
     )
     setSavingGreeninvoice(false)
   }
@@ -960,12 +970,19 @@ function SettingsPageInner() {
               </Card>
             )}
 
-            {activeTab === 'greeninvoice' && (
+            {activeTab === 'morning' && (
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    חיבור ל-Morning (חשבונית ירוקה) לגביית ועד — מפתחות API, סליקה ומסמכים. נדרש מנוי Best+ ב-Morning
-                    ופלאגין סליקה פעיל (Cardcom / Isracard / Grow).
+                    חיבור חשבון Morning שלכם לגביית ועד ב-Bamakor: יצירת חיובים, קישורי תשלום לדיירים
+                    (/pay/…) ועדכון אוטומטי כששולם. נדרש מנוי Best+ ופלאגין סליקה פעיל (Cardcom / Isracard / Grow).
+                  </p>
+                  <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                    אחרי שמירה ובדיקת חיבור —{' '}
+                    <Link href="/collections" style={styles.inlineLink}>
+                      לגביית ועד
+                    </Link>
+                    .
                   </p>
 
                   <div style={styles.formGroup}>
@@ -976,7 +993,7 @@ function SettingsPageInner() {
                         onChange={(e) => setGiEnabled(e.target.checked)}
                         style={styles.checkbox}
                       />
-                      הפעל גבייה דרך חשבונית ירוקה
+                      הפעל חיבור Morning לגביית ועד
                     </label>
                   </div>
 
@@ -1049,6 +1066,20 @@ function SettingsPageInner() {
                         placeholder="מזהה עסק (אופציונלי — הריצו בדיקת חיבור לרשימה)"
                       />
                     )}
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Webhook URL (לעדכון תשלומים בגבייה)</label>
+                    <div style={styles.readonlyRow}>
+                      <input readOnly value={greeninvoiceWebhookUrl} style={{ ...styles.input, flex: 1 }} />
+                      <Button variant="secondary" type="button" onClick={copyGreeninvoiceWebhook}>
+                        העתק
+                      </Button>
+                    </div>
+                    <span style={styles.formHint}>
+                      הגדירו ב-Morning → Webhooks. אם הוגדר GREENINVOICE_WEBHOOK_SECRET בשרת, הוסיפו
+                      ?token=... לכתובת. מעדכן אוטומטית סטטוס «שולם» בגביית ועד.
+                    </span>
                   </div>
 
                   <CollapsibleSection
@@ -1133,35 +1164,30 @@ function SettingsPageInner() {
                     </div>
 
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום מוצלח (אופציונלי)</label>
+                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום מוצלח</label>
                       <input
                         value={giPaymentSuccessUrl}
                         onChange={(e) => setGiPaymentSuccessUrl(e.target.value)}
                         style={styles.input}
-                        placeholder="https://..."
+                        placeholder={defaultPaySuccessUrl}
+                        dir="ltr"
                       />
+                      <span style={styles.formHint}>
+                        ריק = ברירת מחדל של Bamakor ({defaultPaySuccessUrl}) — דף אחרי תשלום בטופס Morning.
+                      </span>
                     </div>
 
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום שנכשל (אופציונלי)</label>
+                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום שנכשל</label>
                       <input
                         value={giPaymentFailureUrl}
                         onChange={(e) => setGiPaymentFailureUrl(e.target.value)}
                         style={styles.input}
-                        placeholder="https://..."
+                        placeholder={defaultPayFailureUrl}
+                        dir="ltr"
                       />
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Webhook URL (קריאה בלבד)</label>
-                      <div style={styles.readonlyRow}>
-                        <input readOnly value={greeninvoiceWebhookUrl} style={{ ...styles.input, flex: 1 }} />
-                        <Button variant="secondary" type="button" onClick={copyGreeninvoiceWebhook}>
-                          העתק
-                        </Button>
-                      </div>
                       <span style={styles.formHint}>
-                        הגדירו ב-Morning → Webhooks — לעדכון סטטוס תשלום אוטומטי (בקרוב).
+                        ריק = ברירת מחדל של Bamakor ({defaultPayFailureUrl}).
                       </span>
                     </div>
                   </CollapsibleSection>
