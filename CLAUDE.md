@@ -121,8 +121,9 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `SMS_019_USERNAME` | 019SMS API username |
 | `SMS_019_PASSWORD` | 019SMS API password |
 | `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |
+| `WHATSAPP_APP_SECRET` | Meta App Secret — webhook `X-Hub-Signature-256` (Production + Preview; Sensitive) |
 | `WHATSAPP_VERIFY_TOKEN` | Meta webhook verification token |
-| `WHATSAPP_ACCESS_TOKEN` | Meta API access token (also stored in DB) |
+| `WHATSAPP_ACCESS_TOKEN` | Meta API access token (also stored in DB) — mark **Sensitive** in Vercel UI |
 | `WHATSAPP_PHONE_NUMBER_ID` | Meta phone number ID (also stored in DB) |
 | `VAPID_PUBLIC_KEY` | Web push server public key |
 | `VAPID_PRIVATE_KEY` | Web push server private key |
@@ -132,12 +133,19 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `ADMIN_SETUP_SECRET` | Superadmin routes secret |
 | `BAMAKOR_CLIENT_ID` | Dev fallback client ID |
 
-### Still missing
+### Optional / verify in Vercel (ops & billing webhooks)
 
-| Variable | How to get |
-|----------|-----------|
-| `WHATSAPP_APP_SECRET` | Meta Developer Console → App → Settings → Basic → App Secret |
-| `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
-| `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
-| `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
-| `GREENINVOICE_WEBHOOK_SECRET` | Random secret; append as `?token=` on Morning webhook URL (`/api/webhook/greeninvoice`) |
+These are **not** required for core ticket/WhatsApp flow. Confirm in Dashboard if using the feature:
+
+| Variable | Needed when | How to get |
+|----------|-------------|------------|
+| `PLATFORM_OPS_EMAIL` | Ops failure emails (fallback: `VAPID_SUBJECT` mailto → `levyyoni5@gmail.com`) | Inbox address |
+| `RESEND_API_KEY` | Platform ops alert emails | [Resend](https://resend.com) API key |
+| `RESEND_FROM_EMAIL` | Custom Resend sender (optional) | Verified Resend sender |
+| `GREENINVOICE_WEBHOOK_SECRET` | Morning/GreenInvoice collections webhook | Random secret; `?token=` on `/api/webhook/greeninvoice` |
+| `DOCUMENT_SIGN_WEBHOOK_SECRET` | Document-sign webhook | Shared bearer secret |
+
+### Security hardening (live tenants)
+
+Do **not** merge monolithic security PRs into `main` while paying tenants are live without a phased plan.
+See **`docs/SECURITY_HARDENING_PLAN.md`** (covers remaining non-env gaps + safe rollout of [#71](https://github.com/YoniLevy10/Bamakor/pull/71)).
