@@ -61,7 +61,13 @@ export function extractGreenInvoiceWebhookIds(payload: unknown): GreenInvoiceWeb
   }
 }
 
-/** Authorize Morning webhook via shared secret query/header token. */
+import { secureStringEqual } from '@/lib/secure-compare'
+
+/**
+ * Authorize Morning webhook via shared secret query/header token.
+ * If GREENINVOICE_WEBHOOK_SECRET is unset — allow (collections not locked yet).
+ * When set — require matching query `token` or `x-webhook-token` (timing-safe).
+ */
 export function authorizeGreenInvoiceWebhook(opts: {
   expectedSecret: string | null | undefined
   tokenFromQuery: string | null | undefined
@@ -70,5 +76,6 @@ export function authorizeGreenInvoiceWebhook(opts: {
   const expected = (opts.expectedSecret || '').trim()
   if (!expected) return true
   const token = (opts.tokenFromQuery || opts.tokenFromHeader || '').trim()
-  return token === expected
+  if (!token) return false
+  return secureStringEqual(token, expected)
 }

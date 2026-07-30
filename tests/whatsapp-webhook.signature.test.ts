@@ -71,4 +71,25 @@ describe('POST /api/webhook/whatsapp — signature required', () => {
     )
     expect(res.status).toBe(403)
   })
+
+  it('accepts a valid Meta signature and continues (empty entry → 200 received)', async () => {
+    const { createHmac } = await import('node:crypto')
+    process.env.WHATSAPP_APP_SECRET = 'unit-test-meta-secret'
+    const { POST } = await import('@/app/api/webhook/whatsapp/route')
+    const raw = JSON.stringify({ entry: [] })
+    const sig = `sha256=${createHmac('sha256', 'unit-test-meta-secret').update(raw, 'utf8').digest('hex')}`
+    const res = await POST(
+      new NextRequest('http://localhost/api/webhook/whatsapp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-hub-signature-256': sig,
+        },
+        body: raw,
+      })
+    )
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { received?: boolean }
+    expect(json.received).toBe(true)
+  })
 })

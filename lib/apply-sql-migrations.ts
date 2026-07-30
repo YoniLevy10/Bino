@@ -6,7 +6,9 @@ export const PENDING_MIGRATION_FILES = [
   '080_api_rate_limit_rpc.sql',
   '081_session_preferred_language.sql',
   '082_rate_limit_upsert.sql',
-  '087_workers_hide_access_token.sql',
+  // 087_workers_hide_access_token.sql — apply MANUALLY only AFTER the portal-link
+  // deploy is live (see docs/SECURITY_HARDENING_PLAN.md). Auto-apply before UI
+  // would break "copy worker link" for managers still on the old workers page.
 ] as const
 
 /** Strip sslmode from URL so pg Client `ssl.rejectUnauthorized` applies (Vercel + Supabase). */

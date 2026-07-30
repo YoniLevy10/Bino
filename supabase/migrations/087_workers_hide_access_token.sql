@@ -1,6 +1,12 @@
 -- Hide workers.access_token from PostgREST (authenticated / anon).
 -- Portal links and SMS use service_role via API only.
 -- Browser mutations already go through /api/create-worker and /api/update-worker.
+--
+-- APPLY ORDER (live tenants):
+-- 1) Deploy app with /api/workers/portal-link + workers page that no longer SELECTs access_token
+-- 2) Smoke: copy portal link + SMS invite + worker login with existing token URL
+-- 3) Only then apply this migration (not in PENDING_MIGRATION_FILES auto-runner)
+-- Rollback helper: 087_workers_hide_access_token.rollback.sql
 
 REVOKE ALL ON TABLE public.workers FROM anon, authenticated;
 

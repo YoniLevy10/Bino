@@ -2,6 +2,8 @@
 
 Operational guides for platform and tenant features.
 
+Security rollout (live tenants): see [`SECURITY_HARDENING_PLAN.md`](./SECURITY_HARDENING_PLAN.md) — do not merge [#71](https://github.com/YoniLevy10/Bamakor/pull/71) as a monolith.
+
 ---
 
 ## חתמת עובדים (NFC — worker stamp)
