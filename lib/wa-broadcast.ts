@@ -16,6 +16,7 @@ import {
   resolveWaBroadcastTemplate,
   resolveWaBroadcastTemplateByMetaName,
 } from '@/lib/wa-broadcast-policy'
+import { sanitizeWhatsAppTemplateParam } from '@/lib/whatsapp-template-params'
 
 export type WaBroadcastRunResult = WaBroadcastRecipientBreakdown & {
   recipients_total: number
@@ -76,9 +77,9 @@ export async function runWhatsAppBroadcast(
     }
   }
 
-  const trimmedParams = params.map((p) => p.trim())
+  const trimmedParams = params.map((p) => sanitizeWhatsAppTemplateParam(p.trim()))
   for (let i = 0; i < catalog.params.length; i++) {
-    if (!trimmedParams[i]) {
+    if (!trimmedParams[i] || trimmedParams[i] === '—') {
       throw new Error(`שדה חובה: ${catalog.params[i].label}`)
     }
   }

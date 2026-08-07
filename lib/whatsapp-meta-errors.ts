@@ -12,6 +12,9 @@ export function whatsAppMetaErrorHint(code: number | undefined, httpStatus?: num
   if (code === 190) return 'טוקן WhatsApp פג — עדכנו whatsapp_access_token בהגדרות'
   if (code === 131026) return 'לא ניתן לשלוח למספר זה'
   if (code === 132000) return 'פרמטרים לא תואמים לתבנית'
+  if (code === 132018) {
+    return 'פרמטרי התבנית לא תקינים (שורה חדשה/רווחים/מספר שדות) — בדקו את תוכן המשתנים'
+  }
   if (code === 132015) return 'תבנית paused או disabled ב-Meta'
   return 'שליחת WhatsApp נכשלה'
 }
@@ -19,7 +22,7 @@ export function whatsAppMetaErrorHint(code: number | undefined, httpStatus?: num
 /** Meta errors that cron retry cannot fix without manual intervention. */
 export function isNonRetryableWhatsAppMetaError(code: number | undefined): boolean {
   if (code == null) return false
-  return [132001, 190, 100, 132000, 132015, 131026].includes(code)
+  return [132001, 190, 100, 132000, 132015, 132018, 131026].includes(code)
 }
 
 export function formatWhatsAppTemplateFailureMessage(
