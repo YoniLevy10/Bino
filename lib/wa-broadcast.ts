@@ -77,12 +77,13 @@ export async function runWhatsAppBroadcast(
     }
   }
 
-  const trimmedParams = params.map((p) => sanitizeWhatsAppTemplateParam(p.trim()))
+  const trimmedParams = params.map((p) => p.trim())
   for (let i = 0; i < catalog.params.length; i++) {
-    if (!trimmedParams[i] || trimmedParams[i] === '—') {
+    if (!trimmedParams[i]) {
       throw new Error(`שדה חובה: ${catalog.params[i].label}`)
     }
   }
+  const safeParams = trimmedParams.map((p) => sanitizeWhatsAppTemplateParam(p))
 
   const breakdown = await listWaBroadcastRecipients(admin, opts.clientId, opts.projectId)
   const list = breakdown.recipients.slice(0, WA_BROADCAST_MAX_PER_RUN)
@@ -119,11 +120,11 @@ export async function runWhatsAppBroadcast(
 
   let sent = 0
   let failed = 0
-  const previewBody = buildInboxTemplatePreview(catalog, trimmedParams)
+  const previewBody = buildInboxTemplatePreview(catalog, safeParams)
 
   const components =
-    trimmedParams.length > 0
-      ? [{ type: 'body', parameters: trimmedParams.map((text) => ({ type: 'text', text })) }]
+    safeParams.length > 0
+      ? [{ type: 'body', parameters: safeParams.map((text) => ({ type: 'text', text })) }]
       : []
 
   for (const recipient of list) {
@@ -161,7 +162,7 @@ export async function runWhatsAppBroadcast(
         {
           send_kind: 'template',
           template_name: metaName,
-          template_params: trimmedParams,
+          template_params: safeParams,
           template_language: lang,
           preview_body: previewBody,
           meta_http_status: metaErr.current?.httpStatus,
