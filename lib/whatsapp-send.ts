@@ -6,6 +6,7 @@ import {
   type WhatsAppMetaError,
 } from '@/lib/whatsapp-meta-errors'
 import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
+import { sanitizeWhatsAppTemplateParam } from '@/lib/whatsapp-template-params'
 
 export type { WhatsAppMetaError }
 
@@ -263,7 +264,7 @@ function buildWhatsAppTemplatePayload(
       type: 'body',
       parameters: bodyParams.map((text) => ({
         type: 'text',
-        text,
+        text: sanitizeWhatsAppTemplateParam(text),
       })),
     })
   }

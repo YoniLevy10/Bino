@@ -12,6 +12,7 @@ import {
   formatWhatsAppTemplateFailureMessage,
   resolveWhatsAppRetryTemplateName,
 } from '@/lib/whatsapp-meta-errors'
+import { sanitizeWhatsAppTemplateParam } from '@/lib/whatsapp-template-params'
 
 type Details = {
   client_id?: string
@@ -42,7 +43,9 @@ function buildRetryPayload(d: Details): Record<string, unknown> | null {
   const templateName = resolveWhatsAppRetryTemplateName(d)
   if (!templateName) return null
 
-  const params = Array.isArray(d.template_params) ? d.template_params.map(String) : []
+  const params = Array.isArray(d.template_params)
+    ? d.template_params.map((p) => sanitizeWhatsAppTemplateParam(String(p)))
+    : []
   const lang = d.template_language || 'he'
 
   if (sendKind === 'image_template' || d.header_image_link) {

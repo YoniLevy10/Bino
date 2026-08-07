@@ -3,6 +3,7 @@ import { sendWhatsAppTemplateMessageWithCredentials } from '@/lib/whatsapp-send'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 import { metaTemplateNameWorkerAssignment } from '@/lib/meta-whatsapp-pending-actions'
 import { getLogger } from '@/lib/logging'
+import { sanitizeWhatsAppTemplateParam } from '@/lib/whatsapp-template-params'
 
 export type WorkerAssignmentWaResult = {
   sent: number
@@ -12,6 +13,10 @@ export type WorkerAssignmentWaResult = {
 /**
  * Notify assigned worker via Meta-approved template (works outside 24h session window).
  * SMS remains the primary channel; this is additive.
+ *
+ * Meta template worker_assignment_notice expects exactly 3 body params:
+ * {{1}} building, {{2}} ticket number, {{3}} description.
+ * Params must not contain newlines/tabs (Meta 132018).
  */
 export async function notifyWorkerAssignmentWhatsApp(
   supabase: SupabaseClient,
@@ -38,9 +43,9 @@ export async function notifyWorkerAssignmentWhatsApp(
 
   const creds = { phoneNumberId, accessToken }
   const templateParams = [
-    params.buildingName.slice(0, 60),
-    String(params.ticketNumber),
-    (params.description || 'ללא תיאור').slice(0, 200),
+    sanitizeWhatsAppTemplateParam(params.buildingName.slice(0, 60), 'בניין'),
+    sanitizeWhatsAppTemplateParam(String(params.ticketNumber), '0'),
+    sanitizeWhatsAppTemplateParam((params.description || 'ללא תיאור').slice(0, 200), 'ללא תיאור'),
   ]
   const templateName = metaTemplateNameWorkerAssignment()
   const failureLog = { clientId: params.clientId }
