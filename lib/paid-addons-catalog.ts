@@ -202,22 +202,22 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
   },
   [PAID_ADDON_KEYS.collections]: {
     id: PAID_ADDON_KEYS.collections,
-    title: 'גביית ועד',
-    tagline: 'חיוב דיירים דרך Morning',
+    title: 'גבייה ותשלומים',
+    tagline: 'חיוב דיירים וסליקה דרך Morning',
     description:
-      'יצירת חיובים, קישורי תשלום ומסמכים דרך Morning — מחובר לחשבון Morning שלכם.',
-    highlights: ['מפתח API per-tenant', 'קישור תשלום', 'מסמכים אוטומטיים'],
+      'יצירת חיובים, קישורי תשלום ומסמכים דרך Morning — כולל חיבור סליקה במקום אחד.',
+    highlights: ['מפתח API per-tenant', 'קישור תשלום', 'מעקב שולם / לא שולם'],
     featureHref: '/collections',
-    featureCtaHe: 'לגביית ועד',
+    featureCtaHe: 'לגבייה ותשלומים',
     marketing: {
-      headline: 'גביית ועד בלי אקסלים — ישירות מ-Morning',
+      headline: 'גבייה ותשלומים בלי אקסלים — ישירות מ-Morning',
       intro:
-        'הלקוחה שלכם כבר עובדת ב-Morning. Bamakor מחבר את הדיירים, יוצר חיובים ושולח קישורי תשלום ב-SMS או WhatsApp.',
+        'הלקוחה שלכם כבר עובדת ב-Morning. Bamakor מחבר את הדיירים, יוצר חיובים ושולח קישורי תשלום ב-SMS או WhatsApp — חיבור הסליקה ומעקב החיובים באותו מסך.',
       valueProps: [
         'חשבון Morning משלכם — לא חשבון פלטפורמה',
         'סליקה דרך Cardcom / Isracard / Grow',
         'מסמכים וקבלות אוטומטיים ב-Morning',
-        'הגדרות מרוכזות תחת «Morning»',
+        'חיבור תשלומים ומעקב חיובים תחת אותו תוסף',
       ],
       scenarios: [
         'חברת ניהול שגובה דמי ועד חודשיים',

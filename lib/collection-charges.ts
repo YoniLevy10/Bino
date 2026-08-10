@@ -1,4 +1,10 @@
-/** Collection charge statuses — גביית ועד via Morning. */
+/** Collection charge statuses — גבייה ותשלומים via Morning. */
+
+/** Unified product name (nav, addon, page) — merges former «גביית ועד» + «תשלומים». */
+export const COLLECTIONS_PRODUCT_NAME_HE = 'גבייה ותשלומים'
+
+/** Deep link to Morning connection settings inside the collections product. */
+export const COLLECTIONS_CONNECTION_HREF = '/collections?tab=connection'
 
 export const COLLECTION_CHARGE_STATUSES = [
   'draft',

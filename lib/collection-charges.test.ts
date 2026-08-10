@@ -231,6 +231,14 @@ describe('collections nav mapping', () => {
   it('maps /collections to collections nav id', () => {
     expect(navItemIdForPathname('/collections')).toBe('collections')
   })
+
+  it('exposes unified product name and connection deep link', async () => {
+    const { COLLECTIONS_PRODUCT_NAME_HE, COLLECTIONS_CONNECTION_HREF } = await import(
+      '@/lib/collection-charges'
+    )
+    expect(COLLECTIONS_PRODUCT_NAME_HE).toBe('גבייה ותשלומים')
+    expect(COLLECTIONS_CONNECTION_HREF).toBe('/collections?tab=connection')
+  })
 })
 
 describe('markChargePaidByMorningIds', () => {

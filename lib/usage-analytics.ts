@@ -71,7 +71,7 @@ const FEATURE_LABELS: Record<UsageFeatureKey, string> = {
   project_documents: 'מסמכי פרויקט',
   whatsapp_inbox: 'תיבת WhatsApp',
   campaigns: 'קמפיינים SMS',
-  collections: 'גביית ועד',
+  collections: 'גבייה ותשלומים',
   settings: 'הגדרות',
   addons: 'תוספים',
   whatsapp_bot: 'בוט WhatsApp (דיירים)',

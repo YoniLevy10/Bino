@@ -160,7 +160,7 @@ export function CollectionsBoard() {
           await loadProjects(cid)
           return true
         },
-        { context: 'טעינת גביית ועד', showErrorToast: true }
+        { context: 'טעינת גבייה ותשלומים', showErrorToast: true }
       )
       setLoading(false)
     })()
@@ -495,13 +495,13 @@ export function CollectionsBoard() {
           רענון
         </Button>
         <Link
-          href="/settings?tab=morning"
+          href="/collections?tab=connection"
           style={{
             ...styles.settingsLink,
             marginInlineStart: isMobile ? 0 : 'auto',
           }}
         >
-          הגדרות Morning
+          חיבור תשלומים
         </Link>
       </div>
 

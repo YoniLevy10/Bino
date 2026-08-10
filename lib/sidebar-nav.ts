@@ -169,7 +169,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   collections: {
     id: 'collections',
     href: '/collections',
-    label: 'גביית ועד',
+    label: 'גבייה ותשלומים',
     icon: 'chart',
   },
 }

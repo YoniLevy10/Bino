@@ -92,7 +92,7 @@ export function requireConfiguredCredentials(row: ClientGreenInvoiceRow): {
     return {
       ok: false,
       error:
-        'חשבונית ירוקה (Morning) לא מוגדרת. היכנסו להגדרות → חשבונית ירוקה והזינו מפתחות API.',
+        'חיבור תשלומים (Morning) לא מוגדר. היכנסו לגבייה ותשלומים → חיבור תשלומים והזינו מפתחות API.',
     }
   }
   const credentials = credentialsFromClientRow(row)
@@ -100,7 +100,7 @@ export function requireConfiguredCredentials(row: ClientGreenInvoiceRow): {
     return {
       ok: false,
       error:
-        'חסרים מפתחות Morning. היכנסו להגדרות → חשבונית ירוקה והשלימו את ההגדרה.',
+        'חסרים מפתחות Morning. היכנסו לגבייה ותשלומים → חיבור תשלומים והשלימו את ההגדרה.',
     }
   }
   return { ok: true, credentials }
