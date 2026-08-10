@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'תשלום הצליח | במאקור',
+  title: 'תשלום הצליח | במקור',
   robots: { index: false, follow: false },
 }
 
@@ -29,7 +29,7 @@ export default function PaySuccessPage() {
             fontWeight: 700,
           }}
         >
-          במאקור
+          במקור
         </p>
         <h1 style={{ margin: '0 0 12px', fontSize: 28, color: '#14532d' }}>התשלום התקבל</h1>
         <p style={{ margin: '0 0 24px', fontSize: 16, color: '#166534', lineHeight: 1.6 }}>

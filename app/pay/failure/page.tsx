@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'תשלום לא הושלם | במאקור',
+  title: 'תשלום לא הושלם | במקור',
   robots: { index: false, follow: false },
 }
 
@@ -29,7 +29,7 @@ export default function PayFailurePage() {
             fontWeight: 700,
           }}
         >
-          במאקור
+          במקור
         </p>
         <h1 style={{ margin: '0 0 12px', fontSize: 28, color: '#7f1d1d' }}>התשלום לא הושלם</h1>
         <p style={{ margin: '0 0 24px', fontSize: 16, color: '#991b1b', lineHeight: 1.6 }}>
