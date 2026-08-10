@@ -10,8 +10,8 @@ function CollectionsPageInner() {
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.collections}
       title="גביית ועד"
-      mobileSubtitle="מי שילם / מי לא — ושליחה מרוכזת"
-      desktopSubtitle="מעקב תשלומים, שליחה מרוכזת וקישורי תשלום דרך Morning"
+      mobileSubtitle="ועד הבית / דמי ועד — תשלום חודשי"
+      desktopSubtitle="ועד הבית / דמי ועד — תשלום חודשי"
     >
       <CollectionsBoard />
     </AddonFeaturePageShell>

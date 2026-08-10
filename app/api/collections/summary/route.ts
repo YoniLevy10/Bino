@@ -58,8 +58,11 @@ export async function GET(req: Request) {
     chips: {
       sent: counts.sent,
       paid: counts.paid,
-      pending,
+      in_process: counts.draft,
+      cancelled: counts.cancelled,
       failed: counts.failed,
+      /** @deprecated keep for older clients */
+      pending,
     },
   })
 }

@@ -41,24 +41,12 @@ type ResidentOption = {
 type SummaryChips = {
   sent: number
   paid: number
-  pending: number
+  in_process: number
+  cancelled: number
   failed: number
 }
 
 type BulkPreviewRow = ResidentOption & { amount: string; selected: boolean }
-
-function formatDateHe(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleDateString('he-IL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
-  } catch {
-    return '—'
-  }
-}
 
 function residentPhone(r: { phone: string | null; normalized_phone?: string | null }): string {
   return (r.normalized_phone || r.phone || '').trim()
@@ -70,7 +58,13 @@ export function CollectionsBoard() {
   const [clientId, setClientId] = useState('')
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [items, setItems] = useState<CollectionChargeListItem[]>([])
-  const [chips, setChips] = useState<SummaryChips>({ sent: 0, paid: 0, pending: 0, failed: 0 })
+  const [chips, setChips] = useState<SummaryChips>({
+    sent: 0,
+    paid: 0,
+    in_process: 0,
+    cancelled: 0,
+    failed: 0,
+  })
 
   const [projectFilter, setProjectFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -144,10 +138,21 @@ export function CollectionsBoard() {
     setItems(listJson.items || [])
 
     const sumJson = (await sumRes.json().catch(() => ({}))) as {
-      chips?: SummaryChips
+      chips?: Partial<SummaryChips> & { pending?: number }
+      counts?: SummaryChips & { draft?: number }
       error?: string
     }
-    if (sumRes.ok && sumJson.chips) setChips(sumJson.chips)
+    if (sumRes.ok) {
+      if (sumJson.chips) {
+        setChips({
+          sent: sumJson.chips.sent ?? 0,
+          paid: sumJson.chips.paid ?? 0,
+          in_process: sumJson.chips.in_process ?? sumJson.counts?.draft ?? 0,
+          cancelled: sumJson.chips.cancelled ?? sumJson.counts?.cancelled ?? 0,
+          failed: sumJson.chips.failed ?? 0,
+        })
+      }
+    }
   }, [periodFilter, projectFilter, searchTerm, statusFilter])
 
   useEffect(() => {
@@ -178,16 +183,6 @@ export function CollectionsBoard() {
       )
     })()
   }, [clientId, loadCharges])
-
-  async function refresh() {
-    await asyncHandler(
-      async () => {
-        await loadCharges()
-        return true
-      },
-      { context: 'רענון חיובים', showErrorToast: true }
-    )
-  }
 
   async function loadResidentsForProject(projectId: string): Promise<ResidentOption[]> {
     if (!clientId || !projectId) return []
@@ -437,26 +432,33 @@ export function CollectionsBoard() {
     setBusyId(null)
   }
 
-  async function copyPayLink(row: CollectionChargeListItem) {
+  async function openPayPage(row: CollectionChargeListItem) {
     const url =
       typeof window !== 'undefined'
         ? `${window.location.origin}/pay/${row.public_token}`
         : `/pay/${row.public_token}`
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('הקישור הועתק')
-    } catch {
-      toast.error('העתקה נכשלה')
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  async function openReceipt(row: CollectionChargeListItem) {
+    if (row.greeninvoice_payment_url) {
+      window.open(row.greeninvoice_payment_url, '_blank', 'noopener,noreferrer')
+      return
     }
+    await openPayPage(row)
+  }
+
+  function printReport() {
+    window.print()
   }
 
   const statusOptions = useMemo(
     () => [
-      { label: 'הכל', value: 'all' },
-      { label: 'טיוטה', value: 'draft' },
-      { label: 'נשלח', value: 'sent' },
+      { label: 'כל הסטטוסים', value: 'all' },
+      { label: 'בתהליך', value: 'draft' },
+      { label: 'נשלח והועבר', value: 'sent' },
       { label: 'שולם', value: 'paid' },
-      { label: 'נכשל', value: 'failed' },
+      { label: 'חריג', value: 'failed' },
       { label: 'בוטל', value: 'cancelled' },
     ],
     []
@@ -464,7 +466,7 @@ export function CollectionsBoard() {
 
   const projectOptions = useMemo(
     () => [
-      { label: 'כל הבניינים', value: '' },
+      { label: 'כל הדירות / בניינים', value: '' },
       ...projects.map((p) => ({ label: p.name, value: p.id })),
     ],
     [projects]
@@ -480,118 +482,128 @@ export function CollectionsBoard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div
-        style={{
-          ...styles.toolbar,
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'stretch' : 'center',
-        }}
-      >
-        <Button onClick={() => void openBulk()}>שליחה מרוכזת לבניין</Button>
-        <Button variant="secondary" onClick={() => void openCreate()}>
-          חיוב בודד
-        </Button>
-        <Button variant="secondary" onClick={() => void refresh()}>
-          רענון
-        </Button>
-        <Link
-          href="/settings?tab=morning"
-          style={{
-            ...styles.settingsLink,
-            marginInlineStart: isMobile ? 0 : 'auto',
-          }}
+      <div style={styles.heroActions}>
+        <Button
+          variant="primary"
+          onClick={() => void openBulk()}
+          style={styles.primaryCta}
         >
-          הגדרות Morning
-        </Link>
+          <SendIcon />
+          שליחת דרישת תשלום
+        </Button>
+        <div style={{ ...styles.secondaryRow, flexDirection: isMobile ? 'column' : 'row' }}>
+          <Button variant="secondary" onClick={printReport} style={{ flex: 1 }}>
+            <PrintIcon />
+            דוח גבייה
+          </Button>
+          <Link href="/settings?tab=morning" style={{ flex: 1, textDecoration: 'none' }}>
+            <Button variant="secondary" style={{ width: '100%' }}>
+              <GearIcon />
+              הגדרות
+            </Button>
+          </Link>
+        </div>
+        <p style={styles.partnerNote}>
+          בשיתוף <span style={styles.partnerBrand}>morning</span>
+        </p>
       </div>
 
-      <div style={{ ...styles.chips, flexDirection: isMobile ? 'column' : 'row' }}>
-        <Chip label="נשלחו" value={chips.sent} color="#2563eb" />
-        <Chip label="שולמו" value={chips.paid} color="#16a34a" />
-        <Chip label="ממתינים" value={chips.pending} color="#ca8a04" />
-        <Chip label="נכשלו" value={chips.failed} color="#dc2626" />
+      <div style={styles.chips}>
+        <Chip label="נשלחו" value={chips.sent} tone="primary" icon="send" />
+        <Chip label="שולמו" value={chips.paid} tone="success" icon="check" />
+        <Chip label="בתהליך" value={chips.in_process} tone="warning" icon="clock" />
+        <Chip label="בוטלו" value={chips.cancelled} tone="muted" icon="cancel" />
+        <Chip label="חריגים" value={chips.failed} tone="error" icon="alert" />
       </div>
 
       <div style={{ ...styles.filters, flexDirection: isMobile ? 'column' : 'row' }}>
         <Select
-          value={projectFilter}
-          onChange={setProjectFilter}
-          options={projectOptions}
-          style={{ minWidth: isMobile ? '100%' : 180 }}
-        />
-        <Select
           value={statusFilter}
           onChange={setStatusFilter}
           options={statusOptions}
-          style={{ minWidth: isMobile ? '100%' : 140 }}
+          style={{ minWidth: isMobile ? '100%' : 150 }}
+        />
+        <Select
+          value={projectFilter}
+          onChange={setProjectFilter}
+          options={projectOptions}
+          style={{ minWidth: isMobile ? '100%' : 160 }}
         />
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
-          placeholder="חיפוש שם / דירה / טלפון"
-          style={{ flex: 1, maxWidth: isMobile ? '100%' : 320 }}
+          placeholder="חיפוש שם / מספר דירה"
+          style={{ flex: 1, maxWidth: isMobile ? '100%' : 280 }}
         />
         <input
           value={periodFilter}
           onChange={(e) => setPeriodFilter(e.target.value)}
-          placeholder="תקופה (למשל 2026-07)"
-          style={styles.textInput}
+          placeholder="2026-07"
+          style={{ ...styles.textInput, maxWidth: isMobile ? '100%' : 120 }}
+          aria-label="תקופה"
         />
+        <Button variant="secondary" size="sm" onClick={() => void openCreate()}>
+          חיוב בודד
+        </Button>
       </div>
 
       {items.length === 0 ? (
         <EmptyState
           title="אין חיובים להצגה"
-          description="התחילו בשליחה מרוכזת לבניין — או צרו חיוב בודד."
+          description="לחצו על «שליחת דרישת תשלום» כדי להתחיל גבייה לבניין."
         />
       ) : (
         <div style={styles.list}>
           {items.map((row) => {
             const status = row.status as CollectionChargeStatus
-            const color = COLLECTION_CHARGE_STATUS_COLORS[status] || '#64748b'
+            const color = COLLECTION_CHARGE_STATUS_COLORS[status] || theme.colors.textMuted
             const busy = busyId === row.id
+            const apt = row.residents?.apartment_number
             return (
               <Card key={row.id} noPadding>
                 <div style={styles.cardInner}>
                   <div style={styles.cardTop}>
-                    <div>
-                      <div style={styles.cardName}>
-                        {row.residents?.full_name || 'דייר'}
-                        {row.residents?.apartment_number
-                          ? ` · דירה ${row.residents.apartment_number}`
-                          : ''}
-                      </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={styles.cardName}>{row.residents?.full_name || 'דייר'}</div>
                       <div style={styles.cardMeta}>
-                        {row.projects?.name || '—'} · {row.title}
+                        {apt ? `דירה ${apt}` : 'דירה —'}
+                        {row.projects?.name ? ` · ${row.projects.name}` : ''}
+                      </div>
+                      <div style={styles.cardMetaSoft}>
+                        {row.title}
                         {row.period_label ? ` · ${row.period_label}` : ''}
                       </div>
                     </div>
-                    <div style={{ textAlign: 'left' }}>
+                    <div style={styles.cardAside}>
                       <div style={styles.amount}>{formatChargeAmountIls(Number(row.amount))}</div>
-                      <span
-                        style={{
-                          ...styles.badge,
-                          background: `${color}22`,
-                          color,
-                        }}
-                      >
+                      <span style={{ ...styles.badge, background: `${color}18`, color }}>
                         {COLLECTION_CHARGE_STATUS_LABELS[status] || status}
                       </span>
                     </div>
                   </div>
-                  <div style={styles.cardDates}>
-                    נשלח: {formatDateHe(row.sent_at)} · שולם: {formatDateHe(row.paid_at)}
-                  </div>
-                  <div style={{ ...styles.actions, flexWrap: 'wrap' }}>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => void copyPayLink(row)}
-                    >
-                      העתק קישור
-                    </Button>
-                    {(status === 'draft' || status === 'failed') && (
+
+                  <div style={styles.actions}>
+                    {status === 'paid' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => void openReceipt(row)}
+                      >
+                        הצגת קבלה
+                      </Button>
+                    )}
+                    {status !== 'paid' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => void openPayPage(row)}
+                      >
+                        הצגת דרישה
+                      </Button>
+                    )}
+                    {(status === 'draft' || status === 'failed' || status === 'cancelled') && (
                       <Button
                         size="sm"
                         disabled={busy}
@@ -599,14 +611,14 @@ export function CollectionsBoard() {
                           void postChargeAction(
                             '/api/collections/charges/send',
                             row.id,
-                            'נשלח לתשלום'
+                            'דרישת התשלום נשלחה'
                           )
                         }
                       >
                         שלח
                       </Button>
                     )}
-                    {(status === 'sent' || status === 'draft') && (
+                    {status === 'sent' && (
                       <Button
                         size="sm"
                         variant="secondary"
@@ -615,17 +627,17 @@ export function CollectionsBoard() {
                           void postChargeAction(
                             '/api/collections/charges/resend',
                             row.id,
-                            'SMS נשלח מחדש'
+                            'הדרישה נשלחה מחדש'
                           )
                         }
                       >
-                        שלח SMS שוב
+                        שלח שוב
                       </Button>
                     )}
                     {status !== 'paid' && status !== 'cancelled' && (
                       <Button
                         size="sm"
-                        variant="secondary"
+                        variant="ghost"
                         disabled={busy}
                         onClick={() =>
                           void postChargeAction(
@@ -635,11 +647,8 @@ export function CollectionsBoard() {
                           )
                         }
                       >
-                        בטל
+                        ביטול
                       </Button>
-                    )}
-                    {row.greeninvoice_document_id && (
-                      <span style={styles.docId}>מסמך: {row.greeninvoice_document_id.slice(0, 8)}…</span>
                     )}
                   </div>
                 </div>
@@ -652,7 +661,7 @@ export function CollectionsBoard() {
       <Drawer
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
-        title="שליחה מרוכזת לבניין"
+        title="שליחת דרישת תשלום"
         isMobile={isMobile}
         footer={
           <div style={styles.drawerActions}>
@@ -826,48 +835,190 @@ export function CollectionsBoard() {
   )
 }
 
-function Chip({ label, value, color }: { label: string; value: number; color: string }) {
+function Chip({
+  label,
+  value,
+  tone,
+  icon,
+}: {
+  label: string
+  value: number
+  tone: 'primary' | 'success' | 'warning' | 'error' | 'muted'
+  icon: 'send' | 'check' | 'clock' | 'cancel' | 'alert'
+}) {
+  const toneColor =
+    tone === 'primary'
+      ? theme.colors.primary
+      : tone === 'success'
+        ? theme.colors.success
+        : tone === 'warning'
+          ? theme.colors.warning
+          : tone === 'error'
+            ? theme.colors.error
+            : theme.colors.textMuted
+
   return (
-    <div style={{ ...styles.chip, borderColor: `${color}55` }}>
-      <span style={{ ...styles.chipValue, color }}>{value}</span>
-      <span style={styles.chipLabel}>{label}</span>
+    <div style={styles.chip}>
+      <div style={{ ...styles.chipIcon, background: `${toneColor}18`, color: toneColor }}>
+        <ChipGlyph name={icon} />
+      </div>
+      <div style={styles.chipText}>
+        <span style={{ ...styles.chipValue, color: toneColor }}>{value}</span>
+        <span style={styles.chipLabel}>{label}</span>
+      </div>
     </div>
   )
 }
 
+function ChipGlyph({ name }: { name: 'send' | 'check' | 'clock' | 'cancel' | 'alert' }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  }
+  if (name === 'send') {
+    return (
+      <svg {...common}>
+        <path d="m22 2-7 20-4-9-9-4Z" />
+        <path d="M22 2 11 13" />
+      </svg>
+    )
+  }
+  if (name === 'check') {
+    return (
+      <svg {...common}>
+        <path d="M20 6 9 17l-5-5" />
+      </svg>
+    )
+  }
+  if (name === 'clock') {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    )
+  }
+  if (name === 'cancel') {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="m15 9-6 6" />
+        <path d="m9 9 6 6" />
+      </svg>
+    )
+  }
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  )
+}
+
+function SendIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </svg>
+  )
+}
+
+function PrintIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9V2h12v7" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <path d="M6 14h12v8H6z" />
+    </svg>
+  )
+}
+
+function GearIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    </svg>
+  )
+}
+
 const styles: Record<string, CSSProperties> = {
-  toolbar: {
-    display: 'flex',
-    gap: 10,
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  settingsLink: {
-    color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  chips: {
-    display: 'flex',
-    gap: 10,
-  },
-  chip: {
-    flex: 1,
+  heroActions: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2,
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
+    gap: 10,
+  },
+  primaryCta: {
+    width: '100%',
+    minHeight: 52,
+    fontSize: 16,
+    fontWeight: 700,
+    background: theme.colors.primary,
+    color: theme.colors.textInverse,
+    border: 'none',
+  },
+  secondaryRow: {
+    display: 'flex',
+    gap: 10,
+  },
+  partnerNote: {
+    margin: '2px 0 0',
+    textAlign: 'center',
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+  partnerBrand: {
+    fontWeight: 700,
+    color: theme.colors.textSecondary,
+    letterSpacing: '0.02em',
+  },
+  chips: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(104px, 1fr))',
+    gap: 8,
+  },
+  chip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '12px 12px',
+    borderRadius: theme.radius.lg,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
+    minWidth: 0,
+  },
+  chipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  chipText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    minWidth: 0,
   },
   chipValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 800,
+    lineHeight: 1.1,
   },
   chipLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.colors.textSecondary,
+    fontWeight: 500,
   },
   filters: {
     display: 'flex',
@@ -894,12 +1045,13 @@ const styles: Record<string, CSSProperties> = {
     padding: 16,
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 12,
   },
   cardTop: {
     display: 'flex',
     justifyContent: 'space-between',
     gap: 12,
+    alignItems: 'flex-start',
   },
   cardName: {
     fontSize: 16,
@@ -911,6 +1063,15 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textSecondary,
     marginTop: 4,
   },
+  cardMetaSoft: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  cardAside: {
+    textAlign: 'left',
+    flexShrink: 0,
+  },
   amount: {
     fontSize: 18,
     fontWeight: 800,
@@ -919,23 +1080,16 @@ const styles: Record<string, CSSProperties> = {
   badge: {
     display: 'inline-block',
     marginTop: 6,
-    padding: '2px 8px',
-    borderRadius: 8,
+    padding: '3px 10px',
+    borderRadius: 999,
     fontSize: 12,
     fontWeight: 700,
-  },
-  cardDates: {
-    fontSize: 12,
-    color: theme.colors.textMuted,
   },
   actions: {
     display: 'flex',
     gap: 8,
     alignItems: 'center',
-  },
-  docId: {
-    fontSize: 11,
-    color: theme.colors.textMuted,
+    flexWrap: 'wrap',
   },
   form: {
     display: 'flex',

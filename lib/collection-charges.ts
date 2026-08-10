@@ -11,19 +11,19 @@ export const COLLECTION_CHARGE_STATUSES = [
 export type CollectionChargeStatus = (typeof COLLECTION_CHARGE_STATUSES)[number]
 
 export const COLLECTION_CHARGE_STATUS_LABELS: Record<CollectionChargeStatus, string> = {
-  draft: 'טיוטה',
-  sent: 'נשלח לתשלום',
+  draft: 'בתהליך',
+  sent: 'נשלח והועבר',
   paid: 'שולם',
-  failed: 'נכשל',
+  failed: 'חריג',
   cancelled: 'בוטל',
 }
 
 export const COLLECTION_CHARGE_STATUS_COLORS: Record<CollectionChargeStatus, string> = {
-  draft: '#64748b',
-  sent: '#2563eb',
-  paid: '#16a34a',
-  failed: '#dc2626',
-  cancelled: '#94a3b8',
+  draft: '#FF9500',
+  sent: '#0066FF',
+  paid: '#34C759',
+  failed: '#FF3B30',
+  cancelled: '#86868B',
 }
 
 export type CollectionChargeRow = {
