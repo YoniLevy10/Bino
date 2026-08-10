@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="he">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Bamakor Brag</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #0b0f14;
+        color: #1A1A2E;
+        font-family: Heebo, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        direction: rtl;
+      }
+      .stage-bg {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0, 102, 255, 0.10), transparent 55%),
+          radial-gradient(ellipse 70% 50% at 90% 90%, rgba(52, 199, 89, 0.08), transparent 50%),
+          linear-gradient(160deg, #F9F9FB 0%, #EEF2F8 55%, #E8EEF8 100%);
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 64px;
+      }
+      .scene-inner {
+        width: 100%;
+        max-width: 1480px;
+        display: grid;
+        gap: 28px;
+        justify-items: center;
+      }
+      .eyebrow {
+        font-size: 28px;
+        font-weight: 600;
+        color: #0066FF;
+        letter-spacing: 0.02em;
+        margin: 0;
+      }
+      .headline {
+        font-size: 64px;
+        font-weight: 800;
+        line-height: 1.15;
+        margin: 0;
+        color: #1A1A2E;
+        text-align: center;
+      }
+      .subhead {
+        font-size: 32px;
+        font-weight: 500;
+        color: #3C3C43;
+        margin: 0;
+        text-align: center;
+      }
+
+      /* WhatsApp bubble */
+      .wa-phone {
+        width: 520px;
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 28px;
+        box-shadow: 0 24px 60px rgba(26, 26, 46, 0.12);
+        overflow: hidden;
+      }
+      .wa-header {
+        background: #075E54;
+        color: #FFFFFF;
+        padding: 18px 22px;
+        font-size: 24px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .wa-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.25);
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .wa-body {
+        background: #ECE5DD;
+        padding: 28px 22px 36px;
+        min-height: 220px;
+      }
+      .wa-bubble {
+        max-width: 88%;
+        margin-inline-start: auto;
+        background: #DCF8C6;
+        border-radius: 16px 4px 16px 16px;
+        padding: 16px 18px;
+        font-size: 28px;
+        font-weight: 600;
+        color: #1A1A2E;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      }
+      .wa-meta {
+        margin-top: 8px;
+        text-align: start;
+        font-size: 16px;
+        color: #5F6F78;
+      }
+
+      /* Dashboard / ticket */
+      .dash {
+        width: 1180px;
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 24px;
+        box-shadow: 0 28px 70px rgba(26, 26, 46, 0.12);
+        overflow: hidden;
+      }
+      .dash-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 28px;
+        border-bottom: 1px solid #E8E8ED;
+        background: #F9F9FB;
+      }
+      .dash-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 26px;
+        font-weight: 700;
+      }
+      .dash-brand-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #0066FF center / cover no-repeat;
+      }
+      .dash-pill {
+        font-size: 18px;
+        font-weight: 600;
+        color: #0055DD;
+        background: rgba(0, 102, 255, 0.08);
+        border-radius: 999px;
+        padding: 8px 16px;
+      }
+      .ticket {
+        margin: 28px;
+        border: 1px solid #E8E8ED;
+        border-radius: 18px;
+        padding: 24px 26px;
+        background: #FFFFFF;
+        display: grid;
+        gap: 14px;
+      }
+      .ticket-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .ticket-id {
+        font-size: 34px;
+        font-weight: 800;
+        margin: 0;
+      }
+      .status {
+        font-size: 20px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 8px 16px;
+      }
+      .status.open {
+        color: #0066FF;
+        background: #E5F0FF;
+      }
+      .status.closed {
+        color: #187A34;
+        background: #E8F9ED;
+      }
+      .ticket-desc {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        color: #1A1A2E;
+      }
+      .ticket-meta {
+        font-size: 22px;
+        color: #5C5C63;
+        margin: 0;
+      }
+
+      /* Worker phone */
+      .worker {
+        width: 560px;
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 28px;
+        box-shadow: 0 24px 60px rgba(26, 26, 46, 0.12);
+        padding: 28px;
+        display: grid;
+        gap: 18px;
+      }
+      .worker-title {
+        margin: 0;
+        font-size: 30px;
+        font-weight: 800;
+      }
+      .worker-sub {
+        margin: 0;
+        font-size: 22px;
+        color: #3C3C43;
+      }
+      .worker-btn {
+        margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 64px;
+        border-radius: 14px;
+        background: #0066FF;
+        color: #FFFFFF;
+        font-size: 26px;
+        font-weight: 700;
+        position: relative;
+      }
+      .tap-ring {
+        position: absolute;
+        width: 54px;
+        height: 54px;
+        border-radius: 999px;
+        border: 3px solid rgba(255,255,255,0.85);
+        left: 50%;
+        top: 50%;
+        margin-left: -27px;
+        margin-top: -27px;
+        pointer-events: none;
+      }
+
+      /* KPIs */
+      .kpi-row {
+        display: flex;
+        gap: 18px;
+        margin: 0 28px 28px;
+      }
+      .kpi {
+        flex: 1;
+        background: #F5F5F7;
+        border-radius: 16px;
+        padding: 18px 20px;
+        text-align: center;
+      }
+      .kpi-label {
+        font-size: 18px;
+        color: #5C5C63;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      .kpi-value {
+        font-size: 42px;
+        font-weight: 800;
+        margin: 0;
+        color: #1A1A2E;
+      }
+      .kpi.success .kpi-value { color: #1F8A3A; }
+
+      /* Outro */
+      .outro {
+        display: grid;
+        justify-items: center;
+        gap: 22px;
+        text-align: center;
+      }
+      .outro-logo {
+        width: 120px;
+        height: 120px;
+        border-radius: 28px;
+        box-shadow: 0 0 0 0 rgba(0, 102, 255, 0.35);
+      }
+      .outro-name {
+        font-size: 84px;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .outro-tag {
+        font-size: 36px;
+        font-weight: 500;
+        color: #3C3C43;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="20"
+    >
+      <div class="stage-bg" aria-hidden="true"></div>
+
+      <audio id="bgm" src="assets/music/bgm.mp3" data-start="0" data-duration="20" data-volume="0.28"></audio>
+      <audio id="sfx-bubble" src="assets/sfx/card-place-1.ogg" data-start="0.45" data-duration="1.2" data-volume="0.55"></audio>
+      <audio id="sfx-ticket" src="assets/sfx/card-place-2.ogg" data-start="3.2" data-duration="1.2" data-volume="0.55"></audio>
+      <audio id="sfx-click" src="assets/sfx/click1.ogg" data-start="9.1" data-duration="0.8" data-volume="0.45"></audio>
+      <audio id="sfx-close" src="assets/sfx/bong_001.ogg" data-start="11.6" data-duration="1.5" data-volume="0.4"></audio>
+      <audio id="sfx-kpi1" src="assets/sfx/card-place-3.ogg" data-start="12.4" data-duration="1.0" data-volume="0.4"></audio>
+      <audio id="sfx-kpi2" src="assets/sfx/card-place-1.ogg" data-start="12.9" data-duration="1.0" data-volume="0.35"></audio>
+      <audio id="sfx-logo" src="assets/sfx/impactBell_heavy_000.ogg" data-start="16.2" data-duration="2.0" data-volume="0.22"></audio>
+
+      <!-- Scene 1: WhatsApp hook 0–3 -->
+      <section id="scene-hook" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div class="scene-inner">
+          <p id="hook-eyebrow" class="eyebrow">דייר דיווח</p>
+          <div id="wa-phone" class="wa-phone">
+            <div class="wa-header">
+              <div class="wa-avatar">ב</div>
+              <span>במקור · פרויקט הרצל 12</span>
+            </div>
+            <div class="wa-body">
+              <div id="wa-bubble" class="wa-bubble">
+                יש נזילה בקומה 3
+                <div class="wa-meta">18:42 ✓✓</div>
+              </div>
+            </div>
+          </div>
+          <p id="hook-line" class="headline">המערכת כבר עובדת.</p>
+        </div>
+      </section>
+
+      <!-- Scene 2: Ticket opens 3–7.5 -->
+      <section id="scene-ticket" class="clip" data-start="3" data-duration="4.5" data-track-index="1">
+        <div class="scene-inner">
+          <p id="ticket-eyebrow" class="eyebrow">לוח הבקרה</p>
+          <div id="dash-open" class="dash">
+            <div class="dash-top">
+              <div class="dash-brand">
+                <div class="dash-brand-mark" style="background-image:url('assets/img/logo.png')"></div>
+                <span>במקור</span>
+              </div>
+              <span class="dash-pill">תקלות פתוחות</span>
+            </div>
+            <div id="ticket-card" class="ticket">
+              <div class="ticket-row">
+                <h2 class="ticket-id">תקלה #142</h2>
+                <span class="status open">פתוחה</span>
+              </div>
+              <p class="ticket-desc">נזילה בקומה 3 · דיווח WhatsApp</p>
+              <p class="ticket-meta">פרויקט הרצל 12 · לפני רגע</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 3: Worker 7.5–11.5 -->
+      <section id="scene-worker" class="clip" data-start="7.5" data-duration="4" data-track-index="1">
+        <div class="scene-inner">
+          <p id="worker-eyebrow" class="eyebrow">פורטל עובד</p>
+          <div id="worker-card" class="worker">
+            <p class="worker-title">תקלה חדשה</p>
+            <p class="worker-sub">בניין הרצל 12 · נזילה בקומה 3</p>
+            <div id="worker-btn" class="worker-btn">
+              פתח תקלה
+              <span id="tap-ring" class="tap-ring"></span>
+            </div>
+          </div>
+          <p id="worker-line" class="subhead">העובד בשטח מקבל ומטפל.</p>
+        </div>
+      </section>
+
+      <!-- Scene 4: Closed + KPIs 11.5–16 -->
+      <section id="scene-close" class="clip" data-start="11.5" data-duration="4.5" data-track-index="1">
+        <div class="scene-inner">
+          <p id="close-eyebrow" class="eyebrow">סגירה</p>
+          <div id="dash-close" class="dash">
+            <div class="dash-top">
+              <div class="dash-brand">
+                <div class="dash-brand-mark" style="background-image:url('assets/img/logo.png')"></div>
+                <span>במקור</span>
+              </div>
+              <span class="dash-pill">עודכן עכשיו</span>
+            </div>
+            <div id="ticket-closed" class="ticket">
+              <div class="ticket-row">
+                <h2 class="ticket-id">תקלה #142</h2>
+                <span id="status-closed" class="status closed">נסגרה</span>
+              </div>
+              <p class="ticket-desc">נזילה בקומה 3 · טופלה</p>
+              <p class="ticket-meta">זמן טיפול: 42 דקות</p>
+            </div>
+            <div class="kpi-row">
+              <div id="kpi-1" class="kpi">
+                <p class="kpi-label">פתוחות</p>
+                <p class="kpi-value">3</p>
+              </div>
+              <div id="kpi-2" class="kpi">
+                <p class="kpi-label">בטיפול</p>
+                <p class="kpi-value">2</p>
+              </div>
+              <div id="kpi-3" class="kpi success">
+                <p class="kpi-label">נסגרו היום</p>
+                <p id="kpi-closed-val" class="kpi-value">12</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 5: Outro 16–20 -->
+      <section id="scene-outro" class="clip" data-start="16" data-duration="4" data-track-index="1">
+        <div class="outro">
+          <img id="outro-logo" class="outro-logo" src="assets/img/logo.png" alt="Bamakor" />
+          <h1 id="outro-name" class="outro-name">במקור</h1>
+          <p id="outro-tag" class="outro-tag">אחזקה שמגיבה בזמן.</p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Scene 1 (0–3)
+      tl.fromTo("#hook-eyebrow", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0.15);
+      tl.fromTo("#wa-phone", { opacity: 0, y: 40, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }, 0.35);
+      tl.fromTo("#wa-bubble", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.7);
+      tl.fromTo("#hook-line", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 1.35);
+
+      // Scene 2 (absolute 3–7.5 → local 0)
+      tl.fromTo("#ticket-eyebrow", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 3.1);
+      tl.fromTo("#dash-open", { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 3.25);
+      tl.fromTo("#ticket-card", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 3.55);
+
+      // Scene 3 (7.5–11.5)
+      tl.fromTo("#worker-eyebrow", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 7.6);
+      tl.fromTo("#worker-card", { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 7.75);
+      tl.fromTo("#worker-line", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 8.2);
+      tl.fromTo("#tap-ring", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)" }, 9.05);
+      tl.to("#tap-ring", { opacity: 0, scale: 1.5, duration: 0.45, ease: "power2.out" }, 9.4);
+      tl.to("#worker-btn", { scale: 0.97, duration: 0.12, yoyo: true, repeat: 1, ease: "power1.inOut" }, 9.1);
+
+      // Scene 4 (11.5–16)
+      tl.fromTo("#close-eyebrow", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 11.6);
+      tl.fromTo("#dash-close", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 11.7);
+      tl.fromTo("#status-closed", { scale: 0.85, opacity: 0.4 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.6)" }, 12.0);
+      tl.fromTo("#kpi-1", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 12.35);
+      tl.fromTo("#kpi-2", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 12.55);
+      tl.fromTo("#kpi-3", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 12.75);
+      tl.fromTo("#kpi-closed-val", { textContent: 8 }, {
+        textContent: 12,
+        duration: 0.8,
+        ease: "power1.out",
+        snap: { textContent: 1 }
+      }, 12.9);
+
+      // Scene 5 (16–20)
+      tl.fromTo("#outro-logo", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, 16.15);
+      tl.fromTo("#outro-name", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 16.4);
+      tl.fromTo("#outro-tag", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 16.75);
+      tl.to("#outro-logo", {
+        boxShadow: "0 0 40px 8px rgba(0, 102, 255, 0.35)",
+        duration: 1.2,
+        yoyo: true,
+        repeat: 1,
+        ease: "sine.inOut"
+      }, 17.2);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
