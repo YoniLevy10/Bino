@@ -29,9 +29,16 @@ https://bamakor.vercel.app/worker/nfc?t=TAG_CODE
 ### Manager rollout
 
 1. `/attendance` — follow setup checklist.
-2. Send SMS links to all workers.
-3. Print worker guide: `/attendance/worker-guide`.
-4. Monitor today summary, live workers, anomalies, sticker progress.
+2. Review **מדבקות NFC / QR** panel — copy URL / verify QR matches physical sticker.
+3. Send SMS links to all workers.
+4. Print worker guide: `/attendance/worker-guide`.
+5. Mark checklist «בדיקת מדבקה» after one successful clock in/out.
+6. Monitor today summary, live workers, anomalies, sticker progress.
+
+### Deprecated (removed)
+
+- Office QR station (`/api/attendance/clock`, `/api/attendance/station`, office staff APIs) — deleted.
+- `/attendance/scan` remains a public redirect stub to `/attendance` for old printed QR stickers.
 
 ### Cron jobs (Vercel)
 

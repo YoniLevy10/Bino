@@ -92,7 +92,6 @@ import {
 
 const logger = getLogger()
 
-type WaLocation = NonNullable<ParsedWhatsAppMessage['location']>
 type WaInboundMediaKind = 'image' | 'video'
 
 const WA_INBOUND_MEDIA: Record<
@@ -623,83 +622,6 @@ async function attachPendingWhatsAppMediaToTicketIfAny(
   return true
 }
 
-async function mergeWhatsAppLocationIntoTicketMetadata(
-  admin: SupabaseClient,
-  ticketId: string,
-  loc: WaLocation
-) {
-  const { data } = await admin
-    .from('tickets')
-    .select('ticket_metadata')
-    .eq('id', ticketId)
-    .is('deleted_at', null)
-    .maybeSingle()
-  const raw = (data as { ticket_metadata?: unknown } | null)?.ticket_metadata
-  const prev = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? { ...(raw as Record<string, unknown>) } : {}
-  const next = {
-    ...prev,
-    whatsapp_location: {
-      lat: loc.lat,
-      lng: loc.lng,
-      name: loc.name,
-      address: loc.address,
-      received_at: new Date().toISOString(),
-    },
-  }
-  const { error } = await admin
-    .from('tickets')
-    .update({ ticket_metadata: next })
-    .eq('id', ticketId)
-    .is('deleted_at', null)
-  if (error) {
-    logger.warn('WEBHOOK', 'merge location into ticket failed', { ticketId, err: error.message })
-  }
-}
-
-/** After ticket insert: copy stashed session location into ticket metadata. */
-async function attachPendingSessionLocationToTicketIfAny(
-  from: string,
-  clientId: string,
-  ticketId: string,
-  supabaseAdmin: SupabaseClient
-): Promise<boolean> {
-  const { data: openSession, error } = await supabaseAdmin
-    .from('sessions')
-    .select('id, pending_location')
-    .eq('phone_number', from)
-    .eq('client_id', clientId)
-    .eq('is_active', true)
-    .maybeSingle()
-
-  if (error) {
-    const msg = String((error as { message?: string }).message || '')
-    if (msg.includes('pending_location') || (error as { code?: string }).code === '42703') {
-      return false
-    }
-    logger.warn('WEBHOOK', 'pending location: could not load session', { err: (error as { message?: string }).message })
-    return false
-  }
-
-  const pl = (openSession as { pending_location?: WaLocation | null } | null)?.pending_location
-  const sessionId = (openSession as { id?: string } | null)?.id
-  if (!pl || typeof pl.lat !== 'number' || typeof pl.lng !== 'number' || !sessionId) return false
-
-  await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, ticketId, pl)
-
-  const { error: clearErr } = await supabaseAdmin
-    .from('sessions')
-    .update({ pending_location: null, last_activity_at: new Date().toISOString() })
-    .eq('id', sessionId)
-
-  if (clearErr) {
-    const m = String((clearErr as { message?: string }).message || '')
-    if (!m.includes('pending_location') && (clearErr as { code?: string }).code !== '42703') {
-      logger.warn('WEBHOOK', 'pending location: clear failed', { err: m })
-    }
-  }
-  return true
-}
-
 /** אופציונלי: טננט שנפתר ב-route לפני background — למניעת כפילות DB */
 export type WaWebhookTenant = { clientId: string; row: Record<string, unknown> }
 
@@ -1123,79 +1045,6 @@ export async function runWhatsAppInboundBackground(
       hasText: !!textBody,
       hasMedia: !!mediaId,
     })
-
-    /** Shared WhatsApp location → ticket metadata / session stash */
-    async function handleInboundLocation(loc: WaLocation) {
-      const { data: session, error: sessionError } = await supabaseAdmin
-        .from('sessions')
-        .select('id, phone_number, project_id, active_ticket_id, is_active')
-        .eq('phone_number', from)
-        .eq('client_id', webhookClientId)
-        .eq('is_active', true)
-        .order('last_activity_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (sessionError) {
-        logger.warn('WEBHOOK', 'fetch session for location failed', { err: sessionError.message })
-      }
-
-      if (session?.active_ticket_id) {
-        await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, session.active_ticket_id, loc)
-        try {
-          await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        if (session.id) {
-          await supabaseAdmin
-            .from('sessions')
-            .update({ last_activity_at: new Date().toISOString() })
-            .eq('id', session.id)
-        }
-        return
-      }
-
-      const openTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
-      if (openTicket) {
-        await mergeWhatsAppLocationIntoTicketMetadata(supabaseAdmin, openTicket.id, loc)
-        try {
-          await sendWa(waRecipient, 'location_attached', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
-
-      if (session?.id && session.project_id && !session.active_ticket_id) {
-        const payload = {
-          lat: loc.lat,
-          lng: loc.lng,
-          name: loc.name,
-          address: loc.address,
-          stashed_at: new Date().toISOString(),
-        }
-        const { error: stashErr } = await supabaseAdmin
-          .from('sessions')
-          .update({
-            pending_location: payload,
-            last_activity_at: new Date().toISOString(),
-          })
-          .eq('id', session.id)
-
-        if (stashErr) {
-          const msg = String((stashErr as { message?: string }).message || '')
-          if (!msg.includes('pending_location') && (stashErr as { code?: string }).code !== '42703') {
-            logger.warn('WEBHOOK', 'pending_location stash failed', { err: msg })
-          }
-        }
-
-        try {
-          await sendWa(waRecipient, 'location_stashed', residentWhatsAppCreds)
-        } catch { /* WA send failure is non-fatal */ }
-        return
-      }
-
-      try {
-        await sendWa(waRecipient, 'welcome', residentWhatsAppCreds)
-      } catch { /* WA send failure is non-fatal */ }
-    }
 
     // Meta sends type=unsupported placeholders (often 131060) before the real image/video webhook — ignore silently.
     if (messageType === 'unsupported') {
@@ -1920,7 +1769,6 @@ export async function runWhatsAppInboundBackground(
         added: mediaRecoverResult.attachments_added,
       })
     }
-    await attachPendingSessionLocationToTicketIfAny(from, webhookClientId, createdTicket.id, supabaseAdmin)
 
     if (session.project_id) {
       void queuePendingResidentApproval({

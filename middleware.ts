@@ -34,8 +34,6 @@ export async function middleware(req: NextRequest) {
     pathname === '/worker' ||
     pathname.startsWith('/worker/') ||
     pathname.startsWith('/attendance/scan') ||
-    pathname.startsWith('/api/attendance/station') ||
-    pathname.startsWith('/api/attendance/clock') ||
     pathname === '/offline.html'
   ) {
     return NextResponse.next()

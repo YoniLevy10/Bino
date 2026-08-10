@@ -29,19 +29,9 @@ type ShiftRow = {
   workers?: { full_name?: string; hourly_rate?: number | null } | { full_name?: string; hourly_rate?: number | null }[] | null
 }
 
-type VisitRow = {
-  id: string
-  worker_id: string
-  client_recorded_at: string
-  tag_code: string | null
-  event_type?: string
-  workers?: { full_name?: string } | { full_name?: string }[] | null
-  projects?: { name?: string } | { name?: string }[] | null
-}
-
 type WorkerOpt = { id: string; full_name: string }
 
-function workerName(row: ShiftRow | VisitRow): string {
+function workerName(row: ShiftRow): string {
   const w = row.workers
   if (!w) return '—'
   if (Array.isArray(w)) return w[0]?.full_name ?? '—'
@@ -55,13 +45,6 @@ function workerHourlyRate(row: ShiftRow): number | null {
   return rate != null && Number.isFinite(Number(rate)) ? Number(rate) : null
 }
 
-function visitProject(row: VisitRow): string {
-  const p = row.projects
-  if (!p) return row.tag_code ?? '—'
-  if (Array.isArray(p)) return p[0]?.name ?? '—'
-  return p.name ?? '—'
-}
-
 function toDateInput(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
@@ -71,14 +54,12 @@ type AttendanceShiftsReportProps = {
   lockToCurrentMonth?: boolean
   /** From /api/attendance/dashboard — skip duplicate fetch when unfiltered. */
   prefetchedShifts?: ShiftRow[] | null
-  prefetchedVisits?: VisitRow[] | null
   prefetchVersion?: number
 }
 
 export function AttendanceShiftsReport({
   lockToCurrentMonth = false,
   prefetchedShifts,
-  prefetchedVisits,
   prefetchVersion = 0,
 }: AttendanceShiftsReportProps) {
   const now = new Date()
@@ -89,7 +70,6 @@ export function AttendanceShiftsReport({
   const [workerId, setWorkerId] = useState('')
   const [workers, setWorkers] = useState<WorkerOpt[]>([])
   const [shifts, setShifts] = useState<ShiftRow[]>([])
-  const [visits, setVisits] = useState<VisitRow[]>([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -134,12 +114,10 @@ export function AttendanceShiftsReport({
         !opts?.force &&
         lockToCurrentMonth &&
         !workerId &&
-        prefetchedShifts !== undefined &&
-        prefetchedVisits !== undefined
+        prefetchedShifts !== undefined
 
       if (canUsePrefetch) {
         setShifts(prefetchedShifts ?? [])
-        setVisits(prefetchedVisits ?? [])
         setLoading(false)
         return
       }
@@ -153,25 +131,18 @@ export function AttendanceShiftsReport({
         })
         if (workerId) params.set('worker_id', workerId)
 
-        const [shRes, evRes] = await Promise.all([
-          fetchWithTimeout(`/api/attendance/shifts?${params.toString()}`),
-          fetchWithTimeout(`/api/attendance/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=500`),
-        ])
+        const shRes = await fetchWithTimeout(`/api/attendance/shifts?${params.toString()}`)
 
         const shBody = (await shRes.json().catch(() => ({}))) as { shifts?: ShiftRow[]; error?: string }
         if (!shRes.ok) throw new Error(shBody.error || 'טעינה נכשלה')
         setShifts(shBody.shifts ?? [])
-
-        const evBody = (await evRes.json().catch(() => ({}))) as { events?: VisitRow[] }
-        const allEvents = evBody.events ?? []
-        setVisits(allEvents.filter((e) => e.event_type === 'project_visit'))
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
       } finally {
         setLoading(false)
       }
     },
-    [from, to, workerId, lockToCurrentMonth, prefetchedShifts, prefetchedVisits]
+    [from, to, workerId, lockToCurrentMonth, prefetchedShifts]
   )
 
   useEffect(() => {
@@ -268,13 +239,6 @@ export function AttendanceShiftsReport({
         'עלות משוערת': w.cost > 0 ? w.cost.toFixed(2) : '',
       }))
 
-      const visitRows = visits.map((v) => ({
-        עובד: workerName(v),
-        בניין: visitProject(v),
-        תאריך: formatAttendanceDateTime(v.client_recorded_at),
-        תג: v.tag_code ?? '',
-      }))
-
       const wsDetail = XLSX.utils.json_to_sheet(detailRows)
       wsDetail['!cols'] = [{ wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 16 }]
       applyHeaderStyle(wsDetail, 9)
@@ -285,11 +249,6 @@ export function AttendanceShiftsReport({
       applyHeaderStyle(wsSummary, 4)
       applyDataStyles(wsSummary, summaryRows.length, 4)
 
-      const wsVisits = XLSX.utils.json_to_sheet(visitRows)
-      wsVisits['!cols'] = [{ wch: 22 }, { wch: 20 }, { wch: 18 }, { wch: 10 }]
-      applyHeaderStyle(wsVisits, 4)
-      applyDataStyles(wsVisits, visitRows.length, 4)
-
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(
         wb,
@@ -298,7 +257,6 @@ export function AttendanceShiftsReport({
       )
       XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום עובדים')
       XLSX.utils.book_append_sheet(wb, wsDetail, 'משמרות')
-      XLSX.utils.book_append_sheet(wb, wsVisits, 'ביקורים')
 
       XLSX.writeFile(wb, `bamakor-shifts-${monthKey || fromDate}.xlsx`)
       toast.success('הקובץ הורד')

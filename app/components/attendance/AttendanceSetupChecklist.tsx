@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { Card, Button, theme } from '../ui'
@@ -11,18 +11,67 @@ type Props = {
   stickerTotal: number
 }
 
+const STORAGE_KEY = 'bamakor_attendance_setup_v1'
+
+type SetupLocal = {
+  linksSentAt?: string
+  testedAt?: string
+}
+
+function readLocal(): SetupLocal {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as SetupLocal
+  } catch {
+    return {}
+  }
+}
+
+function writeLocal(next: SetupLocal) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  } catch {
+    /* ignore quota */
+  }
+}
+
 export function AttendanceSetupChecklist({ tagCount, stickerInstalled, stickerTotal }: Props) {
   const [sending, setSending] = useState(false)
+  const [local, setLocal] = useState<SetupLocal>({})
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate checklist from localStorage
+    setLocal(readLocal())
+  }, [])
+
+  const stickersDone = stickerTotal > 0 && stickerInstalled >= stickerTotal
   const steps = [
-    { done: tagCount > 0, label: 'תגים במערכת', hint: tagCount > 0 ? `${tagCount} תגים` : 'פנו לתמיכת במקור' },
     {
-      done: stickerTotal > 0 && stickerInstalled >= stickerTotal,
+      done: tagCount > 0,
+      label: 'תגים במערכת',
+      hint: tagCount > 0 ? `${tagCount} תגים` : 'פנו לתמיכת במקור ליצירת מדבקות',
+    },
+    {
+      done: stickersDone,
       label: 'מדבקות הודבקו',
       hint: stickerTotal > 0 ? `${stickerInstalled}/${stickerTotal} הודבקו` : '—',
     },
-    { done: false, label: 'שליחת קישור לעובדים', hint: 'לחצו למטה' },
-    { done: false, label: 'בדיקה — הצמדת טלפון למדבקה', hint: 'עשו עם עובד אחד' },
+    {
+      done: Boolean(local.linksSentAt),
+      label: 'שליחת קישור לעובדים',
+      hint: local.linksSentAt
+        ? `נשלח ${new Date(local.linksSentAt).toLocaleDateString('he-IL')}`
+        : 'לחצו למטה',
+    },
+    {
+      done: Boolean(local.testedAt),
+      label: 'בדיקה — הצמדת טלפון למדבקה',
+      hint: local.testedAt
+        ? `סומן ${new Date(local.testedAt).toLocaleDateString('he-IL')}`
+        : 'עשו עם עובד אחד ואז סמנו',
+    },
   ]
 
   async function sendAllLinks() {
@@ -36,11 +85,21 @@ export function AttendanceSetupChecklist({ tagCount, stickerInstalled, stickerTo
       const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
       if (!res.ok) throw new Error(body.error || 'שליחה נכשלה')
       toast.success(body.message || 'נשלח')
+      const next = { ...readLocal(), linksSentAt: new Date().toISOString() }
+      writeLocal(next)
+      setLocal(next)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
     } finally {
       setSending(false)
     }
+  }
+
+  function markTested() {
+    const next = { ...readLocal(), testedAt: new Date().toISOString() }
+    writeLocal(next)
+    setLocal(next)
+    toast.success('סומן כנבדק')
   }
 
   return (
@@ -64,6 +123,11 @@ export function AttendanceSetupChecklist({ tagCount, stickerInstalled, stickerTo
         <Button variant="secondary" size="sm" onClick={() => window.open('/attendance/worker-guide', '_blank')}>
           הדפס הוראות לעובדים
         </Button>
+        {!local.testedAt ? (
+          <Button variant="secondary" size="sm" onClick={markTested}>
+            סמן בדיקת מדבקה בוצעה
+          </Button>
+        ) : null}
       </div>
     </Card>
   )

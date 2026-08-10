@@ -26,7 +26,5 @@ export {
   normalizeTicketDescriptionForCompare,
   parseRecentDuplicateWhatsAppTicketError,
   readLastReporterProject,
-  mergeWhatsAppLocationIntoTicketMetadata,
-  type WaLocation,
 } from '@/lib/whatsapp-webhook/flow-ticket'
 export { fetchOpenTicketStatusLines } from '@/lib/whatsapp-webhook/flow-status'
