@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1080, height=1920" />
-    <title>במקור — Brag 90s</title>
+    <title>במקור — Brag 60s</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       @font-face {
@@ -55,7 +55,7 @@
         position: relative;
         z-index: 1;
         height: 100%;
-        padding: 40px 44px;
+        padding: 48px 48px;
         display: grid;
         place-items: center;
       }
@@ -65,80 +65,78 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        gap: 20px;
-      }
-      .pad-center-text .headline,
-      .pad-center-text .lede {
-        max-width: 920px;
-        text-align: center;
+        gap: 28px;
       }
       .stack {
         width: 100%;
-        max-width: 980px;
+        max-width: 920px;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 28px;
+        align-items: stretch;
+      }
+      .line {
+        margin: 0;
+        font-size: 44px;
+        font-weight: 800;
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+        color: #1A1A2E;
+        text-align: center;
       }
       .brand-xl {
         margin: 0;
-        font-size: 92px;
+        font-size: 108px;
         font-weight: 900;
         letter-spacing: -0.04em;
         line-height: 1;
         color: #0066FF;
       }
-      .headline {
+      .brand-sub {
         margin: 0;
-        font-size: 48px;
+        font-size: 40px;
         font-weight: 800;
-        line-height: 1.3;
-        letter-spacing: -0.025em;
+        line-height: 1.35;
         color: #1A1A2E;
-        max-width: 940px;
+        max-width: 880px;
       }
-      .lede {
+      .price {
         margin: 0;
         font-size: 30px;
-        font-weight: 600;
-        line-height: 1.55;
-        color: #3C3C43;
-        max-width: 900px;
-      }
-      .eyebrow {
-        margin: 0;
-        font-size: 26px;
-        font-weight: 800;
-        color: #0066FF;
-      }
-      .caption {
-        margin: 0;
-        font-size: 28px;
         font-weight: 700;
         color: #3C3C43;
-        text-align: center;
       }
 
-      .phone-shell {
-        width: 860px;
-        max-width: 100%;
-        margin: 0 auto;
+      .phone-shell,
+      .app-frame,
+      .drawer {
+        width: 100%;
         background: #FFFFFF;
         border: 1px solid #E8E8ED;
-        border-radius: 36px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
         overflow: hidden;
       }
-      .phone-header {
+      .phone-shell { border-radius: 36px; }
+      .app-frame { border-radius: 24px; }
+      .drawer {
+        border-radius: 24px;
+        padding: 28px 24px 30px;
+      }
+
+      .phone-header,
+      .app-top {
         background: #F5F5F7;
         border-bottom: 1px solid #E8E8ED;
-        padding: 26px 28px;
+        padding: 24px 26px;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 16px;
       }
+      .phone-header { justify-content: flex-start; }
       .avatar {
-        width: 56px;
-        height: 56px;
+        width: 52px;
+        height: 52px;
         border-radius: 9999px;
         background: #E5F0FF;
         color: #0066FF;
@@ -149,53 +147,35 @@
         font-size: 22px;
         flex-shrink: 0;
       }
-      .phone-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
-      .phone-sub { font-size: 22px; font-weight: 600; color: #5C5C63; margin-top: 2px; }
-      .phone-body { background: #F9F9FB; padding: 22px 20px 24px; }
+      .phone-title,
+      .app-top-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
+      .app-top-brand { font-size: 24px; font-weight: 800; color: #0066FF; }
+      .phone-body,
+      .app-body { background: #F9F9FB; padding: 22px; }
+
       .msg {
-        max-width: 94%;
-        margin: 0 0 18px auto;
+        max-width: 92%;
+        margin: 0 0 14px auto;
         background: #FFFFFF;
         border: 1px solid #E8E8ED;
         border-radius: 18px 18px 6px 18px;
-        padding: 20px 22px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        padding: 18px 20px;
       }
-      .msg-from { font-size: 22px; font-weight: 700; color: #0066FF; margin-bottom: 8px; }
-      .msg-text { font-size: 30px; font-weight: 700; color: #1A1A2E; line-height: 1.4; }
-      .msg-time { margin-top: 10px; font-size: 18px; font-weight: 600; color: #5C5C63; }
-
-      .app-frame {
-        background: #FFFFFF;
-        border: 1px solid #E8E8ED;
-        border-radius: 24px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-      }
-      .app-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 22px 26px;
-        border-bottom: 1px solid #E8E8ED;
-      }
-      .app-top-title { font-size: 32px; font-weight: 800; color: #1A1A2E; }
-      .app-top-brand { font-size: 24px; font-weight: 800; color: #0066FF; }
-      .app-body { padding: 24px; background: #F9F9FB; }
+      .msg:last-child { margin-bottom: 0; }
+      .msg-from { font-size: 20px; font-weight: 700; color: #0066FF; margin-bottom: 6px; }
+      .msg-text { font-size: 28px; font-weight: 700; color: #1A1A2E; line-height: 1.35; }
 
       .ticket {
         background: #FFFFFF;
         border: 1px solid #E8E8ED;
         border-radius: 16px;
-        padding: 26px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        padding: 24px;
       }
       .ticket-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 16px;
-        margin-bottom: 14px;
+        margin-bottom: 16px;
       }
       .ticket-num { font-size: 40px; font-weight: 800; color: #1A1A2E; }
       .badge {
@@ -210,11 +190,16 @@
       .badge-progress { background: #E5F0FF; color: #0066FF; }
       .badge-paid { background: #E8F9ED; color: #15803d; }
       .badge-sent { background: #E5F0FF; color: #1e40af; }
-      .ticket-meta { font-size: 26px; font-weight: 600; color: #3C3C43; margin-bottom: 12px; }
-      .ticket-desc { font-size: 34px; font-weight: 800; color: #1A1A2E; line-height: 1.4; margin-bottom: 20px; }
+      .ticket-desc {
+        font-size: 32px;
+        font-weight: 800;
+        color: #1A1A2E;
+        margin-bottom: 18px;
+        line-height: 1.3;
+      }
       .media {
         position: relative;
-        height: 280px;
+        height: 260px;
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid #E8E8ED;
@@ -223,144 +208,89 @@
       .media-shape {
         position: absolute;
         inset: 18% 12% auto 12%;
-        height: 42%;
+        height: 48%;
         border-radius: 14px;
         background: linear-gradient(135deg, rgba(0, 102, 255, 0.18), rgba(52, 199, 89, 0.12));
         border: 1px solid rgba(0, 102, 255, 0.15);
       }
       .media-dot {
         position: absolute;
-        width: 70px;
-        height: 70px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         background: rgba(255, 59, 48, 0.22);
         border: 2px solid rgba(255, 59, 48, 0.35);
         top: 28%;
         left: 22%;
       }
-      .media-caption {
-        position: absolute;
-        left: 0; right: 0; bottom: 0;
-        padding: 16px 18px;
-        background: rgba(255, 255, 255, 0.94);
-        border-top: 1px solid #E8E8ED;
-        font-size: 24px;
-        font-weight: 700;
-        color: #0066FF;
-        text-align: center;
-      }
 
-      .drawer {
-        background: #FFFFFF;
-        border: 1px solid #E8E8ED;
-        border-radius: 20px 20px 0 0;
-        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.08);
-        padding: 26px 24px 30px;
-      }
       .drawer-handle {
         width: 48px; height: 5px; border-radius: 9999px;
-        background: #D1D1D6; margin: 0 auto 18px;
+        background: #D1D1D6; margin: 0 auto 20px;
       }
-      .drawer-title { font-size: 34px; font-weight: 800; color: #1A1A2E; }
-      .drawer-sub { font-size: 24px; font-weight: 600; color: #5C5C63; margin: 4px 0 20px; }
-      .tabs {
-        display: flex; gap: 8px; padding: 6px;
-        background: #F5F5F7; border-radius: 12px; margin-bottom: 18px;
+      .drawer-title {
+        font-size: 34px; font-weight: 800; color: #1A1A2E; text-align: center; margin-bottom: 22px;
       }
-      .tab {
-        flex: 1; text-align: center; padding: 14px 8px; border-radius: 8px;
-        font-size: 22px; font-weight: 700; color: #5C5C63;
-      }
-      .tab.on {
-        background: #FFFFFF; color: #0066FF;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      }
-      .panel {
+      .action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
         background: #F9F9FB;
         border: 1px solid #E8E8ED;
-        border-radius: 12px;
-        padding: 20px 22px;
+        border-radius: 14px;
+        padding: 22px 20px;
         margin-bottom: 12px;
       }
-      .panel-k { font-size: 22px; font-weight: 700; color: #5C5C63; margin-bottom: 8px; }
-      .panel-v { font-size: 28px; font-weight: 700; color: #1A1A2E; line-height: 1.45; }
-      .btn-primary {
-        display: inline-flex; align-items: center; justify-content: center;
-        margin-top: 12px; min-height: 52px; padding: 0 20px;
-        border-radius: 12px; background: #0066FF; color: #FFFFFF;
-        font-size: 24px; font-weight: 700;
-      }
-      .btn-secondary {
-        display: inline-flex; align-items: center; justify-content: center;
-        margin-top: 12px; min-height: 52px; padding: 0 20px;
-        border-radius: 12px; background: #FFFFFF; color: #1A1A2E;
-        border: 1px solid #E8E8ED; font-size: 24px; font-weight: 700;
+      .action:last-child { margin-bottom: 0; }
+      .action-label { font-size: 30px; font-weight: 800; color: #1A1A2E; }
+      .action-chip {
+        font-size: 22px; font-weight: 700; color: #0066FF;
+        background: #E5F0FF; border-radius: 9999px; padding: 8px 14px;
       }
 
       .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
       .kpi {
         flex: 1; background: #FFFFFF; border: 1px solid #E8E8ED;
-        border-radius: 14px; padding: 18px 14px; text-align: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border-radius: 14px; padding: 20px 12px; text-align: center;
       }
-      .kpi-v { font-size: 36px; font-weight: 800; color: #0066FF; }
+      .kpi-v { font-size: 40px; font-weight: 800; color: #0066FF; }
       .kpi-l { font-size: 20px; font-weight: 700; color: #3C3C43; margin-top: 6px; }
 
-      .stamp-card {
+      .row-card {
         background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 16px;
-        padding: 22px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        padding: 22px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
       }
-      .stamp-row {
-        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      .row-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
+      .row-meta { font-size: 22px; font-weight: 600; color: #3C3C43; margin-top: 6px; }
+      .nfc {
+        margin-top: 14px; padding: 16px; border-radius: 12px;
+        background: #E5F0FF; color: #0066FF; font-size: 24px; font-weight: 700; text-align: center;
       }
-      .stamp-name { font-size: 30px; font-weight: 800; color: #1A1A2E; }
-      .stamp-meta { font-size: 24px; font-weight: 600; color: #3C3C43; margin-top: 6px; }
-      .nfc-tag {
-        margin-top: 14px; padding: 14px 16px; border-radius: 12px;
-        background: #E5F0FF; color: #0066FF; font-size: 22px; font-weight: 700;
-        text-align: center;
-      }
-
-      .charge {
-        background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 16px;
-        padding: 22px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      }
-      .charge-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
-      .charge-amt { font-size: 36px; font-weight: 800; color: #1e40af; margin-top: 8px; }
-      .charge-meta { font-size: 22px; font-weight: 600; color: #3C3C43; margin-top: 8px; }
-      .pay-cta {
+      .pay-amt { font-size: 36px; font-weight: 800; color: #1e40af; }
+      .pay-btn {
         margin-top: 14px; display: flex; align-items: center; justify-content: center;
         min-height: 56px; border-radius: 12px; background: #1e40af; color: #FFFFFF;
         font-size: 24px; font-weight: 800;
       }
 
-      .flow { display: flex; gap: 12px; }
+      .flow { display: flex; gap: 12px; width: 100%; }
       .flow-step {
         flex: 1; background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 14px;
-        padding: 22px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        padding: 24px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       }
       .flow-n {
         width: 44px; height: 44px; border-radius: 12px; background: #0066FF; color: #FFFFFF;
         font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center;
         margin: 0 auto 12px;
       }
-      .flow-t { font-size: 24px; font-weight: 800; color: #1A1A2E; line-height: 1.3; }
-
+      .flow-t { font-size: 26px; font-weight: 800; color: #1A1A2E; }
       .cta {
         display: inline-flex; align-items: center; justify-content: center;
-        align-self: center; min-height: 84px; padding: 0 36px; border-radius: 12px;
-        background: #0066FF; color: #FFFFFF; font-size: 30px; font-weight: 800;
+        min-height: 84px; padding: 0 40px; border-radius: 12px;
+        background: #0066FF; color: #FFFFFF; font-size: 32px; font-weight: 800;
         box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
       }
-      .feature-list { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
-      .feature-item {
-        background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 14px;
-        padding: 20px 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      }
-      .feature-item strong {
-        display: block; font-size: 28px; font-weight: 800; color: #1A1A2E; margin-bottom: 6px;
-      }
-      .feature-item span { font-size: 24px; font-weight: 600; color: #3C3C43; line-height: 1.45; }
     </style>
   </head>
   <body>
@@ -370,73 +300,63 @@
       data-start="0"
       data-width="1080"
       data-height="1920"
-      data-duration="90"
+      data-duration="60"
     >
       <audio
         id="bgm"
         src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"
         data-start="0"
-        data-duration="90"
+        data-duration="60"
         data-track-index="0"
         data-volume="0.16"
       ></audio>
 
-      <!-- 1. Brand 0–9 -->
-      <section id="scene-brand" class="clip" data-start="0" data-duration="9" data-track-index="1">
+      <!-- 1. Brand 0–6 -->
+      <section id="scene-brand" class="clip" data-start="0" data-duration="6" data-track-index="1">
         <div class="fill fill-app"></div>
         <div class="pad pad-center-text">
-          <p id="b-brand" class="brand-xl">במקור</p>
-          <h1 id="b-head" class="headline">תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים</h1>
-          <p id="b-lede" class="lede">ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.</p>
+          <p class="brand-xl">במקור</p>
+          <p class="brand-sub">תקלות, דיירים ועובדים — במקום אחד</p>
         </div>
       </section>
 
-      <!-- 2. Problem 9–22 -->
-      <section id="scene-problem" class="clip" data-start="9" data-duration="13" data-track-index="1">
+      <!-- 2. Problem 6–14 -->
+      <section id="scene-problem" class="clip" data-start="6" data-duration="8" data-track-index="1">
         <div class="fill fill-soft"></div>
         <div class="pad">
           <div class="stack">
-            <p id="p-eye" class="eyebrow">הבעיה</p>
-            <p id="p-head" class="headline" style="font-size:42px">כל בניין = עוד צ׳אט. כל תקלה = עוד הודעה אבודה.</p>
-            <div id="p-phone" class="phone-shell">
+            <p class="line">צ׳אטים פזורים</p>
+            <div class="phone-shell">
               <div class="phone-header">
                 <div class="avatar">די</div>
-                <div>
-                  <div class="phone-title">קבוצת דיירים</div>
-                  <div class="phone-sub">WhatsApp · הודעות בלי מעקב</div>
-                </div>
+                <div class="phone-title">קבוצת דיירים</div>
               </div>
               <div class="phone-body">
-                <div id="pm1" class="msg">
-                  <div class="msg-from">דייר · הרצל 12</div>
-                  <div class="msg-text">יש דליפה מהתקרה בקומה 3</div>
-                  <div class="msg-time">09:14</div>
+                <div class="msg">
+                  <div class="msg-from">דייר</div>
+                  <div class="msg-text">יש דליפה בקומה 3</div>
                 </div>
-                <div id="pm2" class="msg">
-                  <div class="msg-from">דייר · ביאליק 7</div>
+                <div class="msg">
+                  <div class="msg-from">דייר</div>
                   <div class="msg-text">המעלית תקועה שוב</div>
-                  <div class="msg-time">09:16</div>
                 </div>
-                <div id="pm3" class="msg">
-                  <div class="msg-from">דייר · הנביאים 4</div>
-                  <div class="msg-text">שולח תמונה מהחניה…</div>
-                  <div class="msg-time">09:18</div>
+                <div class="msg">
+                  <div class="msg-from">דייר</div>
+                  <div class="msg-text">שולח תמונה…</div>
                 </div>
               </div>
             </div>
-            <p id="p-cap" class="caption">בלי סטטוס. בלי שיוך לעובד. בלי היסטוריה.</p>
           </div>
         </div>
       </section>
 
-      <!-- 3. Ticket 22–36 -->
-      <section id="scene-ticket" class="clip" data-start="22" data-duration="14" data-track-index="1">
+      <!-- 3. Ticket 14–23 -->
+      <section id="scene-ticket" class="clip" data-start="14" data-duration="9" data-track-index="1">
         <div class="fill fill-app"></div>
         <div class="pad">
           <div class="stack">
-            <p id="t-eye" class="eyebrow">תקלות עם מדיה</p>
-            <p id="t-head" class="headline" style="font-size:40px">הדייר שולח תמונה או סרטון — והמשרד רואה תקלה מסודרת</p>
-            <div id="t-app" class="app-frame">
+            <p class="line">תקלה אחת. מסודרת.</p>
+            <div class="app-frame">
               <div class="app-top">
                 <span class="app-top-title">תקלות</span>
                 <span class="app-top-brand">במקור</span>
@@ -447,169 +367,118 @@
                     <span class="ticket-num">#184</span>
                     <span class="badge badge-new">חדשה</span>
                   </div>
-                  <div class="ticket-meta">הרצל 12 · דירה 8</div>
-                  <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
-                  <div id="t-media" class="media">
+                  <div class="ticket-desc">דליפה — מצורפת תמונה</div>
+                  <div class="media">
                     <div class="media-shape"></div>
                     <div class="media-dot"></div>
-                    <div class="media-caption">תמונה / סרטון מהדייר</div>
                   </div>
                 </div>
               </div>
             </div>
-            <p id="t-cap" class="caption">גם תרגום אוטומטי לתקלות בשפות אחרות</p>
           </div>
         </div>
       </section>
 
-      <!-- 4. Manager 36–52 -->
-      <section id="scene-manager" class="clip" data-start="36" data-duration="16" data-track-index="1">
+      <!-- 4. Manager 23–33 -->
+      <section id="scene-manager" class="clip" data-start="23" data-duration="10" data-track-index="1">
         <div class="fill fill-soft"></div>
         <div class="pad">
           <div class="stack">
-            <p id="m-eye" class="eyebrow">שולחן המנהל</p>
-            <p id="m-head" class="headline" style="font-size:38px">תרגום, שיחה עם הדייר, ושיבוץ עובד — מתוך התקלה</p>
-            <div id="m-drawer" class="drawer">
+            <p class="line">תרגום · שיחה · שיבוץ</p>
+            <div class="drawer">
               <div class="drawer-handle"></div>
               <div class="drawer-title">תקלה #184</div>
-              <div class="drawer-sub">הרצל 12 · WhatsApp דייר פתוח</div>
-              <div class="tabs">
-                <div class="tab">פרטים</div>
-                <div class="tab">צ׳אט פנימי</div>
-                <div class="tab on">WhatsApp דייר</div>
+              <div class="action">
+                <span class="action-label">תרגום</span>
+                <span class="action-chip">לעברית</span>
               </div>
-              <div id="mp1" class="panel">
-                <div class="panel-k">תרגום תקלות</div>
-                <div class="panel-v">There is a leak… → יש דליפה בתקרה</div>
-                <span class="btn-secondary">תרגם לעברית</span>
+              <div class="action">
+                <span class="action-label">WhatsApp דייר</span>
+                <span class="action-chip">פתוח</span>
               </div>
-              <div id="mp2" class="panel">
-                <div class="panel-k">שיחה מתוך המערכת</div>
-                <div class="panel-v">עונים לדייר ב-WhatsApp בלי לאבד את ההקשר של התקלה</div>
-              </div>
-              <div id="mp3" class="panel">
-                <div class="panel-k">שיבוץ עובד שטח</div>
-                <div class="panel-v" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-                  <span>יוסי כהן</span>
-                  <span class="badge badge-progress">בטיפול</span>
-                </div>
-                <span class="btn-primary">שמירה</span>
+              <div class="action">
+                <span class="action-label">שיבוץ עובד</span>
+                <span class="badge badge-progress">בטיפול</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- 5. Attendance 52–66 -->
-      <section id="scene-stamp" class="clip" data-start="52" data-duration="14" data-track-index="1">
+      <!-- 5. Stamp 33–42 -->
+      <section id="scene-stamp" class="clip" data-start="33" data-duration="9" data-track-index="1">
         <div class="fill fill-app"></div>
         <div class="pad">
           <div class="stack">
-            <p id="s-eye" class="eyebrow">חתמת עובדים</p>
-            <p id="s-head" class="headline" style="font-size:40px">נוכחות שטח עם מדבקות NFC — בלי אפליקציה מסובכת</p>
-            <div id="s-app" class="app-frame">
+            <p class="line">חתמת NFC</p>
+            <div class="app-frame">
               <div class="app-top">
                 <span class="app-top-title">חתמת עובדים</span>
                 <span class="app-top-brand">במקור</span>
               </div>
               <div class="app-body">
-                <div id="s-kpis" class="kpi-row">
-                  <div class="kpi"><div class="kpi-v">6</div><div class="kpi-l">בעבודה עכשיו</div></div>
-                  <div class="kpi"><div class="kpi-v">18</div><div class="kpi-l">משמרות היום</div></div>
-                  <div class="kpi"><div class="kpi-v">2</div><div class="kpi-l">ממתינים לאישור</div></div>
+                <div class="kpi-row">
+                  <div class="kpi"><div class="kpi-v">6</div><div class="kpi-l">בעבודה</div></div>
+                  <div class="kpi"><div class="kpi-v">18</div><div class="kpi-l">היום</div></div>
+                  <div class="kpi"><div class="kpi-v">2</div><div class="kpi-l">ממתינים</div></div>
                 </div>
-                <div id="s-c1" class="stamp-card">
-                  <div class="stamp-row">
-                    <div>
-                      <div class="stamp-name">יוסי כהן</div>
-                      <div class="stamp-meta">כניסה · הרצל 12 · 08:02</div>
-                    </div>
-                    <span class="badge badge-progress">בעבודה עכשיו</span>
+                <div class="row-card">
+                  <div>
+                    <div class="row-title">כניסה לבניין</div>
+                    <div class="row-meta">08:02</div>
                   </div>
-                  <div class="nfc-tag">מדבקת NFC על דלת הבניין</div>
+                  <span class="badge badge-progress">בעבודה</span>
                 </div>
-                <div id="s-c2" class="stamp-card">
-                  <div class="stamp-row">
-                    <div>
-                      <div class="stamp-name">דנה לוי</div>
-                      <div class="stamp-meta">יציאה · ביאליק 7 · 12:40</div>
-                    </div>
-                    <span class="badge badge-paid">הושלם</span>
-                  </div>
-                </div>
+                <div class="nfc">מדבקת NFC על הדלת</div>
               </div>
             </div>
-            <p id="s-cap" class="caption">עובד מגיע → מצמיד טלפון למדבקה → המשרד רואה בזמן אמת</p>
           </div>
         </div>
       </section>
 
-      <!-- 6. Collections 66–80 -->
-      <section id="scene-pay" class="clip" data-start="66" data-duration="14" data-track-index="1">
+      <!-- 6. Collections 42–51 -->
+      <section id="scene-pay" class="clip" data-start="42" data-duration="9" data-track-index="1">
         <div class="fill fill-soft"></div>
         <div class="pad">
           <div class="stack">
-            <p id="c-eye" class="eyebrow">גביית ועד</p>
-            <p id="c-head" class="headline" style="font-size:40px">שליחת חיובים לדיירים ומעקב תשלום — במערכת אחת</p>
-            <div id="c-app" class="app-frame">
+            <p class="line">גביית ועד</p>
+            <div class="app-frame">
               <div class="app-top">
-                <span class="app-top-title">גביית ועד</span>
+                <span class="app-top-title">גבייה</span>
                 <span class="app-top-brand">במקור</span>
               </div>
               <div class="app-body">
-                <div id="c-kpis" class="kpi-row">
+                <div class="kpi-row">
                   <div class="kpi"><div class="kpi-v" style="color:#1e40af">42</div><div class="kpi-l">נשלחו</div></div>
                   <div class="kpi"><div class="kpi-v" style="color:#15803d">31</div><div class="kpi-l">שולמו</div></div>
                   <div class="kpi"><div class="kpi-v" style="color:#ca8a04">9</div><div class="kpi-l">ממתינים</div></div>
                 </div>
-                <div id="c1" class="charge">
-                  <div class="stamp-row">
-                    <div class="charge-title">ועד בית · מרץ</div>
-                    <span class="badge badge-sent">נשלח לתשלום</span>
+                <div class="row-card" style="flex-direction:column;align-items:stretch">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                    <div class="row-title">ועד בית</div>
+                    <span class="badge badge-sent">נשלח</span>
                   </div>
-                  <div class="charge-amt">₪ 350</div>
-                  <div class="charge-meta">דייר: אבי כהן · הרצל 12 / דירה 8</div>
-                  <div class="pay-cta">קישור תשלום מאובטח</div>
-                </div>
-                <div id="c2" class="charge">
-                  <div class="stamp-row">
-                    <div class="charge-title">ועד בית · מרץ</div>
-                    <span class="badge badge-paid">שולם</span>
-                  </div>
-                  <div class="charge-amt" style="color:#15803d">₪ 350</div>
-                  <div class="charge-meta">דייר: מיכל לוי · ביאליק 7 / דירה 3</div>
+                  <div class="pay-amt">₪ 350</div>
+                  <div class="pay-btn">קישור לתשלום</div>
                 </div>
               </div>
             </div>
-            <p id="c-cap" class="caption">שליחה מרוכזת לבניין · מעקב סטטוס · דף תשלום לדייר</p>
           </div>
         </div>
       </section>
 
-      <!-- 7. More + CTA 80–90 -->
-      <section id="scene-outro" class="clip" data-start="80" data-duration="10" data-track-index="1">
+      <!-- 7. Outro 51–60 -->
+      <section id="scene-outro" class="clip" data-start="51" data-duration="9" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad pad-center-text" style="gap:16px">
-          <p id="o-brand" class="brand-xl" style="font-size:72px">במקור</p>
-          <div id="o-list" class="feature-list" style="width:100%;text-align:right">
-            <div class="feature-item">
-              <strong>רישום דיירים</strong>
-              <span>דף נחיתה או העלאת רשימה מלאה מהמנהל</span>
-            </div>
-            <div class="feature-item">
-              <strong>שליטה בנוסחי WhatsApp</strong>
-              <span>המנהל קובע את הודעות המערכת לדיירים</span>
-            </div>
+        <div class="pad pad-center-text">
+          <p class="brand-xl" style="font-size:84px">במקור</p>
+          <div class="flow">
+            <div class="flow-step"><div class="flow-n">1</div><div class="flow-t">דייר</div></div>
+            <div class="flow-step"><div class="flow-n">2</div><div class="flow-t">משרד</div></div>
+            <div class="flow-step"><div class="flow-n">3</div><div class="flow-t">עובד</div></div>
           </div>
-          <div id="o-flow" class="flow" style="width:100%;margin-top:4px">
-            <div class="flow-step"><div class="flow-n">1</div><div class="flow-t">דייר מדווח</div></div>
-            <div class="flow-step"><div class="flow-n">2</div><div class="flow-t">משרד מנהל</div></div>
-            <div class="flow-step"><div class="flow-n">3</div><div class="flow-t">עובד מטפל</div></div>
-          </div>
-          <p id="o-price" class="lede" style="margin-top:4px">
-            הקמה חד־פעמית + מנוי חודשי לפי היקף הבניינים.
-          </p>
-          <div id="o-cta" class="cta">לחצו על כפתור יצירת הקשר בדף</div>
+          <p class="price">הקמה + מנוי חודשי</p>
+          <div class="cta">ליצירת קשר בדף</div>
         </div>
       </section>
     </div>
@@ -617,30 +486,16 @@
     <script>
       window.__timelines = window.__timelines || {}
       const tl = gsap.timeline({ paused: true })
-      // Animate each scene's full content block as one unit.
-      // Never leave tall children at opacity:0 — they still occupy layout and push
-      // the visible mass upward inside a centered stack.
+      const enter = { opacity: 0, y: 24 }
+      const shown = { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }
 
-      // Brand 0–9
-      tl.fromTo('#scene-brand .pad-center-text', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.85, ease: 'power3.out' }, 0.35)
-
-      // Problem 9–22
-      tl.fromTo('#scene-problem .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 9.35)
-
-      // Ticket 22–36
-      tl.fromTo('#scene-ticket .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 22.35)
-
-      // Manager 36–52
-      tl.fromTo('#scene-manager .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 36.35)
-
-      // Stamp 52–66
-      tl.fromTo('#scene-stamp .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 52.35)
-
-      // Collections 66–80
-      tl.fromTo('#scene-pay .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 66.35)
-
-      // Outro 80–90
-      tl.fromTo('#scene-outro .pad-center-text', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 80.35)
+      tl.fromTo('#scene-brand .pad-center-text', enter, shown, 0.2)
+      tl.fromTo('#scene-problem .stack', enter, shown, 6.15)
+      tl.fromTo('#scene-ticket .stack', enter, shown, 14.15)
+      tl.fromTo('#scene-manager .stack', enter, shown, 23.15)
+      tl.fromTo('#scene-stamp .stack', enter, shown, 33.15)
+      tl.fromTo('#scene-pay .stack', enter, shown, 42.15)
+      tl.fromTo('#scene-outro .pad-center-text', enter, shown, 51.15)
 
       window.__timelines['main'] = tl
     </script>
