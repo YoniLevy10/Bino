@@ -2,6 +2,8 @@
 
 Operational guides for platform and tenant features.
 
+שמות מוצר: [`GLOSSARY.md`](GLOSSARY.md) · מצב ענפים/PRs: [`OPEN_WORK.md`](OPEN_WORK.md)
+
 ---
 
 ## חתמת עובדים (NFC — worker stamp)

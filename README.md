@@ -2,50 +2,66 @@
 
 **במקור (Bamakor)** — מערכת SaaS רב-דיירית לניהול תקלות ואחזקה בבניינים.
 
-דיירים מדווחים דרך **טופס ציבורי** (`/report`) או **WhatsApp** (סריקת QR לפרויקט).  
-מנהל העסק מנהל תקלות, פרויקטים, עובדים ודיירים; מקבל סיכומים, חיוב לפי תוכנית, ויכולות משרד (יומן, שעון נוכחות).  
-עובדי שטח עובדים ב**פורטל נפרד** (`/worker`) עם PWA והתראות push.
+דיירים מדווחים דרך **WhatsApp** (סריקת QR) או **טופס ציבורי** (`/report`).  
+המשרד מנהל תקלות, בניינים, עובדים ודיירים — ובתוספים: תיבת WhatsApp, חתמת עובדים, גביית ועד ועוד.  
+עובדי שטח עובדים ב**פורטל נפרד** (`/worker`) עם PWA, push, וחתמת NFC.
 
 **סטאק:** Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + RLS) · Vercel · Zod · Vitest · Playwright · Sentry · Vercel Analytics / Speed Insights
 
+שמות מוצר אחידים: [`docs/GLOSSARY.md`](docs/GLOSSARY.md) · עבודה פתוחה: [`docs/OPEN_WORK.md`](docs/OPEN_WORK.md) · כללי קוד: [`CLAUDE.md`](CLAUDE.md)
+
 ---
 
-## סביבות עבודה (שני ריפוז)
+## ענפים ופריסה
 
-| תיקייה | ענף | שימוש |
-|--------|-----|--------|
-| `bamakor-dashboard-dev` | `develop` | **פיתוח יומי** — יומן, שעון, CI, שיפורי מנהל |
-| `bamakor-dashboard` | `main` | **פרודקשן** — merge ממוקד / hotfix בלבד |
+| ענף | שימוש |
+|-----|--------|
+| `main` | **פרודקשן** — Vercel · מקור האמת |
+| `cursor/<נושא>-e95c` | ענפי סוכן / פיצ׳ר → PR ל־`main` |
+| `develop` | מיושן לפיתוח יומי — לא לפתוח ממנו פיצ׳רים חדשים |
 
-כללי פיתוח (API, SMS, Supabase): `CLAUDE.md`.
-
-**פריסה:** `https://bamakor.vercel.app` (או `NEXT_PUBLIC_APP_URL`). אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
+**פריסה:** `https://bamakor.vercel.app` (`NEXT_PUBLIC_APP_URL`).  
+כל PR עובר CI: lint → typecheck → vitest → `next build`.
 
 ---
 
 ## מפת דפים — מנהל (tenant)
 
+### ליבה
+
 | נתיב | תפקיד | גישה |
 |------|--------|-------|
 | `/login` | כניסה עם Google | ציבורי |
-| `/` | לוח בקרה — KPI, תקלות אחרונות, פתיחה מהירה | מחובר |
-| `/tickets` | כל התקלות — סינון, Excel, מגירה, מיזוג, מחיקה | מחובר |
-| `/projects` | בניינים — יצירה ועריכה (API) | מחובר |
-| `/workers` | עובדי שטח — פורטל, SMS, התראות תקלה | מחובר |
-| `/residents` | פנקס דיירים — ייבוא Excel, טאב ממתינים | מחובר |
-| `/pending-residents` | דיירים שדיווחו וטרם אושרו בפנקס | מחובר |
-| `/summary` | דוחות ניהוליים + Excel | מחובר |
-| `/calendar` | יומן משרד — חודש/שבוע, iCal, Google Calendar (קישור) | מחובר |
-| `/attendance` | חתמת עובדים — NFC, משמרות, דוחות שעות, Excel | מחובר |
-| `/qr` | קודי QR לפרויקט (WhatsApp + Web) | מחובר |
-| `/settings` | הגדרות — WhatsApp, SMS, push, סדר תפריט, לוגו | מחובר |
-| `/settings/whatsapp-templates` | עריכת תבניות הודעות Meta | מחובר |
-| `/billing` | תוכנית, מכסות, צריכה חודשית | מחובר |
+| `/` | לוח בקרה | מחובר |
+| `/tickets` | תקלות — סינון, Excel, מגירה | מחובר |
+| `/projects` | בניינים (פרויקטים) | מחובר |
+| `/workers` | עובדי שטח | מחובר |
+| `/residents` | פנקס דיירים | מחובר |
+| `/pending-residents` | דיירים ממתינים לאישור | מחובר |
+| `/summary` | דוחות ניהוליים | מחובר |
+| `/qr` | קודי QR לפרויקט | מחובר |
+| `/settings` | הגדרות tenant | מחובר |
+| `/settings/whatsapp-templates` | תבניות WhatsApp | מחובר |
+| `/billing` | תוכנית ומכסות | מחובר |
+| `/addons` | קטלוג תוספים | מחובר |
 | `/privacy` | מדיניות פרטיות | ציבורי / מחובר |
 
-**ניווט:** סדר פריטי התפריט נשמר ב-`clients.sidebar_nav_order` (מיגרציה `048`). במובייל — 4 פריטים קבועים בתחתית (בית, תקלות, פרויקטים, עובדים); כפתור «עוד» או תפריט ההמבורגר פותחים את התפריט המלא.
+### תוספים (מופעלים בסופר־אדמין / billing)
 
-**אבחון פלטפורמה (לא ללקוחות):** דפי `/error-logs`, `/health`, `/system-map` וכו' **הוסרו** — תפעול דרך `/superadmin` + מייל ל-`PLATFORM_OPS_EMAIL`.
+| נתיב | שם מוצר |
+|------|---------|
+| `/whatsapp-inbox` | תיבת WhatsApp |
+| `/attendance` | חתמת עובדים (NFC) |
+| `/collections` | גביית ועד (Morning) |
+| `/calendar` | יומן משרד |
+| `/professionals` | אנשי מקצוע |
+| `/pilot-sms` | SMS פיילוט לדיירים |
+| `/project-documents` | תיקיית מסמכים |
+| `/campaigns` | קמפיינים SMS |
+
+**ניווט:** סדר תפריט ב־`clients.sidebar_nav_order`. במובייל — 4 פריטים קבועים בתחתית (בית, תקלות, פרויקטים, עובדים). תוספים שלא בסיידבר נגישים מ־`/addons`.
+
+**תפעול פלטפורמה:** `/superadmin` (+ מייל ל־`PLATFORM_OPS_EMAIL`). לא לחשוף דפי אבחון ללקוחות.
 
 ---
 
@@ -54,21 +70,24 @@
 | נתיב | תפקיד | גישה |
 |------|--------|-------|
 | `/report` | טופס דיווח לדייר | ציבורי |
+| `/intake` | קליטת דיירים / שיתוף | ציבורי לפי הגדרות |
+| `/pay/...` | דפי תשלום לדייר (גבייה) | ציבורי (token) |
+| `/for-managers` | דף שיווק למנהלים | ציבורי (כשמוזג) |
 | `/worker-login` | כניסת עובד → `/worker?token=` | ציבורי |
-| `/worker` | פורטל עובד — תקלות, סטטוסים, צ'אט, סיורים, push | `?token=` / מחובר |
-| `/worker/nfc` | החתמת NFC — כניסה/יציאה/ביקור | `?t=` + token עובד |
-| `/attendance/scan` | **הוצא משימוש** — מפנה לחתמת NFC | ציבורי (legacy) |
+| `/worker` | פורטל עובד | `?token=` |
+| `/worker/nfc` | חתמת NFC — כניסה/יציאה/ביקור | `?t=` + token עובד |
+| `/attendance/scan` | **הוצא משימוש** → NFC | legacy |
+
+תפעול חתמת: [`docs/RUNBOOKS.md`](docs/RUNBOOKS.md).
 
 ---
 
-## הקמת לקוח חדש — ויזארד מנהל
+## הקמת לקוח חדש
 
-**נתיב:** `/admin/setup` (מוגן ב-`ADMIN_SETUP_SECRET`)
+**נתיב:** `/admin/setup` (מוגן ב־`ADMIN_SETUP_SECRET`) — או דרך `/superadmin`.
 
-1. הזנת סוד גישה → טופס (שם חברה, תוכנית, WhatsApp, אימייל מנהל, פרויקטים, עובדים).
-2. לחיצה על «הקם לקוח» → יצירת `clients` + `organizations`, הזמנת Auth, פרויקטים עם `qr_identifier`, קישורי QR להעתקה.
-
-בפיתוח: `http://localhost:3000/admin/setup`
+1. סוד גישה → טופס (חברה, תוכנית, WhatsApp, מנהל, פרויקטים, עובדים).
+2. יצירת `clients` + `organizations`, הזמנת Auth, QR לפרויקטים.
 
 ---
 
@@ -76,27 +95,23 @@
 
 ### דרישות
 
-- Node.js 20+ (מומלץ; CI רץ על 20)
-- פרויקט Supabase עם **כל המיגרציות** בתיקייה `supabase/migrations/` (עד `049` ומעלה)
+- Node.js 20+
+- פרויקט Supabase עם מיגרציות מ־`supabase/migrations/` (כרגע עד `087` ומעלה)
 
 ### התקנה
 
 ```bash
 npm install
-# העתיקו משתני סביבה מ-Vercel או מלאו ידנית ל-.env.local
+# העתיקו משתני סביבה מ-Vercel או מלאו .env.local
 npm run dev
 ```
 
 `http://localhost:3000` · LAN: `npm run dev:lan`
 
-### מיגרציות וטיפוסים
-
 ```bash
-npm run db:migration:list    # מצב מול Supabase מקושר
-npm run db:types             # lib/database.types.ts אחרי שינוי סכמה
+npm run db:migration:list
+npm run db:types             # אחרי שינוי סכמה
 ```
-
-דפי **יומן** ו-**שעון** דורשים מיגרציות `045`–`047` (ולפחות `048` לסדר תפריט).
 
 ---
 
@@ -108,20 +123,22 @@ npm run db:types             # lib/database.types.ts אחרי שינוי סכמ�
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | מפתח anon (דפדפן) |
 | `SUPABASE_SERVICE_ROLE_KEY` | service role — **שרת בלבד** |
 | `NEXT_PUBLIC_APP_URL` | כתובת האפליקציה (קישורים ב-SMS/WhatsApp) |
-| `ADMIN_SETUP_SECRET` | סוד ל-`/admin/setup` ו-APIי admin |
-| `WHATSAPP_VERIFY_TOKEN` | אימות webhook Meta (GET) |
-| `WHATSAPP_ACCESS_TOKEN` | שליחת הודעות (גם נשמר per-tenant ב-DB) |
+| `ADMIN_SETUP_SECRET` | סוד ל-admin / setup |
+| `WHATSAPP_VERIFY_TOKEN` | אימות webhook Meta |
+| `WHATSAPP_ACCESS_TOKEN` | שליחת הודעות (גם per-tenant ב-DB) |
 | `WHATSAPP_PHONE_NUMBER_ID` | מזהה מספר Meta (גם ב-DB) |
-| `WHATSAPP_APP_SECRET` | חתימת webhook — **מומלץ בפרודקשן** |
+| `WHATSAPP_APP_SECRET` | חתימת webhook — מומלץ בפרודקשן |
 | `SMS_019_USERNAME` / `SMS_019_PASSWORD` | 019SMS |
-| `SMS_019_SENDER` | שולח SMS — **חייב** `972xxxxxxxxx` (לא שם טקסט) |
+| `SMS_019_SENDER` | שולח — **חייב** `972xxxxxxxxx` |
 | `CRON_SECRET` | אימות `/api/cron/*` |
-| `VAPID_*` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push (מנהל + עובד) |
-| `NEXT_PUBLIC_SENTRY_DSN` | Sentry (production) |
-| `BAMAKOR_CLIENT_ID` | fallback ל-client ב-dev |
-| `PLATFORM_OPS_EMAIL` / `RESEND_API_KEY` | התראות תפעול פלטפורמה |
+| `VAPID_*` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push |
+| `NEXT_PUBLIC_SENTRY_DSN` | Sentry |
+| `BAMAKOR_CLIENT_ID` | fallback client ב-dev |
+| `PLATFORM_OPS_EMAIL` / `RESEND_API_KEY` | התראות תפעול |
 
-> **SMS:** בלי אימוג'י בהודעות. כתיבות ל-`clients` / הגדרות — רק דרך `/api/settings/update` (לא מ-`supabase` בדפדפן).
+פירוט מלא + חוסרים: `CLAUDE.md`.
+
+> **SMS:** בלי אימוג'י. כתיבות ל־`clients` — רק דרך `/api/settings/update`.
 
 ---
 
@@ -130,45 +147,25 @@ npm run db:types             # lib/database.types.ts אחרי שינוי סכמ�
 | פקודה | תיאור |
 |--------|--------|
 | `npm run dev` | שרת פיתוח |
-| `npm run dev:lan` | פיתוח ברשת מקומית (מובייל) |
-| `npm run build` | בניית production |
-| `npm run start` | הרצה אחרי build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript |
+| `npm run dev:lan` | פיתוח ברשת מקומית |
+| `npm run build` / `npm run start` | production |
+| `npm run lint` / `npm run typecheck` | בדיקות סטטיות |
 | `npm test` | Vitest |
 | `npm run test:e2e` | Playwright |
-| `npm run db:migration:list` | רשימת מיגרציות Supabase |
-| `npm run db:types` | יצירת טיפוסי DB |
+| `npm run db:migration:list` | מיגרציות |
+| `npm run db:types` | טיפוסי DB |
 
 ---
 
 ## בדיקות ו-CI
 
-### GitHub Actions
-
 על כל PR: `lint` → `typecheck` → `vitest` → `next build` (`.github/workflows/ci.yml`).
-
-### Vitest
 
 ```bash
 npm test
-```
-
-- `lib/*.test.ts` — לוגיקת WhatsApp, דיירים, dedupe
-- `tests/whatsapp-webhook.post.test.ts` — webhook
-- `tests/tenant-resolution-fields.test.ts` — regression לשדות `waClient`
-- `tests/integration/` — סכמת Supabase (דורש `.env.local` + service role)
-
-### Playwright
-
-```bash
-npm run build && npm run start   # בטרמינל נפרד
+npm run build && npm run start   # טרמינל נפרד
 npm run test:e2e
 ```
-
-- `tests/e2e/full-coverage.spec.ts` — כיסוי רחב (auth, API, מובייל)
-- `tests/e2e/flows.spec.ts` — זרימות ציבוריות ו-admin
-- `tests/e2e/dashboard.spec.ts`, `tests/e2e/mobile.spec.ts`
 
 ---
 
@@ -176,10 +173,11 @@ npm run test:e2e
 
 | Job | תדירות |
 |-----|---------|
-| `/api/cron/sla-check` | יומי 07:00 UTC |
-| `/api/cron/health-check` | יומי 06:00 UTC |
-| `/api/cron/whatsapp-retry` | יומי 09:00 UTC |
+| `/api/cron/sla-check` | יומי |
+| `/api/cron/health-check` | יומי |
+| `/api/cron/whatsapp-retry` | יומי |
 | `/api/cron/cleanup-webhooks` | שבועי |
+| `/api/cron/attendance-*` | חתמת עובדים — ראו RUNBOOKS |
 
 ---
 
@@ -192,14 +190,7 @@ npm run test:e2e
 | Business | ₪699 | 30 | 60 | 5,000 |
 | Enterprise | ₪899+ | ללא הגבלה | ללא הגבלה | ללא הגבלה |
 
-מכסות נאכפות ב-API (יצירת פרויקט/עובד/תקלה); תצוגה ב-`/billing`.
-
----
-
-## Sentry
-
-`@sentry/nextjs` — `sentry.client.config.ts` / `server` / `edge`.  
-פעיל ב-production עם `NEXT_PUBLIC_SENTRY_DSN`.
+מכסות ב-API; תצוגה ב־`/billing`. תוספים בתשלום — `/addons` + סופר־אדמין.
 
 ---
 
@@ -207,9 +198,12 @@ npm run test:e2e
 
 | קובץ | תוכן |
 |------|------|
-| `CLAUDE.md` | כללי פיתוח — API, SMS 019, Supabase, env, מובייל |
-| `PRIVACY_POLICY_TEMPLATE.md` | מדיניות פרטיות (`/privacy`) |
+| [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | שמות מוצר אחידים (עברית + קוד) |
+| [`docs/OPEN_WORK.md`](docs/OPEN_WORK.md) | PRs / ענפים פתוחים ולמה |
+| [`docs/RUNBOOKS.md`](docs/RUNBOOKS.md) | תפעול חתמת NFC וכו׳ |
+| [`CLAUDE.md`](CLAUDE.md) | כללי פיתוח — API, SMS, Supabase, env |
+| `PRIVACY_POLICY_TEMPLATE.md` | מדיניות פרטיות |
 
-> **Hydration / SW ישן ב-dev:** DevTools → Application → Service Workers → Unregister, Clear site data.
+> **Hydration / SW ישן ב-dev:** DevTools → Application → Service Workers → Unregister.
 
-*עודכן: יוני 2026*
+*עודכן: אוגוסט 2026*

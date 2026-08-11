@@ -3,6 +3,13 @@
 Next.js 16 App Router, React 19, TypeScript, Supabase, Tailwind CSS, RTL Hebrew UI.
 Multi-tenant SaaS for building maintenance management; SMS via 019SMS, WhatsApp via Meta API.
 
+**Product language (Hebrew names):** `docs/GLOSSARY.md`  
+**Open PRs / branch policy:** `docs/OPEN_WORK.md`  
+**Ops runbooks:** `docs/RUNBOOKS.md`  
+**Human overview:** `README.md`
+
+Ship features from `main` on branches `cursor/<topic>-e95c`. Do not treat `develop` as the daily base.
+
 ---
 
 ## Standard API Route Pattern
