@@ -20,10 +20,14 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "import:residents-pdf": "npx tsx scripts/import-residents-from-pdf.ts",
-    "import:residents-sql": "npx tsx scripts/generate-residents-import-sql.ts"
+    "import:residents-sql": "npx tsx scripts/generate-residents-import-sql.ts",
+    "promo:render": "npx remotion render remotion/index.ts BamakorPromo public/marketing/bamakor-promo.mp4 --gl=angle"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
+    "@remotion/cli": "4.0.286",
+    "@remotion/google-fonts": "4.0.286",
+    "@remotion/renderer": "4.0.286",
     "@sentry/nextjs": "^10.51.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.101.0",
@@ -33,6 +37,7 @@
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "remotion": "4.0.286",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "xlsx-js-style": "^1.2.0",
