@@ -82,13 +82,6 @@ export async function GET(req: NextRequest) {
     .eq('event_type', 'clock_in')
     .gte('client_recorded_at', todayIso)
 
-  const { count: visitsToday } = await admin
-    .from('worker_attendance_events')
-    .select('*', { count: 'exact', head: true })
-    .eq('client_id', clientId)
-    .eq('event_type', 'project_visit')
-    .gte('client_recorded_at', todayIso)
-
   const { count: activeNow } = await admin
     .from('worker_attendance')
     .select('*', { count: 'exact', head: true })
@@ -100,7 +93,6 @@ export async function GET(req: NextRequest) {
     kpis: {
       active_workers_now: activeNow ?? 0,
       clock_ins_today: clockInsToday ?? 0,
-      project_visits_today: visitsToday ?? 0,
       pending_review: pendingReview ?? 0,
     },
   })

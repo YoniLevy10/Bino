@@ -16,7 +16,9 @@ export async function GET() {
 
   const { data, error } = await admin
     .from('worker_nfc_tags')
-    .select('id, tag_code, tag_type, project_id, label, is_active, created_at, projects(name, project_code)')
+    .select(
+      'id, tag_code, tag_type, project_id, label, is_active, created_at, sticker_installed_at, projects(name, project_code)'
+    )
     .eq('client_id', auth.ctx.clientId)
     .order('tag_code')
 

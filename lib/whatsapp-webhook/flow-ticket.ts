@@ -1,7 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ParsedWhatsAppMessage } from '@/lib/whatsapp-parser'
-
-export type WaLocation = NonNullable<ParsedWhatsAppMessage['location']>
 
 /** Normalize description for duplicate comparison (trim, lowercase, collapse whitespace). */
 export function normalizeTicketDescriptionForCompare(description: string): string {
@@ -155,37 +152,4 @@ export async function readLastReporterProject(
   const projectName = (projectRow as { name?: string | null } | null)?.name?.trim()
   if (!projectName) return null
   return { projectId, projectName }
-}
-
-export async function mergeWhatsAppLocationIntoTicketMetadata(
-  admin: SupabaseClient,
-  ticketId: string,
-  loc: WaLocation
-) {
-  const { data } = await admin
-    .from('tickets')
-    .select('ticket_metadata')
-    .eq('id', ticketId)
-    .is('deleted_at', null)
-    .maybeSingle()
-  const raw = (data as { ticket_metadata?: unknown } | null)?.ticket_metadata
-  const prev =
-    typeof raw === 'object' && raw !== null && !Array.isArray(raw)
-      ? { ...(raw as Record<string, unknown>) }
-      : {}
-  const next = {
-    ...prev,
-    whatsapp_location: {
-      lat: loc.lat,
-      lng: loc.lng,
-      name: loc.name,
-      address: loc.address,
-      received_at: new Date().toISOString(),
-    },
-  }
-  await admin
-    .from('tickets')
-    .update({ ticket_metadata: next })
-    .eq('id', ticketId)
-    .is('deleted_at', null)
 }

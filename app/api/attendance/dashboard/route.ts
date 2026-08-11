@@ -83,7 +83,6 @@ export async function GET(req: NextRequest) {
     stickerRes,
     pendingCountRes,
     clockInsTodayRes,
-    visitsTodayRes,
     activeNowRes,
   ] = await Promise.all([
     eventsQuery,
@@ -169,12 +168,6 @@ export async function GET(req: NextRequest) {
       .eq('event_type', 'clock_in')
       .gte('client_recorded_at', todayStart),
     admin
-      .from('worker_attendance_events')
-      .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId)
-      .eq('event_type', 'project_visit')
-      .gte('client_recorded_at', todayStart),
-    admin
       .from('worker_attendance')
       .select('*', { count: 'exact', head: true })
       .eq('client_id', clientId)
@@ -186,7 +179,6 @@ export async function GET(req: NextRequest) {
   }
 
   const events = eventsRes.data ?? []
-  const projectVisits = events.filter((e) => (e as { event_type?: string }).event_type === 'project_visit')
 
   type OpenRow = { worker_id: string; started_at: string; workers?: WorkerRow }
   const activeNow = (openRes.data ?? []).map((r) => {
@@ -226,7 +218,6 @@ export async function GET(req: NextRequest) {
     kpis: {
       active_workers_now: activeNowRes.count ?? 0,
       clock_ins_today: clockInsTodayRes.count ?? 0,
-      project_visits_today: visitsTodayRes.count ?? 0,
       pending_review: pendingCountRes.count ?? 0,
     },
     tag_count: (tagsRes.data ?? []).length,
@@ -247,6 +238,5 @@ export async function GET(req: NextRequest) {
       total: stickerTags.length,
     },
     shifts: shiftsRes.data ?? [],
-    project_visits: projectVisits,
   })
 }

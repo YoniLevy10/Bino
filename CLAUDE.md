@@ -89,8 +89,8 @@ Settings writes (phones, SMS toggles, WhatsApp credentials) go through `/api/set
 
 ## WhatsApp Location Messages
 
-**Archived.** Do not implement location parsing. On `messageType === 'location'`, send the `redirect_to_text` template and return immediately.
-Reference: `app/api/webhook/whatsapp/route.ts`
+**Archived.** Do not implement location parsing. On `messageType === 'location'`, send the `redirect_to_text` template and return immediately. Dead GPS attach/stash handlers were removed; keep it that way.
+Reference: `app/api/webhook/whatsapp/route.ts` / `lib/whatsapp-webhook/dispatch-inbound.ts`
 
 ---
 

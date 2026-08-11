@@ -170,25 +170,19 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
   },
   {
     step: 5,
-    title: 'מיקום GPS',
-    description: 'כשדייר שולח מיקום — לפני או במהלך תקלה',
-    keys: ['location_stashed', 'location_attached', 'location_error'],
-  },
-  {
-    step: 6,
     title: 'תמונות וסרטונים',
     description: 'צירוף מדיה לתקלה פתוחה או שמירה זמנית לפני תיאור',
     keys: ['image_stashed', 'image_attached', 'image_failed', 'video_stashed', 'video_attached', 'video_failed'],
   },
   {
-    step: 7,
+    step: 6,
     title: 'שגיאות והודעות לא נתמכות',
-    description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, מסמך',
+    description: 'מקרי קצה: שגיאות טכניות, סטיקר/קול/אנשי קשר, מסמך (מיקום GPS בארכיון — redirect_to_text)',
     keys: ['technical_error', 'error_general', 'redirect_to_text', 'unsupported_message', 'welcome', 'building_multiple_matches'],
   },
 ]
 
-/** @deprecated use WHATSAPP_TEMPLATE_JOURNEY step 5 — kept for imports */
+/** Archived GPS templates — kept in catalog/DB; not shown in journey (location → redirect_to_text). */
 export const WHATSAPP_ARCHIVED_TEMPLATE_KEYS = [
   'location_attached',
   'location_stashed',

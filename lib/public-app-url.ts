@@ -25,13 +25,7 @@ export function getWorkerPortalUrl(accessToken: string): string {
   return `${getPublicAppBaseUrl()}/worker?token=${encodeURIComponent(token)}`
 }
 
-/** Office entrance QR — scan with personal phone, pick name, clock in/out. */
-export function getOfficeAttendanceScanUrl(stationToken: string): string {
-  const st = stationToken.trim().toLowerCase()
-  return `${getPublicAppBaseUrl()}/attendance/scan?st=${encodeURIComponent(st)}`
-}
-
-/** NFC / QR scan URL for field worker attendance (project tag). */
+/** NFC / QR scan URL for field worker attendance (project or office tag). */
 export function getWorkerAttendanceScanUrl(tagCode: string, accessToken?: string | null): string {
   const base = getPublicAppBaseUrl()
   const params = new URLSearchParams({ t: tagCode.trim() })

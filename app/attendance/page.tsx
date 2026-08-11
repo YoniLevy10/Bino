@@ -27,6 +27,7 @@ import { AttendanceLiveWorkers } from '../components/attendance/AttendanceLiveWo
 import { AttendanceAnomalies, type AttendanceAnomaliesData } from '../components/attendance/AttendanceAnomalies'
 import { AttendanceStickerProgress } from '../components/attendance/AttendanceStickerProgress'
 import { AttendanceHistoryTab } from '../components/attendance/AttendanceHistoryTab'
+import { AttendanceTagsPanel } from '../components/attendance/AttendanceTagsPanel'
 import { EVENT_TYPE_HE } from '@/lib/attendance-display'
 
 type PageTab = 'current' | 'history'
@@ -78,13 +79,11 @@ type DashboardPayload = {
   live_workers?: unknown[]
   sticker?: { installed: number; total: number }
   shifts?: unknown[]
-  project_visits?: unknown[]
 }
 
 const defaultKpis = {
   active_workers_now: 0,
   clock_ins_today: 0,
-  project_visits_today: 0,
   pending_review: 0,
 }
 
@@ -101,7 +100,6 @@ export default function AttendancePage() {
   const [anomalies, setAnomalies] = useState<DashboardPayload['anomalies'] | null>(null)
   const [liveWorkers, setLiveWorkers] = useState<unknown[] | null>(null)
   const [prefetchedShifts, setPrefetchedShifts] = useState<unknown[] | null | undefined>(undefined)
-  const [prefetchedVisits, setPrefetchedVisits] = useState<unknown[] | null | undefined>(undefined)
   const [dashboardVersion, setDashboardVersion] = useState(0)
   const [dashboardLoaded, setDashboardLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -153,7 +151,6 @@ export default function AttendancePage() {
       setAnomalies(body.anomalies ?? null)
       setLiveWorkers(body.live_workers ?? [])
       setPrefetchedShifts(body.shifts ?? [])
-      setPrefetchedVisits(body.project_visits ?? [])
       if (body.sticker) {
         setStickerInstalled(body.sticker.installed)
         setStickerTotal(body.sticker.total)
@@ -209,6 +206,8 @@ export default function AttendancePage() {
         stickerTotal={stickerTotal}
       />
 
+      <AttendanceTagsPanel refreshKey={dashboardVersion} />
+
       <AttendanceStickerProgress
         installed={dashboardLoaded ? stickerInstalled : undefined}
         total={dashboardLoaded ? stickerTotal : undefined}
@@ -237,22 +236,21 @@ export default function AttendancePage() {
       <div style={styles.kpiGrid}>
         <Card style={styles.kpiCard}>
           <div style={styles.kpiValue}>{kpis.active_workers_now}</div>
-          <div style={styles.kpiLabel}>עובדים בדרך עכשיו</div>
+          <div style={styles.kpiLabel}>עובדים במשמרת עכשיו</div>
         </Card>
         <Card style={styles.kpiCard}>
           <div style={styles.kpiValue}>{kpis.clock_ins_today}</div>
-          <div style={styles.kpiLabel}>נכנסו היום</div>
+          <div style={styles.kpiLabel}>כניסות היום</div>
         </Card>
         <Card style={styles.kpiCard}>
-          <div style={styles.kpiValue}>{kpis.project_visits_today}</div>
-          <div style={styles.kpiLabel}>ביקורים בבניינים היום</div>
+          <div style={styles.kpiValue}>{kpis.pending_review}</div>
+          <div style={styles.kpiLabel}>ממתינים לאישור</div>
         </Card>
       </div>
 
       <AttendanceShiftsReport
         lockToCurrentMonth
         prefetchedShifts={prefetchedShifts as never}
-        prefetchedVisits={prefetchedVisits as never}
         prefetchVersion={dashboardVersion}
       />
 
