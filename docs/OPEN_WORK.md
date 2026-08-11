@@ -17,22 +17,28 @@
 
 ---
 
-## PRs פתוחים עכשיו (5)
+## PRs פתוחים עכשיו
 
 | # | ענף | נושא | למה זה פתוח | המלצה |
 |---|------|------|-------------|--------|
-| **[#81](https://github.com/YoniLevy10/Bamakor/pull/81)** | `cursor/for-managers-landing-video-e95c` | דף `/for-managers` + סרטון פרומו 60ש׳ באתר | חומר מכירות למנהלים | **לשמור** — מקור האמת לסרטון/דף נחיתה. לעדכן כותרת (לא Remotion 18ש׳) |
-| **[#80](https://github.com/YoniLevy10/Bamakor/pull/80)** | `cursor/brag-launch-video-e453` | ניסוי `/brag` + וידאו 20ש׳ ישן | הוחלף ע״י #81 | **לסגור** — כפילות שיווקית |
-| **[#79](https://github.com/YoniLevy10/Bamakor/pull/79)** | `cursor/collections-ui-mockup-69ba` | יישור UI גבייה לסקיצה | ליטוש אחרי שגבייה כבר ב־`main` | **לשמור** — אחרי/יחד עם #77 אם יש קונפליקטי שם |
-| **[#78](https://github.com/YoniLevy10/Bamakor/pull/78)** | `cursor/attendance-ops-cleanup-7e76` | תפעול חתמת: תגיות NFC למנהל, ניקוי GPS/QR משרד | השלמת פיצ׳ר חצי־אפוי | **לשמור** — עדיפות תפעול שטח |
-| **[#77](https://github.com/YoniLevy10/Bamakor/pull/77)** | `cursor/merge-collections-payments-7e76` | איחוד שם/מסך «גבייה ותשלומים» | מיתוג מוצר מעל גבייה שכבר ב־`main` | **לשמור** — לפני או עם #79; לעדכן `docs/GLOSSARY.md` אחרי מיזוג |
+| **[#82](https://github.com/YoniLevy10/Bamakor/pull/82)** | `cursor/docs-sync-open-work-e95c` | סנכרון README / מילון / לוח זה | תיעוד מיושר ל־`main` | **למזג ראשון** (בסיס לשפה אחידה) |
+| **[#81](https://github.com/YoniLevy10/Bamakor/pull/81)** | `cursor/for-managers-landing-video-e95c` | דף `/for-managers` + סרטון 60ש׳ | חומר מכירות | **לשמור** |
+| **[#79](https://github.com/YoniLevy10/Bamakor/pull/79)** | `cursor/collections-ui-mockup-69ba` | יישור UI גבייה לסקיצה | ליטוש אחרי גבייה ב־`main` | **לשמור** — אחרי/עם #77 |
+| **[#78](https://github.com/YoniLevy10/Bamakor/pull/78)** | `cursor/attendance-ops-cleanup-7e76` | תפעול חתמת NFC למנהל | השלמת פיצ׳ר תפעולי | **לשמור** — עדיפות מוצר |
+| **[#77](https://github.com/YoniLevy10/Bamakor/pull/77)** | `cursor/merge-collections-payments-7e76` | איחוד «גבייה ותשלומים» | מיתוג מעל גבייה ב־`main` | **לשמור** — ואז לעדכן GLOSSARY |
 
-### סדר מיזוג מומלץ (מוצר)
+### נסגר
 
-1. **#78** חתמת (תפעול)  
-2. **#77** שם גבייה מאוחד → ואז **#79** ליטוש UI  
-3. **#81** שיווק `/for-managers`  
-4. **#80** סגירה בלי מיזוג  
+| # | סיבה |
+|---|------|
+| **[#80](https://github.com/YoniLevy10/Bamakor/pull/80)** | ניסוי `/brag` — הוחלף ע״י #81 |
+
+### סדר מיזוג מומלץ
+
+1. **#82** תיעוד  
+2. **#78** חתמת  
+3. **#77** → **#79** גבייה  
+4. **#81** שיווק  
 
 ---
 
