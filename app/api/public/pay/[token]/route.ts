@@ -65,7 +65,7 @@ export async function GET(_req: Request, context: RouteContext) {
     payment_url: canPay ? raw.greeninvoice_payment_url : null,
     paid_at: raw.paid_at,
     client: {
-      name: client?.name || 'במאקור',
+      name: client?.name || 'במקור',
       logo_url: client?.logo_url || null,
     },
     resident_name: resident?.full_name || null,

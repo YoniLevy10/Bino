@@ -4,6 +4,26 @@ Operational guides for platform and tenant features.
 
 ---
 
+## גבייה ותשלומים (Morning)
+
+צ׳קליסט מלא: [`COLLECTIONS_GO_LIVE.md`](COLLECTIONS_GO_LIVE.md)
+
+### לפני שליחה לדיירים
+
+1. `GREENINVOICE_WEBHOOK_SECRET` מוגדר ב-Vercel (Production).
+2. בהגדרות Bamakor → Morning → העתיקו את Webhook URL (כולל token) ל-Morning → Webhooks.
+3. מפתחות API של הלקוח + בדיקת חיבור ירוקה; סליקה פעילה ב-Morning.
+4. תוסף גבייה מופעל ללקוח.
+5. **תשלום ניסיון אחד** — ודאו שסטטוס עובר ל«שולם» ב־`/collections`.
+
+### התנהגות מערכת
+
+- שליחת חיוב נחסמת אם חסר סוד webhook בשרת.
+- ביטול חיוב מבטל את קישור `/pay/...` של Bamakor (קישור Morning הישן עלול עדיין להיות פתוח אצלם).
+- «סמן כשולם» — גיבוי ידני אם ה-webhook פספס.
+
+---
+
 ## חתמת עובדים (NFC — worker stamp)
 
 ### URL format for stickers

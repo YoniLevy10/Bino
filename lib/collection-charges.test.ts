@@ -21,6 +21,7 @@ import {
   sendCollectionChargeBodySchema,
   cancelCollectionChargeBodySchema,
   resendCollectionChargeBodySchema,
+  markCollectionChargePaidBodySchema,
 } from '@/lib/api-body-schemas'
 import { navItemIdForPathname } from '@/lib/client-nav-features'
 
@@ -87,7 +88,7 @@ describe('greeninvoice webhook parsing', () => {
         tokenFromQuery: null,
         tokenFromHeader: null,
       })
-    ).toBe(true)
+    ).toBe(false)
 
     expect(
       authorizeGreenInvoiceWebhook({
@@ -109,6 +110,14 @@ describe('greeninvoice webhook parsing', () => {
       authorizeGreenInvoiceWebhook({
         expectedSecret: 'secret',
         tokenFromQuery: 'wrong',
+        tokenFromHeader: null,
+      })
+    ).toBe(false)
+
+    expect(
+      authorizeGreenInvoiceWebhook({
+        expectedSecret: 'secret',
+        tokenFromQuery: null,
         tokenFromHeader: null,
       })
     ).toBe(false)
@@ -138,7 +147,25 @@ describe('collection charge ops URL helpers', () => {
     )
   })
 
-  it('defaults success/failure to Bamakor pay pages', () => {
+  it('omits notify URL when webhook secret missing', () => {
+    process.env.GREENINVOICE_WEBHOOK_SECRET = ''
+    expect(buildGreenInvoiceWebhookNotifyUrl()).toBeNull()
+  })
+
+  it('defaults success/failure to Bamakor pay pages with charge token', () => {
+    const urls = defaultSuccessFailureUrls(
+      {},
+      { publicToken: '11111111-1111-1111-1111-111111111111' }
+    )
+    expect(urls.successUrl).toBe(
+      'https://bamakor.vercel.app/pay/success?t=11111111-1111-1111-1111-111111111111'
+    )
+    expect(urls.failureUrl).toBe(
+      'https://bamakor.vercel.app/pay/failure?t=11111111-1111-1111-1111-111111111111'
+    )
+  })
+
+  it('defaults success/failure without token when omitted', () => {
     const urls = defaultSuccessFailureUrls({})
     expect(urls.successUrl).toBe('https://bamakor.vercel.app/pay/success')
     expect(urls.failureUrl).toBe('https://bamakor.vercel.app/pay/failure')
@@ -220,10 +247,11 @@ describe('collections zod schemas', () => {
     expect(parsed.success).toBe(false)
   })
 
-  it('accepts send/resend/cancel charge id bodies', () => {
+  it('accepts send/resend/cancel/mark-paid charge id bodies', () => {
     expect(sendCollectionChargeBodySchema.safeParse({ charge_id: chargeId }).success).toBe(true)
     expect(resendCollectionChargeBodySchema.safeParse({ charge_id: chargeId }).success).toBe(true)
     expect(cancelCollectionChargeBodySchema.safeParse({ charge_id: chargeId }).success).toBe(true)
+    expect(markCollectionChargePaidBodySchema.safeParse({ charge_id: chargeId }).success).toBe(true)
   })
 })
 
