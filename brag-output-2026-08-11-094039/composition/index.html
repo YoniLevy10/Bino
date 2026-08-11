@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1080, height=1920" />
-    <title>במקור — Brag</title>
+    <title>במקור — Brag 90s</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       @font-face {
@@ -27,7 +27,6 @@
         font-display: swap;
         src: url('assets/fonts/heebo-900.ttf') format('truetype');
       }
-
       * { box-sizing: border-box; }
       body {
         margin: 0;
@@ -43,72 +42,66 @@
         height: 1920px;
         overflow: hidden;
       }
-      .clip {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-      }
-      .fill {
-        position: absolute;
-        inset: 0;
-      }
+      .clip { position: absolute; inset: 0; overflow: hidden; }
+      .fill { position: absolute; inset: 0; }
       .fill-app {
         background:
           radial-gradient(ellipse 90% 55% at 100% -5%, rgba(0, 102, 255, 0.12), transparent 55%),
           radial-gradient(ellipse 70% 45% at 0% 100%, rgba(0, 102, 255, 0.06), transparent 50%),
           #F9F9FB;
       }
-      .fill-soft {
-        background: #F9F9FB;
-      }
-
+      .fill-soft { background: #F9F9FB; }
       .pad {
         position: relative;
         z-index: 1;
         height: 100%;
-        padding: 100px 64px;
+        padding: 96px 56px;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        gap: 24px;
+        gap: 22px;
       }
-
       .brand-xl {
         margin: 0;
-        font-size: 96px;
+        font-size: 92px;
         font-weight: 900;
-        letter-spacing: -0.045em;
+        letter-spacing: -0.04em;
         line-height: 1;
         color: #0066FF;
       }
       .headline {
         margin: 0;
-        font-size: 52px;
+        font-size: 48px;
         font-weight: 800;
-        line-height: 1.28;
-        letter-spacing: -0.03em;
+        line-height: 1.3;
+        letter-spacing: -0.025em;
         color: #1A1A2E;
-        max-width: 920px;
+        max-width: 940px;
       }
       .lede {
         margin: 0;
-        font-size: 32px;
+        font-size: 30px;
         font-weight: 600;
-        line-height: 1.5;
+        line-height: 1.55;
         color: #3C3C43;
-        max-width: 880px;
+        max-width: 900px;
       }
       .eyebrow {
         margin: 0;
         font-size: 26px;
-        font-weight: 700;
+        font-weight: 800;
         color: #0066FF;
-        letter-spacing: 0.02em;
+      }
+      .caption {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+        color: #3C3C43;
+        text-align: center;
       }
 
-      /* WhatsApp phone */
       .phone-shell {
-        width: 820px;
+        width: 860px;
         max-width: 100%;
         margin: 0 auto;
         background: #FFFFFF;
@@ -120,7 +113,7 @@
       .phone-header {
         background: #F5F5F7;
         border-bottom: 1px solid #E8E8ED;
-        padding: 28px 28px 24px;
+        padding: 26px 28px;
         display: flex;
         align-items: center;
         gap: 16px;
@@ -138,24 +131,11 @@
         font-size: 22px;
         flex-shrink: 0;
       }
-      .phone-title {
-        font-size: 30px;
-        font-weight: 800;
-        color: #1A1A2E;
-      }
-      .phone-sub {
-        font-size: 22px;
-        font-weight: 600;
-        color: #5C5C63;
-        margin-top: 2px;
-      }
-      .phone-body {
-        background: #F9F9FB;
-        padding: 28px 24px 32px;
-        min-height: 720px;
-      }
+      .phone-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
+      .phone-sub { font-size: 22px; font-weight: 600; color: #5C5C63; margin-top: 2px; }
+      .phone-body { background: #F9F9FB; padding: 26px 22px 30px; min-height: 680px; }
       .msg {
-        max-width: 92%;
+        max-width: 94%;
         margin: 0 0 18px auto;
         background: #FFFFFF;
         border: 1px solid #E8E8ED;
@@ -163,33 +143,10 @@
         padding: 20px 22px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       }
-      .msg-from {
-        font-size: 22px;
-        font-weight: 700;
-        color: #0066FF;
-        margin-bottom: 8px;
-      }
-      .msg-text {
-        font-size: 30px;
-        font-weight: 700;
-        color: #1A1A2E;
-        line-height: 1.35;
-      }
-      .msg-time {
-        margin-top: 10px;
-        font-size: 18px;
-        font-weight: 600;
-        color: #5C5C63;
-      }
-      .chaos-caption {
-        text-align: center;
-        margin-top: 8px;
-        font-size: 30px;
-        font-weight: 700;
-        color: #3C3C43;
-      }
+      .msg-from { font-size: 22px; font-weight: 700; color: #0066FF; margin-bottom: 8px; }
+      .msg-text { font-size: 30px; font-weight: 700; color: #1A1A2E; line-height: 1.4; }
+      .msg-time { margin-top: 10px; font-size: 18px; font-weight: 600; color: #5C5C63; }
 
-      /* App chrome */
       .app-frame {
         background: #FFFFFF;
         border: 1px solid #E8E8ED;
@@ -203,19 +160,10 @@
         justify-content: space-between;
         padding: 22px 26px;
         border-bottom: 1px solid #E8E8ED;
-        background: #FFFFFF;
       }
-      .app-top-title {
-        font-size: 32px;
-        font-weight: 800;
-        color: #1A1A2E;
-      }
-      .app-top-brand {
-        font-size: 24px;
-        font-weight: 800;
-        color: #0066FF;
-      }
-      .app-body { padding: 26px; background: #F9F9FB; }
+      .app-top-title { font-size: 32px; font-weight: 800; color: #1A1A2E; }
+      .app-top-brand { font-size: 24px; font-weight: 800; color: #0066FF; }
+      .app-body { padding: 24px; background: #F9F9FB; }
 
       .ticket {
         background: #FFFFFF;
@@ -231,12 +179,7 @@
         gap: 16px;
         margin-bottom: 14px;
       }
-      .ticket-num {
-        font-size: 40px;
-        font-weight: 800;
-        color: #1A1A2E;
-        font-variant-numeric: tabular-nums;
-      }
+      .ticket-num { font-size: 40px; font-weight: 800; color: #1A1A2E; }
       .badge {
         display: inline-flex;
         align-items: center;
@@ -247,27 +190,17 @@
       }
       .badge-new { background: #FFF4E5; color: rgb(180, 100, 0); }
       .badge-progress { background: #E5F0FF; color: #0066FF; }
-      .ticket-meta {
-        font-size: 26px;
-        font-weight: 600;
-        color: #3C3C43;
-        margin-bottom: 12px;
-      }
-      .ticket-desc {
-        font-size: 34px;
-        font-weight: 800;
-        color: #1A1A2E;
-        line-height: 1.35;
-        margin-bottom: 20px;
-      }
+      .badge-paid { background: #E8F9ED; color: #15803d; }
+      .badge-sent { background: #E5F0FF; color: #1e40af; }
+      .ticket-meta { font-size: 26px; font-weight: 600; color: #3C3C43; margin-bottom: 12px; }
+      .ticket-desc { font-size: 34px; font-weight: 800; color: #1A1A2E; line-height: 1.4; margin-bottom: 20px; }
       .media {
         position: relative;
-        height: 340px;
+        height: 320px;
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid #E8E8ED;
-        background:
-          linear-gradient(160deg, #D7E6FF 0%, #EEF3FB 45%, #F5F5F7 100%);
+        background: linear-gradient(160deg, #D7E6FF 0%, #EEF3FB 45%, #F5F5F7 100%);
       }
       .media-shape {
         position: absolute;
@@ -289,11 +222,9 @@
       }
       .media-caption {
         position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        left: 0; right: 0; bottom: 0;
         padding: 16px 18px;
-        background: rgba(255, 255, 255, 0.92);
+        background: rgba(255, 255, 255, 0.94);
         border-top: 1px solid #E8E8ED;
         font-size: 24px;
         font-weight: 700;
@@ -301,54 +232,29 @@
         text-align: center;
       }
 
-      /* Drawer */
       .drawer {
         background: #FFFFFF;
         border: 1px solid #E8E8ED;
         border-radius: 20px 20px 0 0;
         box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.08);
-        padding: 28px 26px 32px;
+        padding: 26px 24px 30px;
       }
       .drawer-handle {
-        width: 48px;
-        height: 5px;
-        border-radius: 9999px;
-        background: #D1D1D6;
-        margin: 0 auto 20px;
+        width: 48px; height: 5px; border-radius: 9999px;
+        background: #D1D1D6; margin: 0 auto 18px;
       }
-      .drawer-title {
-        font-size: 34px;
-        font-weight: 800;
-        color: #1A1A2E;
-        margin-bottom: 4px;
-      }
-      .drawer-sub {
-        font-size: 24px;
-        font-weight: 600;
-        color: #86868B;
-        margin-bottom: 22px;
-      }
+      .drawer-title { font-size: 34px; font-weight: 800; color: #1A1A2E; }
+      .drawer-sub { font-size: 24px; font-weight: 600; color: #5C5C63; margin: 4px 0 20px; }
       .tabs {
-        display: flex;
-        gap: 8px;
-        padding: 6px;
-        background: #F5F5F7;
-        border-radius: 12px;
-        margin-bottom: 20px;
+        display: flex; gap: 8px; padding: 6px;
+        background: #F5F5F7; border-radius: 12px; margin-bottom: 18px;
       }
       .tab {
-        flex: 1;
-        text-align: center;
-        padding: 14px 8px;
-        border-radius: 8px;
-        font-size: 22px;
-        font-weight: 700;
-        color: #86868B;
-        background: transparent;
+        flex: 1; text-align: center; padding: 14px 8px; border-radius: 8px;
+        font-size: 22px; font-weight: 700; color: #5C5C63;
       }
       .tab.on {
-        background: #FFFFFF;
-        color: #0066FF;
+        background: #FFFFFF; color: #0066FF;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       }
       .panel {
@@ -358,103 +264,85 @@
         padding: 20px 22px;
         margin-bottom: 12px;
       }
-      .panel-k {
-        font-size: 22px;
-        font-weight: 700;
-        color: #86868B;
-        margin-bottom: 8px;
-      }
-      .panel-v {
-        font-size: 28px;
-        font-weight: 700;
-        color: #1A1A2E;
-        line-height: 1.4;
-      }
+      .panel-k { font-size: 22px; font-weight: 700; color: #5C5C63; margin-bottom: 8px; }
+      .panel-v { font-size: 28px; font-weight: 700; color: #1A1A2E; line-height: 1.45; }
       .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 12px;
-        min-height: 52px;
-        padding: 0 20px;
-        border-radius: 12px;
-        background: #0066FF;
-        color: #FFFFFF;
-        font-size: 24px;
-        font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center;
+        margin-top: 12px; min-height: 52px; padding: 0 20px;
+        border-radius: 12px; background: #0066FF; color: #FFFFFF;
+        font-size: 24px; font-weight: 700;
       }
       .btn-secondary {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 12px;
-        min-height: 52px;
-        padding: 0 20px;
-        border-radius: 12px;
-        background: #FFFFFF;
-        color: #1A1A2E;
-        border: 1px solid #E8E8ED;
-        font-size: 24px;
-        font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center;
+        margin-top: 12px; min-height: 52px; padding: 0 20px;
+        border-radius: 12px; background: #FFFFFF; color: #1A1A2E;
+        border: 1px solid #E8E8ED; font-size: 24px; font-weight: 700;
       }
 
-      .flow {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-top: 8px;
-      }
-      .flow-step {
-        flex: 1;
-        background: #FFFFFF;
-        border: 1px solid #E8E8ED;
-        border-radius: 14px;
-        padding: 22px 14px;
-        text-align: center;
+      .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
+      .kpi {
+        flex: 1; background: #FFFFFF; border: 1px solid #E8E8ED;
+        border-radius: 14px; padding: 18px 14px; text-align: center;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       }
-      .flow-n {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: #0066FF;
-        color: #FFFFFF;
-        font-weight: 800;
-        font-size: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 12px;
+      .kpi-v { font-size: 36px; font-weight: 800; color: #0066FF; }
+      .kpi-l { font-size: 20px; font-weight: 700; color: #3C3C43; margin-top: 6px; }
+
+      .stamp-card {
+        background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 16px;
+        padding: 22px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       }
-      .flow-t {
-        font-size: 24px;
-        font-weight: 800;
-        color: #1A1A2E;
-        line-height: 1.3;
+      .stamp-row {
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
       }
-      .flow-arrow {
-        color: #0066FF;
-        font-size: 34px;
-        font-weight: 900;
-        flex-shrink: 0;
+      .stamp-name { font-size: 30px; font-weight: 800; color: #1A1A2E; }
+      .stamp-meta { font-size: 24px; font-weight: 600; color: #3C3C43; margin-top: 6px; }
+      .nfc-tag {
+        margin-top: 14px; padding: 14px 16px; border-radius: 12px;
+        background: #E5F0FF; color: #0066FF; font-size: 22px; font-weight: 700;
+        text-align: center;
       }
 
+      .charge {
+        background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 16px;
+        padding: 22px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .charge-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
+      .charge-amt { font-size: 36px; font-weight: 800; color: #1e40af; margin-top: 8px; }
+      .charge-meta { font-size: 22px; font-weight: 600; color: #3C3C43; margin-top: 8px; }
+      .pay-cta {
+        margin-top: 14px; display: flex; align-items: center; justify-content: center;
+        min-height: 56px; border-radius: 12px; background: #1e40af; color: #FFFFFF;
+        font-size: 24px; font-weight: 800;
+      }
+
+      .flow { display: flex; gap: 12px; }
+      .flow-step {
+        flex: 1; background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 14px;
+        padding: 22px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .flow-n {
+        width: 44px; height: 44px; border-radius: 12px; background: #0066FF; color: #FFFFFF;
+        font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 12px;
+      }
+      .flow-t { font-size: 24px; font-weight: 800; color: #1A1A2E; line-height: 1.3; }
+
       .cta {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        align-self: flex-start;
-        min-height: 84px;
-        padding: 0 36px;
-        border-radius: 12px;
-        background: #0066FF;
-        color: #FFFFFF;
-        font-size: 32px;
-        font-weight: 800;
+        display: inline-flex; align-items: center; justify-content: center;
+        align-self: center; min-height: 84px; padding: 0 36px; border-radius: 12px;
+        background: #0066FF; color: #FFFFFF; font-size: 30px; font-weight: 800;
         box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
       }
-      .cta.center { align-self: center; }
+      .feature-list { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+      .feature-item {
+        background: #FFFFFF; border: 1px solid #E8E8ED; border-radius: 14px;
+        padding: 20px 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .feature-item strong {
+        display: block; font-size: 28px; font-weight: 800; color: #1A1A2E; margin-bottom: 6px;
+      }
+      .feature-item span { font-size: 24px; font-weight: 600; color: #3C3C43; line-height: 1.45; }
     </style>
   </head>
   <body>
@@ -464,70 +352,70 @@
       data-start="0"
       data-width="1080"
       data-height="1920"
-      data-duration="22"
+      data-duration="90"
     >
       <audio
         id="bgm"
         src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"
         data-start="0"
-        data-duration="22"
+        data-duration="90"
         data-track-index="0"
-        data-volume="0.18"
+        data-volume="0.16"
       ></audio>
 
-      <!-- 0–3.2 Brand -->
-      <section class="clip" data-start="0" data-duration="3.2" data-track-index="1">
+      <!-- 1. Brand 0–9 -->
+      <section id="scene-brand" class="clip" data-start="0" data-duration="9" data-track-index="1">
         <div class="fill fill-app"></div>
         <div class="pad">
-          <p id="s1-brand" class="brand-xl">במקור</p>
-          <h1 id="s1-head" class="headline">תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים</h1>
-          <p id="s1-lede" class="lede">ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.</p>
+          <p id="b-brand" class="brand-xl">במקור</p>
+          <h1 id="b-head" class="headline">תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים</h1>
+          <p id="b-lede" class="lede">ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.</p>
         </div>
       </section>
 
-      <!-- 3.2–7.2 Problem -->
-      <section class="clip" data-start="3.2" data-duration="4" data-track-index="1">
+      <!-- 2. Problem 9–22 -->
+      <section id="scene-problem" class="clip" data-start="9" data-duration="13" data-track-index="1">
         <div class="fill fill-soft"></div>
-        <div class="pad" style="justify-content: flex-start; padding-top: 120px">
-          <p id="s2-eye" class="eyebrow">הבעיה</p>
-          <p id="s2-head" class="headline" style="font-size: 44px; margin-bottom: 8px">כל בניין = עוד צ׳אט. כל תקלה = עוד הודעה.</p>
-          <div id="s2-phone" class="phone-shell">
+        <div class="pad" style="justify-content:flex-start;padding-top:100px">
+          <p id="p-eye" class="eyebrow">הבעיה</p>
+          <p id="p-head" class="headline" style="font-size:42px">כל בניין = עוד צ׳אט. כל תקלה = עוד הודעה אבודה.</p>
+          <div id="p-phone" class="phone-shell">
             <div class="phone-header">
               <div class="avatar">די</div>
               <div>
                 <div class="phone-title">קבוצת דיירים</div>
-                <div class="phone-sub">WhatsApp · 3 הודעות חדשות</div>
+                <div class="phone-sub">WhatsApp · הודעות בלי מעקב</div>
               </div>
             </div>
             <div class="phone-body">
-              <div id="m1" class="msg">
+              <div id="pm1" class="msg">
                 <div class="msg-from">דייר · הרצל 12</div>
                 <div class="msg-text">יש דליפה מהתקרה בקומה 3</div>
                 <div class="msg-time">09:14</div>
               </div>
-              <div id="m2" class="msg">
+              <div id="pm2" class="msg">
                 <div class="msg-from">דייר · ביאליק 7</div>
                 <div class="msg-text">המעלית תקועה שוב</div>
                 <div class="msg-time">09:16</div>
               </div>
-              <div id="m3" class="msg">
+              <div id="pm3" class="msg">
                 <div class="msg-from">דייר · הנביאים 4</div>
                 <div class="msg-text">שולח תמונה מהחניה…</div>
                 <div class="msg-time">09:18</div>
               </div>
             </div>
           </div>
-          <p id="s2-cap" class="chaos-caption">בלי מעקב. בלי סטטוס. בלי שיוך לעובד.</p>
+          <p id="p-cap" class="caption">בלי סטטוס. בלי שיוך לעובד. בלי היסטוריה.</p>
         </div>
       </section>
 
-      <!-- 7.2–12.2 Ticket in system -->
-      <section class="clip" data-start="7.2" data-duration="5" data-track-index="1">
+      <!-- 3. Ticket 22–36 -->
+      <section id="scene-ticket" class="clip" data-start="22" data-duration="14" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad" style="justify-content: flex-start; padding-top: 110px">
-          <p id="s3-eye" class="eyebrow">במערכת</p>
-          <p id="s3-head" class="headline" style="font-size: 42px">דיווח עם תמונה וסרטון — נפתח כתקלה</p>
-          <div id="s3-app" class="app-frame">
+        <div class="pad" style="justify-content:flex-start;padding-top:96px">
+          <p id="t-eye" class="eyebrow">תקלות עם מדיה</p>
+          <p id="t-head" class="headline" style="font-size:40px">הדייר שולח תמונה או סרטון — והמשרד רואה תקלה מסודרת</p>
+          <div id="t-app" class="app-frame">
             <div class="app-top">
               <span class="app-top-title">תקלות</span>
               <span class="app-top-brand">במקור</span>
@@ -540,7 +428,7 @@
                 </div>
                 <div class="ticket-meta">הרצל 12 · דירה 8</div>
                 <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
-                <div id="s3-media" class="media">
+                <div id="t-media" class="media">
                   <div class="media-shape"></div>
                   <div class="media-dot"></div>
                   <div class="media-caption">תמונה / סרטון מהדייר</div>
@@ -548,36 +436,37 @@
               </div>
             </div>
           </div>
+          <p id="t-cap" class="caption">גם תרגום אוטומטי לתקלות בשפות אחרות</p>
         </div>
       </section>
 
-      <!-- 12.2–17.6 Manager -->
-      <section class="clip" data-start="12.2" data-duration="5.4" data-track-index="1">
+      <!-- 4. Manager 36–52 -->
+      <section id="scene-manager" class="clip" data-start="36" data-duration="16" data-track-index="1">
         <div class="fill fill-soft"></div>
-        <div class="pad" style="justify-content: flex-end; padding-bottom: 80px">
-          <p id="s4-eye" class="eyebrow">למנהל</p>
-          <p id="s4-head" class="headline" style="font-size: 40px; margin-bottom: 12px">תרגום, שיחה ושיבוץ — בלי לצאת מהתקלה</p>
-          <div id="s4-drawer" class="drawer">
+        <div class="pad" style="justify-content:flex-end;padding-bottom:72px">
+          <p id="m-eye" class="eyebrow">שולחן המנהל</p>
+          <p id="m-head" class="headline" style="font-size:38px">תרגום, שיחה עם הדייר, ושיבוץ עובד — מתוך התקלה</p>
+          <div id="m-drawer" class="drawer">
             <div class="drawer-handle"></div>
             <div class="drawer-title">תקלה #184</div>
-            <div class="drawer-sub">הרצל 12 · פרטי בניין</div>
+            <div class="drawer-sub">הרצל 12 · WhatsApp דייר פתוח</div>
             <div class="tabs">
               <div class="tab">פרטים</div>
               <div class="tab">צ׳אט פנימי</div>
               <div class="tab on">WhatsApp דייר</div>
             </div>
-            <div id="p1" class="panel">
+            <div id="mp1" class="panel">
               <div class="panel-k">תרגום תקלות</div>
-              <div class="panel-v">There is a leak in the ceiling → יש דליפה בתקרה</div>
+              <div class="panel-v">There is a leak… → יש דליפה בתקרה</div>
               <span class="btn-secondary">תרגם לעברית</span>
             </div>
-            <div id="p2" class="panel">
+            <div id="mp2" class="panel">
               <div class="panel-k">שיחה מתוך המערכת</div>
-              <div class="panel-v">המנהל עונה לדייר ב-WhatsApp ישירות מתוך התקלה</div>
+              <div class="panel-v">עונים לדייר ב-WhatsApp בלי לאבד את ההקשר של התקלה</div>
             </div>
-            <div id="p3" class="panel">
-              <div class="panel-k">שיבוץ עובד</div>
-              <div class="panel-v" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div id="mp3" class="panel">
+              <div class="panel-k">שיבוץ עובד שטח</div>
+              <div class="panel-v" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
                 <span>יוסי כהן</span>
                 <span class="badge badge-progress">בטיפול</span>
               </div>
@@ -587,20 +476,112 @@
         </div>
       </section>
 
-      <!-- 17.6–22 Outro -->
-      <section class="clip" data-start="17.6" data-duration="4.4" data-track-index="1">
+      <!-- 5. Attendance 52–66 -->
+      <section id="scene-stamp" class="clip" data-start="52" data-duration="14" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad" style="align-items: stretch">
-          <p id="s5-brand" class="brand-xl" style="text-align:center;align-self:center">במקור</p>
-          <div id="s5-flow" class="flow">
+        <div class="pad" style="justify-content:flex-start;padding-top:96px">
+          <p id="s-eye" class="eyebrow">חתמת עובדים</p>
+          <p id="s-head" class="headline" style="font-size:40px">נוכחות שטח עם מדבקות NFC — בלי אפליקציה מסובכת</p>
+          <div id="s-app" class="app-frame">
+            <div class="app-top">
+              <span class="app-top-title">חתמת עובדים</span>
+              <span class="app-top-brand">במקור</span>
+            </div>
+            <div class="app-body">
+              <div id="s-kpis" class="kpi-row">
+                <div class="kpi"><div class="kpi-v">6</div><div class="kpi-l">בעבודה עכשיו</div></div>
+                <div class="kpi"><div class="kpi-v">18</div><div class="kpi-l">משמרות היום</div></div>
+                <div class="kpi"><div class="kpi-v">2</div><div class="kpi-l">ממתינים לאישור</div></div>
+              </div>
+              <div id="s-c1" class="stamp-card">
+                <div class="stamp-row">
+                  <div>
+                    <div class="stamp-name">יוסי כהן</div>
+                    <div class="stamp-meta">כניסה · הרצל 12 · 08:02</div>
+                  </div>
+                  <span class="badge badge-progress">בעבודה עכשיו</span>
+                </div>
+                <div class="nfc-tag">מדבקת NFC על דלת הבניין</div>
+              </div>
+              <div id="s-c2" class="stamp-card">
+                <div class="stamp-row">
+                  <div>
+                    <div class="stamp-name">דנה לוי</div>
+                    <div class="stamp-meta">יציאה · ביאליק 7 · 12:40</div>
+                  </div>
+                  <span class="badge badge-paid">הושלם</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p id="s-cap" class="caption">עובד מגיע → מצמיד טלפון למדבקה → המשרד רואה בזמן אמת</p>
+        </div>
+      </section>
+
+      <!-- 6. Collections 66–80 -->
+      <section id="scene-pay" class="clip" data-start="66" data-duration="14" data-track-index="1">
+        <div class="fill fill-soft"></div>
+        <div class="pad" style="justify-content:flex-start;padding-top:96px">
+          <p id="c-eye" class="eyebrow">גביית ועד</p>
+          <p id="c-head" class="headline" style="font-size:40px">שליחת חיובים לדיירים ומעקב תשלום — במערכת אחת</p>
+          <div id="c-app" class="app-frame">
+            <div class="app-top">
+              <span class="app-top-title">גביית ועד</span>
+              <span class="app-top-brand">במקור</span>
+            </div>
+            <div class="app-body">
+              <div id="c-kpis" class="kpi-row">
+                <div class="kpi"><div class="kpi-v" style="color:#1e40af">42</div><div class="kpi-l">נשלחו</div></div>
+                <div class="kpi"><div class="kpi-v" style="color:#15803d">31</div><div class="kpi-l">שולמו</div></div>
+                <div class="kpi"><div class="kpi-v" style="color:#ca8a04">9</div><div class="kpi-l">ממתינים</div></div>
+              </div>
+              <div id="c1" class="charge">
+                <div class="stamp-row">
+                  <div class="charge-title">ועד בית · מרץ</div>
+                  <span class="badge badge-sent">נשלח לתשלום</span>
+                </div>
+                <div class="charge-amt">₪ 350</div>
+                <div class="charge-meta">דייר: אבי כהן · הרצל 12 / דירה 8</div>
+                <div class="pay-cta">קישור תשלום מאובטח</div>
+              </div>
+              <div id="c2" class="charge">
+                <div class="stamp-row">
+                  <div class="charge-title">ועד בית · מרץ</div>
+                  <span class="badge badge-paid">שולם</span>
+                </div>
+                <div class="charge-amt" style="color:#15803d">₪ 350</div>
+                <div class="charge-meta">דייר: מיכל לוי · ביאליק 7 / דירה 3</div>
+              </div>
+            </div>
+          </div>
+          <p id="c-cap" class="caption">שליחה מרוכזת לבניין · מעקב סטטוס · דף תשלום לדייר</p>
+        </div>
+      </section>
+
+      <!-- 7. More + CTA 80–90 -->
+      <section id="scene-outro" class="clip" data-start="80" data-duration="10" data-track-index="1">
+        <div class="fill fill-app"></div>
+        <div class="pad" style="justify-content:center;gap:18px">
+          <p id="o-brand" class="brand-xl" style="text-align:center;align-self:center;font-size:72px">במקור</p>
+          <div id="o-list" class="feature-list">
+            <div class="feature-item">
+              <strong>רישום דיירים</strong>
+              <span>דף נחיתה או העלאת רשימה מלאה מהמנהל</span>
+            </div>
+            <div class="feature-item">
+              <strong>שליטה בנוסחי WhatsApp</strong>
+              <span>המנהל קובע את הודעות המערכת לדיירים</span>
+            </div>
+          </div>
+          <div id="o-flow" class="flow" style="margin-top:8px">
             <div class="flow-step"><div class="flow-n">1</div><div class="flow-t">דייר מדווח</div></div>
             <div class="flow-step"><div class="flow-n">2</div><div class="flow-t">משרד מנהל</div></div>
             <div class="flow-step"><div class="flow-n">3</div><div class="flow-t">עובד מטפל</div></div>
           </div>
-          <p id="s5-lede" class="lede" style="text-align:center;align-self:center;margin-top:12px">
+          <p id="o-price" class="lede" style="text-align:center;align-self:center;margin-top:6px">
             הקמה חד־פעמית + מנוי חודשי לפי היקף הבניינים.
           </p>
-          <div id="s5-cta" class="cta center">לחצו על כפתור יצירת הקשר בדף</div>
+          <div id="o-cta" class="cta">לחצו על כפתור יצירת הקשר בדף</div>
         </div>
       </section>
     </div>
@@ -609,39 +590,59 @@
       window.__timelines = window.__timelines || {}
       const tl = gsap.timeline({ paused: true })
 
-      // Scene 1 — brand
-      tl.fromTo('#s1-brand', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 0.15)
-      tl.fromTo('#s1-head', { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 0.45)
-      tl.fromTo('#s1-lede', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.85)
+      // Brand 0–9 — long holds for reading
+      tl.fromTo('#b-brand', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 0.3)
+      tl.fromTo('#b-head', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 1.1)
+      tl.fromTo('#b-lede', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 2.4)
 
-      // Scene 2 — problem // beat-grid messages
-      tl.fromTo('#s2-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.35 }, 3.3)
-      tl.fromTo('#s2-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 3.45)
-      tl.fromTo('#s2-phone', { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 3.7)
-      tl.fromTo('#m1', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 4.05)
-      tl.fromTo('#m2', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 4.55)
-      tl.fromTo('#m3', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 5.05)
-      tl.fromTo('#s2-cap', { opacity: 0 }, { opacity: 1, duration: 0.4 }, 5.55)
+      // Problem 9–22
+      tl.fromTo('#p-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 9.2)
+      tl.fromTo('#p-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, 9.6)
+      tl.fromTo('#p-phone', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 10.6)
+      tl.fromTo('#pm1', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 11.5)
+      tl.fromTo('#pm2', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 13.2)
+      tl.fromTo('#pm3', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 14.9)
+      tl.fromTo('#p-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 16.6)
 
-      // Scene 3 — ticket in app
-      tl.fromTo('#s3-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.3 }, 7.3)
-      tl.fromTo('#s3-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 7.45)
-      tl.fromTo('#s3-app', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 7.75)
-      tl.fromTo('#s3-media', { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power2.out' }, 8.45)
+      // Ticket 22–36
+      tl.fromTo('#t-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 22.2)
+      tl.fromTo('#t-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, 22.7)
+      tl.fromTo('#t-app', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 24.0)
+      tl.fromTo('#t-media', { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.5 }, 25.5)
+      tl.fromTo('#t-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 28.5)
 
-      // Scene 4 — manager drawer
-      tl.fromTo('#s4-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, 12.3)
-      tl.fromTo('#s4-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 12.45)
-      tl.fromTo('#s4-drawer', { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 12.7)
-      tl.fromTo('#p1', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 13.2)
-      tl.fromTo('#p2', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 13.9)
-      tl.fromTo('#p3', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 14.6)
+      // Manager 36–52
+      tl.fromTo('#m-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 36.2)
+      tl.fromTo('#m-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55 }, 36.7)
+      tl.fromTo('#m-drawer', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 38.0)
+      tl.fromTo('#mp1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 39.0)
+      tl.fromTo('#mp2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 42.2)
+      tl.fromTo('#mp3', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 45.4)
 
-      // Scene 5 — outro
-      tl.fromTo('#s5-brand', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 17.7)
-      tl.fromTo('#s5-flow', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 18.05)
-      tl.fromTo('#s5-lede', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 18.55)
-      tl.fromTo('#s5-cta', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 18.95)
+      // Stamp 52–66
+      tl.fromTo('#s-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 52.2)
+      tl.fromTo('#s-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55 }, 52.7)
+      tl.fromTo('#s-app', { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 54.0)
+      tl.fromTo('#s-kpis', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 54.8)
+      tl.fromTo('#s-c1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 56.0)
+      tl.fromTo('#s-c2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 58.2)
+      tl.fromTo('#s-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 60.5)
+
+      // Collections 66–80
+      tl.fromTo('#c-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 66.2)
+      tl.fromTo('#c-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55 }, 66.7)
+      tl.fromTo('#c-app', { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 68.0)
+      tl.fromTo('#c-kpis', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 68.8)
+      tl.fromTo('#c1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 70.0)
+      tl.fromTo('#c2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 72.8)
+      tl.fromTo('#c-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 75.2)
+
+      // Outro 80–90
+      tl.fromTo('#o-brand', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 80.3)
+      tl.fromTo('#o-list', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, 81.2)
+      tl.fromTo('#o-flow', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 83.5)
+      tl.fromTo('#o-price', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 85.0)
+      tl.fromTo('#o-cta', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 86.2)
 
       window.__timelines['main'] = tl
     </script>
