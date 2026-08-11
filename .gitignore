@@ -53,3 +53,7 @@ next-env.d.ts
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# local agent tooling (do not ship)
+.agents/
+skills-lock.json

@@ -72,7 +72,7 @@ export default function PublicPayPage() {
     return (
       <main dir="rtl" style={styles.shell}>
         <div style={styles.panel}>
-          <p style={styles.brand}>במאקור</p>
+          <p style={styles.brand}>במקור</p>
           <h1 style={styles.title}>לא ניתן להציג את החיוב</h1>
           <p style={styles.sub}>{error || 'שגיאה'}</p>
         </div>
@@ -87,7 +87,7 @@ export default function PublicPayPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={data.client.logo_url} alt="" style={styles.logo} />
         ) : null}
-        <p style={styles.brand}>{data.client.name || 'במאקור'}</p>
+        <p style={styles.brand}>{data.client.name || 'במקור'}</p>
         <h1 style={styles.title}>{data.title}</h1>
         <p style={styles.amount}>{data.amount_label}</p>
         {(data.resident_name || data.apartment_number || data.project_name) && (

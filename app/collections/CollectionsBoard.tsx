@@ -631,11 +631,34 @@ export function CollectionsBoard() {
                           void postChargeAction(
                             '/api/collections/charges/cancel',
                             row.id,
-                            'החיוב בוטל'
+                            'החיוב בוטל וקישור Bamakor בוטל'
                           )
                         }
                       >
                         בטל
+                      </Button>
+                    )}
+                    {status !== 'paid' && status !== 'cancelled' && status !== 'draft' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              'לסמן את החיוב כשולם ידנית? השתמשו רק אם הדייר שילם והסטטוס לא התעדכן אוטומטית.'
+                            )
+                          ) {
+                            return
+                          }
+                          void postChargeAction(
+                            '/api/collections/charges/mark-paid',
+                            row.id,
+                            'סומן כשולם'
+                          )
+                        }}
+                      >
+                        סמן כשולם
                       </Button>
                     )}
                     {row.greeninvoice_document_id && (

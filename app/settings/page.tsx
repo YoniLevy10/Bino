@@ -158,6 +158,9 @@ function SettingsPageInner() {
 
   const [origin, setOrigin] = useState('')
 
+  const [giWebhookConfiguredUrl, setGiWebhookConfiguredUrl] = useState<string | null>(null)
+  const [giWebhookLoadError, setGiWebhookLoadError] = useState<string | null>(null)
+
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
     check()
@@ -170,15 +173,45 @@ function SettingsPageInner() {
     setOrigin(typeof window !== 'undefined' ? window.location.origin : '')
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetchWithTimeout('/api/collections/webhook-url')
+        const json = (await res.json().catch(() => ({}))) as {
+          ok?: boolean
+          url?: string
+          error?: string
+          configured?: boolean
+        }
+        if (cancelled) return
+        if (res.ok && json.url) {
+          setGiWebhookConfiguredUrl(json.url)
+          setGiWebhookLoadError(null)
+        } else {
+          setGiWebhookConfiguredUrl(null)
+          setGiWebhookLoadError(json.error || 'סוד webhook לא מוגדר בשרת')
+        }
+      } catch {
+        if (!cancelled) {
+          setGiWebhookConfiguredUrl(null)
+          setGiWebhookLoadError('טעינת כתובת webhook נכשלה')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const webhookUrl = useMemo(
     () => (origin ? `${origin}/api/webhook/whatsapp` : '/api/webhook/whatsapp'),
     [origin]
   )
 
-  const greeninvoiceWebhookUrl = useMemo(
-    () => (origin ? `${origin}/api/webhook/greeninvoice` : '/api/webhook/greeninvoice'),
-    [origin]
-  )
+  const greeninvoiceWebhookDisplay =
+    giWebhookConfiguredUrl ||
+    (origin ? `${origin}/api/webhook/greeninvoice` : '/api/webhook/greeninvoice')
 
   const defaultPaySuccessUrl = useMemo(
     () => (origin ? `${origin}/pay/success` : '/pay/success'),
@@ -364,9 +397,13 @@ function SettingsPageInner() {
   }
 
   async function copyGreeninvoiceWebhook() {
+    if (!giWebhookConfiguredUrl) {
+      toast.error(giWebhookLoadError || 'סוד webhook לא מוגדר בשרת')
+      return
+    }
     try {
-      await navigator.clipboard.writeText(greeninvoiceWebhookUrl)
-      toast.success('הועתק')
+      await navigator.clipboard.writeText(giWebhookConfiguredUrl)
+      toast.success('הועתק (כולל token)')
     } catch {
       toast.error('העתקה נכשלה')
     }
@@ -1071,14 +1108,20 @@ function SettingsPageInner() {
                   <div style={styles.formGroup}>
                     <label style={styles.formLabel}>Webhook URL (לעדכון תשלומים בגבייה)</label>
                     <div style={styles.readonlyRow}>
-                      <input readOnly value={greeninvoiceWebhookUrl} style={{ ...styles.input, flex: 1 }} />
+                      <input
+                        readOnly
+                        value={greeninvoiceWebhookDisplay}
+                        style={{ ...styles.input, flex: 1 }}
+                      />
                       <Button variant="secondary" type="button" onClick={copyGreeninvoiceWebhook}>
                         העתק
                       </Button>
                     </div>
                     <span style={styles.formHint}>
-                      הגדירו ב-Morning → Webhooks. אם הוגדר GREENINVOICE_WEBHOOK_SECRET בשרת, הוסיפו
-                      ?token=... לכתובת. מעדכן אוטומטית סטטוס «שולם» בגביית ועד.
+                      {giWebhookConfiguredUrl
+                        ? 'העתיקו ל-Morning → Webhooks. הכתובת כוללת token מהשרת — חובה לעדכון אוטומטי של סטטוס «שולם».'
+                        : giWebhookLoadError ||
+                          'חסר GREENINVOICE_WEBHOOK_SECRET ב-Vercel. בלי זה אי אפשר לשלוח חיובים בבטחה.'}
                     </span>
                   </div>
 

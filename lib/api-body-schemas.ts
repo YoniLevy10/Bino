@@ -476,6 +476,10 @@ export const cancelCollectionChargeBodySchema = z.object({
   charge_id: z.string().uuid(),
 })
 
+export const markCollectionChargePaidBodySchema = z.object({
+  charge_id: z.string().uuid(),
+})
+
 const bulkSendItemSchema = z.object({
   resident_id: z.string().uuid(),
   amount: z.number().positive().max(1_000_000),

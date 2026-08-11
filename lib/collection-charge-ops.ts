@@ -35,10 +35,29 @@ function nowIso(): string {
 export function buildGreenInvoiceWebhookNotifyUrl(): string | null {
   const base = getPublicAppUrl()
   const secret = (process.env.GREENINVOICE_WEBHOOK_SECRET || '').trim()
-  if (!base) return null
+  if (!base || !secret) return null
   const url = new URL(`${base}/api/webhook/greeninvoice`)
-  if (secret) url.searchParams.set('token', secret)
+  url.searchParams.set('token', secret)
   return url.toString()
+}
+
+/** Absolute webhook URL for Morning account settings (includes token). */
+export function getConfiguredGreenInvoiceWebhookUrl(): {
+  ok: true
+  url: string
+} | {
+  ok: false
+  error: string
+} {
+  const url = buildGreenInvoiceWebhookNotifyUrl()
+  if (!url) {
+    return {
+      ok: false,
+      error:
+        'חסר GREENINVOICE_WEBHOOK_SECRET או NEXT_PUBLIC_APP_URL בשרת. הגדירו ב-Vercel ואז העתיקו שוב.',
+    }
+  }
+  return { ok: true, url }
 }
 
 export function buildPublicPayUrl(publicToken: string): string {
@@ -47,17 +66,27 @@ export function buildPublicPayUrl(publicToken: string): string {
   return base ? `${base}${path}` : path
 }
 
-export function defaultSuccessFailureUrls(row: ClientGreenInvoiceRow): {
+export function defaultSuccessFailureUrls(
+  row: ClientGreenInvoiceRow,
+  opts?: { publicToken?: string | null }
+): {
   successUrl: string
   failureUrl: string
 } {
   const base = getPublicAppUrl()
-  const success =
-    row.greeninvoice_payment_success_url?.trim() ||
-    (base ? `${base}/pay/success` : '/pay/success')
-  const failure =
-    row.greeninvoice_payment_failure_url?.trim() ||
-    (base ? `${base}/pay/failure` : '/pay/failure')
+  const token = (opts?.publicToken || '').trim()
+  const successDefault = base
+    ? token
+      ? `${base}/pay/success?t=${encodeURIComponent(token)}`
+      : `${base}/pay/success`
+    : '/pay/success'
+  const failureDefault = base
+    ? token
+      ? `${base}/pay/failure?t=${encodeURIComponent(token)}`
+      : `${base}/pay/failure`
+    : '/pay/failure'
+  const success = row.greeninvoice_payment_success_url?.trim() || successDefault
+  const failure = row.greeninvoice_payment_failure_url?.trim() || failureDefault
   return { successUrl: success, failureUrl: failure }
 }
 
@@ -153,6 +182,16 @@ export async function sendCollectionCharge(
     return { ok: false, error: 'החיוב בוטל', code: 'CANCELLED' }
   }
 
+  const notifyUrl = buildGreenInvoiceWebhookNotifyUrl()
+  if (!notifyUrl) {
+    return {
+      ok: false,
+      error:
+        'לא ניתן לשלוח חיוב: חסר GREENINVOICE_WEBHOOK_SECRET בשרת. בלי זה סטטוס «שולם» לא יתעדכן אחרי תשלום.',
+      code: 'WEBHOOK_SECRET_MISSING',
+    }
+  }
+
   const creds = requireConfiguredCredentials(clientRow)
   if (!creds.ok) return { ok: false, error: creds.error, code: 'NOT_CONFIGURED' }
 
@@ -162,8 +201,9 @@ export async function sendCollectionCharge(
   const greeninvoiceClientId = charge.greeninvoice_client_id
 
   if (!paymentUrl) {
-    const { successUrl, failureUrl } = defaultSuccessFailureUrls(clientRow)
-    const notifyUrl = buildGreenInvoiceWebhookNotifyUrl()
+    const { successUrl, failureUrl } = defaultSuccessFailureUrls(clientRow, {
+      publicToken: charge.public_token,
+    })
     const description = paymentDescription({
       title: charge.title,
       apartment: resident?.apartment_number,
@@ -329,10 +369,13 @@ export async function cancelCollectionCharge(
   if (row.status === 'paid') return { ok: false, error: 'לא ניתן לבטל חיוב ששולם' }
   if (row.status === 'cancelled') return { ok: true }
 
+  // Invalidate Bamakor public link; keep Morning payment_id so a late webhook can still match.
   const { error: updErr } = await admin
     .from('collection_charges')
     .update({
       status: 'cancelled' satisfies CollectionChargeStatus,
+      greeninvoice_payment_url: null,
+      public_token: crypto.randomUUID(),
       updated_at: nowIso(),
     })
     .eq('id', opts.chargeId)
@@ -340,6 +383,46 @@ export async function cancelCollectionCharge(
 
   if (updErr) return { ok: false, error: updErr.message }
   return { ok: true }
+}
+
+/** Manual ops recovery when webhook missed a real payment. */
+export async function markCollectionChargePaidManual(
+  admin: SupabaseClient,
+  opts: { clientId: string; chargeId: string }
+): Promise<{ ok: true; charge: CollectionChargeRow } | { ok: false; error: string }> {
+  const { data: charge, error } = await admin
+    .from('collection_charges')
+    .select('*')
+    .eq('id', opts.chargeId)
+    .eq('client_id', opts.clientId)
+    .maybeSingle()
+
+  if (error || !charge) return { ok: false, error: 'חיוב לא נמצא' }
+  const row = charge as CollectionChargeRow
+  if (row.status === 'cancelled') {
+    return { ok: false, error: 'לא ניתן לסמן חיוב מבוטל כשולם' }
+  }
+  if (row.status === 'paid') {
+    return { ok: true, charge: row }
+  }
+
+  const paidAt = nowIso()
+  const { data: updated, error: updErr } = await admin
+    .from('collection_charges')
+    .update({
+      status: 'paid' satisfies CollectionChargeStatus,
+      paid_at: paidAt,
+      updated_at: paidAt,
+    })
+    .eq('id', opts.chargeId)
+    .eq('client_id', opts.clientId)
+    .select('*')
+    .single()
+
+  if (updErr || !updated) {
+    return { ok: false, error: updErr?.message || 'עדכון ל«שולם» נכשל' }
+  }
+  return { ok: true, charge: updated as CollectionChargeRow }
 }
 
 export async function markChargePaidByMorningIds(

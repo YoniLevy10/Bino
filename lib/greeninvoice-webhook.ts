@@ -61,14 +61,24 @@ export function extractGreenInvoiceWebhookIds(payload: unknown): GreenInvoiceWeb
   }
 }
 
-/** Authorize Morning webhook via shared secret query/header token. */
+/**
+ * Authorize Morning webhook via shared secret query/header token.
+ * Missing server secret → reject (never accept unauthenticated paid updates).
+ */
 export function authorizeGreenInvoiceWebhook(opts: {
   expectedSecret: string | null | undefined
   tokenFromQuery: string | null | undefined
   tokenFromHeader: string | null | undefined
 }): boolean {
   const expected = (opts.expectedSecret || '').trim()
-  if (!expected) return true
+  if (!expected) return false
   const token = (opts.tokenFromQuery || opts.tokenFromHeader || '').trim()
-  return token === expected
+  return Boolean(token) && token === expected
+}
+
+/** True when Vercel/env has GREENINVOICE_WEBHOOK_SECRET configured. */
+export function isGreenInvoiceWebhookSecretConfigured(
+  secret: string | null | undefined = process.env.GREENINVOICE_WEBHOOK_SECRET
+): boolean {
+  return Boolean((secret || '').trim())
 }
