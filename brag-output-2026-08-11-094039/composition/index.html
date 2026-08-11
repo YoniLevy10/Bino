@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="he">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>במקור — Brag</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: 'Heebo';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('assets/fonts/heebo-700.ttf') format('truetype');
+      }
+      @font-face {
+        font-family: 'Heebo';
+        font-style: normal;
+        font-weight: 800;
+        font-display: swap;
+        src: url('assets/fonts/heebo-800.ttf') format('truetype');
+      }
+      @font-face {
+        font-family: 'Heebo';
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url('assets/fonts/heebo-900.ttf') format('truetype');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #0b1220;
+        color: #1a1a2e;
+        font-family: Heebo, sans-serif;
+        direction: rtl;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .fill {
+        position: absolute;
+        inset: 0;
+      }
+      .fill-dark {
+        background: linear-gradient(165deg, #0b1220 0%, #152238 100%);
+      }
+      .fill-light {
+        background: #f9f9fb;
+      }
+      .glow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 70% 40% at 50% 15%, rgba(0, 102, 255, 0.28), transparent 60%);
+        pointer-events: none;
+      }
+      .pad {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        padding: 120px 72px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 28px;
+      }
+      .brand {
+        font-size: 88px;
+        font-weight: 900;
+        color: #0066ff;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin: 0;
+      }
+      .headline {
+        font-size: 56px;
+        font-weight: 800;
+        line-height: 1.28;
+        letter-spacing: -0.03em;
+        color: #f8fafc;
+        margin: 0;
+        max-width: 920px;
+      }
+      .subhead {
+        font-size: 36px;
+        font-weight: 600;
+        line-height: 1.45;
+        color: rgba(248, 250, 252, 0.88);
+        margin: 0;
+        max-width: 900px;
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-start;
+        min-height: 84px;
+        padding: 0 36px;
+        border-radius: 16px;
+        background: #0066ff;
+        color: #ffffff;
+        font-size: 34px;
+        font-weight: 800;
+      }
+      .phone {
+        width: 780px;
+        max-width: 100%;
+        margin: 0 auto;
+        background: #111827;
+        border-radius: 40px;
+        border: 3px solid #334155;
+        padding: 28px 24px 36px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      }
+      .phone-bar {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 24px;
+      }
+      .bubble {
+        background: #1f2937;
+        color: #f8fafc;
+        border-radius: 22px 22px 8px 22px;
+        padding: 22px 24px;
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1.35;
+        margin-bottom: 16px;
+        border: 1px solid #374151;
+      }
+      .bubble strong {
+        display: block;
+        color: #93c5fd;
+        font-size: 22px;
+        margin-bottom: 6px;
+        font-weight: 700;
+      }
+      .chaos-label {
+        text-align: center;
+        color: #cbd5e1;
+        font-size: 32px;
+        font-weight: 700;
+        margin-top: 28px;
+      }
+      .ticket {
+        background: #ffffff;
+        border: 1px solid #e8e8ed;
+        border-radius: 20px;
+        padding: 28px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+      }
+      .ticket-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        gap: 16px;
+      }
+      .ticket-num {
+        font-size: 40px;
+        font-weight: 800;
+        color: #1a1a2e;
+      }
+      .chip {
+        background: #fff4e5;
+        color: rgb(207, 121, 0);
+        font-size: 24px;
+        font-weight: 700;
+        padding: 10px 16px;
+        border-radius: 999px;
+      }
+      .chip-blue {
+        background: #e5f0ff;
+        color: #0066ff;
+      }
+      .ticket-meta {
+        font-size: 28px;
+        color: #3c3c43;
+        margin-bottom: 18px;
+        font-weight: 600;
+      }
+      .ticket-desc {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 20px;
+        line-height: 1.35;
+      }
+      .photo {
+        width: 100%;
+        height: 320px;
+        border-radius: 16px;
+        background:
+          linear-gradient(135deg, rgba(0, 102, 255, 0.18), rgba(14, 165, 233, 0.12)),
+          repeating-linear-gradient(
+            45deg,
+            #e8eef9,
+            #e8eef9 16px,
+            #dbe7f8 16px,
+            #dbe7f8 32px
+          );
+        border: 1px solid #d1d1d6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #0066ff;
+        font-size: 30px;
+        font-weight: 800;
+      }
+      .section-label {
+        font-size: 30px;
+        font-weight: 800;
+        color: #0066ff;
+        margin: 0 0 8px;
+      }
+      .drawer {
+        background: #ffffff;
+        border-radius: 24px 24px 0 0;
+        border: 1px solid #e8e8ed;
+        padding: 28px;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.08);
+      }
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+      .tab {
+        flex: 1;
+        text-align: center;
+        padding: 16px 8px;
+        border-radius: 12px;
+        font-size: 24px;
+        font-weight: 700;
+        background: #f5f5f7;
+        color: #86868b;
+      }
+      .tab.active {
+        background: #ffffff;
+        color: #0066ff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e8e8ed;
+      }
+      .row {
+        background: #f9f9fb;
+        border: 1px solid #e8e8ed;
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin-bottom: 14px;
+      }
+      .row-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1a1a2e;
+        margin-bottom: 6px;
+      }
+      .row-text {
+        font-size: 24px;
+        color: #3c3c43;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+      .btn-sm {
+        display: inline-flex;
+        margin-top: 10px;
+        padding: 12px 18px;
+        border-radius: 10px;
+        background: #e5f0ff;
+        color: #0066ff;
+        font-size: 22px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1080"
+      data-height="1920"
+      data-duration="20"
+    >
+      <audio
+        id="bgm"
+        src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"
+        data-start="0"
+        data-duration="20"
+        data-track-index="0"
+        data-volume="0.22"
+      ></audio>
+
+      <!-- Scene 1: Chaos 0-3 -->
+      <section id="scene-chaos" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div class="fill fill-dark"></div>
+        <div class="glow"></div>
+        <div class="pad">
+          <div class="phone">
+            <div class="phone-bar">WhatsApp · דיירים</div>
+            <div id="b1" class="bubble"><strong>דייר · הרצל 12</strong>יש דליפה מהתקרה בקומה 3</div>
+            <div id="b2" class="bubble"><strong>דייר · ביאליק 7</strong>המעלית תקועה שוב</div>
+            <div id="b3" class="bubble"><strong>דייר · הנביאים 4</strong>שולח תמונה מהחניה…</div>
+          </div>
+          <div id="chaos-label" class="chaos-label">ככה זה נראה היום</div>
+        </div>
+      </section>
+
+      <!-- Scene 2: Brand 3-6 -->
+      <section id="scene-brand" class="clip" data-start="3" data-duration="3" data-track-index="1">
+        <div class="fill fill-dark"></div>
+        <div id="brand-glow" class="glow"></div>
+        <div class="pad">
+          <p id="brand-name" class="brand">במקור</p>
+          <h1 id="brand-headline" class="headline">
+            תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים
+          </h1>
+        </div>
+      </section>
+
+      <!-- Scene 3: Ticket 6-11 -->
+      <section id="scene-ticket" class="clip" data-start="6" data-duration="5" data-track-index="1">
+        <div class="fill fill-light"></div>
+        <div class="pad">
+          <p id="ticket-label" class="section-label">דיווח עם תמונה וסרטון</p>
+          <div id="ticket-card" class="ticket">
+            <div class="ticket-top">
+              <span class="ticket-num">#184</span>
+              <span id="ticket-chip" class="chip">חדשה</span>
+            </div>
+            <div class="ticket-meta">הרצל 12 · דירה 8</div>
+            <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
+            <div id="ticket-photo" class="photo">תמונה מהדייר</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 4: Manager tools 11-16 -->
+      <section id="scene-manager" class="clip" data-start="11" data-duration="5" data-track-index="1">
+        <div class="fill fill-light"></div>
+        <div class="pad" style="justify-content: flex-end; padding-bottom: 100px">
+          <p id="mgr-label" class="section-label">מה המנהל עושה במערכת</p>
+          <div id="drawer" class="drawer">
+            <div class="tabs">
+              <div class="tab">פרטים</div>
+              <div class="tab">צ׳אט פנימי</div>
+              <div class="tab active">WhatsApp דייר</div>
+            </div>
+            <div id="row1" class="row">
+              <div class="row-title">תרגום תקלות</div>
+              <div class="row-text">«There is a leak in the ceiling» → «יש דליפה בתקרה»</div>
+              <span class="btn-sm">תרגם לעברית</span>
+            </div>
+            <div id="row2" class="row">
+              <div class="row-title">שיחה מתוך המערכת</div>
+              <div class="row-text">המנהל עונה לדייר ב-WhatsApp בלי לצאת מהתקלה</div>
+            </div>
+            <div id="row3" class="row">
+              <div class="row-title">שיבוץ עובד</div>
+              <div class="row-text">יוסי כהן · <span class="chip chip-blue" style="display: inline-block; padding: 4px 10px; font-size: 20px">בטיפול</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 5: Outro 16-20 -->
+      <section id="scene-outro" class="clip" data-start="16" data-duration="4" data-track-index="1">
+        <div class="fill fill-dark"></div>
+        <div class="glow"></div>
+        <div class="pad" style="align-items: center; text-align: center">
+          <p id="outro-brand" class="brand">במקור</p>
+          <p id="outro-sub" class="subhead" style="text-align: center">
+            ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.
+          </p>
+          <div id="outro-cta" class="cta" style="align-self: center">לחצו על כפתור יצירת הקשר בדף</div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {}
+      const tl = gsap.timeline({ paused: true })
+
+      // Scene 1 — bubbles // beat-grid approx 0.5 / 1.0 / 1.5
+      tl.fromTo('#b1', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 0.35)
+      tl.fromTo('#b2', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 0.9)
+      tl.fromTo('#b3', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 1.45)
+      tl.fromTo('#chaos-label', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 2.05)
+
+      // Scene 2 — brand // beat-locked: ~3.02s
+      tl.fromTo('#brand-name', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 3.05)
+      tl.fromTo('#brand-headline', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 3.35)
+      tl.fromTo('#brand-glow', { opacity: 0.4 }, { opacity: 1, duration: 1.2, ease: 'sine.inOut' }, 3.1)
+
+      // Scene 3 — ticket
+      tl.fromTo('#ticket-label', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 6.15)
+      tl.fromTo('#ticket-card', { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 6.45)
+      tl.fromTo('#ticket-photo', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power2.out' }, 7.1)
+      tl.fromTo('#ticket-chip', { opacity: 0.4 }, { opacity: 1, duration: 0.35 }, 7.4)
+
+      // Scene 4 — manager rows // beat-grid
+      tl.fromTo('#mgr-label', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 11.15)
+      tl.fromTo('#drawer', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 11.35)
+      tl.fromTo('#row1', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 11.85)
+      tl.fromTo('#row2', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 12.55)
+      tl.fromTo('#row3', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 13.25)
+
+      // Scene 5 — outro
+      tl.fromTo('#outro-brand', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 16.15)
+      tl.fromTo('#outro-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 16.45)
+      tl.fromTo('#outro-cta', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 17.05)
+
+      window.__timelines['main'] = tl
+    </script>
+  </body>
+</html>

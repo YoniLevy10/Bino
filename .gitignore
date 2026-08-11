@@ -53,3 +53,8 @@ next-env.d.ts
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# brag / hyperframes
+brag-output*/composition/snapshots/
+.agents/
+skills-lock.json

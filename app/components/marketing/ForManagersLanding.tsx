@@ -5,6 +5,7 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 
 const WHATSAPP_URL = 'https://wa.me/97254810288'
 const VIDEO_SRC = '/marketing/bamakor-promo.mp4'
+const VIDEO_POSTER = '/marketing/bamakor-promo.jpg'
 
 const FEATURES = [
   {
@@ -41,6 +42,7 @@ export function ForManagersLanding() {
         <div style={styles.heroMedia} aria-hidden={!isMobile}>
           <video
             src={VIDEO_SRC}
+            poster={VIDEO_POSTER}
             style={styles.heroVideo}
             muted
             loop
@@ -74,6 +76,7 @@ export function ForManagersLanding() {
         <div style={styles.mobileVideoWrap}>
           <video
             src={VIDEO_SRC}
+            poster={VIDEO_POSTER}
             style={styles.mobileVideo}
             controls
             playsInline
