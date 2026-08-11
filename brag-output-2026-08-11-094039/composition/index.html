@@ -55,11 +55,29 @@
         position: relative;
         z-index: 1;
         height: 100%;
-        padding: 96px 56px;
+        padding: 40px 44px;
+        display: grid;
+        place-items: center;
+      }
+      .pad.pad-center-text {
         display: flex;
         flex-direction: column;
+        align-items: center;
         justify-content: center;
-        gap: 22px;
+        text-align: center;
+        gap: 20px;
+      }
+      .pad-center-text .headline,
+      .pad-center-text .lede {
+        max-width: 920px;
+        text-align: center;
+      }
+      .stack {
+        width: 100%;
+        max-width: 980px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
       }
       .brand-xl {
         margin: 0;
@@ -133,7 +151,7 @@
       }
       .phone-title { font-size: 30px; font-weight: 800; color: #1A1A2E; }
       .phone-sub { font-size: 22px; font-weight: 600; color: #5C5C63; margin-top: 2px; }
-      .phone-body { background: #F9F9FB; padding: 26px 22px 30px; min-height: 680px; }
+      .phone-body { background: #F9F9FB; padding: 22px 20px 24px; }
       .msg {
         max-width: 94%;
         margin: 0 0 18px auto;
@@ -196,7 +214,7 @@
       .ticket-desc { font-size: 34px; font-weight: 800; color: #1A1A2E; line-height: 1.4; margin-bottom: 20px; }
       .media {
         position: relative;
-        height: 320px;
+        height: 280px;
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid #E8E8ED;
@@ -366,7 +384,7 @@
       <!-- 1. Brand 0–9 -->
       <section id="scene-brand" class="clip" data-start="0" data-duration="9" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad">
+        <div class="pad pad-center-text">
           <p id="b-brand" class="brand-xl">במקור</p>
           <h1 id="b-head" class="headline">תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים</h1>
           <p id="b-lede" class="lede">ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.</p>
@@ -376,101 +394,107 @@
       <!-- 2. Problem 9–22 -->
       <section id="scene-problem" class="clip" data-start="9" data-duration="13" data-track-index="1">
         <div class="fill fill-soft"></div>
-        <div class="pad" style="justify-content:flex-start;padding-top:100px">
-          <p id="p-eye" class="eyebrow">הבעיה</p>
-          <p id="p-head" class="headline" style="font-size:42px">כל בניין = עוד צ׳אט. כל תקלה = עוד הודעה אבודה.</p>
-          <div id="p-phone" class="phone-shell">
-            <div class="phone-header">
-              <div class="avatar">די</div>
-              <div>
-                <div class="phone-title">קבוצת דיירים</div>
-                <div class="phone-sub">WhatsApp · הודעות בלי מעקב</div>
+        <div class="pad">
+          <div class="stack">
+            <p id="p-eye" class="eyebrow">הבעיה</p>
+            <p id="p-head" class="headline" style="font-size:42px">כל בניין = עוד צ׳אט. כל תקלה = עוד הודעה אבודה.</p>
+            <div id="p-phone" class="phone-shell">
+              <div class="phone-header">
+                <div class="avatar">די</div>
+                <div>
+                  <div class="phone-title">קבוצת דיירים</div>
+                  <div class="phone-sub">WhatsApp · הודעות בלי מעקב</div>
+                </div>
+              </div>
+              <div class="phone-body">
+                <div id="pm1" class="msg">
+                  <div class="msg-from">דייר · הרצל 12</div>
+                  <div class="msg-text">יש דליפה מהתקרה בקומה 3</div>
+                  <div class="msg-time">09:14</div>
+                </div>
+                <div id="pm2" class="msg">
+                  <div class="msg-from">דייר · ביאליק 7</div>
+                  <div class="msg-text">המעלית תקועה שוב</div>
+                  <div class="msg-time">09:16</div>
+                </div>
+                <div id="pm3" class="msg">
+                  <div class="msg-from">דייר · הנביאים 4</div>
+                  <div class="msg-text">שולח תמונה מהחניה…</div>
+                  <div class="msg-time">09:18</div>
+                </div>
               </div>
             </div>
-            <div class="phone-body">
-              <div id="pm1" class="msg">
-                <div class="msg-from">דייר · הרצל 12</div>
-                <div class="msg-text">יש דליפה מהתקרה בקומה 3</div>
-                <div class="msg-time">09:14</div>
-              </div>
-              <div id="pm2" class="msg">
-                <div class="msg-from">דייר · ביאליק 7</div>
-                <div class="msg-text">המעלית תקועה שוב</div>
-                <div class="msg-time">09:16</div>
-              </div>
-              <div id="pm3" class="msg">
-                <div class="msg-from">דייר · הנביאים 4</div>
-                <div class="msg-text">שולח תמונה מהחניה…</div>
-                <div class="msg-time">09:18</div>
-              </div>
-            </div>
+            <p id="p-cap" class="caption">בלי סטטוס. בלי שיוך לעובד. בלי היסטוריה.</p>
           </div>
-          <p id="p-cap" class="caption">בלי סטטוס. בלי שיוך לעובד. בלי היסטוריה.</p>
         </div>
       </section>
 
       <!-- 3. Ticket 22–36 -->
       <section id="scene-ticket" class="clip" data-start="22" data-duration="14" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad" style="justify-content:flex-start;padding-top:96px">
-          <p id="t-eye" class="eyebrow">תקלות עם מדיה</p>
-          <p id="t-head" class="headline" style="font-size:40px">הדייר שולח תמונה או סרטון — והמשרד רואה תקלה מסודרת</p>
-          <div id="t-app" class="app-frame">
-            <div class="app-top">
-              <span class="app-top-title">תקלות</span>
-              <span class="app-top-brand">במקור</span>
-            </div>
-            <div class="app-body">
-              <div class="ticket">
-                <div class="ticket-row">
-                  <span class="ticket-num">#184</span>
-                  <span class="badge badge-new">חדשה</span>
-                </div>
-                <div class="ticket-meta">הרצל 12 · דירה 8</div>
-                <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
-                <div id="t-media" class="media">
-                  <div class="media-shape"></div>
-                  <div class="media-dot"></div>
-                  <div class="media-caption">תמונה / סרטון מהדייר</div>
+        <div class="pad">
+          <div class="stack">
+            <p id="t-eye" class="eyebrow">תקלות עם מדיה</p>
+            <p id="t-head" class="headline" style="font-size:40px">הדייר שולח תמונה או סרטון — והמשרד רואה תקלה מסודרת</p>
+            <div id="t-app" class="app-frame">
+              <div class="app-top">
+                <span class="app-top-title">תקלות</span>
+                <span class="app-top-brand">במקור</span>
+              </div>
+              <div class="app-body">
+                <div class="ticket">
+                  <div class="ticket-row">
+                    <span class="ticket-num">#184</span>
+                    <span class="badge badge-new">חדשה</span>
+                  </div>
+                  <div class="ticket-meta">הרצל 12 · דירה 8</div>
+                  <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
+                  <div id="t-media" class="media">
+                    <div class="media-shape"></div>
+                    <div class="media-dot"></div>
+                    <div class="media-caption">תמונה / סרטון מהדייר</div>
+                  </div>
                 </div>
               </div>
             </div>
+            <p id="t-cap" class="caption">גם תרגום אוטומטי לתקלות בשפות אחרות</p>
           </div>
-          <p id="t-cap" class="caption">גם תרגום אוטומטי לתקלות בשפות אחרות</p>
         </div>
       </section>
 
       <!-- 4. Manager 36–52 -->
       <section id="scene-manager" class="clip" data-start="36" data-duration="16" data-track-index="1">
         <div class="fill fill-soft"></div>
-        <div class="pad" style="justify-content:flex-end;padding-bottom:72px">
-          <p id="m-eye" class="eyebrow">שולחן המנהל</p>
-          <p id="m-head" class="headline" style="font-size:38px">תרגום, שיחה עם הדייר, ושיבוץ עובד — מתוך התקלה</p>
-          <div id="m-drawer" class="drawer">
-            <div class="drawer-handle"></div>
-            <div class="drawer-title">תקלה #184</div>
-            <div class="drawer-sub">הרצל 12 · WhatsApp דייר פתוח</div>
-            <div class="tabs">
-              <div class="tab">פרטים</div>
-              <div class="tab">צ׳אט פנימי</div>
-              <div class="tab on">WhatsApp דייר</div>
-            </div>
-            <div id="mp1" class="panel">
-              <div class="panel-k">תרגום תקלות</div>
-              <div class="panel-v">There is a leak… → יש דליפה בתקרה</div>
-              <span class="btn-secondary">תרגם לעברית</span>
-            </div>
-            <div id="mp2" class="panel">
-              <div class="panel-k">שיחה מתוך המערכת</div>
-              <div class="panel-v">עונים לדייר ב-WhatsApp בלי לאבד את ההקשר של התקלה</div>
-            </div>
-            <div id="mp3" class="panel">
-              <div class="panel-k">שיבוץ עובד שטח</div>
-              <div class="panel-v" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-                <span>יוסי כהן</span>
-                <span class="badge badge-progress">בטיפול</span>
+        <div class="pad">
+          <div class="stack">
+            <p id="m-eye" class="eyebrow">שולחן המנהל</p>
+            <p id="m-head" class="headline" style="font-size:38px">תרגום, שיחה עם הדייר, ושיבוץ עובד — מתוך התקלה</p>
+            <div id="m-drawer" class="drawer">
+              <div class="drawer-handle"></div>
+              <div class="drawer-title">תקלה #184</div>
+              <div class="drawer-sub">הרצל 12 · WhatsApp דייר פתוח</div>
+              <div class="tabs">
+                <div class="tab">פרטים</div>
+                <div class="tab">צ׳אט פנימי</div>
+                <div class="tab on">WhatsApp דייר</div>
               </div>
-              <span class="btn-primary">שמירה</span>
+              <div id="mp1" class="panel">
+                <div class="panel-k">תרגום תקלות</div>
+                <div class="panel-v">There is a leak… → יש דליפה בתקרה</div>
+                <span class="btn-secondary">תרגם לעברית</span>
+              </div>
+              <div id="mp2" class="panel">
+                <div class="panel-k">שיחה מתוך המערכת</div>
+                <div class="panel-v">עונים לדייר ב-WhatsApp בלי לאבד את ההקשר של התקלה</div>
+              </div>
+              <div id="mp3" class="panel">
+                <div class="panel-k">שיבוץ עובד שטח</div>
+                <div class="panel-v" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+                  <span>יוסי כהן</span>
+                  <span class="badge badge-progress">בטיפול</span>
+                </div>
+                <span class="btn-primary">שמירה</span>
+              </div>
             </div>
           </div>
         </div>
@@ -479,91 +503,95 @@
       <!-- 5. Attendance 52–66 -->
       <section id="scene-stamp" class="clip" data-start="52" data-duration="14" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad" style="justify-content:flex-start;padding-top:96px">
-          <p id="s-eye" class="eyebrow">חתמת עובדים</p>
-          <p id="s-head" class="headline" style="font-size:40px">נוכחות שטח עם מדבקות NFC — בלי אפליקציה מסובכת</p>
-          <div id="s-app" class="app-frame">
-            <div class="app-top">
-              <span class="app-top-title">חתמת עובדים</span>
-              <span class="app-top-brand">במקור</span>
-            </div>
-            <div class="app-body">
-              <div id="s-kpis" class="kpi-row">
-                <div class="kpi"><div class="kpi-v">6</div><div class="kpi-l">בעבודה עכשיו</div></div>
-                <div class="kpi"><div class="kpi-v">18</div><div class="kpi-l">משמרות היום</div></div>
-                <div class="kpi"><div class="kpi-v">2</div><div class="kpi-l">ממתינים לאישור</div></div>
+        <div class="pad">
+          <div class="stack">
+            <p id="s-eye" class="eyebrow">חתמת עובדים</p>
+            <p id="s-head" class="headline" style="font-size:40px">נוכחות שטח עם מדבקות NFC — בלי אפליקציה מסובכת</p>
+            <div id="s-app" class="app-frame">
+              <div class="app-top">
+                <span class="app-top-title">חתמת עובדים</span>
+                <span class="app-top-brand">במקור</span>
               </div>
-              <div id="s-c1" class="stamp-card">
-                <div class="stamp-row">
-                  <div>
-                    <div class="stamp-name">יוסי כהן</div>
-                    <div class="stamp-meta">כניסה · הרצל 12 · 08:02</div>
-                  </div>
-                  <span class="badge badge-progress">בעבודה עכשיו</span>
+              <div class="app-body">
+                <div id="s-kpis" class="kpi-row">
+                  <div class="kpi"><div class="kpi-v">6</div><div class="kpi-l">בעבודה עכשיו</div></div>
+                  <div class="kpi"><div class="kpi-v">18</div><div class="kpi-l">משמרות היום</div></div>
+                  <div class="kpi"><div class="kpi-v">2</div><div class="kpi-l">ממתינים לאישור</div></div>
                 </div>
-                <div class="nfc-tag">מדבקת NFC על דלת הבניין</div>
-              </div>
-              <div id="s-c2" class="stamp-card">
-                <div class="stamp-row">
-                  <div>
-                    <div class="stamp-name">דנה לוי</div>
-                    <div class="stamp-meta">יציאה · ביאליק 7 · 12:40</div>
+                <div id="s-c1" class="stamp-card">
+                  <div class="stamp-row">
+                    <div>
+                      <div class="stamp-name">יוסי כהן</div>
+                      <div class="stamp-meta">כניסה · הרצל 12 · 08:02</div>
+                    </div>
+                    <span class="badge badge-progress">בעבודה עכשיו</span>
                   </div>
-                  <span class="badge badge-paid">הושלם</span>
+                  <div class="nfc-tag">מדבקת NFC על דלת הבניין</div>
+                </div>
+                <div id="s-c2" class="stamp-card">
+                  <div class="stamp-row">
+                    <div>
+                      <div class="stamp-name">דנה לוי</div>
+                      <div class="stamp-meta">יציאה · ביאליק 7 · 12:40</div>
+                    </div>
+                    <span class="badge badge-paid">הושלם</span>
+                  </div>
                 </div>
               </div>
             </div>
+            <p id="s-cap" class="caption">עובד מגיע → מצמיד טלפון למדבקה → המשרד רואה בזמן אמת</p>
           </div>
-          <p id="s-cap" class="caption">עובד מגיע → מצמיד טלפון למדבקה → המשרד רואה בזמן אמת</p>
         </div>
       </section>
 
       <!-- 6. Collections 66–80 -->
       <section id="scene-pay" class="clip" data-start="66" data-duration="14" data-track-index="1">
         <div class="fill fill-soft"></div>
-        <div class="pad" style="justify-content:flex-start;padding-top:96px">
-          <p id="c-eye" class="eyebrow">גביית ועד</p>
-          <p id="c-head" class="headline" style="font-size:40px">שליחת חיובים לדיירים ומעקב תשלום — במערכת אחת</p>
-          <div id="c-app" class="app-frame">
-            <div class="app-top">
-              <span class="app-top-title">גביית ועד</span>
-              <span class="app-top-brand">במקור</span>
-            </div>
-            <div class="app-body">
-              <div id="c-kpis" class="kpi-row">
-                <div class="kpi"><div class="kpi-v" style="color:#1e40af">42</div><div class="kpi-l">נשלחו</div></div>
-                <div class="kpi"><div class="kpi-v" style="color:#15803d">31</div><div class="kpi-l">שולמו</div></div>
-                <div class="kpi"><div class="kpi-v" style="color:#ca8a04">9</div><div class="kpi-l">ממתינים</div></div>
+        <div class="pad">
+          <div class="stack">
+            <p id="c-eye" class="eyebrow">גביית ועד</p>
+            <p id="c-head" class="headline" style="font-size:40px">שליחת חיובים לדיירים ומעקב תשלום — במערכת אחת</p>
+            <div id="c-app" class="app-frame">
+              <div class="app-top">
+                <span class="app-top-title">גביית ועד</span>
+                <span class="app-top-brand">במקור</span>
               </div>
-              <div id="c1" class="charge">
-                <div class="stamp-row">
-                  <div class="charge-title">ועד בית · מרץ</div>
-                  <span class="badge badge-sent">נשלח לתשלום</span>
+              <div class="app-body">
+                <div id="c-kpis" class="kpi-row">
+                  <div class="kpi"><div class="kpi-v" style="color:#1e40af">42</div><div class="kpi-l">נשלחו</div></div>
+                  <div class="kpi"><div class="kpi-v" style="color:#15803d">31</div><div class="kpi-l">שולמו</div></div>
+                  <div class="kpi"><div class="kpi-v" style="color:#ca8a04">9</div><div class="kpi-l">ממתינים</div></div>
                 </div>
-                <div class="charge-amt">₪ 350</div>
-                <div class="charge-meta">דייר: אבי כהן · הרצל 12 / דירה 8</div>
-                <div class="pay-cta">קישור תשלום מאובטח</div>
-              </div>
-              <div id="c2" class="charge">
-                <div class="stamp-row">
-                  <div class="charge-title">ועד בית · מרץ</div>
-                  <span class="badge badge-paid">שולם</span>
+                <div id="c1" class="charge">
+                  <div class="stamp-row">
+                    <div class="charge-title">ועד בית · מרץ</div>
+                    <span class="badge badge-sent">נשלח לתשלום</span>
+                  </div>
+                  <div class="charge-amt">₪ 350</div>
+                  <div class="charge-meta">דייר: אבי כהן · הרצל 12 / דירה 8</div>
+                  <div class="pay-cta">קישור תשלום מאובטח</div>
                 </div>
-                <div class="charge-amt" style="color:#15803d">₪ 350</div>
-                <div class="charge-meta">דייר: מיכל לוי · ביאליק 7 / דירה 3</div>
+                <div id="c2" class="charge">
+                  <div class="stamp-row">
+                    <div class="charge-title">ועד בית · מרץ</div>
+                    <span class="badge badge-paid">שולם</span>
+                  </div>
+                  <div class="charge-amt" style="color:#15803d">₪ 350</div>
+                  <div class="charge-meta">דייר: מיכל לוי · ביאליק 7 / דירה 3</div>
+                </div>
               </div>
             </div>
+            <p id="c-cap" class="caption">שליחה מרוכזת לבניין · מעקב סטטוס · דף תשלום לדייר</p>
           </div>
-          <p id="c-cap" class="caption">שליחה מרוכזת לבניין · מעקב סטטוס · דף תשלום לדייר</p>
         </div>
       </section>
 
       <!-- 7. More + CTA 80–90 -->
       <section id="scene-outro" class="clip" data-start="80" data-duration="10" data-track-index="1">
         <div class="fill fill-app"></div>
-        <div class="pad" style="justify-content:center;gap:18px">
-          <p id="o-brand" class="brand-xl" style="text-align:center;align-self:center;font-size:72px">במקור</p>
-          <div id="o-list" class="feature-list">
+        <div class="pad pad-center-text" style="gap:16px">
+          <p id="o-brand" class="brand-xl" style="font-size:72px">במקור</p>
+          <div id="o-list" class="feature-list" style="width:100%;text-align:right">
             <div class="feature-item">
               <strong>רישום דיירים</strong>
               <span>דף נחיתה או העלאת רשימה מלאה מהמנהל</span>
@@ -573,12 +601,12 @@
               <span>המנהל קובע את הודעות המערכת לדיירים</span>
             </div>
           </div>
-          <div id="o-flow" class="flow" style="margin-top:8px">
+          <div id="o-flow" class="flow" style="width:100%;margin-top:4px">
             <div class="flow-step"><div class="flow-n">1</div><div class="flow-t">דייר מדווח</div></div>
             <div class="flow-step"><div class="flow-n">2</div><div class="flow-t">משרד מנהל</div></div>
             <div class="flow-step"><div class="flow-n">3</div><div class="flow-t">עובד מטפל</div></div>
           </div>
-          <p id="o-price" class="lede" style="text-align:center;align-self:center;margin-top:6px">
+          <p id="o-price" class="lede" style="margin-top:4px">
             הקמה חד־פעמית + מנוי חודשי לפי היקף הבניינים.
           </p>
           <div id="o-cta" class="cta">לחצו על כפתור יצירת הקשר בדף</div>
@@ -589,60 +617,30 @@
     <script>
       window.__timelines = window.__timelines || {}
       const tl = gsap.timeline({ paused: true })
+      // Animate each scene's full content block as one unit.
+      // Never leave tall children at opacity:0 — they still occupy layout and push
+      // the visible mass upward inside a centered stack.
 
-      // Brand 0–9 — long holds for reading
-      tl.fromTo('#b-brand', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 0.3)
-      tl.fromTo('#b-head', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 1.1)
-      tl.fromTo('#b-lede', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 2.4)
+      // Brand 0–9
+      tl.fromTo('#scene-brand .pad-center-text', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.85, ease: 'power3.out' }, 0.35)
 
       // Problem 9–22
-      tl.fromTo('#p-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 9.2)
-      tl.fromTo('#p-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, 9.6)
-      tl.fromTo('#p-phone', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 10.6)
-      tl.fromTo('#pm1', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 11.5)
-      tl.fromTo('#pm2', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 13.2)
-      tl.fromTo('#pm3', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 14.9)
-      tl.fromTo('#p-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 16.6)
+      tl.fromTo('#scene-problem .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 9.35)
 
       // Ticket 22–36
-      tl.fromTo('#t-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 22.2)
-      tl.fromTo('#t-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, 22.7)
-      tl.fromTo('#t-app', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 24.0)
-      tl.fromTo('#t-media', { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.5 }, 25.5)
-      tl.fromTo('#t-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 28.5)
+      tl.fromTo('#scene-ticket .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 22.35)
 
       // Manager 36–52
-      tl.fromTo('#m-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 36.2)
-      tl.fromTo('#m-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55 }, 36.7)
-      tl.fromTo('#m-drawer', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, 38.0)
-      tl.fromTo('#mp1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 39.0)
-      tl.fromTo('#mp2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 42.2)
-      tl.fromTo('#mp3', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 45.4)
+      tl.fromTo('#scene-manager .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 36.35)
 
       // Stamp 52–66
-      tl.fromTo('#s-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 52.2)
-      tl.fromTo('#s-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55 }, 52.7)
-      tl.fromTo('#s-app', { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 54.0)
-      tl.fromTo('#s-kpis', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 54.8)
-      tl.fromTo('#s-c1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 56.0)
-      tl.fromTo('#s-c2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 58.2)
-      tl.fromTo('#s-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 60.5)
+      tl.fromTo('#scene-stamp .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 52.35)
 
       // Collections 66–80
-      tl.fromTo('#c-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 66.2)
-      tl.fromTo('#c-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55 }, 66.7)
-      tl.fromTo('#c-app', { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 68.0)
-      tl.fromTo('#c-kpis', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 68.8)
-      tl.fromTo('#c1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 70.0)
-      tl.fromTo('#c2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45 }, 72.8)
-      tl.fromTo('#c-cap', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 75.2)
+      tl.fromTo('#scene-pay .stack', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 66.35)
 
       // Outro 80–90
-      tl.fromTo('#o-brand', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 80.3)
-      tl.fromTo('#o-list', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, 81.2)
-      tl.fromTo('#o-flow', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 83.5)
-      tl.fromTo('#o-price', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 85.0)
-      tl.fromTo('#o-cta', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 86.2)
+      tl.fromTo('#scene-outro .pad-center-text', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 80.35)
 
       window.__timelines['main'] = tl
     </script>
