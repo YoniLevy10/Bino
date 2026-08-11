@@ -27,15 +27,15 @@
         font-display: swap;
         src: url('assets/fonts/heebo-900.ttf') format('truetype');
       }
-      * {
-        box-sizing: border-box;
-      }
+
+      * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #0b1220;
-        color: #1a1a2e;
+        background: #F9F9FB;
+        color: #1A1A2E;
         font-family: Heebo, sans-serif;
         direction: rtl;
+        unicode-bidi: isolate;
       }
       #root {
         position: relative;
@@ -52,53 +52,394 @@
         position: absolute;
         inset: 0;
       }
-      .fill-dark {
-        background: linear-gradient(165deg, #0b1220 0%, #152238 100%);
+      .fill-app {
+        background:
+          radial-gradient(ellipse 90% 55% at 100% -5%, rgba(0, 102, 255, 0.12), transparent 55%),
+          radial-gradient(ellipse 70% 45% at 0% 100%, rgba(0, 102, 255, 0.06), transparent 50%),
+          #F9F9FB;
       }
-      .fill-light {
-        background: #f9f9fb;
+      .fill-soft {
+        background: #F9F9FB;
       }
-      .glow {
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(ellipse 70% 40% at 50% 15%, rgba(0, 102, 255, 0.28), transparent 60%);
-        pointer-events: none;
-      }
+
       .pad {
         position: relative;
         z-index: 1;
         height: 100%;
-        padding: 120px 72px;
+        padding: 100px 64px;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        gap: 28px;
+        gap: 24px;
       }
-      .brand {
-        font-size: 88px;
-        font-weight: 900;
-        color: #0066ff;
-        letter-spacing: -0.04em;
-        line-height: 1;
+
+      .brand-xl {
         margin: 0;
+        font-size: 96px;
+        font-weight: 900;
+        letter-spacing: -0.045em;
+        line-height: 1;
+        color: #0066FF;
       }
       .headline {
-        font-size: 56px;
+        margin: 0;
+        font-size: 52px;
         font-weight: 800;
         line-height: 1.28;
         letter-spacing: -0.03em;
-        color: #f8fafc;
-        margin: 0;
+        color: #1A1A2E;
         max-width: 920px;
       }
-      .subhead {
-        font-size: 36px;
-        font-weight: 600;
-        line-height: 1.45;
-        color: rgba(248, 250, 252, 0.88);
+      .lede {
         margin: 0;
-        max-width: 900px;
+        font-size: 32px;
+        font-weight: 600;
+        line-height: 1.5;
+        color: #3C3C43;
+        max-width: 880px;
       }
+      .eyebrow {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+        color: #0066FF;
+        letter-spacing: 0.02em;
+      }
+
+      /* WhatsApp phone */
+      .phone-shell {
+        width: 820px;
+        max-width: 100%;
+        margin: 0 auto;
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 36px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+      }
+      .phone-header {
+        background: #F5F5F7;
+        border-bottom: 1px solid #E8E8ED;
+        padding: 28px 28px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 9999px;
+        background: #E5F0FF;
+        color: #0066FF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 22px;
+        flex-shrink: 0;
+      }
+      .phone-title {
+        font-size: 30px;
+        font-weight: 800;
+        color: #1A1A2E;
+      }
+      .phone-sub {
+        font-size: 22px;
+        font-weight: 600;
+        color: #5C5C63;
+        margin-top: 2px;
+      }
+      .phone-body {
+        background: #F9F9FB;
+        padding: 28px 24px 32px;
+        min-height: 720px;
+      }
+      .msg {
+        max-width: 92%;
+        margin: 0 0 18px auto;
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 18px 18px 6px 18px;
+        padding: 20px 22px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .msg-from {
+        font-size: 22px;
+        font-weight: 700;
+        color: #0066FF;
+        margin-bottom: 8px;
+      }
+      .msg-text {
+        font-size: 30px;
+        font-weight: 700;
+        color: #1A1A2E;
+        line-height: 1.35;
+      }
+      .msg-time {
+        margin-top: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #5C5C63;
+      }
+      .chaos-caption {
+        text-align: center;
+        margin-top: 8px;
+        font-size: 30px;
+        font-weight: 700;
+        color: #3C3C43;
+      }
+
+      /* App chrome */
+      .app-frame {
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 24px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+      .app-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 26px;
+        border-bottom: 1px solid #E8E8ED;
+        background: #FFFFFF;
+      }
+      .app-top-title {
+        font-size: 32px;
+        font-weight: 800;
+        color: #1A1A2E;
+      }
+      .app-top-brand {
+        font-size: 24px;
+        font-weight: 800;
+        color: #0066FF;
+      }
+      .app-body { padding: 26px; background: #F9F9FB; }
+
+      .ticket {
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 16px;
+        padding: 26px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .ticket-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+      .ticket-num {
+        font-size: 40px;
+        font-weight: 800;
+        color: #1A1A2E;
+        font-variant-numeric: tabular-nums;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 14px;
+        border-radius: 9999px;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .badge-new { background: #FFF4E5; color: rgb(180, 100, 0); }
+      .badge-progress { background: #E5F0FF; color: #0066FF; }
+      .ticket-meta {
+        font-size: 26px;
+        font-weight: 600;
+        color: #3C3C43;
+        margin-bottom: 12px;
+      }
+      .ticket-desc {
+        font-size: 34px;
+        font-weight: 800;
+        color: #1A1A2E;
+        line-height: 1.35;
+        margin-bottom: 20px;
+      }
+      .media {
+        position: relative;
+        height: 340px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #E8E8ED;
+        background:
+          linear-gradient(160deg, #D7E6FF 0%, #EEF3FB 45%, #F5F5F7 100%);
+      }
+      .media-shape {
+        position: absolute;
+        inset: 18% 12% auto 12%;
+        height: 42%;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(0, 102, 255, 0.18), rgba(52, 199, 89, 0.12));
+        border: 1px solid rgba(0, 102, 255, 0.15);
+      }
+      .media-dot {
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(255, 59, 48, 0.22);
+        border: 2px solid rgba(255, 59, 48, 0.35);
+        top: 28%;
+        left: 22%;
+      }
+      .media-caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 16px 18px;
+        background: rgba(255, 255, 255, 0.92);
+        border-top: 1px solid #E8E8ED;
+        font-size: 24px;
+        font-weight: 700;
+        color: #0066FF;
+        text-align: center;
+      }
+
+      /* Drawer */
+      .drawer {
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.08);
+        padding: 28px 26px 32px;
+      }
+      .drawer-handle {
+        width: 48px;
+        height: 5px;
+        border-radius: 9999px;
+        background: #D1D1D6;
+        margin: 0 auto 20px;
+      }
+      .drawer-title {
+        font-size: 34px;
+        font-weight: 800;
+        color: #1A1A2E;
+        margin-bottom: 4px;
+      }
+      .drawer-sub {
+        font-size: 24px;
+        font-weight: 600;
+        color: #86868B;
+        margin-bottom: 22px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        padding: 6px;
+        background: #F5F5F7;
+        border-radius: 12px;
+        margin-bottom: 20px;
+      }
+      .tab {
+        flex: 1;
+        text-align: center;
+        padding: 14px 8px;
+        border-radius: 8px;
+        font-size: 22px;
+        font-weight: 700;
+        color: #86868B;
+        background: transparent;
+      }
+      .tab.on {
+        background: #FFFFFF;
+        color: #0066FF;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+      .panel {
+        background: #F9F9FB;
+        border: 1px solid #E8E8ED;
+        border-radius: 12px;
+        padding: 20px 22px;
+        margin-bottom: 12px;
+      }
+      .panel-k {
+        font-size: 22px;
+        font-weight: 700;
+        color: #86868B;
+        margin-bottom: 8px;
+      }
+      .panel-v {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1A1A2E;
+        line-height: 1.4;
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 12px;
+        min-height: 52px;
+        padding: 0 20px;
+        border-radius: 12px;
+        background: #0066FF;
+        color: #FFFFFF;
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 12px;
+        min-height: 52px;
+        padding: 0 20px;
+        border-radius: 12px;
+        background: #FFFFFF;
+        color: #1A1A2E;
+        border: 1px solid #E8E8ED;
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .flow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .flow-step {
+        flex: 1;
+        background: #FFFFFF;
+        border: 1px solid #E8E8ED;
+        border-radius: 14px;
+        padding: 22px 14px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .flow-n {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #0066FF;
+        color: #FFFFFF;
+        font-weight: 800;
+        font-size: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 12px;
+      }
+      .flow-t {
+        font-size: 24px;
+        font-weight: 800;
+        color: #1A1A2E;
+        line-height: 1.3;
+      }
+      .flow-arrow {
+        color: #0066FF;
+        font-size: 34px;
+        font-weight: 900;
+        flex-shrink: 0;
+      }
+
       .cta {
         display: inline-flex;
         align-items: center;
@@ -106,182 +447,14 @@
         align-self: flex-start;
         min-height: 84px;
         padding: 0 36px;
-        border-radius: 16px;
-        background: #0066ff;
-        color: #ffffff;
-        font-size: 34px;
-        font-weight: 800;
-      }
-      .phone {
-        width: 780px;
-        max-width: 100%;
-        margin: 0 auto;
-        background: #111827;
-        border-radius: 40px;
-        border: 3px solid #334155;
-        padding: 28px 24px 36px;
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-      }
-      .phone-bar {
-        text-align: center;
-        color: #94a3b8;
-        font-size: 28px;
-        font-weight: 700;
-        margin-bottom: 24px;
-      }
-      .bubble {
-        background: #1f2937;
-        color: #f8fafc;
-        border-radius: 22px 22px 8px 22px;
-        padding: 22px 24px;
-        font-size: 30px;
-        font-weight: 600;
-        line-height: 1.35;
-        margin-bottom: 16px;
-        border: 1px solid #374151;
-      }
-      .bubble strong {
-        display: block;
-        color: #93c5fd;
-        font-size: 22px;
-        margin-bottom: 6px;
-        font-weight: 700;
-      }
-      .chaos-label {
-        text-align: center;
-        color: #cbd5e1;
-        font-size: 32px;
-        font-weight: 700;
-        margin-top: 28px;
-      }
-      .ticket {
-        background: #ffffff;
-        border: 1px solid #e8e8ed;
-        border-radius: 20px;
-        padding: 28px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-      }
-      .ticket-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 18px;
-        gap: 16px;
-      }
-      .ticket-num {
-        font-size: 40px;
-        font-weight: 800;
-        color: #1a1a2e;
-      }
-      .chip {
-        background: #fff4e5;
-        color: rgb(207, 121, 0);
-        font-size: 24px;
-        font-weight: 700;
-        padding: 10px 16px;
-        border-radius: 999px;
-      }
-      .chip-blue {
-        background: #e5f0ff;
-        color: #0066ff;
-      }
-      .ticket-meta {
-        font-size: 28px;
-        color: #3c3c43;
-        margin-bottom: 18px;
-        font-weight: 600;
-      }
-      .ticket-desc {
-        font-size: 32px;
-        font-weight: 700;
-        color: #1a1a2e;
-        margin-bottom: 20px;
-        line-height: 1.35;
-      }
-      .photo {
-        width: 100%;
-        height: 320px;
-        border-radius: 16px;
-        background:
-          linear-gradient(135deg, rgba(0, 102, 255, 0.18), rgba(14, 165, 233, 0.12)),
-          repeating-linear-gradient(
-            45deg,
-            #e8eef9,
-            #e8eef9 16px,
-            #dbe7f8 16px,
-            #dbe7f8 32px
-          );
-        border: 1px solid #d1d1d6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #0066ff;
-        font-size: 30px;
-        font-weight: 800;
-      }
-      .section-label {
-        font-size: 30px;
-        font-weight: 800;
-        color: #0066ff;
-        margin: 0 0 8px;
-      }
-      .drawer {
-        background: #ffffff;
-        border-radius: 24px 24px 0 0;
-        border: 1px solid #e8e8ed;
-        padding: 28px;
-        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.08);
-      }
-      .tabs {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 22px;
-      }
-      .tab {
-        flex: 1;
-        text-align: center;
-        padding: 16px 8px;
         border-radius: 12px;
-        font-size: 24px;
-        font-weight: 700;
-        background: #f5f5f7;
-        color: #86868b;
-      }
-      .tab.active {
-        background: #ffffff;
-        color: #0066ff;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        border: 1px solid #e8e8ed;
-      }
-      .row {
-        background: #f9f9fb;
-        border: 1px solid #e8e8ed;
-        border-radius: 14px;
-        padding: 20px 22px;
-        margin-bottom: 14px;
-      }
-      .row-title {
-        font-size: 28px;
+        background: #0066FF;
+        color: #FFFFFF;
+        font-size: 32px;
         font-weight: 800;
-        color: #1a1a2e;
-        margin-bottom: 6px;
+        box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
       }
-      .row-text {
-        font-size: 24px;
-        color: #3c3c43;
-        font-weight: 500;
-        line-height: 1.4;
-      }
-      .btn-sm {
-        display: inline-flex;
-        margin-top: 10px;
-        padding: 12px 18px;
-        border-radius: 10px;
-        background: #e5f0ff;
-        color: #0066ff;
-        font-size: 22px;
-        font-weight: 700;
-      }
+      .cta.center { align-self: center; }
     </style>
   </head>
   <body>
@@ -291,99 +464,143 @@
       data-start="0"
       data-width="1080"
       data-height="1920"
-      data-duration="20"
+      data-duration="22"
     >
       <audio
         id="bgm"
         src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"
         data-start="0"
-        data-duration="20"
+        data-duration="22"
         data-track-index="0"
-        data-volume="0.22"
+        data-volume="0.18"
       ></audio>
 
-      <!-- Scene 1: Chaos 0-3 -->
-      <section id="scene-chaos" class="clip" data-start="0" data-duration="3" data-track-index="1">
-        <div class="fill fill-dark"></div>
-        <div class="glow"></div>
+      <!-- 0–3.2 Brand -->
+      <section class="clip" data-start="0" data-duration="3.2" data-track-index="1">
+        <div class="fill fill-app"></div>
         <div class="pad">
-          <div class="phone">
-            <div class="phone-bar">WhatsApp · דיירים</div>
-            <div id="b1" class="bubble"><strong>דייר · הרצל 12</strong>יש דליפה מהתקרה בקומה 3</div>
-            <div id="b2" class="bubble"><strong>דייר · ביאליק 7</strong>המעלית תקועה שוב</div>
-            <div id="b3" class="bubble"><strong>דייר · הנביאים 4</strong>שולח תמונה מהחניה…</div>
-          </div>
-          <div id="chaos-label" class="chaos-label">ככה זה נראה היום</div>
+          <p id="s1-brand" class="brand-xl">במקור</p>
+          <h1 id="s1-head" class="headline">תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים</h1>
+          <p id="s1-lede" class="lede">ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.</p>
         </div>
       </section>
 
-      <!-- Scene 2: Brand 3-6 -->
-      <section id="scene-brand" class="clip" data-start="3" data-duration="3" data-track-index="1">
-        <div class="fill fill-dark"></div>
-        <div id="brand-glow" class="glow"></div>
-        <div class="pad">
-          <p id="brand-name" class="brand">במקור</p>
-          <h1 id="brand-headline" class="headline">
-            תקלות, דיירים ועובדים — בלי לנהל את זה בצ׳אטים פזורים
-          </h1>
-        </div>
-      </section>
-
-      <!-- Scene 3: Ticket 6-11 -->
-      <section id="scene-ticket" class="clip" data-start="6" data-duration="5" data-track-index="1">
-        <div class="fill fill-light"></div>
-        <div class="pad">
-          <p id="ticket-label" class="section-label">דיווח עם תמונה וסרטון</p>
-          <div id="ticket-card" class="ticket">
-            <div class="ticket-top">
-              <span class="ticket-num">#184</span>
-              <span id="ticket-chip" class="chip">חדשה</span>
+      <!-- 3.2–7.2 Problem -->
+      <section class="clip" data-start="3.2" data-duration="4" data-track-index="1">
+        <div class="fill fill-soft"></div>
+        <div class="pad" style="justify-content: flex-start; padding-top: 120px">
+          <p id="s2-eye" class="eyebrow">הבעיה</p>
+          <p id="s2-head" class="headline" style="font-size: 44px; margin-bottom: 8px">כל בניין = עוד צ׳אט. כל תקלה = עוד הודעה.</p>
+          <div id="s2-phone" class="phone-shell">
+            <div class="phone-header">
+              <div class="avatar">די</div>
+              <div>
+                <div class="phone-title">קבוצת דיירים</div>
+                <div class="phone-sub">WhatsApp · 3 הודעות חדשות</div>
+              </div>
             </div>
-            <div class="ticket-meta">הרצל 12 · דירה 8</div>
-            <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
-            <div id="ticket-photo" class="photo">תמונה מהדייר</div>
+            <div class="phone-body">
+              <div id="m1" class="msg">
+                <div class="msg-from">דייר · הרצל 12</div>
+                <div class="msg-text">יש דליפה מהתקרה בקומה 3</div>
+                <div class="msg-time">09:14</div>
+              </div>
+              <div id="m2" class="msg">
+                <div class="msg-from">דייר · ביאליק 7</div>
+                <div class="msg-text">המעלית תקועה שוב</div>
+                <div class="msg-time">09:16</div>
+              </div>
+              <div id="m3" class="msg">
+                <div class="msg-from">דייר · הנביאים 4</div>
+                <div class="msg-text">שולח תמונה מהחניה…</div>
+                <div class="msg-time">09:18</div>
+              </div>
+            </div>
+          </div>
+          <p id="s2-cap" class="chaos-caption">בלי מעקב. בלי סטטוס. בלי שיוך לעובד.</p>
+        </div>
+      </section>
+
+      <!-- 7.2–12.2 Ticket in system -->
+      <section class="clip" data-start="7.2" data-duration="5" data-track-index="1">
+        <div class="fill fill-app"></div>
+        <div class="pad" style="justify-content: flex-start; padding-top: 110px">
+          <p id="s3-eye" class="eyebrow">במערכת</p>
+          <p id="s3-head" class="headline" style="font-size: 42px">דיווח עם תמונה וסרטון — נפתח כתקלה</p>
+          <div id="s3-app" class="app-frame">
+            <div class="app-top">
+              <span class="app-top-title">תקלות</span>
+              <span class="app-top-brand">במקור</span>
+            </div>
+            <div class="app-body">
+              <div class="ticket">
+                <div class="ticket-row">
+                  <span class="ticket-num">#184</span>
+                  <span class="badge badge-new">חדשה</span>
+                </div>
+                <div class="ticket-meta">הרצל 12 · דירה 8</div>
+                <div class="ticket-desc">דליפה מהתקרה — מצורפת תמונה</div>
+                <div id="s3-media" class="media">
+                  <div class="media-shape"></div>
+                  <div class="media-dot"></div>
+                  <div class="media-caption">תמונה / סרטון מהדייר</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Scene 4: Manager tools 11-16 -->
-      <section id="scene-manager" class="clip" data-start="11" data-duration="5" data-track-index="1">
-        <div class="fill fill-light"></div>
-        <div class="pad" style="justify-content: flex-end; padding-bottom: 100px">
-          <p id="mgr-label" class="section-label">מה המנהל עושה במערכת</p>
-          <div id="drawer" class="drawer">
+      <!-- 12.2–17.6 Manager -->
+      <section class="clip" data-start="12.2" data-duration="5.4" data-track-index="1">
+        <div class="fill fill-soft"></div>
+        <div class="pad" style="justify-content: flex-end; padding-bottom: 80px">
+          <p id="s4-eye" class="eyebrow">למנהל</p>
+          <p id="s4-head" class="headline" style="font-size: 40px; margin-bottom: 12px">תרגום, שיחה ושיבוץ — בלי לצאת מהתקלה</p>
+          <div id="s4-drawer" class="drawer">
+            <div class="drawer-handle"></div>
+            <div class="drawer-title">תקלה #184</div>
+            <div class="drawer-sub">הרצל 12 · פרטי בניין</div>
             <div class="tabs">
               <div class="tab">פרטים</div>
               <div class="tab">צ׳אט פנימי</div>
-              <div class="tab active">WhatsApp דייר</div>
+              <div class="tab on">WhatsApp דייר</div>
             </div>
-            <div id="row1" class="row">
-              <div class="row-title">תרגום תקלות</div>
-              <div class="row-text">«There is a leak in the ceiling» → «יש דליפה בתקרה»</div>
-              <span class="btn-sm">תרגם לעברית</span>
+            <div id="p1" class="panel">
+              <div class="panel-k">תרגום תקלות</div>
+              <div class="panel-v">There is a leak in the ceiling → יש דליפה בתקרה</div>
+              <span class="btn-secondary">תרגם לעברית</span>
             </div>
-            <div id="row2" class="row">
-              <div class="row-title">שיחה מתוך המערכת</div>
-              <div class="row-text">המנהל עונה לדייר ב-WhatsApp בלי לצאת מהתקלה</div>
+            <div id="p2" class="panel">
+              <div class="panel-k">שיחה מתוך המערכת</div>
+              <div class="panel-v">המנהל עונה לדייר ב-WhatsApp ישירות מתוך התקלה</div>
             </div>
-            <div id="row3" class="row">
-              <div class="row-title">שיבוץ עובד</div>
-              <div class="row-text">יוסי כהן · <span class="chip chip-blue" style="display: inline-block; padding: 4px 10px; font-size: 20px">בטיפול</span></div>
+            <div id="p3" class="panel">
+              <div class="panel-k">שיבוץ עובד</div>
+              <div class="panel-v" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                <span>יוסי כהן</span>
+                <span class="badge badge-progress">בטיפול</span>
+              </div>
+              <span class="btn-primary">שמירה</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Scene 5: Outro 16-20 -->
-      <section id="scene-outro" class="clip" data-start="16" data-duration="4" data-track-index="1">
-        <div class="fill fill-dark"></div>
-        <div class="glow"></div>
-        <div class="pad" style="align-items: center; text-align: center">
-          <p id="outro-brand" class="brand">במקור</p>
-          <p id="outro-sub" class="subhead" style="text-align: center">
-            ערוץ דיווח לדיירים, שולחן ניהול למשרד, ושיבוץ לעובדי השטח — במקום אחד.
+      <!-- 17.6–22 Outro -->
+      <section class="clip" data-start="17.6" data-duration="4.4" data-track-index="1">
+        <div class="fill fill-app"></div>
+        <div class="pad" style="align-items: stretch">
+          <p id="s5-brand" class="brand-xl" style="text-align:center;align-self:center">במקור</p>
+          <div id="s5-flow" class="flow">
+            <div class="flow-step"><div class="flow-n">1</div><div class="flow-t">דייר מדווח</div></div>
+            <div class="flow-step"><div class="flow-n">2</div><div class="flow-t">משרד מנהל</div></div>
+            <div class="flow-step"><div class="flow-n">3</div><div class="flow-t">עובד מטפל</div></div>
+          </div>
+          <p id="s5-lede" class="lede" style="text-align:center;align-self:center;margin-top:12px">
+            הקמה חד־פעמית + מנוי חודשי לפי היקף הבניינים.
           </p>
-          <div id="outro-cta" class="cta" style="align-self: center">לחצו על כפתור יצירת הקשר בדף</div>
+          <div id="s5-cta" class="cta center">לחצו על כפתור יצירת הקשר בדף</div>
         </div>
       </section>
     </div>
@@ -392,34 +609,39 @@
       window.__timelines = window.__timelines || {}
       const tl = gsap.timeline({ paused: true })
 
-      // Scene 1 — bubbles // beat-grid approx 0.5 / 1.0 / 1.5
-      tl.fromTo('#b1', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 0.35)
-      tl.fromTo('#b2', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 0.9)
-      tl.fromTo('#b3', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 1.45)
-      tl.fromTo('#chaos-label', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 2.05)
+      // Scene 1 — brand
+      tl.fromTo('#s1-brand', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 0.15)
+      tl.fromTo('#s1-head', { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 0.45)
+      tl.fromTo('#s1-lede', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.85)
 
-      // Scene 2 — brand // beat-locked: ~3.02s
-      tl.fromTo('#brand-name', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 3.05)
-      tl.fromTo('#brand-headline', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 3.35)
-      tl.fromTo('#brand-glow', { opacity: 0.4 }, { opacity: 1, duration: 1.2, ease: 'sine.inOut' }, 3.1)
+      // Scene 2 — problem // beat-grid messages
+      tl.fromTo('#s2-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.35 }, 3.3)
+      tl.fromTo('#s2-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 3.45)
+      tl.fromTo('#s2-phone', { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 3.7)
+      tl.fromTo('#m1', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 4.05)
+      tl.fromTo('#m2', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 4.55)
+      tl.fromTo('#m3', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 5.05)
+      tl.fromTo('#s2-cap', { opacity: 0 }, { opacity: 1, duration: 0.4 }, 5.55)
 
-      // Scene 3 — ticket
-      tl.fromTo('#ticket-label', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 6.15)
-      tl.fromTo('#ticket-card', { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 6.45)
-      tl.fromTo('#ticket-photo', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power2.out' }, 7.1)
-      tl.fromTo('#ticket-chip', { opacity: 0.4 }, { opacity: 1, duration: 0.35 }, 7.4)
+      // Scene 3 — ticket in app
+      tl.fromTo('#s3-eye', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.3 }, 7.3)
+      tl.fromTo('#s3-head', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 7.45)
+      tl.fromTo('#s3-app', { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 7.75)
+      tl.fromTo('#s3-media', { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power2.out' }, 8.45)
 
-      // Scene 4 — manager rows // beat-grid
-      tl.fromTo('#mgr-label', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 11.15)
-      tl.fromTo('#drawer', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 11.35)
-      tl.fromTo('#row1', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 11.85)
-      tl.fromTo('#row2', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 12.55)
-      tl.fromTo('#row3', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 13.25)
+      // Scene 4 — manager drawer
+      tl.fromTo('#s4-eye', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, 12.3)
+      tl.fromTo('#s4-head', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 12.45)
+      tl.fromTo('#s4-drawer', { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 12.7)
+      tl.fromTo('#p1', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 13.2)
+      tl.fromTo('#p2', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 13.9)
+      tl.fromTo('#p3', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 14.6)
 
       // Scene 5 — outro
-      tl.fromTo('#outro-brand', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 16.15)
-      tl.fromTo('#outro-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 16.45)
-      tl.fromTo('#outro-cta', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 17.05)
+      tl.fromTo('#s5-brand', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 17.7)
+      tl.fromTo('#s5-flow', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 18.05)
+      tl.fromTo('#s5-lede', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 18.55)
+      tl.fromTo('#s5-cta', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 18.95)
 
       window.__timelines['main'] = tl
     </script>
