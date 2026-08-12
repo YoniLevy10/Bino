@@ -34,6 +34,7 @@ import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import { parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
@@ -83,6 +84,8 @@ type TicketRow = {
   project_id?: string | null
   project_code?: string
   project_name?: string
+  project_address?: string | null
+  project_manager_phone?: string | null
   reporter_phone?: string | null
   reporter_name?: string | null
   description?: string | null
@@ -92,9 +95,24 @@ type TicketRow = {
   building_number?: string | null
   created_at?: string
   closed_at?: string | null
+  fixly_job_id?: string | null
+  fixly_status?: string | null
+  fixly_provider_name?: string | null
+  fixly_provider_phone?: string | null
+  fixly_synced_at?: string | null
   projects?:
-    | { name?: string | null; project_code?: string | null }[]
-    | { name?: string | null; project_code?: string | null }
+    | {
+        name?: string | null
+        project_code?: string | null
+        address?: string | null
+        manager_phone?: string | null
+      }[]
+    | {
+        name?: string | null
+        project_code?: string | null
+        address?: string | null
+        manager_phone?: string | null
+      }
     | null
 }
 
@@ -177,7 +195,8 @@ const TICKETS_LIST_SELECT = `
   id, ticket_number, client_id, project_id, reporter_phone, reporter_name,
   description, status, priority, assigned_worker_id, building_number,
   created_at, closed_at,
-  projects (name, project_code)
+  fixly_job_id, fixly_status, fixly_provider_name, fixly_provider_phone, fixly_synced_at,
+  projects (name, project_code, address, manager_phone)
 `.trim()
 
 export default function TicketsPage() {
@@ -207,6 +226,7 @@ export default function TicketsPage() {
     recoveringMedia,
     loadTicketAttachments,
     loadTicketLogs,
+    loadTicketDrawerData,
     recoverAndReloadAttachments,
     resetTicketDetailData,
   } = useTicketDetailData()
@@ -332,6 +352,8 @@ export default function TicketsPage() {
               ...ticket,
               project_code: project?.project_code || '',
               project_name: project?.name || '',
+              project_address: project?.address || null,
+              project_manager_phone: project?.manager_phone || null,
             }
           }
         )
@@ -1431,6 +1453,30 @@ export default function TicketsPage() {
           await fetchData(true)
           if (selectedTicket && draftStatus !== 'PROFESSIONAL_ESCORT') {
             setDraftStatus('PROFESSIONAL_ESCORT')
+          }
+        }}
+        onFixlyPublished={async () => {
+          const id = selectedTicket?.id
+          await fetchData(true)
+          if (!id) return
+          try {
+            const clientId = await resolveBamakorClientIdForBrowser()
+            const refreshed = await fetchTicketForDetail(supabase, clientId, id)
+            if (refreshed) {
+              setSelectedTicket((prev) =>
+                prev && prev.id === id
+                  ? {
+                      ...prev,
+                      ...refreshed,
+                      project_code: refreshed.project_code || prev.project_code,
+                      project_name: refreshed.project_name || prev.project_name,
+                    }
+                  : prev
+              )
+              void loadTicketDrawerData(refreshed)
+            }
+          } catch {
+            /* ignore refresh errors — list already reloaded */
           }
         }}
       />

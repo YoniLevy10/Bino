@@ -5,6 +5,8 @@ export type TicketDetailRow = {
   project_id?: string | null
   project_code?: string
   project_name?: string
+  project_address?: string | null
+  project_manager_phone?: string | null
   client_id?: string | null
   reporter_phone?: string | null
   reporter_name?: string | null
@@ -15,6 +17,11 @@ export type TicketDetailRow = {
   building_number?: string | null
   created_at?: string
   closed_at?: string | null
+  fixly_job_id?: string | null
+  fixly_status?: string | null
+  fixly_provider_name?: string | null
+  fixly_provider_phone?: string | null
+  fixly_synced_at?: string | null
 }
 
 export type TicketDetailAttachment = {

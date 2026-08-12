@@ -30,6 +30,19 @@ export function getEnvReadinessFlags(): EnvReadinessFlag[] {
     hint: 'Email sending disabled until set',
   })
 
+  const fixlyKey = (process.env.FIXLY_API_KEY || '').trim()
+  const fixlySecret = (process.env.BAMAKOR_WEBHOOK_SECRET || '').trim()
+  flags.push({
+    key: 'FIXLY_API_KEY',
+    ok: fixlyKey.length > 0,
+    hint: fixlyKey.length > 0 ? undefined : 'Fixly publish disabled until set in Vercel',
+  })
+  flags.push({
+    key: 'BAMAKOR_WEBHOOK_SECRET',
+    ok: fixlySecret.length > 0,
+    hint: fixlySecret.length > 0 ? undefined : 'Fixly webhook signature verification disabled until set',
+  })
+
   return flags
 }
 

@@ -141,3 +141,6 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
 | `GREENINVOICE_WEBHOOK_SECRET` | Random secret; Morning webhook must use `?token=` — **required for collections** (unauthenticated webhooks rejected) |
+| `FIXLY_BASE_URL` | Fixly app URL (default `https://fixly-five.vercel.app`) |
+| `FIXLY_API_KEY` | Shared with Fixly `FIXLY_API_KEYS` — Bearer for `/api/v1/jobs` |
+| `BAMAKOR_WEBHOOK_SECRET` | Shared HMAC secret for `X-Fixly-Signature` on `/api/integrations/fixly/webhook` |

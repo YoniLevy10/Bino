@@ -332,6 +332,18 @@ export const forwardTicketToProfessionalBodySchema = z.object({
   set_status_escort: z.boolean().optional(),
 })
 
+/** פרסום תקלה ל-Fixly (שידוך בעלי מקצוע חיצוניים). */
+export const createFixlyJobBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  category: z.string().min(1).max(40).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  assignment_mode: z.enum(['broadcast_first_accept', 'manual_select']).optional(),
+  city: z.string().max(120).nullable().optional(),
+  manager_phone: z.string().max(40).nullable().optional(),
+  reporter_phone: z.string().max(40).nullable().optional(),
+})
+
 const attendanceEventTypeSchema = z.enum([
   'clock_in',
   'clock_out',

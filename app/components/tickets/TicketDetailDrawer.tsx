@@ -8,6 +8,8 @@ import { CollapsibleSection } from '../shared/CollapsibleSection'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
+import { PublishToFixlyButton } from './PublishToFixlyButton'
+import { FixlyStatusBanner } from './FixlyStatusBanner'
 import { TabBar } from '../ui/TabBar'
 import type {
   TicketDetailAttachment,
@@ -52,6 +54,7 @@ interface TicketDetailDrawerProps {
   mergeLoading?: boolean
   deletingTicket?: boolean
   onTicketForwarded?: () => void | Promise<void>
+  onFixlyPublished?: () => void | Promise<void>
   onClose: () => void
   onDescriptionChange: (value: string) => void
   onWorkerChange: (value: string) => void
@@ -93,6 +96,7 @@ export function TicketDetailDrawer({
   mergeLoading = false,
   deletingTicket = false,
   onTicketForwarded,
+  onFixlyPublished,
   onClose,
   onDescriptionChange,
   onWorkerChange,
@@ -160,6 +164,10 @@ export function TicketDetailDrawer({
         return 'שויך לעובד'
       case 'FORWARDED_TO_PROFESSIONAL':
         return 'הועבר לאיש מקצוע'
+      case 'FIXLY_PUBLISHED':
+        return 'פורסם ב-Fixly'
+      case 'FIXLY_STATUS_UPDATE':
+        return 'עדכון סטטוס Fixly'
       case 'TICKET_CLOSED':
         return 'תקלה נסגרה'
       case 'AUTO_ASSIGNED':
@@ -172,6 +180,7 @@ export function TicketDetailDrawer({
   const hasAdvancedActions = !!(
     onLoadMergeCandidates ||
     onTicketForwarded ||
+    onFixlyPublished ||
     onPriorityChange ||
     onDelete ||
     onCancel
@@ -216,6 +225,14 @@ export function TicketDetailDrawer({
 
           {activeTab === 'details' && (
             <>
+              <FixlyStatusBanner
+                fixlyJobId={selectedTicket.fixly_job_id}
+                fixlyStatus={selectedTicket.fixly_status}
+                providerName={selectedTicket.fixly_provider_name}
+                providerPhone={selectedTicket.fixly_provider_phone}
+                syncedAt={selectedTicket.fixly_synced_at}
+              />
+
               <div style={styles.drawerSection}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <div style={styles.drawerLabel}>תיאור</div>
@@ -429,6 +446,22 @@ export function TicketDetailDrawer({
                       professionals={professionals}
                       onForwarded={onTicketForwarded}
                     />
+                  )}
+
+                  {onFixlyPublished && selectedTicket.status !== 'CLOSED' && !selectedTicket.fixly_job_id && (
+                    <div style={styles.drawerSection}>
+                      <div style={styles.drawerLabel}>שידוך חיצוני</div>
+                      <PublishToFixlyButton
+                        ticketId={selectedTicket.id}
+                        ticketDescription={selectedTicket.description}
+                        ticketPriority={selectedTicket.priority || draftPriority}
+                        buildingName={selectedTicket.project_name}
+                        buildingAddress={selectedTicket.project_address}
+                        reporterPhone={selectedTicket.reporter_phone}
+                        managerPhone={selectedTicket.project_manager_phone}
+                        onPublished={onFixlyPublished}
+                      />
+                    </div>
                   )}
 
                   <CollapsibleSection

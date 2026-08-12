@@ -1793,6 +1793,11 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           escalated_at: string | null
+          fixly_job_id: string | null
+          fixly_provider_name: string | null
+          fixly_provider_phone: string | null
+          fixly_status: string | null
+          fixly_synced_at: string | null
           id: string
           image_url: string | null
           is_merged: boolean | null
@@ -1824,6 +1829,11 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           escalated_at?: string | null
+          fixly_job_id?: string | null
+          fixly_provider_name?: string | null
+          fixly_provider_phone?: string | null
+          fixly_status?: string | null
+          fixly_synced_at?: string | null
           id?: string
           image_url?: string | null
           is_merged?: boolean | null
@@ -1855,6 +1865,11 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           escalated_at?: string | null
+          fixly_job_id?: string | null
+          fixly_provider_name?: string | null
+          fixly_provider_phone?: string | null
+          fixly_status?: string | null
+          fixly_synced_at?: string | null
           id?: string
           image_url?: string | null
           is_merged?: boolean | null

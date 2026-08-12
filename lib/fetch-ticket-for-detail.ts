@@ -6,13 +6,24 @@ const TICKET_DETAIL_SELECT = `
   id, ticket_number, client_id, project_id, reporter_phone, reporter_name,
   description, status, priority, assigned_worker_id, building_number,
   created_at, closed_at,
-  projects (name, project_code)
+  fixly_job_id, fixly_status, fixly_provider_name, fixly_provider_phone, fixly_synced_at,
+  projects (name, project_code, address, manager_phone)
 `.trim()
 
 type RawTicket = TicketDetailRow & {
   projects?:
-    | { name?: string | null; project_code?: string | null }
-    | { name?: string | null; project_code?: string | null }[]
+    | {
+        name?: string | null
+        project_code?: string | null
+        address?: string | null
+        manager_phone?: string | null
+      }
+    | {
+        name?: string | null
+        project_code?: string | null
+        address?: string | null
+        manager_phone?: string | null
+      }[]
     | null
 }
 
@@ -22,6 +33,8 @@ function normalizeTicketRow(row: RawTicket): TicketDetailRow {
     ...row,
     project_code: project?.project_code || '',
     project_name: project?.name || '',
+    project_address: project?.address || null,
+    project_manager_phone: project?.manager_phone || null,
   }
 }
 

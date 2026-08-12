@@ -24,6 +24,7 @@ import { TM } from '@/lib/toast-messages'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
@@ -66,6 +67,8 @@ type TicketRow = {
   project_id?: string
   project_code?: string
   project_name?: string
+  project_address?: string | null
+  project_manager_phone?: string | null
   client_id?: string | null
   reporter_phone: string
   description: string
@@ -74,6 +77,11 @@ type TicketRow = {
   assigned_worker_id: string | null
   created_at: string
   closed_at: string | null
+  fixly_job_id?: string | null
+  fixly_status?: string | null
+  fixly_provider_name?: string | null
+  fixly_provider_phone?: string | null
+  fixly_synced_at?: string | null
 }
 
 type TicketLog = {
@@ -94,6 +102,8 @@ function mapFetchedTicketRow(fetched: TicketDetailRow): TicketRow {
     project_id: fetched.project_id ?? undefined,
     project_code: fetched.project_code,
     project_name: fetched.project_name,
+    project_address: fetched.project_address ?? null,
+    project_manager_phone: fetched.project_manager_phone ?? null,
     client_id: fetched.client_id ?? null,
     reporter_phone: fetched.reporter_phone || '',
     description: fetched.description || '',
@@ -102,6 +112,11 @@ function mapFetchedTicketRow(fetched: TicketDetailRow): TicketRow {
     assigned_worker_id: fetched.assigned_worker_id ?? null,
     created_at: fetched.created_at || '',
     closed_at: fetched.closed_at ?? null,
+    fixly_job_id: fetched.fixly_job_id ?? null,
+    fixly_status: fetched.fixly_status ?? null,
+    fixly_provider_name: fetched.fixly_provider_name ?? null,
+    fixly_provider_phone: fetched.fixly_provider_phone ?? null,
+    fixly_synced_at: fetched.fixly_synced_at ?? null,
   }
 }
 type ProjectRow = {
@@ -111,7 +126,19 @@ type ProjectRow = {
 }
 
 type TicketWithProjects = TicketRow & {
-  projects?: Array<{ project_code: string; name: string }> | { project_code: string; name: string }
+  projects?:
+    | Array<{
+        project_code: string
+        name: string
+        address?: string | null
+        manager_phone?: string | null
+      }>
+    | {
+        project_code: string
+        name: string
+        address?: string | null
+        manager_phone?: string | null
+      }
 }
 
 const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v2'
@@ -309,7 +336,8 @@ export default function DashboardPage() {
             supabase.from('tickets').select(`
               id, ticket_number, project_id, client_id, reporter_phone, description, 
               status, priority, assigned_worker_id, created_at, closed_at,
-              projects (project_code, name)
+              fixly_job_id, fixly_status, fixly_provider_name, fixly_provider_phone, fixly_synced_at,
+              projects (project_code, name, address, manager_phone)
             `),
             clientId
           )
@@ -339,21 +367,31 @@ export default function DashboardPage() {
         if (projectsResult.error) throw projectsResult.error
         if (workersResult.error) throw workersResult.error
 
-        const formatted: TicketRow[] = (ticketsResult.data || []).map((row: TicketWithProjects) => ({
-          id: row.id,
-          ticket_number: row.ticket_number,
-          project_id: row.project_id,
-          client_id: (row as { client_id?: string | null }).client_id ?? null,
-          project_code: Array.isArray(row.projects) ? row.projects?.[0]?.project_code || '' : row.projects?.project_code || '',
-          project_name: Array.isArray(row.projects) ? row.projects?.[0]?.name || '' : row.projects?.name || '',
-          reporter_phone: row.reporter_phone,
-          description: row.description,
-          status: row.status,
-          priority: row.priority,
-          assigned_worker_id: row.assigned_worker_id,
-          created_at: row.created_at,
-          closed_at: row.closed_at,
-        }))
+        const formatted: TicketRow[] = (ticketsResult.data || []).map((row: TicketWithProjects) => {
+          const project = Array.isArray(row.projects) ? row.projects?.[0] : row.projects
+          return {
+            id: row.id,
+            ticket_number: row.ticket_number,
+            project_id: row.project_id,
+            client_id: (row as { client_id?: string | null }).client_id ?? null,
+            project_code: project?.project_code || '',
+            project_name: project?.name || '',
+            project_address: project?.address || null,
+            project_manager_phone: project?.manager_phone || null,
+            reporter_phone: row.reporter_phone,
+            description: row.description,
+            status: row.status,
+            priority: row.priority,
+            assigned_worker_id: row.assigned_worker_id,
+            created_at: row.created_at,
+            closed_at: row.closed_at,
+            fixly_job_id: (row as TicketRow).fixly_job_id ?? null,
+            fixly_status: (row as TicketRow).fixly_status ?? null,
+            fixly_provider_name: (row as TicketRow).fixly_provider_name ?? null,
+            fixly_provider_phone: (row as TicketRow).fixly_provider_phone ?? null,
+            fixly_synced_at: (row as TicketRow).fixly_synced_at ?? null,
+          }
+        })
 
         const map: Record<string, string> = {}
         workersResult.data?.forEach((worker: { id: string; full_name: string }) => {
@@ -942,6 +980,21 @@ export default function DashboardPage() {
           if (selectedTicket) {
             setDraftStatus('PROFESSIONAL_ESCORT')
             void loadTicketDrawerData(selectedTicket)
+          }
+        }}
+        onFixlyPublished={async () => {
+          const id = selectedTicket?.id
+          await loadData(true)
+          if (!id) return
+          try {
+            const clientId = await resolveBamakorClientIdForBrowser()
+            const refreshed = await fetchTicketForDetail(supabase, clientId, id)
+            if (refreshed) {
+              setSelectedTicket(mapFetchedTicketRow(refreshed))
+              void loadTicketDrawerData(refreshed)
+            }
+          } catch {
+            /* ignore */
           }
         }}
         ticketLogs={ticketLogs}
