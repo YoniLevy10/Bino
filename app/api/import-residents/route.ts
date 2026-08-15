@@ -5,6 +5,7 @@ import { importResidentsBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
+import { normalizeOwnershipType, parseOwnershipPercent } from '@/lib/resident-ownership'
 
 type ImportRow = {
   full_name?: unknown
@@ -13,6 +14,8 @@ type ImportRow = {
   notes?: unknown
   project_code?: unknown
   project_name?: unknown
+  ownership_type?: unknown
+  ownership_percent?: unknown
 }
 
 function normalizeString(v: unknown): string {
@@ -88,6 +91,8 @@ export async function POST(req: Request) {
       full_name: string
       phone: string | null
       apartment_number: string | null
+      ownership_type: string | null
+      ownership_percent: number | null
       notes: string | null
     }[] = []
 
@@ -133,6 +138,8 @@ export async function POST(req: Request) {
         full_name: fullName,
         phone: normalizedPhone || null,
         apartment_number: normalizeString(r.apartment_number) || null,
+        ownership_type: normalizeOwnershipType(r.ownership_type),
+        ownership_percent: parseOwnershipPercent(r.ownership_percent),
         notes: sanitizeString(r.notes) || normalizeString(r.notes) || null,
       })
     })
@@ -203,7 +210,9 @@ export async function POST(req: Request) {
     const { data: insertedRows, error: insErr } = await supabase
       .from('residents')
       .insert(deduped)
-      .select('id, project_id, client_id, full_name, phone, apartment_number, notes')
+      .select(
+        'id, project_id, client_id, full_name, phone, apartment_number, ownership_type, ownership_percent, notes'
+      )
 
     if (insErr) {
       logger.error('RESIDENTS_API', 'Bulk insert residents failed', new Error(insErr.message), {

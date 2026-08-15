@@ -1337,6 +1337,8 @@ export type Database = {
           is_renter: boolean
           normalized_phone: string | null
           notes: string | null
+          ownership_percent: number | null
+          ownership_type: string | null
           phone: string | null
           project_id: string | null
           updated_at: string | null
@@ -1352,6 +1354,8 @@ export type Database = {
           is_renter?: boolean
           normalized_phone?: string | null
           notes?: string | null
+          ownership_percent?: number | null
+          ownership_type?: string | null
           phone?: string | null
           project_id?: string | null
           updated_at?: string | null
@@ -1367,6 +1371,8 @@ export type Database = {
           is_renter?: boolean
           normalized_phone?: string | null
           notes?: string | null
+          ownership_percent?: number | null
+          ownership_type?: string | null
           phone?: string | null
           project_id?: string | null
           updated_at?: string | null

@@ -7,6 +7,7 @@ import { requireSessionClientId } from '@/lib/api-auth'
 import { formatZodError } from '@/lib/format-zod-error'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { normalizePhone } from '@/lib/residents-whatsapp'
+import { normalizeOwnershipType } from '@/lib/resident-ownership'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -89,9 +90,13 @@ export async function POST(req: Request) {
         email: sanitizeString(body.email) || null,
         is_renter: body.is_renter ?? false,
         apartment_number: sanitizeString(body.apartment_number) || null,
+        ownership_type: normalizeOwnershipType(body.ownership_type),
+        ownership_percent: body.ownership_percent ?? null,
         notes: sanitizeString(body.notes) || null,
       })
-      .select('id, project_id, client_id, full_name, phone, normalized_phone, email, is_renter, apartment_number, notes')
+      .select(
+        'id, project_id, client_id, full_name, phone, normalized_phone, email, is_renter, apartment_number, ownership_type, ownership_percent, notes'
+      )
       .single()
 
     if (insErr) {

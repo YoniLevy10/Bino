@@ -29,6 +29,7 @@ import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
+import { parseOwnershipPercent } from '@/lib/resident-ownership'
 import { AddResidentModal, type ResidentProjectRow } from '../components/residents/AddResidentModal'
 import { ImportResidentsModal } from '../components/residents/ImportResidentsModal'
 import {
@@ -77,6 +78,8 @@ type ResidentRow = {
   email?: string | null
   is_renter?: boolean
   apartment_number: string | null
+  ownership_type?: string | null
+  ownership_percent?: number | null
   notes?: string | null
 }
 
@@ -128,6 +131,8 @@ function ResidentsPageInner() {
   const [addEmail, setAddEmail] = useState('')
   const [addIsRenter, setAddIsRenter] = useState(false)
   const [addApartment, setAddApartment] = useState('')
+  const [addOwnershipType, setAddOwnershipType] = useState('')
+  const [addOwnershipPercent, setAddOwnershipPercent] = useState('')
   const [addNotes, setAddNotes] = useState('')
 
   const [importOpen, setImportOpen] = useState(false)
@@ -218,7 +223,7 @@ function ResidentsPageInner() {
       const rRes = await withClientId(
         supabase
           .from('residents')
-          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
+          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, ownership_type, ownership_percent, notes'),
         tenantId
       )
         .is('deleted_at', null)
@@ -241,7 +246,7 @@ function ResidentsPageInner() {
       const [pRes, rRes, pendingRes] = await Promise.all([
         withClientId(supabase.from('projects').select('id, name, project_code, client_id'), tenantId).order('name'),
         withClientId(
-          supabase.from('residents').select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
+          supabase.from('residents').select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, ownership_type, ownership_percent, notes'),
           tenantId
         )
           .is('deleted_at', null)
@@ -293,6 +298,8 @@ function ResidentsPageInner() {
     setAddEmail('')
     setAddIsRenter(false)
     setAddApartment('')
+    setAddOwnershipType('')
+    setAddOwnershipPercent('')
     setAddNotes('')
     setAddProjectId(projectFilter !== 'ALL' ? projectFilter : '')
     setAddOpen(true)
@@ -307,6 +314,12 @@ function ResidentsPageInner() {
     setAddEmail(r.email?.trim() || '')
     setAddIsRenter(r.is_renter ?? false)
     setAddApartment(r.apartment_number?.trim() || '')
+    setAddOwnershipType(r.ownership_type?.trim() || '')
+    setAddOwnershipPercent(
+      r.ownership_percent == null || Number.isNaN(Number(r.ownership_percent))
+        ? ''
+        : String(r.ownership_percent)
+    )
     setAddNotes(r.notes?.trim() || '')
     setAddOpen(true)
   }
@@ -370,6 +383,11 @@ function ResidentsPageInner() {
 
     setSaving(true)
     setAddError('')
+    const ownershipPercentValue = parseOwnershipPercent(addOwnershipPercent)
+    if (addOwnershipPercent.trim() && ownershipPercentValue == null) {
+      setAddError('אחוז בעלות חייב להיות בין 0 ל-100')
+      return
+    }
     try {
       if (editResidentId) {
         const updateRes = await fetchWithTimeout(
@@ -385,6 +403,8 @@ function ResidentsPageInner() {
               email: addEmail.trim() || null,
               is_renter: addIsRenter ?? false,
               apartment_number: addApartment.trim() || null,
+              ownership_type: addOwnershipType.trim() || null,
+              ownership_percent: ownershipPercentValue,
               notes: addNotes.trim() || null,
             }),
           },
@@ -420,6 +440,8 @@ function ResidentsPageInner() {
             email: addEmail.trim() || null,
             is_renter: addIsRenter ?? false,
             apartment_number: addApartment.trim() || null,
+            ownership_type: addOwnershipType.trim() || null,
+            ownership_percent: ownershipPercentValue,
             notes: addNotes.trim() || null,
           }),
         },
@@ -618,18 +640,30 @@ function ResidentsPageInner() {
 
   async function exportCsv() {
     const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
-    const COLS = 5
+    const COLS = 9
     const rows = sorted.map((r) => ({
       'שם מלא': r.full_name,
       'טלפון': r.phone || '',
       'אימייל': r.email || '',
       'שוכר': r.is_renter ? 'כן' : '',
       'דירה': r.apartment_number || '',
+      'סוג בעלות': r.ownership_type || '',
+      'אחוז בעלות': r.ownership_percent ?? '',
       'בניין': projectName[r.project_id] || '',
       'הערות': r.notes || '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
-    ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 22 }, { wch: 36 }]
+    ws['!cols'] = [
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 26 },
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 22 },
+      { wch: 36 },
+    ]
     ws['!freeze'] = { xSplit: 0, ySplit: 1 }
     ws['!autofilter'] = { ref: ws['!ref'] as string }
     applyHeaderStyle(ws, COLS)
@@ -671,6 +705,8 @@ function ResidentsPageInner() {
       normalized_phone: null,
       email: r.email ?? null,
       apartment_number: r.apartment_number,
+      ownership_type: r.ownership_type ?? null,
+      ownership_percent: r.ownership_percent ?? null,
       notes: r.notes ?? null,
       is_renter: r.is_renter ?? false,
     })
@@ -1093,6 +1129,8 @@ function ResidentsPageInner() {
         email={addEmail}
         isRenter={addIsRenter}
         apartmentNumber={addApartment}
+        ownershipType={addOwnershipType}
+        ownershipPercent={addOwnershipPercent}
         notes={addNotes}
         error={addError}
         loading={saving}
@@ -1105,6 +1143,8 @@ function ResidentsPageInner() {
         onEmailChange={setAddEmail}
         onIsRenterChange={setAddIsRenter}
         onApartmentNumberChange={setAddApartment}
+        onOwnershipTypeChange={setAddOwnershipType}
+        onOwnershipPercentChange={setAddOwnershipPercent}
         onNotesChange={setAddNotes}
         onSubmit={submitAdd}
       />

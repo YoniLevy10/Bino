@@ -2,10 +2,11 @@
 
 import { type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
+import { RESIDENT_OWNERSHIP_TYPES } from '@/lib/resident-ownership'
 
 export type ResidentProjectRow = { id: string; name: string; project_code: string; client_id?: string | null }
 
-type AddResidentModalProps = {
+export type AddResidentModalProps = {
   open: boolean
   onClose: () => void
   isMobile?: boolean
@@ -16,6 +17,8 @@ type AddResidentModalProps = {
   email: string
   isRenter: boolean
   apartmentNumber: string
+  ownershipType: string
+  ownershipPercent: string
   notes: string
   error: string
   loading: boolean
@@ -30,6 +33,8 @@ type AddResidentModalProps = {
   onEmailChange: (value: string) => void
   onIsRenterChange: (value: boolean) => void
   onApartmentNumberChange: (value: string) => void
+  onOwnershipTypeChange: (value: string) => void
+  onOwnershipPercentChange: (value: string) => void
   onNotesChange: (value: string) => void
   onSubmit: (e: React.FormEvent) => void
 }
@@ -45,6 +50,8 @@ export function AddResidentModal({
   email,
   isRenter,
   apartmentNumber,
+  ownershipType,
+  ownershipPercent,
   notes,
   error,
   loading,
@@ -57,6 +64,8 @@ export function AddResidentModal({
   onEmailChange,
   onIsRenterChange,
   onApartmentNumberChange,
+  onOwnershipTypeChange,
+  onOwnershipPercentChange,
   onNotesChange,
   onSubmit,
 }: AddResidentModalProps) {
@@ -177,6 +186,42 @@ export function AddResidentModal({
               onChange={(e) => onApartmentNumberChange(e.target.value)}
               placeholder="למשל 12"
               style={styles.formInput}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>סוג בעלות (אופציונלי)</label>
+            <select
+              className="app-select-input"
+              value={ownershipType}
+              onChange={(e) => onOwnershipTypeChange(e.target.value)}
+              style={styles.formSelect}
+            >
+              <option value="">—</option>
+              {ownershipType &&
+              !(RESIDENT_OWNERSHIP_TYPES as readonly string[]).includes(ownershipType) ? (
+                <option value={ownershipType}>{ownershipType}</option>
+              ) : null}
+              {RESIDENT_OWNERSHIP_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>אחוז בעלות / חלוקה (אופציונלי)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.01}
+              value={ownershipPercent}
+              onChange={(e) => onOwnershipPercentChange(e.target.value)}
+              placeholder="0–100"
+              style={styles.formInput}
+              dir="ltr"
             />
           </div>
 

@@ -9,6 +9,7 @@ import { logAudit } from '@/lib/audit'
 import { getLogger } from '@/lib/logging'
 import { formatZodError } from '@/lib/format-zod-error'
 import { normalizePhone } from '@/lib/residents-whatsapp'
+import { normalizeOwnershipType } from '@/lib/resident-ownership'
 
 type ResidentPhoneFields = {
   phone: string | null
@@ -191,6 +192,13 @@ export async function POST(req: Request) {
     }
     if (fields.is_renter !== undefined) payload.is_renter = fields.is_renter
     if (fields.apartment_number !== undefined) payload.apartment_number = fields.apartment_number
+    if (fields.ownership_type !== undefined) {
+      payload.ownership_type =
+        fields.ownership_type === null || fields.ownership_type === ''
+          ? null
+          : normalizeOwnershipType(fields.ownership_type)
+    }
+    if (fields.ownership_percent !== undefined) payload.ownership_percent = fields.ownership_percent
     if (fields.notes !== undefined) payload.notes = fields.notes
 
     const { data: updated, error } = await admin
@@ -199,7 +207,9 @@ export async function POST(req: Request) {
       .eq('id', resident_id)
       .eq('client_id', clientId)
       .is('deleted_at', null)
-      .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes')
+      .select(
+        'id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, ownership_type, ownership_percent, notes'
+      )
       .single()
 
     if (error) {

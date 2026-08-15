@@ -74,6 +74,32 @@ describe('import-residents-excel', () => {
     expect(mapping.project_name).toBe('בניין')
   })
 
+  it('maps ownership distribution columns from CRM export', () => {
+    const { rows, mapping } = parseResidentsWorkbook(
+      workbookBuffer([
+        ['שם מלא', 'טלפון', 'דירה', 'סוג בעלות', 'אחוז בעלות', 'הערות'],
+        ['ישראל ישראלי', '0501234567', '12', 'בעלים', '100', ''],
+        ['דנה כהן', '0521111111', '8', 'שוכר', '0', ''],
+      ])
+    )
+
+    expect(mapping.ownership_type).toBe('סוג בעלות')
+    expect(mapping.ownership_percent).toBe('אחוז בעלות')
+
+    const payload = buildResidentsImportPayload(rows, mapping, {
+      forcedProjectName: 'הרצל 10',
+    })
+    expect(payload[0]).toMatchObject({
+      full_name: 'ישראל ישראלי',
+      ownership_type: 'בעלים',
+      ownership_percent: '100',
+    })
+    expect(payload[1]).toMatchObject({
+      ownership_type: 'שוכר',
+      ownership_percent: '0',
+    })
+  })
+
   it('uses plain שם column when no building-name column exists', () => {
     const mapping = guessResidentsColumnMapping(['שם', 'טלפון', 'דירה'])
     expect(mapping.full_name).toBe('שם')

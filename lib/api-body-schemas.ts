@@ -87,6 +87,8 @@ export const updateResidentBodySchema = z.object({
   email: z.union([z.string().email().max(320), z.literal(''), z.null()]).optional(),
   is_renter: z.boolean().optional(),
   apartment_number: z.string().max(20).nullable().optional(),
+  ownership_type: z.string().max(80).nullable().optional(),
+  ownership_percent: z.number().min(0).max(100).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
   soft_delete: z.literal(true).optional(),
 })
@@ -290,6 +292,8 @@ export const createResidentBodySchema = z.object({
   email: z.union([z.string().email().max(320), z.literal('')]).nullable().optional(),
   is_renter: z.boolean().optional(),
   apartment_number: z.string().max(20).nullable().optional(),
+  ownership_type: z.string().max(80).nullable().optional(),
+  ownership_percent: z.number().min(0).max(100).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
 

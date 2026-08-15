@@ -10,6 +10,8 @@ export type ResidentMergeRow = {
   normalized_phone: string | null
   email: string | null
   apartment_number: string | null
+  ownership_type?: string | null
+  ownership_percent?: number | null
   notes: string | null
   is_renter: boolean
 }
@@ -36,7 +38,12 @@ export function pickResidentToKeep(a: ResidentMergeRow, b: ResidentMergeRow): { 
   if (bPlaceholder && !aPlaceholder) return { keepId: a.id, mergeId: b.id }
 
   const score = (r: ResidentMergeRow) =>
-    (r.email ? 2 : 0) + (r.apartment_number ? 1 : 0) + (r.phone ? 1 : 0) + (r.notes ? 1 : 0)
+    (r.email ? 2 : 0) +
+    (r.apartment_number ? 1 : 0) +
+    (r.phone ? 1 : 0) +
+    (r.ownership_type ? 1 : 0) +
+    (r.ownership_percent != null ? 1 : 0) +
+    (r.notes ? 1 : 0)
 
   if (score(b) > score(a)) return { keepId: b.id, mergeId: a.id }
   return { keepId: a.id, mergeId: b.id }
@@ -110,7 +117,7 @@ export async function mergeResidentsForClient(params: {
   const { data: rows, error } = await supabaseAdmin
     .from('residents')
     .select(
-      'id, project_id, client_id, full_name, phone, normalized_phone, email, apartment_number, notes, is_renter'
+      'id, project_id, client_id, full_name, phone, normalized_phone, email, apartment_number, ownership_type, ownership_percent, notes, is_renter'
     )
     .eq('client_id', clientId)
     .in('id', [keepId, mergeId])
@@ -141,6 +148,8 @@ export async function mergeResidentsForClient(params: {
     ...phoneFields,
     email: mergeField(keep.email, merge.email),
     apartment_number: mergeField(keep.apartment_number, merge.apartment_number),
+    ownership_type: mergeField(keep.ownership_type ?? null, merge.ownership_type ?? null),
+    ownership_percent: keep.ownership_percent ?? merge.ownership_percent ?? null,
     notes: mergeNotes(keep.notes, merge.notes),
     is_renter: Boolean(keep.is_renter || merge.is_renter),
     updated_at: now,
@@ -166,7 +175,9 @@ export async function mergeResidentsForClient(params: {
     .eq('id', keepId)
     .eq('client_id', clientId)
     .is('deleted_at', null)
-    .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes')
+    .select(
+      'id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, ownership_type, ownership_percent, notes'
+    )
     .single()
 
   if (upErr || !updated) {

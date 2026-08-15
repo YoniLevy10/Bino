@@ -8,6 +8,8 @@ export type ResidentsColumnMapping = {
   full_name: string
   phone?: string
   apartment_number?: string
+  ownership_type?: string
+  ownership_percent?: string
   notes?: string
 }
 
@@ -25,6 +27,10 @@ const HEADER_HINTS = [
   /אימייל/i,
   /email/i,
   /מייל/i,
+  /בעלות/i,
+  /ownership/i,
+  /חלוקה/i,
+  /distribution/i,
 ]
 
 const TITLE_ROW_HINTS = [/רשימת/i, /דוח/i, /דיירים\s+בבניין/i]
@@ -141,6 +147,8 @@ export function guessResidentsColumnMapping(
       full_name: unique[1] || '',
       phone: unique[2] || undefined,
       apartment_number: unique[0] || undefined,
+      ownership_type: undefined,
+      ownership_percent: undefined,
       notes: undefined,
       project_code: undefined,
       project_name: undefined,
@@ -160,6 +168,19 @@ export function guessResidentsColumnMapping(
   ])
   const guessedApt = guessResidentsColumnKey(headers, [/^דירה$/i, /apartment/i, /דירה/])
   const guessedNotes = guessResidentsColumnKey(headers, [/notes/i, /הערות/])
+  const guessedOwnershipType = guessResidentsColumnKey(headers, [
+    /סוג\s*בעלות/,
+    /ownership.?type/i,
+    /^בעלות$/,
+    /חלוקה/,
+    /distribution/i,
+  ])
+  const guessedOwnershipPercent = guessResidentsColumnKey(headers, [
+    /אחוז\s*בעלות/,
+    /ownership.?percent/i,
+    /אחוז/,
+    /percent/i,
+  ])
   const guessedProjectCode = guessResidentsColumnKey(headers, [
     /project.?code/i,
     /קוד.*(פרויקט|בניין)/,
@@ -175,6 +196,8 @@ export function guessResidentsColumnMapping(
     full_name: guessedFullName || headers[0] || '',
     phone: guessedPhone || undefined,
     apartment_number: guessedApt || undefined,
+    ownership_type: guessedOwnershipType || undefined,
+    ownership_percent: guessedOwnershipPercent || undefined,
     notes: guessedNotes || undefined,
     project_code: guessedProjectCode || undefined,
     project_name: guessedProjectName || undefined,
@@ -210,6 +233,8 @@ export type ResidentsImportPayloadRow = {
   full_name: string
   phone: string
   apartment_number: string
+  ownership_type: string
+  ownership_percent: string
   notes: string
   project_code: string | null
   project_name: string | null
@@ -231,6 +256,12 @@ export function buildResidentsImportPayload(
       const rawName = mapping.full_name ? String(r[mapping.full_name] ?? '').trim() : ''
       const fullName = rawName || sanitizeImportPhone(phoneRaw) || ''
       const apt = mapping.apartment_number ? String(r[mapping.apartment_number] ?? '').trim() : ''
+      const ownershipType = mapping.ownership_type
+        ? String(r[mapping.ownership_type] ?? '').trim()
+        : ''
+      const ownershipPercent = mapping.ownership_percent
+        ? String(r[mapping.ownership_percent] ?? '').trim()
+        : ''
       const notes = mapping.notes ? String(r[mapping.notes] ?? '').trim() : ''
 
       const projectCode =
@@ -244,6 +275,8 @@ export function buildResidentsImportPayload(
         full_name: fullName,
         phone: phoneRaw ? sanitizeImportPhone(phoneRaw) : '',
         apartment_number: apt,
+        ownership_type: ownershipType,
+        ownership_percent: ownershipPercent,
         notes,
         project_code: projectCode || null,
         project_name: projectName || null,

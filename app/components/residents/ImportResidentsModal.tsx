@@ -317,6 +317,42 @@ export function ImportResidentsModal({
                   </select>
                 </div>
                 <div style={styles.row}>
+                  <label style={styles.label}>עמודת סוג בעלות</label>
+                  <select
+                    className="app-select-input"
+                    value={mapping.ownership_type || ''}
+                    onChange={(e) =>
+                      setMapping((m) => ({ ...m, ownership_type: e.target.value || undefined }))
+                    }
+                    style={styles.select}
+                  >
+                    <option value="">—</option>
+                    {headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={styles.row}>
+                  <label style={styles.label}>עמודת אחוז בעלות</label>
+                  <select
+                    className="app-select-input"
+                    value={mapping.ownership_percent || ''}
+                    onChange={(e) =>
+                      setMapping((m) => ({ ...m, ownership_percent: e.target.value || undefined }))
+                    }
+                    style={styles.select}
+                  >
+                    <option value="">—</option>
+                    {headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={styles.row}>
                   <label style={styles.label}>עמודת הערות</label>
                   <select
                     className="app-select-input"
@@ -352,6 +388,7 @@ export function ImportResidentsModal({
                       <th style={styles.th}>שם</th>
                       <th style={styles.th}>טלפון</th>
                       <th style={styles.th}>דירה</th>
+                      <th style={styles.th}>בעלות</th>
                       <th style={styles.th}>בניין</th>
                     </tr>
                   </thead>
@@ -361,6 +398,11 @@ export function ImportResidentsModal({
                         <td style={styles.td}>{r.full_name}</td>
                         <td style={styles.td}>{r.phone}</td>
                         <td style={styles.td}>{r.apartment_number}</td>
+                        <td style={styles.td}>
+                          {[r.ownership_type, r.ownership_percent ? `${r.ownership_percent}%` : '']
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </td>
                         <td style={styles.td}>
                           {singleProjectId
                             ? projects.find((p) => p.id === singleProjectId)?.name || ''
