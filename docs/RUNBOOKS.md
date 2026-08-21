@@ -8,17 +8,21 @@ Operational guides for platform and tenant features.
 
 צ׳קליסט מלא: [`COLLECTIONS_GO_LIVE.md`](COLLECTIONS_GO_LIVE.md)
 
+**חשבון אישי לכל לקוח** — אין מפתחות/סליקה משותפים במקור. הכסף נכנס לחשבון Morning של אותו לקוח בלבד.
+
 ### לפני שליחה לדיירים
 
 1. `GREENINVOICE_WEBHOOK_SECRET` מוגדר ב-Vercel (Production).
-2. בהגדרות Bamakor → Morning → העתיקו את Webhook URL (כולל token) ל-Morning → Webhooks.
-3. מפתחות API של הלקוח + בדיקת חיבור ירוקה; סליקה פעילה ב-Morning.
+2. בהגדרות Bamakor → Morning → העתיקו את Webhook URL (כולל token) ל-Morning → Webhooks **בחשבון של הלקוח**.
+3. מפתחות API **של הלקוח** (לא לשתף בין לקוחות) + בדיקת חיבור ירוקה; סליקה פעילה ב-Morning.
 4. תוסף גבייה מופעל ללקוח.
 5. **תשלום ניסיון אחד** — ודאו שסטטוס עובר ל«שולם» ב־`/collections`.
 
 ### התנהגות מערכת
 
 - שליחת חיוב נחסמת אם חסר סוד webhook בשרת.
+- מסך גבייה חוסם שליחה עד שמפתחות Morning האישיים מוגדרים ומופעלים.
+- מפתח API לא יכול להיות משויך לשני לקוחות במקור.
 - ביטול חיוב מבטל את קישור `/pay/...` של Bamakor (קישור Morning הישן עלול עדיין להיות פתוח אצלם).
 - «סמן כשולם» — גיבוי ידני אם ה-webhook פספס.
 

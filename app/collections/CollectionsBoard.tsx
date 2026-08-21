@@ -101,12 +101,44 @@ export function CollectionsBoard() {
   const [cDescription, setCDescription] = useState('')
   const [cPeriod, setCPeriod] = useState('')
   const [cSaving, setCSaving] = useState(false)
+  const [accountReady, setAccountReady] = useState<boolean | null>(null)
+  const [accountMessage, setAccountMessage] = useState('')
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const loadAccountStatus = useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout('/api/collections/account-status')
+      const body = (await res.json().catch(() => ({}))) as {
+        ready?: boolean
+        message?: string
+        error?: string
+      }
+      if (!res.ok) {
+        setAccountReady(false)
+        setAccountMessage(
+          typeof body.error === 'string'
+            ? body.error
+            : 'לא ניתן לבדוק את חשבון Morning. היכנסו להגדרות.'
+        )
+        return
+      }
+      setAccountReady(body.ready === true)
+      setAccountMessage(
+        body.message ||
+          (body.ready
+            ? 'החשבון מוכן לגבייה.'
+            : 'חסרים מפתחות Morning האישיים. הגדירו בהגדרות.')
+      )
+    } catch {
+      setAccountReady(false)
+      setAccountMessage('בדיקת חשבון Morning נכשלה. נסו לרענן.')
+    }
   }, [])
 
   const loadProjects = useCallback(async (cid: string) => {
@@ -157,14 +189,14 @@ export function CollectionsBoard() {
         async () => {
           const cid = await resolveBamakorClientIdForBrowser()
           setClientId(cid)
-          await loadProjects(cid)
+          await Promise.all([loadProjects(cid), loadAccountStatus()])
           return true
         },
         { context: 'טעינת גביית ועד', showErrorToast: true }
       )
       setLoading(false)
     })()
-  }, [loadProjects])
+  }, [loadProjects, loadAccountStatus])
 
   useEffect(() => {
     if (!clientId) return
@@ -182,7 +214,7 @@ export function CollectionsBoard() {
   async function refresh() {
     await asyncHandler(
       async () => {
-        await loadCharges()
+        await Promise.all([loadCharges(), loadAccountStatus()])
         return true
       },
       { context: 'רענון חיובים', showErrorToast: true }
@@ -204,6 +236,10 @@ export function CollectionsBoard() {
   }
 
   async function openBulk() {
+    if (accountReady === false) {
+      toast.error(accountMessage || 'הגדירו קודם חשבון Morning אישי בהגדרות.')
+      return
+    }
     setCreateOpen(false)
     setBulkResult(null)
     setBulkOpen(true)
@@ -338,6 +374,10 @@ export function CollectionsBoard() {
   }
 
   async function openCreate() {
+    if (accountReady === false) {
+      toast.error(accountMessage || 'הגדירו קודם חשבון Morning אישי בהגדרות.')
+      return
+    }
     setBulkOpen(false)
     setCreateOpen(true)
     const pid = cProjectId || projectFilter || projects[0]?.id || ''
@@ -480,6 +520,21 @@ export function CollectionsBoard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {accountReady === false ? (
+        <Card>
+          <div style={{ padding: 4 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>חסר חשבון Morning אישי</div>
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
+              {accountMessage ||
+                'כל לקוח חייב להזין מפתחות API מחשבון Morning שלו. אין כתובת תשלום משותפת במקור.'}
+            </p>
+            <Link href="/settings?tab=morning">
+              <Button>להגדרת החשבון שלי</Button>
+            </Link>
+          </div>
+        </Card>
+      ) : null}
+
       <div
         style={{
           ...styles.toolbar,
@@ -487,8 +542,14 @@ export function CollectionsBoard() {
           alignItems: isMobile ? 'stretch' : 'center',
         }}
       >
-        <Button onClick={() => void openBulk()}>שליחה מרוכזת לבניין</Button>
-        <Button variant="secondary" onClick={() => void openCreate()}>
+        <Button onClick={() => void openBulk()} disabled={accountReady === false}>
+          שליחה מרוכזת לבניין
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => void openCreate()}
+          disabled={accountReady === false}
+        >
           חיוב בודד
         </Button>
         <Button variant="secondary" onClick={() => void refresh()}>

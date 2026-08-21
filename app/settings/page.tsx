@@ -1011,8 +1011,10 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    חיבור חשבון Morning שלכם לגביית ועד ב-Bamakor: יצירת חיובים, קישורי תשלום לדיירים
-                    (/pay/…) ועדכון אוטומטי כששולם. נדרש מנוי Best+ ופלאגין סליקה פעיל (Cardcom / Isracard / Grow).
+                    כל לקוח במקור מקבל תשלומים לחשבון Morning <strong>שלו</strong> בלבד.
+                    הזינו כאן את מפתחות ה-API של החשבון האישי שלכם — אין כתובת/חשבון משותף לכל הלקוחות.
+                    אחרי החיבור: יצירת חיובים, קישורי תשלום לדיירים (/pay/…) ועדכון אוטומטי כששולם.
+                    נדרש מנוי Best+ ופלאגין סליקה פעיל אצלכם ב-Morning (Cardcom / Isracard / Grow).
                   </p>
                   <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
                     אחרי שמירה ובדיקת חיבור —{' '}
@@ -1021,6 +1023,23 @@ function SettingsPageInner() {
                     </Link>
                     .
                   </p>
+
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: theme.radius.md,
+                      background: theme.colors.primaryMuted,
+                      border: `1px solid ${theme.colors.border}`,
+                      fontSize: 13,
+                      lineHeight: 1.55,
+                      color: theme.colors.textSecondary,
+                    }}
+                  >
+                    <strong style={{ color: theme.colors.textPrimary }}>חשבון אישי לכל לקוח</strong>
+                    <br />
+                    הכסף מהדיירים נכנס לחשבון הסליקה ב-Morning שלכם. אל תשתפו מפתחות API עם לקוח אחר —
+                    המערכת חוסמת מפתח שכבר משויך לחשבון במקור אחר.
+                  </div>
 
                   <div style={styles.formGroup}>
                     <label style={styles.checkboxLabel}>
@@ -1050,7 +1069,7 @@ function SettingsPageInner() {
                   </div>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מפתח API (Key ID)</label>
+                    <label style={styles.formLabel}>מפתח API (Key ID) — חשבון Morning שלכם</label>
                     <input
                       value={giApiKeyId}
                       onChange={(e) => setGiApiKeyId(e.target.value)}
@@ -1059,12 +1078,12 @@ function SettingsPageInner() {
                       autoComplete="off"
                     />
                     <span style={styles.formHint}>
-                      Morning → הגדרות → מתקדם → מפתחות API → צור מפתח API
+                      Morning → הגדרות → מתקדם → מפתחות API → צור מפתח API (בחשבון שלכם בלבד)
                     </span>
                   </div>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>סוד API (Secret)</label>
+                    <label style={styles.formLabel}>סוד API (Secret) — חשבון Morning שלכם</label>
                     <input
                       type="password"
                       value={giApiSecret}
