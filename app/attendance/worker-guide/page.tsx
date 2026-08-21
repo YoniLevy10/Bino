@@ -11,19 +11,20 @@ export default function WorkerGuidePage() {
         הדפס / שמור PDF
       </button>
       <h1 style={{ fontSize: 24, marginBottom: 8 }}>איך מחתימים שעות?</h1>
-      <p style={{ color: '#666', marginBottom: 24 }}>3 צעדים פשוטים — בלי אפליקציה, בלי סיסמה</p>
+      <p style={{ color: '#666', marginBottom: 24 }}>הכי פשוט שאפשר — בלי אפליקציה, בלי סיסמה</p>
       <ol style={{ fontSize: 18, paddingRight: 24 }}>
         <li style={{ marginBottom: 16 }}>
-          <strong style={{ fontSize: 20, color: '#2563eb' }}>פעם אחת בלבד</strong> — פתחו את הקישור האישי שקיבלתם ב-SMS (צריך Wi-Fi).
+          <strong style={{ fontSize: 20, color: '#2563eb' }}>פעם אחת בלבד</strong> — פתחו את הקישור האישי מה-SMS בטלפון הזה (עם אינטרנט).
         </li>
         <li style={{ marginBottom: 16 }}>
-          <strong style={{ fontSize: 20, color: '#2563eb' }}>בכל כניסה</strong> — הצמידו את הטלפון למדבקה בדלת (משרד או בניין).
+          <strong style={{ fontSize: 20, color: '#2563eb' }}>בכניסה</strong> — הצמידו את הטלפון למדבקה בדלת. יופיע «נכנסת למשמרת». אפשר לסגור.
         </li>
         <li style={{ marginBottom: 16 }}>
-          <strong style={{ fontSize: 20, color: '#2563eb' }}>ביציאה</strong> — שוב הצמידו את הטלפון למדבקה. יופיע אישור על המסך.
+          <strong style={{ fontSize: 20, color: '#2563eb' }}>ביציאה</strong> — הצמידו שוב. יופיע «יצאת מהמשמרת». בלי להיכנס לאתר.
         </li>
       </ol>
-      <p>יש בעיה? פנו למנהל או שלחו הודעה ב-WhatsApp.</p>
+      <p style={{ color: '#666', fontSize: 15 }}>באייפון: אחרי ההצמדה לוחצים פעם אחת על ההתראה שנפתחת — ואז נרשם אוטומטית.</p>
+      <p>יש בעיה? פנו למנהל.</p>
     </div>
   )
 }

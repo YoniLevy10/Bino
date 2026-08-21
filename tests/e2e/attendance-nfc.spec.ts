@@ -9,6 +9,12 @@ test.describe('worker stamp (NFC attendance)', () => {
 
   test('worker NFC page shows error without tag', async ({ page }) => {
     await page.goto('/worker/nfc')
-    await expect(page.getByText(/חסר קוד מדבקה|לא תקף|אזור האישי/i)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/חסר קוד מדבקה|הצמידו את הטלפון/i)).toBeVisible({ timeout: 15000 })
+  })
+
+  test('worker NFC page asks for one-time SMS bind without token', async ({ page }) => {
+    await page.goto('/worker/nfc?t=TESTTAG')
+    await expect(page.getByText(/פעם אחת בלבד/i)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('button', { name: /קישור מה-SMS/i })).toBeVisible()
   })
 })
