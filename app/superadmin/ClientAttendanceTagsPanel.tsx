@@ -34,6 +34,8 @@ export function ClientAttendanceTagsPanel({
   const [wizardIndex, setWizardIndex] = useState(0)
   const [copied, setCopied] = useState(false)
   const [togglingInstall, setTogglingInstall] = useState(false)
+  const [togglingActive, setTogglingActive] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const installedCount = useMemo(
     () => tags.filter((t) => t.sticker_installed_at).length,
@@ -139,6 +141,65 @@ export function ClientAttendanceTagsPanel({
     }
   }
 
+  async function toggleTagActive(isActive: boolean) {
+    if (!currentTag) return
+    if (
+      !isActive &&
+      !window.confirm(
+        'להשבית את התג? המדבקה בשטח תפסיק להחתים עד שתפעילו שוב. היסטוריית משמרות נשמרת.'
+      )
+    ) {
+      return
+    }
+    setTogglingActive(true)
+    try {
+      const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/status`, {
+        method: 'PATCH',
+        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_id: currentTag.id, is_active: isActive }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast.error(typeof body.error === 'string' ? body.error : 'עדכון נכשל')
+        return
+      }
+      toast.success(isActive ? 'התג הופעל מחדש' : 'התג הושבת — המדבקה לא תחתים')
+      await load()
+    } finally {
+      setTogglingActive(false)
+    }
+  }
+
+  async function deleteCurrentTag() {
+    if (!currentTag) return
+    const label = currentTag.label || currentTag.tag_code
+    if (
+      !window.confirm(
+        `למחוק את התג «${label}» מהמערכת?\nהמדבקה הפיזית עם הקוד ${currentTag.tag_code} תפסיק לעבוד לצמיתות. היסטוריה נשמרת.`
+      )
+    ) {
+      return
+    }
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/delete`, {
+        method: 'POST',
+        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_id: currentTag.id }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast.error(typeof body.error === 'string' ? body.error : 'מחיקה נכשלה')
+        return
+      }
+      toast.success('התג נמחק')
+      setWizardIndex((i) => Math.max(0, i - 1))
+      await load()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (!stampAddonEnabled) {
     return (
       <div style={boxStyle}>
@@ -220,7 +281,12 @@ export function ClientAttendanceTagsPanel({
             {currentTag.tag_type === 'office' ? '🏢 משרד' : '🏗️ בניין'}
           </div>
           <div style={wizardName}>{currentTag.label || currentTag.tag_code}</div>
-          <div style={wizardCode}>קוד: {currentTag.tag_code}</div>
+          <div style={wizardCode}>
+            קוד: {currentTag.tag_code}
+            {!currentTag.is_active ? (
+              <span style={{ color: theme.colors.error, marginRight: 8 }}>· מושבת</span>
+            ) : null}
+          </div>
 
           {currentTag.scan_url ? (
             <div style={qrCenter}>
@@ -239,6 +305,26 @@ export function ClientAttendanceTagsPanel({
           >
             {currentTag.sticker_installed_at ? '✓ הודבק — לחץ לביטול' : 'סמן: המדבקה הודבקה על הדלת'}
           </LoadingButton>
+
+          <div style={dangerRow}>
+            <LoadingButton
+              onClick={() => void toggleTagActive(!currentTag.is_active)}
+              loading={togglingActive}
+              loadingText="מעדכן..."
+            >
+              {currentTag.is_active ? 'השבת תג (מדבקה מפסיקה להחתים)' : 'הפעל תג מחדש'}
+            </LoadingButton>
+            <LoadingButton
+              onClick={() => void deleteCurrentTag()}
+              loading={deleting}
+              loadingText="מוחק..."
+            >
+              מחק תג מהמערכת
+            </LoadingButton>
+          </div>
+          <p style={dangerHint}>
+            מדבקות שכבר בשטח — אל תמחקו/תשביתו אלא אם רוצים שהן יפסיקו לעבוד. השבתה הפיכה; מחיקה לא.
+          </p>
 
           <div style={stepsBox}>
             <div style={stepsTitle}>עכשיו בטלפון:</div>
@@ -268,6 +354,7 @@ export function ClientAttendanceTagsPanel({
               {sortedTags.map((t, i) => (
                 <option key={t.id} value={String(i)}>
                   {t.tag_type === 'office' ? 'משרד' : t.label || t.tag_code}
+                  {!t.is_active ? ' (מושבת)' : ''}
                 </option>
               ))}
             </select>
@@ -431,4 +518,20 @@ const printLinkStyle: CSSProperties = {
   fontWeight: 600,
   textDecoration: 'underline',
   cursor: 'pointer',
+}
+
+const dangerRow: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  justifyContent: 'center',
+  marginTop: 12,
+  marginBottom: 8,
+}
+
+const dangerHint: CSSProperties = {
+  margin: '0 0 16px',
+  fontSize: 12,
+  color: theme.colors.textMuted,
+  lineHeight: 1.45,
 }

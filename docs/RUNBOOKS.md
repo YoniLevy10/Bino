@@ -38,6 +38,7 @@ https://bamakor.vercel.app/worker/nfc?t=TAG_CODE
 - Worker must open personal SMS link **once** on that phone (`/worker?token=…`), then stamps are tap-only.
 - After stamp: full-screen «נכנסת / יצאת» — **no redirect** into the tickets portal, **no GPS prompt**.
 - Office QR clock (`/attendance/scan`) is **deprecated** — field workers use NFC only.
+- Super Admin can **deactivate** or **delete** a tag (with confirm). Field stickers keep working unless that specific tag is disabled/removed.
 
 ### Super Admin setup
 

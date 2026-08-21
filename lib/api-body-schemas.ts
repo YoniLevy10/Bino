@@ -413,6 +413,15 @@ export const patchNfcStickerBodySchema = z.object({
   installed: z.boolean(),
 })
 
+export const patchNfcTagActiveBodySchema = z.object({
+  tag_id: z.string().uuid(),
+  is_active: z.boolean(),
+})
+
+export const deleteNfcTagBodySchema = z.object({
+  tag_id: z.string().uuid(),
+})
+
 const calendarEventTypeSchema = z.enum(['committee', 'professional', 'internal', 'other'])
 
 export const createCalendarEventBodySchema = z.object({
