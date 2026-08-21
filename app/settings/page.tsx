@@ -1035,7 +1035,7 @@ function SettingsPageInner() {
                       color: theme.colors.textSecondary,
                     }}
                   >
-                    <strong style={{ color: theme.colors.text }}>חשבון אישי לכל לקוח</strong>
+                    <strong style={{ color: theme.colors.textPrimary }}>חשבון אישי לכל לקוח</strong>
                     <br />
                     הכסף מהדיירים נכנס לחשבון הסליקה ב-Morning שלכם. אל תשתפו מפתחות API עם לקוח אחר —
                     המערכת חוסמת מפתח שכבר משויך לחשבון במקור אחר.
