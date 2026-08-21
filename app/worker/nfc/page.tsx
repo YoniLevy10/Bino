@@ -1,5 +1,11 @@
 'use client'
 
+/**
+ * Worker NFC stamp — tap sticker → auto clock in/out.
+ * No GPS prompt, no redirect into the tickets portal.
+ * One-time SMS link required to bind this phone (OS/browser limit).
+ */
+
 import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
@@ -18,61 +24,57 @@ import {
 } from '@/lib/worker-attendance-bootstrap'
 import { normalizeTagCode } from '@/lib/nfc-tag-utils'
 
-type ScanPhase = 'loading' | 'ready' | 'done' | 'error' | 'duplicate'
+type ScanPhase = 'loading' | 'done' | 'error' | 'duplicate' | 'need_bind'
 
-const EVENT_LABELS: Record<string, string> = {
-  clock_in: 'כניסה למשמרת',
-  clock_out: 'יציאה ממשמרת',
-}
-
-const REDIRECT_MS = 1500
-
-function readGeo(timeoutMs = 2500): Promise<{ lat: number; lng: number } | null> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      resolve(null)
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 300_000 }
-    )
-  })
+const EVENT_HEADLINE: Record<string, string> = {
+  clock_in: 'נכנסת למשמרת',
+  clock_out: 'יצאת מהמשמרת',
 }
 
 function NfcScanInner() {
   const searchParams = useSearchParams()
   const online = useOnlineStatus()
   const [phase, setPhase] = useState<ScanPhase>('loading')
-  const [message, setMessage] = useState('')
+  const [headline, setHeadline] = useState('')
   const [detail, setDetail] = useState('')
+  const [tagLabel, setTagLabel] = useState('')
 
   useEffect(() => {
     void (async () => {
       const tagCode = normalizeTagCode(searchParams.get('t') ?? '')
       if (!tagCode) {
         setPhase('error')
-        setMessage('חסר קוד מדבקה')
+        setHeadline('חסר קוד מדבקה')
+        setDetail('הצמידו את הטלפון למדבקה על הדלת.')
         return
       }
 
       const fromUrl = searchParams.get('token')?.trim()
       const token = normalizeWorkerToken(fromUrl) ?? readWorkerToken()
       if (!token) {
-        setPhase('error')
-        setMessage('יש להתחבר לאזור האישי תחילה')
-        setDetail('פתחו את הקישור האישי מה-SMS ואז הצמידו שוב את הטלפון.')
+        setPhase('need_bind')
+        setHeadline('פעם אחת בלבד')
+        setDetail('פתחו את הקישור האישי מה-SMS בטלפון הזה, ואז הצמידו שוב למדבקה.')
         return
       }
 
-      if (fromUrl) writeWorkerToken(token)
+      if (fromUrl) {
+        writeWorkerToken(token)
+        // Keep sticker URL clean after bind (token only needed once).
+        try {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('token')
+          window.history.replaceState(null, '', `${url.pathname}${url.search}`)
+        } catch {
+          /* ignore */
+        }
+      }
 
-      const geoPromise = readGeo()
       await initOfflineAttendanceDB()
 
       let workerId: string
       let clientId: string
+      let usedOfflineFallback = false
 
       if (online) {
         try {
@@ -83,111 +85,132 @@ function NfcScanInner() {
 
           if (!authRes.ok) {
             setPhase('error')
-            setMessage('הקישור לא תקף')
+            setHeadline('הקישור לא תקף')
+            setDetail('בקשו מהמנהל לשלוח שוב קישור SMS.')
             return
           }
           const auth = (await authRes.json()) as { worker_id?: string; client_id?: string }
           if (!auth.worker_id || !auth.client_id) {
             setPhase('error')
-            setMessage('הקישור לא תקף')
+            setHeadline('הקישור לא תקף')
             return
           }
-          workerId = auth.worker_id
-          clientId = auth.client_id
 
           if (bootRes.status === 403) {
             setPhase('error')
-            setMessage('תוסף חתמת עובדים אינו פעיל')
-            return
-          }
-          if (!bootRes.ok) {
-            setPhase('error')
-            setMessage('לא ניתן לטעון את נתוני ההחתמה')
-            setDetail('בדקו חיבור לאינטרנט ונסו שוב.')
+            setHeadline('חתמת עובדים אינה פעילה')
+            setDetail('פנו למנהל.')
             return
           }
 
-          const bootData = (await bootRes.json()) as AttendanceBootstrapPayload
-          if (!bootData.worker_id || !bootData.client_id) {
+          if (bootRes.ok) {
+            const bootData = (await bootRes.json()) as AttendanceBootstrapPayload
+            if (!bootData.worker_id || !bootData.client_id) {
+              setPhase('error')
+              setHeadline('לא ניתן לטעון את נתוני ההחתמה')
+              return
+            }
+            await cacheWorkerAttendanceBootstrap(token, bootData)
+            workerId = bootData.worker_id
+            clientId = bootData.client_id
+          } else {
+            const profile = await getWorkerOfflineProfile(token)
+            if (!profile) {
+              setPhase('error')
+              setHeadline('אין חיבור יציב')
+              setDetail('נסו שוב עם Wi-Fi או סלולר.')
+              return
+            }
+            workerId = profile.worker_id
+            clientId = profile.client_id
+            usedOfflineFallback = true
+          }
+        } catch {
+          const profile = await getWorkerOfflineProfile(token)
+          if (!profile) {
             setPhase('error')
-            setMessage('לא ניתן לטעון את נתוני ההחתמה')
+            setHeadline('שגיאת רשת')
+            setDetail('נסו שוב בעוד רגע.')
             return
           }
-          await cacheWorkerAttendanceBootstrap(token, bootData)
-        } catch {
-          setPhase('error')
-          setMessage('שגיאת רשת')
-          return
+          workerId = profile.worker_id
+          clientId = profile.client_id
+          usedOfflineFallback = true
         }
       } else {
         const profile = await getWorkerOfflineProfile(token)
         if (!profile) {
           setPhase('error')
-          setMessage('כדי לעבוד ללא אינטרנט, פתחו את הקישור פעם אחת כשיש חיבור.')
+          setHeadline('פעם אחת עם אינטרנט')
+          setDetail('פתחו את קישור ה-SMS כשיש קליט, ואז אפשר גם בלי רשת.')
           return
         }
         workerId = profile.worker_id
         clientId = profile.client_id
+        usedOfflineFallback = true
       }
 
-      const geo = await geoPromise
-      const source = online ? 'online' : 'offline'
-      const recorded = await recordAttendanceScan(workerId, clientId, tagCode, source, geo)
+      const source = online && !usedOfflineFallback ? 'online' : 'offline'
+      const recorded = await recordAttendanceScan(workerId, clientId, tagCode, source, null)
 
       if (!recorded.ok) {
         if (recorded.reason === 'duplicate_scan') {
           setPhase('duplicate')
-          setMessage('כבר נרשמה החתמה לפני רגע')
-          setDetail('המתינו דקה ונסו שוב, או המשיכו לעבוד.')
+          setHeadline('כבר נרשמת לפני רגע')
+          setDetail('המתינו דקה, או המשיכו לעבוד.')
         } else {
           setPhase('error')
-          setMessage('המדבקה לא מוכרת')
-          setDetail('התחברו לאינטרנט ונסו שוב, או פנו למנהל.')
+          setHeadline('המדבקה לא מוכרת')
+          setDetail('פנו למנהל לבדוק שהמדבקה מותקנת במערכת.')
         }
         return
       }
 
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([80, 40, 80])
+        try {
+          navigator.vibrate([80, 40, 80])
+        } catch {
+          /* ignore */
+        }
       }
 
+      const eventType = recorded.event_type
       setPhase('done')
-      setDetail(
-        `${EVENT_LABELS[recorded.event_type] ?? recorded.event_type} · ${recorded.tag.label || recorded.tag.tag_code}`
-      )
+      setHeadline(EVENT_HEADLINE[eventType] ?? 'נרשם')
+      setTagLabel(recorded.tag.label || recorded.tag.tag_code)
+      setDetail('')
 
       if (online) {
-        setMessage('נרשם בהצלחה!')
         void syncPendingAttendanceEvents(token)
           .then((sync) => {
             const last = sync.results[sync.results.length - 1]
             if (last?.status === 'pending_review') {
-              setMessage('נשמר — ממתין לאישור משרד')
+              setDetail('נשמר — ממתין לאישור משרד')
             } else if (last?.status === 'conflict' || last?.status === 'rejected') {
-              setMessage('נשמר — דורש בדיקה במשרד')
+              setDetail('נשמר — המשרד יבדוק')
             }
           })
           .catch(() => {
-            setMessage('נשמר — יסתנכרן כשהרשת תחזור')
+            setDetail('נשמר במכשיר — יסתנכרן כשהרשת תחזור')
           })
       } else {
-        setMessage('נשמר — יסתנכרן כשהרשת תחזור')
+        setDetail('נשמר במכשיר — יסתנכרן כשהרשת תחזור')
       }
-
-      window.setTimeout(() => {
-        window.location.href = '/worker'
-      }, REDIRECT_MS)
     })()
   }, [searchParams, online])
 
   const isSuccess = phase === 'done'
-  const icon = phase === 'error' ? '✕' : phase === 'duplicate' ? '⏱' : isSuccess ? '✓' : null
+  const icon =
+    phase === 'error' || phase === 'need_bind' ? '✕' : phase === 'duplicate' ? '⏱' : isSuccess ? '✓' : null
 
   return (
     <div style={shell} dir="rtl">
       <div style={box}>
         {phase === 'loading' ? (
-          <LoadingSpinner />
+          <>
+            <LoadingSpinner />
+            <p style={sub}>רושם משמרת…</p>
+          </>
         ) : (
           <>
             {icon ? (
@@ -195,13 +218,13 @@ function NfcScanInner() {
                 style={{
                   ...bigIcon,
                   background:
-                    phase === 'error'
+                    phase === 'error' || phase === 'need_bind'
                       ? theme.colors.errorMuted
                       : phase === 'duplicate'
                         ? theme.colors.warningMuted
                         : theme.colors.successMuted,
                   color:
-                    phase === 'error'
+                    phase === 'error' || phase === 'need_bind'
                       ? theme.colors.error
                       : phase === 'duplicate'
                         ? theme.colors.warning
@@ -211,17 +234,28 @@ function NfcScanInner() {
                 {icon}
               </div>
             ) : null}
-            <h1 style={title}>{phase === 'error' ? 'לא בוצע' : isSuccess ? 'בוצע!' : 'רגע...'}</h1>
-            <p style={msg}>{message}</p>
+            <h1 style={title}>{headline}</h1>
+            {tagLabel && isSuccess ? <p style={msg}>{tagLabel}</p> : null}
             {detail ? <p style={sub}>{detail}</p> : null}
-            {isSuccess ? <p style={sub}>מעבירים לאזור האישי...</p> : null}
-            {!online && isSuccess ? (
-              <p style={sub}>אין אינטרנט — ההחתמה תעלה כשיחזור קליט.</p>
+            {isSuccess ? (
+              <p style={hint}>אפשר לסגור את המסך. ביציאה — הצמידו שוב למדבקה.</p>
             ) : null}
-            {!isSuccess ? (
-              <Button variant="primary" size="sm" onClick={() => { window.location.href = '/worker' }}>
-                חזרה לאזור האישי
-              </Button>
+            {phase === 'need_bind' ? (
+              <div style={actions}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    window.location.href = '/worker-login'
+                  }}
+                >
+                  לפתיחת הקישור מה-SMS
+                </Button>
+                <p style={sub}>אחרי הפתיחה — חזרו למדבקה והצמידו שוב.</p>
+              </div>
+            ) : null}
+            {phase === 'error' || phase === 'duplicate' ? (
+              <p style={hint}>הצמידו שוב למדבקה אחרי תיקון הבעיה.</p>
             ) : null}
           </>
         )}
@@ -260,37 +294,56 @@ const box: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: 12,
+  gap: 14,
 }
 
 const bigIcon: CSSProperties = {
-  width: 88,
-  height: 88,
+  width: 104,
+  height: 104,
   borderRadius: '50%',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: 40,
+  fontSize: 48,
   fontWeight: 700,
   marginBottom: 4,
 }
 
 const title: CSSProperties = {
   margin: 0,
-  fontSize: 26,
+  fontSize: 32,
   fontWeight: 800,
   color: theme.colors.textPrimary,
+  lineHeight: 1.25,
 }
 
 const msg: CSSProperties = {
   margin: 0,
-  fontSize: 18,
-  lineHeight: 1.5,
+  fontSize: 20,
+  lineHeight: 1.45,
+  fontWeight: 700,
   color: theme.colors.textPrimary,
 }
 
 const sub: CSSProperties = {
   margin: 0,
-  fontSize: 14,
+  fontSize: 16,
+  lineHeight: 1.5,
   color: theme.colors.textMuted,
+}
+
+const hint: CSSProperties = {
+  margin: '8px 0 0',
+  fontSize: 15,
+  lineHeight: 1.45,
+  color: theme.colors.textMuted,
+}
+
+const actions: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 10,
+  marginTop: 8,
+  width: '100%',
 }
