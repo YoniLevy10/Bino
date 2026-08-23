@@ -489,6 +489,19 @@ export const markCollectionChargePaidBodySchema = z.object({
   charge_id: z.string().uuid(),
 })
 
+/** Public /pay page — contact for email receipt (Resend; no SMS cost). */
+export const publicPayReceiptContactBodySchema = z
+  .object({
+    email: z.string().max(200).nullable().optional(),
+    phone: z.string().max(40).nullable().optional(),
+  })
+  .refine(
+    (v) =>
+      (typeof v.email === 'string' && v.email.trim().length > 0) ||
+      (typeof v.phone === 'string' && v.phone.trim().length > 0),
+    { message: 'נא להזין מייל או טלפון לקבלת אישור' }
+  )
+
 const bulkSendItemSchema = z.object({
   resident_id: z.string().uuid(),
   amount: z.number().positive().max(1_000_000),

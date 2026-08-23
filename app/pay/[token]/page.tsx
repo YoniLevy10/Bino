@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 
 type PayPayload = {
   title: string
@@ -14,6 +14,11 @@ type PayPayload = {
   can_pay: boolean
   payment_url: string | null
   paid_at: string | null
+  receipt_email?: string | null
+  receipt_phone?: string | null
+  receipt_email_sent?: boolean
+  suggested_email?: string | null
+  suggested_phone?: string | null
   client: { name: string; logo_url: string | null }
   resident_name: string | null
   apartment_number: string | null
@@ -34,6 +39,11 @@ export default function PublicPayPage() {
   const [data, setData] = useState<PayPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [wantReceipt, setWantReceipt] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -52,6 +62,8 @@ export default function PublicPayPage() {
           return
         }
         setData(json)
+        setEmail((json.suggested_email || json.receipt_email || '').trim())
+        setPhone((json.suggested_phone || json.receipt_phone || '').trim())
       } catch (e) {
         setError(e instanceof Error ? e.message : 'שגיאת טעינה')
       } finally {
@@ -59,6 +71,48 @@ export default function PublicPayPage() {
       }
     })()
   }, [token])
+
+  async function continueToPay(e: FormEvent) {
+    e.preventDefault()
+    if (!data?.payment_url || !token) return
+    setFormError(null)
+
+    if (wantReceipt && !email.trim()) {
+      setFormError('להודעת אישור במייל — הזינו כתובת מייל')
+      return
+    }
+
+    if (wantReceipt || phone.trim()) {
+      setSaving(true)
+      try {
+        const res = await fetchWithTimeout(
+          `/api/public/pay/${encodeURIComponent(token)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: wantReceipt ? email.trim() || null : email.trim() || null,
+              phone: phone.trim() || null,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        if (!res.ok) {
+          setFormError(json.error || 'שמירת פרטים נכשלה')
+          setSaving(false)
+          return
+        }
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'שמירה נכשלה')
+        setSaving(false)
+        return
+      }
+      setSaving(false)
+    }
+
+    window.location.href = data.payment_url
+  }
 
   if (loading) {
     return (
@@ -92,7 +146,11 @@ export default function PublicPayPage() {
         <p style={styles.amount}>{data.amount_label}</p>
         {(data.resident_name || data.apartment_number || data.project_name) && (
           <p style={styles.meta}>
-            {[data.resident_name, data.apartment_number ? `דירה ${data.apartment_number}` : null, data.project_name]
+            {[
+              data.resident_name,
+              data.apartment_number ? `דירה ${data.apartment_number}` : null,
+              data.project_name,
+            ]
               .filter(Boolean)
               .join(' · ')}
           </p>
@@ -101,11 +159,58 @@ export default function PublicPayPage() {
         <p style={styles.status}>סטטוס: {STATUS_HE[data.status] || data.status}</p>
 
         {data.can_pay && data.payment_url ? (
-          <a href={data.payment_url} style={styles.cta}>
-            לתשלום מאובטח
-          </a>
+          <form onSubmit={(e) => void continueToPay(e)} style={styles.form}>
+            <p style={styles.formLead}>
+              אישור התשלום יישלח <strong>במייל</strong> (בלי SMS) — חסכוני ונוח.
+            </p>
+            <label style={styles.checkLabel}>
+              <input
+                type="checkbox"
+                checked={wantReceipt}
+                onChange={(ev) => setWantReceipt(ev.target.checked)}
+              />
+              שלחו לי אישור תשלום במייל
+            </label>
+            <label style={styles.fieldLabel}>
+              מייל לקבלה
+              <input
+                type="email"
+                value={email}
+                onChange={(ev) => setEmail(ev.target.value)}
+                style={styles.input}
+                placeholder="name@example.com"
+                dir="ltr"
+                autoComplete="email"
+              />
+            </label>
+            <label style={styles.fieldLabel}>
+              טלפון (אופציונלי)
+              <input
+                type="tel"
+                value={phone}
+                onChange={(ev) => setPhone(ev.target.value)}
+                style={styles.input}
+                placeholder="05xxxxxxxx"
+                dir="ltr"
+                autoComplete="tel"
+              />
+            </label>
+            {formError ? <p style={styles.formErr}>{formError}</p> : null}
+            <button type="submit" style={styles.ctaBtn} disabled={saving}>
+              {saving ? 'שומר…' : 'המשך לתשלום מאובטח'}
+            </button>
+          </form>
         ) : data.status === 'paid' ? (
-          <p style={{ ...styles.sub, color: '#15803d', fontWeight: 600 }}>התשלום כבר התקבל. תודה!</p>
+          <div>
+            <p style={{ ...styles.sub, color: '#15803d', fontWeight: 600 }}>
+              התשלום כבר התקבל. תודה!
+            </p>
+            {data.receipt_email_sent ? (
+              <p style={styles.meta}>אישור נשלח למייל.</p>
+            ) : data.receipt_email ? (
+              <p style={styles.meta}>אישור במייל בדרך אליכם.</p>
+            ) : null}
+          </div>
         ) : (
           <p style={styles.sub}>אין קישור תשלום פעיל לחיוב זה.</p>
         )}
@@ -171,14 +276,59 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     color: '#64748b',
   },
-  cta: {
-    display: 'inline-block',
+  form: {
+    textAlign: 'right',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  formLead: {
+    margin: 0,
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 1.5,
+    textAlign: 'center',
+  },
+  checkLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: 600,
+  },
+  fieldLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: 600,
+  },
+  input: {
+    padding: '12px 14px',
+    borderRadius: 10,
+    border: '1px solid #cbd5e1',
+    fontSize: 16,
+    fontFamily: 'inherit',
+  },
+  formErr: {
+    margin: 0,
+    color: '#b91c1c',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  ctaBtn: {
+    display: 'block',
+    width: '100%',
     padding: '14px 28px',
     background: '#1e40af',
     color: '#fff',
     borderRadius: 12,
     fontWeight: 700,
     fontSize: 16,
-    textDecoration: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    marginTop: 4,
   },
 }

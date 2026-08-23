@@ -13,6 +13,7 @@ import {
   type CollectionChargeRow,
   type CollectionChargeStatus,
 } from '@/lib/collection-charges'
+import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collection-receipt-email'
 
 export type ChargeResidentInfo = {
   id: string
@@ -422,6 +423,7 @@ export async function markCollectionChargePaidManual(
   if (updErr || !updated) {
     return { ok: false, error: updErr?.message || 'עדכון ל«שולם» נכשל' }
   }
+  void sendCollectionReceiptEmailIfNeeded(admin, opts.chargeId).catch(() => {})
   return { ok: true, charge: updated as CollectionChargeRow }
 }
 
@@ -437,6 +439,7 @@ export async function markChargePaidByMorningIds(
 
   let matched = 0
   const paidAt = nowIso()
+  const newlyPaidIds: string[] = []
 
   if (uniquePaymentIds.length > 0) {
     const { data } = await admin
@@ -450,6 +453,7 @@ export async function markChargePaidByMorningIds(
       .neq('status', 'paid')
       .select('id')
     matched += data?.length ?? 0
+    for (const row of data ?? []) newlyPaidIds.push(row.id)
   }
 
   if (uniqueDocIds.length > 0) {
@@ -464,6 +468,13 @@ export async function markChargePaidByMorningIds(
       .neq('status', 'paid')
       .select('id')
     matched += data?.length ?? 0
+    for (const row of data ?? []) {
+      if (!newlyPaidIds.includes(row.id)) newlyPaidIds.push(row.id)
+    }
+  }
+
+  for (const id of newlyPaidIds) {
+    void sendCollectionReceiptEmailIfNeeded(admin, id).catch(() => {})
   }
 
   return { matched }
