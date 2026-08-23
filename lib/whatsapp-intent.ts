@@ -167,6 +167,27 @@ export function isOpenTicketConversationalReply(text: string): boolean {
   )
 }
 
+/**
+ * Short street+number style text (e.g. «אלרואי 15») — not a problem description.
+ * Used to avoid mis-routing bare addresses while an open ticket exists.
+ */
+export function isLikelyBareBuildingAddress(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length > 60) return false
+  const words = t.split(/\s+/).filter(Boolean)
+  if (words.length === 0 || words.length > 5) return false
+  if (!/\d/.test(t)) return false
+  // Has a clear maintenance problem signal → not bare address
+  if (
+    /נזיל|דליפ|תקל|תקלה|דלת|מעלית|חשמל|ביוב|מים|רעש|שבר|שבור|לא עובד|leak|broken|elevator|door|water|noise|fuite|panne|porte/i.test(
+      t
+    )
+  ) {
+    return false
+  }
+  return true
+}
+
 /** How-to / confusion questions — not a ticket description. */
 export function isClarificationQuestion(text: string): boolean {
   const t = text.trim()

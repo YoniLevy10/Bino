@@ -16,6 +16,7 @@ import {
   isClarificationQuestion,
   inferResidentLanguageFromText,
   isOpenTicketConversationalReply,
+  isLikelyBareBuildingAddress,
 } from '@/lib/whatsapp-intent'
 import { resolveMessageForLanguage, normalizeResidentLang, splitTrilingualTemplate, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
 import {
@@ -1002,7 +1003,11 @@ export async function runWhatsAppInboundBackground(
       } catch { /* WA send failure is non-fatal */ }
     }
 
-    async function continueAfterLanguageResolved(lang: ResidentLang): Promise<void> {
+    async function continueAfterLanguageResolved(
+      lang: ResidentLang,
+      opts?: { /** Only after explicit «תקלה חדשה» — skip «אותו בניין?» */
+        autoSelectLastProject?: boolean }
+    ): Promise<void> {
       residentLang = lang
       const allProjects = await fetchAllProjectsForClient(supabaseAdmin, webhookClientId)
 
@@ -1028,13 +1033,9 @@ export async function runWhatsAppInboundBackground(
       if (lastProject) {
         const fullProject = allProjects.find((p) => p.id === lastProject.projectId)
         if (fullProject) {
-          const stashedDesc = await readStashedProblemDescription(
-            from,
-            supabaseAdmin,
-            webhookClientId
-          )
-          // Description already known (e.g. chose «תקלה חדשה») — skip same-building confirm.
-          if (stashedDesc) {
+          // Only auto-pick last building after resident explicitly chose «תקלה חדשה».
+          // Otherwise keep «אותו בניין?» so returning reporters are not surprised.
+          if (opts?.autoSelectLastProject) {
             await finalizeProjectSelection(fullProject, lang)
             return
           }
@@ -1417,7 +1418,7 @@ export async function runWhatsAppInboundBackground(
 
         // «תקלה חדשה» — keep description, drop follow-up marker, resume building/last-project flow
         await clearOpenTicketFollowupStash(from, supabaseAdmin, webhookClientId)
-        await continueAfterLanguageResolved(sessionLang)
+        await continueAfterLanguageResolved(sessionLang, { autoSelectLastProject: true })
         if (openTicketAfterBuildingSearch) {
           session = await getActiveSession(from, supabaseAdmin, webhookClientId)
           residentLang = sessionLang
@@ -1446,7 +1447,13 @@ export async function runWhatsAppInboundBackground(
         const openTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
         if (openTicket) {
           const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
-          if (isOpenTicketConversationalReply(textBody) || isClarificationQuestion(textBody)) {
+          // Bare address while a ticket is open → soft ack (do not restart building search / mis-file as update).
+          if (
+            isOpenTicketConversationalReply(textBody) ||
+            isClarificationQuestion(textBody) ||
+            isLikelyBareBuildingAddress(textBody) ||
+            !looksLikeTicketDescription(textBody)
+          ) {
             try {
               await sendWa(waRecipient, 'open_ticket_short_ack', residentWhatsAppCreds, {
                 ticket_number: String(openTicket.ticket_number),
@@ -1454,15 +1461,7 @@ export async function runWhatsAppInboundBackground(
             } catch { /* WA send failure is non-fatal */ }
             return
           }
-          if (looksLikeTicketDescription(textBody)) {
-            await offerOpenTicketFollowupChoice(openTicket, textBody, lang)
-            return
-          }
-          try {
-            await sendWa(waRecipient, 'open_ticket_short_ack', residentWhatsAppCreds, {
-              ticket_number: String(openTicket.ticket_number),
-            }, lang)
-          } catch { /* WA send failure is non-fatal */ }
+          await offerOpenTicketFollowupChoice(openTicket, textBody, lang)
           return
         }
       }
@@ -1618,6 +1617,7 @@ export async function runWhatsAppInboundBackground(
               if (
                 isOpenTicketConversationalReply(textBody) ||
                 isClarificationQuestion(textBody) ||
+                isLikelyBareBuildingAddress(textBody) ||
                 !looksLikeTicketDescription(textBody)
               ) {
                 try {

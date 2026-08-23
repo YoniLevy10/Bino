@@ -28,6 +28,8 @@ vi.mock('@/lib/whatsapp-media', () => ({
 
 vi.mock('@/lib/pending-resident-from-ticket', () => ({
   queuePendingResidentApproval: vi.fn().mockResolvedValue(false),
+  reporterListedInProjectResidents: vi.fn().mockResolvedValue(false),
+  findOpenPendingResidentProject: vi.fn().mockResolvedValue(null),
 }))
 
 const processedKeys = new Set<string>()

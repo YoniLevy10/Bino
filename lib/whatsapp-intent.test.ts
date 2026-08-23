@@ -6,6 +6,7 @@ import {
   isOpenTicketConversationalReply,
   acceptTicketDescriptionInSession,
   inferResidentLanguageFromText,
+  isLikelyBareBuildingAddress,
 } from './whatsapp-intent'
 
 describe('looksLikeTicketDescription', () => {
@@ -70,6 +71,18 @@ describe('isOpenTicketConversationalReply', () => {
 
   it('rejects real problem descriptions', () => {
     expect(isOpenTicketConversationalReply('נזילה במקלחת')).toBe(false)
+  })
+})
+
+describe('isLikelyBareBuildingAddress', () => {
+  it('detects short street+number addresses from the screenshots', () => {
+    expect(isLikelyBareBuildingAddress('אלרואי 15')).toBe(true)
+    expect(isLikelyBareBuildingAddress('אלרואי')).toBe(false)
+  })
+
+  it('rejects problem descriptions even with a number', () => {
+    expect(isLikelyBareBuildingAddress('נזילה בדירה 15')).toBe(false)
+    expect(isLikelyBareBuildingAddress('דלת לא נסגרת בבניין 3')).toBe(false)
   })
 })
 
