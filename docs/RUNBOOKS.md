@@ -13,17 +13,20 @@ Operational guides for platform and tenant features.
 ### לפני שליחה לדיירים
 
 1. `GREENINVOICE_WEBHOOK_SECRET` מוגדר ב-Vercel (Production).
-2. בהגדרות Bamakor → Morning → העתיקו את Webhook URL (כולל token) ל-Morning → Webhooks **בחשבון של הלקוח**.
-3. מפתחות API **של הלקוח** (לא לשתף בין לקוחות) + בדיקת חיבור ירוקה; סליקה פעילה ב-Morning.
-4. תוסף גבייה מופעל ללקוח.
-5. **תשלום ניסיון אחד** — ודאו שסטטוס עובר ל«שולם» ב־`/collections`.
+2. `LEGAL_PHONE` + `LEGAL_ADDRESS` (+ `LEGAL_BUSINESS_NAME`) ב-Vercel — לעמודי Grow.
+3. Morning Digital Payments: אתר = `https://bamakor.vercel.app/vaad-pay` → עדכון → **אישור Grow**.
+4. בהגדרות Bamakor → Morning → העתיקו את Webhook URL (כולל token) ל-Morning → Webhooks **בחשבון של הלקוח**.
+5. מפתחות API **של הלקוח** (לא לשתף בין לקוחות) + בדיקת חיבור ירוקה; סליקה פעילה ב-Morning.
+6. תוסף גבייה מופעל ללקוח.
+7. **תשלום ניסיון אחד** — ודאו שסטטוס עובר ל«שולם» ב־`/collections`.
 
 ### התנהגות מערכת
 
 - שליחת חיוב נחסמת אם חסר סוד webhook בשרת.
 - מסך גבייה חוסם שליחה עד שמפתחות Morning האישיים מוגדרים ומופעלים.
 - מפתח API לא יכול להיות משויך לשני לקוחות במקור.
-- בדף `/pay` הדייר יכול להזין **מייל** (מומלץ) וטלפון; אחרי תשלום נשלח **אישור במייל** דרך Resend (לא SMS — בלי עלות 019).
+- בדף `/pay` הדייר מזין מייל (מומלץ) / טלפון ומאשר **תקנון** לפני מעבר לסליקה; אחרי תשלום נשלח אישור במייל (Resend).
+- עמודים ציבוריים לביקורת Grow: `/vaad-pay`, `/terms`, `/privacy`, `/contact`.
 - ביטול חיוב מבטל את קישור `/pay/...` של Bamakor (קישור Morning הישן עלול עדיין להיות פתוח אצלם).
 - «סמן כשולם» — גיבוי ידני אם ה-webhook פספס.
 
