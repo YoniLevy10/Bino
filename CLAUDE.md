@@ -141,7 +141,9 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
 | `GREENINVOICE_WEBHOOK_SECRET` | Random secret; Morning webhook must use `?token=` — **required for collections** (unauthenticated webhooks rejected) |
-| `LEGAL_BUSINESS_NAME` | Display name on `/vaad-pay`, `/contact`, terms footer (Grow audit) |
-| `LEGAL_PHONE` | Business phone for Grow website check — **required before Grow approval** |
-| `LEGAL_ADDRESS` | Physical business address for Grow — **required before Grow approval** |
+| `LEGAL_BUSINESS_NAME` | Platform-only display name on `/vaad-pay` + `/contact` (not used for a tenant's Grow audit) |
+| `LEGAL_PHONE` | Platform-only contact phone on public legal pages |
+| `LEGAL_ADDRESS` | Platform-only address on public legal pages |
 | `LEGAL_EMAIL` | Optional; falls back to `RESEND_FROM_EMAIL` / `VAPID_SUBJECT` |
+
+Grow approval for a paying tenant uses **that tenant's** name/phone/address in Settings → Morning and the public page `/vaad-pay/{clientId}`. Do not submit the platform `/vaad-pay` URL in a client's Morning account. See `docs/PAYMENTS.md`.

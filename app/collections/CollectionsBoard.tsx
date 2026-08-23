@@ -103,6 +103,7 @@ export function CollectionsBoard() {
   const [cSaving, setCSaving] = useState(false)
   const [accountReady, setAccountReady] = useState<boolean | null>(null)
   const [accountMessage, setAccountMessage] = useState('')
+  const [growLegalReady, setGrowLegalReady] = useState<boolean | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -118,9 +119,11 @@ export function CollectionsBoard() {
         ready?: boolean
         message?: string
         error?: string
+        grow_legal_ready?: boolean
       }
       if (!res.ok) {
         setAccountReady(false)
+        setGrowLegalReady(null)
         setAccountMessage(
           typeof body.error === 'string'
             ? body.error
@@ -129,6 +132,7 @@ export function CollectionsBoard() {
         return
       }
       setAccountReady(body.ready === true)
+      setGrowLegalReady(body.grow_legal_ready === true)
       setAccountMessage(
         body.message ||
           (body.ready
@@ -137,6 +141,7 @@ export function CollectionsBoard() {
       )
     } catch {
       setAccountReady(false)
+      setGrowLegalReady(null)
       setAccountMessage('בדיקת חשבון Morning נכשלה. נסו לרענן.')
     }
   }, [])
@@ -530,6 +535,21 @@ export function CollectionsBoard() {
             </p>
             <Link href="/settings?tab=morning">
               <Button>להגדרת החשבון שלי</Button>
+            </Link>
+          </div>
+        </Card>
+      ) : null}
+
+      {accountReady === true && growLegalReady === false ? (
+        <Card>
+          <div style={{ padding: 4 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>פרטי עסק ל־Grow עדיין חסרים</div>
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
+              אפשר ליצור חיובים. אם הסליקה אצלכם ב־Grow — מלאו שם, טלפון וכתובת בהגדרות והדביקו את
+              עמוד העסק בחשבון Morning שלכם. הכסף נשאר אצלכם.
+            </p>
+            <Link href="/settings?tab=morning">
+              <Button variant="secondary">לפרטי העסק</Button>
             </Link>
           </div>
         </Card>

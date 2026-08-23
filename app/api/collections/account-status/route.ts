@@ -6,6 +6,11 @@ import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
 import { CLIENT_GREENINVOICE_SELECT } from '@/lib/greeninvoice-credentials'
 import { collectionsAccountStatusFromClientRow } from '@/lib/greeninvoice-tenant-account'
 import { getConfiguredGreenInvoiceWebhookUrl } from '@/lib/collection-charge-ops'
+import {
+  CLIENT_GROW_LEGAL_SETTINGS_SELECT,
+  getClientGrowPagePath,
+  growLegalFromClientRow,
+} from '@/lib/client-grow-legal'
 
 /** Per-tenant Morning account readiness — each client must use their own keys. */
 export async function GET() {
@@ -24,7 +29,7 @@ export async function GET() {
 
   const { data, error } = await admin
     .from('clients')
-    .select(CLIENT_GREENINVOICE_SELECT)
+    .select(`${CLIENT_GREENINVOICE_SELECT}, id, name, ${CLIENT_GROW_LEGAL_SETTINGS_SELECT}`)
     .eq('id', auth.ctx.clientId)
     .maybeSingle()
 
@@ -37,11 +42,14 @@ export async function GET() {
 
   const status = collectionsAccountStatusFromClientRow(data)
   const webhook = getConfiguredGreenInvoiceWebhookUrl()
+  const growLegal = growLegalFromClientRow(data)
 
   return NextResponse.json({
     ...status,
     webhook_configured: webhook.ok,
     webhook_error: webhook.ok ? null : webhook.error,
+    grow_legal_ready: growLegal.ready,
+    grow_page_path: getClientGrowPagePath(auth.ctx.clientId),
     settings_path: '/settings?tab=morning',
   })
 }

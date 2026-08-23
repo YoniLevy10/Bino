@@ -58,6 +58,10 @@ type ClientRow = {
   greeninvoice_remarks_template?: string | null
   greeninvoice_payment_success_url?: string | null
   greeninvoice_payment_failure_url?: string | null
+  grow_legal_business_name?: string | null
+  grow_legal_phone?: string | null
+  grow_legal_address?: string | null
+  grow_legal_email?: string | null
 }
 
 const TABS = [
@@ -132,6 +136,10 @@ function SettingsPageInner() {
   const [giRemarksTemplate, setGiRemarksTemplate] = useState('')
   const [giPaymentSuccessUrl, setGiPaymentSuccessUrl] = useState('')
   const [giPaymentFailureUrl, setGiPaymentFailureUrl] = useState('')
+  const [growLegalName, setGrowLegalName] = useState('')
+  const [growLegalPhone, setGrowLegalPhone] = useState('')
+  const [growLegalAddress, setGrowLegalAddress] = useState('')
+  const [growLegalEmail, setGrowLegalEmail] = useState('')
   const [giAdvancedOpen, setGiAdvancedOpen] = useState(false)
   const [savingGreeninvoice, setSavingGreeninvoice] = useState(false)
   const [testingGi, setTestingGi] = useState(false)
@@ -222,6 +230,15 @@ function SettingsPageInner() {
     [origin]
   )
 
+  const growPageUrl = useMemo(
+    () => (clientId && origin ? `${origin}/vaad-pay/${clientId}` : ''),
+    [clientId, origin]
+  )
+
+  const growLegalReady = Boolean(
+    growLegalName.trim() && growLegalPhone.trim() && growLegalAddress.trim()
+  )
+
   async function load() {
     setLoading(true)
     setSettingsHydrated(false)
@@ -275,6 +292,10 @@ function SettingsPageInner() {
         setGiRemarksTemplate(row.greeninvoice_remarks_template || '')
         setGiPaymentSuccessUrl(row.greeninvoice_payment_success_url || '')
         setGiPaymentFailureUrl(row.greeninvoice_payment_failure_url || '')
+        setGrowLegalName(row.grow_legal_business_name || row.name?.trim() || '')
+        setGrowLegalPhone(row.grow_legal_phone || '')
+        setGrowLegalAddress(row.grow_legal_address || '')
+        setGrowLegalEmail(row.grow_legal_email || '')
         setGiBusinesses([])
         setSettingsHydrated(true)
 
@@ -396,6 +417,19 @@ function SettingsPageInner() {
     }
   }
 
+  async function copyGrowPageUrl() {
+    if (!growPageUrl) {
+      toast.error('חסר מזהה לקוח')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(growPageUrl)
+      toast.success('הועתק עמוד העסק')
+    } catch {
+      toast.error('העתקה נכשלה')
+    }
+  }
+
   async function copyGreeninvoiceWebhook() {
     if (!giWebhookConfiguredUrl) {
       toast.error(giWebhookLoadError || 'סוד webhook לא מוגדר בשרת')
@@ -426,6 +460,10 @@ function SettingsPageInner() {
           greeninvoice_remarks_template: giRemarksTemplate.trim() || null,
           greeninvoice_payment_success_url: giPaymentSuccessUrl.trim() || null,
           greeninvoice_payment_failure_url: giPaymentFailureUrl.trim() || null,
+          grow_legal_business_name: growLegalName.trim() || null,
+          grow_legal_phone: growLegalPhone.trim() || null,
+          grow_legal_address: growLegalAddress.trim() || null,
+          grow_legal_email: growLegalEmail.trim() || null,
         }
         if (giApiSecret.trim()) {
           payload.greeninvoice_api_secret = giApiSecret.trim()
@@ -1011,18 +1049,28 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <p style={{ margin: 0, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    כל לקוח במקור מקבל תשלומים לחשבון Morning <strong>שלו</strong> בלבד.
-                    הזינו כאן את מפתחות ה-API של החשבון האישי שלכם — אין כתובת/חשבון משותף לכל הלקוחות.
-                    אחרי החיבור: יצירת חיובים, קישורי תשלום לדיירים (/pay/…) ועדכון אוטומטי כששולם.
-                    נדרש מנוי Best+ ופלאגין סליקה פעיל אצלכם ב-Morning (Cardcom / Isracard / Grow).
+                    במקור לא מקבלת כסף מדיירים. אתם שולחים קישור, הדייר משלם, והכסף נכנס לחשבון Morning{' '}
+                    <strong>שלכם</strong>.
                   </p>
-                  <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                    אחרי שמירה ובדיקת חיבור —{' '}
-                    <Link href="/collections" style={styles.inlineLink}>
-                      לגביית ועד
-                    </Link>
-                    .
-                  </p>
+                  <ol
+                    style={{
+                      margin: 0,
+                      paddingRight: 20,
+                      fontSize: 13,
+                      lineHeight: 1.7,
+                      color: theme.colors.textSecondary,
+                    }}
+                  >
+                    <li>חשבון Morning Best+ עם סליקה פעילה (Cardcom / Isracard / Grow)</li>
+                    <li>מפתחות API כאן + בדיקת חיבור ירוקה</li>
+                    <li>פרטי העסק שלכם (שם, טלפון, כתובת) + הדבקת עמוד Grow ב-Morning</li>
+                    <li>
+                      הדבקת Webhook →{' '}
+                      <Link href="/collections" style={styles.inlineLink}>
+                        שליחת חיוב מ־גבייה
+                      </Link>
+                    </li>
+                  </ol>
 
                   <div
                     style={{
@@ -1035,10 +1083,9 @@ function SettingsPageInner() {
                       color: theme.colors.textSecondary,
                     }}
                   >
-                    <strong style={{ color: theme.colors.textPrimary }}>חשבון אישי לכל לקוח</strong>
+                    <strong style={{ color: theme.colors.textPrimary }}>אין חשבון משותף במקור</strong>
                     <br />
-                    הכסף מהדיירים נכנס לחשבון הסליקה ב-Morning שלכם. אל תשתפו מפתחות API עם לקוח אחר —
-                    המערכת חוסמת מפתח שכבר משויך לחשבון במקור אחר.
+                    אל תשתפו מפתחות API עם לקוח אחר — המערכת חוסמת מפתח שכבר משויך לחשבון במקור אחר.
                   </div>
 
                   <div style={styles.formGroup}>
@@ -1141,6 +1188,91 @@ function SettingsPageInner() {
                         ? 'העתיקו ל-Morning → Webhooks. הכתובת כוללת token מהשרת — חובה לעדכון אוטומטי של סטטוס «שולם».'
                         : giWebhookLoadError ||
                           'חסר GREENINVOICE_WEBHOOK_SECRET ב-Vercel. בלי זה אי אפשר לשלוח חיובים בבטחה.'}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: theme.radius.md,
+                      background: growLegalReady ? theme.colors.primaryMuted : '#fff7ed',
+                      border: `1px solid ${growLegalReady ? theme.colors.border : '#fed7aa'}`,
+                      fontSize: 13,
+                      lineHeight: 1.55,
+                      color: theme.colors.textSecondary,
+                    }}
+                  >
+                    <strong style={{ color: theme.colors.textPrimary }}>
+                      פרטי העסק שקולט את הכסף (Grow)
+                    </strong>
+                    <br />
+                    אם הסליקה אצלכם ב-Grow, הם בודקים את האתר של <em>מי שמקבל את הכסף</em> — לא של
+                    מפתח המערכת. מלאו כאן את הפרטים שלכם והדביקו את הקישור ב-Morning → תשלומים
+                    דיגיטליים.
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>שם העסק (כפי שמופיע אצלכם)</label>
+                    <input
+                      value={growLegalName}
+                      onChange={(e) => setGrowLegalName(e.target.value)}
+                      style={styles.input}
+                      placeholder="שם חברת הניהול / הוועד"
+                      maxLength={120}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>טלפון ליצירת קשר</label>
+                    <input
+                      value={growLegalPhone}
+                      onChange={(e) => setGrowLegalPhone(e.target.value)}
+                      style={styles.input}
+                      placeholder="050-0000000"
+                      maxLength={40}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>כתובת פיזית</label>
+                    <input
+                      value={growLegalAddress}
+                      onChange={(e) => setGrowLegalAddress(e.target.value)}
+                      style={styles.input}
+                      placeholder="רחוב, מספר, עיר"
+                      maxLength={300}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>מייל (אופציונלי)</label>
+                    <input
+                      type="email"
+                      value={growLegalEmail}
+                      onChange={(e) => setGrowLegalEmail(e.target.value)}
+                      style={styles.input}
+                      placeholder="office@example.com"
+                      dir="ltr"
+                      maxLength={200}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>עמוד Grow להדבקה ב-Morning</label>
+                    <div style={styles.readonlyRow}>
+                      <input
+                        readOnly
+                        value={growPageUrl || '/vaad-pay/…'}
+                        style={{ ...styles.input, flex: 1 }}
+                        dir="ltr"
+                      />
+                      <Button variant="secondary" type="button" onClick={copyGrowPageUrl}>
+                        העתק
+                      </Button>
+                    </div>
+                    <span style={styles.formHint}>
+                      Morning → תשלומים דיגיטליים → כתובת האתר = הקישור הזה (לא עמוד הפלטפורמה
+                      הכללי). אחרי שמירה אפשר לפתוח אותו ולוודא שמופיעים שם, טלפון וכתובת שלכם.
                     </span>
                   </div>
 
