@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { CSSProperties, ReactNode } from 'react'
-import { getLegalSiteConfig } from '@/lib/legal-site-config'
+import { getLegalSiteConfig, type LegalSiteConfig } from '@/lib/legal-site-config'
 
 const shellStyle: CSSProperties = {
   minHeight: '100vh',
@@ -33,19 +33,26 @@ export function LegalPublicShell({
   children,
   backHref = '/vaad-pay',
   backLabel = '← חזרה לעמוד השירות',
+  merchant,
+  serviceHref = '/vaad-pay',
+  contactHref = '/contact',
 }: {
   children: ReactNode
   backHref?: string
   backLabel?: string
+  /** When set (per-tenant Grow page), footer/nav use this merchant — not platform LEGAL_*. */
+  merchant?: LegalSiteConfig
+  serviceHref?: string
+  contactHref?: string
 }) {
-  const cfg = getLegalSiteConfig()
+  const cfg = merchant ?? getLegalSiteConfig()
   return (
     <main dir="rtl" style={shellStyle}>
       <nav style={navStyle}>
         <Link href={backHref} prefetch={false} style={linkStyle}>
           {backLabel}
         </Link>
-        <Link href="/vaad-pay" prefetch={false} style={linkStyle}>
+        <Link href={serviceHref} prefetch={false} style={linkStyle}>
           שירות תשלומים
         </Link>
         <Link href="/terms" prefetch={false} style={linkStyle}>
@@ -54,7 +61,7 @@ export function LegalPublicShell({
         <Link href="/privacy" prefetch={false} style={linkStyle}>
           פרטיות
         </Link>
-        <Link href="/contact" prefetch={false} style={linkStyle}>
+        <Link href={contactHref} prefetch={false} style={linkStyle}>
           יצירת קשר
         </Link>
       </nav>
@@ -68,7 +75,9 @@ export function LegalPublicShell({
           color: '#64748b',
         }}
       >
-        {cfg.businessName} · {cfg.phoneDisplay} · {cfg.address}
+        {cfg.businessName}
+        {cfg.phoneDisplay ? ` · ${cfg.phoneDisplay}` : ''}
+        {cfg.address ? ` · ${cfg.address}` : ''}
       </footer>
     </main>
   )

@@ -233,6 +233,10 @@ export type Database = {
           greeninvoice_remarks_template: string | null
           greeninvoice_send_invoice_email: boolean
           greeninvoice_vat_type: number
+          grow_legal_address: string | null
+          grow_legal_business_name: string | null
+          grow_legal_email: string | null
+          grow_legal_phone: string | null
           id: string
           is_active: boolean
           logo_url: string | null
@@ -283,6 +287,10 @@ export type Database = {
           greeninvoice_remarks_template?: string | null
           greeninvoice_send_invoice_email?: boolean
           greeninvoice_vat_type?: number
+          grow_legal_address?: string | null
+          grow_legal_business_name?: string | null
+          grow_legal_email?: string | null
+          grow_legal_phone?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -333,6 +341,10 @@ export type Database = {
           greeninvoice_remarks_template?: string | null
           greeninvoice_send_invoice_email?: boolean
           greeninvoice_vat_type?: number
+          grow_legal_address?: string | null
+          grow_legal_business_name?: string | null
+          grow_legal_email?: string | null
+          grow_legal_phone?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null

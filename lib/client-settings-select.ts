@@ -1,3 +1,4 @@
+import { CLIENT_GROW_LEGAL_SETTINGS_SELECT } from '@/lib/client-grow-legal'
 import { CLIENT_GREENINVOICE_SETTINGS_SELECT } from '@/lib/greeninvoice-credentials'
 
 /** Safe client fields for browser / tenant reads (no API secrets). */
@@ -14,6 +15,7 @@ export const CLIENT_SETTINGS_SAFE_SELECT = [
   'sms_sender_name',
   'sidebar_nav_order',
   CLIENT_GREENINVOICE_SETTINGS_SELECT,
+  CLIENT_GROW_LEGAL_SETTINGS_SELECT,
 ].join(', ')
 
 /** Server-only select — used to derive *_set flags, never returned to the client. */

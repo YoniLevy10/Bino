@@ -143,6 +143,10 @@ export const settingsUpdateBodySchema = z
     greeninvoice_remarks_template: z.string().max(2000).nullable().optional(),
     greeninvoice_payment_success_url: z.string().max(500).nullable().optional(),
     greeninvoice_payment_failure_url: z.string().max(500).nullable().optional(),
+    grow_legal_business_name: z.string().max(120).nullable().optional(),
+    grow_legal_phone: z.string().max(40).nullable().optional(),
+    grow_legal_address: z.string().max(300).nullable().optional(),
+    grow_legal_email: z.string().max(200).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'אין שדות לעדכון' })
 
