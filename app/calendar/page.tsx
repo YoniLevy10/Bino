@@ -2,9 +2,10 @@
 
 /**
  * דף יומן משרד — פגישות ועד, אנשי מקצוע ואירועים פנימיים.
- * תצוגת חודש/שבוע, יצירה/עריכה/מחיקה, ייצוא iCal, קישור ל-Google Calendar.
+ * תצוגת חודש/שבוע, יצירה/עריכה/מחיקה, ייצוא iCal, סנכרון Google Calendar.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, Suspense, type CSSProperties } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -21,6 +22,7 @@ import {
   weekRangeIso,
   type CalendarEventType,
 } from '@/lib/calendar-utils'
+import { startGoogleCalendarConnect } from '@/lib/google-calendar-connect'
 import { CalendarMonthGrid } from '../components/calendar/CalendarMonthGrid'
 import {
   AppShell,
@@ -68,10 +70,26 @@ const emptyForm = {
 }
 
 export default function CalendarPage() {
+  return (
+    <Suspense fallback={null}>
+      <CalendarPageInner />
+    </Suspense>
+  )
+}
+
+function CalendarPageInner() {
   const { openMenu } = useMobileMenu()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [gcalBusy, setGcalBusy] = useState(false)
+  const [gcal, setGcal] = useState<{
+    configured: boolean
+    connected: boolean
+    google_email: string | null
+  } | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const [cursor, setCursor] = useState(() => {
     const n = new Date()
@@ -92,6 +110,35 @@ export default function CalendarPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  const loadGcalStatus = useCallback(async () => {
+    const res = await fetchWithTimeout('/api/calendar/google', { method: 'GET' })
+    if (!res?.ok) return
+    const body = (await res.json()) as {
+      configured?: boolean
+      connected?: boolean
+      google_email?: string | null
+    }
+    setGcal({
+      configured: Boolean(body.configured),
+      connected: Boolean(body.connected),
+      google_email: body.google_email ?? null,
+    })
+  }, [])
+
+  useEffect(() => {
+    const flag = searchParams.get('gcal')
+    if (!flag) return
+    if (flag === 'connected') {
+      toast.success('Google Calendar חובר ✓ — אירועים חדשים יועתקו אוטומטית')
+      void loadGcalStatus()
+    } else if (flag === 'need_consent') {
+      toast.error('נדרשת הרשאה מלאה ליומן. לחצו שוב על «חיבור Google Calendar».')
+    } else if (flag === 'error') {
+      toast.error('חיבור Google Calendar נכשל')
+    }
+    router.replace('/calendar', { scroll: false })
+  }, [searchParams, router, loadGcalStatus])
 
   const monthRange = useMemo(() => monthRangeIso(cursor.year, cursor.month), [cursor])
   const fetchRange = useMemo(() => {
@@ -121,13 +168,37 @@ export default function CalendarPage() {
           clientId
         )
         setProjects((projData as ProjectOption[]) || [])
-        await load()
+        await Promise.all([load(), loadGcalStatus()])
         return true
       },
       { context: 'טעינת יומן', showErrorToast: true }
     ).finally(() => setLoading(false))
-  }, [load])
+  }, [load, loadGcalStatus])
 
+  async function connectGoogleCalendar() {
+    setGcalBusy(true)
+    try {
+      await startGoogleCalendarConnect()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'חיבור Google נכשל')
+      setGcalBusy(false)
+    }
+  }
+
+  async function disconnectGoogleCalendar() {
+    if (!confirm('לנתק את Google Calendar? אירועים חדשים לא יועתקו יותר.')) return
+    setGcalBusy(true)
+    try {
+      const res = await fetchWithTimeout('/api/calendar/google', { method: 'DELETE' })
+      if (!res?.ok) throw new Error('ניתוק נכשל')
+      toast.success('Google Calendar נותק')
+      await loadGcalStatus()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'ניתוק נכשל')
+    } finally {
+      setGcalBusy(false)
+    }
+  }
   const eventCountByDay = useMemo(() => {
     const map = new Map<string, number>()
     for (const ev of events) {
@@ -303,6 +374,15 @@ export default function CalendarPage() {
             subtitle="פגישות ועד, אנשי מקצוע ואירועי משרד"
             actions={
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {gcal?.connected ? (
+                  <Button variant="secondary" onClick={() => void disconnectGoogleCalendar()} disabled={gcalBusy}>
+                    נתק Google Calendar
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => void connectGoogleCalendar()} disabled={gcalBusy}>
+                    {gcalBusy ? 'מחברים…' : 'חיבור Google Calendar'}
+                  </Button>
+                )}
                 <Button variant="secondary" onClick={exportIcal}>
                   ייצוא iCal
                 </Button>
@@ -319,13 +399,28 @@ export default function CalendarPage() {
         ) : (
           <>
             {isMobile && (
-              <div style={{ marginBottom: '12px' }}>
+              <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <Button variant="primary" onClick={openCreate}>
                   אירוע חדש
                 </Button>
+                {gcal?.connected ? (
+                  <Button variant="secondary" onClick={() => void disconnectGoogleCalendar()} disabled={gcalBusy}>
+                    נתק Google
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => void connectGoogleCalendar()} disabled={gcalBusy}>
+                    {gcalBusy ? 'מחברים…' : 'חיבור Google'}
+                  </Button>
+                )}
               </div>
             )}
 
+            {gcal?.connected ? (
+              <p style={{ margin: '0 0 12px', fontSize: '13px', color: theme.colors.textMuted }}>
+                Google Calendar מחובר
+                {gcal.google_email ? ` (${gcal.google_email})` : ''} — אירועים שנשמרים כאן מתווספים אוטומטית ליומן.
+              </p>
+            ) : null}
             <div style={{ ...styles.kpiGrid, gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)' }}>
               <KpiCard label="היום" value={kpi.today} accent="primary" />
               <KpiCard label="השבוע" value={kpi.week} accent="warning" />

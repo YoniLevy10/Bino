@@ -4,6 +4,7 @@ import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { createCalendarEventBodySchema } from '@/lib/api-body-schemas'
+import { syncEventToGoogleCalendar } from '@/lib/google-calendar'
 
 export async function GET(req: NextRequest) {
   try {
@@ -120,7 +121,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'שגיאת שרת', requestId }, { status: 500 })
     }
 
-    return NextResponse.json({ event: data })
+    let event = data
+    try {
+      const googleEventId = await syncEventToGoogleCalendar(admin, auth.ctx.clientId, {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        starts_at: data.starts_at,
+        ends_at: data.ends_at,
+        all_day: data.all_day,
+      })
+      if (googleEventId) {
+        const { data: updated } = await admin
+          .from('calendar_events')
+          .update({ google_event_id: googleEventId, updated_at: new Date().toISOString() })
+          .eq('id', data.id)
+          .eq('client_id', auth.ctx.clientId)
+          .select()
+          .single()
+        if (updated) event = updated
+      }
+    } catch (syncErr) {
+      console.error('[calendar/events POST] google sync', syncErr)
+    }
+
+    return NextResponse.json({ event })
   } catch (e) {
     console.error('[calendar/events POST]', e)
     return NextResponse.json({ error: 'שגיאת שרת', requestId }, { status: 500 })

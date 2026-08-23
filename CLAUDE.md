@@ -136,6 +136,8 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 
 | Variable | How to get |
 |----------|-----------|
+| `GOOGLE_CLIENT_ID` | Same Google OAuth client ID as Supabase Auth → Providers → Google (needed to refresh Calendar tokens) |
+| `GOOGLE_CLIENT_SECRET` | Matching Google OAuth client secret (server only) |
 | `WHATSAPP_APP_SECRET` | Meta Developer Console → App → Settings → Basic → App Secret |
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |

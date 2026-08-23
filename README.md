@@ -35,7 +35,7 @@
 | `/residents` | פנקס דיירים — ייבוא Excel, טאב ממתינים | מחובר |
 | `/pending-residents` | דיירים שדיווחו וטרם אושרו בפנקס | מחובר |
 | `/summary` | דוחות ניהוליים + Excel | מחובר |
-| `/calendar` | יומן משרד — חודש/שבוע, iCal, Google Calendar (קישור) | מחובר |
+| `/calendar` | יומן משרד — חודש/שבוע, iCal, סנכרון Google Calendar | מחובר |
 | `/attendance` | חתמת עובדים — NFC, משמרות, דוחות שעות, Excel | מחובר |
 | `/qr` | קודי QR לפרויקט (WhatsApp + Web) | מחובר |
 | `/settings` | הגדרות — WhatsApp, SMS, push, סדר תפריט, לוגו | מחובר |

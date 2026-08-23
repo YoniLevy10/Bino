@@ -4,6 +4,7 @@ import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { updateCalendarEventBodySchema } from '@/lib/api-body-schemas'
+import { deleteGoogleCalendarEvent, syncEventToGoogleCalendar } from '@/lib/google-calendar'
 
 type RouteCtx = { params: Promise<{ id: string }> }
 
@@ -60,7 +61,33 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
       return NextResponse.json({ error: 'שגיאת שרת', requestId }, { status: 500 })
     }
 
-    return NextResponse.json({ event: data })
+    let event = data
+    try {
+      const googleEventId = await syncEventToGoogleCalendar(admin, auth.ctx.clientId, {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        starts_at: data.starts_at,
+        ends_at: data.ends_at,
+        all_day: data.all_day,
+        google_event_id: data.google_event_id ?? null,
+      })
+      if (googleEventId && googleEventId !== data.google_event_id) {
+        const { data: updated } = await admin
+          .from('calendar_events')
+          .update({ google_event_id: googleEventId, updated_at: new Date().toISOString() })
+          .eq('id', data.id)
+          .eq('client_id', auth.ctx.clientId)
+          .select()
+          .single()
+        if (updated) event = updated
+      }
+    } catch (syncErr) {
+      console.error('[calendar PATCH] google sync', syncErr)
+    }
+
+    return NextResponse.json({ event })
   } catch (e) {
     console.error('[calendar PATCH]', e)
     return NextResponse.json({ error: 'שגיאת שרת', requestId }, { status: 500 })
@@ -75,6 +102,14 @@ export async function DELETE(_req: Request, ctx: RouteCtx) {
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()
+
+    const { data: existing } = await admin
+      .from('calendar_events')
+      .select('id, google_event_id')
+      .eq('id', id)
+      .eq('client_id', auth.ctx.clientId)
+      .maybeSingle()
+
     const { error } = await admin
       .from('calendar_events')
       .delete()
@@ -84,6 +119,12 @@ export async function DELETE(_req: Request, ctx: RouteCtx) {
     if (error) {
       console.error('[calendar DELETE]', error.message)
       return NextResponse.json({ error: 'שגיאת שרת', requestId }, { status: 500 })
+    }
+
+    try {
+      await deleteGoogleCalendarEvent(admin, auth.ctx.clientId, existing?.google_event_id)
+    } catch (syncErr) {
+      console.error('[calendar DELETE] google sync', syncErr)
     }
 
     return NextResponse.json({ ok: true })
