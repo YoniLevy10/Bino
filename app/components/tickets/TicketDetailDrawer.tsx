@@ -456,7 +456,11 @@ export function TicketDetailDrawer({
                                 })}
                               </span>
                             </div>
-                            {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
+                            {log.new_value ? (
+                              <div style={styles.logNotes}>{log.new_value}</div>
+                            ) : log.notes ? (
+                              <div style={styles.logNotes}>{log.notes}</div>
+                            ) : null}
                           </div>
                         ))}
                       </div>
