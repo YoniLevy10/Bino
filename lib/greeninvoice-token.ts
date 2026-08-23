@@ -61,6 +61,21 @@ export function formatGreenInvoiceAuthError(data: unknown): string | null {
   return null
 }
 
+/** Prefer a vendor Hebrew/description string over a mapped OAuth code. */
+export function pickGreenInvoiceAuthMessage(...payloads: unknown[]): string | null {
+  for (const data of payloads) {
+    const rec = asRecord(data)
+    if (!rec) continue
+    const message = pickString(rec, ['errorMessage', 'error_description', 'message'])
+    if (message) return message
+  }
+  for (const data of payloads) {
+    const mapped = formatGreenInvoiceAuthError(data)
+    if (mapped) return mapped
+  }
+  return null
+}
+
 /** Fields safe to print — never includes client_id / secret / tokens. */
 export function safeGreenInvoiceAuthLog(data: unknown): Record<string, unknown> | null {
   const rec = asRecord(data)

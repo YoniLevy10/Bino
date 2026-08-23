@@ -8,9 +8,9 @@ import {
   type GreenInvoiceCredentials,
 } from '@/lib/greeninvoice-config'
 import {
-  formatGreenInvoiceAuthError,
   morningAuthEnvHint,
   parseGreenInvoiceTokenResponse,
+  pickGreenInvoiceAuthMessage,
   safeGreenInvoiceAuthLog,
 } from '@/lib/greeninvoice-token'
 
@@ -119,7 +119,7 @@ export async function obtainGreenInvoiceToken(
     return { ok: false, status: 0, error: 'פסק זמן בחיבור ל-Morning' }
   }
 
-  const morningMsg = formatGreenInvoiceAuthError(idp.data) || formatGreenInvoiceAuthError(legacy.data)
+  const morningMsg = pickGreenInvoiceAuthMessage(idp.data, legacy.data)
   const hint = morningAuthEnvHint(credentials.env)
   const errorCode = [idp.data, legacy.data]
     .map((row) =>

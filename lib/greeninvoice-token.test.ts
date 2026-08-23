@@ -14,6 +14,7 @@ import {
 import {
   formatGreenInvoiceAuthError,
   parseGreenInvoiceTokenResponse,
+  pickGreenInvoiceAuthMessage,
   safeGreenInvoiceAuthLog,
 } from '@/lib/greeninvoice-token'
 
@@ -68,6 +69,9 @@ describe('formatGreenInvoiceAuthError', () => {
       'גישה נדחתה, נא להתחבר מחדש'
     )
     expect(formatGreenInvoiceAuthError({ error: 'invalid_client' })).toBe('מפתח או סוד שגויים')
+    expect(
+      pickGreenInvoiceAuthMessage({ error: 'invalid_client' }, { errorMessage: 'גישה נדחתה, נא להתחבר מחדש' })
+    ).toBe('גישה נדחתה, נא להתחבר מחדש')
   })
 
   it('strips tokens from log payloads', () => {
