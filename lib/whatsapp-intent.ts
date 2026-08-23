@@ -158,6 +158,15 @@ export function isTicketConfirmText(text: string): boolean {
   return /^(כן|oui|yes|y|ok|אוקי|אוקיי|okay)$/.test(t)
 }
 
+/** Short reply while a ticket is already open — do not restart building selection. */
+export function isOpenTicketConversationalReply(text: string): boolean {
+  return (
+    isTicketConfirmText(text) ||
+    isGreetingSmallTalk(text) ||
+    isEmojiOnlyOrShortAck(text)
+  )
+}
+
 /** How-to / confusion questions — not a ticket description. */
 export function isClarificationQuestion(text: string): boolean {
   const t = text.trim()

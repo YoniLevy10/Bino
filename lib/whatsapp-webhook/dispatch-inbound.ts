@@ -15,6 +15,7 @@ import {
   statusLabelHe,
   isClarificationQuestion,
   inferResidentLanguageFromText,
+  isOpenTicketConversationalReply,
 } from '@/lib/whatsapp-intent'
 import { resolveMessageForLanguage, normalizeResidentLang, splitTrilingualTemplate, type ResidentLang } from '@/lib/whatsapp-bilingual-template'
 import {
@@ -42,22 +43,28 @@ import {
 } from '@/lib/whatsapp-webhook'
 import { findOpenTicketForPhone, findDuplicateOpenWhatsAppTicket, parseRecentDuplicateWhatsAppTicketError, readLastReporterProject } from '@/lib/whatsapp-webhook/flow-ticket'
 import {
-  isStashedBuildingSearchRow,
+  isStashRow,
   readStashedBuildingSearchText,
   readStashedProblemDescription,
   stashBuildingSearchText,
   stashProblemDescription,
+  stashOpenTicketFollowupChoice,
   stashPreSessionMedia,
   promoteStashedMediaToSession,
+  clearOpenTicketFollowupStash,
+  stashedOpenTicketFollowup,
+  stashedProblemDescription,
 } from '@/lib/whatsapp-webhook/building-search-stash'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
 import {
   buildProjectSelectionListPayload,
   buildLanguageButtonsPayload,
   buildLastProjectConfirmButtonsPayload,
+  buildOpenTicketFollowupButtonsPayload,
   parseProjectListReplyId,
   parseLanguageButtonReplyId,
   parseLastProjectButtonReplyId,
+  parseOpenTicketFollowupReplyId,
 } from '@/lib/whatsapp-interactive'
 import {
   persistWhatsAppMessage,
@@ -82,7 +89,7 @@ import { getLogger } from '@/lib/logging'
 import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
 import { getPublicTicketsUrl } from '@/lib/public-app-url'
 import { isWhatsAppTestSender, whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
-import { queuePendingResidentApproval, reporterListedInProjectResidents } from '@/lib/pending-resident-from-ticket'
+import { queuePendingResidentApproval, reporterListedInProjectResidents, findOpenPendingResidentProject } from '@/lib/pending-resident-from-ticket'
 import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
 import { checkAndFlagRecurringIssue } from '@/lib/predictive-alerts'
 import {
@@ -900,6 +907,101 @@ export async function runWhatsAppInboundBackground(
       return result
     }
 
+    async function sendWaOpenTicketFollowupChoice(
+      to: string,
+      ticketNumber: number,
+      lang: ResidentLang,
+      creds?: { phoneNumberId?: string; accessToken?: string }
+    ) {
+      if (!creds?.phoneNumberId || !creds?.accessToken) return null
+      const bodyText = await resolveWaBodyForLang('open_ticket_followup_choice', lang, {
+        ticket_number: String(ticketNumber),
+      })
+      const payload = buildOpenTicketFollowupButtonsPayload(to, bodyText, lang)
+      const result = await sendWhatsAppInteractivePayloadWithCredentials(
+        creds.phoneNumberId,
+        creds.accessToken,
+        payload
+      )
+      void persistWhatsAppMessage(supabaseAdmin, {
+        clientId: webhookClientId,
+        phone: from,
+        direction: 'out',
+        body: bodyText,
+        messageType: 'interactive',
+        interactivePayload: payload.interactive as Record<string, unknown>,
+        waMessageId: extractMetaWaMessageId(result),
+      })
+      return result
+    }
+
+    async function appendResidentUpdateToOpenTicket(
+      ticketId: string,
+      description: string
+    ): Promise<boolean> {
+      const trimmed = description.trim()
+      if (!trimmed) return false
+      const { error: updateError } = await supabaseAdmin
+        .from('tickets')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', ticketId)
+        .eq('client_id', webhookClientId)
+        .is('deleted_at', null)
+      if (updateError) {
+        logger.warn('WEBHOOK', 'open ticket bump updated_at failed', { err: updateError.message })
+      }
+      const { error: logError } = await supabaseAdmin.from('ticket_logs').insert({
+        ticket_id: ticketId,
+        action_type: 'USER_MESSAGE',
+        new_value: trimmed,
+        performed_by: from,
+        notes: 'WhatsApp follow-up from resident',
+        created_by: 'system',
+        meta: {
+          source: 'whatsapp_open_ticket_followup',
+          phone: from,
+        },
+      })
+      if (logError) {
+        logger.warn('WEBHOOK', 'open ticket follow-up log failed', { err: logError.message })
+        return false
+      }
+      return true
+    }
+
+    async function offerOpenTicketFollowupChoice(
+      openTicket: { id: string; ticket_number: number },
+      description: string,
+      lang: ResidentLang
+    ): Promise<void> {
+      await stashOpenTicketFollowupChoice(
+        from,
+        openTicket.id,
+        openTicket.ticket_number,
+        description,
+        supabaseAdmin,
+        webhookClientId,
+        lang
+      )
+      await supabaseAdmin
+        .from('sessions')
+        .update({
+          is_active: false,
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('phone_number', from)
+        .eq('client_id', webhookClientId)
+        .eq('is_active', true)
+      try {
+        await sendWaOpenTicketFollowupChoice(
+          waRecipient,
+          openTicket.ticket_number,
+          lang,
+          residentWhatsAppCreds
+        )
+      } catch { /* WA send failure is non-fatal */ }
+    }
+
     async function continueAfterLanguageResolved(lang: ResidentLang): Promise<void> {
       residentLang = lang
       const allProjects = await fetchAllProjectsForClient(supabaseAdmin, webhookClientId)
@@ -909,10 +1011,33 @@ export async function runWhatsAppInboundBackground(
         return
       }
 
-      const lastProject = await readLastReporterProject(supabaseAdmin, webhookClientId, from)
+      let lastProject = await readLastReporterProject(supabaseAdmin, webhookClientId, from)
+      if (!lastProject) {
+        const pendingJoin = await findOpenPendingResidentProject(
+          supabaseAdmin,
+          webhookClientId,
+          from
+        )
+        if (pendingJoin?.projectId) {
+          const pendingProject = allProjects.find((p) => p.id === pendingJoin.projectId)
+          if (pendingProject) {
+            lastProject = { projectId: pendingProject.id, projectName: pendingProject.name }
+          }
+        }
+      }
       if (lastProject) {
         const fullProject = allProjects.find((p) => p.id === lastProject.projectId)
         if (fullProject) {
+          const stashedDesc = await readStashedProblemDescription(
+            from,
+            supabaseAdmin,
+            webhookClientId
+          )
+          // Description already known (e.g. chose «תקלה חדשה») — skip same-building confirm.
+          if (stashedDesc) {
+            await finalizeProjectSelection(fullProject, lang)
+            return
+          }
           const pendingCreated = await createPendingSelection(
             from,
             [fullProject],
@@ -1174,7 +1299,7 @@ export async function runWhatsAppInboundBackground(
         }
 
         const candidates = (pendingLast?.candidate_projects || []).filter(
-          (p) => !isStashedBuildingSearchRow(p)
+          (p) => !isStashRow(p)
         )
         if (candidates.length === 1) {
           await finalizeProjectSelection(candidates[0], sessionLang)
@@ -1257,8 +1382,94 @@ export async function runWhatsAppInboundBackground(
       return
     }
 
-    // Product rule: WhatsApp session is single-purpose and short-lived.
-    // Free-text should never be auto-logged into a previous ticket; after reset, it restarts project search flow.
+    // Open-ticket follow-up: update vs new (buttons) + short conversational replies.
+    if (interactiveReplyId) {
+      const followupPick = parseOpenTicketFollowupReplyId(interactiveReplyId)
+      if (followupPick) {
+        const pendingFollowup = await getPendingSelection(from, supabaseAdmin, webhookClientId)
+        const sessionLang = pendingFollowup?.preferred_language?.trim()
+          ? normalizeResidentLang(pendingFollowup.preferred_language)
+          : residentLang
+        const followupMeta = stashedOpenTicketFollowup(pendingFollowup?.candidate_projects)
+        const stashedDesc = stashedProblemDescription(pendingFollowup?.candidate_projects)
+
+        if (followupPick === 'update') {
+          if (followupMeta && stashedDesc) {
+            const ok = await appendResidentUpdateToOpenTicket(followupMeta.ticketId, stashedDesc)
+            await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+            try {
+              if (ok) {
+                await sendWa(waRecipient, 'open_ticket_update_ack', residentWhatsAppCreds, {
+                  ticket_number: String(followupMeta.ticketNumber),
+                }, sessionLang)
+              } else {
+                await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+              }
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+          await clearPendingSelection(from, supabaseAdmin, webhookClientId)
+          try {
+            await sendWa(waRecipient, 'technical_error', residentWhatsAppCreds)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
+
+        // «תקלה חדשה» — keep description, drop follow-up marker, resume building/last-project flow
+        await clearOpenTicketFollowupStash(from, supabaseAdmin, webhookClientId)
+        await continueAfterLanguageResolved(sessionLang)
+        if (openTicketAfterBuildingSearch) {
+          session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+          residentLang = sessionLang
+        } else {
+          return
+        }
+      }
+    }
+
+    if (
+      !session &&
+      !textBody.toUpperCase().startsWith('START_') &&
+      !(
+        interactiveReplyId &&
+        (parseOpenTicketFollowupReplyId(interactiveReplyId) ||
+          parseLastProjectButtonReplyId(interactiveReplyId) ||
+          parseLanguageButtonReplyId(interactiveReplyId) ||
+          parseProjectListReplyId(interactiveReplyId) !== null)
+      )
+    ) {
+      const pendingForBuilding = await getPendingSelection(from, supabaseAdmin, webhookClientId)
+      const realPendingProjects = (pendingForBuilding?.candidate_projects || []).filter(
+        (p) => !isStashRow(p)
+      )
+      if (realPendingProjects.length === 0) {
+        const openTicket = await findOpenTicketForPhone(from, supabaseAdmin, webhookClientId)
+        if (openTicket) {
+          const lang = await getResidentLanguage(supabaseAdmin, webhookClientId, from, null)
+          if (isOpenTicketConversationalReply(textBody) || isClarificationQuestion(textBody)) {
+            try {
+              await sendWa(waRecipient, 'open_ticket_short_ack', residentWhatsAppCreds, {
+                ticket_number: String(openTicket.ticket_number),
+              }, lang)
+            } catch { /* WA send failure is non-fatal */ }
+            return
+          }
+          if (looksLikeTicketDescription(textBody)) {
+            await offerOpenTicketFollowupChoice(openTicket, textBody, lang)
+            return
+          }
+          try {
+            await sendWa(waRecipient, 'open_ticket_short_ack', residentWhatsAppCreds, {
+              ticket_number: String(openTicket.ticket_number),
+            }, lang)
+          } catch { /* WA send failure is non-fatal */ }
+          return
+        }
+      }
+    }
+
+    // Product rule: WhatsApp session is single-purpose and short-lived for ticket creation.
+    // When an open ticket already exists, free-text asks update-vs-new instead of restarting building search.
     // STEP 1: START_<PROJECT_CODE> or START_<PROJECT_CODE>_<BUILDING>
     if (textBody.toUpperCase().startsWith('START_')) {
       const parsedStart = parseStartCode(textBody)
@@ -1398,6 +1609,34 @@ export async function runWhatsAppInboundBackground(
             await afterResidentSessionCreated(from, session.id, supabaseAdmin, webhookClientId)
           }
           if (session) {
+            const openTicketForKnown = await findOpenTicketForPhone(
+              from,
+              supabaseAdmin,
+              webhookClientId
+            )
+            if (openTicketForKnown) {
+              if (
+                isOpenTicketConversationalReply(textBody) ||
+                isClarificationQuestion(textBody) ||
+                !looksLikeTicketDescription(textBody)
+              ) {
+                try {
+                  await sendWa(waRecipient, 'open_ticket_short_ack', residentWhatsAppCreds, {
+                    ticket_number: String(openTicketForKnown.ticket_number),
+                  }, sessionLang)
+                } catch { /* WA send failure is non-fatal */ }
+                await supabaseAdmin
+                  .from('sessions')
+                  .update({
+                    is_active: false,
+                    last_activity_at: new Date().toISOString(),
+                  })
+                  .eq('id', session.id)
+                return
+              }
+              await offerOpenTicketFollowupChoice(openTicketForKnown, textBody, sessionLang)
+              return
+            }
             if (isClarificationQuestion(textBody)) {
               try {
                 await sendWa(waRecipient, 'clarification_reply', residentWhatsAppCreds, {}, sessionLang)
@@ -1483,7 +1722,7 @@ export async function runWhatsAppInboundBackground(
 
       if (selectedIndex !== null && pendingSelection) {
         const candidates = (pendingSelection.candidate_projects || []).filter(
-          (p) => !isStashedBuildingSearchRow(p)
+          (p) => !isStashRow(p)
         )
 
         if (selectedIndex >= 0 && selectedIndex < candidates.length) {
@@ -1524,7 +1763,7 @@ export async function runWhatsAppInboundBackground(
       // Pending selection + non-selection text: refine search matches only
       if (pendingSelection && selectedIndex === null) {
         const candidates = (pendingSelection.candidate_projects || []).filter(
-          (p) => !isStashedBuildingSearchRow(p)
+          (p) => !isStashRow(p)
         )
         const sessionLang = pendingSelection.preferred_language?.trim()
           ? normalizeResidentLang(pendingSelection.preferred_language)
@@ -1615,10 +1854,13 @@ export async function runWhatsAppInboundBackground(
           if (looksLikeTicketDescription(textBody)) {
             await stashProblemDescription(from, textBody, supabaseAdmin, webhookClientId)
           }
-          try {
-            await sendWa(waRecipient, 'ask_building', residentWhatsAppCreds, {}, lang)
-          } catch { /* WA send failure is non-fatal */ }
-          return
+          await continueAfterLanguageResolved(lang)
+          if (openTicketAfterBuildingSearch) {
+            session = await getActiveSession(from, supabaseAdmin, webhookClientId)
+            residentLang = lang
+          } else {
+            return
+          }
         }
       }
     }
@@ -1636,6 +1878,26 @@ export async function runWhatsAppInboundBackground(
         : null
 
     if (!ticketDescription && !acceptTicketDescriptionInSession(textBody)) {
+      const openTicketWhileSession = await findOpenTicketForPhone(
+        from,
+        supabaseAdmin,
+        webhookClientId
+      )
+      if (openTicketWhileSession) {
+        try {
+          await sendWa(waRecipient, 'open_ticket_short_ack', residentWhatsAppCreds, {
+            ticket_number: String(openTicketWhileSession.ticket_number),
+          }, residentLang)
+        } catch { /* WA send failure is non-fatal */ }
+        await supabaseAdmin
+          .from('sessions')
+          .update({
+            is_active: false,
+            last_activity_at: new Date().toISOString(),
+          })
+          .eq('id', session.id)
+        return
+      }
       try {
         await sendWa(waRecipient, 'resident_prompt', residentWhatsAppCreds, {
           reporter_name: residentGreetingPrefix(residentLang, knownResidentForSession?.full_name),
@@ -1649,7 +1911,26 @@ export async function runWhatsAppInboundBackground(
     }
 
     if (!ticketDescription) ticketDescription = textBody
+    const descriptionFromBuildingSearchAutoOpen = openTicketAfterBuildingSearch != null
     openTicketAfterBuildingSearch = null
+
+    // Session already has a building + description, but an open ticket exists:
+    // ask update vs new (unless we already came from «תקלה חדשה» with stashed desc).
+    if (!descriptionFromBuildingSearchAutoOpen) {
+      const openTicketBeforeCreate = await findOpenTicketForPhone(
+        from,
+        supabaseAdmin,
+        webhookClientId
+      )
+      if (openTicketBeforeCreate) {
+        await offerOpenTicketFollowupChoice(
+          openTicketBeforeCreate,
+          ticketDescription,
+          residentLang
+        )
+        return
+      }
+    }
 
     if (session.project_id) {
       const dupTicket = await findDuplicateOpenWhatsAppTicket(

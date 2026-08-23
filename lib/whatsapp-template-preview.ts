@@ -53,6 +53,27 @@ const PREVIEW_OVERRIDES: Partial<Record<WhatsAppTemplateKey, Partial<WhatsAppTem
     building_line: '',
     list: '',
   },
+  open_ticket_short_ack: {
+    project_name: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
+  open_ticket_followup_choice: {
+    project_name: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
+  open_ticket_update_ack: {
+    project_name: '',
+    description: '',
+    reporter_name: '',
+    building_line: '',
+    list: '',
+  },
   welcome: { reporter_name: '', building_line: '' },
   resident_prompt: {
     reporter_name: '',

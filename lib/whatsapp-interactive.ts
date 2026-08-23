@@ -26,6 +26,12 @@ const LAST_PROJECT_LABELS: Record<ResidentLang, { same: string; other: string }>
   en: { same: 'Same building', other: 'Other' },
 }
 
+const OPEN_TICKET_FOLLOWUP_LABELS: Record<ResidentLang, { update: string; newTicket: string }> = {
+  he: { update: 'עדכון לתקלה', newTicket: 'תקלה חדשה' },
+  fr: { update: 'Màj demande', newTicket: 'Nouvelle' },
+  en: { update: 'Update ticket', newTicket: 'New ticket' },
+}
+
 export function parseProjectListReplyId(replyId: string): number | null {
   const m = replyId.trim().match(/^proj_(\d+)$/)
   if (!m) return null
@@ -155,4 +161,32 @@ export function parseConfirmButtonReplyId(replyId: string): 'confirm' | 'cancel'
   if (replyId === 'ticket_confirm') return 'confirm'
   if (replyId === 'ticket_cancel') return 'cancel'
   return null
+}
+
+export function parseOpenTicketFollowupReplyId(replyId: string): 'update' | 'new' | null {
+  if (replyId === 'open_ticket_update') return 'update'
+  if (replyId === 'open_ticket_new') return 'new'
+  return null
+}
+
+export function buildOpenTicketFollowupButtonsPayload(
+  to: string,
+  bodyText: string,
+  lang: ResidentLang = 'he'
+): Record<string, unknown> {
+  const labels = OPEN_TICKET_FOLLOWUP_LABELS[lang]
+  return {
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: bodyText.slice(0, 1024) },
+      action: {
+        buttons: [
+          { type: 'reply', reply: { id: 'open_ticket_update', title: labels.update.slice(0, 20) } },
+          { type: 'reply', reply: { id: 'open_ticket_new', title: labels.newTicket.slice(0, 20) } },
+        ],
+      },
+    },
+  }
 }

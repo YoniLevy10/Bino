@@ -51,6 +51,8 @@ describe('findOpenTicketForPhone', () => {
       id: 'ticket-27',
       status: 'NEW',
       created_at: '2026-06-01T10:00:00.000Z',
+      ticket_number: 27,
+      project_id: 'project-1',
     }
     const supabase = mockSupabaseTickets({ data: ticket, error: null })
 
@@ -61,6 +63,20 @@ describe('findOpenTicketForPhone', () => {
 
   it('returns null when query fails or no row', async () => {
     const supabase = mockSupabaseTickets({ data: null, error: { message: 'db error' } })
+    const found = await findOpenTicketForPhone('972501234567', supabase as never, 'client-1')
+    expect(found).toBeNull()
+  })
+
+  it('returns null when ticket_number is missing', async () => {
+    const supabase = mockSupabaseTickets({
+      data: {
+        id: 'ticket-27',
+        status: 'NEW',
+        created_at: '2026-06-01T10:00:00.000Z',
+        project_id: 'project-1',
+      },
+      error: null,
+    })
     const found = await findOpenTicketForPhone('972501234567', supabase as never, 'client-1')
     expect(found).toBeNull()
   })

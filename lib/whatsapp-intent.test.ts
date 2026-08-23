@@ -3,6 +3,7 @@ import {
   looksLikeTicketDescription,
   isClarificationQuestion,
   isTicketConfirmText,
+  isOpenTicketConversationalReply,
   acceptTicketDescriptionInSession,
   inferResidentLanguageFromText,
 } from './whatsapp-intent'
@@ -57,6 +58,18 @@ describe('isTicketConfirmText', () => {
     expect(isTicketConfirmText('כן')).toBe(true)
     expect(isTicketConfirmText('oui')).toBe(true)
     expect(isTicketConfirmText('yes')).toBe(true)
+  })
+})
+
+describe('isOpenTicketConversationalReply', () => {
+  it('treats yes / thanks / emoji as conversational', () => {
+    expect(isOpenTicketConversationalReply('כן')).toBe(true)
+    expect(isOpenTicketConversationalReply('תודה')).toBe(true)
+    expect(isOpenTicketConversationalReply('👍')).toBe(true)
+  })
+
+  it('rejects real problem descriptions', () => {
+    expect(isOpenTicketConversationalReply('נזילה במקלחת')).toBe(false)
   })
 })
 

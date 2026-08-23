@@ -5,11 +5,13 @@ import { createPendingSelection, getPendingSelection, clearPendingSelection } fr
 export const STASHED_BUILDING_SEARCH_CODE = '__SEARCH__'
 export const STASHED_DESCRIPTION_CODE = '__DESC__'
 export const STASHED_MEDIA_CODE = '__MEDIA__'
+export const STASHED_FOLLOWUP_CODE = '__FOLLOWUP__'
 
 const STASH_CODES = new Set([
   STASHED_BUILDING_SEARCH_CODE,
   STASHED_DESCRIPTION_CODE,
   STASHED_MEDIA_CODE,
+  STASHED_FOLLOWUP_CODE,
 ])
 
 export function isStashedBuildingSearchRow(project: ProjectRow): boolean {
@@ -22,6 +24,10 @@ export function isStashedDescriptionRow(project: ProjectRow): boolean {
 
 export function isStashedMediaRow(project: ProjectRow): boolean {
   return project.project_code === STASHED_MEDIA_CODE
+}
+
+export function isStashedFollowupRow(project: ProjectRow): boolean {
+  return project.project_code === STASHED_FOLLOWUP_CODE
 }
 
 export function isStashRow(project: ProjectRow): boolean {
@@ -48,6 +54,16 @@ export function stashedPreSessionMedia(
   if (!mediaId) return null
   const kind = row?.address?.trim() === 'video' ? 'video' : 'image'
   return { mediaId, mediaKind: kind }
+}
+
+export function stashedOpenTicketFollowup(
+  projects: ProjectRow[] | null | undefined
+): { ticketId: string; ticketNumber: number } | null {
+  const row = projects?.find(isStashedFollowupRow)
+  const ticketId = row?.name?.trim()
+  const ticketNumber = Number.parseInt(String(row?.address ?? ''), 10)
+  if (!ticketId || !Number.isFinite(ticketNumber) || ticketNumber <= 0) return null
+  return { ticketId, ticketNumber }
 }
 
 function realCandidateProjects(projects: ProjectRow[] | null | undefined): ProjectRow[] {
@@ -117,6 +133,40 @@ export async function stashProblemDescription(
   ])
 }
 
+/** Remember open-ticket follow-up choice context (update vs new ticket). */
+export async function stashOpenTicketFollowupChoice(
+  phoneNumber: string,
+  ticketId: string,
+  ticketNumber: number,
+  description: string,
+  supabaseAdmin: SupabaseClient,
+  clientId: string,
+  preferredLanguage?: string | null
+): Promise<void> {
+  const trimmedDesc = description.trim()
+  if (!ticketId.trim() || ticketNumber <= 0 || !trimmedDesc) return
+  await upsertStashRows(
+    phoneNumber,
+    supabaseAdmin,
+    clientId,
+    [
+      {
+        id: STASHED_DESCRIPTION_CODE,
+        name: trimmedDesc,
+        project_code: STASHED_DESCRIPTION_CODE,
+        address: trimmedDesc,
+      },
+      {
+        id: STASHED_FOLLOWUP_CODE,
+        name: ticketId.trim(),
+        project_code: STASHED_FOLLOWUP_CODE,
+        address: String(ticketNumber),
+      },
+    ],
+    preferredLanguage
+  )
+}
+
 /** Remember image/video sent before a session exists. */
 export async function stashPreSessionMedia(
   phoneNumber: string,
@@ -161,6 +211,36 @@ export async function readStashedPreSessionMedia(
 ): Promise<{ mediaId: string; mediaKind: 'image' | 'video' } | null> {
   const pending = await getPendingSelection(phoneNumber, supabaseAdmin, clientId)
   return stashedPreSessionMedia(pending?.candidate_projects)
+}
+
+export async function readStashedOpenTicketFollowup(
+  phoneNumber: string,
+  supabaseAdmin: SupabaseClient,
+  clientId: string
+): Promise<{ ticketId: string; ticketNumber: number } | null> {
+  const pending = await getPendingSelection(phoneNumber, supabaseAdmin, clientId)
+  return stashedOpenTicketFollowup(pending?.candidate_projects)
+}
+
+/** Drop follow-up choice stash but keep description / search / media rows. */
+export async function clearOpenTicketFollowupStash(
+  phoneNumber: string,
+  supabaseAdmin: SupabaseClient,
+  clientId: string
+): Promise<void> {
+  const pending = await getPendingSelection(phoneNumber, supabaseAdmin, clientId)
+  if (!pending) return
+  const withoutFollowup = (pending.candidate_projects || []).filter((p) => !isStashedFollowupRow(p))
+  await clearPendingSelection(phoneNumber, supabaseAdmin, clientId)
+  if (withoutFollowup.length > 0) {
+    await createPendingSelection(
+      phoneNumber,
+      withoutFollowup,
+      supabaseAdmin,
+      clientId,
+      pending.preferred_language ?? null
+    )
+  }
 }
 
 /** Copy stashed pre-session media into the active session row for ticket attach. */

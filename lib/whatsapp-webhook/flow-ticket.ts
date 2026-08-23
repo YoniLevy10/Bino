@@ -82,10 +82,16 @@ export async function findOpenTicketForPhone(
   from: string,
   supabaseAdmin: SupabaseClient,
   clientId: string
-): Promise<{ id: string; status: string; created_at: string } | null> {
+): Promise<{
+  id: string
+  status: string
+  created_at: string
+  ticket_number: number
+  project_id: string | null
+} | null> {
   const { data, error } = await supabaseAdmin
     .from('tickets')
-    .select('id, status, created_at')
+    .select('id, status, created_at, ticket_number, project_id')
     .eq('reporter_phone', from)
     .eq('client_id', clientId)
     .is('deleted_at', null)
@@ -94,8 +100,22 @@ export async function findOpenTicketForPhone(
     .limit(1)
     .maybeSingle()
 
-  if (error || !data?.id || !data?.created_at || !data?.status) return null
-  return data as { id: string; status: string; created_at: string }
+  if (
+    error ||
+    !data?.id ||
+    !data?.created_at ||
+    !data?.status ||
+    typeof data.ticket_number !== 'number'
+  ) {
+    return null
+  }
+  return data as {
+    id: string
+    status: string
+    created_at: string
+    ticket_number: number
+    project_id: string | null
+  }
 }
 
 /** @deprecated Prefer findOpenTicketForPhone — kept for callers that still use the short window. */

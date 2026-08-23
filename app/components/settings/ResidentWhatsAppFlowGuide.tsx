@@ -27,6 +27,10 @@ const FLOWS = [
     color: '#7c3aed',
     steps: [
       { label: 'סטטוס', template: 'ticket_status_list / no_open_tickets' },
+      {
+        label: 'תקלה פתוחה',
+        template: 'open_ticket_short_ack / open_ticket_followup_choice → update_ack',
+      },
       { label: 'סגירה', template: 'ticket_closed' },
     ],
   },

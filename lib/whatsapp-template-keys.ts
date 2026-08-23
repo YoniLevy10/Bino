@@ -7,6 +7,9 @@ export const WHATSAPP_TEMPLATE_KEYS = [
   'last_project_confirm', // דייר חוזר — אותו בניין / בניין אחר (כפתורים)
   'building_list_body',   // גוף רשימת בניינים (כפתור «בחר בניין»)
   'clarification_reply',  // «איך פותחים?» — הנחיה קצרה
+  'open_ticket_short_ack',       // תשובה קצרה («כן») כשיש תקלה פתוחה
+  'open_ticket_followup_choice', // תקלה פתוחה + טקסט ארוך — עדכון או חדשה
+  'open_ticket_update_ack',      // אישור שעדכון צורף לתקלה הפתוחה
 
   // ── קיים (5) ──────────────────────────────────────────────────────
   'welcome',            // הנחיות כלליות
@@ -86,6 +89,9 @@ export const WHATSAPP_TEMPLATE_CATEGORIES: Record<
   last_project_confirm: 'building',
   building_list_body: 'building',
   clarification_reply: 'flow',
+  open_ticket_short_ack: 'flow',
+  open_ticket_followup_choice: 'flow',
+  open_ticket_update_ack: 'flow',
   welcome: 'general',
   ticket_opened: 'flow',
   ticket_closed: 'flow',
@@ -154,7 +160,15 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
     step: 2,
     title: 'תיאור ופתיחת תקלה',
     description: 'בניין זוהה — תיאור קצר, תקלה נפתחת, אופציונלי תמונה/סרטון',
-    keys: ['session_created', 'resident_prompt', 'duplicate_ticket', 'ticket_opened'],
+    keys: [
+      'session_created',
+      'resident_prompt',
+      'duplicate_ticket',
+      'ticket_opened',
+      'open_ticket_short_ack',
+      'open_ticket_followup_choice',
+      'open_ticket_update_ack',
+    ],
   },
   {
     step: 3,
@@ -196,6 +210,10 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   last_project_confirm:      'דייר שדיווח בעבר — כפתורי «אותו בניין» / «בניין אחר» ({{project_name}})',
   building_list_body:        'גוף ההודעה מעל «בחר בניין» — רק התאמות חיפוש (לא כל הפרויקטים)',
   clarification_reply:       'דייר שואל «איך פותחים?» — הנחיה קצרה',
+  open_ticket_short_ack:     'דייר עם תקלה פתוחה שלח «כן»/תודה — אישור קצר בלי בחירת בניין',
+  open_ticket_followup_choice:
+    'דייר עם תקלה פתוחה שלח תיאור — כפתורי «עדכון לתקלה» / «תקלה חדשה» ({{ticket_number}})',
+  open_ticket_update_ack:    'אחרי בחירת «עדכון לתקלה» — אישור שההודעה צורפה ({{ticket_number}})',
   welcome:                 'legacy — ברכה כללית (דייר חדש ללא שפה שמורה)',
   qr_invalid:              'נסרק QR אך הפורמט שגוי (לא מתחיל ב-BMK)',
   project_not_found:       'ה-QR תקין אך קוד הפרויקט לא קיים במערכת',
@@ -234,6 +252,9 @@ export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
   last_project_confirm: 'דייר חוזר — אותו בניין? (כפתורים)',
   building_list_body: 'רשימת התאמות חיפוש — טקסט מעל הכפתור',
   clarification_reply: 'הסבר קצר — איך לפתוח תקלה',
+  open_ticket_short_ack: 'אישור קצר — יש תקלה פתוחה ({{ticket_number}})',
+  open_ticket_followup_choice: 'תקלה פתוחה — עדכון או תקלה חדשה? (כפתורים)',
+  open_ticket_update_ack: 'אישור עדכון לתקלה פתוחה ({{ticket_number}})',
   welcome: 'הודעת פתיחה והנחיות (legacy)',
   ticket_opened: 'אישור פתיחת תקלה (עם כל הפרטים)',
   ticket_closed: 'סגירת תקלה (עדכון לדייר)',
@@ -340,6 +361,21 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
     'כתבו בקצרה מה הבעיה (למשל: נזילה). אפשר גם תמונה.',
     'Décrivez brièvement le problème (ex: fuite). Photo possible.',
     'Briefly describe the issue (e.g. leak). You can send a photo.'
+  ),
+  open_ticket_short_ack: joinTrilingualTemplate(
+    'קיבלנו. ממשיכים לטפל בתקלה #{{ticket_number}}.',
+    'Bien reçu. Nous continuons le traitement de la demande #{{ticket_number}}.',
+    'Got it. We are still handling ticket #{{ticket_number}}.'
+  ),
+  open_ticket_followup_choice: joinTrilingualTemplate(
+    'יש לך תקלה פתוחה #{{ticket_number}}. זה עדכון לתקלה הקיימת, או תקלה חדשה?',
+    'Vous avez une demande ouverte #{{ticket_number}}. Mise à jour ou nouvelle demande ?',
+    'You have open ticket #{{ticket_number}}. Update it, or open a new ticket?'
+  ),
+  open_ticket_update_ack: joinTrilingualTemplate(
+    'עדכון התקבל לתקלה #{{ticket_number}}. תודה!',
+    'Mise à jour reçue pour la demande #{{ticket_number}}. Merci !',
+    'Update received for ticket #{{ticket_number}}. Thank you!'
   ),
   welcome: joinTrilingualTemplate(
     'לדיווח תקלה: כתבו בטקסט את תיאור הבעיה, או סרקו את קוד ה־QR בבניין.\n' +

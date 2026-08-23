@@ -45,6 +45,30 @@ export async function reporterListedInProjectResidents(
   })
 }
 
+/** Project from an open pending join request — known building before manager name-approval. */
+export async function findOpenPendingResidentProject(
+  supabase: SupabaseClient,
+  clientId: string,
+  reporterWaFrom: string
+): Promise<{ projectId: string } | null> {
+  if (isWhatsAppTestSender(reporterWaFrom)) return null
+  const digits = normalizeWhatsAppPhoneDigits(reporterWaFrom)
+  if (!digits) return null
+
+  const { data, error } = await supabase
+    .from('pending_resident_join_requests')
+    .select('project_id')
+    .eq('client_id', clientId)
+    .eq('reporter_phone_normalized', digits)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data?.project_id) return null
+  return { projectId: data.project_id as string }
+}
+
 /** Returns true if a new pending row was created (not duplicate / error). */
 export async function queuePendingResidentApproval(params: {
   supabase: SupabaseClient
