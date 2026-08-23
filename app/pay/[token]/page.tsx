@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 
@@ -42,6 +43,7 @@ export default function PublicPayPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [wantReceipt, setWantReceipt] = useState(true)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -76,6 +78,11 @@ export default function PublicPayPage() {
     e.preventDefault()
     if (!data?.payment_url || !token) return
     setFormError(null)
+
+    if (!acceptedTerms) {
+      setFormError('יש לאשר את התקנון לפני המשך לתשלום')
+      return
+    }
 
     if (wantReceipt && !email.trim()) {
       setFormError('להודעת אישור במייל — הזינו כתובת מייל')
@@ -195,8 +202,35 @@ export default function PublicPayPage() {
                 autoComplete="tel"
               />
             </label>
+            <label style={styles.checkLabel}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(ev) => setAcceptedTerms(ev.target.checked)}
+                required
+              />
+              <span>
+                קראתי ואני מאשר/ת את{' '}
+                <Link href="/terms" target="_blank" rel="noopener noreferrer" style={styles.inlineLink}>
+                  התקנון
+                </Link>{' '}
+                ואת{' '}
+                <Link href="/privacy" target="_blank" rel="noopener noreferrer" style={styles.inlineLink}>
+                  מדיניות הפרטיות
+                </Link>
+              </span>
+            </label>
+            <p style={styles.legalLinks}>
+              <Link href="/contact" style={styles.inlineLink}>
+                יצירת קשר
+              </Link>
+              {' · '}
+              <Link href="/vaad-pay" style={styles.inlineLink}>
+                על השירות
+              </Link>
+            </p>
             {formError ? <p style={styles.formErr}>{formError}</p> : null}
-            <button type="submit" style={styles.ctaBtn} disabled={saving}>
+            <button type="submit" style={styles.ctaBtn} disabled={saving || !acceptedTerms}>
               {saving ? 'שומר…' : 'המשך לתשלום מאובטח'}
             </button>
           </form>
@@ -317,6 +351,17 @@ const styles: Record<string, CSSProperties> = {
     color: '#b91c1c',
     fontSize: 13,
     textAlign: 'center',
+  },
+  inlineLink: {
+    color: '#1e40af',
+    fontWeight: 700,
+    textDecoration: 'underline',
+  },
+  legalLinks: {
+    margin: 0,
+    fontSize: 13,
+    textAlign: 'center',
+    color: '#64748b',
   },
   ctaBtn: {
     display: 'block',

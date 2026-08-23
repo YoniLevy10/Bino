@@ -2,7 +2,7 @@
 
 יעד: **≥85/100** לפני שיחה עם לקוחה. מטרה סופית: **100/100**.
 
-עודכן: 2026-08-21 · ענף: `cursor/collections-per-tenant-accounts-e95c`
+עודכן: 2026-08-23 · ענף: `cursor/grow-compliance-pages-e95c`
 
 ## עקרון חשוב — חשבון אישי לכל לקוח
 
@@ -27,6 +27,7 @@
 | A11 | אי אפשר להפעיל גבייה בלי מפתח+סוד אישיים | ✅ | חשבון לא מוכן ≠ שליחה |
 | A12 | מסך גבייה חוסם שליחה עד שחשבון Morning מוגדר | ✅ | UX ברור למנהל |
 | A13 | דף `/pay`: מייל (+טלפון) לאישור תשלום ב-Resend | ✅ | קבלה בלי עלות SMS |
+| A14 | דפים ציבוריים Grow: `/vaad-pay`, `/terms`, `/contact` + צ׳קבוקס תקנון ב־`/pay` | ✅ | אישור סליקה |
 
 ## B. תשתית (אתה / Vercel / Morning / לקוח)
 
@@ -38,7 +39,18 @@
 | B4 | מפתחות Morning **של הלקוחה** (לא משותפים) + בדיקת חיבור ירוקה | ⬜ |
 | B5 | סליקה פעילה בחשבון Morning של הלקוחה (Cardcom/Isracard/Grow) | ⬜ |
 | B6 | תשלום ניסיון אחד → סטטוס «שולם» ב־`/collections` | ⬜ |
-| B7 | `RESEND_API_KEY` (+ `RESEND_FROM_EMAIL` אופציונלי) — אישור תשלום במייל | ⬜ |
+| B7 | `RESEND_API_KEY` (+ `RESEND_FROM_EMAIL` אופציונלי) — אישור תשלום במייל | ✅ אם כבר קיים |
+| B8 | `LEGAL_PHONE` + `LEGAL_ADDRESS` (+ `LEGAL_BUSINESS_NAME`) ב-Vercel | ⬜ |
+| B9 | ב-Morning Digital Payments: אתר = `https://bamakor.vercel.app/vaad-pay` → עדכון → אישור Grow | ⬜ |
+
+### אישור Grow (B8–B9)
+
+1. הגדירו ב-Vercel: `LEGAL_PHONE`, `LEGAL_ADDRESS`, `LEGAL_BUSINESS_NAME` (טלפון+כתובת של הישות ב-Morning).
+2. Deploy אחרי המיזוג.
+3. בדקו: `/vaad-pay`, `/terms`, `/contact`, `/privacy` נפתחים בלי התחברות.
+4. ב-Morning → תשלומים דיגיטליים: כתובת האתר = **`https://bamakor.vercel.app/vaad-pay`** (לא אתר אחר).
+5. לחצו עדכון והמתינו לאישור Grow.
+6. רק אחרי אישור — תשלום ניסיון (B6).
 
 **רק אחרי B6 מסומן — מותר לדבר עם הלקוחה.**
 
