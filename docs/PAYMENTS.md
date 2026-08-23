@@ -32,7 +32,7 @@
 
 ## הפעלה (פיילוט)
 
-1. להריץ מיגרציה `090_client_grow_legal.sql` (+ 088/089 אם עדיין לא).
+1. להריץ `090_client_grow_legal.sql` ב-SQL Editor (087/089 כבר בפרודקשן; 088 IF NOT EXISTS).
 2. `GREENINVOICE_WEBHOOK_SECRET` ב-Vercel.
 3. סופר-אדמין: תוסף גבייה ללקוחה.
 4. הלקוחה בהגדרות → Morning: מפתחות, בדיקת חיבור, פרטי עסק, העתקת שני קישורים ל-Morning (Webhook + עמוד Grow).

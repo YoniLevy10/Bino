@@ -45,7 +45,7 @@
 | B7 | `RESEND_API_KEY` (+ `RESEND_FROM_EMAIL` אופציונלי) — אישור תשלום במייל | ✅ אם כבר קיים |
 | B8 | הלקוחה מילאה שם/טלפון/כתובת בהגדרות → Morning (לא `LEGAL_*` של הפלטפורמה) | ⬜ |
 | B9 | ב-Morning Digital Payments: אתר = `https://bamakor.vercel.app/vaad-pay/{clientId}` → עדכון → אישור Grow | ⬜ |
-| B10 | מיגרציות 088 + 089 + **090** רצו ב-Supabase | ⬜ |
+| B10 | מיגרציות: 087+089 רצו בפרודקשן; **090** (פרטי Grow פר-לקוח) + 088 אם חסר | ⬜ 090 |
 
 ### אישור Grow (B8–B9)
 
