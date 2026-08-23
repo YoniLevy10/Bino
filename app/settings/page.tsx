@@ -30,6 +30,7 @@ import {
   GREENINVOICE_CLEARING_LABELS,
   GREENINVOICE_DOC_TYPE_LABELS,
   GREENINVOICE_VAT_TYPE_LABELS,
+  looksLikeUrlAsApiKeyId,
   type GreenInvoiceBusinessSummary,
   type GreenInvoiceClearingPlugin,
   type GreenInvoiceEnv,
@@ -238,6 +239,8 @@ function SettingsPageInner() {
   const growLegalReady = Boolean(
     growLegalName.trim() && growLegalPhone.trim() && growLegalAddress.trim()
   )
+
+  const giApiKeyLooksInvalid = looksLikeUrlAsApiKeyId(giApiKeyId)
 
   async function load() {
     setLoading(true)
@@ -1127,6 +1130,11 @@ function SettingsPageInner() {
                     <span style={styles.formHint}>
                       Morning → הגדרות → מתקדם → מפתחות API → צור מפתח API (בחשבון שלכם בלבד)
                     </span>
+                    {giApiKeyLooksInvalid ? (
+                      <span style={{ ...styles.formHint, color: '#c2410c' }}>
+                        זה צריך להיות מזהה מפתח, לא כתובת אתר.
+                      </span>
+                    ) : null}
                   </div>
 
                   <div style={styles.formGroup}>

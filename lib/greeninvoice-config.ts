@@ -9,6 +9,26 @@ export const GREENINVOICE_BASE_URLS: Record<GreenInvoiceEnv, string> = {
   production: 'https://api.greeninvoice.co.il/api/v1',
 }
 
+/** Morning OAuth 2.0 IdP (June 2026+). Resource APIs above are unchanged. */
+export const GREENINVOICE_IDP_TOKEN_URLS: Record<GreenInvoiceEnv, string> = {
+  sandbox: 'https://api.sandbox.morning.dev/idp/v1/oauth/token',
+  production: 'https://api.morning.co/idp/v1/oauth/token',
+}
+
+export function greenInvoiceBaseUrl(env: GreenInvoiceEnv = 'production'): string {
+  return GREENINVOICE_BASE_URLS[env]
+}
+
+export function greenInvoiceIdpTokenUrl(env: GreenInvoiceEnv = 'production'): string {
+  return GREENINVOICE_IDP_TOKEN_URLS[env]
+}
+
+/** Key ID from Morning is a UUID. A dashboard URL was a common paste mistake. */
+export function looksLikeUrlAsApiKeyId(value: string): boolean {
+  const v = value.trim()
+  return /https?:\/\//i.test(v) || v.includes('/')
+}
+
 /** Document types used for collections (see Morning API /documents/types). */
 export const GREENINVOICE_DOC_TYPES = {
   proforma: 300,

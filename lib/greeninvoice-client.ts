@@ -1,14 +1,25 @@
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 import {
-  GREENINVOICE_BASE_URLS,
+  greenInvoiceBaseUrl,
+  greenInvoiceIdpTokenUrl,
+  looksLikeUrlAsApiKeyId,
   type GreenInvoiceApiError,
   type GreenInvoiceBusinessSummary,
   type GreenInvoiceCredentials,
-  type GreenInvoiceTokenResponse,
 } from '@/lib/greeninvoice-config'
+import {
+  formatGreenInvoiceAuthError,
+  morningAuthEnvHint,
+  parseGreenInvoiceTokenResponse,
+  safeGreenInvoiceAuthLog,
+} from '@/lib/greeninvoice-token'
 
 const TOKEN_TIMEOUT_MS = 15_000
 const API_TIMEOUT_MS = 20_000
+
+export type GreenInvoiceTokenResult =
+  | { ok: true; token: string; expires: number }
+  | { ok: false; status: number; error: string; errorCode?: number }
 
 type GreenInvoiceRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -25,7 +36,29 @@ export type GreenInvoiceConnectionTestResult = {
 }
 
 function baseUrl(env: GreenInvoiceCredentials['env']): string {
-  return GREENINVOICE_BASE_URLS[env]
+  return greenInvoiceBaseUrl(env)
+}
+
+async function postTokenRequest(
+  url: string,
+  body: Record<string, string>
+): Promise<{ res: Response | null; data: unknown }> {
+  try {
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body),
+      },
+      TOKEN_TIMEOUT_MS
+    )
+    if (!res) return { res: null, data: null }
+    return { res, data: await parseJsonBody(res) }
+  } catch (err) {
+    console.error('[greeninvoice] token request error', new URL(url).host, err instanceof Error ? err.message : 'error')
+    return { res: null, data: null }
+  }
 }
 
 async function parseJsonBody<T>(res: Response): Promise<T | null> {
@@ -41,32 +74,66 @@ function formatApiError(data: GreenInvoiceApiError | null, fallback: string): st
   return fallback
 }
 
-/** Obtain JWT — valid ~30 minutes per Morning docs. */
+/**
+ * Obtain a bearer token. Morning retired `/account/token` (June 2026) in favor of
+ * OAuth 2.0 IdP. We try IdP first, then the legacy resource-API path for old keys.
+ */
 export async function obtainGreenInvoiceToken(
   credentials: Pick<GreenInvoiceCredentials, 'env' | 'apiKeyId' | 'apiSecret'>
-): Promise<{ token: string; expires: number } | null> {
-  const url = `${baseUrl(credentials.env)}/account/token`
-  const res = await fetchWithTimeout(
-    url,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        id: credentials.apiKeyId,
-        secret: credentials.apiSecret,
-        grant_type: 'client_credentials',
-      }),
-    },
-    TOKEN_TIMEOUT_MS
-  )
-
-  if (!res) return null
-  const data = await parseJsonBody<GreenInvoiceTokenResponse & GreenInvoiceApiError>(res)
-  if (!res.ok || !data?.token) {
-    console.error('[greeninvoice] token failed', res.status, data)
-    return null
+): Promise<GreenInvoiceTokenResult> {
+  if (looksLikeUrlAsApiKeyId(credentials.apiKeyId)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'מזהה המפתח נראה כמו כתובת אתר. הדביקו את Key ID מ-Morning → הגדרות → מפתחות API (UUID), לא קישור לדשבורד.',
+    }
   }
-  return { token: data.token, expires: data.expires }
+
+  const idp = await postTokenRequest(greenInvoiceIdpTokenUrl(credentials.env), {
+    grant_type: 'client_credentials',
+    client_id: credentials.apiKeyId,
+    client_secret: credentials.apiSecret,
+  })
+  const idpToken = idp.res?.ok ? parseGreenInvoiceTokenResponse(idp.data) : null
+  if (idpToken) return { ok: true, ...idpToken }
+
+  const legacy = await postTokenRequest(`${baseUrl(credentials.env)}/account/token`, {
+    grant_type: 'client_credentials',
+    id: credentials.apiKeyId,
+    secret: credentials.apiSecret,
+  })
+  const legacyToken = legacy.res?.ok ? parseGreenInvoiceTokenResponse(legacy.data) : null
+  if (legacyToken) return { ok: true, ...legacyToken }
+
+  const idpStatus = idp.res?.status ?? 0
+  const legacyStatus = legacy.res?.status ?? 0
+  console.error('[greeninvoice] token failed', {
+    env: credentials.env,
+    idpStatus,
+    legacyStatus,
+    idpError: safeGreenInvoiceAuthLog(idp.data),
+    legacyError: safeGreenInvoiceAuthLog(legacy.data),
+  })
+
+  if (!idp.res && !legacy.res) {
+    return { ok: false, status: 0, error: 'פסק זמן בחיבור ל-Morning' }
+  }
+
+  const morningMsg = formatGreenInvoiceAuthError(idp.data) || formatGreenInvoiceAuthError(legacy.data)
+  const hint = morningAuthEnvHint(credentials.env)
+  const errorCode = [idp.data, legacy.data]
+    .map((row) =>
+      row && typeof row === 'object' && typeof (row as { errorCode?: unknown }).errorCode === 'number'
+        ? (row as { errorCode: number }).errorCode
+        : undefined
+    )
+    .find((code) => code !== undefined)
+  return {
+    ok: false,
+    status: idpStatus || legacyStatus,
+    error: morningMsg ? `אימות נכשל מול מורנינג. ${hint} (${morningMsg})` : `אימות נכשל מול מורנינג. ${hint}`,
+    errorCode,
+  }
 }
 
 async function greenInvoiceFetch<T>(
@@ -140,12 +207,13 @@ export async function testGreenInvoiceConnection(
   credentials: GreenInvoiceCredentials
 ): Promise<GreenInvoiceConnectionTestResult> {
   const tokenResult = await obtainGreenInvoiceToken(credentials)
-  if (!tokenResult) {
+  if (!tokenResult.ok) {
     return {
       ok: false,
       businesses: [],
       currentBusiness: null,
-      error: 'אימות נכשל — בדקו מפתח API וסוד',
+      error: tokenResult.error,
+      errorCode: tokenResult.errorCode,
     }
   }
 
@@ -203,8 +271,8 @@ export async function getGreenInvoicePaymentForm(
   request: GreenInvoicePaymentFormRequest
 ): Promise<{ ok: true; data: GreenInvoicePaymentFormResult } | { ok: false; error: string }> {
   const tokenResult = await obtainGreenInvoiceToken(credentials)
-  if (!tokenResult) {
-    return { ok: false, error: 'אימות Morning נכשל' }
+  if (!tokenResult.ok) {
+    return { ok: false, error: tokenResult.error }
   }
 
   const body: Record<string, unknown> = {

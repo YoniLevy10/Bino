@@ -32,6 +32,12 @@ Operational guides for platform and tenant features.
 - ביטול חיוב מבטל את קישור `/pay/...` של Bamakor (קישור Morning הישן עלול עדיין להיות פתוח אצלם).
 - «סמן כשולם» — גיבוי ידני אם ה-webhook פספס.
 
+### חיבור Morning מחזיר 401
+
+- מיוני 2026 הטוקן יוצא מ-OAuth IdP (`api.morning.co`), לא מ-`/account/token`.
+- מזהה מפתח הוא UUID מ-Morning → הגדרות → מפתחות API — לא כתובת דשבורד.
+- ארגז חול / ייצור חייבים להתאים למפתח שנשמר.
+
 ---
 
 ## חתמת עובדים (NFC — worker stamp)
