@@ -46,6 +46,9 @@ export type CollectionChargeRow = {
   greeninvoice_payment_id: string | null
   sent_at: string | null
   paid_at: string | null
+  receipt_email?: string | null
+  receipt_phone?: string | null
+  receipt_email_sent_at?: string | null
   created_by: string | null
   created_at: string
   updated_at: string

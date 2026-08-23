@@ -274,7 +274,14 @@ describe('markChargePaidByMorningIds', () => {
       }
       c.in = () => c
       c.neq = () => c
-      c.select = async () => ({ data: [{ id: '1' }], error: null })
+      c.eq = () => c
+      c.is = () => c
+      c.maybeSingle = async () => ({ data: null, error: null })
+      c.select = () => {
+        // Terminal after update().in().neq().select() OR start of receipt query
+        const terminal = Promise.resolve({ data: [{ id: '1' }], error: null })
+        return Object.assign(terminal, c)
+      }
       return c
     }
     const admin = {
