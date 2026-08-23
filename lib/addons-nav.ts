@@ -43,8 +43,8 @@ export function appendAddonsNavIfNeeded(
 /**
  * Paid add-ons stay on `/addons` by default (see ADDON_ONLY_SIDEBAR_NAV_IDS).
  * Do not auto-inject every enabled addon into the top-level sidebar — that
- * balloons the nav. Custom `sidebar_nav_order` can still pin specific addons
- * via `resolveSidebarNavItems(..., paidNavIds)`.
+ * balloons the nav. Tenants pin addons from /addons; that writes
+ * `sidebar_nav_order` and `resolveSidebarNavItems` shows them.
  *
  * Kept as a no-op for call-site compatibility.
  */

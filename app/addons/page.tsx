@@ -5,6 +5,7 @@ import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'reac
 import { useSearchParams } from 'next/navigation'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonMarketingModal } from '@/app/components/addons/AddonMarketingModal'
+import { AddonSidebarPinButton } from '@/app/components/addons/AddonSidebarPinButton'
 import { BAMAKOR_BRAND } from '@/lib/addons-nav'
 import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 import {
@@ -79,13 +80,16 @@ function AddonCard({
           {entry.locked ? (
             <span style={styles.tapHint}>לחצו לפרטים והסבר מלא</span>
           ) : (
-            <Link
-              href={entry.featureHref}
-              style={styles.openLink}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {entry.featureCtaHe} ←
-            </Link>
+            <div style={styles.cardActions}>
+              <Link
+                href={entry.featureHref}
+                style={styles.openLink}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {entry.featureCtaHe} ←
+              </Link>
+              <AddonSidebarPinButton entry={entry} compact />
+            </div>
           )}
         </div>
       </article>
@@ -339,12 +343,19 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     marginTop: 4,
   },
+  cardActions: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
   openLink: {
     display: 'inline-block',
     fontSize: '13px',
     fontWeight: 700,
     color: theme.colors.primary,
-    marginTop: 8,
     textDecoration: 'none',
   },
   cardTitle: {

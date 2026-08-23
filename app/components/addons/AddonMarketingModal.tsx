@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
+import { AddonSidebarPinButton } from '@/app/components/addons/AddonSidebarPinButton'
 import { BAMAKOR_BRAND } from '@/lib/addons-nav'
 import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 import type { PaidAddonDisplayEntry } from '@/lib/paid-addons-catalog'
@@ -106,9 +107,12 @@ export function AddonMarketingModal({
               <p style={{ ...styles.ctaText, color: theme.colors.success, margin: '0 0 12px' }}>
                 התוסף פעיל בחשבון שלכם.
               </p>
-              <Link href={entry.featureHref}>
-                <Button variant="primary">{entry.featureCtaHe}</Button>
-              </Link>
+              <div style={styles.ctaActions}>
+                <Link href={entry.featureHref}>
+                  <Button variant="primary">{entry.featureCtaHe}</Button>
+                </Link>
+                <AddonSidebarPinButton entry={entry} />
+              </div>
             </div>
           )}
         </div>
@@ -252,6 +256,12 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     background: theme.colors.warningMuted,
     border: `1px solid ${theme.colors.border}`,
+  },
+  ctaActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
   },
   ctaText: {
     margin: '0 0 8px',

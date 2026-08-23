@@ -116,6 +116,20 @@ export const ticketInternalMessageBodySchema = z.object({
   body: z.string().min(1).max(8000),
 })
 
+export const sidebarPinBodySchema = z.object({
+  addon_key: z.enum([
+    'calendar',
+    'professionals',
+    'worker_stamp',
+    'pilot_sms',
+    'project_documents',
+    'whatsapp_inbox',
+    'campaigns',
+    'collections',
+  ]),
+  pinned: z.boolean(),
+})
+
 const greenInvoiceEnvSchema = z.enum(['sandbox', 'production'])
 const greenInvoiceClearingSchema = z.enum(['cardcom', 'isracard', 'grow'])
 

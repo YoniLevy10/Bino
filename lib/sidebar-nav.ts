@@ -45,6 +45,17 @@ export function isAddonOnlySidebarNavId(id: SidebarNavItemId): boolean {
   return (ADDON_ONLY_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
 }
 
+/** Shown in the tenant sidebar automatically when the paid addon is enabled. */
+export const AUTO_SIDEBAR_ADDON_NAV_IDS: readonly SidebarNavItemId[] = [
+  'whatsapp_inbox',
+  'attendance',
+  'collections',
+] as const
+
+export function isAutoSidebarAddonNavId(id: SidebarNavItemId): boolean {
+  return (AUTO_SIDEBAR_ADDON_NAV_IDS as readonly string[]).includes(id)
+}
+
 export type SidebarNavItem = {
   id: SidebarNavItemId | 'addons'
   href: string
@@ -64,8 +75,8 @@ export const MOBILE_BOTTOM_PRIMARY_IDS: readonly SidebarNavItemId[] = [
 
 /**
  * Tenant sidebar allowlist (order = default).
- * Paid entries (WhatsApp inbox, attendance, collections) appear only when enabled.
- * Everything else lives under /addons — not as top-level sidebar items.
+ * Auto addons (WhatsApp / attendance / collections) appear when enabled.
+ * Other addons appear only after the tenant pins them from /addons.
  */
 export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
@@ -76,6 +87,11 @@ export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'whatsapp_inbox',
   'attendance',
   'collections',
+  'calendar',
+  'professionals',
+  'pilot_sms',
+  'project_documents',
+  'campaigns',
   'summary',
 ]
 
@@ -175,10 +191,20 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
 }
 
 /**
- * Default sidebar order.
- * Addon-only ids in this list (WhatsApp / attendance / collections) render only when enabled.
+ * Default sidebar order (no extra pinned addons).
+ * Auto addon ids here render only when the paid addon is enabled.
  */
-export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [...TENANT_SIDEBAR_NAV_IDS]
+export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
+  'dashboard',
+  'tickets',
+  'projects',
+  'residents',
+  'workers',
+  'whatsapp_inbox',
+  'attendance',
+  'collections',
+  'summary',
+]
 
 export type SidebarNavLabels = Partial<Record<SidebarNavItemId, string>>
 
@@ -258,9 +284,20 @@ export function resolveSidebarNavItems(
   )
 
   const includeId = (id: SidebarNavItemId): boolean => {
-    // Only the curated tenant sidebar list — rest stays under /addons.
     if (!isTenantSidebarNavId(id)) return false
     if (isAddonOnlySidebarNavId(id) && !paidNavIds?.has(id)) return false
+    if (isAddonOnlySidebarNavId(id) && !isAutoSidebarAddonNavId(id)) {
+      if (!customOrder?.includes(id)) return false
+    }
+    if (
+      isAddonOnlySidebarNavId(id) &&
+      isAutoSidebarAddonNavId(id) &&
+      customOrder &&
+      customOrder.length > 0 &&
+      !customOrder.includes(id)
+    ) {
+      return false
+    }
     if (allowedSet && !allowedSet.has(id)) return false
     return true
   }
@@ -288,6 +325,29 @@ export function resolveSidebarNavItems(
   })
 
   return applySidebarNavLabels(result, customLabels)
+}
+
+export function nextSidebarOrderAfterPinToggle(
+  currentOrder: SidebarNavItemId[] | null | undefined,
+  enabledFeatures: SidebarNavItemId[] | null | undefined,
+  paidNavIds: ReadonlySet<SidebarNavItemId>,
+  navId: SidebarNavItemId,
+  pinned: boolean
+): SidebarNavItemId[] {
+  const visible = resolveSidebarNavItems(currentOrder, enabledFeatures, paidNavIds)
+    .map((item) => item.id)
+    .filter((id): id is SidebarNavItemId => id !== 'addons')
+
+  const next = pinned
+    ? visible.includes(navId)
+      ? visible
+      : [...visible, navId]
+    : visible.filter((id) => id !== navId)
+
+  for (const required of ['dashboard', 'tickets'] as const) {
+    if (!next.includes(required)) next.unshift(required)
+  }
+  return next
 }
 
 export function resolveSidebarNavOrderIds(customOrder: SidebarNavItemId[] | null | undefined): SidebarNavItemId[] {

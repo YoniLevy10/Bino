@@ -5,6 +5,7 @@ import {
   PRIMARY_SIDEBAR_NAV_IDS,
   SIDEBAR_NAV_REGISTRY,
   TENANT_SIDEBAR_NAV_IDS,
+  nextSidebarOrderAfterPinToggle,
   parseSidebarNavOrderFromDb,
   resolveSidebarNavItems,
   shouldShowMobileBottomNav,
@@ -40,8 +41,28 @@ describe('resolveSidebarNavItems', () => {
     )
     expect(paid.map((i) => i.id)).toContain('attendance')
     expect(paid.map((i) => i.id)).toContain('collections')
-    // calendar is paid but not in the curated sidebar — stays under /addons
-    expect(paid.map((i) => i.id)).not.toContain('calendar')
+    expect(paid.map((i) => i.id)).toContain('calendar')
+  })
+
+  it('does not show pin-only addons until they are in sidebar_nav_order', () => {
+    const paidUnpinned = resolveSidebarNavItems(
+      null,
+      null,
+      new Set(['calendar', 'professionals', 'attendance'] as const)
+    )
+    expect(paidUnpinned.map((i) => i.id)).toContain('attendance')
+    expect(paidUnpinned.map((i) => i.id)).not.toContain('calendar')
+    expect(paidUnpinned.map((i) => i.id)).not.toContain('professionals')
+  })
+
+  it('hides an auto addon when the saved order omits it', () => {
+    const withoutAttendance = DEFAULT_SIDEBAR_NAV_ORDER.filter((id) => id !== 'attendance')
+    const items = resolveSidebarNavItems(
+      withoutAttendance,
+      null,
+      new Set(['attendance'] as const)
+    )
+    expect(items.map((i) => i.id)).not.toContain('attendance')
   })
 
   it('applies curated tenant order (custom order cannot float summary above addons)', () => {
@@ -56,9 +77,9 @@ describe('resolveSidebarNavItems', () => {
     ])
   })
 
-  it('keeps summary after pinned paid addons even if custom order puts it early', () => {
+  it('keeps summary last when auto addons are in the saved order', () => {
     const items = resolveSidebarNavItems(
-      ['dashboard', 'tickets', 'projects', 'residents', 'workers', 'summary'],
+      ['summary', 'dashboard', 'tickets', 'whatsapp_inbox', 'attendance'],
       null,
       new Set(['whatsapp_inbox', 'attendance'] as const)
     )
@@ -114,6 +135,23 @@ describe('splitSidebarNavSections', () => {
     expect(extras).toEqual([])
     expect(addons?.id).toBe('addons')
     expect(PRIMARY_SIDEBAR_NAV_IDS).toEqual(TENANT_SIDEBAR_NAV_IDS)
+  })
+})
+
+describe('nextSidebarOrderAfterPinToggle', () => {
+  it('pins calendar onto the visible sidebar order', () => {
+    const paid = new Set(['calendar', 'attendance'] as const)
+    const next = nextSidebarOrderAfterPinToggle(null, null, paid, 'calendar', true)
+    expect(next).toContain('calendar')
+    expect(next).toContain('dashboard')
+    expect(next).toContain('attendance')
+  })
+
+  it('unpins an auto addon from the saved order', () => {
+    const paid = new Set(['attendance'] as const)
+    const next = nextSidebarOrderAfterPinToggle(null, null, paid, 'attendance', false)
+    expect(next).not.toContain('attendance')
+    expect(next).toContain('dashboard')
   })
 })
 
