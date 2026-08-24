@@ -8,6 +8,7 @@ import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
 import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
 import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
+import { tryHandleInboundWhatsAppWithOpenAI } from '@/lib/whatsapp-openai-agent'
 import {
   runWhatsAppInboundBackground,
   type WaWebhookTenant,
@@ -106,6 +107,20 @@ export async function POST(req: NextRequest) {
     })
     if (dupErr && dupErr.code === '23505') {
       return NextResponse.json({ received: true }, { status: 200 })
+    }
+
+    const aiHandled = await tryHandleInboundWhatsAppWithOpenAI({
+      parsedMessage,
+      supabaseAdmin,
+      tenant: {
+        clientId: tenantResolved.clientId,
+        row: tenantResolved.row,
+      },
+      requestId,
+    })
+
+    if (aiHandled) {
+      return NextResponse.json({ received: true, status: 'ai_handled' }, { status: 200 })
     }
 
     const tenantPayload: WaWebhookTenant = {
