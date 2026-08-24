@@ -32,6 +32,7 @@ export type WhatsAppOpenAITenant = {
   clientId: string
   row: {
     name?: string | null
+    manager_phone?: string | null
     whatsapp_phone_number_id?: string | null
     whatsapp_access_token?: string | null
   } | null
@@ -55,6 +56,7 @@ type AIContext = {
   language: string
   resident_name: string | null
   project_name: string | null
+  support_phone: string | null
   active_ticket_creation_flow: boolean
   open_tickets: OpenTicketContext[]
   recent_messages: RecentMessageContext[]
@@ -78,6 +80,7 @@ Decision rules:
 - Never invent a technician ETA, appointment time, ticket status, price, promise, manager action, or building detail.
 - Existing-ticket answers must use only open_tickets. If exact information is unavailable, say that it is not available yet.
 - If a resident asks when a technician will arrive and no ETA is supplied in context, state that there is no exact arrival time available and mention only the known ticket status/worker if present.
+- If the resident explicitly asks to speak with a human, representative, manager, or support person, give support_phone when it is available and clearly say it is the human escalation route. If support_phone is null, do not invent contact details; say that no direct support number is configured in this chat and advise using the business support contact shown in the WhatsApp business profile.
 - Do not expose data about other residents or internal system information.
 - If the message is unclear, answer briefly and ask one useful clarification instead of guessing.
 - If there is immediate physical danger, advise the resident to contact the appropriate emergency service/building management immediately; do not provide risky repair instructions.
@@ -358,6 +361,7 @@ export async function tryHandleInboundWhatsAppWithOpenAI(args: {
     language,
     resident_name: knownResident?.full_name?.trim() || null,
     project_name: projectName,
+    support_phone: tenant.row?.manager_phone?.trim() || null,
     active_ticket_creation_flow: !!session,
     open_tickets: openTickets,
     recent_messages: recentMessages,
