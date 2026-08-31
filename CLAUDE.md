@@ -142,10 +142,14 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
-| `GREENINVOICE_WEBHOOK_SECRET` | Random secret; Morning webhook must use `?token=` — **required for collections** (unauthenticated webhooks rejected) |
-| `LEGAL_BUSINESS_NAME` | Platform-only display name on `/vaad-pay` + `/contact` (not used for a tenant's Grow audit) |
+| `GREENINVOICE_WEBHOOK_SECRET` | Legacy Morning webhook token (old charges only) |
+| `GROW_API_KEY` | Grow platform apiKey from Lial — **required for collections** |
+| `GROW_PAGE_CODE` | Grow platform pageCode — **required for collections** |
+| `GROW_WEBHOOK_SECRET` | Random secret; Grow notify URL uses `?token=` — **required for collections** |
+| `GROW_ENV` | `sandbox` for test keys, omit or `production` for live |
+| `LEGAL_BUSINESS_NAME` | Platform-only display name on `/vaad-pay` + `/contact` (not used for a tenant's Grow page) |
 | `LEGAL_PHONE` | Platform-only contact phone on public legal pages |
 | `LEGAL_ADDRESS` | Platform-only address on public legal pages |
 | `LEGAL_EMAIL` | Optional; falls back to `RESEND_FROM_EMAIL` / `VAPID_SUBJECT` |
 
-Grow approval for a paying tenant uses **that tenant's** name/phone/address in Settings → Morning and the public page `/vaad-pay/{clientId}`. Do not submit the platform `/vaad-pay` URL in a client's Morning account. See `docs/PAYMENTS.md`.
+Grow for a paying tenant: Settings → Grow (`userId` after they open a Grow account) and the public page `/vaad-pay/{clientId}`. Platform keys stay in Vercel. See `docs/PAYMENTS.md`.

@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getGreenInvoicePaymentForm } from '@/lib/greeninvoice-client'
+import { createGrowPaymentLink } from '@/lib/grow-client'
 import {
-  CLIENT_GREENINVOICE_SELECT,
-  credentialsFromClientRow,
-  isGreenInvoiceConfigured,
-  type ClientGreenInvoiceRow,
-} from '@/lib/greeninvoice-credentials'
+  CLIENT_GROW_PAYMENTS_SELECT,
+  isGrowCollectionsConfigured,
+  type ClientGrowPaymentsRow,
+} from '@/lib/grow-credentials'
+import { isGrowPlatformConfigured } from '@/lib/grow-config'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { getPublicAppUrl } from '@/lib/public-app-url'
 import {
@@ -33,16 +33,40 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
-export function buildGreenInvoiceWebhookNotifyUrl(): string | null {
+export function buildGrowWebhookNotifyUrl(): string | null {
   const base = getPublicAppUrl()
-  const secret = (process.env.GREENINVOICE_WEBHOOK_SECRET || '').trim()
+  const secret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
   if (!base || !secret) return null
-  const url = new URL(`${base}/api/webhook/greeninvoice`)
+  const url = new URL(`${base}/api/webhook/grow`)
   url.searchParams.set('token', secret)
   return url.toString()
 }
 
-/** Absolute webhook URL for Morning account settings (includes token). */
+/** Absolute webhook URL Bamakor registers on each Grow payment request. */
+export function getConfiguredGrowWebhookUrl(): {
+  ok: true
+  url: string
+} | {
+  ok: false
+  error: string
+} {
+  const url = buildGrowWebhookNotifyUrl()
+  if (!url) {
+    return {
+      ok: false,
+      error:
+        'חסר GROW_WEBHOOK_SECRET או NEXT_PUBLIC_APP_URL בשרת. הגדירו ב-Vercel.',
+    }
+  }
+  return { ok: true, url }
+}
+
+/** @deprecated use buildGrowWebhookNotifyUrl */
+export function buildGreenInvoiceWebhookNotifyUrl(): string | null {
+  return buildGrowWebhookNotifyUrl()
+}
+
+/** @deprecated use getConfiguredGrowWebhookUrl */
 export function getConfiguredGreenInvoiceWebhookUrl(): {
   ok: true
   url: string
@@ -50,15 +74,7 @@ export function getConfiguredGreenInvoiceWebhookUrl(): {
   ok: false
   error: string
 } {
-  const url = buildGreenInvoiceWebhookNotifyUrl()
-  if (!url) {
-    return {
-      ok: false,
-      error:
-        'חסר GREENINVOICE_WEBHOOK_SECRET או NEXT_PUBLIC_APP_URL בשרת. הגדירו ב-Vercel ואז העתיקו שוב.',
-    }
-  }
-  return { ok: true, url }
+  return getConfiguredGrowWebhookUrl()
 }
 
 export function buildPublicPayUrl(publicToken: string): string {
@@ -68,7 +84,7 @@ export function buildPublicPayUrl(publicToken: string): string {
 }
 
 export function defaultSuccessFailureUrls(
-  row: ClientGreenInvoiceRow,
+  _row: ClientGrowPaymentsRow,
   opts?: { publicToken?: string | null }
 ): {
   successUrl: string
@@ -86,54 +102,54 @@ export function defaultSuccessFailureUrls(
       ? `${base}/pay/failure?t=${encodeURIComponent(token)}`
       : `${base}/pay/failure`
     : '/pay/failure'
-  const success = row.greeninvoice_payment_success_url?.trim() || successDefault
-  const failure = row.greeninvoice_payment_failure_url?.trim() || failureDefault
-  return { successUrl: success, failureUrl: failure }
+  return { successUrl: successDefault, failureUrl: failureDefault }
 }
 
-export async function loadClientGreenInvoiceRow(
+export async function loadClientCollectionsRow(
   admin: SupabaseClient,
   clientId: string
-): Promise<ClientGreenInvoiceRow | null> {
+): Promise<ClientCollectionsRow | null> {
   const { data, error } = await admin
     .from('clients')
-    .select(`${CLIENT_GREENINVOICE_SELECT}, sms_sender_name, name, logo_url`)
+    .select(`${CLIENT_GROW_PAYMENTS_SELECT}, sms_sender_name, name, logo_url`)
     .eq('id', clientId)
     .maybeSingle()
   if (error || !data) return null
-  return data as ClientGreenInvoiceRow & {
-    sms_sender_name?: string | null
-    name?: string | null
-    logo_url?: string | null
-  }
+  return data as ClientCollectionsRow
 }
 
-export type ClientCollectionsRow = ClientGreenInvoiceRow & {
+/** @deprecated use loadClientCollectionsRow */
+export async function loadClientGreenInvoiceRow(
+  admin: SupabaseClient,
+  clientId: string
+): Promise<ClientCollectionsRow | null> {
+  return loadClientCollectionsRow(admin, clientId)
+}
+
+export type ClientCollectionsRow = ClientGrowPaymentsRow & {
   sms_sender_name?: string | null
   name?: string | null
   logo_url?: string | null
 }
 
-export function requireConfiguredCredentials(row: ClientGreenInvoiceRow): {
+export function requireConfiguredCredentials(row: ClientGrowPaymentsRow): {
   ok: true
-  credentials: NonNullable<ReturnType<typeof credentialsFromClientRow>>
+  userId: string
 } | { ok: false; error: string } {
-  if (!isGreenInvoiceConfigured(row)) {
+  if (!isGrowPlatformConfigured()) {
+    return {
+      ok: false,
+      error: 'חסרים מפתחות Grow של במקור בשרת. פנו להנהלת במקור.',
+    }
+  }
+  if (!isGrowCollectionsConfigured(row)) {
     return {
       ok: false,
       error:
-        'חשבון Morning שלכם לא מוגדר. היכנסו להגדרות → Morning והזינו מפתחות API אישיים (כל לקוח בחשבון נפרד).',
+        'חשבון Grow שלכם לא מוגדר. היכנסו להגדרות → Grow, הפעילו חיבור והדביקו את ה-userId אחרי ההצטרפות.',
     }
   }
-  const credentials = credentialsFromClientRow(row)
-  if (!credentials) {
-    return {
-      ok: false,
-      error:
-        'חסרים מפתחות Morning האישיים. היכנסו להגדרות → Morning והשלימו את ההגדרה.',
-    }
-  }
-  return { ok: true, credentials }
+  return { ok: true, userId: row.grow_user_id!.trim() }
 }
 
 function residentPhone(resident: ChargeResidentInfo | null | undefined): string | null {
@@ -161,7 +177,7 @@ export type SendChargeResult =
     }
   | { ok: false; error: string; code?: string }
 
-/** Create Morning payment form, mark sent, optionally SMS the Bamakor pay link. */
+/** Create Grow payment request, mark sent, optionally SMS the Bamakor pay link. */
 export async function sendCollectionCharge(
   admin: SupabaseClient,
   opts: {
@@ -183,12 +199,12 @@ export async function sendCollectionCharge(
     return { ok: false, error: 'החיוב בוטל', code: 'CANCELLED' }
   }
 
-  const notifyUrl = buildGreenInvoiceWebhookNotifyUrl()
+  const notifyUrl = buildGrowWebhookNotifyUrl()
   if (!notifyUrl) {
     return {
       ok: false,
       error:
-        'לא ניתן לשלוח חיוב: חסר GREENINVOICE_WEBHOOK_SECRET בשרת. בלי זה סטטוס «שולם» לא יתעדכן אחרי תשלום.',
+        'לא ניתן לשלוח חיוב: חסר GROW_WEBHOOK_SECRET בשרת. בלי זה סטטוס «שולם» לא יתעדכן אחרי תשלום.',
       code: 'WEBHOOK_SECRET_MISSING',
     }
   }
@@ -196,12 +212,14 @@ export async function sendCollectionCharge(
   const creds = requireConfiguredCredentials(clientRow)
   if (!creds.ok) return { ok: false, error: creds.error, code: 'NOT_CONFIGURED' }
 
-  // Already has payment URL — resend path should use resend; but allow re-form if missing
-  let paymentUrl = charge.greeninvoice_payment_url
-  let paymentId = charge.greeninvoice_payment_id
-  const greeninvoiceClientId = charge.greeninvoice_client_id
+  let paymentUrl = charge.grow_payment_url || charge.greeninvoice_payment_url
+  let paymentLinkId = charge.grow_payment_link_id
 
   if (!paymentUrl) {
+    const phone = residentPhone(resident)
+    if (!phone) {
+      return { ok: false, error: 'לדייר אין מספר טלפון — דרוש לדרישת תשלום ב-Grow', code: 'NO_PHONE' }
+    }
     const { successUrl, failureUrl } = defaultSuccessFailureUrls(clientRow, {
       publicToken: charge.public_token,
     })
@@ -211,24 +229,17 @@ export async function sendCollectionCharge(
       projectName: project?.name,
     })
 
-    const clientPayload =
-      resident != null
-        ? {
-            name: resident.full_name.trim() || 'דייר',
-            phone: residentPhone(resident) || undefined,
-            emails: resident.email?.trim() ? [resident.email.trim()] : undefined,
-            add: true as const,
-          }
-        : undefined
-
-    const form = await getGreenInvoicePaymentForm(creds.credentials, {
-      description,
+    const form = await createGrowPaymentLink({
+      userId: creds.userId,
+      title: description,
       amount: Number(charge.amount),
-      currency: charge.currency || 'ILS',
-      client: clientPayload,
+      fullName: resident?.full_name || 'דייר',
+      phone,
+      email: resident?.email,
       successUrl,
-      failureUrl,
+      cancelUrl: failureUrl,
       notifyUrl,
+      publicToken: charge.public_token,
     })
 
     if (!form.ok) {
@@ -240,14 +251,11 @@ export async function sendCollectionCharge(
         })
         .eq('id', charge.id)
         .eq('client_id', clientId)
-      return { ok: false, error: form.error || 'יצירת טופס תשלום נכשלה', code: 'FORM_FAILED' }
+      return { ok: false, error: form.error || 'יצירת דרישת תשלום נכשלה', code: 'FORM_FAILED' }
     }
 
-    paymentUrl = form.data.url || null
-    paymentId = form.data.paymentId || null
-    if (!paymentUrl) {
-      return { ok: false, error: 'Morning לא החזיר קישור תשלום', code: 'NO_URL' }
-    }
+    paymentUrl = form.url
+    paymentLinkId = form.paymentLinkProcessId || null
   }
 
   const publicPayUrl = buildPublicPayUrl(charge.public_token)
@@ -256,7 +264,6 @@ export async function sendCollectionCharge(
 
   if (sendSms) {
     if (!phone) {
-      // Still mark sent — link exists; caller can copy
       smsSent = false
     } else {
       const body = buildPaymentSmsBody({
@@ -279,9 +286,9 @@ export async function sendCollectionCharge(
     .from('collection_charges')
     .update({
       status: 'sent' satisfies CollectionChargeStatus,
+      grow_payment_url: paymentUrl,
+      grow_payment_link_id: paymentLinkId,
       greeninvoice_payment_url: paymentUrl,
-      greeninvoice_payment_id: paymentId,
-      greeninvoice_client_id: greeninvoiceClientId,
       sent_at: sentAt,
       updated_at: nowIso(),
     })
@@ -313,11 +320,11 @@ export async function resendCollectionChargeSms(
   }
 ): Promise<{ ok: true; smsSent: boolean; payUrl: string } | { ok: false; error: string }> {
   const { charge, resident, clientRow, clientId } = opts
-  if (!charge.greeninvoice_payment_url && charge.status !== 'sent' && charge.status !== 'draft') {
+  if (!charge.grow_payment_url && !charge.greeninvoice_payment_url && charge.status !== 'sent' && charge.status !== 'draft') {
     if (charge.status === 'paid') return { ok: false, error: 'החיוב כבר שולם' }
     if (charge.status === 'cancelled') return { ok: false, error: 'החיוב בוטל' }
   }
-  if (!charge.greeninvoice_payment_url && !charge.public_token) {
+  if (!charge.grow_payment_url && !charge.greeninvoice_payment_url && !charge.public_token) {
     return { ok: false, error: 'אין קישור תשלום לחיוב זה' }
   }
 
@@ -339,7 +346,7 @@ export async function resendCollectionChargeSms(
   )
   if (!smsSent) return { ok: false, error: 'שליחת SMS נכשלה' }
 
-  if (charge.status === 'draft' && charge.greeninvoice_payment_url) {
+  if (charge.status === 'draft' && (charge.grow_payment_url || charge.greeninvoice_payment_url)) {
     await admin
       .from('collection_charges')
       .update({
@@ -370,11 +377,12 @@ export async function cancelCollectionCharge(
   if (row.status === 'paid') return { ok: false, error: 'לא ניתן לבטל חיוב ששולם' }
   if (row.status === 'cancelled') return { ok: true }
 
-  // Invalidate Bamakor public link; keep Morning payment_id so a late webhook can still match.
+  // Invalidate Bamakor public link; keep Grow link id so a late webhook can still match.
   const { error: updErr } = await admin
     .from('collection_charges')
     .update({
       status: 'cancelled' satisfies CollectionChargeStatus,
+      grow_payment_url: null,
       greeninvoice_payment_url: null,
       public_token: crypto.randomUUID(),
       updated_at: nowIso(),
@@ -427,6 +435,52 @@ export async function markCollectionChargePaidManual(
   return { ok: true, charge: updated as CollectionChargeRow }
 }
 
+export async function markChargePaidByGrowIds(
+  admin: SupabaseClient,
+  ids: { publicTokens: string[]; paymentLinkIds: string[]; transactionIds: string[] }
+): Promise<{ matched: number; newlyPaidIds: string[] }> {
+  const tokens = [...new Set(ids.publicTokens.filter(Boolean))]
+  const linkIds = [...new Set(ids.paymentLinkIds.filter(Boolean))]
+  const txIds = [...new Set(ids.transactionIds.filter(Boolean))]
+  if (tokens.length === 0 && linkIds.length === 0 && txIds.length === 0) {
+    return { matched: 0, newlyPaidIds: [] }
+  }
+
+  let matched = 0
+  const paidAt = nowIso()
+  const newlyPaidIds: string[] = []
+  const txPatch =
+    txIds.length === 1 ? { grow_transaction_id: txIds[0] } : {}
+
+  const applyPaid = async (filter: { column: string; values: string[] }) => {
+    const { data } = await admin
+      .from('collection_charges')
+      .update({
+        status: 'paid' satisfies CollectionChargeStatus,
+        paid_at: paidAt,
+        updated_at: paidAt,
+        ...txPatch,
+      })
+      .in(filter.column, filter.values)
+      .neq('status', 'paid')
+      .select('id')
+    matched += data?.length ?? 0
+    for (const row of data ?? []) {
+      if (!newlyPaidIds.includes(row.id)) newlyPaidIds.push(row.id)
+    }
+  }
+
+  if (tokens.length > 0) await applyPaid({ column: 'public_token', values: tokens })
+  if (linkIds.length > 0) await applyPaid({ column: 'grow_payment_link_id', values: linkIds })
+
+  for (const id of newlyPaidIds) {
+    void sendCollectionReceiptEmailIfNeeded(admin, id).catch(() => {})
+  }
+
+  return { matched, newlyPaidIds }
+}
+
+/** Keep matching in-flight Morning charges until Grow fully replaces them. */
 export async function markChargePaidByMorningIds(
   admin: SupabaseClient,
   ids: { paymentIds: string[]; documentIds: string[] }

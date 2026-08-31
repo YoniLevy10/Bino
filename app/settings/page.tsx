@@ -26,15 +26,7 @@ import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { CollapsibleSection } from '../components/shared/CollapsibleSection'
-import {
-  GREENINVOICE_CLEARING_LABELS,
-  GREENINVOICE_DOC_TYPE_LABELS,
-  GREENINVOICE_VAT_TYPE_LABELS,
-  looksLikeUrlAsApiKeyId,
-  type GreenInvoiceBusinessSummary,
-  type GreenInvoiceClearingPlugin,
-  type GreenInvoiceEnv,
-} from '@/lib/greeninvoice-config'
+
 type ClientRow = {
   id: string
   name?: string | null
@@ -47,18 +39,8 @@ type ClientRow = {
   whatsapp_phone_number_id?: string | null
   whatsapp_access_token_set?: boolean
   sms_sender_name?: string | null
-  greeninvoice_enabled?: boolean | null
-  greeninvoice_env?: string | null
-  greeninvoice_api_key_id?: string | null
-  greeninvoice_api_secret_set?: boolean
-  greeninvoice_business_id?: string | null
-  greeninvoice_clearing_plugin?: string | null
-  greeninvoice_default_doc_type?: number | null
-  greeninvoice_vat_type?: number | null
-  greeninvoice_send_invoice_email?: boolean | null
-  greeninvoice_remarks_template?: string | null
-  greeninvoice_payment_success_url?: string | null
-  greeninvoice_payment_failure_url?: string | null
+  grow_enabled?: boolean | null
+  grow_user_id?: string | null
   grow_legal_business_name?: string | null
   grow_legal_phone?: string | null
   grow_legal_address?: string | null
@@ -69,16 +51,16 @@ const TABS = [
   { id: 'general', label: 'כללי' },
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
-  { id: 'morning', label: 'Morning' },
+  { id: 'grow', label: 'Grow' },
   { id: 'team', label: 'משתמשי משרד' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
-/** Legacy tab ids: navigation removed; greeninvoice renamed to morning. */
+/** Legacy tab ids: navigation removed; greeninvoice/morning renamed to grow. */
 function resolveSettingsTab(raw: string | null): TabId {
   if (raw === 'navigation') return 'general'
-  if (raw === 'greeninvoice') return 'morning'
+  if (raw === 'greeninvoice' || raw === 'morning') return 'grow'
   if (raw && TABS.some((t) => t.id === raw)) return raw as TabId
   return 'general'
 }
@@ -123,27 +105,13 @@ function SettingsPageInner() {
   const [waTokenLoaded, setWaTokenLoaded] = useState(false)
   const [whatsappAccessTokenSet, setWhatsappAccessTokenSet] = useState(false)
 
-  const [giEnabled, setGiEnabled] = useState(false)
-  const [giEnv, setGiEnv] = useState<GreenInvoiceEnv>('production')
-  const [giApiKeyId, setGiApiKeyId] = useState('')
-  const [giApiSecret, setGiApiSecret] = useState('')
-  const [giSecretLoaded, setGiSecretLoaded] = useState(false)
-  const [giBusinessId, setGiBusinessId] = useState('')
-  const [giBusinesses, setGiBusinesses] = useState<GreenInvoiceBusinessSummary[]>([])
-  const [giClearingPlugin, setGiClearingPlugin] = useState<GreenInvoiceClearingPlugin | ''>('')
-  const [giDocType, setGiDocType] = useState<300 | 305 | 320>(300)
-  const [giVatType, setGiVatType] = useState<0 | 1 | 2>(0)
-  const [giSendEmail, setGiSendEmail] = useState(true)
-  const [giRemarksTemplate, setGiRemarksTemplate] = useState('')
-  const [giPaymentSuccessUrl, setGiPaymentSuccessUrl] = useState('')
-  const [giPaymentFailureUrl, setGiPaymentFailureUrl] = useState('')
+  const [growEnabled, setGrowEnabled] = useState(false)
+  const [growUserId, setGrowUserId] = useState('')
   const [growLegalName, setGrowLegalName] = useState('')
   const [growLegalPhone, setGrowLegalPhone] = useState('')
   const [growLegalAddress, setGrowLegalAddress] = useState('')
   const [growLegalEmail, setGrowLegalEmail] = useState('')
-  const [giAdvancedOpen, setGiAdvancedOpen] = useState(false)
-  const [savingGreeninvoice, setSavingGreeninvoice] = useState(false)
-  const [testingGi, setTestingGi] = useState(false)
+  const [savingGrow, setSavingGrow] = useState(false)
 
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingNotifications, setSavingNotifications] = useState(false)
@@ -167,8 +135,8 @@ function SettingsPageInner() {
 
   const [origin, setOrigin] = useState('')
 
-  const [giWebhookConfiguredUrl, setGiWebhookConfiguredUrl] = useState<string | null>(null)
-  const [giWebhookLoadError, setGiWebhookLoadError] = useState<string | null>(null)
+  const [growWebhookConfigured, setGrowWebhookConfigured] = useState<boolean | null>(null)
+  const [growWebhookLoadError, setGrowWebhookLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -194,17 +162,17 @@ function SettingsPageInner() {
           configured?: boolean
         }
         if (cancelled) return
-        if (res.ok && json.url) {
-          setGiWebhookConfiguredUrl(json.url)
-          setGiWebhookLoadError(null)
+        if (res.ok && json.configured) {
+          setGrowWebhookConfigured(true)
+          setGrowWebhookLoadError(null)
         } else {
-          setGiWebhookConfiguredUrl(null)
-          setGiWebhookLoadError(json.error || 'סוד webhook לא מוגדר בשרת')
+          setGrowWebhookConfigured(false)
+          setGrowWebhookLoadError(json.error || 'סוד webhook לא מוגדר בשרת')
         }
       } catch {
         if (!cancelled) {
-          setGiWebhookConfiguredUrl(null)
-          setGiWebhookLoadError('טעינת כתובת webhook נכשלה')
+          setGrowWebhookConfigured(false)
+          setGrowWebhookLoadError('טעינת סטטוס webhook נכשלה')
         }
       }
     })()
@@ -218,19 +186,6 @@ function SettingsPageInner() {
     [origin]
   )
 
-  const greeninvoiceWebhookDisplay =
-    giWebhookConfiguredUrl ||
-    (origin ? `${origin}/api/webhook/greeninvoice` : '/api/webhook/greeninvoice')
-
-  const defaultPaySuccessUrl = useMemo(
-    () => (origin ? `${origin}/pay/success` : '/pay/success'),
-    [origin]
-  )
-  const defaultPayFailureUrl = useMemo(
-    () => (origin ? `${origin}/pay/failure` : '/pay/failure'),
-    [origin]
-  )
-
   const growPageUrl = useMemo(
     () => (clientId && origin ? `${origin}/vaad-pay/${clientId}` : ''),
     [clientId, origin]
@@ -239,8 +194,6 @@ function SettingsPageInner() {
   const growLegalReady = Boolean(
     growLegalName.trim() && growLegalPhone.trim() && growLegalAddress.trim()
   )
-
-  const giApiKeyLooksInvalid = looksLikeUrlAsApiKeyId(giApiKeyId)
 
   async function load() {
     setLoading(true)
@@ -268,38 +221,12 @@ function SettingsPageInner() {
         setWhatsappAccessTokenSet(row.whatsapp_access_token_set === true)
         setWaTokenLoaded(true)
 
-        setGiEnabled(row.greeninvoice_enabled === true)
-        setGiEnv(row.greeninvoice_env === 'sandbox' ? 'sandbox' : 'production')
-        setGiApiKeyId(row.greeninvoice_api_key_id || '')
-        setGiApiSecret('')
-        setGiSecretLoaded(row.greeninvoice_api_secret_set === true)
-        setGiBusinessId(row.greeninvoice_business_id || '')
-        setGiClearingPlugin(
-          row.greeninvoice_clearing_plugin === 'cardcom' ||
-            row.greeninvoice_clearing_plugin === 'isracard' ||
-            row.greeninvoice_clearing_plugin === 'grow'
-            ? row.greeninvoice_clearing_plugin
-            : ''
-        )
-        setGiDocType(
-          row.greeninvoice_default_doc_type === 305 || row.greeninvoice_default_doc_type === 320
-            ? row.greeninvoice_default_doc_type
-            : 300
-        )
-        setGiVatType(
-          row.greeninvoice_vat_type === 1 || row.greeninvoice_vat_type === 2
-            ? row.greeninvoice_vat_type
-            : 0
-        )
-        setGiSendEmail(row.greeninvoice_send_invoice_email !== false)
-        setGiRemarksTemplate(row.greeninvoice_remarks_template || '')
-        setGiPaymentSuccessUrl(row.greeninvoice_payment_success_url || '')
-        setGiPaymentFailureUrl(row.greeninvoice_payment_failure_url || '')
+        setGrowEnabled(row.grow_enabled === true)
+        setGrowUserId(row.grow_user_id || '')
         setGrowLegalName(row.grow_legal_business_name || row.name?.trim() || '')
         setGrowLegalPhone(row.grow_legal_phone || '')
         setGrowLegalAddress(row.grow_legal_address || '')
         setGrowLegalEmail(row.grow_legal_email || '')
-        setGiBusinesses([])
         setSettingsHydrated(true)
 
         return true
@@ -433,43 +360,18 @@ function SettingsPageInner() {
     }
   }
 
-  async function copyGreeninvoiceWebhook() {
-    if (!giWebhookConfiguredUrl) {
-      toast.error(giWebhookLoadError || 'סוד webhook לא מוגדר בשרת')
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(giWebhookConfiguredUrl)
-      toast.success('הועתק (כולל token)')
-    } catch {
-      toast.error('העתקה נכשלה')
-    }
-  }
-
-  async function saveGreeninvoice() {
+  async function saveGrow() {
     if (!clientId) return
-    setSavingGreeninvoice(true)
+    setSavingGrow(true)
     await asyncHandler(
       async () => {
-        const payload: Record<string, string | number | boolean | null> = {
-          greeninvoice_enabled: giEnabled,
-          greeninvoice_env: giEnv,
-          greeninvoice_api_key_id: giApiKeyId.trim() || null,
-          greeninvoice_business_id: giBusinessId.trim() || null,
-          greeninvoice_clearing_plugin: giClearingPlugin || null,
-          greeninvoice_default_doc_type: giDocType,
-          greeninvoice_vat_type: giVatType,
-          greeninvoice_send_invoice_email: giSendEmail,
-          greeninvoice_remarks_template: giRemarksTemplate.trim() || null,
-          greeninvoice_payment_success_url: giPaymentSuccessUrl.trim() || null,
-          greeninvoice_payment_failure_url: giPaymentFailureUrl.trim() || null,
+        const payload: Record<string, string | boolean | null> = {
+          grow_enabled: growEnabled,
+          grow_user_id: growUserId.trim() || null,
           grow_legal_business_name: growLegalName.trim() || null,
           grow_legal_phone: growLegalPhone.trim() || null,
           grow_legal_address: growLegalAddress.trim() || null,
           grow_legal_email: growLegalEmail.trim() || null,
-        }
-        if (giApiSecret.trim()) {
-          payload.greeninvoice_api_secret = giApiSecret.trim()
         }
         const res = await fetchWithTimeout(
           '/api/settings/update',
@@ -486,34 +388,9 @@ function SettingsPageInner() {
         await load()
         return true
       },
-      { context: 'שמירת הגדרות Morning נכשלה', showErrorToast: true }
+      { context: 'שמירת הגדרות Grow נכשלה', showErrorToast: true }
     )
-    setSavingGreeninvoice(false)
-  }
-
-  async function testGreeninvoice() {
-    setTestingGi(true)
-    await asyncHandler(
-      async () => {
-        const res = await fetchWithTimeout('/api/settings/test-greeninvoice', { method: 'POST' })
-        const json = (await res.json().catch(() => ({}))) as {
-          error?: string
-          businesses?: GreenInvoiceBusinessSummary[]
-          currentBusiness?: GreenInvoiceBusinessSummary | null
-        }
-        if (!res.ok) throw new Error(json.error || 'בדיקת חיבור נכשלה')
-        const list = json.businesses ?? []
-        setGiBusinesses(list)
-        if (!giBusinessId.trim() && json.currentBusiness?.id) {
-          setGiBusinessId(json.currentBusiness.id)
-        }
-        const names = list.map((b) => b.name).join(', ')
-        toast.success(names ? `חיבור תקין — עסקים: ${names}` : 'חיבור תקין')
-        return true
-      },
-      { context: 'בדיקת חיבור ל-Morning נכשלה', showErrorToast: true }
-    )
-    setTestingGi(false)
+    setSavingGrow(false)
   }
 
   function urlBase64ToUint8Array(base64String: string) {
@@ -1048,108 +925,61 @@ function SettingsPageInner() {
               </Card>
             )}
 
-            {activeTab === 'morning' && (
+            {activeTab === 'grow' && (
               <Card noPadding>
                 <div style={{ ...styles.cardInner, gap: 16 }}>
                   <p style={{ margin: 0, fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
-                    הכסף נכנס לחשבון Morning שלכם.{' '}
+                    הכסף נכנס לחשבון Grow שלכם — לא דרך במקור.{' '}
                     <Link href="/collections" style={styles.inlineLink}>
                       לגבייה
                     </Link>
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
+                    פתחו חשבון חדש ב-Grow לחברת הניהול. אחרי ש-Grow מחברים אתכם לפלטפורמת במקור תקבלו
+                    userId — הדביקו אותו כאן והפעילו חיבור.
                   </p>
 
                   <label style={styles.checkboxLabel}>
                     <input
                       type="checkbox"
-                      checked={giEnabled}
-                      onChange={(e) => setGiEnabled(e.target.checked)}
+                      checked={growEnabled}
+                      onChange={(e) => setGrowEnabled(e.target.checked)}
                       style={styles.checkbox}
                     />
-                    הפעל חיבור
+                    הפעל חיבור Grow
                   </label>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מפתח API</label>
+                    <label style={styles.formLabel}>מזהה לקוח Grow (userId)</label>
                     <input
-                      value={giApiKeyId}
-                      onChange={(e) => setGiApiKeyId(e.target.value)}
+                      value={growUserId}
+                      onChange={(e) => setGrowUserId(e.target.value)}
                       style={styles.input}
-                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      placeholder="מה ש-Grow שולחים אחרי ההצטרפות"
                       autoComplete="off"
                       dir="ltr"
                     />
-                    <a
-                      href={
-                        giEnv === 'sandbox'
-                          ? 'https://app.sandbox.d.greeninvoice.co.il/settings/developers/api'
-                          : 'https://app.greeninvoice.co.il/settings/developers/api'
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.inlineLink}
-                    >
-                      פתחו מפתחות ב-Morning
-                    </a>
-                    {giApiKeyLooksInvalid ? (
-                      <span style={{ ...styles.formHint, color: '#c2410c' }}>
-                        זה צריך להיות מזהה מפתח, לא כתובת אתר.
-                      </span>
-                    ) : null}
+                    <span style={styles.formHint}>
+                      בלי userId אי אפשר לשלוח דרישות תשלום. המזהה שייך לחשבון שלכם בלבד.
+                    </span>
                   </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>סוד API</label>
-                    <input
-                      type="password"
-                      value={giApiSecret}
-                      onChange={(e) => setGiApiSecret(e.target.value)}
-                      style={styles.input}
-                      placeholder={giSecretLoaded ? 'שמור — השאירו ריק כדי לא לשנות' : 'מוצג פעם אחת ב-Morning'}
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  {giBusinesses.length > 0 ? (
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>עסק</label>
-                      <select
-                        value={giBusinessId}
-                        onChange={(e) => setGiBusinessId(e.target.value)}
-                        style={styles.input}
-                      >
-                        <option value="">— בחרו עסק —</option>
-                        {giBusinesses.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
 
                   <div style={styles.morningSection}>
-                    <div style={styles.morningSectionTitle}>להעתיק ל-Morning</div>
+                    <div style={styles.morningSectionTitle}>סטטוס מערכת</div>
+                    <p style={{ margin: 0, fontSize: 13, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
+                      במקור יוצרת דרישת תשלום ב-Grow ושולחת לדייר קישור /pay. סטטוס «שולם» מתעדכן
+                      אוטומטית — אין צורך להדביק webhook ב-Grow.
+                    </p>
+                    {growWebhookConfigured === false ? (
+                      <span style={{ ...styles.formHint, color: '#c2410c' }}>
+                        {growWebhookLoadError ||
+                          'חסר סוד webhook בשרת — פנו להנהלת במקור לפני שליחת חיובים.'}
+                      </span>
+                    ) : growWebhookConfigured === true ? (
+                      <span style={styles.formHint}>חיבור השרת ל-Grow מוכן לקבלת סטטוס תשלום.</span>
+                    ) : null}
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Webhook — סטטוס «שולם»</label>
-                      <div style={styles.readonlyRow}>
-                        <input
-                          readOnly
-                          value={greeninvoiceWebhookDisplay}
-                          style={{ ...styles.input, flex: 1 }}
-                          dir="ltr"
-                        />
-                        <Button variant="secondary" type="button" onClick={copyGreeninvoiceWebhook}>
-                          העתק
-                        </Button>
-                      </div>
-                      {!giWebhookConfiguredUrl ? (
-                        <span style={{ ...styles.formHint, color: '#c2410c' }}>
-                          {giWebhookLoadError || 'חסר סוד webhook בשרת — אי אפשר לשלוח חיובים.'}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>עמוד העסק — אישור Grow</label>
+                      <label style={styles.formLabel}>עמוד העסק הציבורי</label>
                       <div style={styles.readonlyRow}>
                         <input
                           readOnly
@@ -1220,150 +1050,11 @@ function SettingsPageInner() {
                     </div>
                   </div>
 
-                  <CollapsibleSection
-                    title="מתקדם"
-                    open={giAdvancedOpen}
-                    onToggle={() => setGiAdvancedOpen((v) => !v)}
-                  >
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>סביבת API</label>
-                      <select
-                        value={giEnv}
-                        onChange={(e) => setGiEnv(e.target.value as GreenInvoiceEnv)}
-                        style={styles.input}
-                      >
-                        <option value="production">פרודקשן</option>
-                        <option value="sandbox">Sandbox</option>
-                      </select>
-                    </div>
-
-                    {giBusinesses.length === 0 ? (
-                      <div style={styles.formGroup}>
-                        <label style={styles.formLabel}>מזהה עסק</label>
-                        <input
-                          value={giBusinessId}
-                          onChange={(e) => setGiBusinessId(e.target.value)}
-                          style={styles.input}
-                          placeholder="אופציונלי"
-                        />
-                      </div>
-                    ) : null}
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>פלאגין סליקה</label>
-                      <select
-                        value={giClearingPlugin}
-                        onChange={(e) =>
-                          setGiClearingPlugin(e.target.value as GreenInvoiceClearingPlugin | '')
-                        }
-                        style={styles.input}
-                      >
-                        <option value="">— לא נבחר —</option>
-                        {(Object.keys(GREENINVOICE_CLEARING_LABELS) as GreenInvoiceClearingPlugin[]).map(
-                          (key) => (
-                            <option key={key} value={key}>
-                              {GREENINVOICE_CLEARING_LABELS[key]}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>סוג מסמך</label>
-                      <select
-                        value={giDocType}
-                        onChange={(e) => setGiDocType(Number(e.target.value) as 300 | 305 | 320)}
-                        style={styles.input}
-                      >
-                        {Object.entries(GREENINVOICE_DOC_TYPE_LABELS).map(([code, label]) => (
-                          <option key={code} value={code}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>מע&quot;מ</label>
-                      <select
-                        value={giVatType}
-                        onChange={(e) => setGiVatType(Number(e.target.value) as 0 | 1 | 2)}
-                        style={styles.input}
-                      >
-                        {Object.entries(GREENINVOICE_VAT_TYPE_LABELS).map(([code, label]) => (
-                          <option key={code} value={code}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>הערות במסמך</label>
-                      <textarea
-                        value={giRemarksTemplate}
-                        onChange={(e) => setGiRemarksTemplate(e.target.value)}
-                        style={{ ...styles.input, minHeight: '80px', resize: 'vertical' }}
-                        placeholder="למשל: דמי ועד בית — חודש {month}/{year}"
-                        maxLength={2000}
-                      />
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          checked={giSendEmail}
-                          onChange={(e) => setGiSendEmail(e.target.checked)}
-                          style={styles.checkbox}
-                        />
-                        שלח מסמך במייל לדייר (כש-Morning תומך)
-                      </label>
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום מוצלח</label>
-                      <input
-                        value={giPaymentSuccessUrl}
-                        onChange={(e) => setGiPaymentSuccessUrl(e.target.value)}
-                        style={styles.input}
-                        placeholder={defaultPaySuccessUrl}
-                        dir="ltr"
-                      />
-                      <span style={styles.formHint}>
-                        ריק = ברירת מחדל של Bamakor ({defaultPaySuccessUrl}) — דף אחרי תשלום בטופס Morning.
-                      </span>
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>כתובת חזרה אחרי תשלום שנכשל</label>
-                      <input
-                        value={giPaymentFailureUrl}
-                        onChange={(e) => setGiPaymentFailureUrl(e.target.value)}
-                        style={styles.input}
-                        placeholder={defaultPayFailureUrl}
-                        dir="ltr"
-                      />
-                      <span style={styles.formHint}>
-                        ריק = ברירת מחדל של Bamakor ({defaultPayFailureUrl}).
-                      </span>
-                    </div>
-                  </CollapsibleSection>
-
                   <div style={styles.drawerActions}>
                     <LoadingButton
-                      variant="secondary"
-                      type="button"
-                      onClick={testGreeninvoice}
-                      loading={testingGi}
-                      loadingText="בודק..."
-                    >
-                      בדוק חיבור
-                    </LoadingButton>
-                    <LoadingButton
                       variant="primary"
-                      onClick={saveGreeninvoice}
-                      loading={savingGreeninvoice}
+                      onClick={saveGrow}
+                      loading={savingGrow}
                       loadingText="שומר..."
                     >
                       שמור שינויים

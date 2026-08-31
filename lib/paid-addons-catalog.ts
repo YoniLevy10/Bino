@@ -203,26 +203,26 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
   [PAID_ADDON_KEYS.collections]: {
     id: PAID_ADDON_KEYS.collections,
     title: 'גביית ועד',
-    tagline: 'חיוב דיירים דרך Morning',
+    tagline: 'חיוב דיירים דרך Grow',
     description:
-      'יצירת חיובים, קישורי תשלום ומסמכים דרך Morning — מחובר לחשבון Morning שלכם.',
-    highlights: ['מפתח API per-tenant', 'קישור תשלום', 'מסמכים אוטומטיים'],
+      'יצירת חיובים ודרישות תשלום ב-Grow — הכסף נכנס לחשבון Grow שלכם, לא דרך במקור.',
+    highlights: ['חשבון Grow per-tenant', 'דרישת תשלום', 'SMS לקישור /pay'],
     featureHref: '/collections',
     featureCtaHe: 'לגביית ועד',
     marketing: {
-      headline: 'גביית ועד בלי אקסלים — ישירות מ-Morning',
+      headline: 'גביית ועד בלי אקסלים — דרישת תשלום ב-Grow',
       intro:
-        'הלקוחה שלכם כבר עובדת ב-Morning. Bamakor מחבר את הדיירים, יוצר חיובים ושולח קישורי תשלום ב-SMS או WhatsApp.',
+        'כל חברת ניהול פותחת חשבון Grow משלה. במקור יוצרת דרישת תשלום, שולחת SMS לדייר, ומסמנת «שולם».',
       valueProps: [
-        'חשבון Morning משלכם — לא חשבון פלטפורמה',
-        'סליקה דרך Cardcom / Isracard / Grow',
-        'מסמכים וקבלות אוטומטיים ב-Morning',
-        'הגדרות מרוכזות תחת «Morning»',
+        'חשבון Grow משלכם — לא חשבון פלטפורמה',
+        'הכסף נכנס ישירות אליכם',
+        'קישור תשלום ב-SMS דרך במקור',
+        'הגדרות מרוכזות תחת «Grow»',
       ],
       scenarios: [
         'חברת ניהול שגובה דמי ועד חודשיים',
         'משרד שרוצה לשלוח קישור תשלום לדייר אחרי אישור',
-        'ועד שעובד כבר עם Morning',
+        'ועד שפותח חשבון Grow חדש',
       ],
       closing: 'פחות מעקב ידני, יותר גבייה בזמן.',
     },

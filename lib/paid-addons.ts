@@ -16,7 +16,7 @@ export const PAID_ADDON_KEYS = {
   whatsapp_inbox: 'whatsapp_inbox',
   /** קמפיינים SMS לדיירים */
   campaigns: 'campaigns',
-  /** גביית ועד — Morning */
+  /** גביית ועד — Grow */
   collections: 'collections',
 } as const
 

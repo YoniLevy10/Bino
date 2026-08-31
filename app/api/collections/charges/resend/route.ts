@@ -5,9 +5,9 @@ import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { resendCollectionChargeBodySchema } from '@/lib/api-body-schemas'
 import { formatZodError } from '@/lib/format-zod-error'
-import type { CollectionChargeRow } from '@/lib/collection-charges'
+import { chargePaymentUrl, type CollectionChargeRow } from '@/lib/collection-charges'
 import {
-  loadClientGreenInvoiceRow,
+  loadClientCollectionsRow,
   resendCollectionChargeSms,
   sendCollectionCharge,
   type ChargeProjectInfo,
@@ -72,13 +72,13 @@ export async function POST(req: Request) {
     project = (data as ChargeProjectInfo) || null
   }
 
-  const clientRow = (await loadClientGreenInvoiceRow(admin, clientId)) as ClientCollectionsRow | null
+  const clientRow = (await loadClientCollectionsRow(admin, clientId)) as ClientCollectionsRow | null
   if (!clientRow) {
     return NextResponse.json({ error: 'לא נמצאו הגדרות לקוח' }, { status: 500 })
   }
 
-  // No payment URL yet — create form + send
-  if (!row.greeninvoice_payment_url) {
+  // No payment URL yet — create Grow payment request + send
+  if (!chargePaymentUrl(row)) {
     const result = await sendCollectionCharge(admin, {
       clientId,
       charge: row,
