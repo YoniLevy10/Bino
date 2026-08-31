@@ -31,7 +31,7 @@ v1 = **דרישת תשלום** (`createPaymentLink`), לא ארנק iframe. חש
 
 ## הפעלה (פיילוט)
 
-1. להריץ `091_grow_payments.sql` ב-SQL Editor.
+1. להריץ `092_grow_payments.sql` ב-SQL Editor.
 2. ב-Vercel: `GROW_API_KEY`, `GROW_PAGE_CODE`, `GROW_WEBHOOK_SECRET`. לבדיקות בלי כסף אמיתי: `GROW_ENV=sandbox` + מפתחות בדיקה מ-Grow (ליאל).
 3. סופר-אדמין: תוסף גבייה ללקוחה.
 4. הלקוחה פותחת חשבון Grow חדש. אחרי ש-Grow מחברים אותה לפלטפורמה — מדביקה `userId` בהגדרות → Grow ומפעילה חיבור.
