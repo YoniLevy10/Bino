@@ -161,6 +161,8 @@ export const settingsUpdateBodySchema = z
     grow_legal_phone: z.string().max(40).nullable().optional(),
     grow_legal_address: z.string().max(300).nullable().optional(),
     grow_legal_email: z.string().max(200).nullable().optional(),
+    grow_enabled: z.boolean().optional(),
+    grow_user_id: z.string().max(80).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'אין שדות לעדכון' })
 

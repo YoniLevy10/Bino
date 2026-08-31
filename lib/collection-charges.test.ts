@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import {
   buildPaymentSmsBody,
+  chargePaymentUrl,
   formatChargeAmountIls,
   isCollectionChargeStatus,
   COLLECTION_CHARGE_STATUSES,
@@ -10,6 +11,7 @@ import {
   extractGreenInvoiceWebhookIds,
 } from '@/lib/greeninvoice-webhook'
 import {
+  buildGrowWebhookNotifyUrl,
   buildGreenInvoiceWebhookNotifyUrl,
   buildPublicPayUrl,
   defaultSuccessFailureUrls,
@@ -52,6 +54,19 @@ describe('collection charge helpers', () => {
     }
     expect(isCollectionChargeStatus('all')).toBe(false)
     expect(isCollectionChargeStatus('')).toBe(false)
+  })
+
+  it('prefers Grow payment URL over legacy Morning URL', () => {
+    expect(
+      chargePaymentUrl({
+        grow_payment_url: 'https://grow.example/pay',
+        greeninvoice_payment_url: 'https://morning.example/pay',
+      })
+    ).toBe('https://grow.example/pay')
+    expect(chargePaymentUrl({ grow_payment_url: null, greeninvoice_payment_url: 'https://m' })).toBe(
+      'https://m'
+    )
+    expect(chargePaymentUrl({ grow_payment_url: '  ', greeninvoice_payment_url: '' })).toBeNull()
   })
 })
 
@@ -126,30 +141,39 @@ describe('greeninvoice webhook parsing', () => {
 
 describe('collection charge ops URL helpers', () => {
   const prevApp = process.env.NEXT_PUBLIC_APP_URL
-  const prevSecret = process.env.GREENINVOICE_WEBHOOK_SECRET
+  const prevGrowSecret = process.env.GROW_WEBHOOK_SECRET
+  const prevGrowKey = process.env.GROW_API_KEY
+  const prevGrowPage = process.env.GROW_PAGE_CODE
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_APP_URL = 'https://bamakor.vercel.app'
-    process.env.GREENINVOICE_WEBHOOK_SECRET = 'hook-secret'
+    process.env.GROW_WEBHOOK_SECRET = 'hook-secret'
+    process.env.GROW_API_KEY = 'api-key'
+    process.env.GROW_PAGE_CODE = 'page-code'
   })
 
   afterEach(() => {
     process.env.NEXT_PUBLIC_APP_URL = prevApp
-    process.env.GREENINVOICE_WEBHOOK_SECRET = prevSecret
+    process.env.GROW_WEBHOOK_SECRET = prevGrowSecret
+    process.env.GROW_API_KEY = prevGrowKey
+    process.env.GROW_PAGE_CODE = prevGrowPage
   })
 
-  it('builds public pay and notify URLs', () => {
+  it('builds public pay and Grow notify URLs', () => {
     expect(buildPublicPayUrl('11111111-1111-1111-1111-111111111111')).toBe(
       'https://bamakor.vercel.app/pay/11111111-1111-1111-1111-111111111111'
     )
+    expect(buildGrowWebhookNotifyUrl()).toBe(
+      'https://bamakor.vercel.app/api/webhook/grow?token=hook-secret'
+    )
     expect(buildGreenInvoiceWebhookNotifyUrl()).toBe(
-      'https://bamakor.vercel.app/api/webhook/greeninvoice?token=hook-secret'
+      'https://bamakor.vercel.app/api/webhook/grow?token=hook-secret'
     )
   })
 
   it('omits notify URL when webhook secret missing', () => {
-    process.env.GREENINVOICE_WEBHOOK_SECRET = ''
-    expect(buildGreenInvoiceWebhookNotifyUrl()).toBeNull()
+    process.env.GROW_WEBHOOK_SECRET = ''
+    expect(buildGrowWebhookNotifyUrl()).toBeNull()
   })
 
   it('defaults success/failure to Bamakor pay pages with charge token', () => {
@@ -171,35 +195,30 @@ describe('collection charge ops URL helpers', () => {
     expect(urls.failureUrl).toBe('https://bamakor.vercel.app/pay/failure')
   })
 
-  it('prefers tenant custom success/failure URLs', () => {
-    const urls = defaultSuccessFailureUrls({
-      greeninvoice_payment_success_url: 'https://example.com/ok',
-      greeninvoice_payment_failure_url: 'https://example.com/fail',
-    })
-    expect(urls.successUrl).toBe('https://example.com/ok')
-    expect(urls.failureUrl).toBe('https://example.com/fail')
-  })
-
-  it('requires greeninvoice enabled + keys', () => {
+  it('requires Grow platform keys + tenant userId', () => {
     expect(
       requireConfiguredCredentials({
-        greeninvoice_enabled: false,
-        greeninvoice_api_key_id: 'k',
-        greeninvoice_api_secret: 's',
+        grow_enabled: false,
+        grow_user_id: 'u1',
       }).ok
     ).toBe(false)
 
     const ok = requireConfiguredCredentials({
-      greeninvoice_enabled: true,
-      greeninvoice_api_key_id: 'k',
-      greeninvoice_api_secret: 's',
-      greeninvoice_env: 'sandbox',
+      grow_enabled: true,
+      grow_user_id: 'u1',
     })
     expect(ok.ok).toBe(true)
     if (ok.ok) {
-      expect(ok.credentials.apiKeyId).toBe('k')
-      expect(ok.credentials.env).toBe('sandbox')
+      expect(ok.userId).toBe('u1')
     }
+
+    process.env.GROW_API_KEY = ''
+    expect(
+      requireConfiguredCredentials({
+        grow_enabled: true,
+        grow_user_id: 'u1',
+      }).ok
+    ).toBe(false)
   })
 })
 
@@ -261,6 +280,52 @@ describe('collections nav mapping', () => {
   })
 })
 
+describe('markChargePaidByGrowIds', () => {
+  it('updates by public token and skips empty', async () => {
+    const { markChargePaidByGrowIds } = await import('@/lib/collection-charge-ops')
+
+    const calls: Array<{ table: string; op: string }> = []
+    const makeChain = () => {
+      const c: Record<string, unknown> = {}
+      c.update = () => {
+        calls.push({ table: 'collection_charges', op: 'update' })
+        return c
+      }
+      c.in = () => c
+      c.neq = () => c
+      c.eq = () => c
+      c.is = () => c
+      c.maybeSingle = async () => ({ data: null, error: null })
+      c.select = () => {
+        const terminal = Promise.resolve({ data: [{ id: '1' }], error: null })
+        return Object.assign(terminal, c)
+      }
+      return c
+    }
+    const admin = {
+      from: (table: string) => {
+        calls.push({ table, op: 'from' })
+        return makeChain()
+      },
+    }
+
+    const empty = await markChargePaidByGrowIds(admin as never, {
+      publicTokens: [],
+      paymentLinkIds: [],
+      transactionIds: [],
+    })
+    expect(empty.matched).toBe(0)
+
+    const matched = await markChargePaidByGrowIds(admin as never, {
+      publicTokens: ['11111111-1111-4111-8111-111111111111'],
+      paymentLinkIds: [],
+      transactionIds: ['tx-1'],
+    })
+    expect(matched.matched).toBe(1)
+    expect(calls.some((c) => c.op === 'update')).toBe(true)
+  })
+})
+
 describe('markChargePaidByMorningIds', () => {
   it('updates by payment ids and skips empty', async () => {
     const { markChargePaidByMorningIds } = await import('@/lib/collection-charge-ops')
@@ -278,7 +343,6 @@ describe('markChargePaidByMorningIds', () => {
       c.is = () => c
       c.maybeSingle = async () => ({ data: null, error: null })
       c.select = () => {
-        // Terminal after update().in().neq().select() OR start of receipt query
         const terminal = Promise.resolve({ data: [{ id: '1' }], error: null })
         return Object.assign(terminal, c)
       }

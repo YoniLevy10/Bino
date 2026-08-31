@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 /**
  * Per-tenant Grow / clearing website audit page.
- * Each Morning account must submit THIS URL (the merchant who receives the money).
+ * Each Grow merchant uses THIS URL (the business who receives the money).
  */
 export default async function ClientVaadPayPage({ params }: PageProps) {
   const { clientId } = await params
@@ -48,7 +48,7 @@ export default async function ClientVaadPayPage({ params }: PageProps) {
         incompleteHint={
           legal.ready
             ? null
-            : 'חסרים שם עסק, טלפון או כתובת בהגדרות הלקוח. יש להשלים לפני הגשה ל־Grow בחשבון Morning של בית העסק.'
+            : 'חסרים שם עסק, טלפון או כתובת בהגדרות הלקוח. יש להשלים בהגדרות → Grow לפני הגשה.'
         }
       />
     </LegalPublicShell>

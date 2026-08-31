@@ -280,10 +280,12 @@ export type Database = {
           greeninvoice_remarks_template: string | null
           greeninvoice_send_invoice_email: boolean
           greeninvoice_vat_type: number
+          grow_enabled: boolean
           grow_legal_address: string | null
           grow_legal_business_name: string | null
           grow_legal_email: string | null
           grow_legal_phone: string | null
+          grow_user_id: string | null
           id: string
           is_active: boolean
           logo_url: string | null
@@ -334,10 +336,12 @@ export type Database = {
           greeninvoice_remarks_template?: string | null
           greeninvoice_send_invoice_email?: boolean
           greeninvoice_vat_type?: number
+          grow_enabled?: boolean
           grow_legal_address?: string | null
           grow_legal_business_name?: string | null
           grow_legal_email?: string | null
           grow_legal_phone?: string | null
+          grow_user_id?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -388,10 +392,12 @@ export type Database = {
           greeninvoice_remarks_template?: string | null
           greeninvoice_send_invoice_email?: boolean
           greeninvoice_vat_type?: number
+          grow_enabled?: boolean
           grow_legal_address?: string | null
           grow_legal_business_name?: string | null
           grow_legal_email?: string | null
           grow_legal_phone?: string | null
+          grow_user_id?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -436,6 +442,9 @@ export type Database = {
           greeninvoice_document_number: number | null
           greeninvoice_payment_id: string | null
           greeninvoice_payment_url: string | null
+          grow_payment_link_id: string | null
+          grow_payment_url: string | null
+          grow_transaction_id: string | null
           id: string
           paid_at: string | null
           period_label: string | null
@@ -460,6 +469,9 @@ export type Database = {
           greeninvoice_document_number?: number | null
           greeninvoice_payment_id?: string | null
           greeninvoice_payment_url?: string | null
+          grow_payment_link_id?: string | null
+          grow_payment_url?: string | null
+          grow_transaction_id?: string | null
           id?: string
           paid_at?: string | null
           period_label?: string | null
@@ -484,6 +496,9 @@ export type Database = {
           greeninvoice_document_number?: number | null
           greeninvoice_payment_id?: string | null
           greeninvoice_payment_url?: string | null
+          grow_payment_link_id?: string | null
+          grow_payment_url?: string | null
+          grow_transaction_id?: string | null
           id?: string
           paid_at?: string | null
           period_label?: string | null

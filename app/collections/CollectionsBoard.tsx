@@ -127,7 +127,7 @@ export function CollectionsBoard() {
         setAccountMessage(
           typeof body.error === 'string'
             ? body.error
-            : 'לא ניתן לבדוק את חשבון Morning. היכנסו להגדרות.'
+            : 'לא ניתן לבדוק את חשבון Grow. היכנסו להגדרות.'
         )
         return
       }
@@ -137,12 +137,12 @@ export function CollectionsBoard() {
         body.message ||
           (body.ready
             ? 'החשבון מוכן לגבייה.'
-            : 'חסרים מפתחות Morning האישיים. הגדירו בהגדרות.')
+            : 'חסר חיבור Grow. פתחו חשבון והדביקו userId בהגדרות.')
       )
     } catch {
       setAccountReady(false)
       setGrowLegalReady(null)
-      setAccountMessage('בדיקת חשבון Morning נכשלה. נסו לרענן.')
+      setAccountMessage('בדיקת חשבון Grow נכשלה. נסו לרענן.')
     }
   }, [])
 
@@ -242,7 +242,7 @@ export function CollectionsBoard() {
 
   async function openBulk() {
     if (accountReady === false) {
-      toast.error(accountMessage || 'הגדירו קודם חשבון Morning אישי בהגדרות.')
+      toast.error(accountMessage || 'הגדירו קודם חשבון Grow בהגדרות.')
       return
     }
     setCreateOpen(false)
@@ -380,7 +380,7 @@ export function CollectionsBoard() {
 
   async function openCreate() {
     if (accountReady === false) {
-      toast.error(accountMessage || 'הגדירו קודם חשבון Morning אישי בהגדרות.')
+      toast.error(accountMessage || 'הגדירו קודם חשבון Grow בהגדרות.')
       return
     }
     setBulkOpen(false)
@@ -528,12 +528,12 @@ export function CollectionsBoard() {
       {accountReady === false ? (
         <Card>
           <div style={{ padding: 4 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>חסר חשבון Morning אישי</div>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>חסר חשבון Grow</div>
             <p style={{ margin: '0 0 12px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
               {accountMessage ||
-                'כל לקוח חייב להזין מפתחות API מחשבון Morning שלו. אין כתובת תשלום משותפת במקור.'}
+                'פתחו חשבון ב-Grow, הדביקו את ה-userId בהגדרות והפעילו חיבור. הכסף נכנס לחשבון שלכם.'}
             </p>
-            <Link href="/settings?tab=morning">
+            <Link href="/settings?tab=grow">
               <Button>להגדרת החשבון שלי</Button>
             </Link>
           </div>
@@ -545,10 +545,10 @@ export function CollectionsBoard() {
           <div style={{ padding: 4 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>פרטי עסק ל־Grow עדיין חסרים</div>
             <p style={{ margin: '0 0 12px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
-              אפשר ליצור חיובים. אם הסליקה אצלכם ב־Grow — מלאו שם, טלפון וכתובת בהגדרות והדביקו את
-              עמוד העסק בחשבון Morning שלכם. הכסף נשאר אצלכם.
+              אפשר ליצור חיובים. מלאו שם, טלפון וכתובת בהגדרות כדי שעמוד העסק הציבורי יהיה מלא.
+              הכסף נשאר בחשבון Grow שלכם.
             </p>
-            <Link href="/settings?tab=morning">
+            <Link href="/settings?tab=grow">
               <Button variant="secondary">לפרטי העסק</Button>
             </Link>
           </div>
@@ -576,13 +576,13 @@ export function CollectionsBoard() {
           רענון
         </Button>
         <Link
-          href="/settings?tab=morning"
+          href="/settings?tab=grow"
           style={{
             ...styles.settingsLink,
             marginInlineStart: isMobile ? 0 : 'auto',
           }}
         >
-          הגדרות Morning
+          הגדרות Grow
         </Link>
       </div>
 
@@ -742,8 +742,12 @@ export function CollectionsBoard() {
                         סמן כשולם
                       </Button>
                     )}
-                    {row.greeninvoice_document_id && (
-                      <span style={styles.docId}>מסמך: {row.greeninvoice_document_id.slice(0, 8)}…</span>
+                    {(row.grow_payment_link_id || row.greeninvoice_document_id) && (
+                      <span style={styles.docId}>
+                        {row.grow_payment_link_id
+                          ? `Grow: ${row.grow_payment_link_id.slice(0, 8)}…`
+                          : `מסמך: ${row.greeninvoice_document_id!.slice(0, 8)}…`}
+                      </span>
                     )}
                   </div>
                 </div>

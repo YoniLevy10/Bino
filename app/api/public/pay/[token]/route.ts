@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { formatChargeAmountIls } from '@/lib/collection-charges'
+import { chargePaymentUrl, formatChargeAmountIls } from '@/lib/collection-charges'
 import { publicPayReceiptContactBodySchema } from '@/lib/api-body-schemas'
 import { formatZodError } from '@/lib/format-zod-error'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
@@ -35,7 +35,7 @@ export async function GET(_req: Request, context: RouteContext) {
     .select(
       `
       id, title, description, amount, currency, status, public_token,
-      greeninvoice_payment_url, paid_at, sent_at,
+      grow_payment_url, greeninvoice_payment_url, paid_at, sent_at,
       receipt_email, receipt_phone, receipt_email_sent_at,
       clients ( id, name, logo_url ),
       residents ( full_name, apartment_number, email, phone, normalized_phone ),
@@ -57,6 +57,7 @@ export async function GET(_req: Request, context: RouteContext) {
     currency: string
     status: string
     public_token: string
+    grow_payment_url: string | null
     greeninvoice_payment_url: string | null
     paid_at: string | null
     sent_at: string | null
@@ -90,8 +91,9 @@ export async function GET(_req: Request, context: RouteContext) {
   const resident = Array.isArray(raw.residents) ? raw.residents[0] || null : raw.residents
   const project = Array.isArray(raw.projects) ? raw.projects[0] || null : raw.projects
 
+  const paymentUrl = chargePaymentUrl(raw)
   const canPay =
-    Boolean(raw.greeninvoice_payment_url) &&
+    Boolean(paymentUrl) &&
     (raw.status === 'sent' || raw.status === 'draft' || raw.status === 'failed')
 
   const suggestedEmail = raw.receipt_email || resident?.email || null
@@ -106,7 +108,7 @@ export async function GET(_req: Request, context: RouteContext) {
     currency: raw.currency,
     status: raw.status,
     can_pay: canPay,
-    payment_url: canPay ? raw.greeninvoice_payment_url : null,
+    payment_url: canPay ? paymentUrl : null,
     paid_at: raw.paid_at,
     receipt_email: raw.receipt_email,
     receipt_phone: raw.receipt_phone,
@@ -123,7 +125,7 @@ export async function GET(_req: Request, context: RouteContext) {
   })
 }
 
-/** Save receipt contact before redirecting to Morning payment form. */
+/** Save receipt contact before redirecting to Grow payment request. */
 export async function PATCH(req: Request, context: RouteContext) {
   const { token } = await context.params
   const publicToken = parseToken(token)
@@ -161,7 +163,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   const { data: charge, error: fetchErr } = await admin
     .from('collection_charges')
-    .select('id, status, greeninvoice_payment_url, receipt_email_sent_at')
+    .select('id, status, grow_payment_url, greeninvoice_payment_url, receipt_email_sent_at')
     .eq('public_token', publicToken)
     .maybeSingle()
 
@@ -196,6 +198,6 @@ export async function PATCH(req: Request, context: RouteContext) {
     ok: true,
     receipt_email: email,
     receipt_phone: phone,
-    payment_url: charge.greeninvoice_payment_url,
+    payment_url: chargePaymentUrl(charge),
   })
 }

@@ -1,4 +1,4 @@
-/** Collection charge statuses — גביית ועד via Morning. */
+/** Collection charge statuses — גביית ועד via Grow payment request. */
 
 export const COLLECTION_CHARGE_STATUSES = [
   'draft',
@@ -39,6 +39,9 @@ export type CollectionChargeRow = {
   public_token: string
   batch_id: string | null
   period_label: string | null
+  grow_payment_url?: string | null
+  grow_payment_link_id?: string | null
+  grow_transaction_id?: string | null
   greeninvoice_client_id: string | null
   greeninvoice_document_id: string | null
   greeninvoice_document_number: number | null
@@ -54,9 +57,18 @@ export type CollectionChargeRow = {
   updated_at: string
 }
 
+export function chargePaymentUrl(row: {
+  grow_payment_url?: string | null
+  greeninvoice_payment_url?: string | null
+}): string | null {
+  const url = (row.grow_payment_url || row.greeninvoice_payment_url || '').trim()
+  return url || null
+}
+
 export const COLLECTION_CHARGE_LIST_SELECT = `
   id, client_id, project_id, resident_id, title, description, amount, currency, status,
   public_token, batch_id, period_label,
+  grow_payment_url, grow_payment_link_id, grow_transaction_id,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, created_by, created_at, updated_at,

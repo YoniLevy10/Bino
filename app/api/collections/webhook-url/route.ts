@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { getConfiguredGreenInvoiceWebhookUrl } from '@/lib/collection-charge-ops'
+import { getConfiguredGrowWebhookUrl } from '@/lib/collection-charge-ops'
 
-/** Returns the Morning webhook URL including server-side token (managers copy into Morning). */
+/** Returns whether the Grow notify URL is configured on the server (Bamakor registers it per request). */
 export async function GET() {
   const auth = await requireSessionClientId()
   if (!auth.ok) return auth.response
 
-  const result = getConfiguredGreenInvoiceWebhookUrl()
+  const result = getConfiguredGrowWebhookUrl()
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.error, configured: false }, { status: 503 })
   }

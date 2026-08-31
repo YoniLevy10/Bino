@@ -18,7 +18,7 @@ import {
   type CollectionChargeRow,
 } from '@/lib/collection-charges'
 import {
-  loadClientGreenInvoiceRow,
+  loadClientCollectionsRow,
   sendCollectionCharge,
   type ChargeProjectInfo,
   type ChargeResidentInfo,
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
   let charge = inserted as CollectionChargeRow
 
   if (body.send) {
-    const clientRow = (await loadClientGreenInvoiceRow(admin, clientId)) as ClientCollectionsRow | null
+    const clientRow = (await loadClientCollectionsRow(admin, clientId)) as ClientCollectionsRow | null
     if (!clientRow) {
       return NextResponse.json({ error: 'לא נמצאו הגדרות לקוח' }, { status: 500 })
     }

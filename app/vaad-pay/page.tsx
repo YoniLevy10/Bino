@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 /**
  * Platform-level service page (fallback).
- * Each paying merchant submits /vaad-pay/{clientId} in their own Morning — not this URL.
+ * Each paying merchant uses /vaad-pay/{clientId} for their own Grow KYC — not this URL.
  */
 export default function VaadPayLandingPage() {
   const cfg = getLegalSiteConfig()
@@ -21,8 +21,8 @@ export default function VaadPayLandingPage() {
         cfg={cfg}
         incompleteHint={
           cfg.readyForGrowAudit
-            ? 'עמוד זה שייך לפלטפורמת במקור. כל חברת ניהול מדביקה ב-Morning את העמוד האישי שלה (/vaad-pay/…), עם פרטי העסק שקולט את הכסף.'
-            : 'חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). לקוחות הפלטפורמה ממלאים פרטים בהגדרות → Morning ומגישים את העמוד האישי שלהם ל־Grow.'
+            ? 'עמוד זה שייך לפלטפורמת במקור. כל חברת ניהול ממלאת בהגדרות → Grow את פרטי העסק שקולט את הכסף, ומגישה את העמוד האישי (/vaad-pay/…).'
+            : 'חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). לקוחות הפלטפורמה ממלאים פרטים בהגדרות → Grow ומגישים את העמוד האישי שלהם.'
         }
       />
     </LegalPublicShell>
