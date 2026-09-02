@@ -4,7 +4,7 @@
 **Not:** a generic AI marketing dashboard.  
 **North star:** `qualified_demos / ₪ spent`
 
-**Phase 0 status:** Audit + OSS evaluation complete. Implementation starts at Phase 1 below.
+**Status:** Phase 0–3 + Phase 6 foundation shipped on branch; Phase 4–5 Meta path already in `mbrain`; Phase 7 supervised auto-pause partial via optimization rules. First Bamakor campaign pack is **draft-only** at `/brain/campaign-pack`.
 
 ---
 

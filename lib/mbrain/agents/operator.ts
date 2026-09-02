@@ -15,6 +15,7 @@ import { rollupKpis } from '@/lib/mbrain/meta/insights'
 import type { Guardrails } from '@/lib/mbrain/guardrails'
 import { BAMAKOR_BRAND_ID } from '@/lib/mbrain/types'
 import { mbrainLog } from '@/lib/mbrain/logging'
+import { buildDeterministicGrowthPlan } from '@/lib/growth/brain-plan'
 
 export type OperatorActionCard = {
   type:
@@ -47,11 +48,13 @@ const intentSchema = z.object({
     'create_campaign_draft',
     'explain_best_creative',
     'request_pause_losers',
+    'create_growth_goal',
     'unknown',
   ]),
   dailyBudget: z.number().optional(),
   maxCpl: z.number().optional(),
   targetLeads: z.number().optional(),
+  targetDemos: z.number().optional(),
   notes: z.string().optional(),
 })
 
@@ -85,6 +88,16 @@ async function loadGuardrails(admin: SupabaseClient, organizationId: string, bra
 
 function classifyHeuristically(message: string): z.infer<typeof intentSchema> {
   const m = message.toLowerCase()
+  if (/דמוא|דמו |demos|חברות ניהול|growth|אאוטבאונד|לידים מותאמים/.test(m) && /תביא|תן|צריך|יעד|השבוע|החודש|קבע/.test(m)) {
+    const demoMatch = m.match(/(\d+)\s*דמו/)
+    return {
+      intent: 'CREATE_DRAFT',
+      tool: 'create_growth_goal',
+      targetDemos: demoMatch ? Number(demoMatch[1]) : 10,
+      dailyBudget: 100,
+      maxCpl: 150,
+    }
+  }
   if (/cpl|למה|ביצוע|קריאייטיב הכי|מנצח|performance|למה ה/.test(m)) {
     if (/קריאייטיב הכי|מנצח/.test(m)) {
       return { intent: 'READ', tool: 'explain_best_creative' }
@@ -138,7 +151,7 @@ async function classifyMessage(message: string): Promise<z.infer<typeof intentSc
         {
           role: 'system',
           content:
-            'Classify Hebrew marketing operator commands. Return ONLY JSON with keys: intent (READ|CREATE_DRAFT|GENERATE|CHANGE|SPEND), tool, dailyBudget?, maxCpl?, targetLeads?, notes?. Tools: get_performance, create_objective_and_strategy, generate_creatives, create_campaign_draft, explain_best_creative, request_pause_losers, unknown.',
+            'Classify Hebrew marketing operator commands. Return ONLY JSON with keys: intent (READ|CREATE_DRAFT|GENERATE|CHANGE|SPEND), tool, dailyBudget?, maxCpl?, targetLeads?, targetDemos?, notes?. Tools: get_performance, create_objective_and_strategy, generate_creatives, create_campaign_draft, explain_best_creative, request_pause_losers, create_growth_goal, unknown. Use create_growth_goal for demo targets from property-management companies / outbound growth goals.',
         },
         { role: 'user', content: message },
       ],
@@ -456,10 +469,70 @@ export async function runOperatorCommand(opts: {
         }
         break
       }
+      case 'create_growth_goal': {
+        const demos = classified.targetDemos ?? 10
+        const windowDays = 14
+        const maxBudget = (classified.dailyBudget ?? 100) * windowDays
+        const { data: goal, error: gErr } = await opts.admin
+          .from('growth_goals')
+          .insert({
+            organization_id: opts.organizationId,
+            brand_id: brandId,
+            title: opts.message,
+            target_demos: demos,
+            window_days: windowDays,
+            max_budget: maxBudget,
+            raw_brief: opts.message,
+            status: 'planned',
+            created_by: opts.userId,
+          })
+          .select('*')
+          .single()
+        if (gErr) throw new Error(gErr.message)
+
+        const planBody = buildDeterministicGrowthPlan({
+          title: opts.message,
+          targetDemos: demos,
+          windowDays,
+          maxBudget,
+        })
+        const { data: plan, error: pErr } = await opts.admin
+          .from('growth_plans')
+          .insert({
+            organization_id: opts.organizationId,
+            goal_id: goal.id,
+            version: 1,
+            status: 'pending_approval',
+            plan: planBody,
+            estimated_budget: planBody.estimatedBudget,
+          })
+          .select('*')
+          .single()
+        if (pErr) throw new Error(pErr.message)
+
+        cards.push({
+          type: 'strategy_created',
+          titleHe: 'תוכנית Growth ממתינה לאישור',
+          bodyHe: `יעד: ${demos} דמואים · תקציב משוער ₪${planBody.estimatedBudget ?? maxBudget}\nערוצים: outbound ${planBody.channels.find((c) => c.channel === 'outbound')?.allocationPct}% · Meta ${planBody.channels.find((c) => c.channel === 'meta_ads')?.allocationPct}%`,
+          meta: { goalId: goal.id, planId: plan.id, planBody },
+        })
+        cards.push({
+          type: 'approval_required',
+          titleHe: 'אשר תוכנית ב־Growth Brain',
+          bodyHe: 'לא מושק כסף ולא נשלח אאוטבאונד עד אישור ב־/brain/growth',
+          meta: { href: '/brain/growth' },
+        })
+        result = {
+          replyHe: `בניתי יעד ל־${demos} דמואים ותוכנית רב־ערוצית. אשר ב־Growth Brain לפני ביצוע. חבילת הקמפיין הראשונה זמינה ב־/brain/campaign-pack.`,
+          intent: 'CREATE_DRAFT',
+          cards,
+        }
+        break
+      }
       default:
         result = {
           replyHe:
-            'אני מנהל השיווק שלך. אפשר לבקש: לבנות קמפיין לידים, לייצר קריאייטיבים, להסביר ביצועים, או להכין השקה לאישור.',
+            'אני מנהל השיווק שלך. אפשר לבקש: דמואים מחברות ניהול, קמפיין לידים, קריאייטיבים, ביצועים, או השקה לאישור.',
           intent: 'READ',
           cards,
         }

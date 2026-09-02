@@ -116,5 +116,17 @@ export function evaluateOptimizationRules(p: PerfInput): RuleHit[] {
     })
   }
 
+  // Decision-matrix style: high spend + declining efficiency → rotate creative before budget up
+  if (p.spend >= p.minSpend * 2 && p.leads > 0 && cpl != null && p.targetCpl != null && cpl > p.targetCpl) {
+    hits.push({
+      ruleCode: 'ROTATE_BEFORE_SCALE',
+      severity: 'warn',
+      title: 'אל תגדיל תקציב לפני רוטציית קריאייטיב',
+      explanation: 'CPL מעל יעד אחרי הוצאה מספקת — קודם זווית/הוק חדשים, לא scale.',
+      proposedAction: 'הכן batch קריאייטיב חדש + בקש אישור — אל תעלה תקציב',
+      requiresApproval: true,
+    })
+  }
+
   return hits
 }

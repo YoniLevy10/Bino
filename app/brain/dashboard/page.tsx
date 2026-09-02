@@ -133,12 +133,20 @@ export default function BrainDashboardPage() {
               מצב אוטונומיה: {data.organization.autonomy_mode} · Meta API {data.meta.graphApiVersion}
             </p>
           </div>
-          <Link
-            href="/brain/ai-operator"
-            className="rounded-xl bg-[var(--mbrain-accent)] px-4 py-2.5 text-sm font-medium text-white"
-          >
-            פתח מפעיל AI
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/brain/growth"
+              className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white"
+            >
+              Growth Brain
+            </Link>
+            <Link
+              href="/brain/ai-operator"
+              className="rounded-xl bg-[var(--mbrain-accent)] px-4 py-2.5 text-sm font-medium text-white"
+            >
+              פתח מפעיל AI
+            </Link>
+          </div>
         </div>
 
         <p className="text-xs text-[var(--mbrain-muted)]">{k.noteHe}</p>
@@ -158,6 +166,21 @@ export default function BrainDashboardPage() {
             </div>
           ))}
         </div>
+
+        <section className="mbrain-card p-5">
+          <h3 className="text-lg font-medium text-white">צפון הכוכב: דמואים מותאמים / ₪</h3>
+          <p className="mt-2 text-sm text-[var(--mbrain-muted)]">
+            מדדי Meta למעלה הם שיווקיים. המדד העסקי — דמואים מותאמים ותוכניות Growth — ב־
+            <Link href="/brain/growth" className="text-[var(--mbrain-accent)] hover:underline">
+              Growth Brain
+            </Link>
+            {' · '}
+            <Link href="/brain/campaign-pack" className="text-[var(--mbrain-accent)] hover:underline">
+              חבילת קמפיין ראשונה
+            </Link>
+            .
+          </p>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="mbrain-card p-5">
