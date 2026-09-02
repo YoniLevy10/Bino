@@ -9,6 +9,7 @@ export type BrainNavItem = {
 
 export const BRAIN_NAV: BrainNavItem[] = [
   { id: 'dashboard', href: '/brain/dashboard', label: 'לוח בקרה' },
+  { id: 'leads', href: '/brain/leads', label: 'לידים' },
   { id: 'brands', href: '/brain/brands', label: 'מותגים' },
   { id: 'strategy', href: '/brain/strategy', label: 'אסטרטגיה' },
   { id: 'campaigns', href: '/brain/campaigns', label: 'קמפיינים' },

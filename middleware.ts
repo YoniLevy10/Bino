@@ -95,8 +95,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Levy Marketing Brain — authenticated users; org membership enforced in /api/mbrain/*
-  if (pathname.startsWith('/brain') || pathname.startsWith('/api/mbrain')) {
+  // Levy Marketing Brain / Growth OS — authenticated users; org membership enforced in APIs
+  if (
+    pathname.startsWith('/brain') ||
+    pathname.startsWith('/api/mbrain') ||
+    pathname.startsWith('/api/growth')
+  ) {
     return pendingResponse
   }
 
