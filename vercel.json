@@ -8,6 +8,7 @@
     { "path": "/api/cron/cleanup-webhooks", "schedule": "0 3 * * 0" },
     { "path": "/api/cron/attendance-stale-shifts", "schedule": "0 */4 * * *" },
     { "path": "/api/cron/attendance-pending-alert", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/attendance-open-shift-reminder", "schedule": "0 18 * * *" }
+    { "path": "/api/cron/attendance-open-shift-reminder", "schedule": "0 18 * * *" },
+    { "path": "/api/cron/mbrain-insights", "schedule": "0 * * * *" }
   ]
 }
