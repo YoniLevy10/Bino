@@ -59,12 +59,11 @@ export class TemplateImageProvider implements ImageGenerationProvider {
   </defs>
   <rect width="100%" height="100%" fill="url(#bg)"/>
   <rect x="64" y="64" width="${width - 128}" height="${height - 128}" rx="24" fill="none" stroke="#7EB6FF" stroke-opacity="0.35" stroke-width="2"/>
-  <text x="96" y="180" fill="#E8F1FF" font-family="Heebo, Arial, sans-serif" font-size="64" font-weight="700">${headline}</text>
-  <foreignObject x="96" y="220" width="${width - 192}" height="${Math.floor(height * 0.35)}">
-    <div xmlns="http://www.w3.org/1999/xhtml" style="color:#C9D9EF;font-family:Heebo,Arial,sans-serif;font-size:36px;line-height:1.35;direction:rtl;text-align:right">${sub}</div>
-  </foreignObject>
-  <rect x="96" y="${height - 220}" width="360" height="88" rx="12" fill="#2F80ED"/>
-  <text x="276" y="${height - 162}" text-anchor="middle" fill="#FFFFFF" font-family="Heebo, Arial, sans-serif" font-size="32" font-weight="600">${cta}</text>
+  <text x="${width - 96}" y="180" text-anchor="end" fill="#E8F1FF" font-family="Arial, sans-serif" font-size="56" font-weight="700">${headline}</text>
+  <text x="${width - 96}" y="280" text-anchor="end" fill="#C9D9EF" font-family="Arial, sans-serif" font-size="34">${sub.slice(0, 48)}</text>
+  <text x="${width - 96}" y="330" text-anchor="end" fill="#C9D9EF" font-family="Arial, sans-serif" font-size="34">${sub.slice(48, 96)}</text>
+  <rect x="${width - 456}" y="${height - 220}" width="360" height="88" rx="12" fill="#2F80ED"/>
+  <text x="${width - 276}" y="${height - 162}" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="32" font-weight="600">${cta}</text>
 </svg>`
 
     return {

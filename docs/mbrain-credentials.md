@@ -44,8 +44,21 @@ Copy into Vercel / `.env.local`. Secrets never ship to the browser.
 1. Create a Meta Developer App with **Marketing API**.
 2. Add Facebook Login / Business Login products as required.
 3. Request permissions: `ads_management`, `ads_read`, `business_management`, `pages_show_list`, `pages_read_engagement`, `instagram_basic` (as needed).
-4. For live spend: ad account must be in a Business Manager you administer; App Review may be required for production users beyond test users.
-5. Until credentials exist: keep `META_MODE=mock` — architecture still supports live calls; Integrations UI shows setup status.
+4. Set `META_OAUTH_REDIRECT_URI` to `{APP_URL}/api/mbrain/meta/oauth/callback` in both Vercel and the Meta app Valid OAuth Redirect URIs.
+5. Set `MBRAIN_TOKEN_ENCRYPTION_KEY` (32-byte hex recommended).
+6. Set `META_MODE=live` for production spend.
+7. In the app: `/brain/settings/integrations` → **חבר Meta** → select Ad Account + Page → Save.
+8. For live spend: ad account must be in a Business Manager you administer; App Review may be required for production users beyond test users.
+9. Until credentials exist: keep `META_MODE=mock` — architecture still supports live calls; Integrations UI shows setup status.
+
+### Agency operator flow
+
+1. `/brain/ai-operator` — Hebrew command (e.g. build lead campaign)
+2. Review strategy + creatives
+3. Operator requests launch approval
+4. `/brain/approvals` — Approve & Launch (creates real Meta objects when live)
+5. `/brain/performance` — daily Hebrew digest + recommendations
+
 
 ## Optional cost / ops
 

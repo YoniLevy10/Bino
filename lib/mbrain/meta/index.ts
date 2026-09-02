@@ -3,5 +3,12 @@ export {
   getMetaGraphApiVersion,
   getMetaGraphBaseUrl,
   getMetaDataLabel,
-  listAdAccounts,
 } from './client'
+export { listAdAccounts, listPages, listPixels } from './accounts'
+export {
+  buildMetaOAuthUrl,
+  exchangeCodeForToken,
+  exchangeForLongLivedToken,
+  getMetaOAuthRedirectUri,
+} from './auth'
+export { uploadAdImagePng, createLinkAdCreative } from './creatives'

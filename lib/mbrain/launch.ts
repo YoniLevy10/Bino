@@ -1,6 +1,6 @@
 /**
  * Launch approved campaign to Meta (mock or live) with idempotency.
- * On Meta API failure, local campaign stays in failed/pending — no corrupted "active" without IDs.
+ * Creates real Meta creatives from local assets before ads.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
@@ -10,7 +10,10 @@ import {
   setMetaCampaignStatus,
   toMetaBudgetMinor,
 } from '@/lib/mbrain/meta/campaigns'
+import { createLinkAdCreative, uploadAdImagePng } from '@/lib/mbrain/meta/creatives'
 import { getMetaMode } from '@/lib/mbrain/meta/client'
+import { getOrgMetaAccessToken } from '@/lib/mbrain/meta/token'
+import { svgToPngBuffer } from '@/lib/mbrain/image-raster'
 import { mbrainLog } from '@/lib/mbrain/logging'
 import { assertGuardrailsAllow, type Guardrails } from '@/lib/mbrain/guardrails'
 
@@ -46,9 +49,12 @@ export async function executeApprovedLaunch(
 
   if (!campaign) throw new Error('Campaign not found')
 
-  // Idempotent: already launched
   if (campaign.meta_external_id && campaign.status === 'active') {
-    return { campaign, metaMode: getMetaMode(), label: getMetaMode() === 'live' ? 'LIVE META DATA' : 'MOCK DATA' }
+    return {
+      campaign,
+      metaMode: getMetaMode(),
+      label: getMetaMode() === 'live' ? 'LIVE META DATA' : 'MOCK DATA',
+    }
   }
 
   const daily = Number(campaign.daily_budget ?? 0)
@@ -66,20 +72,18 @@ export async function executeApprovedLaunch(
     .maybeSingle()
 
   if (!metaAccount) throw new Error('No selected Meta ad account')
+  if (!metaAccount.page_id) {
+    throw new Error('יש לבחור Facebook Page באינטגרציות לפני השקה')
+  }
 
-  const { data: connection } = await admin
-    .from('mbrain_meta_connections')
-    .select('access_token_encrypted, status')
-    .eq('organization_id', opts.organizationId)
-    .maybeSingle()
+  const accessToken = await getOrgMetaAccessToken(admin, opts.organizationId)
+  if (getMetaMode() === 'live' && !accessToken) {
+    throw new Error('אין טוקן Meta — חבר חשבון באינטגרציות')
+  }
 
-  // Token decryption lands with Phase D OAuth; mock mode uses null token.
-  const accessToken =
-    getMetaMode() === 'live' && connection?.access_token_encrypted
-      ? connection.access_token_encrypted
-      : null
-
-  const idem = campaign.launch_idempotency_key ?? campaign.id
+  const idem = (campaign.launch_idempotency_key as string) ?? (campaign.id as string)
+  const landingPage =
+    (campaign.landing_page_url as string) || 'https://bamakor.vercel.app'
 
   try {
     const created = await createMetaCampaign({
@@ -115,11 +119,65 @@ export async function executeApprovedLaunch(
 
       const { data: ads } = await admin.from('mbrain_ads').select('*').eq('ad_set_id', adSet.id)
       for (const ad of ads ?? []) {
+        let metaCreativeId = ad.meta_creative_id as string | null
+
+        if (!metaCreativeId && ad.creative_id) {
+          const { data: creative } = await admin
+            .from('mbrain_creatives')
+            .select('*')
+            .eq('id', ad.creative_id)
+            .maybeSingle()
+
+          if (!creative) throw new Error(`Creative ${ad.creative_id} missing`)
+
+          let png: Buffer
+          if (creative.image_kind === 'svg' && typeof creative.image_content === 'string') {
+            png = await svgToPngBuffer(creative.image_content)
+          } else {
+            throw new Error(`Creative ${creative.id} has no uploadable image`)
+          }
+
+          const uploaded = await uploadAdImagePng({
+            adAccountId: metaAccount.ad_account_id,
+            accessToken,
+            pngBuffer: png,
+            filename: `creative-${creative.id}.png`,
+            idempotencyKey: `${idem}:img:${creative.id}`,
+          })
+
+          const metaCreative = await createLinkAdCreative({
+            adAccountId: metaAccount.ad_account_id,
+            accessToken,
+            pageId: metaAccount.page_id,
+            name: `Creative ${creative.headline}`.slice(0, 100),
+            message: creative.primary_text,
+            headline: creative.headline,
+            description: creative.description ?? '',
+            link: landingPage,
+            imageHash: uploaded.imageHash,
+            callToActionType: creative.cta || 'LEARN_MORE',
+            idempotencyKey: `${idem}:cr:${creative.id}`,
+          })
+
+          metaCreativeId = metaCreative.creativeId
+          await admin
+            .from('mbrain_creatives')
+            .update({
+              // store external id in metadata-ish fields if present later
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', creative.id)
+        }
+
+        if (!metaCreativeId) {
+          throw new Error(`No Meta creative for ad ${ad.id}`)
+        }
+
         const metaAd = await createMetaAd({
           adAccountId: metaAccount.ad_account_id,
           adSetId: metaAdSet.metaAdSetId,
           name: ad.name,
-          creativeId: `creative_local_${ad.creative_id}`,
+          creativeId: metaCreativeId,
           accessToken,
           idempotencyKey: `${idem}:${ad.id}`,
         })
@@ -127,7 +185,7 @@ export async function executeApprovedLaunch(
           .from('mbrain_ads')
           .update({
             meta_external_id: metaAd.metaAdId,
-            meta_creative_id: `creative_local_${ad.creative_id}`,
+            meta_creative_id: metaCreativeId,
             status: 'created',
           })
           .eq('id', ad.id)
