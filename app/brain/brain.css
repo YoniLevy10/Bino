@@ -1,0 +1,53 @@
+:root {
+  --mbrain-ink: #e8f0ff;
+  --mbrain-muted: #8fa3c2;
+  --mbrain-panel: #0d1b2e;
+  --mbrain-accent: #2f6fed;
+  --mbrain-good: #3ecf8e;
+  --mbrain-warn: #f0b429;
+  --mbrain-bad: #f07178;
+}
+
+.mbrain-root {
+  font-family: var(--font-heebo), "Segoe UI", Tahoma, sans-serif;
+  background: #070f1a;
+}
+
+.mbrain-bg {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(47, 111, 237, 0.35), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(62, 207, 142, 0.12), transparent 50%),
+    linear-gradient(180deg, #0a1424 0%, #070f1a 40%, #050a12 100%);
+  z-index: 0;
+}
+
+.mbrain-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 27, 46, 0.72);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+}
+
+.mbrain-kpi {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 27, 46, 0.72);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.mbrain-kpi-value {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.mbrain-kpi-label {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--mbrain-muted);
+}

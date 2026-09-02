@@ -10,6 +10,19 @@
 
 ---
 
+## Levy Marketing Brain
+
+מוצר נפרד בתוך אותו ריפו: מפעיל שיווק AI (Meta) תחת `/brain/*`.
+
+- ארכיטקטורה: `docs/architecture.md`
+- הערכת קוד פתוח / עלויות: `docs/open-source-evaluation.md`
+- Credentials: `docs/mbrain-credentials.md`
+- סכימה: `supabase/migrations/093_mbrain_foundation.sql`
+
+Bamakor Dashboard נשמר במלואו; אין דריסה של נתיבי `/campaigns` / `/settings` הקיימים.
+
+---
+
 ## סביבות עבודה (שני ריפוז)
 
 | תיקייה | ענף | שימוש |

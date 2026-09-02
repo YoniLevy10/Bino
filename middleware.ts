@@ -94,6 +94,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Levy Marketing Brain — authenticated users; org membership enforced in /api/mbrain/*
+  if (pathname.startsWith('/brain') || pathname.startsWith('/api/mbrain')) {
+    return pendingResponse
+  }
+
   let clientId: string
   try {
     const admin = getSupabaseAdmin()
