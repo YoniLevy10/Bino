@@ -68,7 +68,7 @@ export function formatSummaryTicket(row: RawSummaryTicketRow): SummaryTicketRow 
   }
 }
 
-/** PostgREST filter: ticket created or closed within [from, to). */
+/** PostgREST filter: ticket created or closed within [from, to). ISO values must be quoted. */
 export function ticketRangeOrFilter(from: string, to: string): string {
-  return `and(created_at.gte.${from},created_at.lt.${to}),and(closed_at.gte.${from},closed_at.lt.${to})`
+  return `and(created_at.gte."${from}",created_at.lt."${to}"),and(closed_at.gte."${from}",closed_at.lt."${to}")`
 }

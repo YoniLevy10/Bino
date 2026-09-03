@@ -42,6 +42,11 @@ import {
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import type { SummaryTicketRow } from '@/lib/summary-tickets'
+import {
+  computeSummaryRangeKpis,
+  summaryPeriodKey,
+  type SummaryPeriodValue,
+} from '@/lib/summary-kpi'
 import { summaryTicketToDetail, ticketDetailToSummaryRow } from '@/lib/summary-ticket-detail'
 import { useManagerTicketDrawer } from '@/lib/hooks/use-manager-ticket-drawer'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
@@ -85,13 +90,13 @@ type SummaryKpiCache = {
   savedAt: number
 }
 
-function summaryKpiStorageKey(clientId: string, from: string, to: string) {
-  return `${KPI_CACHE_KEY}_${clientId}_${from}_${to}`
+function summaryKpiStorageKey(clientId: string, periodKey: string) {
+  return `${KPI_CACHE_KEY}_${clientId}_${periodKey}`
 }
 
-function readSummaryKpiCache(clientId: string, from: string, to: string): SummaryKpiCache | null {
+function readSummaryKpiCache(clientId: string, periodKey: string): SummaryKpiCache | null {
   try {
-    const raw = localStorage.getItem(summaryKpiStorageKey(clientId, from, to))
+    const raw = localStorage.getItem(summaryKpiStorageKey(clientId, periodKey))
     if (!raw) return null
     const parsed = JSON.parse(raw) as SummaryKpiCache
     if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
@@ -101,10 +106,10 @@ function readSummaryKpiCache(clientId: string, from: string, to: string): Summar
   }
 }
 
-function writeSummaryKpiCache(clientId: string, from: string, to: string, data: Omit<SummaryKpiCache, 'savedAt'>) {
+function writeSummaryKpiCache(clientId: string, periodKey: string, data: Omit<SummaryKpiCache, 'savedAt'>) {
   try {
     localStorage.setItem(
-      summaryKpiStorageKey(clientId, from, to),
+      summaryKpiStorageKey(clientId, periodKey),
       JSON.stringify({ ...data, savedAt: Date.now() })
     )
   } catch {}
@@ -132,7 +137,7 @@ type HistoryProjectGroup = {
   tickets: TicketRow[]
 }
 
-type PeriodValue = 'week' | 'month' | 'all' | 'custom'
+type PeriodValue = SummaryPeriodValue
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -183,6 +188,14 @@ function resolveDateRange(
   }
 }
 
+function periodKeyFor(
+  period: PeriodValue,
+  customFrom: string,
+  customTo: string
+): string {
+  return summaryPeriodKey(period, customFrom, customTo, resolveDateRange(period, customFrom, customTo))
+}
+
 export default function SummaryPage() {
   const { openMenu } = useMobileMenu()
   const router = useRouter()
@@ -197,9 +210,11 @@ export default function SummaryPage() {
   const [metaLoadError, setMetaLoadError] = useState(false)
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [summaryLoadError, setSummaryLoadError] = useState(false)
+  const [summaryDataPeriodKey, setSummaryDataPeriodKey] = useState<string | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyLoadError, setHistoryLoadError] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [historyDataPeriodKey, setHistoryDataPeriodKey] = useState<string | null>(null)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [lightboxKind, setLightboxKind] = useState<'image' | 'video'>('image')
   const [isMobile, setIsMobile] = useState(false)
@@ -276,28 +291,31 @@ export default function SummaryPage() {
       if (!silent) setSummaryLoading(false)
       return
     }
+    const fromIso = range.from.toISOString()
+    const toIso = range.toExclusive.toISOString()
+    const periodKey = summaryPeriodKey(period, customFrom, customTo, range)
     let showedCachedKpi = false
     if (!silent) {
       const clientId = await resolveBamakorClientIdForBrowser()
-      const fromIso = range.from.toISOString()
-      const toIso = range.toExclusive.toISOString()
       const cachedKpi = shouldSkipStalePageCache()
         ? null
-        : readSummaryKpiCache(clientId, fromIso, toIso)
+        : readSummaryKpiCache(clientId, periodKey)
       if (cachedKpi) {
         setOpenNow(cachedKpi.openNow)
         setAssignedNow(cachedKpi.assignedNow)
         setSummaryTickets(cachedKpi.ticketsInRange)
+        setSummaryDataPeriodKey(periodKey)
         setSummaryLoading(false)
         showedCachedKpi = true
       } else {
+        // Drop previous period's rows so KPIs/export cannot keep week data under an "all" label.
+        setSummaryTickets([])
+        setSummaryDataPeriodKey(null)
         setSummaryLoading(true)
       }
     }
     try {
       const clientId = await resolveBamakorClientIdForBrowser()
-      const fromIso = range.from.toISOString()
-      const toIso = range.toExclusive.toISOString()
       const params = new URLSearchParams({ from: fromIso, to: toIso })
       const res = await fetchWithTimeout(
         `/api/summary/kpi?${params}`,
@@ -313,7 +331,8 @@ export default function SummaryPage() {
       setOpenNow(data.openNow)
       setAssignedNow(data.assignedNow)
       setSummaryTickets(data.ticketsInRange)
-      writeSummaryKpiCache(clientId, fromIso, toIso, {
+      setSummaryDataPeriodKey(periodKey)
+      writeSummaryKpiCache(clientId, periodKey, {
         openNow: data.openNow,
         assignedNow: data.assignedNow,
         ticketsInRange: data.ticketsInRange,
@@ -335,7 +354,13 @@ export default function SummaryPage() {
       if (!silent) setHistoryLoading(false)
       return
     }
-    if (!silent) setHistoryLoading(true)
+    const periodKey = summaryPeriodKey(historyPeriod, customFrom, customTo, range)
+    if (!silent) {
+      setHistoryTickets([])
+      setHistoryDataPeriodKey(null)
+      setHistoryLoaded(false)
+      setHistoryLoading(true)
+    }
     try {
       const params = new URLSearchParams({
         from: range.from.toISOString(),
@@ -349,6 +374,7 @@ export default function SummaryPage() {
       if (!res.ok) throw new Error('summary history failed')
       const data = (await res.json()) as { tickets: TicketRow[] }
       setHistoryTickets(data.tickets)
+      setHistoryDataPeriodKey(periodKey)
       setHistoryLoaded(true)
       setHistoryLoadError(false)
     } catch (err) {
@@ -417,17 +443,31 @@ export default function SummaryPage() {
     () => resolveDateRange(historyPeriod, customFrom, customTo),
     [historyPeriod, customFrom, customTo]
   )
+  const selectedSummaryPeriodKey = useMemo(
+    () => periodKeyFor(period, customFrom, customTo),
+    [period, customFrom, customTo]
+  )
+  const selectedHistoryPeriodKey = useMemo(
+    () => periodKeyFor(historyPeriod, customFrom, customTo),
+    [historyPeriod, customFrom, customTo]
+  )
+  const summaryDataMatchesPeriod =
+    !!summaryDataPeriodKey && summaryDataPeriodKey === selectedSummaryPeriodKey
+  const historyDataMatchesPeriod =
+    !!historyDataPeriodKey && historyDataPeriodKey === selectedHistoryPeriodKey
+  const canExportSummary =
+    !!activeRange && !summaryLoading && summaryDataMatchesPeriod && !exporting
 
-  const ticketsInRange = summaryTickets
+  const ticketsInRange = summaryDataMatchesPeriod ? summaryTickets : []
 
   const ticketsInRangeSorted = useMemo(() => {
     if (!activeRange) return []
-    return [...summaryTickets].sort(
+    return [...ticketsInRange].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
-  }, [summaryTickets, activeRange])
+  }, [ticketsInRange, activeRange])
 
-  const historyClosedTickets = historyTickets
+  const historyClosedTickets = historyDataMatchesPeriod ? historyTickets : []
 
   const historyProjectOptions = useMemo(() => {
     return [
@@ -458,6 +498,9 @@ export default function SummaryPage() {
     })
   }, [historyClosedTickets, historySearchTerm, historyProjectFilter])
 
+  const canExportHistory =
+    !historyLoading && historyDataMatchesPeriod && filteredHistoryTickets.length > 0
+
   const historyByProject = useMemo((): HistoryProjectGroup[] => {
     const map = new Map<string, HistoryProjectGroup>()
     for (const ticket of filteredHistoryTickets) {
@@ -478,22 +521,23 @@ export default function SummaryPage() {
   }, [filteredHistoryTickets])
 
   const closedInRangeCount = useMemo(() => {
-    if (!activeRange) return 0
-    return summaryTickets.filter((t) => {
-      if (!t.closed_at) return false
-      const closedAt = new Date(t.closed_at)
-      return closedAt >= activeRange.from && closedAt < activeRange.toExclusive
-    }).length
-  }, [summaryTickets, activeRange])
+    if (!activeRange || !summaryDataMatchesPeriod) return 0
+    return computeSummaryRangeKpis(summaryTickets, activeRange).closedInRange
+  }, [summaryTickets, activeRange, summaryDataMatchesPeriod])
+
+  const openedInRangeCount = useMemo(() => {
+    if (!activeRange || !summaryDataMatchesPeriod) return 0
+    return computeSummaryRangeKpis(summaryTickets, activeRange).openedInRange
+  }, [summaryTickets, activeRange, summaryDataMatchesPeriod])
 
   const summary = useMemo(() => {
     return {
-      openedInRange: ticketsInRange.length,
+      openedInRange: openedInRangeCount,
       closedInRange: closedInRangeCount,
-      openNow,
-      assignedNow,
+      openNow: summaryDataMatchesPeriod ? openNow : 0,
+      assignedNow: summaryDataMatchesPeriod ? assignedNow : 0,
     }
-  }, [ticketsInRange.length, closedInRangeCount, openNow, assignedNow])
+  }, [openedInRangeCount, closedInRangeCount, openNow, assignedNow, summaryDataMatchesPeriod])
 
   const projectStats = useMemo(() => {
     const sourceTickets = activeRange ? ticketsInRange : summaryTickets
@@ -670,7 +714,7 @@ export default function SummaryPage() {
     total: number
   }) {
     const range = activeRange
-    if (!range) return
+    if (!range || !canExportSummary) return
 
     setExporting(true)
     try {
@@ -736,6 +780,7 @@ export default function SummaryPage() {
   }
 
   async function exportProjectHistoryTickets(group: HistoryProjectGroup) {
+    if (!historyDataMatchesPeriod || historyLoading) return
     setExportingHistoryProjectId(group.projectId)
     try {
       await downloadClosedTicketsExcel({
@@ -750,7 +795,7 @@ export default function SummaryPage() {
   }
 
   async function exportAllHistoryTickets() {
-    if (filteredHistoryTickets.length === 0) return
+    if (!canExportHistory) return
     setExportingAllHistory(true)
     try {
       await downloadClosedTicketsExcel({
@@ -767,7 +812,7 @@ export default function SummaryPage() {
 
   async function exportSummaryToExcel() {
     const range = activeRange
-    if (!range) return
+    if (!range || !canExportSummary) return
 
     setExporting(true)
     try {
@@ -901,8 +946,8 @@ export default function SummaryPage() {
                   <Button
                     variant="secondary"
                     type="button"
-                    disabled={!activeRange || exporting}
-                    loading={exporting}
+                    disabled={!canExportSummary}
+                    loading={exporting || (summaryLoading && !summaryDataMatchesPeriod)}
                     onClick={() => void exportSummaryToExcel()}
                   >
                     ייצוא ל-Excel
@@ -934,8 +979,8 @@ export default function SummaryPage() {
                 <Button
                   variant="secondary"
                   type="button"
-                  disabled={!activeRange || exporting}
-                  loading={exporting}
+                  disabled={!canExportSummary}
+                  loading={exporting || (summaryLoading && !summaryDataMatchesPeriod)}
                   onClick={() => void exportSummaryToExcel()}
                   style={{ width: '100%', minHeight: '48px' }}
                 >
@@ -1031,8 +1076,8 @@ export default function SummaryPage() {
                   variant="secondary"
                   size="sm"
                   type="button"
-                  disabled={filteredHistoryTickets.length === 0}
-                  loading={exportingAllHistory}
+                  disabled={!canExportHistory}
+                  loading={exportingAllHistory || (historyLoading && !historyDataMatchesPeriod)}
                   onClick={() => void exportAllHistoryTickets()}
                   style={{ minHeight: '48px', flexShrink: 0 }}
                 >
@@ -1046,8 +1091,8 @@ export default function SummaryPage() {
                 <Button
                   variant="secondary"
                   type="button"
-                  disabled={filteredHistoryTickets.length === 0}
-                  loading={exportingAllHistory}
+                  disabled={!canExportHistory}
+                  loading={exportingAllHistory || (historyLoading && !historyDataMatchesPeriod)}
                   onClick={() => void exportAllHistoryTickets()}
                   style={{ width: '100%', minHeight: '48px' }}
                 >
@@ -1099,6 +1144,7 @@ export default function SummaryPage() {
                       <Button
                         variant="secondary"
                         size="sm"
+                        disabled={!historyDataMatchesPeriod || historyLoading}
                         loading={exportingHistoryProjectId === group.projectId}
                         onClick={() => void exportProjectHistoryTickets(group)}
                         style={{ minHeight: '48px' }}
@@ -1469,7 +1515,7 @@ export default function SummaryPage() {
                               variant="ghost"
                               size="sm"
                               type="button"
-                              disabled={!activeRange || exporting}
+                              disabled={!canExportSummary}
                               loading={exporting}
                               onClick={() => void exportProjectToExcel(project)}
                             >
