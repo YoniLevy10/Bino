@@ -96,7 +96,7 @@ function AdminQuickLinks() {
     <div style={{ marginTop: theme.spacing.lg, textAlign: 'center' }}>
       <a href="/superadmin" style={linkStyle}>Super Admin</a>
       <span style={{ color: theme.colors.textMuted, margin: '0 6px' }}>·</span>
-      <a href="/admin/setup" style={linkStyle}>הקמת לקוח</a>
+      <a href="/superadmin/setup" style={linkStyle}>הקמת לקוח</a>
     </div>
   )
 }

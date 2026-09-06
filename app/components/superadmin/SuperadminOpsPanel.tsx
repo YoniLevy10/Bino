@@ -80,7 +80,7 @@ export function SuperadminOpsPanel({ adminSecret, onCountsChange }: Props) {
   return (
     <div>
       <div style={styles.toolbar}>
-        <p style={styles.toolbarText}>
+        <p className="sa-ops-toolbar-text" style={styles.toolbarText}>
           כשלונות SMS/WhatsApp ושגיאות אחרונות — ניתן לסמן שגיאות כטופלות מהטלפון.
         </p>
         <button
@@ -94,7 +94,7 @@ export function SuperadminOpsPanel({ adminSecret, onCountsChange }: Props) {
         </button>
       </div>
 
-      <div style={styles.main}>
+      <div className="sa-ops-main sa-panel" style={styles.main}>
         <OpsFailuresPanel
           opsFeed={opsFeed}
           opsLoading={opsLoading}
@@ -138,7 +138,7 @@ const styles: Record<string, CSSProperties> = {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.radius.lg,
-    padding: '24px 28px',
-    minHeight: 400,
+    padding: '16px 18px',
+    minHeight: 0,
   },
 }
