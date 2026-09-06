@@ -31,6 +31,7 @@ import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-ti
 import { TM } from '@/lib/toast-messages'
 import { AddResidentModal, type ResidentProjectRow } from '../components/residents/AddResidentModal'
 import { ImportResidentsModal } from '../components/residents/ImportResidentsModal'
+import { ShareResidentIntakeLinkModal } from '../components/residents/ShareResidentIntakeLinkModal'
 import {
   AppShell,
   MobileHeader,
@@ -131,6 +132,7 @@ function ResidentsPageInner() {
   const [addNotes, setAddNotes] = useState('')
 
   const [importOpen, setImportOpen] = useState(false)
+  const [shareIntakeOpen, setShareIntakeOpen] = useState(false)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
@@ -319,6 +321,10 @@ function ResidentsPageInner() {
 
   function openImport() {
     setImportOpen(true)
+  }
+
+  function openShareIntakeLink() {
+    setShareIntakeOpen(true)
   }
 
   async function deleteResident() {
@@ -747,10 +753,11 @@ function ResidentsPageInner() {
       if (e.key !== 'Escape') return
       if (addOpen) { closeResidentModal(); return }
       if (importOpen) { setImportOpen(false); return }
+      if (shareIntakeOpen) { setShareIntakeOpen(false); return }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [addOpen, importOpen])
+  }, [addOpen, importOpen, shareIntakeOpen])
 
   return (
     <AppShell isMobile={isMobile}>
@@ -775,7 +782,15 @@ function ResidentsPageInner() {
             title="דיירים"
             subtitle="ניהול שמות דיירים לפי בניין (לאחר הרצת מיגרציה ב-Supabase)"
             actions={
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={openShareIntakeLink}
+                  disabled={residentsTableMissing || projects.length === 0}
+                >
+                  שליחת קישור רישום
+                </Button>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -915,6 +930,14 @@ function ResidentsPageInner() {
             </select>
             <Button variant="secondary" size="sm" onClick={() => load()}>
               רענון
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={openShareIntakeLink}
+              disabled={residentsTableMissing || projects.length === 0}
+            >
+              שליחת קישור רישום
             </Button>
             <Button variant="secondary" size="sm" onClick={openImport} disabled={residentsTableMissing}>
               ייבוא דיירים
@@ -1118,6 +1141,14 @@ function ResidentsPageInner() {
         onImported={(newRows) => {
           setResidents((prev) => [...(newRows as ResidentRow[]), ...prev])
         }}
+      />
+
+      <ShareResidentIntakeLinkModal
+        open={shareIntakeOpen}
+        onClose={() => setShareIntakeOpen(false)}
+        isMobile={isMobile}
+        projects={projects}
+        defaultProjectId={projectFilter !== 'ALL' ? projectFilter : ''}
       />
     </AppShell>
   )
