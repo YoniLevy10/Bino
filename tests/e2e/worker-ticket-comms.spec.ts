@@ -13,16 +13,40 @@ test.describe('פורטל עובד — שיחה + תמונה @media', () => {
     let replyBody = ''
     let uploadContentType = ''
 
+    const workerPayload = {
+      worker_id: '55555555-5555-5555-5555-555555555555',
+      client_id: '11111111-1111-1111-1111-111111111111',
+      full_name: 'עובד בדיקה',
+      worker_stamp_enabled: false,
+    }
+    const ticketsPayload = {
+      tickets: [
+        {
+          id: TICKET_ID,
+          ticket_number: 77,
+          description: 'דליפה בחדר מדרגות',
+          status: 'IN_PROGRESS',
+          created_at: new Date().toISOString(),
+          reporter_phone: '972501234567',
+          project_name: 'בניין א',
+        },
+      ],
+    }
+
+    // Portal open uses /api/worker/bootstrap (profile + tickets in one round-trip).
+    await page.route('**/api/worker/bootstrap**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...workerPayload, ...ticketsPayload }),
+      })
+    })
+
     await page.route('**/api/worker-auth**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          worker_id: '55555555-5555-5555-5555-555555555555',
-          client_id: '11111111-1111-1111-1111-111111111111',
-          full_name: 'עובד בדיקה',
-          worker_stamp_enabled: false,
-        }),
+        body: JSON.stringify(workerPayload),
       })
     })
 
@@ -30,19 +54,7 @@ test.describe('פורטל עובד — שיחה + תמונה @media', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          tickets: [
-            {
-              id: TICKET_ID,
-              ticket_number: 77,
-              description: 'דליפה בחדר מדרגות',
-              status: 'IN_PROGRESS',
-              created_at: new Date().toISOString(),
-              reporter_phone: '972501234567',
-              project_name: 'בניין א',
-            },
-          ],
-        }),
+        body: JSON.stringify(ticketsPayload),
       })
     })
 
