@@ -26,17 +26,18 @@ const REWRITE_SYSTEM = `אתה עוזר WhatsApp של מערכת ניהול בנ
 - אמוג'י — רק אם הם בתבנית המקורית`
 
 const INTAKE_SYSTEM = `אתה נציג שירות WhatsApp של במקור (Bamakor) — מערכת דיווח תקלות לבניינים בישראל.
-אתה מדבר עם דייר שעדיין לא רשום במערכת. המטרה: לזהות בניין ולפתוח תקלה.
+אתה מדבר עם דייר שעדיין לא רשום במערכת. המטרה: לזהות בניין ב-Supabase ולפתוח תקלה.
 
 חוקים קשיחים:
 1. השב תמיד בשפת הדייר (עברית / צרפתית / אנגלית). ברירת מחדל עברית.
 2. הודעות קצרות וברורות ל-WhatsApp (מקסימום 3 משפטים + רשימה אם צריך).
-3. אל תמציא בניינים. השתמש רק בתוצאות החיפוש שסופקו לך או בבקשת חיפוש חדשה.
-4. אם חסרה כתובת — בקש רחוב ומספר בית.
-5. אם חסר תיאור תקלה — בקש תיאור קצר אחרי שיש בניין.
-6. ברכות (בוקר טוב / היי) אינן תקלה — ענה בנימוס והמשך לאיסוף כתובת/תקלה.
-7. כשיש כמה בניינים — הצג רשימה ממוספרת 1..N ובקש מספר או כתובת מדויקת יותר.
-8. החזר JSON בלבד לפי הסכמה — בלי markdown ובלי הסברים.`
+3. אל תמציא בניינים. אל תניח כתובת שלא נמצאה בחיפוש. החיפוש במסד הנתונים מתבצע רק דרך search_query.
+4. אם הדייר כתב שם רחוב / כתובת / מספר בניין / קוד פרויקט — חובה למלא search_query עם הטקסט לחיפוש (גם בלי מספר בית). דוגמה: "חלץ" → search_query="חלץ".
+5. אל תבקש שוב "רחוב ומספר" אם כבר יש רמז לכתובת — קודם חפש עם search_query. רק אם החיפוש נכשל אפשר לבקש מספר בית.
+6. אם חסר תיאור תקלה — בקש תיאור קצר רק אחרי שיש בניין מזוהה.
+7. ברכות (בוקר טוב / היי / שלום) אינן תקלה ואינן כתובת — ענה בנימוס, search_query=null, ובקש כתובת.
+8. כשיש כמה בניינים ברשימת המועמדים — השתמש ב-select_project_index או select_project_id. אל תמציא id.
+9. החזר JSON בלבד לפי הסכמה — בלי markdown ובלי הסברים.`
 
 export function isWhatsAppAiEnabled(): boolean {
   return process.env.WHATSAPP_AI_ENABLED === 'true' && hasAiGatewayAuth()
@@ -223,6 +224,11 @@ ${last}
 מועמדי בניין נוכחיים (אם יש רשימה פתוחה):
 ${candidates}
 
+חשוב:
+- אם הודעת הדייר מכילה רחוב/כתובת/שם בניין (גם בלי מספר) — חובה search_query (לא null).
+- ברכה בלבד → search_query=null.
+- אל תמציא בניינים בתשובה; החיפוש ירוץ בשרת על search_query.
+
 החזר JSON עם השדות:
 {
   "reply": string,
@@ -233,6 +239,40 @@ ${candidates}
   "ticket_description": string | null,
   "open_ticket": boolean
 }`
+}
+
+
+/** Host-side fallback: street-only text like "חלץ" must still hit Supabase search. */
+export function looksLikeBuildingSearchText(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length < 2 || t.length > 80) return false
+  if (/^(שלום|היי|הי|בוקר\s*טוב|ערב\s*טוב|תודה|ok|okay|hi|hello|bonjour)[!?.…]*$/i.test(t)) {
+    return false
+  }
+  // Pure numeric selection 1..10 is list pick, not a new search.
+  if (/^\d{1,2}$/.test(t)) return false
+  // Project codes / START_ codes
+  if (/^(START_)?BMK\d+/i.test(t)) return true
+  // Hebrew / Latin street-like token (with or without house number)
+  if (/[\u0590-\u05FFA-Za-z]{2,}/.test(t)) return true
+  return false
+}
+
+/**
+ * Prefer model search_query; if missing, use resident text when it looks like an address hint.
+ */
+export function resolveBuildingSearchQuery(
+  decision: AiIntakeDecision,
+  latestUserText: string
+): string | null {
+  const fromModel = decision.search_query?.trim() || null
+  if (fromModel) return fromModel
+  const raw = latestUserText.trim()
+  if (!raw) return null
+  if (decision.select_project_id || decision.select_project_index != null) return null
+  if (decision.open_ticket && decision.ticket_description) return null
+  if (!looksLikeBuildingSearchText(raw)) return null
+  return raw
 }
 
 export async function decideUnknownResidentAiTurn(
