@@ -2,6 +2,7 @@
 
 /**
  * Worker NFC stamp — tap sticker → auto clock in/out.
+ * Local-first: warm IndexedDB stamps immediately; bootstrap+sync in background.
  * No GPS prompt, no redirect into the tickets portal.
  * One-time SMS link required to bind this phone (OS/browser limit).
  */
@@ -10,26 +11,12 @@ import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { normalizeWorkerToken, readWorkerToken, writeWorkerToken } from '@/lib/worker-portal-storage'
-import {
-  getWorkerOfflineProfile,
-  initOfflineAttendanceDB,
-} from '@/lib/offline-attendance-db'
-import { recordAttendanceScan } from '@/lib/attendance-client'
-import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
-import {
-  cacheWorkerAttendanceBootstrap,
-  type AttendanceBootstrapPayload,
-} from '@/lib/worker-attendance-bootstrap'
+import { initOfflineAttendanceDB } from '@/lib/offline-attendance-db'
+import { executeNfcStampFlow, type NfcStampPhase } from '@/lib/nfc-stamp-flow'
 import { normalizeTagCode } from '@/lib/nfc-tag-utils'
 
-type ScanPhase = 'loading' | 'done' | 'error' | 'duplicate' | 'need_bind'
-
-const EVENT_HEADLINE: Record<string, string> = {
-  clock_in: 'נכנסת למשמרת',
-  clock_out: 'יצאת מהמשמרת',
-}
+type ScanPhase = 'loading' | NfcStampPhase
 
 function NfcScanInner() {
   const searchParams = useSearchParams()
@@ -72,101 +59,14 @@ function NfcScanInner() {
 
       await initOfflineAttendanceDB()
 
-      let workerId: string
-      let clientId: string
-      let usedOfflineFallback = false
+      const outcome = await executeNfcStampFlow({
+        token,
+        tagCode,
+        online,
+        onSyncDetail: (nextDetail) => setDetail(nextDetail),
+      })
 
-      if (online) {
-        try {
-          const [authRes, bootRes] = await Promise.all([
-            fetchWithTimeout(`/api/worker-auth?token=${encodeURIComponent(token)}`),
-            fetchWithTimeout(`/api/worker/attendance/bootstrap?token=${encodeURIComponent(token)}`),
-          ])
-
-          if (!authRes.ok) {
-            setPhase('error')
-            setHeadline('הקישור לא תקף')
-            setDetail('בקשו מהמנהל לשלוח שוב קישור SMS.')
-            return
-          }
-          const auth = (await authRes.json()) as { worker_id?: string; client_id?: string }
-          if (!auth.worker_id || !auth.client_id) {
-            setPhase('error')
-            setHeadline('הקישור לא תקף')
-            return
-          }
-
-          if (bootRes.status === 403) {
-            setPhase('error')
-            setHeadline('חתמת עובדים אינה פעילה')
-            setDetail('פנו למנהל.')
-            return
-          }
-
-          if (bootRes.ok) {
-            const bootData = (await bootRes.json()) as AttendanceBootstrapPayload
-            if (!bootData.worker_id || !bootData.client_id) {
-              setPhase('error')
-              setHeadline('לא ניתן לטעון את נתוני ההחתמה')
-              return
-            }
-            await cacheWorkerAttendanceBootstrap(token, bootData)
-            workerId = bootData.worker_id
-            clientId = bootData.client_id
-          } else {
-            const profile = await getWorkerOfflineProfile(token)
-            if (!profile) {
-              setPhase('error')
-              setHeadline('אין חיבור יציב')
-              setDetail('נסו שוב עם Wi-Fi או סלולר.')
-              return
-            }
-            workerId = profile.worker_id
-            clientId = profile.client_id
-            usedOfflineFallback = true
-          }
-        } catch {
-          const profile = await getWorkerOfflineProfile(token)
-          if (!profile) {
-            setPhase('error')
-            setHeadline('שגיאת רשת')
-            setDetail('נסו שוב בעוד רגע.')
-            return
-          }
-          workerId = profile.worker_id
-          clientId = profile.client_id
-          usedOfflineFallback = true
-        }
-      } else {
-        const profile = await getWorkerOfflineProfile(token)
-        if (!profile) {
-          setPhase('error')
-          setHeadline('פעם אחת עם אינטרנט')
-          setDetail('פתחו את קישור ה-SMS כשיש קליט, ואז אפשר גם בלי רשת.')
-          return
-        }
-        workerId = profile.worker_id
-        clientId = profile.client_id
-        usedOfflineFallback = true
-      }
-
-      const source = online && !usedOfflineFallback ? 'online' : 'offline'
-      const recorded = await recordAttendanceScan(workerId, clientId, tagCode, source, null)
-
-      if (!recorded.ok) {
-        if (recorded.reason === 'duplicate_scan') {
-          setPhase('duplicate')
-          setHeadline('כבר נרשמת לפני רגע')
-          setDetail('המתינו דקה, או המשיכו לעבוד.')
-        } else {
-          setPhase('error')
-          setHeadline('המדבקה לא מוכרת')
-          setDetail('פנו למנהל לבדוק שהמדבקה מותקנת במערכת.')
-        }
-        return
-      }
-
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (outcome.phase === 'done' && typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
           navigator.vibrate([80, 40, 80])
         } catch {
@@ -174,28 +74,10 @@ function NfcScanInner() {
         }
       }
 
-      const eventType = recorded.event_type
-      setPhase('done')
-      setHeadline(EVENT_HEADLINE[eventType] ?? 'נרשם')
-      setTagLabel(recorded.tag.label || recorded.tag.tag_code)
-      setDetail('')
-
-      if (online) {
-        void syncPendingAttendanceEvents(token)
-          .then((sync) => {
-            const last = sync.results[sync.results.length - 1]
-            if (last?.status === 'pending_review') {
-              setDetail('נשמר — ממתין לאישור משרד')
-            } else if (last?.status === 'conflict' || last?.status === 'rejected') {
-              setDetail('נשמר — המשרד יבדוק')
-            }
-          })
-          .catch(() => {
-            setDetail('נשמר במכשיר — יסתנכרן כשהרשת תחזור')
-          })
-      } else {
-        setDetail('נשמר במכשיר — יסתנכרן כשהרשת תחזור')
-      }
+      setPhase(outcome.phase)
+      setHeadline(outcome.headline)
+      setDetail(outcome.detail)
+      setTagLabel(outcome.tagLabel ?? '')
     })()
   }, [searchParams, online])
 

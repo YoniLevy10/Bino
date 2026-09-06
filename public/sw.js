@@ -1,5 +1,5 @@
-/* Bino PWA — v8: rebrand icons + name */
-const CACHE_VERSION = 'bino-v8'
+/* Bino PWA — v9: NFC shell cache-first */
+const CACHE_VERSION = 'bino-v9'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
@@ -58,6 +58,47 @@ function isNavigationRequest(request) {
   return request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html')
 }
 
+/** NFC stamp shell: match by pathname so ?t= / ?token= queries still hit precache. */
+function isWorkerNfcNavigation(pathname) {
+  return pathname === '/worker/nfc'
+}
+
+function cacheFirstNfcShell(request, pathname) {
+  const pathRequest = new Request(pathname)
+  const revalidate = () =>
+    fetch(request)
+      .then((res) => {
+        if (res.ok) {
+          const forHtmlRequest = res.clone()
+          const forHtmlPath = res.clone()
+          const forStaticPath = res.clone()
+          caches.open(HTML_CACHE).then((c) => {
+            void c.put(request, forHtmlRequest)
+            void c.put(pathRequest, forHtmlPath)
+          })
+          caches.open(STATIC_CACHE).then((c) => {
+            void c.put(pathRequest, forStaticPath)
+          })
+        }
+        return res
+      })
+      .catch(() => null)
+
+  return caches.match(pathRequest).then((byPath) => {
+    const cachedPromise = byPath ? Promise.resolve(byPath) : caches.match(request)
+    return cachedPromise.then((cached) => {
+      if (cached) {
+        void revalidate()
+        return cached
+      }
+      return revalidate().then((res) => {
+        if (res) return res
+        return caches.match('/offline.html').then((off) => off || Response.error())
+      })
+    })
+  })
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
@@ -66,6 +107,11 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return
 
   if (isNavigationRequest(request)) {
+    if (isWorkerNfcNavigation(url.pathname)) {
+      event.respondWith(cacheFirstNfcShell(request, url.pathname))
+      return
+    }
+
     event.respondWith(
       fetch(request)
         .then((res) => {
