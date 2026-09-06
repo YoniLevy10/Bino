@@ -7,6 +7,7 @@ import {
   decideUnknownResidentAiTurn,
   fallbackUnknownResidentPrompt,
   isWhatsAppAiIntakeEnabled,
+  resolveBuildingSearchQuery,
   type AiIntakeBuildingCandidate,
   type AiIntakeDecision,
   type AiIntakeHistoryItem,
@@ -56,6 +57,8 @@ export type UnknownResidentAiIntakeArgs = {
   textBody: string
   waCreds?: { phoneNumberId?: string; accessToken?: string }
   decideTurn?: typeof decideUnknownResidentAiTurn
+  /** Test seam — defaults to searchProjectsByBuilding */
+  searchBuildings?: typeof searchProjectsByBuilding
 }
 
 function toCandidate(p: ProjectRow): AiIntakeBuildingCandidate {
@@ -198,6 +201,7 @@ export async function runUnknownResidentAiIntake(
     textBody,
     waCreds,
     decideTurn = decideUnknownResidentAiTurn,
+    searchBuildings = searchProjectsByBuilding,
   } = args
 
   const pending = await getPendingSelection(from, supabaseAdmin, clientId)
@@ -229,9 +233,11 @@ export async function runUnknownResidentAiIntake(
 
   let selected = resolveSelectedProject(decision, candidates)
 
-  if (!selected && decision.search_query) {
-    const results = await searchProjectsByBuilding(
-      decision.search_query,
+  const searchQuery = resolveBuildingSearchQuery(decision, textBody)
+
+  if (!selected && searchQuery) {
+    const results = await searchBuildings(
+      searchQuery,
       supabaseAdmin,
       clientId
     )

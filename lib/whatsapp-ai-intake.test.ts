@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   emptyAiIntakeDecision,
   fallbackUnknownResidentPrompt,
+  looksLikeBuildingSearchText,
   parseAiIntakeDecision,
+  resolveBuildingSearchQuery,
 } from '@/lib/whatsapp-ai'
 import { runUnknownResidentAiIntake } from '@/lib/whatsapp-webhook/ai-unknown-resident-intake'
 
@@ -121,7 +123,73 @@ describe('emptyAiIntakeDecision', () => {
   })
 })
 
+
+describe('resolveBuildingSearchQuery', () => {
+  it('uses model search_query when present', () => {
+    const d = emptyAiIntakeDecision('בודקים')
+    d.search_query = 'חלץ 10'
+    expect(resolveBuildingSearchQuery(d, 'משהו אחר')).toBe('חלץ 10')
+  })
+
+  it('falls back to street-only resident text', () => {
+    const d = emptyAiIntakeDecision('מה מספר הבית?')
+    expect(looksLikeBuildingSearchText('חלץ')).toBe(true)
+    expect(resolveBuildingSearchQuery(d, 'חלץ')).toBe('חלץ')
+  })
+
+  it('does not search on greeting', () => {
+    const d = emptyAiIntakeDecision('שלום')
+    expect(looksLikeBuildingSearchText('שלום')).toBe(false)
+    expect(resolveBuildingSearchQuery(d, 'שלום')).toBeNull()
+  })
+
+  it('does not override numeric list selection', () => {
+    const d = emptyAiIntakeDecision('בחרתם')
+    d.select_project_index = 1
+    expect(resolveBuildingSearchQuery(d, '1')).toBeNull()
+  })
+})
+
 describe('runUnknownResidentAiIntake', () => {
+
+  it('falls back to searching Supabase when AI omits search_query', async () => {
+    process.env.WHATSAPP_AI_ENABLED = 'true'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+
+    const project = {
+      id: 'p-haletz-10',
+      name: 'חלץ 10',
+      project_code: 'BMK1',
+      address: 'חלץ 10',
+      address_en: null,
+    }
+    const supabase = mockSupabase()
+    const searches: string[] = []
+
+    const result = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: 'חלץ',
+      decideTurn: async () => ({
+        reply: 'מה מספר הבית?',
+        language: 'he',
+        search_query: null,
+        select_project_id: null,
+        select_project_index: null,
+        ticket_description: null,
+        open_ticket: false,
+      }),
+      searchBuildings: async (q: string) => {
+        searches.push(q)
+        return [project, { ...project, id: 'p-haletz-12', name: 'חלץ 12', address: 'חלץ 12' }] as never
+      },
+    })
+
+    expect(searches).toEqual(['חלץ'])
+    expect(result.kind).toBe('handled')
+  })
+
   it('searches building and asks for issue when one match', async () => {
     process.env.WHATSAPP_AI_ENABLED = 'true'
     process.env.AI_GATEWAY_API_KEY = 'gw-test'
