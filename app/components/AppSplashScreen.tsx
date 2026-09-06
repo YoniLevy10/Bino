@@ -75,7 +75,9 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
 
   if (!visible) return null
 
-  const title = branding.displayName
+  // Neutral Bino shell until this session's tenant branding is bootstrapped.
+  const title = ready ? branding.displayName : 'Bino'
+  const logoSrc = ready && branding.logoUrl ? branding.logoUrl : DEFAULT_SPLASH_LOGO
 
   return (
     <div
@@ -111,25 +113,14 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
               transform: 'scale(1.12)',
             }}
           />
-          {branding.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={branding.logoUrl}
-              alt=""
-              width={80}
-              height={80}
-              style={splashLogoStyle}
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={DEFAULT_SPLASH_LOGO}
-              alt=""
-              width={80}
-              height={80}
-              style={splashLogoStyle}
-            />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={logoSrc}
+            alt=""
+            width={80}
+            height={80}
+            style={splashLogoStyle}
+          />
         </div>
         <h1
           style={{

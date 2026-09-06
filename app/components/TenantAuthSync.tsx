@@ -2,9 +2,7 @@
 
 import { useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
-
-const LAST_AUTH_UID_KEY = 'bamakor_last_auth_uid'
+import { clearTenantBrowserCaches, LAST_AUTH_UID_KEY } from '@/lib/tenant-browser-cache'
 
 /**
  * Clears tenant branding / client-id caches when auth user changes or signs out.

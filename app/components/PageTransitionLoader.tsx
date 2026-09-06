@@ -14,9 +14,13 @@ const logoStyle = {
 }
 
 export function PageTransitionLoader({ compact = false }: { compact?: boolean }) {
-  const { logoUrl: ctxLogoUrl } = useClientBranding()
+  const { logoUrl: ctxLogoUrl, isBootstrapped } = useClientBranding()
   const [cachedBranding] = useState(() => tryReadBrandingFromSessionCache())
-  const src = ctxLogoUrl || cachedBranding?.logoUrl || DEFAULT_LOGO
+  // Neutral platform logo until tenant branding for this session is ready.
+  const src =
+    isBootstrapped && (ctxLogoUrl || cachedBranding?.logoUrl)
+      ? ctxLogoUrl || cachedBranding!.logoUrl!
+      : DEFAULT_LOGO
 
   return (
     <div

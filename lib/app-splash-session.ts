@@ -1,5 +1,8 @@
 /** Splash + fresh fetch only on first dashboard entry per browser tab session. */
-const SPLASH_DONE_KEY = 'bamakor_splash_done'
+
+import { DASHBOARD_CACHE_LEGACY_KEY, DASHBOARD_CACHE_PREFIX, SPLASH_DONE_KEY } from '@/lib/tenant-browser-cache'
+
+export { SPLASH_DONE_KEY }
 
 export function shouldShowAppSplash(): boolean {
   if (typeof window === 'undefined') return false
@@ -19,14 +22,21 @@ export function markAppSplashComplete(): void {
   }
 }
 
-const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v2'
-
-/** Skip localStorage SWR cache only on first entry when there is nothing cached yet. */
+/**
+ * Skip localStorage SWR cache only on first entry when there is nothing cached yet.
+ * With tenant-keyed dashboard caches, "nothing cached" means no v3 dashboard keys
+ * and no legacy unkeyed blob.
+ */
 export function shouldSkipStalePageCache(): boolean {
   if (!shouldShowAppSplash()) return false
   if (typeof window === 'undefined') return true
   try {
-    return !localStorage.getItem(DASHBOARD_CACHE_KEY)
+    if (localStorage.getItem(DASHBOARD_CACHE_LEGACY_KEY)) return false
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith(DASHBOARD_CACHE_PREFIX)) return false
+    }
+    return true
   } catch {
     return true
   }

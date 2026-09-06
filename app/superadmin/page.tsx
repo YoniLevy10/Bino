@@ -386,6 +386,10 @@ export default function SuperAdminPage() {
     setMagicLoadingId(clientId)
     setError('')
     try {
+      // Clear tenant UI caches before issuing a magic link so opening it
+      // cannot briefly paint the previous client's dashboard/branding.
+      const { clearAllTenantUiCaches } = await import('@/lib/tenant-browser-cache')
+      clearAllTenantUiCaches()
       const res = await fetch('/api/superadmin/magic-link', {
         method: 'POST',
         headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
