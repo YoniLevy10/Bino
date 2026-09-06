@@ -8,7 +8,7 @@
  *
  * מנוי:
  *  - starter ₪299/חודש | pro ₪499 | business ₪699 | enterprise ₪899+
- *  - לחיצה "שדרג תוכנית" → מנהל Bamakor מעדכן ידנית בDB
+ *  - לחיצה "שדרג תוכנית" → מנהל Bino מעדכן ידנית בDB
  *
  * קשור ל: lib/plan-limits.ts
  */
@@ -255,7 +255,7 @@ export default function BillingPage() {
                 <div style={styles.cardPad}>
                   <h2 style={styles.h2}>תוכניות חיוב חודשיות</h2>
                   <p style={styles.mutedSmall}>
-                    תמחור לפי מסלול. שדרוג — פנו להנהלת Bamakor / Levy Tech.
+                    תמחור לפי מסלול. שדרוג — פנו להנהלת Bino / Levy Tech.
                   </p>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={styles.plansTable}>
@@ -353,7 +353,7 @@ export default function BillingPage() {
                 ) : null}
                 {planCatalog.length > 1 ? (
                   <>
-                    <p style={{ ...styles.note, marginTop: 16 }}>מסלולים נוספים (לשדרוג — פנו לבמקור):</p>
+                    <p style={{ ...styles.note, marginTop: 16 }}>מסלולים נוספים (לשדרוג — פנו לBino):</p>
                     <div style={styles.planCatalogList}>
                       {planCatalog
                         .filter((p) => p.plan_tier !== planTier)

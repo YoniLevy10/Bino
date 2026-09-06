@@ -1,5 +1,5 @@
 /**
- * Google Calendar API helpers — push Bamakor office events to the tenant's Google Calendar.
+ * Google Calendar API helpers — push Bino office events to the tenant's Google Calendar.
  * Uses stored OAuth refresh tokens (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'

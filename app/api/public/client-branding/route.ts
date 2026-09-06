@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkRateLimitIpEndpoint, sanitizeId } from '@/lib/api-validation'
 
 /**
- * Public client branding for /intake (and similar unauthenticated pages).
+ * Public client branding for /intake, /report (and similar unauthenticated pages).
  * Returns only logo_url + display name — no secrets.
  */
 export async function GET(req: NextRequest) {

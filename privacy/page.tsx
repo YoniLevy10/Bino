@@ -2,7 +2,7 @@ export default function PrivacyPage() {
   return (
     <html lang="he" dir="rtl">
       <body style={{ fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '40px auto', padding: '20px', lineHeight: '1.8' }}>
-        <h1>מדיניות פרטיות - במקור</h1>
+        <h1>מדיניות פרטיות - Bino</h1>
         <p>עדכון אחרון: מאי 2026</p>
         <h2>1. מידע שאנו אוספים</h2>
         <p>אנו אוספים מספר טלפון, שם, ותוכן הודעות WhatsApp לצורך ניהול קריאות שירות בבניינים.</p>

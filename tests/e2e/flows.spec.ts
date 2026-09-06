@@ -62,7 +62,7 @@ test.describe('דפים ציבוריים', () => {
     await page.waitForLoadState('domcontentloaded')
     const body = await page.locator('body').innerText()
     expect(body.trim().length).toBeGreaterThanOrEqual(10)
-    expect(body).toMatch(/סקר דיירים|בניין|Bamakor/)
+    expect(body).toMatch(/סקר דיירים|בניין|Bino/)
   })
 
   test('דף /privacy עולה', async ({ page }) => {
@@ -121,7 +121,7 @@ test.describe('דף login — UX', () => {
   test('לוגו / שם המוצר מוצג', async ({ page }) => {
     await page.goto('/login')
     // חפש טקסט שמזהה את המוצר
-    const logo = page.locator('text=במקור').or(page.locator('text=Bamakor')).first()
+    const logo = page.locator('text=Bino').first()
     await expect(logo).toBeVisible({ timeout: 8_000 })
   })
 

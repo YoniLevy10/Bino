@@ -258,7 +258,7 @@ export function AttendanceShiftsReport({
       XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום עובדים')
       XLSX.utils.book_append_sheet(wb, wsDetail, 'משמרות')
 
-      XLSX.writeFile(wb, `bamakor-shifts-${monthKey || fromDate}.xlsx`)
+      XLSX.writeFile(wb, `bino-shifts-${monthKey || fromDate}.xlsx`)
       toast.success('הקובץ הורד')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'ייצוא נכשל')

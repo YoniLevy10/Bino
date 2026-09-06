@@ -94,7 +94,7 @@ export function WorkTimer() {
               textTransform: 'uppercase',
             }}
           >
-            Bamakor · Dev Timer
+            Bino · Dev Timer
           </div>
 
           <div

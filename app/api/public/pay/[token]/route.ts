@@ -116,7 +116,7 @@ export async function GET(_req: Request, context: RouteContext) {
     suggested_email: suggestedEmail,
     suggested_phone: suggestedPhone,
     client: {
-      name: client?.name || 'במקור',
+      name: client?.name || 'Bino',
       logo_url: client?.logo_url || null,
     },
     resident_name: resident?.full_name || null,

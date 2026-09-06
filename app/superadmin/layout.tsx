@@ -10,9 +10,9 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Super Admin — במקור',
+  title: 'Super Admin — Bino',
   description: 'ניהול לקוחות, חבילות, מכסות ותוספים',
-  applicationName: 'במקור Super Admin',
+  applicationName: 'Bino Super Admin',
   manifest: '/manifest.superadmin.json',
   appleWebApp: {
     capable: true,

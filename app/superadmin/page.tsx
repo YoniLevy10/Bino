@@ -1020,7 +1020,7 @@ export default function SuperAdminPage() {
                                       { label: 'שם לקוח', key: 'name' as const, placeholder: '' },
                                       { label: 'WA Phone Number ID', key: 'whatsapp_phone_number_id' as const, placeholder: 'ריק = ללא WhatsApp' },
                                       { label: 'טלפון מנהל', key: 'manager_phone' as const, placeholder: '972501234567' },
-                                      { label: 'שם שולח SMS', key: 'sms_sender_name' as const, placeholder: 'Bamakor' },
+                                      { label: 'שם שולח SMS', key: 'sms_sender_name' as const, placeholder: 'Bino' },
                                     ].map(({ label, key, placeholder }) => (
                                       <div key={key}>
                                         <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>{label}</label>

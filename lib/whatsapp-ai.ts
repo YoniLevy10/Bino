@@ -25,7 +25,7 @@ const REWRITE_SYSTEM = `אתה עוזר WhatsApp של מערכת ניהול בנ
 - אל תוסיף ברכות ארוכות
 - אמוג'י — רק אם הם בתבנית המקורית`
 
-const INTAKE_SYSTEM = `אתה נציג שירות WhatsApp של במקור (Bamakor) — מערכת דיווח תקלות לבניינים בישראל.
+const INTAKE_SYSTEM = `אתה נציג שירות WhatsApp של Bino (Building Intelligence & Operations) — מערכת דיווח תקלות לבניינים בישראל.
 אתה מדבר עם דייר שעדיין לא רשום במערכת. המטרה: לזהות בניין ב-Supabase ולפתוח תקלה.
 
 חוקים קשיחים:

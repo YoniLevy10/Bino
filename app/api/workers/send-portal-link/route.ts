@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       .eq('id', clientId)
       .maybeSingle()
 
-    const clientName = (clientRow as { name?: string | null } | null)?.name?.trim() || 'Bamakor'
+    const clientName = (clientRow as { name?: string | null } | null)?.name?.trim() || 'Bino'
     const smsSenderName =
       (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
 

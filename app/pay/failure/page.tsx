@@ -11,7 +11,7 @@ function PayFailureInner() {
   return (
     <main dir="rtl" style={styles.shell}>
       <div style={styles.panel}>
-        <p style={styles.brand}>במקור</p>
+        <p style={styles.brand}>Bino</p>
         <h1 style={styles.title}>התשלום לא הושלם</h1>
         <p style={styles.sub}>
           ניתן לנסות שוב דרך הקישור שנשלח ב-SMS, או לפנות לוועד הבית.

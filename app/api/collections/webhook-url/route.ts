@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { getConfiguredGrowWebhookUrl } from '@/lib/collection-charge-ops'
 
-/** Returns whether the Grow notify URL is configured on the server (Bamakor registers it per request). */
+/** Returns whether the Grow notify URL is configured on the server (Bino registers it per request). */
 export async function GET() {
   const auth = await requireSessionClientId()
   if (!auth.ok) return auth.response

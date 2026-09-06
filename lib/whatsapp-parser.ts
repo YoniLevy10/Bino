@@ -69,7 +69,7 @@ export function isAddressLikeText(text: string): boolean {
   return false
 }
 
-/** Meta Cloud API: receiving phone number ID (identifies which Bamakor tenant / WhatsApp line). */
+/** Meta Cloud API: receiving phone number ID (identifies which Bino tenant / WhatsApp line). */
 export function extractWhatsAppPhoneNumberId(body: unknown): string | null {
   const bodyRecord = body as Record<string, unknown>
   const entry = (bodyRecord.entry as unknown[])?.[0] as Record<string, unknown>

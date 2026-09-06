@@ -16,6 +16,12 @@ type ProjectRow = {
   client_id?: string
 }
 
+type ClientBranding = {
+  id: string
+  name: string | null
+  logo_url: string | null
+}
+
 function ReportPageContent() {
   const searchParams = useSearchParams()
   const paramProjectCode = (searchParams.get('project') || '').toUpperCase()
@@ -41,6 +47,7 @@ function ReportPageContent() {
   const [imageUploadError, setImageUploadError] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loadingProjects, setLoadingProjects] = useState(false)
+  const [branding, setBranding] = useState<ClientBranding | null>(null)
 
   const SUPPORTED_MIME_TYPES = [
     'image/jpeg',
@@ -62,6 +69,30 @@ function ReportPageContent() {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350)
     return () => clearTimeout(t)
   }, [searchInput])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadBranding() {
+      if (!effectiveClientId) {
+        setBranding(null)
+        return
+      }
+      try {
+        const brandingUrl = new URL('/api/public/client-branding', window.location.origin)
+        brandingUrl.searchParams.set('client_id', effectiveClientId)
+        const brandingRes = await fetchWithTimeout(brandingUrl.toString())
+        if (!brandingRes.ok) return
+        const brandingJson = (await brandingRes.json()) as { client?: ClientBranding }
+        if (!cancelled) setBranding(brandingJson.client || null)
+      } catch {
+        /* keep platform default branding */
+      }
+    }
+    void loadBranding()
+    return () => {
+      cancelled = true
+    }
+  }, [effectiveClientId])
 
   useEffect(() => {
     async function loadProjects() {
@@ -246,14 +277,21 @@ function ReportPageContent() {
   const selectedProject = effectiveProjectCode
     ? projects.find((p) => p.project_code === effectiveProjectCode)
     : null
+  const brandName = branding?.name?.trim() || 'Bino'
 
   return (
     <main style={styles.page}>
       <div style={styles.wrapper}>
         <div style={styles.brandRow}>
-          <div style={styles.logoBox}>B</div>
+          {/* Prefer clients.logo_url; otherwise platform Bino icon. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={branding?.logo_url || '/apple-icon.png'}
+            alt={brandName}
+            style={styles.logoImage}
+          />
           <div>
-            <div style={styles.brandTitle}>Bamakor</div>
+            <div style={styles.brandTitle}>{brandName}</div>
             <div style={styles.brandSubtitle}>Maintenance Report Form</div>
           </div>
         </div>
@@ -436,7 +474,7 @@ function ReportPageContent() {
           </form>
 
           <div style={styles.footerNote}>
-            After submitting, the issue will be recorded in the Bamakor system.
+            After submitting, the issue will be recorded in the {brandName} system.
           </div>
 
           <div style={styles.backRow}>
@@ -480,17 +518,13 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '12px',
     marginBottom: '20px',
   },
-  logoBox: {
+  logoImage: {
     width: '44px',
     height: '44px',
     borderRadius: '12px',
-    background: 'linear-gradient(135deg, #C1121F 0%, #8F0B16 100%)',
-    color: '#FFFFFF',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 800,
-    fontSize: '18px',
+    objectFit: 'contain',
+    background: '#FFFFFF',
+    border: '1px solid #E5E7EB',
   },
   brandTitle: {
     fontSize: '20px',

@@ -157,7 +157,7 @@ export function LoginClient() {
       >
         <Image
           src="/apple-icon.png"
-          alt="במקור"
+          alt="Bino"
           width={88}
           height={88}
           priority
@@ -174,8 +174,11 @@ export function LoginClient() {
               letterSpacing: '-0.02em',
             }}
           >
-            במקור
+            Bino
           </h1>
+          <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#64748b', lineHeight: 1.4, fontWeight: 600, letterSpacing: '0.04em' }}>
+            Building Intelligence &amp; Operations
+          </p>
           <p style={{ margin: 0, fontSize: '17px', color: '#475569', lineHeight: 1.5, fontWeight: 500 }}>
             מערכת ניהול תקלות לבניינים
           </p>

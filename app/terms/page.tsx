@@ -4,7 +4,7 @@ import path from 'path'
 import { LegalPublicShell, legalProseStyle } from '@/app/components/legal/LegalPublicShell'
 
 export const metadata: Metadata = {
-  title: 'תקנון | במקור',
+  title: 'תקנון | Bino',
   description: 'תקנון שימוש ושירות לתשלומי ועד וגבייה דיגיטלית',
 }
 

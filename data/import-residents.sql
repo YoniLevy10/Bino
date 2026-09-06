@@ -1,4 +1,4 @@
--- Bamakor: import residents from directory PDF (532 rows, 20 buildings)
+-- Bino: import residents from directory PDF (532 rows, 20 buildings)
 -- Run in Supabase SQL Editor. Does NOT create projects — only matches existing project names.
 -- client_id: 7573f5ad-70e5-4357-8fef-1d96ec38d169
 --

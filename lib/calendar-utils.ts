@@ -81,7 +81,7 @@ export function buildIcalCalendar(events: {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Bamakor//Office Calendar//HE',
+    'PRODID:-//Bino//Office Calendar//HE',
     'CALSCALE:GREGORIAN',
     `X-WR-CALNAME:${calendarName}`,
   ]

@@ -80,7 +80,7 @@ async function markAlertSent(dedupKey: string): Promise<void> {
 async function sendOpsEmail(subject: string, text: string): Promise<boolean> {
   const to = resolveOpsEmail()
   const apiKey = (process.env.RESEND_API_KEY || '').trim()
-  const from = (process.env.RESEND_FROM_EMAIL || 'Bamakor <office@bamakor.com>').trim()
+  const from = (process.env.RESEND_FROM_EMAIL || 'Bino <office@bamakor.com>').trim()
 
   if (!apiKey) {
     console.warn('[platform-ops-alert] RESEND_API_KEY not set — skipping email')
@@ -135,7 +135,7 @@ export async function notifyPlatformOps(input: PlatformOpsAlertInput): Promise<v
       : '',
   ].filter(Boolean)
 
-  const subject = `[Bamakor] ${input.title}`.slice(0, 200)
+  const subject = `[Bino] ${input.title}`.slice(0, 200)
   const sent = await sendOpsEmail(subject, lines.join('\n'))
   if (sent) await markAlertSent(dedupKey)
 }

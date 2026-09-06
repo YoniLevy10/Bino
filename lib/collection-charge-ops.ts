@@ -42,7 +42,7 @@ export function buildGrowWebhookNotifyUrl(): string | null {
   return url.toString()
 }
 
-/** Absolute webhook URL Bamakor registers on each Grow payment request. */
+/** Absolute webhook URL Bino registers on each Grow payment request. */
 export function getConfiguredGrowWebhookUrl(): {
   ok: true
   url: string
@@ -139,7 +139,7 @@ export function requireConfiguredCredentials(row: ClientGrowPaymentsRow): {
   if (!isGrowPlatformConfigured()) {
     return {
       ok: false,
-      error: 'חסרים מפתחות Grow של במקור בשרת. פנו להנהלת במקור.',
+      error: 'חסרים מפתחות Grow של Bino בשרת. פנו להנהלת Bino.',
     }
   }
   if (!isGrowCollectionsConfigured(row)) {
@@ -177,7 +177,7 @@ export type SendChargeResult =
     }
   | { ok: false; error: string; code?: string }
 
-/** Create Grow payment request, mark sent, optionally SMS the Bamakor pay link. */
+/** Create Grow payment request, mark sent, optionally SMS the Bino pay link. */
 export async function sendCollectionCharge(
   admin: SupabaseClient,
   opts: {
@@ -377,7 +377,7 @@ export async function cancelCollectionCharge(
   if (row.status === 'paid') return { ok: false, error: 'לא ניתן לבטל חיוב ששולם' }
   if (row.status === 'cancelled') return { ok: true }
 
-  // Invalidate Bamakor public link; keep Grow link id so a late webhook can still match.
+  // Invalidate Bino public link; keep Grow link id so a late webhook can still match.
   const { error: updErr } = await admin
     .from('collection_charges')
     .update({

@@ -35,7 +35,7 @@ export function formatLegalPhoneDisplay(phone: string): string {
  * Set LEGAL_PHONE + LEGAL_ADDRESS in Vercel before submitting the site to Grow.
  */
 export function getLegalSiteConfig(): LegalSiteConfig {
-  const businessName = trimEnv('LEGAL_BUSINESS_NAME') || 'במקור'
+  const businessName = trimEnv('LEGAL_BUSINESS_NAME') || 'Bino'
   const phone = trimEnv('LEGAL_PHONE')
   const address = trimEnv('LEGAL_ADDRESS')
   const email =

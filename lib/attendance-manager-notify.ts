@@ -23,7 +23,7 @@ export async function notifyManagerAttendanceReview(
     .eq('id', clientId)
     .maybeSingle()
 
-  const name = (client as { name?: string } | null)?.name?.trim() || 'Bamakor'
+  const name = (client as { name?: string } | null)?.name?.trim() || 'Bino'
   const managerPhone = (client as { manager_phone?: string | null } | null)?.manager_phone?.trim() || null
   const smsSender = (client as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
   const appUrl = getPublicAppUrl()

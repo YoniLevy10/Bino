@@ -35,7 +35,7 @@ export async function POST() {
     }
 
     const senderName = (client as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
-    const ok = await sendManagerSMS(destination, 'הודעת בדיקה מ-Bamakor - SMS עובד בהצלחה', senderName, clientId)
+    const ok = await sendManagerSMS(destination, 'הודעת בדיקה מ-Bino - SMS עובד בהצלחה', senderName, clientId)
 
     if (!ok) {
       return NextResponse.json(

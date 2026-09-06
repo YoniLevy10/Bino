@@ -8,7 +8,7 @@ import { getWorkerAttendanceScanUrl } from '@/lib/public-app-url'
 function buildOnboardingMessageHe(scanUrl: string): string {
   return (
     'שלום,\n' +
-    'תיקוף שעות במערכת במקור — סריקת מדבקת NFC או QR בכניסה/בפרויקט.\n' +
+    'תיקוף שעות במערכת Bino — סריקת מדבקת NFC או QR בכניסה/בפרויקט.\n' +
     '1. פתחו את הקישור האישי שלכם מהמנהל (פעם אחת, עם אינטרנט).\n' +
     '2. בכל כניסה או יציאה ממשמרת — הצמידו את הטלפון למדבקת NFC (או סרקו QR).\n\n' +
     `קישור לדוגמה:\n${scanUrl}`
@@ -39,7 +39,7 @@ export async function GET() {
   if (!tagRow?.tag_code) {
     return NextResponse.json(
       {
-        error: 'אין תגי NFC פעילים. פנו לתמיכת במקור ליצירת מדבקות.',
+        error: 'אין תגי NFC פעילים. פנו לתמיכת Bino ליצירת מדבקות.',
         mode: 'nfc_required',
       },
       { status: 404 }

@@ -14,4 +14,4 @@ export const TENANT_ACCESS_DENIED_HE =
   'אין לכם גישה למערכת. ודאו שהוזמנתם על ידי מנהל המשרד, או פנו לתמיכה.'
 
 export const TENANT_MULTI_CLIENT_DENIED_HE =
-  'החשבון משויך ליותר מלקוח אחד — פנו לתמיכת Bamakor לתיקון השיוך.'
+  'החשבון משויך ליותר מלקוח אחד — פנו לתמיכת Bino לתיקון השיוך.'

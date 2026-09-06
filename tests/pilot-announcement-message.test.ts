@@ -13,8 +13,8 @@ describe('pilot announcement SMS', () => {
 
   it('builds multilingual message without emoji', () => {
     const msg = buildPilotAnnouncementSms()
-    expect(msg).toContain('במקור')
-    expect(msg).toContain('Bamakor')
+    expect(msg).toContain('Bino')
+    expect(msg).toContain('Service & Maintenance Hotline')
     expect(msg).toContain('Bonjour')
     expect(msg).not.toMatch(/\p{Extended_Pictographic}/u)
   })

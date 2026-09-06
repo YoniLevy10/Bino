@@ -4,8 +4,8 @@ import { getLegalSiteConfig, legalTelHref } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 
 export const metadata: Metadata = {
-  title: 'יצירת קשר | במקור',
-  description: 'טלפון, כתובת ומייל ליצירת קשר — במקור',
+  title: 'יצירת קשר | Bino',
+  description: 'טלפון, כתובת ומייל ליצירת קשר — Bino',
 }
 
 export default function ContactPage() {

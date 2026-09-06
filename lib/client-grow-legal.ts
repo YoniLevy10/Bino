@@ -37,7 +37,7 @@ function trimOrEmpty(v: string | null | undefined): string {
   return (v || '').trim()
 }
 
-/** Legal name Grow sees — explicit field, else the Bamakor client name. */
+/** Legal name Grow sees — explicit field, else the Bino client name. */
 export function resolveGrowBusinessName(row: ClientGrowLegalRow): string {
   return trimOrEmpty(row.grow_legal_business_name) || trimOrEmpty(row.name)
 }

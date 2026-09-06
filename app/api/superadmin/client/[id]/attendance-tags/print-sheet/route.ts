@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const admin = getSupabaseAdmin()
 
   const { data: client } = await admin.from('clients').select('name').eq('id', clientId).maybeSingle()
-  const clientName = (client as { name?: string } | null)?.name ?? 'Bamakor'
+  const clientName = (client as { name?: string } | null)?.name ?? 'Bino'
 
   const { data: tags, error } = await admin
     .from('worker_nfc_tags')

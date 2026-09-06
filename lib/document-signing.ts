@@ -41,7 +41,7 @@ export async function createDocumentSignRequest(
   if (error) throw error
 
   const message = signUrl
-    ? `במקור: מסמך "${input.documentName}" לחתימה: ${signUrl}`
+    ? `Bino: מסמך "${input.documentName}" לחתימה: ${signUrl}`
     : null
 
   if (message && input.sendVia === 'sms' && input.signerPhone) {

@@ -34,7 +34,7 @@ export function getWorkerAttendanceScanUrl(tagCode: string, accessToken?: string
   return `${base}/worker/nfc?${params.toString()}`
 }
 
-/** Public Bamakor-hosted payment landing for a collection charge token. */
+/** Public Bino-hosted payment landing for a collection charge token. */
 export function getPublicPayUrl(publicToken: string): string {
   return `${getPublicAppBaseUrl()}/pay/${encodeURIComponent(publicToken.trim())}`
 }

@@ -94,7 +94,7 @@ export function getManagerPushBlockedReason(): string | null {
     return 'הוסיפו את האפליקציה למסך הבית ואז הפעילו התראות'
   }
   if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
-    return 'ההתראות חסומות בהגדרות המכשיר / הדפדפן. הפעילו אותן עבור במקור.'
+    return 'ההתראות חסומות בהגדרות המכשיר / הדפדפן. הפעילו אותן עבור Bino.'
   }
   return null
 }

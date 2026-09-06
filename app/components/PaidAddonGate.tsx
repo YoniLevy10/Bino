@@ -47,7 +47,7 @@ export function PaidAddonGate({ addonKey, children }: Props) {
           מחיר: <strong>{formatAddonPriceDisplay(price)}</strong>
         </p>
         <p style={styles.hint}>
-          להפעלת התוסף פנו לצוות במקור. לאחר ההפעלה תוכלו לגשת לפיצ&apos;ר מהדף תוספים בתשלום.
+          להפעלת התוסף פנו לצוות Bino. לאחר ההפעלה תוכלו לגשת לפיצ&apos;ר מהדף תוספים בתשלום.
         </p>
         <div style={styles.actions}>
           <Link href="/addons">

@@ -51,7 +51,7 @@ export function AttendanceSetupChecklist({ tagCount, stickerInstalled, stickerTo
     {
       done: tagCount > 0,
       label: 'תגים במערכת',
-      hint: tagCount > 0 ? `${tagCount} תגים` : 'פנו לתמיכת במקור ליצירת מדבקות',
+      hint: tagCount > 0 ? `${tagCount} תגים` : 'פנו לתמיכת Bino ליצירת מדבקות',
     },
     {
       done: stickersDone,

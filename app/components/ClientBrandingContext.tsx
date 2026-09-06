@@ -10,7 +10,7 @@ export type ClientBranding = {
   logoUrl: string | null
 }
 
-const DEFAULT_BRANDING: ClientBranding = { displayName: 'במקור', logoUrl: null }
+const DEFAULT_BRANDING: ClientBranding = { displayName: 'Bino', logoUrl: null }
 const BRANDING_CACHE_TTL = 24 * 60 * 60 * 1000
 
 function readBrandingCache(clientId: string): ClientBranding | null {
@@ -75,7 +75,7 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
           .maybeSingle()
         if (!cancelled && data) {
           const fresh: ClientBranding = {
-            displayName: (data as { name?: string | null }).name?.trim() || 'במקור',
+            displayName: (data as { name?: string | null }).name?.trim() || 'Bino',
             logoUrl: (data as { logo_url?: string | null }).logo_url?.trim() || null,
           }
           setBranding(fresh)

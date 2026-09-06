@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonSidebarPinButton } from '@/app/components/addons/AddonSidebarPinButton'
-import { BAMAKOR_BRAND } from '@/lib/addons-nav'
+import { BINO_BRAND } from '@/lib/addons-nav'
 import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 import type { PaidAddonDisplayEntry } from '@/lib/paid-addons-catalog'
 import { Button, theme } from '../ui'
@@ -99,7 +99,7 @@ export function AddonMarketingModal({
                 מעוניינים להפעיל את <strong>{entry.title}</strong> בחשבון שלכם?
               </p>
               <p style={styles.ctaContact}>
-                ליצירת קשר והפעלה: <strong>הנהלת {BAMAKOR_BRAND}</strong>
+                ליצירת קשר והפעלה: <strong>הנהלת {BINO_BRAND}</strong>
               </p>
             </div>
           ) : (

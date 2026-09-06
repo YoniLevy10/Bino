@@ -1,8 +1,8 @@
 {
   "id": "/superadmin",
-  "name": "במקור — Super Admin",
+  "name": "Bino — Super Admin",
   "short_name": "Super Admin",
-  "description": "ניהול לקוחות, חבילות ומכסות — במקור",
+  "description": "ניהול לקוחות, חבילות ומכסות — Bino",
   "start_url": "/superadmin",
   "scope": "/superadmin",
   "display": "standalone",

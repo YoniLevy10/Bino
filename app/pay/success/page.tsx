@@ -69,7 +69,7 @@ function PaySuccessInner() {
   return (
     <main dir="rtl" style={styles.shell}>
       <div style={styles.panel}>
-        <p style={styles.brand}>{payload?.client?.name || 'במקור'}</p>
+        <p style={styles.brand}>{payload?.client?.name || 'Bino'}</p>
         <h1 style={styles.title}>
           {paid ? 'התשלום התקבל' : pending ? 'בודקים את התשלום…' : 'התשלום התקבל'}
         </h1>

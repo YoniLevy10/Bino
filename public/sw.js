@@ -1,7 +1,7 @@
-/* Bamakor PWA — v7: fix notification click routing for dashboard + worker */
-const CACHE_VERSION = 'bamakor-v7'
-const STATIC_CACHE = `bamakor-static-${CACHE_VERSION}`
-const HTML_CACHE = `bamakor-html-${CACHE_VERSION}`
+/* Bino PWA — v8: rebrand icons + name */
+const CACHE_VERSION = 'bino-v8'
+const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
+const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
 
 self.addEventListener('install', (event) => {
@@ -103,11 +103,11 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let title = 'במקור'
+  let title = 'Bino'
   let body = ''
   let url = '/tickets'
   let badge = 1
-  let tag = 'bamakor-push'
+  let tag = 'bino-push'
   try {
     const text = event.data?.text()
     if (text) {

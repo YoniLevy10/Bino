@@ -37,16 +37,16 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "במקור — ניהול תקלות ואחזקה",
-  description: "מערכת ניהול נכסים, תקלות בזמן אמת, שיבוץ עובדים ואינטגרציה לוואטסאפ",
-  applicationName: "Bamakor",
-  keywords: ["property management", "maintenance", "tickets", "project management", "real-time"],
+  title: "Bino — ניהול תקלות ואחזקה",
+  description: "Bino — Building Intelligence & Operations. מערכת ניהול נכסים, תקלות בזמן אמת, שיבוץ עובדים ואינטגרציה לוואטסאפ",
+  applicationName: "Bino",
+  keywords: ["Bino", "Building Intelligence", "property management", "maintenance", "tickets", "project management", "real-time"],
   authors: [{ name: "Yoni Levy" }],
   creator: "Yoni Levy",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "במקור",
+    title: "Bino",
   },
   formatDetection: {
     telephone: false,
@@ -64,22 +64,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "he_IL",
     url: "https://bamakor.vercel.app",
-    siteName: "Bamakor",
-    title: "במקור — ניהול תקלות ואחזקה",
+    siteName: "Bino",
+    title: "Bino — ניהול תקלות ואחזקה",
     description: "מערכת ניהול נכסים ותקלות",
     images: [
       {
         url: "/apple-icon.png",
         width: 180,
         height: 180,
-        alt: "Bamakor Logo",
+        alt: "Bino Logo",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "במקור — ניהול תקלות ואחזקה",
+    title: "Bino — ניהול תקלות ואחזקה",
     description: "מערכת ניהול נכסים ותקלות",
     images: ["/apple-icon.png"],
   },
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
   other: {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "במקור",
+    "apple-mobile-web-app-title": "Bino",
   },
 };
 

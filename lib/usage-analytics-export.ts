@@ -10,7 +10,7 @@ const SIGNAL_HE: Record<string, string> = {
 }
 
 export function usageAnalyticsExportFilename(lookbackDays: number, date = new Date()): string {
-  return `bamakor-usage-${lookbackDays}d-${exportDateSuffix(date)}.xlsx`
+  return `bino-usage-${lookbackDays}d-${exportDateSuffix(date)}.xlsx`
 }
 
 /** Build + download a full usage analytics workbook (Hebrew sheet names). */
