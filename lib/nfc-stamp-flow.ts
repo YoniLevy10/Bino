@@ -41,9 +41,7 @@ export type NfcStampFlowDeps = {
     | { ok: true; pending: PendingAttendanceEvent; event_type: AttendanceEventType; tag: NfcTagRow }
     | { ok: false; reason: 'unknown_tag' | 'duplicate_scan' }
   >
-  syncPending: (token: string) => Promise<{
-    results: Array<{ status?: string }>
-  }>
+  syncPending: (token: string) => Promise<{ results: Array<{ status?: string }> }>
 }
 
 const EVENT_HEADLINE: Record<string, string> = {

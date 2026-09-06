@@ -113,6 +113,5 @@ export async function fetchAndCacheWorkerAttendanceBootstrap(
   if (!data.worker_id || !data.client_id) return null
 
   await cacheWorkerAttendanceBootstrap(accessToken, data)
-
   return data
 }
