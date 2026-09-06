@@ -20,6 +20,7 @@ import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { shouldShowPageLoadError } from '@/lib/page-load-error'
 import { TM } from '@/lib/toast-messages'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
@@ -203,6 +204,8 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const lastFetchAtRef = useRef(0)
   const professionalsLoadedRef = useRef(false)
+  /** True after cache paint or successful network load — keeps UI up on silent refresh failure. */
+  const hasPaintedDataRef = useRef(false)
   const cacheAuxRef = useRef({
     residentsCount: null as number | null,
     workersCount: null as number | null,
@@ -300,7 +303,10 @@ export default function DashboardPage() {
   )
 
   const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
+    if (!silent) {
+      setLoading(true)
+      setPageLoadError(false)
+    }
     const result = await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
@@ -367,6 +373,7 @@ export default function DashboardPage() {
         setProjects(nextProjects)
         setWorkersMap(map)
         lastFetchAtRef.current = Date.now()
+        hasPaintedDataRef.current = true
 
         writeDashboardCache({
           tickets: formatted,
@@ -387,9 +394,15 @@ export default function DashboardPage() {
 
         return true
       },
-      { context: 'טעינת הדשבורד', showErrorToast: true }
+      { context: 'טעינת הדשבורד', showErrorToast: !silent }
     )
-    setPageLoadError(!result)
+    setPageLoadError(
+      shouldShowPageLoadError({
+        fetchSucceeded: !!result,
+        silent,
+        hasDataToShow: hasPaintedDataRef.current,
+      })
+    )
     if (!silent) setLoading(false)
   }, [loadSecondaryData])
 
@@ -423,6 +436,7 @@ export default function DashboardPage() {
         workersCount: cached.workersCount,
         recentActivity: cached.recentActivity as ActivityItem[],
       }
+      hasPaintedDataRef.current = true
       setLoading(false)
       void loadData(true)
     } else {
@@ -769,7 +783,7 @@ export default function DashboardPage() {
         ) : pageLoadError ? (
           <ErrorState
             title="לא הצלחנו לטעון את לוח הבקרה"
-            message="בדקו חיבור לאינטרנט ונסו שוב."
+            message="נסו שוב בעוד רגע. אם הבעיה נמשכת — סגרו את האפליקציה ופתחו מחדש."
             onRetry={() => void loadData()}
           />
         ) : (
