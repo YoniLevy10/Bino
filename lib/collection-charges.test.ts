@@ -176,7 +176,7 @@ describe('collection charge ops URL helpers', () => {
     expect(buildGrowWebhookNotifyUrl()).toBeNull()
   })
 
-  it('defaults success/failure to Bamakor pay pages with charge token', () => {
+  it('defaults success/failure to Bino pay pages with charge token', () => {
     const urls = defaultSuccessFailureUrls(
       {},
       { publicToken: '11111111-1111-1111-1111-111111111111' }

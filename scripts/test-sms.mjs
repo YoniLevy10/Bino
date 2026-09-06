@@ -32,7 +32,7 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
     <destinations>
         <phone>${TO}</phone>
     </destinations>
-    <message>הודעת בדיקה מ-Bamakor ✅</message>
+    <message>הודעת בדיקה מ-Bino ✅</message>
 </sms>`
 
 console.log('📱 שולח SMS ניסיון...')
@@ -47,7 +47,7 @@ try {
     method: 'POST',
     headers: {
       'Content-Type': 'application/xml; charset=UTF-8',
-      'User-Agent': 'Bamakor/1.0 (+https://bamakor.com)',
+      'User-Agent': 'Bino/1.0 (+https://bamakor.com)',
     },
     body: xml,
   })

@@ -1,6 +1,6 @@
 /**
  * Public app URL for SMS / deep links. Set NEXT_PUBLIC_APP_URL in .env.local and Vercel
- * (e.g. https://bamakor.vercel.app). Trimmed; trailing slash stripped before appending paths.
+ * (e.g. https://your-app.vercel.app). Trimmed; trailing slash stripped before appending paths.
  */
 function getPublicAppBaseUrl(): string {
   const base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
@@ -34,7 +34,7 @@ export function getWorkerAttendanceScanUrl(tagCode: string, accessToken?: string
   return `${base}/worker/nfc?${params.toString()}`
 }
 
-/** Public Bamakor-hosted payment landing for a collection charge token. */
+/** Public Bino-hosted payment landing for a collection charge token. */
 export function getPublicPayUrl(publicToken: string): string {
   return `${getPublicAppBaseUrl()}/pay/${encodeURIComponent(publicToken.trim())}`
 }

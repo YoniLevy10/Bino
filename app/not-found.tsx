@@ -12,7 +12,7 @@ export default function NotFound() {
         <div style={styles.logoContainer}>
           <Image
             src="/apple-icon.png"
-            alt="Bamakor"
+            alt="Bino"
             width={64}
             height={64}
             style={{ borderRadius: theme.radius.lg }}

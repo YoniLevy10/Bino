@@ -4,9 +4,11 @@ import {
   type SidebarNavItemId,
 } from '@/lib/sidebar-nav'
 
-export const BAMAKOR_BRAND = 'במקור'
-/** @deprecated use BAMAKOR_BRAND */
-export const LEVY_TECH_BRAND = BAMAKOR_BRAND
+export const BINO_BRAND = 'Bino'
+/** @deprecated use BINO_BRAND */
+export const BAMAKOR_BRAND = BINO_BRAND
+/** @deprecated use BINO_BRAND */
+export const LEVY_TECH_BRAND = BINO_BRAND
 
 export const ADDONS_NAV_ITEM: SidebarNavItem = {
   id: 'addons',

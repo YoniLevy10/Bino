@@ -5,7 +5,7 @@ import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { buildNfcTagScanUrl } from '@/lib/nfc-tag-utils'
 
-/** Tenant read-only: tag list (QR issued by Bamakor Super Admin). */
+/** Tenant read-only: tag list (QR issued by Bino Super Admin). */
 export async function GET() {
   const auth = await requireSessionClientId()
   if (!auth.ok) return auth.response

@@ -13,7 +13,7 @@ export function growApiBaseUrl(env: GrowEnv = 'production'): string {
   return GROW_API_BASE_URLS[env]
 }
 
-/** Platform credentials — Bamakor as the system. Per-tenant merchant is grow_user_id. */
+/** Platform credentials — Bino as the system. Per-tenant merchant is grow_user_id. */
 export type GrowPlatformConfig = {
   env: GrowEnv
   apiKey: string

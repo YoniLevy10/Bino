@@ -4,8 +4,8 @@ import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { VaadPayContent } from '@/app/components/legal/VaadPayContent'
 
 export const metadata: Metadata = {
-  title: 'תשלום דמי ועד | במקור',
-  description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים — במקור',
+  title: 'תשלום דמי ועד | Bino',
+  description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים — Bino',
 }
 
 /**
@@ -21,7 +21,7 @@ export default function VaadPayLandingPage() {
         cfg={cfg}
         incompleteHint={
           cfg.readyForGrowAudit
-            ? 'עמוד זה שייך לפלטפורמת במקור. כל חברת ניהול ממלאת בהגדרות → Grow את פרטי העסק שקולט את הכסף, ומגישה את העמוד האישי (/vaad-pay/…).'
+            ? 'עמוד זה שייך לפלטפורמת Bino. כל חברת ניהול ממלאת בהגדרות → Grow את פרטי העסק שקולט את הכסף, ומגישה את העמוד האישי (/vaad-pay/…).'
             : 'חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). לקוחות הפלטפורמה ממלאים פרטים בהגדרות → Grow ומגישים את העמוד האישי שלהם.'
         }
       />

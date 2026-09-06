@@ -101,7 +101,7 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
           : unsupported
             ? 'הוסיפו את האפליקציה למסך הבית, ואז הפעילו התראות.'
             : denied
-              ? 'ההתראות חסומות. פתחו הגדרות המכשיר והפעילו התראות עבור במקור.'
+              ? 'ההתראות חסומות. פתחו הגדרות המכשיר והפעילו התראות עבור Bino.'
               : 'כשנפתחת תקלה חדשה תקבלו התראה בטלפון — גם כשהאפליקציה סגורה.'}
       </p>
       {!unsupported && !denied && !blocked ? (

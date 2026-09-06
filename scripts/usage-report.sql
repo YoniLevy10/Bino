@@ -1,4 +1,4 @@
--- Bamakor platform usage report (run in Supabase SQL Editor)
+-- Bino platform usage report (run in Supabase SQL Editor)
 -- Paste results back for analysis. Window: last 30 days.
 
 WITH params AS (

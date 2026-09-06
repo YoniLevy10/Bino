@@ -5,7 +5,7 @@ function initWebPush() {
   const publicKey = process.env.VAPID_PUBLIC_KEY?.trim()
   const privateKey = process.env.VAPID_PRIVATE_KEY?.trim()
   if (!publicKey || !privateKey) return false
-  const subject = process.env.VAPID_SUBJECT?.trim() || 'mailto:support@bamakor.app'
+  const subject = process.env.VAPID_SUBJECT?.trim() || 'mailto:support@bino.app'
   webpush.setVapidDetails(subject, publicKey, privateKey)
   return true
 }

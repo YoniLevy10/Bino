@@ -4,8 +4,8 @@ import path from 'path'
 import { LegalPublicShell, legalProseStyle } from '@/app/components/legal/LegalPublicShell'
 
 export const metadata: Metadata = {
-  title: 'מדיניות פרטיות | במקור',
-  description: 'מדיניות פרטיות — במקור',
+  title: 'מדיניות פרטיות | Bino',
+  description: 'מדיניות פרטיות — Bino',
 }
 
 /** Renders repo root `PRIVACY_POLICY_TEMPLATE.md` — public for Grow / residents. */

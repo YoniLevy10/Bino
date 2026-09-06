@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_BASE_URL?.trim() ||
-    'https://bamakor.vercel.app'
+    ''
 
   const result = await inviteUserToClientOrganization(admin, {
     clientId,

@@ -62,7 +62,7 @@ export function buildCollectionsAccountStatus(opts: {
   let message = 'החשבון מוכן לגבייה — הכסף נכנס לחשבון Morning שלכם.'
   if (!hasOwnAccount) {
     message =
-      'כל לקוח חייב מפתחות Morning משלו. אין חשבון משותף במקור — בלי זה אי אפשר לקבל תשלומים מדיירים.'
+      'כל לקוח חייב מפתחות Morning משלו. אין חשבון משותף Bino — בלי זה אי אפשר לקבל תשלומים מדיירים.'
   } else if (!enabledOk) {
     message = 'המפתחות שמורים — הפעילו את החיבור כדי לשלוח חיובים.'
   }

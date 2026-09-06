@@ -29,7 +29,7 @@ type Props = {
   refreshKey?: number
 }
 
-/** Manager-facing NFC tag list — copy URL / open QR for verification (tags issued by Bamakor). */
+/** Manager-facing NFC tag list — copy URL / open QR for verification (tags issued by Bino). */
 export function AttendanceTagsPanel({ refreshKey = 0 }: Props) {
   const [tags, setTags] = useState<TagRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,14 +75,14 @@ export function AttendanceTagsPanel({ refreshKey = 0 }: Props) {
       </div>
       <p style={styles.hint}>
         רשימת התגים שלכם. העתיקו קישור או הציגו QR לבדיקה שהמדבקה מתוכנתת נכון. יצירת תגים חדשים —
-        דרך תמיכת במקור.
+        דרך תמיכת Bino.
       </p>
 
       {loading ? (
         <p style={styles.hint}>טוען…</p>
       ) : tags.length === 0 ? (
         <p style={styles.warn}>
-          עדיין אין תגים בחשבון. פנו לתמיכת במקור להפעלת מדבקות — בלי תגים אי אפשר להחתים.
+          עדיין אין תגים בחשבון. פנו לתמיכת Bino להפעלת מדבקות — בלי תגים אי אפשר להחתים.
         </p>
       ) : (
         <div style={{ overflowX: 'auto' }}>

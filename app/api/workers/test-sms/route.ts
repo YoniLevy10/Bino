@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
 
     const name = (worker.full_name as string)?.trim() || 'עובד'
-    const smsMessage = `שלום ${name}, זו הודעת בדיקה מ-Bamakor. אם קיבלת אותה - SMS תקין.`
+    const smsMessage = `שלום ${name}, זו הודעת בדיקה מ-Bino. אם קיבלת אותה - SMS תקין.`
 
     const batch = await sendWorkerSMSAll(phones, smsMessage, smsSenderName, clientId)
     if (batch.sent === 0) {

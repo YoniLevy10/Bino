@@ -6,9 +6,9 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'אזור עובד — במקור',
+  title: 'אזור עובד — Bino',
   description: 'תקלות משויכות אליך — עדכון וטיפול מהיר',
-  applicationName: 'במקור — אזור עובד',
+  applicationName: 'Bino — אזור עובד',
   manifest: '/manifest.worker.json',
   appleWebApp: {
     capable: true,

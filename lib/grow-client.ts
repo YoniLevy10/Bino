@@ -20,7 +20,7 @@ export type GrowPaymentLinkRequest = {
   successUrl: string
   cancelUrl: string
   notifyUrl: string
-  /** Bamakor public_token — returned on webhook as cField1 */
+  /** Bino public_token — returned on webhook as cField1 */
   publicToken: string
   vatType?: 1 | 3
 }
@@ -120,7 +120,7 @@ export async function createGrowPaymentLink(
   platform: GrowPlatformConfig | null = readGrowPlatformConfig()
 ): Promise<GrowPaymentLinkResult> {
   if (!platform) {
-    return { ok: false, error: 'חסרים מפתחות Grow של במקור בשרת' }
+    return { ok: false, error: 'חסרים מפתחות Grow של Bino בשרת' }
   }
 
   const phone = toGrowMobilePhone(request.phone)

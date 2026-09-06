@@ -81,7 +81,7 @@ test.describe('דפים ציבוריים — עולים ללא login', () => {
 
   test('/login — לוגו המוצר מוצג', async ({ page }) => {
     await page.goto('/login')
-    const logo = page.locator('text=במקור').or(page.locator('text=Bamakor')).first()
+    const logo = page.locator('text=Bino').first()
     await expect(logo).toBeVisible({ timeout: 8_000 })
   })
 

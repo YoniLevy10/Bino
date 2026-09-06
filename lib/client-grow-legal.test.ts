@@ -41,7 +41,7 @@ describe('growLegalFromClientRow', () => {
   it('is ready when name + phone + address are set', () => {
     const legal = growLegalFromClientRow({
       id: CLIENT_ID,
-      name: 'במקור',
+      name: 'Bino',
       grow_legal_business_name: 'שרה ניהול בע״מ',
       grow_legal_phone: '0501234567',
       grow_legal_address: 'הרצל 1, תל אביב',
@@ -59,7 +59,7 @@ describe('resolveGrowBusinessName', () => {
     expect(
       resolveGrowBusinessName({
         id: CLIENT_ID,
-        name: 'במקור',
+        name: 'Bino',
         grow_legal_business_name: 'חברת שרה',
       })
     ).toBe('חברת שרה')

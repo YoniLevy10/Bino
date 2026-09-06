@@ -6,13 +6,13 @@ test.describe('Dashboard - Core Functionality', () => {
     await page.goto('/')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await expect(page).toHaveURL(/\/login/)
-    await expect(page).toHaveTitle(/במקור|Bamakor|Dashboard/i)
+    await expect(page).toHaveTitle(/Bino|Dashboard/i)
   })
 
   test('Main navigation renders', async ({ page }) => {
     // Login page should render the product name and Google sign-in button
     await page.goto('/login')
-    await expect(page.locator('text=במקור').or(page.locator('text=Bamakor')).first()).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator('text=Bino').first()).toBeVisible({ timeout: 8_000 })
     const googleBtn = page.locator('button').filter({ hasText: /google/i }).first()
     await expect(googleBtn).toBeVisible({ timeout: 8_000 })
   })

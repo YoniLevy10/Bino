@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonMarketingModal } from '@/app/components/addons/AddonMarketingModal'
 import { AddonSidebarPinButton } from '@/app/components/addons/AddonSidebarPinButton'
-import { BAMAKOR_BRAND } from '@/lib/addons-nav'
+import { BINO_BRAND } from '@/lib/addons-nav'
 import { formatAddonPriceDisplay } from '@/lib/paid-addons'
 import {
   buildPaidAddonsForDisplay,
@@ -125,7 +125,7 @@ function AddonsPageInner() {
 
   useEffect(() => {
     if (searchParams.get('blocked') === '1') {
-      toast.info(`פיצ'ר בתשלום. ליצירת קשר: הנהלת ${BAMAKOR_BRAND}.`)
+      toast.info(`פיצ'ר בתשלום. ליצירת קשר: הנהלת ${BINO_BRAND}.`)
     }
   }, [searchParams])
 
@@ -170,7 +170,7 @@ function AddonsPageInner() {
             לחצו על כרטיס לקריאת ההסבר המלא.
           </p>
           <p style={styles.heroContact}>
-            להפעלה: <strong>הנהלת {BAMAKOR_BRAND}</strong>
+            להפעלה: <strong>הנהלת {BINO_BRAND}</strong>
           </p>
         </div>
 

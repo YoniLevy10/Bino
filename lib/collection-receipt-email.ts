@@ -27,7 +27,7 @@ export function buildPaymentReceiptEmailBody(ctx: ReceiptChargeContext): {
   subject: string
   body: string
 } {
-  const clientName = (ctx.client_name || 'במקור').trim()
+  const clientName = (ctx.client_name || 'Bino').trim()
   const amountLabel = formatChargeAmountIls(Number(ctx.amount))
   const when = ctx.paid_at
     ? new Date(ctx.paid_at).toLocaleString('he-IL', {
@@ -45,7 +45,7 @@ export function buildPaymentReceiptEmailBody(ctx: ReceiptChargeContext): {
   ]
   if (ctx.apartment_number?.trim()) lines.push(`דירה: ${ctx.apartment_number.trim()}`)
   if (ctx.project_name?.trim()) lines.push(`בניין: ${ctx.project_name.trim()}`)
-  lines.push('', `מאת: ${clientName}`, '', 'זוהי הודעת אישור תשלום. שמרו אותה לתיעוד.', '', 'במקור')
+  lines.push('', `מאת: ${clientName}`, '', 'זוהי הודעת אישור תשלום. שמרו אותה לתיעוד.', '', 'Bino')
 
   return {
     subject: `אישור תשלום — ${ctx.title} — ${amountLabel}`,

@@ -69,7 +69,7 @@ export async function post019SmsOnce(
       method: 'POST',
       headers: {
         'Content-Type': 'application/xml; charset=UTF-8',
-        'User-Agent': 'Bamakor/1.0 (+https://bamakor.com)',
+        'User-Agent': 'Bino/1.0',
       },
       body: payload,
     },

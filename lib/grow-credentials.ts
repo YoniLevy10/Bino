@@ -43,7 +43,7 @@ export function buildGrowCollectionsAccountStatus(opts: {
   const checks: GrowCollectionsCheck[] = [
     {
       id: 'platform',
-      label: 'חיבור במקור ל-Grow (מפתחות מערכת בשרת)',
+      label: 'חיבור Bino ל-Grow (מפתחות מערכת בשרת)',
       ok: opts.platformConfigured,
       required: true,
     },
@@ -64,7 +64,7 @@ export function buildGrowCollectionsAccountStatus(opts: {
   const ready = opts.platformConfigured && opts.enabled && userOk
   let message = 'החשבון מוכן לגבייה — הכסף נכנס לחשבון Grow שלכם.'
   if (!opts.platformConfigured) {
-    message = 'חסרים מפתחות Grow של במקור בשרת (GROW_API_KEY / GROW_PAGE_CODE / GROW_WEBHOOK_SECRET).'
+    message = 'חסרים מפתחות Grow של Bino בשרת (GROW_API_KEY / GROW_PAGE_CODE / GROW_WEBHOOK_SECRET).'
   } else if (!userOk) {
     message = 'פתחו חשבון ב-Grow והדביקו כאן את ה-userId שתקבלו.'
   } else if (!opts.enabled) {

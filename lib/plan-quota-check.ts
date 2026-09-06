@@ -40,7 +40,7 @@ export async function checkTicketsMonthlyQuota(
   if (max !== null && current >= max) {
     return {
       ok: false,
-      error: `הגעת למגבלת התקלות החודשית (${max}). שדרגו את החבילה או פנו לבמקור.`,
+      error: `הגעת למגבלת התקלות החודשית (${max}). שדרגו את החבילה או פנו לBino.`,
       current,
       max,
     }

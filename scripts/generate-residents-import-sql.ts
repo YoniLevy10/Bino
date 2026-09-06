@@ -62,7 +62,7 @@ function main() {
     )
   }
 
-  const sql = `-- Bamakor: import residents from directory PDF (${rows.length} rows, ${pdfProjects.size} buildings)
+  const sql = `-- Bino: import residents from directory PDF (${rows.length} rows, ${pdfProjects.size} buildings)
 -- Run in Supabase SQL Editor. Does NOT create projects — only matches existing project names.
 -- client_id: ${clientId}
 --

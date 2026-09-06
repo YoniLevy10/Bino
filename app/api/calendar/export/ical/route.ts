@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
     }
 
-    const ical = buildIcalCalendar(data || [], 'Bamakor Office')
+    const ical = buildIcalCalendar(data || [], 'Bino Office')
     return new NextResponse(ical, {
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="bamakor-calendar.ics"',
+        'Content-Disposition': 'attachment; filename="bino-calendar.ics"',
       },
     })
   } catch {

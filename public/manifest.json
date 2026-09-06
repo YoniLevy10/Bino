@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "במקור",
-  "short_name": "במקור",
+  "name": "Bino",
+  "short_name": "Bino",
   "description": "מערכת ניהול תקלות ואחזקה לבניינים",
   "start_url": "/",
   "scope": "/",

@@ -152,7 +152,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
       )
       XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום עובדים')
       XLSX.utils.book_append_sheet(wb, wsDetail, 'משמרות')
-      XLSX.writeFile(wb, `bamakor-attendance-${group.monthKey}.xlsx`)
+      XLSX.writeFile(wb, `bino-attendance-${group.monthKey}.xlsx`)
       toast.success('הקובץ הורד')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'ייצוא נכשל')
@@ -187,7 +187,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
         'מידע'
       )
       XLSX.utils.book_append_sheet(wb, ws, 'משמרות')
-      XLSX.writeFile(wb, `bamakor-attendance-history-${currentMonthKey()}.xlsx`)
+      XLSX.writeFile(wb, `bino-attendance-history-${currentMonthKey()}.xlsx`)
       toast.success('הקובץ הורד')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'ייצוא נכשל')

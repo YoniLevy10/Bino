@@ -1,4 +1,4 @@
-﻿# Bamakor Runbooks
+﻿# Bino Runbooks
 
 Operational guides for platform and tenant features.
 
@@ -8,7 +8,7 @@ Operational guides for platform and tenant features.
 
 צ׳קליסט מלא: [`COLLECTIONS_GO_LIVE.md`](COLLECTIONS_GO_LIVE.md)
 
-**חשבון אישי לכל לקוח** — במקור מחזיקה מפתחות פלטפורמה; הכסף נכנס לחשבון Grow של אותו לקוח (`userId`).
+**חשבון אישי לכל לקוח** — Bino מחזיקה מפתחות פלטפורמה; הכסף נכנס לחשבון Grow של אותו לקוח (`userId`).
 מודל מלא: [`PAYMENTS.md`](PAYMENTS.md)
 
 ### לפני שליחה לדיירים
@@ -23,11 +23,11 @@ Operational guides for platform and tenant features.
 
 - שליחת חיוב נחסמת אם חסר סוד webhook בשרת.
 - מסך גבייה חוסם שליחה עד ש-`userId` מוגדר ומופעל.
-- `userId` לא יכול להיות משויך לשני לקוחות במקור.
+- `userId` לא יכול להיות משויך לשני לקוחות Bino.
 - בדף `/pay` הדייר מזין מייל (מומלץ) / טלפון ומאשר **תקנון** לפני מעבר לדרישת התשלום ב-Grow; אחרי תשלום נשלח אישור במייל (Resend).
 - עמוד העסק של הלקוח: `/vaad-pay/{clientId}` (פרטי העסק מההגדרות). `/vaad-pay` הכללי הוא עמוד פלטפורמה בלבד.
 - עמודי תקנון/פרטיות משותפים: `/terms`, `/privacy`.
-- ביטול חיוב מבטל את קישור `/pay/...` של Bamakor (קישור Grow הישן עלול עדיין להיות פתוח אצלם).
+- ביטול חיוב מבטל את קישור `/pay/...` של Bino (קישור Grow הישן עלול עדיין להיות פתוח אצלם).
 - «סמן כשולם» — גיבוי ידני אם ה-webhook פספס.
 
 ---
@@ -39,7 +39,7 @@ Operational guides for platform and tenant features.
 Program each NFC sticker with a URL record:
 
 ```
-https://bamakor.vercel.app/worker/nfc?t=TAG_CODE
+https://YOUR_APP_URL/worker/nfc?t=TAG_CODE
 ```
 
 - `TAG_CODE` — uppercase alphanumeric (e.g. `OFFICE`, `BMK1`). Normalized server-side.

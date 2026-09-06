@@ -712,7 +712,7 @@ export function CollectionsBoard() {
                           void postChargeAction(
                             '/api/collections/charges/cancel',
                             row.id,
-                            'החיוב בוטל וקישור Bamakor בוטל'
+                            'החיוב בוטל וקישור Bino בוטל'
                           )
                         }
                       >

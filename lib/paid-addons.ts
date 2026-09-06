@@ -46,7 +46,7 @@ export function formatAddonPriceDisplay(price: number): string {
 }
 
 export function addonRequiredMessageHe(nameHe: string, priceIls: number): string {
-  return `התוסף "${nameHe}" אינו פעיל בחשבון שלכם. מחיר: ${formatAddonPriceDisplay(priceIls)} — פנו לבמקור להפעלה.`
+  return `התוסף "${nameHe}" אינו פעיל בחשבון שלכם. מחיר: ${formatAddonPriceDisplay(priceIls)} — פנו לBino להפעלה.`
 }
 
 export async function listActiveAddonsCatalog(

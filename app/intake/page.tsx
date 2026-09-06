@@ -155,11 +155,11 @@ function IntakePageContent() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={branding?.logo_url || '/apple-icon.png'}
-            alt={branding?.name?.trim() || 'Bamakor'}
+            alt={branding?.name?.trim() || 'Bino'}
             style={styles.logoImage}
           />
           <div>
-            <div style={styles.brandTitle}>{branding?.name?.trim() || 'Bamakor'}</div>
+            <div style={styles.brandTitle}>{branding?.name?.trim() || 'Bino'}</div>
             <div style={styles.brandSubtitle}>רישום דייר לבניין</div>
           </div>
         </div>

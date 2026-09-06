@@ -52,7 +52,7 @@ export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
   },
   {
     id: 'display_name',
-    title: 'שינוי שם תצוגה "אייפון" → Bamakor',
+    title: 'שינוי שם תצוגה "אייפון" → Bino',
     description: 'Phone Numbers → Edit display name — מה שהדייר רואה בראש הצ\'אט.',
     status: 'optional',
     href: 'https://business.facebook.com/wa/manage/phone-numbers/',

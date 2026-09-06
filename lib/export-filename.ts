@@ -18,7 +18,7 @@ export function exportDateSuffix(date = new Date()): string {
 
 export function ticketHistoryExportFilename(projectName: string, date = new Date()): string {
   const safe = sanitizeExportFilenameSegment(projectName, 'project')
-  return `bamakor-history-${safe}-${exportDateSuffix(date)}.xlsx`
+  return `bino-history-${safe}-${exportDateSuffix(date)}.xlsx`
 }
 
 export function ticketsListExportFilename(options?: {
@@ -29,9 +29,9 @@ export function ticketsListExportFilename(options?: {
   const project = options?.projectName?.trim()
   if (project) {
     const safe = sanitizeExportFilenameSegment(project)
-    return `bamakor-tickets-${safe}-${day}.xlsx`
+    return `bino-tickets-${safe}-${day}.xlsx`
   }
-  return `bamakor-tickets-${day}.xlsx`
+  return `bino-tickets-${day}.xlsx`
 }
 
 export function summaryProjectExportFilename(projectName: string, periodSuffix: string): string {

@@ -25,7 +25,7 @@ describe('buildPaymentReceiptEmailBody', () => {
       paid_at: '2026-08-21T10:00:00.000Z',
       receipt_email: 'a@b.com',
       receipt_email_sent_at: null,
-      client_name: 'במקור ניהול',
+      client_name: 'Bino ניהול',
       resident_name: 'ישראל',
       apartment_number: '12',
       project_name: 'הרצל 5',
@@ -33,7 +33,7 @@ describe('buildPaymentReceiptEmailBody', () => {
     expect(subject).toMatch(/ועד בית/)
     expect(body).toMatch(/ישראל/)
     expect(body).toMatch(/דירה: 12/)
-    expect(body).toMatch(/במקור ניהול/)
+    expect(body).toMatch(/Bino ניהול/)
     expect(body).toMatch(/אישור תשלום|התקבל תשלום/)
   })
 })

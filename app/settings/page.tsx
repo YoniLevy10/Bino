@@ -691,7 +691,7 @@ function SettingsPageInner() {
                       dir="ltr"
                     />
                     <p style={styles.fieldHint}>
-                      019SMS מקבל רק מספר טלפון כשולח (למשל 972559899132). שמות אלפביתיים כמו Bamakor
+                      019SMS מקבל רק מספר טלפון כשולח (למשל 972559899132). שמות אלפביתיים כמו Bino
                       נכשלים בשקט. השאירו ריק לשימוש בשולח ברירת המחדל של המערכת.
                     </p>
                     {smsSenderName.trim() &&
@@ -899,13 +899,13 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={{ ...styles.cardInner, gap: 16 }}>
                   <p style={{ margin: 0, fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
-                    הכסף נכנס לחשבון Grow שלכם — לא דרך במקור.{' '}
+                    הכסף נכנס לחשבון Grow שלכם — לא דרך Bino.{' '}
                     <Link href="/collections" style={styles.inlineLink}>
                       לגבייה
                     </Link>
                   </p>
                   <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
-                    פתחו חשבון חדש ב-Grow לחברת הניהול. אחרי ש-Grow מחברים אתכם לפלטפורמת במקור תקבלו
+                    פתחו חשבון חדש ב-Grow לחברת הניהול. אחרי ש-Grow מחברים אתכם לפלטפורמת Bino תקבלו
                     userId — הדביקו אותו כאן והפעילו חיבור.
                   </p>
 
@@ -937,13 +937,13 @@ function SettingsPageInner() {
                   <div style={styles.morningSection}>
                     <div style={styles.morningSectionTitle}>סטטוס מערכת</div>
                     <p style={{ margin: 0, fontSize: 13, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
-                      במקור יוצרת דרישת תשלום ב-Grow ושולחת לדייר קישור /pay. סטטוס «שולם» מתעדכן
+                      Bino יוצרת דרישת תשלום ב-Grow ושולחת לדייר קישור /pay. סטטוס «שולם» מתעדכן
                       אוטומטית — אין צורך להדביק webhook ב-Grow.
                     </p>
                     {growWebhookConfigured === false ? (
                       <span style={{ ...styles.formHint, color: '#c2410c' }}>
                         {growWebhookLoadError ||
-                          'חסר סוד webhook בשרת — פנו להנהלת במקור לפני שליחת חיובים.'}
+                          'חסר סוד webhook בשרת — פנו להנהלת Bino לפני שליחת חיובים.'}
                       </span>
                     ) : growWebhookConfigured === true ? (
                       <span style={styles.formHint}>חיבור השרת ל-Grow מוכן לקבלת סטטוס תשלום.</span>
