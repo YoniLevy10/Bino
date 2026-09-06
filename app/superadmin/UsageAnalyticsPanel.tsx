@@ -26,6 +26,7 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
   const [error, setError] = useState<string | null>(null)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
   const [report, setReport] = useState<UsageAnalyticsReport | null>(null)
+  const [showAllClients, setShowAllClients] = useState(false)
 
   const load = useCallback(async () => {
     if (!secret.trim()) return
@@ -153,7 +154,24 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
 
           <section>
             <h3 style={sectionTitle}>דירוג פיצ׳רים (לפי פעילות בחלון)</h3>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="sa-usage-mobile-list">
+              {report.features.slice(0, 8).map((f) => (
+                <div key={f.key} className="sa-usage-row">
+                  <div className="sa-usage-row-top">
+                    <strong>
+                      {f.rank}. {f.label}
+                    </strong>
+                    <span style={{ color: signalColor[f.signal] ?? theme.colors.textMuted, fontWeight: 600 }}>
+                      {signalLabel[f.signal] ?? f.signal}
+                    </span>
+                  </div>
+                  <div className="sa-usage-row-meta">
+                    {f.clients_recent} לקוחות בחלון · {f.recent_events.toLocaleString('he-IL')} אירועים
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="sa-usage-desktop-table" style={{ overflowX: 'auto' }}>
               <table style={tableStyle}>
                 <thead>
                   <tr>
@@ -192,32 +210,77 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
             {!report.page_views.available || report.page_views.by_nav.length === 0 ? (
               <p style={{ color: theme.colors.textMuted, fontSize: 14 }}>{report.page_views.note}</p>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={th}>לשונית</th>
-                      <th style={th}>צפיות</th>
-                      <th style={th}>לקוחות</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.page_views.by_nav.map((row) => (
-                      <tr key={row.nav_id}>
-                        <td style={{ ...td, fontWeight: 600 }}>{row.label}</td>
-                        <td style={td}>{row.views.toLocaleString('he-IL')}</td>
-                        <td style={td}>{row.clients}</td>
+              <>
+                <div className="sa-usage-mobile-list">
+                  {report.page_views.by_nav.slice(0, 6).map((row) => (
+                    <div key={row.nav_id} className="sa-usage-row">
+                      <div className="sa-usage-row-top">
+                        <strong>{row.label}</strong>
+                        <span>{row.views.toLocaleString('he-IL')}</span>
+                      </div>
+                      <div className="sa-usage-row-meta">{row.clients} לקוחות</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="sa-usage-desktop-table" style={{ overflowX: 'auto' }}>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={th}>לשונית</th>
+                        <th style={th}>צפיות</th>
+                        <th style={th}>לקוחות</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {report.page_views.by_nav.map((row) => (
+                        <tr key={row.nav_id}>
+                          <td style={{ ...td, fontWeight: 600 }}>{row.label}</td>
+                          <td style={td}>{row.views.toLocaleString('he-IL')}</td>
+                          <td style={td}>{row.clients}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </section>
 
           <section>
             <h3 style={sectionTitle}>לקוחות — מה באמת רץ אצלם</h3>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="sa-usage-mobile-list">
+              {(showAllClients ? report.clients : report.clients.slice(0, 5)).map((c) => (
+                <div key={c.client_id} className="sa-usage-row">
+                  <div className="sa-usage-row-top">
+                    <strong>{c.name}</strong>
+                    <span>{c.plan_tier ?? '—'}</span>
+                  </div>
+                  <div className="sa-usage-row-meta">
+                    תקלה אחרונה:{' '}
+                    {c.last_ticket_at ? new Date(c.last_ticket_at).toLocaleDateString('he-IL') : '—'}
+                  </div>
+                  <div className="sa-usage-row-meta">
+                    פעיל: {c.active_features.length ? c.active_features.join(', ') : '—'}
+                  </div>
+                  {c.unused_enabled_addons.length > 0 ? (
+                    <div className="sa-usage-row-meta" style={{ color: theme.colors.error }}>
+                      תוספים בלי שימוש: {c.unused_enabled_addons.join(', ')}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+              {report.clients.length > 5 ? (
+                <button
+                  type="button"
+                  className="sa-quick-btn"
+                  style={{ width: '100%', minHeight: 44 }}
+                  onClick={() => setShowAllClients((v) => !v)}
+                >
+                  {showAllClients ? 'הצג פחות' : `הצג הכל (${report.clients.length})`}
+                </button>
+              ) : null}
+            </div>
+            <div className="sa-usage-desktop-table" style={{ overflowX: 'auto' }}>
               <table style={tableStyle}>
                 <thead>
                   <tr>

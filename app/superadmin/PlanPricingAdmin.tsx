@@ -140,7 +140,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
     <div className="sa-panel" style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.lg, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={titleStyle}>מנוי ותמחור — מסלולים</h2>
+          <h2 style={titleStyle}>מחירוני תוכניות</h2>
           <p style={subStyle}>
             מחיר חודשי לפי מסלול, מכסות עובדים/בניינים/תקלות (מאכפות ב-API), דמי הקמה חד-פעמיים, ותצוגה ללקוחות בדף חיוב.
             לדריסה ללקוח בודד — עריכת לקוח → מכסות override.

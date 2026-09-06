@@ -1,337 +1,161 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
-import { theme } from '../components/ui'
-import { LoadingButton } from '../components/LoadingButton'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { theme } from '@/app/components/ui'
+import { LoadingButton } from '@/app/components/LoadingButton'
 import {
-  readAdminSecret,
-  writeAdminSecret,
   clearAdminSecret,
   isAdminSecretPersisted,
+  readAdminSecret,
+  writeAdminSecret,
 } from '@/lib/admin-secret-session'
-import { PaidAddonsCatalogAdmin, ClientPaidAddonsPanel } from './PaidAddonsAdmin'
-import { PlanPricingCatalogAdmin } from './PlanPricingAdmin'
-import { ClientAttendanceTagsPanel } from './ClientAttendanceTagsPanel'
-import { ClientLogoUpload } from './ClientLogoUpload'
-import { ClientInvitePanel } from './ClientInvitePanel'
-import { ClientRecoverTicketMediaPanel } from './ClientRecoverTicketMediaPanel'
-import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
-import { UsageAnalyticsPanel } from './UsageAnalyticsPanel'
-import type { OpsFeed } from '@/app/components/superadmin/OpsFailuresPanel'
-import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
-import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
-import {
-  effectiveMaxBuildings,
-  effectiveMaxTicketsPerMonth,
-  effectiveMaxWorkers,
-  normalizeTier,
-  type PlanTier,
-} from '@/lib/plan-limits'
+import { PLAN_SETUP_OPTIONS } from '@/lib/plan-display'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import {
-  coreNavFeatureOptions,
-  describeClientNavFeaturesMode,
   parseEnabledNavFeaturesFromDb,
-  REQUIRED_NAV_FEATURE_IDS,
   SETUP_PACKAGE_NAV_FEATURE_IDS,
-  type ClientNavFeaturesMode,
 } from '@/lib/client-nav-features'
+import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
+import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
+import { UsageAnalyticsPanel } from './UsageAnalyticsPanel'
+import { BottomNav } from './components/BottomNav'
+import { ClientsList } from './components/ClientsList'
+import { ClientHub } from './components/ClientHub'
+import { ClientTaskView } from './components/ClientTaskView'
+import { SettingsView } from './components/SettingsView'
+import { clientHash, parseSuperadminHash, tabHash, writeHash } from './hashRoute'
+import {
+  adminHeaders,
+  editStateFromClient,
+  emptyEditState,
+  parseOptionalLimitInput,
+  type NewClientForm,
+} from './helpers'
+import type {
+  ClientFilter,
+  ClientRow,
+  ClientTask,
+  EditState,
+  PlanCatalogRow,
+  TabMode,
+} from './types'
 
-type PlanCatalogRow = {
-  plan_tier: string
-  workers_max: number | null
-  buildings_max: number | null
-  tickets_per_month_max: number | null
+const EMPTY_NEW: NewClientForm = {
+  name: '',
+  email: '',
+  password: '',
+  phone: '',
+  plan_tier: 'starter',
+  max_workers: '',
+  buildings_allowed: '',
+  max_tickets_per_month: '',
 }
 
-function parseOptionalLimitInput(raw: string): number | null {
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-  const n = Number(trimmed)
-  if (!Number.isFinite(n) || n < 1) throw new Error('מכסות חייבות להיות מספר חיובי')
-  return Math.floor(n)
-}
-
-function formatEffectiveLimit(value: number | null): string {
-  return value == null ? 'ללא הגבלה' : value.toLocaleString('he-IL')
-}
-
-type Project = { id: string; name: string; project_code: string }
-
-type ClientRow = {
-  id: string
-  name: string
-  plan_tier: string
-  whatsapp_phone_number_id: string | null
-  manager_phone: string | null
-  sms_sender_name: string | null
-  admin_email: string | null
-  buildings_count: number
-  residents_count: number
-  open_tickets_count: number
-  workers_active_count: number
-  workers_total_count: number
-  max_workers: number | null
-  buildings_allowed: number | null
-  max_tickets_per_month: number | null
-  projects: Project[]
-  enabled_nav_features: SidebarNavItemId[] | null
-  logo_url?: string | null
-}
-
-type EditState = {
-  name: string
-  plan_tier: string
-  whatsapp_phone_number_id: string
-  manager_phone: string
-  sms_sender_name: string
-  max_workers: string
-  buildings_allowed: string
-  max_tickets_per_month: string
-}
-
-function previewClientLimits(
-  editState: EditState,
-  catalog: PlanCatalogRow[]
-): { workers: number | null; buildings: number | null; tickets: number | null } {
-  const tier = normalizeTier(editState.plan_tier)
-  const catalogRow = catalog.find((row) => row.plan_tier === tier) ?? null
-  let maxWorkers: number | null = null
-  let maxBuildings: number | null = null
-  let maxTickets: number | null = null
-  try {
-    maxWorkers = parseOptionalLimitInput(editState.max_workers)
-    maxBuildings = parseOptionalLimitInput(editState.buildings_allowed)
-    maxTickets = parseOptionalLimitInput(editState.max_tickets_per_month)
-  } catch {
-    return { workers: null, buildings: null, tickets: null }
-  }
-  const clientRow = {
-    id: '',
-    plan_tier: editState.plan_tier,
-    max_workers: maxWorkers,
-    buildings_allowed: maxBuildings,
-    max_tickets_per_month: maxTickets,
-  }
-  return {
-    workers: effectiveMaxWorkers(clientRow, catalogRow),
-    buildings: effectiveMaxBuildings(clientRow, catalogRow),
-    tickets: effectiveMaxTicketsPerMonth(clientRow, catalogRow),
-  }
-}
-
-function effectiveLimitsForClient(client: ClientRow, catalog: PlanCatalogRow[]) {
-  const tier = normalizeTier(client.plan_tier)
-  const catalogRow = catalog.find((row) => row.plan_tier === tier) ?? null
-  const clientRow = {
-    id: client.id,
-    plan_tier: client.plan_tier,
-    max_workers: client.max_workers,
-    buildings_allowed: client.buildings_allowed,
-    max_tickets_per_month: client.max_tickets_per_month,
-  }
-  return {
-    workers: effectiveMaxWorkers(clientRow, catalogRow),
-    buildings: effectiveMaxBuildings(clientRow, catalogRow),
-    tickets: effectiveMaxTicketsPerMonth(clientRow, catalogRow),
-  }
-}
-
-type ViewMode = 'clients' | 'ops' | 'usage' | 'settings'
-type ClientFilter = 'all' | 'open_tickets' | 'no_whatsapp' | 'at_worker_limit'
-
-const PLAN_LABELS: Record<string, string> = {
-  starter: 'Starter',
-  pro: 'Pro',
-  business: 'Business',
-  enterprise: 'Enterprise',
-}
-
-const PLAN_COLORS: Record<string, string> = {
-  starter: '#6b7280',
-  pro: '#2563eb',
-  business: '#7c3aed',
-  enterprise: '#b45309',
-}
-
-const NAV_FEATURES_MODE_BADGE: Record<ClientNavFeaturesMode, { label: string; bg: string }> = {
-  legacy_unlimited: { label: 'לגסי · הכל', bg: '#6b7280' },
-  setup_package: { label: 'חבילת הקמה', bg: '#b45309' },
-  custom_restricted: { label: 'מותאם', bg: '#7c3aed' },
-}
-
-function NavFeaturesModeBadge({ mode }: { mode: ClientNavFeaturesMode }) {
-  const badge = NAV_FEATURES_MODE_BADGE[mode]
-  return (
-    <span
-      style={{
-        background: badge.bg,
-        color: '#fff',
-        borderRadius: theme.radius.xs,
-        padding: '1px 6px',
-        fontSize: 10,
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-      }}
-      title="מצב הרשאות לשוניות"
-    >
-      {badge.label}
-    </span>
-  )
-}
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  fontSize: theme.typography.fontSize.sm,
-  border: `1.5px solid ${theme.colors.border}`,
-  borderRadius: theme.radius.md,
-  outline: 'none',
-  background: theme.colors.surface,
-  color: theme.colors.textPrimary,
-  boxSizing: 'border-box',
-  direction: 'ltr',
-  minHeight: 44,
-}
-
-function LockScreenSetupLink() {
-  return (
-    <div style={{ marginTop: theme.spacing.lg, textAlign: 'center' }}>
-      <a
-        href="/superadmin/setup"
-        style={{
-          color: theme.colors.primary,
-          textDecoration: 'none',
-          fontSize: theme.typography.fontSize.sm,
-          fontWeight: theme.typography.fontWeight.semibold,
-        }}
-      >
-        הקמת לקוח חדש ←
-      </a>
-    </div>
-  )
-}
-
-function CopyButton({ text, label }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  function copy() {
-    void navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-  return (
-    <button
-      onClick={copy}
-      title={`העתק ${label ?? ''}`}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: copied ? theme.colors.success : theme.colors.textMuted, fontSize: 13, lineHeight: 1 }}
-    >
-      {copied ? '✓' : '📋'}
-    </button>
-  )
+function featuresForUi(raw: SidebarNavItemId[] | null): SidebarNavItemId[] {
+  return raw?.length ? [...raw] : [...DEFAULT_SIDEBAR_NAV_ORDER]
 }
 
 export default function SuperAdminPage() {
   const [secret, setSecret] = useState('')
-  const [rememberDevice, setRememberDevice] = useState(false)
+  const [inputSecret, setInputSecret] = useState('')
+  const [rememberSecret, setRememberSecret] = useState(true)
   const [unlocked, setUnlocked] = useState(false)
-  const [unlockError, setUnlockError] = useState('')
-
   const [clients, setClients] = useState<ClientRow[]>([])
-  const [planCatalog, setPlanCatalog] = useState<PlanCatalogRow[]>([])
+  const [catalog, setCatalog] = useState<PlanCatalogRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [loadError, setLoadError] = useState('')
-
-  const [searchQuery, setSearchQuery] = useState('')
-  const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
-  const [opsUnresolvedCount, setOpsUnresolvedCount] = useState(0)
-
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [magicLinks, setMagicLinks] = useState<Record<string, string>>({})
-  const [magicLinkLoading, setMagicLinkLoading] = useState<Record<string, boolean>>({})
-
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editState, setEditState] = useState<EditState | null>(null)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [editState, setEditState] = useState<EditState>(emptyEditState())
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-
   const [featuresDraft, setFeaturesDraft] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
   const [savingFeatures, setSavingFeatures] = useState(false)
   const [featuresError, setFeaturesError] = useState('')
-
-  const [deleteTarget, setDeleteTarget] = useState<ClientRow | null>(null)
-  const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  const [filter, setFilter] = useState<ClientFilter>('all')
+  const [search, setSearch] = useState('')
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [newClient, setNewClient] = useState<NewClientForm>(EMPTY_NEW)
+  const [creating, setCreating] = useState(false)
+  const [magicLinks, setMagicLinks] = useState<Record<string, string>>({})
+  const [magicLoadingId, setMagicLoadingId] = useState<string | null>(null)
+  const [opsUnresolved, setOpsUnresolved] = useState(0)
+  const [tab, setTab] = useState<TabMode>('clients')
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  const [clientTask, setClientTask] = useState<ClientTask>('hub')
 
-  const [viewMode, setViewMode] = useState<ViewMode>('clients')
+  const applyRoute = useCallback(() => {
+    const route = parseSuperadminHash(typeof window !== 'undefined' ? window.location.hash : '')
+    if (route.kind === 'tab') {
+      setTab(route.tab)
+      setSelectedClientId(null)
+      setClientTask('hub')
+      return
+    }
+    setTab('clients')
+    setSelectedClientId(route.clientId)
+    setClientTask(route.task)
+  }, [])
 
-  const verifySecret = useCallback(async (s: string) => {
-    const res = await fetch('/api/superadmin/stats', { headers: { 'x-admin-secret': s } })
-    return res.ok
+  useEffect(() => {
+    applyRoute()
+    window.addEventListener('hashchange', applyRoute)
+    return () => window.removeEventListener('hashchange', applyRoute)
+  }, [applyRoute])
+
+  useEffect(() => {
+    const stored = readAdminSecret()
+    if (!stored) return
+    setSecret(stored)
+    setInputSecret(stored)
+    setRememberSecret(isAdminSecretPersisted())
+    setUnlocked(true)
   }, [])
 
   const loadClients = useCallback(async (s: string) => {
     setLoading(true)
-    setLoadError('')
+    setError('')
     try {
       const [statsRes, pricingRes] = await Promise.all([
-        fetch('/api/superadmin/stats', { headers: { 'x-admin-secret': s } }),
-        fetch('/api/superadmin/plans/pricing', { headers: { 'x-admin-secret': s } }),
+        fetch('/api/superadmin/stats', { headers: adminHeaders(s) }),
+        fetch('/api/superadmin/plans/pricing', { headers: adminHeaders(s) }),
       ])
-      const statsJson = await statsRes.json() as { clients?: ClientRow[]; error?: string }
-      const pricingJson = await pricingRes.json() as { catalog?: PlanCatalogRow[]; error?: string }
-      if (!statsRes.ok) { setLoadError(statsJson.error ?? `שגיאה ${statsRes.status}`); return }
-      setClients(statsJson.clients ?? [])
-      if (pricingRes.ok) setPlanCatalog(pricingJson.catalog ?? [])
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'שגיאת רשת')
+      const statsJson = (await statsRes.json()) as { error?: string; clients?: ClientRow[] }
+      const pricingJson = (await pricingRes.json()) as { catalog?: PlanCatalogRow[]; error?: string }
+      if (!statsRes.ok) throw new Error(statsJson.error || 'שגיאה בטעינה')
+      setClients(statsJson.clients || [])
+      if (pricingRes.ok) setCatalog(pricingJson.catalog || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'שגיאה')
+      setUnlocked(false)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    if (unlocked) void loadClients(secret)
-  }, [unlocked]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (unlocked && secret) void loadClients(secret)
+  }, [unlocked, secret, loadClients])
+
+  const selectedClient = useMemo(
+    () => (selectedClientId ? clients.find((c) => c.id === selectedClientId) ?? null : null),
+    [clients, selectedClientId],
+  )
 
   useEffect(() => {
-    const stored = readAdminSecret()
-    if (!stored) return
-    setSecret(stored)
-    setRememberDevice(isAdminSecretPersisted())
-    void verifySecret(stored).then((ok) => {
-      if (ok) {
-        setUnlocked(true)
-        setUnlockError('')
-      }
-    })
-  }, [verifySecret])
+    if (!selectedClient) return
+    setEditState(editStateFromClient(selectedClient))
+    setFeaturesDraft(featuresForUi(selectedClient.enabled_nav_features))
+    setDeleteConfirmName('')
+    setSaveError('')
+    setFeaturesError('')
+    setDeleteError('')
+  }, [selectedClient?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.location.hash === '#ops') setViewMode('ops')
-    if (window.location.hash === '#usage') setViewMode('usage')
-    if (window.location.hash === '#settings') setViewMode('settings')
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !unlocked) return
-    window.location.hash =
-      viewMode === 'ops' ? '#ops' : viewMode === 'usage' ? '#usage' : viewMode === 'settings' ? '#settings' : ''
-  }, [viewMode, unlocked])
-
-  useEffect(() => {
-    if (!unlocked || !secret) return
-    void fetch('/api/superadmin/ops-feed?limit=5', { headers: { 'x-admin-secret': secret } })
-      .then((r) => r.json())
-      .then((json: OpsFeed) => {
-        setOpsUnresolvedCount(json.counts?.unresolved_errors ?? 0)
-      })
-      .catch(() => {})
-  }, [unlocked, secret])
-
-  const filteredClients = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
     return clients.filter((c) => {
       if (q) {
         const hay = [c.name, c.admin_email ?? '', c.id, c.manager_phone ?? '', c.whatsapp_phone_number_id ?? '']
@@ -339,233 +163,93 @@ export default function SuperAdminPage() {
           .toLowerCase()
         if (!hay.includes(q)) return false
       }
-      if (clientFilter === 'open_tickets' && c.open_tickets_count <= 0) return false
-      if (clientFilter === 'no_whatsapp' && c.whatsapp_phone_number_id) return false
-      if (clientFilter === 'at_worker_limit') {
-        const limits = effectiveLimitsForClient(c, planCatalog)
-        if (limits.workers == null || c.workers_active_count < limits.workers) return false
+      if (filter === 'open_tickets' && c.open_tickets_count <= 0) return false
+      if (filter === 'no_whatsapp' && c.whatsapp_phone_number_id) return false
+      if (filter === 'at_worker_limit') {
+        if (c.max_workers == null || c.workers_active_count < c.max_workers) return false
       }
       return true
     })
-  }, [clients, searchQuery, clientFilter, planCatalog])
+  }, [clients, search, filter])
 
-  async function handleUnlock() {
-    if (!secret.trim()) {
-      setUnlockError('הכנס קוד גישה')
-      return
-    }
-    const trimmed = secret.trim()
-    const ok = await verifySecret(trimmed)
-    if (!ok) {
-      setUnlockError('קוד גישה שגוי')
-      return
-    }
-    writeAdminSecret(trimmed, { persist: rememberDevice })
-    setSecret(trimmed)
+  const totalOpenTickets = useMemo(
+    () => clients.reduce((sum, c) => sum + c.open_tickets_count, 0),
+    [clients],
+  )
+
+  function unlock(e: FormEvent) {
+    e.preventDefault()
+    if (!inputSecret.trim()) return
+    const next = inputSecret.trim()
+    writeAdminSecret(next, { persist: rememberSecret })
+    setSecret(next)
     setUnlocked(true)
-    setUnlockError('')
   }
 
-  function handleLogout() {
+  function logout() {
     clearAdminSecret()
     setSecret('')
+    setInputSecret('')
     setUnlocked(false)
-    setRememberDevice(false)
     setClients([])
+    setSelectedClientId(null)
+    writeHash('')
   }
 
-  function enabledFeaturesForUi(raw: SidebarNavItemId[] | null): SidebarNavItemId[] {
-    return raw?.length ? raw : [...DEFAULT_SIDEBAR_NAV_ORDER]
+  function goTab(next: TabMode) {
+    setTab(next)
+    setSelectedClientId(null)
+    setClientTask('hub')
+    writeHash(tabHash(next))
   }
 
-  function toggleExpand(c: ClientRow) {
-    const next = expandedId === c.id ? null : c.id
-    setExpandedId(next)
-    if (editingId === c.id) cancelEdit()
-    if (next === c.id) {
-      setFeaturesDraft(enabledFeaturesForUi(c.enabled_nav_features))
-      setFeaturesError('')
-      setDeleteTarget(null)
-      setDeleteConfirmName('')
-      setDeleteError('')
-    }
+  function openClient(id: string, task: ClientTask = 'hub') {
+    setTab('clients')
+    setSelectedClientId(id)
+    setClientTask(task)
+    writeHash(clientHash(id, task))
   }
 
-  function toggleFeatureDraft(id: SidebarNavItemId, checked: boolean) {
-    if (REQUIRED_NAV_FEATURE_IDS.includes(id)) return
-    setFeaturesDraft((prev) => {
-      const set = new Set(prev)
-      if (checked) set.add(id)
-      else set.delete(id)
-      for (const required of REQUIRED_NAV_FEATURE_IDS) set.add(required)
-      return DEFAULT_SIDEBAR_NAV_ORDER.filter((fid) => set.has(fid))
-    })
+  function backToList() {
+    setSelectedClientId(null)
+    setClientTask('hub')
+    writeHash(tabHash('clients'))
   }
 
-  function applySetupPackagePreset() {
-    setFeaturesDraft([...SETUP_PACKAGE_NAV_FEATURE_IDS])
+  function backToHub() {
+    if (!selectedClientId) return
+    setClientTask('hub')
+    writeHash(clientHash(selectedClientId, 'hub'))
   }
 
-  function applyAllFeaturesPreset() {
-    setFeaturesDraft([...DEFAULT_SIDEBAR_NAV_ORDER])
+  function onPlanTierChange(tier: string) {
+    setEditState((s) => ({
+      ...s,
+      plan_tier: tier,
+      max_workers: '',
+      buildings_allowed: '',
+      max_tickets_per_month: '',
+    }))
   }
 
-  async function clearFeatureRestrictions(clientId: string) {
-    setSavingFeatures(true)
-    setFeaturesError('')
-    try {
-      const res = await fetch(`/api/superadmin/client/${clientId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-        body: JSON.stringify({ enabled_nav_features: null }),
-      })
-      const json = await res.json() as { client?: ClientRow; error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
-      setClients((prev) =>
-        prev.map((row) =>
-          row.id !== clientId ? row : { ...row, enabled_nav_features: null }
-        )
-      )
-      setFeaturesDraft([...DEFAULT_SIDEBAR_NAV_ORDER])
-    } catch (e) {
-      setFeaturesError(e instanceof Error ? e.message : 'שמירה נכשלה')
-    } finally {
-      setSavingFeatures(false)
-    }
+  function onClearOverrides() {
+    setEditState((s) => ({
+      ...s,
+      max_workers: '',
+      buildings_allowed: '',
+      max_tickets_per_month: '',
+    }))
   }
 
-  async function saveFeatures(clientId: string) {
-    setSavingFeatures(true)
-    setFeaturesError('')
-    try {
-      const res = await fetch(`/api/superadmin/client/${clientId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-        body: JSON.stringify({ enabled_nav_features: featuresDraft }),
-      })
-      const json = await res.json() as { client?: ClientRow; error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
-      if (json.client) {
-        setClients((prev) =>
-          prev.map((c) =>
-            c.id !== clientId
-              ? c
-              : {
-                  ...c,
-                  enabled_nav_features: parseEnabledNavFeaturesFromDb(json.client!.enabled_nav_features),
-                }
-          )
-        )
-        setFeaturesDraft(enabledFeaturesForUi(parseEnabledNavFeaturesFromDb(json.client.enabled_nav_features)))
-      }
-    } catch (e) {
-      setFeaturesError(e instanceof Error ? e.message : 'שמירה נכשלה')
-    } finally {
-      setSavingFeatures(false)
-    }
-  }
-
-  async function deleteClient() {
-    if (!deleteTarget) return
-    if (deleteConfirmName.trim() !== deleteTarget.name.trim()) {
-      setDeleteError('יש להקליד את שם הלקוח בדיוק לאישור')
-      return
-    }
-    setDeleting(true)
-    setDeleteError('')
-    try {
-      const res = await fetch(`/api/superadmin/client/${deleteTarget.id}`, {
-        method: 'DELETE',
-        headers: { 'x-admin-secret': secret },
-      })
-      const json = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
-      setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id))
-      setExpandedId(null)
-      setDeleteTarget(null)
-      setDeleteConfirmName('')
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : 'מחיקה נכשלה')
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  async function getMagicLink(clientId: string, email: string) {
-    setMagicLinkLoading((p) => ({ ...p, [clientId]: true }))
-    try {
-      const res = await fetch('/api/superadmin/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-        body: JSON.stringify({ email }),
-      })
-      const json = await res.json() as { link?: string; error?: string }
-      if (!res.ok || !json.link) { alert(json.error ?? 'שגיאה'); return }
-      setMagicLinks((p) => ({ ...p, [clientId]: json.link! }))
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'שגיאת רשת')
-    } finally {
-      setMagicLinkLoading((p) => ({ ...p, [clientId]: false }))
-    }
-  }
-
-  function startEdit(c: ClientRow) {
-    if (expandedId !== c.id) setExpandedId(c.id)
-    setEditingId(c.id)
-    setSaveError('')
-    setEditState({
-      name: c.name,
-      plan_tier: c.plan_tier,
-      whatsapp_phone_number_id: c.whatsapp_phone_number_id ?? '',
-      manager_phone: c.manager_phone ?? '',
-      sms_sender_name: c.sms_sender_name ?? '',
-      max_workers: c.max_workers != null ? String(c.max_workers) : '',
-      buildings_allowed: c.buildings_allowed != null ? String(c.buildings_allowed) : '',
-      max_tickets_per_month: c.max_tickets_per_month != null ? String(c.max_tickets_per_month) : '',
-    })
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setEditState(null)
-    setSaveError('')
-  }
-
-  function clearLimitOverridesInEdit() {
-    setEditState((s) =>
-      s
-        ? {
-            ...s,
-            max_workers: '',
-            buildings_allowed: '',
-            max_tickets_per_month: '',
-          }
-        : s
-    )
-  }
-
-  function onPlanTierChange(nextTier: string) {
-    setEditState((s) =>
-      s
-        ? {
-            ...s,
-            plan_tier: nextTier,
-            max_workers: '',
-            buildings_allowed: '',
-            max_tickets_per_month: '',
-          }
-        : s
-    )
-  }
-
-  async function saveEdit() {
-    if (!editingId || !editState) return
+  async function savePlan() {
+    if (!selectedClient) return
     setSaving(true)
     setSaveError('')
+    setSuccess('')
     try {
-      const res = await fetch(`/api/superadmin/client/${editingId}`, {
+      const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editState.name.trim() || undefined,
           plan_tier: editState.plan_tier || undefined,
@@ -577,893 +261,361 @@ export default function SuperAdminPage() {
           max_tickets_per_month: parseOptionalLimitInput(editState.max_tickets_per_month),
         }),
       })
-      const json = await res.json() as { client?: ClientRow; error?: string }
-      if (!res.ok) { setSaveError(json.error ?? `שגיאה ${res.status}`); return }
-      if (json.client) {
-        setClients((prev) => prev.map((c) =>
-          c.id !== editingId ? c : {
-            ...c,
-            ...json.client!,
-            buildings_count: c.buildings_count,
-            residents_count: c.residents_count,
-            open_tickets_count: c.open_tickets_count,
-            workers_active_count: c.workers_active_count,
-            workers_total_count: c.workers_total_count,
-            projects: c.projects,
-          }
-        ))
-      }
-      cancelEdit()
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'שגיאת רשת')
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(json.error || 'שגיאה בשמירה')
+      setSuccess('נשמר')
+      await loadClients(secret)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'שגיאה')
     } finally {
       setSaving(false)
     }
   }
 
-  // ── styles ──────────────────────────────────────────────────────────────────
-  const pageStyle: CSSProperties = {
-    minHeight: '100vh',
-    background: theme.colors.background,
-    padding: `${theme.spacing.xxxl} ${theme.spacing.xl}`,
-    direction: 'rtl',
-  }
-  const cardStyle: CSSProperties = {
-    background: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    boxShadow: theme.shadows.md,
-    overflow: 'hidden',
-  }
-  const thStyle: CSSProperties = {
-    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    textAlign: 'right',
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.textSecondary,
-    fontSize: theme.typography.fontSize.xs,
-    borderBottom: `1.5px solid ${theme.colors.border}`,
-    whiteSpace: 'nowrap',
-    background: theme.colors.muted,
-  }
-  const tdStyle: CSSProperties = {
-    padding: `${theme.spacing.md} ${theme.spacing.md}`,
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textPrimary,
-    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
-    verticalAlign: 'middle',
+  async function saveFeatures() {
+    if (!selectedClient) return
+    setSavingFeatures(true)
+    setFeaturesError('')
+    try {
+      const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
+        method: 'PATCH',
+        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled_nav_features: featuresDraft }),
+      })
+      const json = (await res.json()) as { client?: ClientRow; error?: string }
+      if (!res.ok) throw new Error(json.error || 'שגיאה בשמירה')
+      if (json.client) {
+        const parsed = parseEnabledNavFeaturesFromDb(json.client.enabled_nav_features)
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...c, enabled_nav_features: parsed } : c)),
+        )
+        setFeaturesDraft(featuresForUi(parsed))
+      }
+      setSuccess('הרשאות נשמרו')
+    } catch (err) {
+      setFeaturesError(err instanceof Error ? err.message : 'שגיאה')
+    } finally {
+      setSavingFeatures(false)
+    }
   }
 
-  // ── Lock screen ──────────────────────────────────────────────────────────────
+  async function clearFeatures() {
+    if (!selectedClient) return
+    setSavingFeatures(true)
+    setFeaturesError('')
+    try {
+      const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
+        method: 'PATCH',
+        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled_nav_features: null }),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(json.error || 'שגיאה')
+      setClients((prev) =>
+        prev.map((c) => (c.id === selectedClient.id ? { ...c, enabled_nav_features: null } : c)),
+      )
+      setFeaturesDraft([...DEFAULT_SIDEBAR_NAV_ORDER])
+      setSuccess('הוחזר למצב לגסי')
+    } catch (err) {
+      setFeaturesError(err instanceof Error ? err.message : 'שגיאה')
+    } finally {
+      setSavingFeatures(false)
+    }
+  }
+
+  async function deleteClient() {
+    if (!selectedClient) return
+    if (deleteConfirmName.trim() !== selectedClient.name.trim()) {
+      setDeleteError('יש להקליד את שם הלקוח בדיוק')
+      return
+    }
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
+        method: 'DELETE',
+        headers: adminHeaders(secret),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(json.error || 'שגיאה במחיקה')
+      setSuccess('הלקוח נמחק')
+      backToList()
+      await loadClients(secret)
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'שגיאה')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function createClient(e: FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setError('')
+    setSuccess('')
+    try {
+      const body: Record<string, unknown> = {
+        name: newClient.name.trim(),
+        email: newClient.email.trim(),
+        password: newClient.password,
+        phone: newClient.phone.trim() || undefined,
+        plan_tier: newClient.plan_tier,
+      }
+      if (newClient.max_workers.trim()) body.max_workers = Number(newClient.max_workers)
+      if (newClient.buildings_allowed.trim()) body.buildings_allowed = Number(newClient.buildings_allowed)
+      if (newClient.max_tickets_per_month.trim()) body.max_tickets_per_month = Number(newClient.max_tickets_per_month)
+      const res = await fetch('/api/superadmin/clients', {
+        method: 'POST',
+        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(json.error || 'שגיאה ביצירה')
+      setSuccess('לקוח נוצר')
+      setNewClient(EMPTY_NEW)
+      setShowNewForm(false)
+      await loadClients(secret)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'שגיאה')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function createMagicLink(clientId: string, email: string) {
+    setMagicLoadingId(clientId)
+    setError('')
+    try {
+      const res = await fetch('/api/superadmin/magic-link', {
+        method: 'POST',
+        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const json = (await res.json()) as { error?: string; link?: string }
+      if (!res.ok || !json.link) throw new Error(json.error || 'שגיאה')
+      setMagicLinks((prev) => ({ ...prev, [clientId]: json.link! }))
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(json.link)
+        setSuccess('קישור הועתק')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'שגיאה')
+    } finally {
+      setMagicLoadingId(null)
+    }
+  }
+
+  const hideBottomNav = Boolean(selectedClientId && clientTask !== 'hub')
+
   if (!unlocked) {
     return (
-      <div className="sa-page" style={{ ...pageStyle, display: 'flex', justifyContent: 'center', padding: `${theme.spacing.lg} ${theme.spacing.md}` }}>
-        <div className="sa-lock-card" style={{ background: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.xxl, boxShadow: theme.shadows.md, width: '100%', maxWidth: 380, marginTop: 80 }}>
-          <h1 style={{ fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, textAlign: 'center', marginBottom: theme.spacing.xl, color: theme.colors.textPrimary }}>
-            Super Admin
-          </h1>
-          <div style={{ marginBottom: theme.spacing.lg }}>
-            <input
-              type="password"
-              className="sa-input"
-              value={secret}
-              onChange={(e) => setSecret(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-              placeholder="קוד גישה..."
-              style={inputStyle}
-              autoFocus
-            />
-          </div>
-          {unlockError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md }}>{unlockError}</p>}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: theme.spacing.lg, fontSize: theme.typography.fontSize.sm, color: theme.colors.textSecondary, cursor: 'pointer' }}>
+      <div className="sa-lock" dir="rtl">
+        <form className="sa-lock-card" onSubmit={unlock}>
+          <h1>Super Admin</h1>
+          <p>הזן סיסמת מנהל מערכת</p>
+          <input
+            type="password"
+            value={inputSecret}
+            onChange={(e) => setInputSecret(e.target.value)}
+            placeholder="סיסמה"
+            autoFocus
+          />
+          <label className="sa-check">
             <input
               type="checkbox"
-              checked={rememberDevice}
-              onChange={(e) => setRememberDevice(e.target.checked)}
+              checked={rememberSecret}
+              onChange={(e) => setRememberSecret(e.target.checked)}
             />
-            זכור במכשיר (מתאים ל-PWA בטלפון)
+            זכור במכשיר זה
           </label>
-          <LoadingButton
-            onClick={handleUnlock}
-            className="sa-touch-btn"
-            style={{ width: '100%', minHeight: 48 }}
-          >
+          <LoadingButton type="submit" loading={false} className="sa-btn sa-btn-primary">
             כניסה
           </LoadingButton>
-          <LockScreenSetupLink />
-        </div>
+          <div className="sa-lock-setup">
+            <a href="/superadmin/setup">הקמת לקוח חדש</a>
+          </div>
+        </form>
       </div>
     )
   }
 
-  // ── Main ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="sa-page sa-page-with-nav" style={pageStyle}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg, flexWrap: 'wrap', gap: theme.spacing.md }}>
-          <h1 className="sa-header-title" style={{ fontSize: theme.typography.fontSize['3xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.textPrimary, margin: 0 }}>
-            Super Admin
-          </h1>
-          <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap', width: '100%' }}>
-            {viewMode === 'clients' && (
-              <button
-                className="sa-touch-btn"
-                onClick={() => void loadClients(secret)}
-                disabled={loading}
-                style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: loading ? 'not-allowed' : 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}
-              >
-                {loading ? 'טוען...' : 'רענן'}
-              </button>
-            )}
-            <button
-              type="button"
-              className="sa-touch-btn"
-              onClick={handleLogout}
-              style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}
-            >
-              יציאה
-            </button>
-            <a
-              href="/superadmin/setup"
-              className="sa-touch-btn sa-desktop-only"
-              style={{ background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '10px 18px', cursor: 'pointer', fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, minHeight: 44 }}
-            >
-              + הקם לקוח חדש
-            </a>
-          </div>
+    <div className="sa-page" dir="rtl">
+      <header className="sa-topbar">
+        <div>
+          <h1 className="sa-header-title">Super Admin</h1>
+          <p className="sa-muted">ניהול לקוחות · תפעול · שימוש</p>
         </div>
-
-        <div className="sa-tab-bar sa-desktop-only" style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
-          {(
-            [
-              { id: 'clients' as const, label: 'לקוחות' },
-              { id: 'usage' as const, label: 'שימוש' },
-              { id: 'ops' as const, label: 'תפעול' },
-              { id: 'settings' as const, label: 'הגדרות' },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className="sa-tab-btn sa-touch-btn"
-              onClick={() => setViewMode(tab.id)}
-              style={{
-                padding: '10px 18px',
-                borderRadius: theme.radius.md,
-                border: `1.5px solid ${viewMode === tab.id ? theme.colors.primary : theme.colors.border}`,
-                background: viewMode === tab.id ? theme.colors.primaryMuted : theme.colors.surface,
-                color: viewMode === tab.id ? theme.colors.primary : theme.colors.textSecondary,
-                fontWeight: theme.typography.fontWeight.semibold,
-                fontSize: theme.typography.fontSize.sm,
-                cursor: 'pointer',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="sa-topbar-actions sa-header-actions">
+          <LoadingButton
+            type="button"
+            loading={loading}
+            className="sa-btn sa-btn-ghost sa-touch-btn"
+            onClick={() => void loadClients(secret)}
+          >
+            רענון
+          </LoadingButton>
+          <button type="button" className="sa-btn sa-btn-ghost sa-touch-btn" onClick={logout}>
+            יציאה
+          </button>
         </div>
+      </header>
 
-        {viewMode === 'ops' && (
+      {error ? <div className="sa-banner sa-banner-error">{error}</div> : null}
+      {success ? <div className="sa-banner sa-banner-ok">{success}</div> : null}
+
+      <main className={`sa-main${hideBottomNav ? '' : ' sa-page-with-nav'}`}>
+        {tab === 'clients' && !selectedClientId ? (
           <>
+            <ClientsList
+              clients={clients}
+              filtered={filtered}
+              catalog={catalog}
+              loading={loading}
+              search={search}
+              filter={filter}
+              totalOpenTickets={totalOpenTickets}
+              opsBadge={opsUnresolved}
+              onSearch={setSearch}
+              onFilter={setFilter}
+              onOpenClient={(id) => openClient(id)}
+            />
+            <div className="sa-desktop-only" style={{ marginTop: 16 }}>
+              <button type="button" className="sa-btn sa-btn-primary" onClick={() => setShowNewForm((v) => !v)}>
+                {showNewForm ? 'סגור טופס' : '+ לקוח חדש'}
+              </button>
+              {showNewForm ? (
+                <form className="sa-panel" onSubmit={createClient} style={{ marginTop: 12 }}>
+                  <h3>הקמת לקוח</h3>
+                  <div className="sa-form-stack">
+                    <label>
+                      שם
+                      <input value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} required />
+                    </label>
+                    <label>
+                      אימייל אדמין
+                      <input type="email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} required />
+                    </label>
+                    <label>
+                      סיסמה
+                      <input type="password" value={newClient.password} onChange={(e) => setNewClient({ ...newClient, password: e.target.value })} required />
+                    </label>
+                    <label>
+                      טלפון
+                      <input value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
+                    </label>
+                    <label>
+                      תוכנית
+                      <select value={newClient.plan_tier} onChange={(e) => setNewClient({ ...newClient, plan_tier: e.target.value })}>
+                        {PLAN_SETUP_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <LoadingButton type="submit" loading={creating} className="sa-btn sa-btn-primary" style={{ marginTop: 12 }}>
+                    צור לקוח
+                  </LoadingButton>
+                </form>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+        {tab === 'clients' && selectedClient && clientTask === 'hub' ? (
+          <ClientHub
+            client={selectedClient}
+            catalog={catalog}
+            magicLink={magicLinks[selectedClient.id]}
+            magicLoading={magicLoadingId === selectedClient.id}
+            onBack={backToList}
+            onOpenTask={(task) => openClient(selectedClient.id, task)}
+            onMagicLink={() => {
+              if (selectedClient.admin_email) void createMagicLink(selectedClient.id, selectedClient.admin_email)
+            }}
+          />
+        ) : null}
+
+        {tab === 'clients' && selectedClient && clientTask !== 'hub' ? (
+          <ClientTaskView
+            task={clientTask}
+            client={selectedClient}
+            secret={secret}
+            catalog={catalog}
+            editState={editState}
+            setEditState={setEditState}
+            onPlanTierChange={onPlanTierChange}
+            onClearOverrides={onClearOverrides}
+            saving={saving}
+            saveError={saveError}
+            onSavePlan={() => void savePlan()}
+            featuresDraft={featuresDraft}
+            setFeaturesDraft={setFeaturesDraft}
+            savingFeatures={savingFeatures}
+            featuresError={featuresError}
+            onSaveFeatures={() => void saveFeatures()}
+            onClearFeatures={() => void clearFeatures()}
+            onApplySetupPreset={() => setFeaturesDraft([...SETUP_PACKAGE_NAV_FEATURE_IDS])}
+            onApplyAllFeatures={() => setFeaturesDraft([...DEFAULT_SIDEBAR_NAV_ORDER])}
+            deleteConfirmName={deleteConfirmName}
+            setDeleteConfirmName={setDeleteConfirmName}
+            deleting={deleting}
+            deleteError={deleteError}
+            onDelete={() => void deleteClient()}
+            onUploadedLogo={(url) => {
+              setClients((prev) => prev.map((c) => (c.id === selectedClient.id ? { ...c, logo_url: url } : c)))
+            }}
+            onBack={backToHub}
+          />
+        ) : null}
+
+        {tab === 'ops' ? (
+          <div className="sa-tab-panel">
             <SuperadminOpsPanel
               adminSecret={secret}
-              onCountsChange={(counts) => setOpsUnresolvedCount(counts.unresolved_errors)}
+              onCountsChange={(c) => setOpsUnresolved(c.unresolved_errors)}
             />
-            <details className="sa-collapsible" style={{ marginTop: 16 }}>
-              <summary>תבניות Meta WhatsApp (סטטי) ▾</summary>
+            <details className="sa-meta-details sa-collapsible">
+              <summary>מדריך Meta WhatsApp</summary>
               <div className="sa-collapsible-body">
                 <MetaWhatsAppPendingPanel />
               </div>
             </details>
-          </>
-        )}
-
-        {viewMode === 'usage' && <UsageAnalyticsPanel secret={secret} />}
-
-        {viewMode === 'settings' && (
-          <div className="sa-settings-view">
-            <p style={{ marginTop: 0, marginBottom: theme.spacing.lg, color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, lineHeight: 1.5 }}>
-              הגדרות פלטפורמה גלובליות — לא לפי לקוח. ניהול לקוח ספציפי נשאר תחת «לקוחות».
-            </p>
-            <section className="sa-panel" style={{ marginBottom: theme.spacing.lg }}>
-              <h2 style={{ margin: `0 0 ${theme.spacing.md}`, fontSize: theme.typography.fontSize.lg }}>מנוי ותמחור</h2>
-              <PlanPricingCatalogAdmin secret={secret} />
-            </section>
-            <section className="sa-panel">
-              <h2 style={{ margin: `0 0 ${theme.spacing.md}`, fontSize: theme.typography.fontSize.lg }}>תוספים בתשלום</h2>
-              <PaidAddonsCatalogAdmin secret={secret} />
-            </section>
-            <a
-              href="/superadmin/setup"
-              className="sa-touch-btn"
-              style={{
-                marginTop: theme.spacing.xl,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 48,
-                padding: '12px 18px',
-                borderRadius: theme.radius.md,
-                background: theme.colors.primary,
-                color: '#fff',
-                textDecoration: 'none',
-                fontWeight: theme.typography.fontWeight.semibold,
-              }}
-            >
-              + הקמת לקוח חדש
-            </a>
           </div>
-        )}
+        ) : null}
 
-        {viewMode === 'clients' && (
-          <>
-        {/* Stats bar */}
-        {clients.length > 0 && (
-          <div style={{ display: 'flex', gap: theme.spacing.lg, marginBottom: theme.spacing.xl, flexWrap: 'wrap' }}>
-            {[
-              { label: 'לקוחות', value: clients.length },
-              { label: 'בניינים', value: clients.reduce((s, c) => s + c.buildings_count, 0) },
-              { label: 'עובדים', value: clients.reduce((s, c) => s + c.workers_active_count, 0) },
-              { label: 'דיירים', value: clients.reduce((s, c) => s + c.residents_count, 0) },
-              { label: 'קריאות פתוחות', value: clients.reduce((s, c) => s + c.open_tickets_count, 0) },
-            ].map((s) => (
-              <div key={s.label} className="sa-stat-chip" style={{ background: theme.colors.primaryMuted, borderRadius: theme.radius.md, padding: `${theme.spacing.md} ${theme.spacing.xl}`, textAlign: 'center', minWidth: 90 }}>
-                <div style={{ fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.primary }}>{s.value}</div>
-                <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>{s.label}</div>
-              </div>
-            ))}
+        {tab === 'usage' ? (
+          <div className="sa-tab-panel">
+            <UsageAnalyticsPanel secret={secret} />
           </div>
-        )}
+        ) : null}
 
-        {loadError && (
-          <div style={{ background: theme.colors.errorMuted, border: `1.5px solid ${theme.colors.error}`, borderRadius: theme.radius.md, padding: theme.spacing.lg, marginBottom: theme.spacing.xl, color: theme.colors.error, fontSize: theme.typography.fontSize.sm }}>
-            {loadError}
-          </div>
-        )}
+        {tab === 'settings' ? <SettingsView secret={secret} /> : null}
+      </main>
 
-        <div className="sa-search-bar">
-          <input
-            type="search"
-            className="sa-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="חיפוש לפי שם, מייל, טלפון…"
-            style={inputStyle}
-          />
-        </div>
-        <div className="sa-filter-chips">
-          {(
-            [
-              { id: 'all' as const, label: 'הכל' },
-              { id: 'open_tickets' as const, label: 'קריאות פתוחות' },
-              { id: 'no_whatsapp' as const, label: 'ללא WhatsApp' },
-              { id: 'at_worker_limit' as const, label: 'מכסת עובדים' },
-            ] as const
-          ).map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`sa-filter-chip${clientFilter === f.id ? ' is-active' : ''}`}
-              onClick={() => setClientFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
-          {searchQuery || clientFilter !== 'all' ? (
-            <span style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, alignSelf: 'center' }}>
-              {filteredClients.length} / {clients.length}
-            </span>
-          ) : null}
-        </div>
+      <BottomNav tab={tab} opsBadge={opsUnresolved} onChange={goTab} hidden={hideBottomNav} />
 
-        {/* Table */}
-        <div style={cardStyle}>
-          {loading && clients.length === 0 ? (
-            <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>טוען...</p>
-          ) : (
-            <div className="sa-table-wrap" style={{ overflowX: 'auto' }}>
-              <table className="sa-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {['', 'שם לקוח', 'מייל אדמין', 'תכנית', 'WhatsApp', 'טלפון מנהל', 'SMS שולח', 'בניינים', 'עובדים', 'דיירים', 'קריאות', ''].map((h, i) => (
-                      <th key={i} style={thStyle}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredClients.map((c) => (
-                    <>
-                      {/* Main row */}
-                      <tr
-                        key={c.id}
-                        className="sa-client-row"
-                        style={{ background: expandedId === c.id ? theme.colors.primaryMuted : 'transparent', transition: 'background 0.15s' }}
-                      >
-                        {/* Expand toggle */}
-                        <td className="sa-cell-expand" style={{ ...tdStyle, width: 36, textAlign: 'center', paddingLeft: 8, paddingRight: 8 }}>
-                          <button
-                            className="sa-touch-btn"
-                            onClick={() => toggleExpand(c)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.textMuted, fontSize: 11, padding: 8, borderRadius: 4, transition: 'transform 0.15s', transform: expandedId === c.id ? 'rotate(90deg)' : 'none', minWidth: 44, minHeight: 44 }}
-                            title={expandedId === c.id ? 'סגור' : 'פרט'}
-                            aria-label={expandedId === c.id ? 'סגור פרטי לקוח' : 'פתח פרטי לקוח'}
-                          >
-                            ▶
-                          </button>
-                        </td>
-
-                        {/* Name + copy ID */}
-                        <td data-label="שם לקוח" style={{ ...tdStyle, fontWeight: theme.typography.fontWeight.semibold, whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                            {c.name}
-                            <NavFeaturesModeBadge mode={describeClientNavFeaturesMode(c.enabled_nav_features)} />
-                            <CopyButton text={c.id} label="Client ID" />
-                          </div>
-                        </td>
-
-                        {/* Admin email */}
-                        <td data-label="מייל אדמין" style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs, direction: 'ltr' }}>
-                          {c.admin_email
-                            ? <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span>{c.admin_email}</span><CopyButton text={c.admin_email} /></div>
-                            : <span style={{ color: theme.colors.textMuted }}>—</span>}
-                        </td>
-
-                        {/* Plan badge */}
-                        <td data-label="תכנית" style={tdStyle}>
-                          <span style={{ background: PLAN_COLORS[c.plan_tier] ?? '#6b7280', color: '#fff', borderRadius: theme.radius.xs, padding: '2px 8px', fontSize: theme.typography.fontSize.xs, fontWeight: 600 }}>
-                            {PLAN_LABELS[c.plan_tier] ?? c.plan_tier}
-                          </span>
-                        </td>
-
-                        {/* WA status */}
-                        <td data-label="WhatsApp" style={{ ...tdStyle, direction: 'ltr', fontFamily: 'monospace', fontSize: theme.typography.fontSize.xs }}>
-                          {c.whatsapp_phone_number_id ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ color: theme.colors.success, fontSize: 8 }}>●</span>
-                              <span title={c.whatsapp_phone_number_id} style={{ color: theme.colors.textPrimary }}>
-                                {c.whatsapp_phone_number_id.length > 14 ? c.whatsapp_phone_number_id.slice(0, 12) + '…' : c.whatsapp_phone_number_id}
-                              </span>
-                              <CopyButton text={c.whatsapp_phone_number_id} label="WA Phone ID" />
-                            </div>
-                          ) : (
-                            <span style={{ color: theme.colors.textMuted, display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 8 }}>●</span> לא מחובר
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Manager phone */}
-                        <td data-label="טלפון מנהל" style={{ ...tdStyle, direction: 'ltr', fontSize: theme.typography.fontSize.xs }}>
-                          {c.manager_phone ?? <span style={{ color: theme.colors.textMuted }}>—</span>}
-                        </td>
-
-                        {/* SMS sender */}
-                        <td data-label="SMS שולח" style={{ ...tdStyle, fontSize: theme.typography.fontSize.xs }}>
-                          {c.sms_sender_name ?? <span style={{ color: theme.colors.textMuted }}>—</span>}
-                        </td>
-
-                        {/* Buildings */}
-                        <td data-label="בניינים" style={{ ...tdStyle, textAlign: 'center' }}>{c.buildings_count}</td>
-
-                        {/* Workers */}
-                        <td data-label="עובדים" style={{ ...tdStyle, textAlign: 'center' }}>
-                          {(() => {
-                            const limits = effectiveLimitsForClient(c, planCatalog)
-                            const cap = limits.workers
-                            return cap != null ? `${c.workers_active_count}/${cap}` : c.workers_active_count
-                          })()}
-                        </td>
-
-                        {/* Residents */}
-                        <td data-label="דיירים" style={{ ...tdStyle, textAlign: 'center' }}>{c.residents_count}</td>
-
-                        {/* Open tickets */}
-                        <td data-label="קריאות" style={{ ...tdStyle, textAlign: 'center' }}>
-                          {c.open_tickets_count > 0
-                            ? <span style={{ color: theme.colors.warning, fontWeight: 600 }}>{c.open_tickets_count}</span>
-                            : <span style={{ color: theme.colors.textMuted }}>0</span>}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="sa-cell-actions" style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                          <div className="sa-quick-actions">
-                            {c.manager_phone && (
-                              <a
-                                href={`tel:${c.manager_phone}`}
-                                className="sa-quick-btn"
-                                title="התקשר למנהל"
-                                aria-label="התקשר למנהל"
-                              >
-                                📞
-                              </a>
-                            )}
-                            {c.admin_email && (
-                              <button
-                                type="button"
-                                className="sa-quick-btn"
-                                title="Magic Link"
-                                disabled={magicLinkLoading[c.id]}
-                                onClick={() => void getMagicLink(c.id, c.admin_email!)}
-                              >
-                                {magicLinkLoading[c.id] ? '…' : '🔑'}
-                              </button>
-                            )}
-                            {editingId === c.id ? (
-                              <button className="sa-quick-btn" onClick={cancelEdit}>ביטול</button>
-                            ) : (
-                              <button className="sa-quick-btn" onClick={() => startEdit(c)}>ערוך</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Expanded row */}
-                      {expandedId === c.id && (
-                        <tr key={`${c.id}-expand`} className="sa-expand-row">
-                          <td colSpan={12} style={{ padding: 0, borderBottom: `1px solid ${theme.colors.borderSubtle}` }}>
-                            <div className="sa-expand-inner" style={{ background: theme.colors.muted, padding: theme.spacing.xl, direction: 'rtl' }}>
-
-                              {/* Edit form */}
-                              {editingId === c.id && editState && (() => {
-                                const preview = previewClientLimits(editState, planCatalog)
-                                return (
-                                <div style={{ marginBottom: theme.spacing.xl, background: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.xl, border: `1.5px solid ${theme.colors.border}` }}>
-                                  <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: theme.spacing.lg }}>
-                                    עריכת לקוח — מכסות וחבילה
-                                  </div>
-                                  <p style={{ margin: '0 0 16px', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                                    כאן מגדירים את החבילה והמכסות שחלות על הלקוח. שינוי תכנית מאפס מכסות מותאמות ישנות.
-                                    מכסות מטאב &quot;מנוי ותמחור&quot; נאכפות אוטומטית כשאין override.
-                                  </p>
-                                  <div className="sa-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
-                                    {[
-                                      { label: 'שם לקוח', key: 'name' as const, placeholder: '' },
-                                      { label: 'WA Phone Number ID', key: 'whatsapp_phone_number_id' as const, placeholder: 'ריק = ללא WhatsApp' },
-                                      { label: 'טלפון מנהל', key: 'manager_phone' as const, placeholder: '972501234567' },
-                                      { label: 'שם שולח SMS', key: 'sms_sender_name' as const, placeholder: 'Bino' },
-                                    ].map(({ label, key, placeholder }) => (
-                                      <div key={key}>
-                                        <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>{label}</label>
-                                        <input
-                                          className="sa-input"
-                                          value={editState[key]}
-                                          onChange={(e) => setEditState((s) => s ? { ...s, [key]: e.target.value } : s)}
-                                          placeholder={placeholder}
-                                          style={inputStyle}
-                                        />
-                                      </div>
-                                    ))}
-                                    <div>
-                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>תכנית</label>
-                                      <select value={editState.plan_tier} onChange={(e) => onPlanTierChange(e.target.value)} className="sa-input" style={inputStyle}>
-                                        {PLAN_SETUP_OPTIONS.map((p) => (
-                                          <option key={p.value} value={p.value}>{p.label}</option>
-                                        ))}
-                                      </select>
-                                      <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>
-                                        ברירת מחדל בקוד: {planLimitsLine(normalizeTier(editState.plan_tier) as PlanTier)}
-                                      </p>
-                                      <p style={{ margin: '4px 0 0', fontSize: theme.typography.fontSize.xs, color: theme.colors.textSecondary }}>
-                                        עובדים פעילים כעת: {c.workers_active_count}
-                                        {c.max_workers != null ? ` · override שמור: ${c.max_workers}` : ''}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת עובדים (override)</label>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        className="sa-input"
-                                        value={editState.max_workers}
-                                        onChange={(e) => setEditState((s) => s ? { ...s, max_workers: e.target.value } : s)}
-                                        placeholder="ריק = לפי תכנית"
-                                        style={inputStyle}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת בניינים (override)</label>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        className="sa-input"
-                                        value={editState.buildings_allowed}
-                                        onChange={(e) => setEditState((s) => s ? { ...s, buildings_allowed: e.target.value } : s)}
-                                        placeholder="ריק = לפי תכנית"
-                                        style={inputStyle}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, marginBottom: 4 }}>מכסת תקלות/חודש (override)</label>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        className="sa-input"
-                                        value={editState.max_tickets_per_month}
-                                        onChange={(e) => setEditState((s) => s ? { ...s, max_tickets_per_month: e.target.value } : s)}
-                                        placeholder="ריק = לפי תכנית"
-                                        style={inputStyle}
-                                      />
-                                    </div>
-                                  </div>
-                                  <div
-                                    style={{
-                                      marginBottom: theme.spacing.lg,
-                                      padding: '12px 14px',
-                                      borderRadius: theme.radius.md,
-                                      background: theme.colors.primaryMuted,
-                                      fontSize: theme.typography.fontSize.xs,
-                                      color: theme.colors.textPrimary,
-                                      lineHeight: 1.6,
-                                    }}
-                                  >
-                                    <strong>מכסה בפועל אחרי שמירה:</strong>{' '}
-                                    עובדים {formatEffectiveLimit(preview.workers)} · בניינים {formatEffectiveLimit(preview.buildings)} · תקלות/חודש {formatEffectiveLimit(preview.tickets)}
-                                  </div>
-                                  {saveError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{saveError}</p>}
-                                  <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
-                                    <LoadingButton
-                                      onClick={saveEdit}
-                                      loading={saving}
-                                      loadingText="שומר..."
-                                      size="sm"
-                                    >
-                                      שמור
-                                    </LoadingButton>
-                                    <button
-                                      type="button"
-                                      onClick={clearLimitOverridesInEdit}
-                                      className="sa-touch-btn"
-                                      style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}
-                                    >
-                                      אפס מכסות מותאמות
-                                    </button>
-                                    <button onClick={cancelEdit} className="sa-touch-btn" style={{ background: 'none', border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '10px 16px', cursor: 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, minHeight: 44 }}>
-                                      ביטול
-                                    </button>
-                                  </div>
-                                </div>
-                                )
-                              })()}
-
-                              <ClientLogoUpload
-                                clientId={c.id}
-                                clientName={c.name}
-                                currentLogoUrl={c.logo_url}
-                                secret={secret}
-                                onUploaded={(url) => {
-                                  setClients((prev) =>
-                                    prev.map((row) => (row.id === c.id ? { ...row, logo_url: url } : row))
-                                  )
-                                }}
-                              />
-
-                              <div
-                                style={{
-                                  marginBottom: theme.spacing.xl,
-                                  background: theme.colors.surface,
-                                  borderRadius: theme.radius.lg,
-                                  padding: theme.spacing.xl,
-                                  border: `1.5px solid ${theme.colors.border}`,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: theme.spacing.sm,
-                                    flexWrap: 'wrap',
-                                    marginBottom: theme.spacing.md,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      fontWeight: theme.typography.fontWeight.semibold,
-                                      fontSize: theme.typography.fontSize.sm,
-                                      color: theme.colors.textPrimary,
-                                    }}
-                                  >
-                                    הרשאות לשוניות
-                                  </div>
-                                  <NavFeaturesModeBadge
-                                    mode={describeClientNavFeaturesMode(c.enabled_nav_features)}
-                                  />
-                                </div>
-                                <p
-                                  style={{
-                                    margin: `0 0 ${theme.spacing.md}`,
-                                    fontSize: theme.typography.fontSize.xs,
-                                    color: theme.colors.textMuted,
-                                    lineHeight: 1.5,
-                                  }}
-                                >
-                                  יומן, שעון עובדים ושאר תוספים בתשלום מנוהלים בלוח «תוספים בתשלום ללקוח» למטה —
-                                  לא כאן. סמנו כאן רק לשוניות ליבה (תקלות, פרויקטים, דיירים וכו&apos;).
-                                </p>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    gap: theme.spacing.sm,
-                                    flexWrap: 'wrap',
-                                    marginBottom: theme.spacing.lg,
-                                  }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={applySetupPackagePreset}
-                                    style={{
-                                      background: theme.colors.surface,
-                                      border: `1px solid ${theme.colors.border}`,
-                                      borderRadius: theme.radius.md,
-                                      padding: '6px 12px',
-                                      cursor: 'pointer',
-                                      fontSize: theme.typography.fontSize.xs,
-                                      color: theme.colors.textSecondary,
-                                    }}
-                                  >
-                                    חבילת הקמה
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={applyAllFeaturesPreset}
-                                    style={{
-                                      background: theme.colors.surface,
-                                      border: `1px solid ${theme.colors.border}`,
-                                      borderRadius: theme.radius.md,
-                                      padding: '6px 12px',
-                                      cursor: 'pointer',
-                                      fontSize: theme.typography.fontSize.xs,
-                                      color: theme.colors.textSecondary,
-                                    }}
-                                  >
-                                    כל הלשוניות
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void clearFeatureRestrictions(c.id)}
-                                    disabled={savingFeatures}
-                                    style={{
-                                      background: theme.colors.surface,
-                                      border: `1px solid ${theme.colors.border}`,
-                                      borderRadius: theme.radius.md,
-                                      padding: '6px 12px',
-                                      cursor: savingFeatures ? 'not-allowed' : 'pointer',
-                                      fontSize: theme.typography.fontSize.xs,
-                                      color: theme.colors.textSecondary,
-                                    }}
-                                  >
-                                    לגסי · ללא הגבלה
-                                  </button>
-                                </div>
-                                <div
-                                  className="sa-grid-features"
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                                    gap: theme.spacing.sm,
-                                    marginBottom: theme.spacing.lg,
-                                  }}
-                                >
-                                  {coreNavFeatureOptions().map(({ id, label }) => {
-                                    const required = (REQUIRED_NAV_FEATURE_IDS as readonly string[]).includes(id)
-                                    return (
-                                      <label
-                                        key={id}
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 8,
-                                          fontSize: theme.typography.fontSize.xs,
-                                          color: theme.colors.textPrimary,
-                                          cursor: required ? 'default' : 'pointer',
-                                        }}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={featuresDraft.includes(id)}
-                                          disabled={required}
-                                          onChange={(e) => toggleFeatureDraft(id, e.target.checked)}
-                                        />
-                                        <span>{label}</span>
-                                      </label>
-                                    )
-                                  })}
-                                </div>
-                                {featuresError && (
-                                  <p
-                                    style={{
-                                      color: theme.colors.error,
-                                      fontSize: theme.typography.fontSize.xs,
-                                      marginBottom: theme.spacing.md,
-                                    }}
-                                  >
-                                    {featuresError}
-                                  </p>
-                                )}
-                                <LoadingButton
-                                  onClick={() => void saveFeatures(c.id)}
-                                  loading={savingFeatures}
-                                  loadingText="שומר..."
-                                  size="sm"
-                                >
-                                  שמור הרשאות
-                                </LoadingButton>
-                              </div>
-
-                              <ClientPaidAddonsPanel clientId={c.id} secret={secret} />
-
-                              <ClientAttendanceTagsPanel
-                                clientId={c.id}
-                                secret={secret}
-                                projects={c.projects}
-                              />
-
-                              {/* Projects list */}
-                              <div style={{ marginBottom: theme.spacing.xl }}>
-                                <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: theme.spacing.md }}>
-                                  בניינים ({c.projects.length})
-                                </div>
-                                {c.projects.length === 0 ? (
-                                  <p style={{ color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm }}>אין בניינים</p>
-                                ) : (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-                                    {c.projects.map((p) => (
-                                      <div key={p.id} style={{ background: theme.colors.surface, borderRadius: theme.radius.md, padding: `${theme.spacing.xs} ${theme.spacing.md}`, border: `1px solid ${theme.colors.border}`, fontSize: theme.typography.fontSize.xs, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <code style={{ color: theme.colors.textMuted, fontSize: 10 }}>{p.project_code}</code>
-                                        <span style={{ color: theme.colors.textPrimary }}>{p.name}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Magic link + invite */}
-                              <ClientRecoverTicketMediaPanel clientId={c.id} secret={secret} />
-
-                              <ClientInvitePanel clientId={c.id} defaultEmail={c.admin_email} secret={secret} />
-
-                              {c.admin_email && (
-                                <div>
-                                  <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.textPrimary, marginBottom: theme.spacing.md }}>
-                                    כניסה כלקוח
-                                  </div>
-                                  {magicLinks[c.id] ? (
-                                    <div className="sa-magic-row" style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, background: theme.colors.surface, borderRadius: theme.radius.md, padding: theme.spacing.md, border: `1px solid ${theme.colors.border}` }}>
-                                      <code style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, direction: 'ltr' }}>
-                                        {magicLinks[c.id]}
-                                      </code>
-                                      <CopyButton text={magicLinks[c.id]!} label="קישור" />
-                                      <a href={magicLinks[c.id]} target="_blank" rel="noreferrer" style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.primary, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                                        פתח ↗
-                                      </a>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => void getMagicLink(c.id, c.admin_email!)}
-                                      disabled={magicLinkLoading[c.id]}
-                                      style={{ background: magicLinkLoading[c.id] ? theme.colors.textMuted : theme.colors.surface, border: `1.5px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: magicLinkLoading[c.id] ? 'not-allowed' : 'pointer', color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm }}
-                                    >
-                                      {magicLinkLoading[c.id] ? 'יוצר קישור...' : '🔑 צור Magic Link'}
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Delete client */}
-                              <div style={{ marginTop: theme.spacing.xl, paddingTop: theme.spacing.xl, borderTop: `1px solid ${theme.colors.border}` }}>
-                                <div style={{ fontWeight: theme.typography.fontWeight.semibold, fontSize: theme.typography.fontSize.sm, color: theme.colors.error, marginBottom: theme.spacing.md }}>
-                                  מחיקת לקוח
-                                </div>
-                                {deleteTarget?.id !== c.id ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setDeleteTarget(c)
-                                      setDeleteConfirmName('')
-                                      setDeleteError('')
-                                    }}
-                                    style={{
-                                      background: theme.colors.errorMuted,
-                                      border: `1.5px solid ${theme.colors.error}`,
-                                      borderRadius: theme.radius.md,
-                                      padding: '8px 16px',
-                                      cursor: 'pointer',
-                                      color: theme.colors.error,
-                                      fontSize: theme.typography.fontSize.sm,
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    מחק לקוח לצמיתות
-                                  </button>
-                                ) : (
-                                  <div style={{ maxWidth: 420 }}>
-                                    <p style={{ margin: `0 0 ${theme.spacing.md}`, fontSize: theme.typography.fontSize.sm, color: theme.colors.textSecondary }}>
-                                      פעולה בלתי הפיכה. הקלידי את שם הלקוח <strong>{c.name}</strong> לאישור:
-                                    </p>
-                                    <input
-                                      value={deleteConfirmName}
-                                      onChange={(e) => setDeleteConfirmName(e.target.value)}
-                                      placeholder={c.name}
-                                      style={{ ...inputStyle, marginBottom: theme.spacing.md }}
-                                    />
-                                    {deleteError && <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.xs, marginBottom: theme.spacing.md }}>{deleteError}</p>}
-                                    <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-                                      <LoadingButton
-                                        onClick={() => void deleteClient()}
-                                        loading={deleting}
-                                        loadingText="מוחק..."
-                                        size="sm"
-                                        style={{ background: theme.colors.error, borderColor: theme.colors.error }}
-                                      >
-                                        אישור מחיקה
-                                      </LoadingButton>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setDeleteTarget(null)
-                                          setDeleteConfirmName('')
-                                          setDeleteError('')
-                                        }}
-                                        style={{ background: 'none', border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.md, padding: '8px 16px', cursor: 'pointer', fontSize: theme.typography.fontSize.sm }}
-                                      >
-                                        ביטול
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-              {filteredClients.length === 0 && !loading && (
-                <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.xl }}>
-                  {clients.length === 0 ? 'אין לקוחות' : 'אין תוצאות לחיפוש/סינון'}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-          </>
-        )}
-      </div>
-
-      <nav className="sa-bottom-nav" aria-label="ניווט Super Admin">
-        <button
-          type="button"
-          className={`sa-bottom-nav-btn${viewMode === 'clients' ? ' is-active' : ''}`}
-          onClick={() => setViewMode('clients')}
-        >
-          לקוחות
-        </button>
-        <button
-          type="button"
-          className={`sa-bottom-nav-btn${viewMode === 'usage' ? ' is-active' : ''}`}
-          onClick={() => setViewMode('usage')}
-        >
-          שימוש
-        </button>
-        <button
-          type="button"
-          className={`sa-bottom-nav-btn${viewMode === 'ops' ? ' is-active' : ''}`}
-          onClick={() => setViewMode('ops')}
-        >
-          תפעול
-          {opsUnresolvedCount > 0 && (
-            <span className="sa-bottom-badge">{opsUnresolvedCount > 99 ? '99+' : opsUnresolvedCount}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          className={`sa-bottom-nav-btn${viewMode === 'settings' ? ' is-active' : ''}`}
-          onClick={() => setViewMode('settings')}
-        >
-          הגדרות
-        </button>
-      </nav>
+      <style jsx global>{`
+        .sa-meta-details {
+          margin-top: 16px;
+          border: 1px solid ${theme.colors.border};
+          border-radius: 12px;
+          padding: 8px 12px;
+          background: ${theme.colors.surface};
+        }
+        .sa-meta-details summary {
+          cursor: pointer;
+          font-weight: 600;
+          color: ${theme.colors.textPrimary};
+        }
+        .sa-lock-setup {
+          margin-top: 16px;
+          text-align: center;
+        }
+        .sa-lock-setup a {
+          color: ${theme.colors.primary};
+        }
+      `}</style>
     </div>
   )
 }
