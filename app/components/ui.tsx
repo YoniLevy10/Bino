@@ -28,6 +28,7 @@ import { ticketStatusLabelHe } from '@/lib/ticket-status'
 import { navLinkPrefetchHandlers } from '@/lib/route-prefetch'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PullToRefresh } from './PullToRefresh'
+import { ManagerPushOnboarding, ManagerPushSync } from './ManagerPushOnboarding'
 import { PageViewTracker } from './PageViewTracker'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
@@ -911,7 +912,11 @@ function AppShellInner({
               maxWidth: mobile ? '100%' : undefined,
           }}
         >
-          <PullToRefresh enabled={mobile}>{children}</PullToRefresh>
+          <PullToRefresh enabled={mobile}>
+            {mounted ? <ManagerPushSync /> : null}
+            {mounted ? <ManagerPushOnboarding /> : null}
+            {children}
+          </PullToRefresh>
         </main>
         {bottomNav ? <MobileBottomNav /> : null}
         <BackToTop />

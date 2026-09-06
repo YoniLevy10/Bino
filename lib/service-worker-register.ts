@@ -26,10 +26,25 @@ export async function ensureServiceWorkerReady(): Promise<ServiceWorkerRegistrat
   return registration
 }
 
-export function isStandaloneWorkerPwa(): boolean {
+/** True when running as installed PWA (Home Screen / standalone display). */
+export function isStandalonePwa(): boolean {
   if (typeof window === 'undefined') return false
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   )
+}
+
+/** @deprecated Prefer isStandalonePwa — same check for worker + dashboard PWAs. */
+export function isStandaloneWorkerPwa(): boolean {
+  return isStandalonePwa()
+}
+
+/** iPhone/iPad Safari where Push API only works after Add to Home Screen. */
+export function isIosSafariLike(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  return iOS && /WebKit/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)
 }

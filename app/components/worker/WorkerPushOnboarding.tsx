@@ -56,7 +56,7 @@ export function WorkerPushOnboarding({
         toast.error(result.error || 'הפעלה נכשלה')
         return
       }
-      toast.success('התראות שיבוץ הופעלו')
+      toast.success('התראות על תקלות חדשות הופעלו')
       setVisible(false)
       onEnabled?.()
     } finally {
@@ -88,7 +88,7 @@ export function WorkerPushOnboarding({
           ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
           : denied
             ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
-            : `בכל שיבוץ תקלה תקבלו הודעה + מספר ${openTicketCount > 0 ? 'על האייקון' : 'קטן על האייקון'} — גם כשהאפליקציה סגורה.`}
+            : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
       </p>
       {!unsupported && !denied ? (
         <button
@@ -107,7 +107,7 @@ export function WorkerPushOnboarding({
             cursor: loading ? 'wait' : 'pointer',
           }}
         >
-          {loading ? 'מפעיל…' : 'הפעל התראות שיבוץ'}
+          {loading ? 'מפעיל…' : 'הפעל התראות'}
         </button>
       ) : null}
     </div>
