@@ -114,7 +114,8 @@ params AS (
     ] AS descs,
     ARRAY['דני כהן','יעל לוי','משה אברהם','רונית שמעון','אבי גולן','נועה פרץ','אלירן מזרחי','שירה בן דוד'] AS reporters,
     ARRAY['0501234001','0501234002','0501234003','0501234004','0501234005','0501234006','0501234007','0501234008'] AS phones,
-    ARRAY['NEW','ASSIGNED','IN_PROGRESS','WAITING_PARTS','SITE_TOUR','CLOSED'] AS statuses,
+    -- Must match tickets_status_check (see migration 093 + lib/ticket-status.ts)
+    ARRAY['NEW','ASSIGNED','IN_PROGRESS','WAITING_PARTS','SITE_TOUR','PROFESSIONAL_ESCORT','CLOSED'] AS statuses,
     ARRAY['LOW','MEDIUM','HIGH','URGENT'] AS priorities
 ),
 series AS (
