@@ -234,6 +234,50 @@ describe('runUnknownResidentAiIntake', () => {
     void supabase
   })
 
+
+  it('binds numeric pending pick even when AI omits select_project_index', async () => {
+    process.env.WHATSAPP_AI_ENABLED = 'true'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+
+    const projects = [
+      {
+        id: 'p-haletz-10',
+        name: 'חלץ 10',
+        project_code: 'BMK9',
+        address: 'חלץ 10',
+        address_en: null,
+      },
+      {
+        id: 'p-haletz-12',
+        name: 'חלץ 12',
+        project_code: 'BMK11',
+        address: 'חלץ 12',
+        address_en: null,
+      },
+    ]
+    const supabase = mockSupabase(projects)
+
+    const result = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: '2',
+      decideTurn: async () => ({
+        reply: 'איזה בניין?',
+        language: 'he',
+        search_query: null,
+        select_project_id: null,
+        select_project_index: null,
+        ticket_description: null,
+        open_ticket: false,
+      }),
+    })
+
+    expect(result.kind).toBe('handled')
+    expect(supabase._state.sessions.length).toBeGreaterThan(0)
+    expect(supabase._state.sessions.at(-1)?.project_id).toBe('p-haletz-12')
+  })
+
   it('opens ticket when AI returns description + select', async () => {
     process.env.WHATSAPP_AI_ENABLED = 'true'
     process.env.AI_GATEWAY_API_KEY = 'gw-test'

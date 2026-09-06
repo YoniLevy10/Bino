@@ -168,6 +168,16 @@ async function createSessionForProject(args: {
   return getActiveSession(from, supabaseAdmin, clientId)
 }
 
+
+/** When the resident replies "1"/"2" and a pending list exists, bind that building even if the model forgot select_project_index. */
+function resolveNumericCandidatePick(text: string, candidates: ProjectRow[]): ProjectRow | null {
+  const trimmed = text.trim()
+  if (!/^\d{1,2}$/.test(trimmed)) return null
+  const idx = Number.parseInt(trimmed, 10)
+  if (!Number.isFinite(idx) || idx < 1 || idx > candidates.length) return null
+  return candidates[idx - 1] ?? null
+}
+
 function resolveSelectedProject(
   decision: AiIntakeDecision,
   candidates: ProjectRow[]
@@ -232,6 +242,9 @@ export async function runUnknownResidentAiIntake(
   await saveResidentLanguage(supabaseAdmin, clientId, from, lang, null)
 
   let selected = resolveSelectedProject(decision, candidates)
+  if (!selected && candidates.length > 0) {
+    selected = resolveNumericCandidatePick(textBody, candidates)
+  }
 
   const searchQuery = resolveBuildingSearchQuery(decision, textBody)
 
@@ -274,6 +287,9 @@ export async function runUnknownResidentAiIntake(
 
   if (!selected) {
     selected = resolveSelectedProject(decision, candidates)
+  }
+  if (!selected && candidates.length > 0) {
+    selected = resolveNumericCandidatePick(textBody, candidates)
   }
 
   if (selected) {
