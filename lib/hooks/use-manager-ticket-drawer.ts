@@ -86,7 +86,8 @@ export function useManagerTicketDrawer(opts?: { onRefresh?: () => void | Promise
     await asyncHandler(
       async () => {
         const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
-        const { didAssign, closedNow, reporter_has_phone, whatsapp_sent } = await saveDashboardTicket({
+        const { didAssign, closedNow, reporter_has_phone, whatsapp_sent, notifications_queued } =
+          await saveDashboardTicket({
           ticketId: selectedTicket.id,
           priority: draftPriority,
           status: draftStatus,
@@ -103,6 +104,7 @@ export function useManagerTicketDrawer(opts?: { onRefresh?: () => void | Promise
             success: true,
             reporter_has_phone,
             whatsapp_sent,
+            notifications_queued,
           })
           closeDrawer()
         } else {
@@ -141,12 +143,14 @@ export function useManagerTicketDrawer(opts?: { onRefresh?: () => void | Promise
         )
         const body = (await response.json().catch(() => ({}))) as {
           error?: string
+          success?: boolean
           reporter_has_phone?: boolean
-          whatsapp_sent?: boolean
+          whatsapp_sent?: boolean | null
+          notifications_queued?: boolean
         }
         if (!response.ok) throw new Error(body.error || TM.genericSaveError)
         toast.success(TM.ticketClosed)
-        toastReporterClosedNotifySummary(body)
+        toastReporterClosedNotifySummary({ ...body, success: true })
         closeDrawer()
         await opts?.onRefresh?.()
         return true

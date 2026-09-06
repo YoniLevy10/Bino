@@ -4,6 +4,7 @@ import { createServerSignedAttachmentUrl } from '@/lib/ticket-attachment-url'
 import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
 import { getLogger } from '@/lib/logging'
 import { sendTicketResidentWhatsAppImage } from '@/lib/whatsapp-ticket-reply'
+import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
@@ -12,12 +13,13 @@ const COMPLETION_CAPTION = 'התיקון בוצע. תודה על הדיווח.'
 export type WorkerTicketCompleteResult = {
   ok: true
   attachment_id: string | null
-  completion_image_sent: boolean
+  completion_image_sent: boolean | null
   completion_image_error?: string
   reporter_has_phone: boolean
-  whatsapp_sent: boolean
-  sms_sent: boolean
+  whatsapp_sent: boolean | null
+  sms_sent: boolean | null
   whatsapp_error?: string
+  notifications_queued?: boolean
 }
 
 type CompletionAttachmentRow = {
@@ -132,27 +134,7 @@ export async function completeWorkerTicketWithPhoto(
     }
   }
 
-  let imageSend: Awaited<ReturnType<typeof sendTicketResidentWhatsAppImage>> = { sent: false }
-  if (attachment) {
-    const signedUrl = await createServerSignedAttachmentUrl(admin, attachment.file_url)
-    if (signedUrl) {
-      imageSend = await sendTicketResidentWhatsAppImage(admin, {
-        clientId: opts.clientId,
-        ticketId: opts.ticketId,
-        imageLink: signedUrl,
-        caption: COMPLETION_CAPTION,
-      })
-      if (!imageSend.sent && imageSend.reporterPhone) {
-        logger.warn('WORKER_API', 'Completion photo WhatsApp failed', {
-          ticket_id: opts.ticketId,
-          error: imageSend.errorMessage,
-        })
-      }
-    } else {
-      logger.warn('WORKER_API', 'Completion photo signed URL failed', { ticket_id: opts.ticketId })
-    }
-  }
-
+  // Close ticket in DB first so the client gets a fast success response.
   const now = new Date().toISOString()
   const { data: updated, error: updateErr } = await admin
     .from('tickets')
@@ -173,27 +155,73 @@ export async function completeWorkerTicketWithPhoto(
     throw new Error('סגירת התקלה נכשלה')
   }
 
-  const notify = await notifyReporterIfTicketNewlyClosed(
-    admin,
-    opts.clientId,
-    opts.ticketId,
-    previousStatus
-  )
+  const attachmentSnapshot = attachment
+  const previousStatusSnapshot = previousStatus
 
-  logger.info('WORKER_API', 'Worker completed ticket with photo', {
-    ticket_id: opts.ticketId,
-    completion_image_sent: imageSend.sent,
-    whatsapp_closed_sent: notify?.whatsappSent ?? false,
+  const runCompletionSideEffects = async () => {
+    let imageSend: Awaited<ReturnType<typeof sendTicketResidentWhatsAppImage>> = { sent: false }
+    if (attachmentSnapshot) {
+      const signedUrl = await createServerSignedAttachmentUrl(admin, attachmentSnapshot.file_url)
+      if (signedUrl) {
+        imageSend = await sendTicketResidentWhatsAppImage(admin, {
+          clientId: opts.clientId,
+          ticketId: opts.ticketId,
+          imageLink: signedUrl,
+          caption: COMPLETION_CAPTION,
+        })
+        if (!imageSend.sent && imageSend.reporterPhone) {
+          logger.warn('WORKER_API', 'Completion photo WhatsApp failed', {
+            ticket_id: opts.ticketId,
+            error: imageSend.errorMessage,
+          })
+        }
+      } else {
+        logger.warn('WORKER_API', 'Completion photo signed URL failed', { ticket_id: opts.ticketId })
+      }
+    }
+
+    const notify = await notifyReporterIfTicketNewlyClosed(
+      admin,
+      opts.clientId,
+      opts.ticketId,
+      previousStatusSnapshot
+    )
+
+    logger.info('WORKER_API', 'Worker completed ticket with photo', {
+      ticket_id: opts.ticketId,
+      completion_image_sent: imageSend.sent,
+      whatsapp_closed_sent: notify?.whatsappSent ?? false,
+    })
+
+    return { imageSend, notify }
+  }
+
+  if (shouldSyncTicketNotifications()) {
+    const { imageSend, notify } = await runCompletionSideEffects()
+    return {
+      ok: true,
+      attachment_id: attachment?.id ?? null,
+      completion_image_sent: imageSend.sent,
+      completion_image_error: imageSend.sent ? undefined : imageSend.errorMessage,
+      reporter_has_phone: imageSend.reporterPhone ? true : notify?.reporterHasPhone ?? false,
+      whatsapp_sent: notify?.whatsappSent ?? false,
+      sms_sent: notify?.smsSent ?? false,
+      whatsapp_error: notify?.whatsappError,
+      notifications_queued: false,
+    }
+  }
+
+  runAfterResponse('worker-ticket-complete-notify', async () => {
+    await runCompletionSideEffects()
   })
 
   return {
     ok: true,
     attachment_id: attachment?.id ?? null,
-    completion_image_sent: imageSend.sent,
-    completion_image_error: imageSend.sent ? undefined : imageSend.errorMessage,
-    reporter_has_phone: imageSend.reporterPhone ? true : notify?.reporterHasPhone ?? false,
-    whatsapp_sent: notify?.whatsappSent ?? false,
-    sms_sent: notify?.smsSent ?? false,
-    whatsapp_error: notify?.whatsappError,
+    completion_image_sent: null,
+    reporter_has_phone: Boolean(attachment), // best-effort; real phone checked in background
+    whatsapp_sent: null,
+    sms_sent: null,
+    notifications_queued: true,
   }
 }

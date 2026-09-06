@@ -9,6 +9,10 @@ import { logAudit } from '@/lib/audit'
 import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
 import { resolveSmsTemplateMessage } from '@/lib/whatsapp-templates'
 import { SMS_TEMPLATE_EDITOR_DEFAULTS } from '@/lib/whatsapp-template-keys'
+import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
+
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -119,54 +123,72 @@ export async function POST(req: Request) {
     const proj = trow.projects
     const projectName = Array.isArray(proj) ? proj[0]?.name : proj?.name
 
-    // Send manager SMS on close if enabled in client settings
-    try {
+    // Notify after response unless SYNC_TICKET_NOTIFICATIONS=1.
+    let notificationsQueued = false
+    let notify: Awaited<ReturnType<typeof notifyReporterTicketClosed>> = {
+      whatsappSent: false,
+      smsSent: false,
+      reporterHasPhone: Boolean(trow.reporter_phone?.trim()),
+    }
+
+    const runCloseNotifications = async () => {
       const { data: clientRow } = await supabaseAdmin
         .from('clients')
         .select('sms_on_ticket_close, manager_phone, sms_sender_name')
         .eq('id', clientId)
         .maybeSingle()
       const smsOnClose = (clientRow as { sms_on_ticket_close?: boolean | null } | null)?.sms_on_ticket_close !== false
-      if (smsOnClose) {
-        const managerPhone = (clientRow as { manager_phone?: string | null } | null)?.manager_phone?.trim() || getManagerPhoneFromEnv()
-        const smsSenderName = (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
-        if (managerPhone) {
-          const smsMsg = await resolveSmsTemplateMessage(
-            supabaseAdmin, clientId,
-            'sms_manager_ticket_closed',
-            SMS_TEMPLATE_EDITOR_DEFAULTS.sms_manager_ticket_closed,
-            { project_name: projectName || 'הבניין', ticket_number: String(ticket_id) }
-          )
-          await sendManagerSMS(managerPhone, smsMsg, smsSenderName, clientId)
-        }
+      const managerPhone = smsOnClose
+        ? ((clientRow as { manager_phone?: string | null } | null)?.manager_phone?.trim() || getManagerPhoneFromEnv())
+        : null
+      const smsSenderName = (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name || null
+
+      const managerSmsTask = (async () => {
+        if (!managerPhone) return
+        const smsMsg = await resolveSmsTemplateMessage(
+          supabaseAdmin, clientId,
+          'sms_manager_ticket_closed',
+          SMS_TEMPLATE_EDITOR_DEFAULTS.sms_manager_ticket_closed,
+          { project_name: projectName || 'הבניין', ticket_number: String(ticket_id) }
+        )
+        await sendManagerSMS(managerPhone, smsMsg, smsSenderName, clientId)
+      })()
+
+      const reporterTask = notifyReporterTicketClosed(supabaseAdmin, clientId, {
+        reporterPhone: trow.reporter_phone,
+        projectName: projectName || 'הבניין',
+      })
+
+      const [managerSettled, reporterSettled] = await Promise.allSettled([managerSmsTask, reporterTask])
+      if (managerSettled.status === 'rejected') {
+        logger.warn('TICKET_API', 'Manager SMS on close failed', {
+          requestId, ticket_id, err: String(managerSettled.reason),
+        })
       }
-    } catch (smsErr) {
-      logger.warn('TICKET_API', 'Manager SMS on close failed', { requestId, ticket_id, err: String(smsErr) })
+      if (reporterSettled.status === 'fulfilled') {
+        notify = reporterSettled.value
+      } else {
+        logger.warn('TICKET_API', 'Reporter notify on close failed', {
+          requestId, ticket_id, err: String(reporterSettled.reason),
+        })
+      }
+      logger.info('TICKET_API', 'Reporter notify on close', {
+        requestId,
+        ticket_id,
+        whatsappSent: notify.whatsappSent,
+        smsSent: notify.smsSent,
+      })
     }
 
-    const notify = await notifyReporterTicketClosed(supabaseAdmin, clientId, {
-      reporterPhone: trow.reporter_phone,
-      projectName: projectName || 'הבניין',
-    })
-    logger.info('TICKET_API', 'Reporter notify on close', {
-      requestId,
-      ticket_id,
-      whatsappSent: notify.whatsappSent,
-      smsSent: notify.smsSent,
-    })
-    if (notify.whatsappError) {
-      logger.warn('TICKET_API', 'Reporter WhatsApp on close failed', {
-        requestId,
-        ticket_id,
-        error: notify.whatsappError,
-      })
-    }
-    if (notify.smsError && !notify.smsSent) {
-      logger.warn('TICKET_API', 'Reporter SMS fallback on close failed', {
-        requestId,
-        ticket_id,
-        error: notify.smsError,
-      })
+    if (shouldSyncTicketNotifications()) {
+      try {
+        await runCloseNotifications()
+      } catch (notifyErr) {
+        logger.warn('TICKET_API', 'Close notify batch failed', { requestId, ticket_id, err: String(notifyErr) })
+      }
+    } else {
+      notificationsQueued = true
+      runAfterResponse('close-ticket-notify', runCloseNotifications)
     }
 
     const { error: sessionError } = await supabaseAdmin
@@ -202,8 +224,9 @@ export async function POST(req: Request) {
       success: true,
       ticket: updatedTicket,
       reporter_has_phone: Boolean(trow.reporter_phone?.trim()),
-      whatsapp_sent: notify.whatsappSent,
-      sms_sent: notify.smsSent,
+      whatsapp_sent: notificationsQueued ? null : notify.whatsappSent,
+      sms_sent: notificationsQueued ? null : notify.smsSent,
+      notifications_queued: notificationsQueued,
       requestId,
     })
   } catch (error) {

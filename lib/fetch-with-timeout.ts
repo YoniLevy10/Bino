@@ -7,7 +7,10 @@ export const MUTATION_FETCH_TIMEOUT_MS = 30_000
 /** Photo upload + WhatsApp send on worker close can take 30–60s on mobile networks. */
 export const WORKER_PHOTO_TIMEOUT_MS = 90_000
 
-export const FETCH_TIMEOUT_USER_MESSAGE = 'הבקשה ארכה זמן מדי — נסה שוב'
+/** Campaigns / broadcasts / bulk SMS — keep UI waiting longer than default mutation. */
+export const LONG_RUNNING_FETCH_TIMEOUT_MS = 60_000
+
+export const FETCH_TIMEOUT_USER_MESSAGE = 'הפעולה לוקחת יותר מהרגיל — בדקו אם נשמרה ורעננו'
 
 export function isFetchTimeoutError(error: unknown): boolean {
   return error instanceof Error && error.message === FETCH_TIMEOUT_USER_MESSAGE

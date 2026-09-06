@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { buildPilotAnnouncementSms, stripEmojiForSms } from '@/lib/pilot-announcement-message'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, LONG_RUNNING_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { supabase } from '@/lib/supabase'
 import { Button, Card, theme } from '../ui'
@@ -101,7 +101,7 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadBody(true)),
-      })
+      }, LONG_RUNNING_FETCH_TIMEOUT_MS)
       const json = await res.json() as PreviewResult & { error?: string }
       if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
       setPreview(json)
@@ -131,7 +131,7 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadBody(false)),
-      })
+      }, LONG_RUNNING_FETCH_TIMEOUT_MS)
       const json = await res.json() as PreviewResult & {
         sent?: number
         failed?: number

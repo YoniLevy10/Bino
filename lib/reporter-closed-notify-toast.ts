@@ -3,12 +3,20 @@ import { toast } from '@/lib/error-handler'
 export type ReporterClosedNotifyApiBody = {
   success?: boolean
   reporter_has_phone?: boolean
-  whatsapp_sent?: boolean
+  whatsapp_sent?: boolean | null
+  /** true when WhatsApp/SMS were scheduled after the HTTP response */
+  notifications_queued?: boolean
 }
 
 /** Follow-up after close: WhatsApp to reporter only. */
 export function toastReporterClosedNotifySummary(body: ReporterClosedNotifyApiBody) {
-  if (!body.success) return
+  // Allow callers that omit `success` when they already toast'd the close itself.
+  if (body.success === false) return
+
+  if (body.notifications_queued) {
+    toast.info('התקלה נסגרה · שולחים הודעה לפותח התקלה…')
+    return
+  }
 
   const hasPhone = Boolean(body.reporter_has_phone)
   if (!hasPhone) {
@@ -18,7 +26,7 @@ export function toastReporterClosedNotifySummary(body: ReporterClosedNotifyApiBo
 
   if (body.whatsapp_sent) {
     toast.success('נשלחה הודעת וואטסאפ לפותח התקלה')
-  } else {
+  } else if (body.whatsapp_sent === false) {
     toast.warning('לא הצלחנו לשלוח הודעת וואטסאפ לפותח התקלה')
   }
 }

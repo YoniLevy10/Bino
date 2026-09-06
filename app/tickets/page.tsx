@@ -786,7 +786,7 @@ export default function TicketsPage() {
     setSavingTicket(true)
     try {
       const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
-      const { didAssign, closedNow, reporter_has_phone, whatsapp_sent } = await saveDashboardTicket({
+      const { didAssign, closedNow, reporter_has_phone, whatsapp_sent, notifications_queued } = await saveDashboardTicket({
         ticketId: selectedTicket.id,
         priority: draftPriority,
         status: draftStatus,
@@ -804,6 +804,7 @@ export default function TicketsPage() {
           success: true,
           reporter_has_phone,
           whatsapp_sent,
+          notifications_queued,
         })
       }
 

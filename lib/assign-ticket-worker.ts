@@ -5,6 +5,7 @@ import { getWorkerPortalUrl } from '@/lib/public-app-url'
 import { notifyWorkerAssignedPush } from '@/lib/push-notifications'
 import { getLogger } from '@/lib/logging'
 import { notifyWorkerAssignmentWhatsApp, type WorkerAssignmentWaResult } from '@/lib/worker-assignment-wa-notify'
+import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
 
 export type AssignTicketToWorkerResult = {
   ok: boolean
@@ -13,6 +14,8 @@ export type AssignTicketToWorkerResult = {
   workerSmsNote?: string
   workerWhatsApp?: WorkerAssignmentWaResult | null
   workerWhatsAppNote?: string
+  /** true when SMS/WA/push were scheduled after the response */
+  notificationsQueued?: boolean
   error?: string
 }
 
@@ -27,6 +30,114 @@ type WorkerRow = {
 /**
  * Assigns a ticket to a worker: DB update, log, SMS (all phones), push — same as manual /api/assign-ticket.
  */
+
+async function sendAssignTicketNotifications(opts: {
+  supabase: SupabaseClient
+  logger: ReturnType<typeof getLogger>
+  worker: WorkerRow
+  workerId: string
+  clientId: string
+  ticketId: string
+  ticketNumber: number
+  description: string | null
+  buildingName: string
+  smsSenderName?: string | null
+}): Promise<{
+  workerSms: WorkerSmsBatchResult | null
+  workerSmsNote?: string
+  workerWhatsApp: WorkerAssignmentWaResult | null
+  workerWhatsAppNote?: string
+}> {
+  const {
+    supabase,
+    logger,
+    worker: w,
+    workerId,
+    clientId,
+    ticketId,
+    ticketNumber,
+    description,
+    buildingName,
+    smsSenderName,
+  } = opts
+
+  let workerSms: WorkerSmsBatchResult | null = null
+  let workerSmsNote: string | undefined
+  let workerWhatsApp: WorkerAssignmentWaResult | null = null
+  let workerWhatsAppNote: string | undefined
+
+  const workerPhones = collectWorkerPhones(w)
+
+  if (workerPhones.length === 0) {
+    workerSmsNote = 'לעובד אין מספר טלפון במערכת — לא נשלח SMS.'
+    return { workerSms, workerSmsNote, workerWhatsApp, workerWhatsAppNote }
+  }
+
+  const workerToken = w.access_token?.trim()
+  const portalUrl = workerToken ? getWorkerPortalUrl(workerToken) : null
+  const smsMessage = portalUrl
+    ? `שויכת לתקלה #${ticketNumber} ב${buildingName}: ${description || 'ללא תיאור'}. האזור האישי: ${portalUrl}`
+    : `שויכת לתקלה #${ticketNumber} ב${buildingName}: ${description || 'ללא תיאור'}. בקשו מהמשרד קישור לאזור האישי.`
+
+  const [smsSettled, waSettled, pushSettled] = await Promise.allSettled([
+    sendWorkerSMSAll(workerPhones, smsMessage, smsSenderName, clientId),
+    notifyWorkerAssignmentWhatsApp(supabase, {
+      clientId,
+      workerPhones,
+      buildingName,
+      ticketNumber,
+      description,
+    }),
+    notifyWorkerAssignedPush(
+      supabase,
+      workerId,
+      clientId,
+      ticketNumber,
+      description,
+      ticketId
+    ),
+  ])
+
+  if (smsSettled.status === 'fulfilled') {
+    const batch = smsSettled.value
+    workerSms = batch
+    if (!batch.ok && batch.sent > 0) {
+      workerSmsNote = `SMS נשלח ל-${batch.sent} מתוך ${batch.total} מספרים.`
+    } else if (!batch.ok) {
+      workerSmsNote = 'שליחת SMS לעובד נכשלה.'
+    }
+  } else {
+    workerSmsNote = 'שגיאה בשליחת SMS לעובד.'
+    logger.warn('ASSIGN', 'Worker SMS error', {
+      err: smsSettled.reason instanceof Error ? smsSettled.reason.message : String(smsSettled.reason),
+    })
+  }
+
+  if (waSettled.status === 'fulfilled') {
+    workerWhatsApp = waSettled.value
+    if (workerWhatsApp.sent > 0 && workerWhatsApp.failed === 0) {
+      workerWhatsAppNote = `WhatsApp template נשלח ל-${workerWhatsApp.sent} מספרים.`
+    } else if (workerWhatsApp.sent > 0) {
+      workerWhatsAppNote = `WhatsApp נשלח ל-${workerWhatsApp.sent}, נכשל ל-${workerWhatsApp.failed}.`
+    } else if (workerWhatsApp.failed > 0) {
+      workerWhatsAppNote = 'שליחת WhatsApp template לעובד נכשלה.'
+    }
+  } else {
+    workerWhatsAppNote = 'שגיאה בשליחת WhatsApp לעובד.'
+    logger.warn('ASSIGN', 'Worker WA template error', {
+      err: waSettled.reason instanceof Error ? waSettled.reason.message : String(waSettled.reason),
+    })
+  }
+
+  if (pushSettled.status === 'rejected') {
+    logger.warn('ASSIGN', 'Worker push error', {
+      err: pushSettled.reason instanceof Error ? pushSettled.reason.message : String(pushSettled.reason),
+    })
+  }
+
+  return { workerSms, workerSmsNote, workerWhatsApp, workerWhatsAppNote }
+}
+
 export async function assignTicketToWorker(
   supabase: SupabaseClient,
   params: {
@@ -109,72 +220,38 @@ export async function assignTicketToWorker(
     logger.warn('ASSIGN', 'ticket_logs insert failed (non-blocking)', { err: logError.message })
   }
 
+  const notifyOpts = {
+    supabase,
+    logger,
+    worker: w,
+    workerId,
+    clientId,
+    ticketId,
+    ticketNumber,
+    description,
+    buildingName,
+    smsSenderName,
+  }
+
   let workerSms: WorkerSmsBatchResult | null = null
   let workerSmsNote: string | undefined
-
-  const workerPhones = collectWorkerPhones(w)
-  if (workerPhones.length > 0) {
-    try {
-      const workerToken = w.access_token?.trim()
-      const portalUrl = workerToken ? getWorkerPortalUrl(workerToken) : null
-      const smsMessage = portalUrl
-        ? `שויכת לתקלה #${ticketNumber} ב${buildingName}: ${description || 'ללא תיאור'}. האזור האישי: ${portalUrl}`
-        : `שויכת לתקלה #${ticketNumber} ב${buildingName}: ${description || 'ללא תיאור'}. בקשו מהמשרד קישור לאזור האישי.`
-      const batch = await sendWorkerSMSAll(workerPhones, smsMessage, smsSenderName, clientId)
-      workerSms = batch
-      if (!batch.ok && batch.sent > 0) {
-        workerSmsNote = `SMS נשלח ל-${batch.sent} מתוך ${batch.total} מספרים.`
-      } else if (!batch.ok) {
-        workerSmsNote = 'שליחת SMS לעובד נכשלה.'
-      }
-    } catch (sendError) {
-      workerSmsNote = 'שגיאה בשליחת SMS לעובד.'
-      logger.warn('ASSIGN', 'Worker SMS error', {
-        err: sendError instanceof Error ? sendError.message : String(sendError),
-      })
-    }
-  } else {
-    workerSmsNote = 'לעובד אין מספר טלפון במערכת — לא נשלח SMS.'
-  }
-
   let workerWhatsApp: WorkerAssignmentWaResult | null = null
   let workerWhatsAppNote: string | undefined
-  if (workerPhones.length > 0) {
-    try {
-      workerWhatsApp = await notifyWorkerAssignmentWhatsApp(supabase, {
-        clientId,
-        workerPhones,
-        buildingName,
-        ticketNumber,
-        description,
-      })
-      if (workerWhatsApp.sent > 0 && workerWhatsApp.failed === 0) {
-        workerWhatsAppNote = `WhatsApp template נשלח ל-${workerWhatsApp.sent} מספרים.`
-      } else if (workerWhatsApp.sent > 0) {
-        workerWhatsAppNote = `WhatsApp נשלח ל-${workerWhatsApp.sent}, נכשל ל-${workerWhatsApp.failed}.`
-      } else if (workerWhatsApp.failed > 0) {
-        workerWhatsAppNote = 'שליחת WhatsApp template לעובד נכשלה.'
-      }
-    } catch (waErr) {
-      workerWhatsAppNote = 'שגיאה בשליחת WhatsApp לעובד.'
-      logger.warn('ASSIGN', 'Worker WA template error', {
-        err: waErr instanceof Error ? waErr.message : String(waErr),
-      })
-    }
+  let notificationsQueued = false
+
+  if (shouldSyncTicketNotifications()) {
+    const n = await sendAssignTicketNotifications(notifyOpts)
+    workerSms = n.workerSms
+    workerSmsNote = n.workerSmsNote
+    workerWhatsApp = n.workerWhatsApp
+    workerWhatsAppNote = n.workerWhatsAppNote
+  } else {
+    notificationsQueued = true
+    runAfterResponse('assign-ticket-notify', async () => {
+      await sendAssignTicketNotifications(notifyOpts)
+    })
   }
 
-  try {
-    await notifyWorkerAssignedPush(
-      supabase,
-      workerId,
-      clientId,
-      ticketNumber,
-      description,
-      ticketId
-    )
-  } catch {
-    /* non-blocking */
-  }
 
   return {
     ok: true,
@@ -183,6 +260,7 @@ export async function assignTicketToWorker(
     workerSmsNote,
     workerWhatsApp,
     workerWhatsAppNote,
+    notificationsQueued,
   }
 }
 

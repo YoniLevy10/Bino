@@ -1,17 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sanitizeId } from '@/lib/api-validation'
 import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-
-async function googleTranslate(text: string): Promise<string> {
-  const url =
-    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=` +
-    encodeURIComponent(text)
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-  if (!res.ok) throw new Error(`Google Translate HTTP ${res.status}`)
-  const data = (await res.json()) as unknown[][]
-  const segments = data[0] as unknown[][]
-  return segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
-}
+import { translateToHebrew } from '@/lib/google-translate'
 
 type Body = { token?: unknown; text?: unknown }
 
@@ -33,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'אין גישה' }, { status: 401 })
     }
 
-    const translation = await googleTranslate(text)
+    const translation = await translateToHebrew(text)
     if (!translation) {
       return NextResponse.json({ error: 'לא התקבל תרגום' }, { status: 502 })
     }

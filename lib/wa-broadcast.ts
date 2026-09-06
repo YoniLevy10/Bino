@@ -24,6 +24,8 @@ export type WaBroadcastRunResult = WaBroadcastRecipientBreakdown & {
   failed: number
   template_name: string
   dry_run: boolean
+  run_id?: string
+  status?: 'queued' | 'running' | 'completed' | 'failed'
 }
 
 function resolveTemplate(opts: {
@@ -50,6 +52,8 @@ export async function runWhatsAppBroadcast(
     bodyParams?: string[]
     bodyParam?: string
     dryRun: boolean
+    /** When set, update this run instead of inserting a new completed row */
+    existingRunId?: string
   }
 ): Promise<WaBroadcastRunResult> {
   const catalog = resolveTemplate({
@@ -102,6 +106,7 @@ export async function runWhatsAppBroadcast(
       failed: 0,
       template_name: metaName,
       dry_run: true,
+      status: 'completed',
     }
   }
 
@@ -174,16 +179,37 @@ export async function runWhatsAppBroadcast(
     await new Promise((r) => setTimeout(r, 300))
   }
 
-  await admin.from('wa_broadcast_runs').insert({
-    client_id: opts.clientId,
-    project_id: opts.projectId,
-    template_name: metaName,
-    template_language: lang,
-    recipients_total: list.length,
-    sent,
-    failed,
-    dry_run: false,
-  })
+  let runId = opts.existingRunId
+  if (runId) {
+    await admin
+      .from('wa_broadcast_runs')
+      .update({
+        recipients_total: list.length,
+        sent,
+        failed,
+        status: 'completed',
+        finished_at: new Date().toISOString(),
+      })
+      .eq('id', runId)
+  } else {
+    const { data: completedRun } = await admin
+      .from('wa_broadcast_runs')
+      .insert({
+        client_id: opts.clientId,
+        project_id: opts.projectId,
+        template_name: metaName,
+        template_language: lang,
+        recipients_total: list.length,
+        sent,
+        failed,
+        dry_run: false,
+        status: 'completed',
+        finished_at: new Date().toISOString(),
+      })
+      .select('id')
+      .maybeSingle()
+    runId = (completedRun as { id?: string } | null)?.id
+  }
 
   return {
     ...breakdown,
@@ -192,8 +218,49 @@ export async function runWhatsAppBroadcast(
     failed,
     template_name: metaName,
     dry_run: false,
+    run_id: runId,
+    status: 'completed',
   }
 }
+
+/** Create a queued WA broadcast run row (no sends yet). */
+export async function enqueueWhatsAppBroadcast(
+  admin: SupabaseClient,
+  opts: {
+    clientId: string
+    projectId: string
+    templateName: string
+    templateLanguage: string
+    recipientsTotal: number
+  }
+): Promise<string> {
+  const { data, error } = await admin
+    .from('wa_broadcast_runs')
+    .insert({
+      client_id: opts.clientId,
+      project_id: opts.projectId,
+      template_name: opts.templateName,
+      template_language: opts.templateLanguage,
+      recipients_total: opts.recipientsTotal,
+      sent: 0,
+      failed: 0,
+      dry_run: false,
+      status: 'queued',
+    })
+    .select('id')
+    .single()
+  if (error || !data) throw new Error(error?.message || 'יצירת רצת שידור נכשלה')
+  return (data as { id: string }).id
+}
+
+export async function markWaBroadcastRun(
+  admin: SupabaseClient,
+  runId: string,
+  patch: Record<string, unknown>
+): Promise<void> {
+  await admin.from('wa_broadcast_runs').update(patch).eq('id', runId)
+}
+
 
 export const WHATSAPP_COEXISTENCE_NOTE =
   'Coexistence: Meta Tech Provider or BSP (360dialog/Chakra) required for syncing WhatsApp Business App with Cloud API.'

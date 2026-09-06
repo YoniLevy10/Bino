@@ -4,10 +4,45 @@ import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { AddonProjectPicker } from '@/app/components/addons/AddonProjectPicker'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, LONG_RUNNING_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { WHATSAPP_COEXISTENCE_NOTE } from '@/lib/wa-broadcast'
 import { Button, Card, theme, LoadingSpinner } from '../components/ui'
+
+async function pollNotificationRun(
+  endpoint: string,
+  runId: string,
+  onProgress: (snap: { status: string; sent: number; failed: number; recipients_total: number }) => void
+): Promise<{ status: string; sent: number; failed: number; recipients_total: number }> {
+  for (let i = 0; i < 120; i++) {
+    await new Promise((r) => setTimeout(r, 2000))
+    const res = await fetchWithTimeout(
+      `${endpoint}?run_id=${encodeURIComponent(runId)}`,
+      {},
+      LONG_RUNNING_FETCH_TIMEOUT_MS
+    )
+    const snap = (await res.json()) as {
+      status?: string
+      sent?: number
+      failed?: number
+      recipients_total?: number
+      error?: string
+    }
+    if (!res.ok) throw new Error(snap.error ?? `שגיאה ${res.status}`)
+    const normalized = {
+      status: snap.status ?? 'running',
+      sent: snap.sent ?? 0,
+      failed: snap.failed ?? 0,
+      recipients_total: snap.recipients_total ?? 0,
+    }
+    onProgress(normalized)
+    if (normalized.status === 'completed' || normalized.status === 'failed') {
+      return normalized
+    }
+  }
+  throw new Error('השליחה עדיין רצה — בדקו שוב בעוד דקה')
+}
+
 
 type WaBroadcastTemplate = {
   id: string
@@ -47,7 +82,7 @@ function CampaignPanel({ projectId, projectName }: { projectId: string; projectN
           message_body: body,
           dry_run: true,
         }),
-      })
+      }, LONG_RUNNING_FETCH_TIMEOUT_MS)
       const json = await res.json() as typeof preview & { error?: string }
       if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
       setPreview(json)
@@ -71,11 +106,40 @@ function CampaignPanel({ projectId, projectName }: { projectId: string; projectN
           message_body: body,
           dry_run: false,
         }),
-      })
-      const json = await res.json() as { sent?: number; failed?: number; error?: string } & typeof preview
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
-      toast.success(`נשלחו ${json.sent ?? 0} הודעות${json.failed ? `, ${json.failed} נכשלו` : ''}`)
-      setPreview(json)
+      }, LONG_RUNNING_FETCH_TIMEOUT_MS)
+      const json = await res.json() as {
+        sent?: number
+        failed?: number
+        error?: string
+        run_id?: string
+        status?: string
+        recipients_total?: number
+        skipped_no_phone?: number
+        message_length?: number
+      }
+      if (!res.ok && res.status !== 202) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      if (json.run_id && (res.status === 202 || json.status === 'queued')) {
+        toast.info('הקמפיין בתור · שולחים ברקע…')
+        setPreview({
+          recipients_total: json.recipients_total ?? 0,
+          skipped_no_phone: json.skipped_no_phone ?? 0,
+          message_length: json.message_length ?? body.length,
+        })
+        const finalSnap = await pollNotificationRun('/api/sms/campaigns', json.run_id, (snap) => {
+          setPreview((prev) =>
+            prev
+              ? { ...prev, recipients_total: snap.recipients_total || prev.recipients_total }
+              : prev
+          )
+        })
+        if (finalSnap.status === 'failed') throw new Error('שליחת הקמפיין נכשלה')
+        toast.success(
+          `נשלחו ${finalSnap.sent} הודעות${finalSnap.failed ? `, ${finalSnap.failed} נכשלו` : ''}`
+        )
+      } else {
+        toast.success(`נשלחו ${json.sent ?? 0} הודעות${json.failed ? `, ${json.failed} נכשלו` : ''}`)
+        setPreview(json as typeof preview)
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
     } finally {
@@ -186,7 +250,7 @@ function WaBroadcastPanel({ projectId, projectName }: { projectId: string; proje
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildPayload(true)),
-      })
+      }, LONG_RUNNING_FETCH_TIMEOUT_MS)
       const json = (await res.json()) as BroadcastPreview & { error?: string }
       if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
       setPreview(json)
@@ -213,11 +277,26 @@ function WaBroadcastPanel({ projectId, projectName }: { projectId: string; proje
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildPayload(false)),
-      })
-      const json = (await res.json()) as BroadcastPreview & { error?: string }
-      if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
-      toast.success(`נשלחו ${json.sent ?? 0} הודעות${json.failed ? `, ${json.failed} נכשלו` : ''}`)
-      setPreview(json)
+      }, LONG_RUNNING_FETCH_TIMEOUT_MS)
+      const json = (await res.json()) as BroadcastPreview & {
+        error?: string
+        run_id?: string
+        status?: string
+      }
+      if (!res.ok && res.status !== 202) throw new Error(json.error ?? `שגיאה ${res.status}`)
+      if (json.run_id && (res.status === 202 || json.status === 'queued')) {
+        toast.info('השידור בתור · שולחים ברקע…')
+        setPreview(json)
+        const finalSnap = await pollNotificationRun('/api/whatsapp/broadcast', json.run_id, () => {})
+        if (finalSnap.status === 'failed') throw new Error('שידור WhatsApp נכשל')
+        toast.success(
+          `נשלחו ${finalSnap.sent} הודעות${finalSnap.failed ? `, ${finalSnap.failed} נכשלו` : ''}`
+        )
+        setPreview({ ...json, sent: finalSnap.sent, failed: finalSnap.failed })
+      } else {
+        toast.success(`נשלחו ${json.sent ?? 0} הודעות${json.failed ? `, ${json.failed} נכשלו` : ''}`)
+        setPreview(json)
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'שליחה נכשלה')
     } finally {

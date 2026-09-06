@@ -15,7 +15,8 @@ export type SaveDashboardTicketResult = {
   didAssign: boolean
   closedNow: boolean
   reporter_has_phone?: boolean
-  whatsapp_sent?: boolean
+  whatsapp_sent?: boolean | null
+  notifications_queued?: boolean
 }
 
 /** שמירת תקלה מלוח הבקרה — שיוך עובד דרך API ייעודי, שאר השדות דרך update-ticket. */
@@ -46,9 +47,13 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
       error?: unknown
       worker_sms_sent?: boolean | null
       worker_sms_note?: string
+      notifications_queued?: boolean
     }
     if (!assignRes?.ok) throw new Error(errorMessageFromResponseJson(assignBody, 'שיוך לעובד נכשל'))
-    if ((assignBody.worker_sms_sent === false || assignBody.worker_sms_sent === null) && assignBody.worker_sms_note) {
+    if (assignBody.notifications_queued) {
+      const { toast } = await import('@/lib/error-handler')
+      toast.info(assignBody.worker_sms_note || 'השיוך נשמר · שולחים הודעות לעובד…')
+    } else if (assignBody.worker_sms_sent === false && assignBody.worker_sms_note) {
       const { toast } = await import('@/lib/error-handler')
       toast.error(assignBody.worker_sms_note)
     }
@@ -78,7 +83,8 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
     error?: unknown
     closed_now?: boolean
     reporter_has_phone?: boolean
-    whatsapp_sent?: boolean
+    whatsapp_sent?: boolean | null
+    notifications_queued?: boolean
   }
   if (!updateRes?.ok) {
     throw new Error(errorMessageFromResponseJson(updateJson, 'עדכון תקלה נכשל'))
@@ -90,5 +96,6 @@ export async function saveDashboardTicket(input: SaveDashboardTicketInput): Prom
     closedNow,
     reporter_has_phone: updateJson.reporter_has_phone,
     whatsapp_sent: updateJson.whatsapp_sent,
+    notifications_queued: updateJson.notifications_queued,
   }
 }

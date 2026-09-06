@@ -6,6 +6,9 @@ import { runProjectPilotSms } from '@/lib/project-pilot-sms'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
+
 export async function POST(req: Request) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.pilot_sms)
   if (!auth.ok) return auth.response

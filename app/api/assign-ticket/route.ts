@@ -7,6 +7,9 @@ import { assignWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
+
 export async function POST(req: Request) {
   const logger = getLogger()
   const audit = getAuditLogger()
@@ -178,8 +181,11 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       ticket: assignResult.updatedTicket,
-      worker_sms_sent: workerSmsSent,
-      worker_sms_note: workerSmsNote,
+      worker_sms_sent: assignResult.notificationsQueued ? null : workerSmsSent,
+      worker_sms_note: assignResult.notificationsQueued
+        ? 'השיוך נשמר · שולחים הודעות לעובד…'
+        : workerSmsNote,
+      notifications_queued: Boolean(assignResult.notificationsQueued),
       requestId,
     })
   } catch (error) {

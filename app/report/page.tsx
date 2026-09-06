@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { toast, asyncHandler, validateResponse } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validateMinLength } from '@/lib/validators'
 import { LoadingSpinner } from '../components/ui'
@@ -240,7 +240,7 @@ function ReportPageContent() {
         const response = await fetchWithTimeout('/api/create-ticket', {
           method: 'POST',
           body: formData,
-        })
+        }, MUTATION_FETCH_TIMEOUT_MS)
 
         await validateResponse(response, 'Failed to submit issue')
         return await response.json()

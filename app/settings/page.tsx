@@ -774,7 +774,7 @@ function SettingsPageInner() {
                                 subject: emailSubject.trim(),
                                 body: emailBody.trim(),
                               }),
-                            })
+                            }, MUTATION_FETCH_TIMEOUT_MS)
                             const json = (await res.json()) as { error?: string }
                             if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
                             toast.success('המייל נשלח')

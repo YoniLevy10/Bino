@@ -8,6 +8,10 @@ import { requireSessionClientId } from '@/lib/api-auth'
 import { logAudit } from '@/lib/audit'
 import { isTicketStatus } from '@/lib/ticket-status'
 import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
+import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
+
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -142,26 +146,37 @@ export async function POST(req: Request) {
     let reporterHasPhone = false
     let whatsappSent = false
 
+    let notificationsQueued = false
     if (closedNow) {
-      const notify = await notifyReporterIfTicketNewlyClosed(
-        supabaseAdmin,
-        clientId,
-        ticket_id,
-        previousStatus
-      )
       reporterHasPhone = Boolean((ticket as { reporter_phone?: string | null }).reporter_phone?.trim())
-      whatsappSent = notify?.whatsappSent ?? false
-      logger.info('TICKET_API', 'Reporter WhatsApp on close (update-ticket)', {
-        requestId,
-        ticket_id,
-        whatsappSent,
-      })
-      if (notify?.whatsappError) {
-        logger.warn('TICKET_API', 'Reporter WhatsApp on close failed (update-ticket)', {
+      const runUpdateCloseNotify = async () => {
+        const notify = await notifyReporterIfTicketNewlyClosed(
+          supabaseAdmin,
+          clientId,
+          ticket_id,
+          previousStatus
+        )
+        const sent = notify?.whatsappSent ?? false
+        logger.info('TICKET_API', 'Reporter WhatsApp on close (update-ticket)', {
           requestId,
           ticket_id,
-          error: notify.whatsappError,
+          whatsappSent: sent,
         })
+        if (notify?.whatsappError) {
+          logger.warn('TICKET_API', 'Reporter WhatsApp on close failed (update-ticket)', {
+            requestId,
+            ticket_id,
+            error: notify.whatsappError,
+          })
+        }
+        whatsappSent = sent
+      }
+
+      if (shouldSyncTicketNotifications()) {
+        await runUpdateCloseNotify()
+      } else {
+        notificationsQueued = true
+        runAfterResponse('update-ticket-close-notify', runUpdateCloseNotify)
       }
     }
 
@@ -173,7 +188,8 @@ export async function POST(req: Request) {
         ? {
             closed_now: true,
             reporter_has_phone: reporterHasPhone,
-            whatsapp_sent: whatsappSent,
+            whatsapp_sent: notificationsQueued ? null : whatsappSent,
+            notifications_queued: notificationsQueued,
           }
         : {}),
     })

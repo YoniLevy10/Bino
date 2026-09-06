@@ -54,6 +54,9 @@ export type SmsCampaignRunResult = {
   sent: number
   failed: number
   message_length: number
+  /** Present when send was queued for background processing */
+  run_id?: string
+  status?: 'queued' | 'running' | 'completed' | 'failed'
 }
 
 const MAX_PER_RUN = 500
@@ -69,6 +72,8 @@ export async function runSmsCampaign(
     dryRun: boolean
     createdBy?: string | null
     senderName?: string | null
+    /** When true and not dryRun: insert queued run and return immediately; caller schedules processSmsCampaignRun */
+    queueAsync?: boolean
   }
 ): Promise<SmsCampaignRunResult> {
   const validationErr = validateSmsCampaignBody(opts.messageBody)
@@ -83,33 +88,78 @@ export async function runSmsCampaign(
   )
 
   const toSend = recipients.slice(0, MAX_PER_RUN)
-  let sent = 0
-  let failed = 0
 
-  if (!opts.dryRun) {
-    for (const r of toSend) {
-      const ok = await send019StaffSms(r.normalized_phone, cleaned, opts.senderName ?? null, {
-        channel: 'sms_campaign',
-        clientId: opts.clientId,
+  if (opts.dryRun) {
+    return {
+      recipients_total: toSend.length,
+      skipped_no_phone,
+      sent: 0,
+      failed: 0,
+      message_length: cleaned.length,
+      status: 'completed',
+    }
+  }
+
+  if (opts.queueAsync) {
+    const { data: runRow, error: insertErr } = await admin
+      .from('sms_campaign_runs')
+      .insert({
+        client_id: opts.clientId,
+        project_id: opts.projectId,
+        campaign_name: opts.campaignName || 'קמפיין',
+        message_body: cleaned,
+        recipients_total: toSend.length,
+        sent: 0,
+        failed: 0,
+        skipped_no_phone,
+        dry_run: false,
+        created_by: opts.createdBy ?? null,
+        status: 'queued',
       })
-      if (ok) sent++
-      else failed++
-      if (DELAY_MS > 0) await new Promise((res) => setTimeout(res, DELAY_MS))
+      .select('id')
+      .single()
+
+    if (insertErr || !runRow) {
+      throw new Error(insertErr?.message || 'יצירת רצת קמפיין נכשלה')
     }
 
-    await admin.from('sms_campaign_runs').insert({
-      client_id: opts.clientId,
-      project_id: opts.projectId,
-      campaign_name: opts.campaignName || 'קמפיין',
-      message_body: cleaned,
+    return {
       recipients_total: toSend.length,
-      sent,
-      failed,
       skipped_no_phone,
-      dry_run: false,
-      created_by: opts.createdBy ?? null,
-    })
+      sent: 0,
+      failed: 0,
+      message_length: cleaned.length,
+      run_id: (runRow as { id: string }).id,
+      status: 'queued',
+    }
   }
+
+  let sent = 0
+  let failed = 0
+  for (const r of toSend) {
+    const ok = await send019StaffSms(r.normalized_phone, cleaned, opts.senderName ?? null, {
+      channel: 'sms_campaign',
+      clientId: opts.clientId,
+    })
+    if (ok) sent++
+    else failed++
+    if (DELAY_MS > 0) await new Promise((res) => setTimeout(res, DELAY_MS))
+  }
+
+  await admin.from('sms_campaign_runs').insert({
+    client_id: opts.clientId,
+    project_id: opts.projectId,
+    campaign_name: opts.campaignName || 'קמפיין',
+    message_body: cleaned,
+    recipients_total: toSend.length,
+    sent,
+    failed,
+    skipped_no_phone,
+    dry_run: false,
+    created_by: opts.createdBy ?? null,
+    status: 'completed',
+    finished_at: new Date().toISOString(),
+  })
 
   return {
     recipients_total: toSend.length,
@@ -117,5 +167,84 @@ export async function runSmsCampaign(
     sent,
     failed,
     message_length: cleaned.length,
+    status: 'completed',
+  }
+}
+
+/** Background worker for a queued SMS campaign run. */
+export async function processSmsCampaignRun(
+  admin: SupabaseClient,
+  opts: {
+    runId: string
+    clientId: string
+    senderName?: string | null
+  }
+): Promise<void> {
+  const { data: run, error } = await admin
+    .from('sms_campaign_runs')
+    .select('id, client_id, project_id, message_body, status, recipients_total')
+    .eq('id', opts.runId)
+    .eq('client_id', opts.clientId)
+    .maybeSingle()
+
+  if (error || !run) throw new Error(error?.message || 'רצת קמפיין לא נמצאה')
+  const row = run as {
+    id: string
+    client_id: string
+    project_id: string
+    message_body: string
+    status?: string
+  }
+  if (row.status === 'completed' || row.status === 'failed') return
+
+  await admin
+    .from('sms_campaign_runs')
+    .update({ status: 'running' })
+    .eq('id', opts.runId)
+
+  try {
+    const cleaned = sanitizeSmsCampaignBody(row.message_body)
+    const { recipients } = await listSmsCampaignRecipients(admin, row.client_id, row.project_id)
+    const toSend = recipients.slice(0, MAX_PER_RUN)
+    let sent = 0
+    let failed = 0
+
+    for (const r of toSend) {
+      const ok = await send019StaffSms(r.normalized_phone, cleaned, opts.senderName ?? null, {
+        channel: 'sms_campaign',
+        clientId: row.client_id,
+      })
+      if (ok) sent++
+      else failed++
+      // Persist progress periodically so the UI can poll.
+      if ((sent + failed) % 5 === 0 || sent + failed === toSend.length) {
+        await admin
+          .from('sms_campaign_runs')
+          .update({ sent, failed, recipients_total: toSend.length })
+          .eq('id', opts.runId)
+      }
+      if (DELAY_MS > 0) await new Promise((res) => setTimeout(res, DELAY_MS))
+    }
+
+    await admin
+      .from('sms_campaign_runs')
+      .update({
+        sent,
+        failed,
+        recipients_total: toSend.length,
+        status: 'completed',
+        finished_at: new Date().toISOString(),
+      })
+      .eq('id', opts.runId)
+  } catch (e) {
+    await admin
+      .from('sms_campaign_runs')
+      .update({
+        status: 'failed',
+        error_message: e instanceof Error ? e.message : String(e),
+        finished_at: new Date().toISOString(),
+      })
+      .eq('id', opts.runId)
+    throw e
   }
 }
