@@ -114,8 +114,8 @@ export default function RootLayout({
         </AppProviders>
         <WorkTimer />
         <ToastContainer />
-        <SpeedInsights />
-        <Analytics />
+        {process.env.NODE_ENV === 'production' ? <SpeedInsights /> : null}
+        {process.env.NODE_ENV === 'production' ? <Analytics /> : null}
       </body>
     </html>
   );

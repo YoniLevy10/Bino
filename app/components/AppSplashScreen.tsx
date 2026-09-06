@@ -6,6 +6,7 @@ import { markAppSplashComplete, shouldShowAppSplash } from '@/lib/app-splash-ses
 
 /** Keep short so Speed Insights LCP is not blocked on repeat visits. */
 const MIN_VISIBLE_MS = 350
+const EXIT_MS = 320
 const DEFAULT_SPLASH_LOGO = '/apple-icon.png'
 
 const splashLogoStyle = {
@@ -23,6 +24,7 @@ type AppSplashScreenProps = {
 export function AppSplashScreen({ ready }: AppSplashScreenProps) {
   const branding = useClientBranding()
   const [visible, setVisible] = useState(() => shouldShowAppSplash())
+  const [exiting, setExiting] = useState(false)
   const [barWidth, setBarWidth] = useState(0)
   const startRef = useRef(0)
 
@@ -52,16 +54,24 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
   }, [ready])
 
   useEffect(() => {
-    if (!ready || !visible) return
+    if (!ready || !visible || exiting) return
     setBarWidth(100)
     const elapsed = Date.now() - startRef.current
     const delay = Math.max(0, MIN_VISIBLE_MS - elapsed)
-    const t = window.setTimeout(() => {
+    const startExit = window.setTimeout(() => {
+      setExiting(true)
+    }, delay)
+    return () => window.clearTimeout(startExit)
+  }, [ready, visible, exiting])
+
+  useEffect(() => {
+    if (!exiting) return
+    const done = window.setTimeout(() => {
       markAppSplashComplete()
       setVisible(false)
-    }, delay + 280)
-    return () => window.clearTimeout(t)
-  }, [ready, visible])
+    }, EXIT_MS)
+    return () => window.clearTimeout(done)
+  }, [exiting])
 
   if (!visible) return null
 
@@ -69,7 +79,8 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
 
   return (
     <div
-      className="bamakor-splash-exit"
+      className="bamakor-splash-root"
+      data-exiting={exiting ? 'true' : 'false'}
       data-ready={ready ? 'true' : 'false'}
       aria-busy={!ready}
       aria-label="טוען נתונים"
@@ -83,6 +94,7 @@ export function AppSplashScreen({ ready }: AppSplashScreenProps) {
         justifyContent: 'center',
         background: 'var(--color-background, #F9F9FB)',
         userSelect: 'none',
+        pointerEvents: exiting ? 'none' : 'auto',
       }}
     >
       <div className="bamakor-splash-glow" aria-hidden />

@@ -205,15 +205,30 @@ select {
   animation: bamakor-splash-text-in 0.5s ease-out 0.55s forwards;
 }
 
-.bamakor-splash-exit {
-  animation: bamakor-splash-out 0.35s ease-in 0.1s forwards;
-  animation-play-state: paused;
+.bamakor-splash-root {
+  /* stable until we explicitly start exit — do not tie fade-out to ready */
 }
 
-.bamakor-splash-exit[data-ready='true'] {
-  animation-delay: 0s;
-  animation-play-state: running;
+.bamakor-splash-root[data-exiting='true'] {
+  animation: bamakor-splash-out 0.32s ease-in forwards;
+  pointer-events: none;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .bamakor-splash-logo,
+  .bamakor-splash-tagline,
+  .bamakor-splash-glow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .bamakor-splash-root[data-exiting='true'] {
+    animation: none !important;
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 
 .bamakor-splash-glow {
   position: absolute;
