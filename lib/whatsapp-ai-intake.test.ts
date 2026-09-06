@@ -28,6 +28,10 @@ function mockSupabase(pendingCandidates: unknown[] = []) {
       if (table === 'sessions') {
         state.sessions.push({ id: 'sess-1', ...row })
       }
+      if (table === 'pending_selections') {
+        const candidates = (row.candidate_projects as unknown[]) || []
+        state.pending = [...candidates]
+      }
       return {
         select: () => ({
           single: async () => ({ data: { id: 'sess-1' }, error: null }),
@@ -234,6 +238,50 @@ describe('runUnknownResidentAiIntake', () => {
     void supabase
   })
 
+
+  it('binds numeric pending pick even when AI omits select_project_index', async () => {
+    process.env.WHATSAPP_AI_ENABLED = 'true'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+
+    const projects = [
+      {
+        id: 'p-haletz-10',
+        name: 'חלץ 10',
+        project_code: 'BMK9',
+        address: 'חלץ 10',
+        address_en: null,
+      },
+      {
+        id: 'p-haletz-12',
+        name: 'חלץ 12',
+        project_code: 'BMK11',
+        address: 'חלץ 12',
+        address_en: null,
+      },
+    ]
+    const supabase = mockSupabase(projects)
+
+    const result = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: '2',
+      decideTurn: async () => ({
+        reply: 'איזה בניין?',
+        language: 'he',
+        search_query: null,
+        select_project_id: null,
+        select_project_index: null,
+        ticket_description: null,
+        open_ticket: false,
+      }),
+    })
+
+    expect(result.kind).toBe('handled')
+    expect(supabase._state.sessions.length).toBeGreaterThan(0)
+    expect(supabase._state.sessions.at(-1)?.project_id).toBe('p-haletz-12')
+  })
+
   it('opens ticket when AI returns description + select', async () => {
     process.env.WHATSAPP_AI_ENABLED = 'true'
     process.env.AI_GATEWAY_API_KEY = 'gw-test'
@@ -268,6 +316,124 @@ describe('runUnknownResidentAiIntake', () => {
     if (result.kind === 'open_ticket') {
       expect(result.description).toContain('נזילה')
       expect(result.language).toBe('he')
+    }
+  })
+})
+
+describe('E2E unknown resident AI intake', () => {
+  it('searches → numeric select → opens ticket with description', async () => {
+    process.env.WHATSAPP_AI_ENABLED = 'true'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+
+    const p10 = {
+      id: 'p-haletz-10',
+      name: 'חלץ 10',
+      project_code: 'BMK9',
+      address: 'חלץ 10',
+      address_en: null,
+    }
+    const p12 = {
+      id: 'p-haletz-12',
+      name: 'חלץ 12',
+      project_code: 'BMK11',
+      address: 'חלץ 12',
+      address_en: null,
+    }
+
+    // Turn 1: street search (model omits search_query — host fallback)
+    const supabase1 = mockSupabase()
+    const turn1 = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase1 as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: 'חלץ',
+      decideTurn: async () => ({
+        reply: 'מה מספר הבית?',
+        language: 'he',
+        search_query: null,
+        select_project_id: null,
+        select_project_index: null,
+        ticket_description: null,
+        open_ticket: false,
+      }),
+      searchBuildings: async () => [p10, p12] as never,
+    })
+    expect(turn1.kind).toBe('handled')
+    expect(supabase1._state.pending.length).toBe(2)
+
+    // Turn 2: pick building 2 (AI forgets index — host binds)
+    const supabase2 = mockSupabase([p10, p12])
+    const turn2 = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase2 as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: '2',
+      decideTurn: async () => ({
+        reply: 'איזה בניין?',
+        language: 'he',
+        search_query: null,
+        select_project_id: null,
+        select_project_index: null,
+        ticket_description: null,
+        open_ticket: false,
+      }),
+    })
+    expect(turn2.kind).toBe('handled')
+    expect(supabase2._state.sessions.at(-1)?.project_id).toBe('p-haletz-12')
+
+    // Turn 3: open ticket once building is chosen + description provided
+    const supabase3 = mockSupabase([p10, p12])
+    const turn3 = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase3 as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: 'יש נזילה במעלית',
+      decideTurn: async () => ({
+        reply: 'פותחים תקלה',
+        language: 'he',
+        search_query: null,
+        select_project_id: 'p-haletz-12',
+        select_project_index: 2,
+        ticket_description: 'נזילה במעלית',
+        open_ticket: true,
+      }),
+    })
+    expect(turn3.kind).toBe('open_ticket')
+    if (turn3.kind === 'open_ticket') {
+      expect(turn3.description).toContain('נזילה')
+      expect(turn3.session.project_id).toBe('p-haletz-12')
+    }
+  })
+
+  it('opens ticket when building selected and resident already sent a description', async () => {
+    process.env.WHATSAPP_AI_ENABLED = 'true'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+    const project = {
+      id: 'p1',
+      name: 'חלץ 10',
+      project_code: 'BMK9',
+      address: 'חלץ 10',
+      address_en: null,
+    }
+    const supabase = mockSupabase([project])
+    const result = await runUnknownResidentAiIntake({
+      supabaseAdmin: supabase as never,
+      clientId: 'c1',
+      from: '972501234567',
+      textBody: 'נזילה חזקה בלובי',
+      decideTurn: async () => ({
+        reply: 'איזה בניין?',
+        language: 'he',
+        search_query: null,
+        select_project_id: 'p1',
+        select_project_index: null,
+        ticket_description: null,
+        open_ticket: false,
+      }),
+    })
+    expect(result.kind).toBe('open_ticket')
+    if (result.kind === 'open_ticket') {
+      expect(result.description).toContain('נזילה')
     }
   })
 })

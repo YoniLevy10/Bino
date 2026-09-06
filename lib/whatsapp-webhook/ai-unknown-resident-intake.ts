@@ -16,7 +16,10 @@ import {
   normalizeResidentLang,
   type ResidentLang,
 } from '@/lib/whatsapp-bilingual-template'
-import { inferResidentLanguageFromText } from '@/lib/whatsapp-intent'
+import {
+  acceptTicketDescriptionInSession,
+  inferResidentLanguageFromText,
+} from '@/lib/whatsapp-intent'
 import { getLogger } from '@/lib/logging'
 import type { ProjectRow } from '@/lib/whatsapp-interactive'
 import {
@@ -168,6 +171,61 @@ async function createSessionForProject(args: {
   return getActiveSession(from, supabaseAdmin, clientId)
 }
 
+
+/** When the resident replies "1"/"2" and a pending list exists, bind that building even if the model forgot select_project_index. */
+function resolveNumericCandidatePick(text: string, candidates: ProjectRow[]): ProjectRow | null {
+  const trimmed = text.trim()
+  if (!/^\d{1,2}$/.test(trimmed)) return null
+  const idx = Number.parseInt(trimmed, 10)
+  if (!Number.isFinite(idx) || idx < 1 || idx > candidates.length) return null
+  return candidates[idx - 1] ?? null
+}
+
+
+function defaultAskIssuePrompt(lang: ResidentLang, buildingName: string): string {
+  if (lang === 'fr') {
+    return `Immeuble identifié : ${buildingName}. Décrivez brièvement le problème.`
+  }
+  if (lang === 'en') {
+    return `Building identified: ${buildingName}. Please briefly describe the issue.`
+  }
+  return `הבניין זוהה: ${buildingName}. כתבו בקצרה מה התקלה.`
+}
+
+function looksLikeAskBuildingReply(reply: string): boolean {
+  const t = reply.trim().toLowerCase()
+  if (!t) return true
+  return (
+    /כתובת|רחוב|בניין|immeuble|adresse|rue|building|address|street|איזה בניין|מה הכתובת/.test(
+      t
+    ) && !/תקלה|probl[eè]me|issue|leak|נזיל|תאור|describe|דלת|מעלית/.test(t)
+  )
+}
+
+/** After a building is bound, reuse resident text as ticket description when the model forgot open_ticket. */
+function resolveHostTicketDescription(
+  textBody: string,
+  selected: ProjectRow,
+  decision: AiIntakeDecision
+): string | null {
+  const fromModel =
+    decision.open_ticket && decision.ticket_description?.trim()
+      ? decision.ticket_description.trim()
+      : null
+  if (fromModel && fromModel.length >= 3) return fromModel
+
+  const raw = textBody.trim()
+  if (!raw || /^\d{1,2}$/.test(raw)) return null
+  if (!acceptTicketDescriptionInSession(raw)) return null
+
+  const compact = raw.replace(/\s+/g, '')
+  const name = (selected.name || '').replace(/\s+/g, '')
+  const addr = (selected.address || selected.address_en || '').replace(/\s+/g, '')
+  if (compact && (compact === name || (addr && compact === addr))) return null
+
+  return raw
+}
+
 function resolveSelectedProject(
   decision: AiIntakeDecision,
   candidates: ProjectRow[]
@@ -232,6 +290,9 @@ export async function runUnknownResidentAiIntake(
   await saveResidentLanguage(supabaseAdmin, clientId, from, lang, null)
 
   let selected = resolveSelectedProject(decision, candidates)
+  if (!selected && candidates.length > 0) {
+    selected = resolveNumericCandidatePick(textBody, candidates)
+  }
 
   const searchQuery = resolveBuildingSearchQuery(decision, textBody)
 
@@ -275,6 +336,9 @@ export async function runUnknownResidentAiIntake(
   if (!selected) {
     selected = resolveSelectedProject(decision, candidates)
   }
+  if (!selected && candidates.length > 0) {
+    selected = resolveNumericCandidatePick(textBody, candidates)
+  }
 
   if (selected) {
     const session = await createSessionForProject({
@@ -300,10 +364,7 @@ export async function runUnknownResidentAiIntake(
       return { kind: 'handled' }
     }
 
-    const description =
-      decision.open_ticket && decision.ticket_description?.trim()
-        ? decision.ticket_description.trim()
-        : null
+    const description = resolveHostTicketDescription(textBody, selected, decision)
 
     if (description && description.length >= 3) {
       return {
@@ -314,13 +375,11 @@ export async function runUnknownResidentAiIntake(
       }
     }
 
+    const modelReply = decision.reply.trim()
     const askIssue =
-      decision.reply.trim() ||
-      (lang === 'fr'
-        ? `Immeuble identifié : ${selected.name}. Décrivez brièvement le problème.`
-        : lang === 'en'
-          ? `Building identified: ${selected.name}. Please briefly describe the issue.`
-          : `הבניין זוהה: ${selected.name}. כתבו בקצרה מה התקלה.`)
+      modelReply && !looksLikeAskBuildingReply(modelReply)
+        ? modelReply
+        : defaultAskIssuePrompt(lang, selected.name)
 
     await sendAiText({ supabaseAdmin, clientId, from, text: askIssue, waCreds })
     return { kind: 'handled' }

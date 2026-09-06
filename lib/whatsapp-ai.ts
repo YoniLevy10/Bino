@@ -37,7 +37,8 @@ const INTAKE_SYSTEM = `אתה נציג שירות WhatsApp של במקור (Bama
 6. אם חסר תיאור תקלה — בקש תיאור קצר רק אחרי שיש בניין מזוהה.
 7. ברכות (בוקר טוב / היי / שלום) אינן תקלה ואינן כתובת — ענה בנימוס, search_query=null, ובקש כתובת.
 8. כשיש כמה בניינים ברשימת המועמדים — השתמש ב-select_project_index או select_project_id. אל תמציא id.
-9. החזר JSON בלבד לפי הסכמה — בלי markdown ובלי הסברים.`
+9. כשהדייר עונה רק עם מספר (למשל "2") ויש רשימת מועמדים — חובה select_project_index עם אותו מספר, בלי search_query ובלי לשאול שוב איזה בניין.
+10. החזר JSON בלבד לפי הסכמה — בלי markdown ובלי הסברים.`
 
 export function isWhatsAppAiEnabled(): boolean {
   return process.env.WHATSAPP_AI_ENABLED === 'true' && hasAiGatewayAuth()
