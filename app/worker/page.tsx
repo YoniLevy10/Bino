@@ -39,13 +39,18 @@ const TicketWhatsAppThread = dynamic(
   { loading: () => <LoadingSpinner /> }
 )
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
-import { WorkerAttendancePanel } from '../components/worker/WorkerAttendancePanel'
+const WorkerAttendancePanel = dynamic(
+  () => import('../components/worker/WorkerAttendancePanel').then((m) => ({ default: m.WorkerAttendancePanel })),
+  { loading: () => null, ssr: false }
+)
 import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
   clearWorkerToken,
   normalizeWorkerToken,
+  readLastWorkerId,
   readWorkerToken,
+  writeLastWorkerId,
   writeWorkerToken,
 } from '@/lib/worker-portal-storage'
 import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker-offline-cache'
@@ -185,11 +190,26 @@ function WorkerPageInner() {
         return
       }
 
+      // Token path never waits on manager client-id resolve.
+      setSessionResolved(true)
+
+      // Paint last worker's cached tickets immediately (SWR) before network.
+      const lastWorkerId = readLastWorkerId()
+      if (lastWorkerId) {
+        const cached = readWorkerTicketsCache(lastWorkerId)
+        if (cached?.tickets?.length) {
+          setTickets(normalizeApiTickets(cached.tickets as ApiTicketRow[]))
+          setUsingCache(true)
+          setLoadingTickets(false)
+        }
+      }
+
       try {
-        const res = await fetchWithTimeout(`/api/worker-auth?token=${encodeURIComponent(token)}`)
+        const res = await fetchWithTimeout(`/api/worker/bootstrap?token=${encodeURIComponent(token)}`)
         if (!res.ok) {
           clearWorkerToken()
           setTokenSession(null)
+          setTickets([])
           setTokenChecked(true)
           return
         }
@@ -198,14 +218,17 @@ function WorkerPageInner() {
           client_id?: string
           full_name?: string
           worker_stamp_enabled?: boolean
+          tickets?: ApiTicketRow[]
         }
         if (!data.worker_id || !data.client_id) {
           clearWorkerToken()
           setTokenSession(null)
+          setTickets([])
           setTokenChecked(true)
           return
         }
         writeWorkerToken(token)
+        writeLastWorkerId(data.worker_id)
         setTokenSession({
           token,
           workerId: data.worker_id,
@@ -213,23 +236,51 @@ function WorkerPageInner() {
           fullName: data.full_name || '',
           workerStampEnabled: !!data.worker_stamp_enabled,
         })
+        const normalized = normalizeApiTickets(data.tickets || [])
+        setTickets(normalized)
+        writeWorkerTicketsCache(data.worker_id, normalized)
+        setUsingCache(false)
+        setLoadingTickets(false)
       } catch {
-        clearWorkerToken()
-        setTokenSession(null)
+        // Keep SWR paint if present; only wipe session when we have nothing to show.
+        const lastId = readLastWorkerId()
+        const cached = lastId ? readWorkerTicketsCache(lastId) : null
+        if (cached?.tickets?.length && lastId) {
+          setTokenSession({
+            token,
+            workerId: lastId,
+            clientId: '',
+            fullName: '',
+            workerStampEnabled: false,
+          })
+          setUsingCache(true)
+        } else {
+          clearWorkerToken()
+          setTokenSession(null)
+          setTickets([])
+        }
       } finally {
         setTokenChecked(true)
+        setLoadingTickets(false)
       }
     })()
   }, [searchParams])
 
   useEffect(() => {
     if (tokenSession) { setSessionResolved(true); return }
+    // Still validating a stored/URL token — do not kick off manager bootstrap.
+    const pendingToken =
+      normalizeWorkerToken(searchParams.get('token')) ?? readWorkerToken()
+    if (pendingToken) {
+      setSessionResolved(true)
+      return
+    }
     void (async () => {
       try { setClientId(await resolveBamakorClientIdForBrowser()) }
       catch { setClientId(null) }
       finally { setSessionResolved(true) }
     })()
-  }, [tokenSession])
+  }, [tokenSession, searchParams])
 
   const loadWorkers = useCallback(async () => {
     if (!clientId) { setWorkers([]); setLoadingList(false); return }
@@ -260,17 +311,17 @@ function WorkerPageInner() {
     } finally { setLoadingTickets(false) }
   }, [clientId])
 
-  const loadTicketsToken = useCallback(async (token: string, opts?: { silent?: boolean }) => {
+  const loadTicketsToken = useCallback(async (token: string, workerId: string, opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoadingTickets(true)
     else setRefreshing(true)
     try {
       const res = await fetchWithTimeout(`/api/worker/tickets?token=${encodeURIComponent(token)}`)
       if (!res.ok) {
-        const cached = readWorkerTicketsCache()
+        const cached = workerId ? readWorkerTicketsCache(workerId) : null
         if (cached?.tickets?.length) {
           setTickets(normalizeApiTickets(cached.tickets as ApiTicketRow[]))
           setUsingCache(true)
-        } else {
+        } else if (!opts?.silent) {
           setTickets([])
         }
         return
@@ -278,14 +329,14 @@ function WorkerPageInner() {
       const data = (await res.json()) as { tickets?: ApiTicketRow[] }
       const normalized = normalizeApiTickets(data.tickets || [])
       setTickets(normalized)
-      writeWorkerTicketsCache(normalized)
+      if (workerId) writeWorkerTicketsCache(workerId, normalized)
       setUsingCache(false)
     } catch {
-      const cached = readWorkerTicketsCache()
+      const cached = workerId ? readWorkerTicketsCache(workerId) : null
       if (cached?.tickets?.length) {
         setTickets(normalizeApiTickets(cached.tickets as ApiTicketRow[]))
         setUsingCache(true)
-      } else {
+      } else if (!opts?.silent) {
         setTickets([])
       }
     } finally {
@@ -296,7 +347,7 @@ function WorkerPageInner() {
 
   useEffect(() => {
     const onOnline = () => {
-      if (tokenSession) void loadTicketsToken(tokenSession.token, { silent: true })
+      if (tokenSession) void loadTicketsToken(tokenSession.token, tokenSession.workerId, { silent: true })
     }
     window.addEventListener('online', onOnline)
     return () => window.removeEventListener('online', onOnline)
@@ -324,12 +375,19 @@ function WorkerPageInner() {
     void loadAttachments(tokenSession.token, activeTicketId)
   }, [tokenSession, activeTicketId, attachmentsByTicket, loadAttachments])
 
-  useEffect(() => { void loadWorkers() }, [loadWorkers])
+  useEffect(() => {
+    if (tokenSession) {
+      setLoadingList(false)
+      return
+    }
+    void loadWorkers()
+  }, [loadWorkers, tokenSession])
 
   useEffect(() => {
-    if (tokenSession) { void loadTicketsToken(tokenSession.token); return }
+    // Token path loads tickets via /api/worker/bootstrap (or silent refresh). Skip duplicate fetch.
+    if (tokenSession) return
     void loadTicketsDashboard(workerId)
-  }, [workerId, loadTicketsDashboard, tokenSession, loadTicketsToken])
+  }, [workerId, loadTicketsDashboard, tokenSession])
 
   const selectedName = useMemo(() => {
     if (tokenSession) return tokenSession.fullName
@@ -346,7 +404,8 @@ function WorkerPageInner() {
   function removeClosedTicketFromView(ticketId: string) {
     setTickets((prev) => {
       const next = prev.filter((t) => t.id !== ticketId)
-      writeWorkerTicketsCache(next)
+      const cacheWorkerId = tokenSession?.workerId || workerId
+      if (cacheWorkerId) writeWorkerTicketsCache(cacheWorkerId, next)
       return next
     })
     setActiveTicketId((current) => (current === ticketId ? null : current))
@@ -519,7 +578,7 @@ function WorkerPageInner() {
     if (!tokenSession || !('serviceWorker' in navigator)) return
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === 'WORKER_PUSH_OPEN') {
-        void loadTicketsToken(tokenSession.token, { silent: true })
+        void loadTicketsToken(tokenSession.token, tokenSession.workerId, { silent: true })
       }
     }
     navigator.serviceWorker.addEventListener('message', onMsg)
@@ -631,7 +690,7 @@ function WorkerPageInner() {
         } else {
           toast.success(TM.ticketUpdated)
         }
-        await loadTicketsToken(tokenSession.token)
+        await loadTicketsToken(tokenSession.token, tokenSession.workerId)
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
       } finally { setBusyKey(null) }
@@ -728,7 +787,7 @@ function WorkerPageInner() {
               return
             }
             if (portalTab === 'ATTENDANCE') return
-            void loadTicketsToken(tokenSession.token, { silent: true })
+            void loadTicketsToken(tokenSession.token, tokenSession.workerId, { silent: true })
           }}
           onToggleDark={toggleDarkMode}
           onEnablePush={pushEnabled ? undefined : () => void enablePush()}

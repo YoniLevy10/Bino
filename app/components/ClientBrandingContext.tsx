@@ -1,5 +1,8 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
+import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
+
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
@@ -62,11 +65,18 @@ const ClientBrandingContext = createContext<ClientBrandingContextValue>({
 })
 
 export function ClientBrandingProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+
   const [branding, setBranding] = useState<ClientBranding>(DEFAULT_BRANDING)
   const [isBootstrapped, setIsBootstrapped] = useState(false)
   const authUidRef = useRef<string>('')
 
   const loadBranding = useCallback(async (opts?: { resetFirst?: boolean }) => {
+    if (isWorkerPortalPath(pathname)) {
+      setBranding(DEFAULT_BRANDING)
+      setIsBootstrapped(true)
+      return
+    }
     if (opts?.resetFirst) {
       setBranding(DEFAULT_BRANDING)
       setIsBootstrapped(false)
@@ -99,7 +109,7 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsBootstrapped(true)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     void loadBranding()
