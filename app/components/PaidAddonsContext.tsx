@@ -1,5 +1,8 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
+import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
+
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { PAID_ADDON_KEYS, type AddonEntitlement, type PaidAddonKey } from '@/lib/paid-addons'
@@ -25,11 +28,18 @@ const PaidAddonsContext = createContext<PaidAddonsContextValue>({
 })
 
 export function PaidAddonsProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [isBootstrapped, setIsBootstrapped] = useState(false)
   const [catalogMissing, setCatalogMissing] = useState(false)
   const [addons, setAddons] = useState<AddonEntitlement[]>([])
 
   const load = useCallback(async () => {
+    if (isWorkerPortalPath(pathname)) {
+      setAddons([])
+      setCatalogMissing(false)
+      setIsBootstrapped(true)
+      return
+    }
     try {
       const res = await fetchWithTimeout('/api/addons/entitlements')
       const json = (await res.json()) as {
@@ -49,7 +59,7 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsBootstrapped(true)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     void load()

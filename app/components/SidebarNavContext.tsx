@@ -1,5 +1,8 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
+import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
+
 import {
   createContext,
   useCallback,
@@ -119,6 +122,7 @@ type LoadNavOptions = {
 }
 
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const { addons } = usePaidAddons()
   const enabledAddonKeys = useMemo(() => enabledAddonKeysFromEntitlements(addons), [addons])
 
@@ -143,6 +147,11 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     async (options?: LoadNavOptions) => {
       const generation = ++loadGenerationRef.current
       let hadCachedState = false
+
+      if (isWorkerPortalPath(pathname)) {
+        setIsBootstrapped(true)
+        return
+      }
 
       try {
         const clientId = await resolveBamakorClientIdForBrowser()
@@ -197,7 +206,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [applyNavState]
+    [applyNavState, pathname]
   )
 
   const maybeRefetchNav = useCallback(
