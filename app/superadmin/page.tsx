@@ -137,7 +137,7 @@ function effectiveLimitsForClient(client: ClientRow, catalog: PlanCatalogRow[]) 
   }
 }
 
-type ViewMode = 'clients' | 'ops' | 'usage'
+type ViewMode = 'clients' | 'ops' | 'usage' | 'settings'
 type ClientFilter = 'all' | 'open_tickets' | 'no_whatsapp' | 'at_worker_limit'
 
 const PLAN_LABELS: Record<string, string> = {
@@ -194,17 +194,20 @@ const inputStyle: CSSProperties = {
   minHeight: 44,
 }
 
-function AdminQuickLinks() {
-  const linkStyle: CSSProperties = {
-    color: theme.colors.primary,
-    textDecoration: 'none',
-    fontSize: theme.typography.fontSize.xs,
-  }
+function LockScreenSetupLink() {
   return (
     <div style={{ marginTop: theme.spacing.lg, textAlign: 'center' }}>
-      <a href="/superadmin" style={linkStyle}>Super Admin</a>
-      <span style={{ color: theme.colors.textMuted, margin: '0 6px' }}>·</span>
-      <a href="/admin/setup" style={linkStyle}>הקמת לקוח</a>
+      <a
+        href="/superadmin/setup"
+        style={{
+          color: theme.colors.primary,
+          textDecoration: 'none',
+          fontSize: theme.typography.fontSize.sm,
+          fontWeight: theme.typography.fontWeight.semibold,
+        }}
+      >
+        הקמת לקוח חדש ←
+      </a>
     </div>
   )
 }
@@ -308,11 +311,13 @@ export default function SuperAdminPage() {
     if (typeof window === 'undefined') return
     if (window.location.hash === '#ops') setViewMode('ops')
     if (window.location.hash === '#usage') setViewMode('usage')
+    if (window.location.hash === '#settings') setViewMode('settings')
   }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !unlocked) return
-    window.location.hash = viewMode === 'ops' ? '#ops' : viewMode === 'usage' ? '#usage' : ''
+    window.location.hash =
+      viewMode === 'ops' ? '#ops' : viewMode === 'usage' ? '#usage' : viewMode === 'settings' ? '#settings' : ''
   }, [viewMode, unlocked])
 
   useEffect(() => {
@@ -663,7 +668,7 @@ export default function SuperAdminPage() {
           >
             כניסה
           </LoadingButton>
-          <AdminQuickLinks />
+          <LockScreenSetupLink />
         </div>
       </div>
     )
@@ -699,8 +704,8 @@ export default function SuperAdminPage() {
               יציאה
             </button>
             <a
-              href="/admin/setup"
-              className="sa-touch-btn"
+              href="/superadmin/setup"
+              className="sa-touch-btn sa-desktop-only"
               style={{ background: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.radius.md, padding: '10px 18px', cursor: 'pointer', fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, minHeight: 44 }}
             >
               + הקם לקוח חדש
@@ -708,12 +713,13 @@ export default function SuperAdminPage() {
           </div>
         </div>
 
-        <div className="sa-tab-bar" style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
+        <div className="sa-tab-bar sa-desktop-only" style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
           {(
             [
               { id: 'clients' as const, label: 'לקוחות' },
               { id: 'usage' as const, label: 'שימוש' },
               { id: 'ops' as const, label: 'תפעול' },
+              { id: 'settings' as const, label: 'הגדרות' },
             ] as const
           ).map((tab) => (
             <button
@@ -743,14 +749,51 @@ export default function SuperAdminPage() {
               adminSecret={secret}
               onCountsChange={(counts) => setOpsUnresolvedCount(counts.unresolved_errors)}
             />
-            <div style={{ marginTop: 24 }}>
-              <MetaWhatsAppPendingPanel />
-            </div>
-            <AdminQuickLinks />
+            <details className="sa-collapsible" style={{ marginTop: 16 }}>
+              <summary>תבניות Meta WhatsApp (סטטי) ▾</summary>
+              <div className="sa-collapsible-body">
+                <MetaWhatsAppPendingPanel />
+              </div>
+            </details>
           </>
         )}
 
         {viewMode === 'usage' && <UsageAnalyticsPanel secret={secret} />}
+
+        {viewMode === 'settings' && (
+          <div className="sa-settings-view">
+            <p style={{ marginTop: 0, marginBottom: theme.spacing.lg, color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, lineHeight: 1.5 }}>
+              הגדרות פלטפורמה גלובליות — לא לפי לקוח. ניהול לקוח ספציפי נשאר תחת «לקוחות».
+            </p>
+            <section className="sa-panel" style={{ marginBottom: theme.spacing.lg }}>
+              <h2 style={{ margin: `0 0 ${theme.spacing.md}`, fontSize: theme.typography.fontSize.lg }}>מנוי ותמחור</h2>
+              <PlanPricingCatalogAdmin secret={secret} />
+            </section>
+            <section className="sa-panel">
+              <h2 style={{ margin: `0 0 ${theme.spacing.md}`, fontSize: theme.typography.fontSize.lg }}>תוספים בתשלום</h2>
+              <PaidAddonsCatalogAdmin secret={secret} />
+            </section>
+            <a
+              href="/superadmin/setup"
+              className="sa-touch-btn"
+              style={{
+                marginTop: theme.spacing.xl,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 48,
+                padding: '12px 18px',
+                borderRadius: theme.radius.md,
+                background: theme.colors.primary,
+                color: '#fff',
+                textDecoration: 'none',
+                fontWeight: theme.typography.fontWeight.semibold,
+              }}
+            >
+              + הקמת לקוח חדש
+            </a>
+          </div>
+        )}
 
         {viewMode === 'clients' && (
           <>
@@ -777,19 +820,6 @@ export default function SuperAdminPage() {
             {loadError}
           </div>
         )}
-
-        <details className="sa-collapsible">
-          <summary>מנוי ותמחור (גלובלי) ▾</summary>
-          <div className="sa-collapsible-body">
-            <PlanPricingCatalogAdmin secret={secret} />
-          </div>
-        </details>
-        <details className="sa-collapsible">
-          <summary>תוספים בתשלום (גלובלי) ▾</summary>
-          <div className="sa-collapsible-body">
-            <PaidAddonsCatalogAdmin secret={secret} />
-          </div>
-        </details>
 
         <div className="sa-search-bar">
           <input
@@ -1426,13 +1456,13 @@ export default function SuperAdminPage() {
             <span className="sa-bottom-badge">{opsUnresolvedCount > 99 ? '99+' : opsUnresolvedCount}</span>
           )}
         </button>
-        <a
-          href="/admin/setup"
-          className="sa-bottom-nav-btn"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'inherit' }}
+        <button
+          type="button"
+          className={`sa-bottom-nav-btn${viewMode === 'settings' ? ' is-active' : ''}`}
+          onClick={() => setViewMode('settings')}
         >
-          + לקוח
-        </a>
+          הגדרות
+        </button>
       </nav>
     </div>
   )

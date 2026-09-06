@@ -8,16 +8,43 @@
   "display": "standalone",
   "background_color": "#F9F9FB",
   "theme_color": "#0066FF",
-  "display_override": ["standalone", "minimal-ui", "browser"],
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "dir": "rtl",
   "lang": "he",
-  "categories": ["productivity", "business"],
+  "categories": [
+    "productivity",
+    "business"
+  ],
   "prefer_related_applications": false,
   "icons": [
-    { "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/apple-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
     {
@@ -25,21 +52,48 @@
       "short_name": "לקוחות",
       "description": "רשימת לקוחות",
       "url": "/superadmin",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/apple-icon.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "תפעול",
       "short_name": "תפעול",
       "description": "כשלונות ושגיאות",
       "url": "/superadmin#ops",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/apple-icon.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "הקמת לקוח",
       "short_name": "הקמה",
       "description": "הקמת לקוח חדש",
-      "url": "/admin/setup",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "url": "/superadmin/setup",
+      "icons": [
+        {
+          "src": "/apple-icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "הגדרות",
+      "short_name": "הגדרות",
+      "description": "תמחור ותוספים",
+      "url": "/superadmin#settings",
+      "icons": [
+        {
+          "src": "/apple-icon.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

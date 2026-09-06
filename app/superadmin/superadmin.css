@@ -3,6 +3,19 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.sa-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+
+.sa-settings-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 @media (max-width: 767px) {
   .sa-page {
     padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
@@ -325,5 +338,53 @@
 
   .sa-page-with-nav {
     padding-bottom: inherit !important;
+  }
+}
+
+
+/* ── PWA / mobile UX: one nav, less clutter ─────────────────────────── */
+@media (max-width: 767px) {
+  .sa-desktop-only {
+    display: none !important;
+  }
+
+  .sa-tab-bar {
+    display: none !important;
+  }
+
+  .sa-ops-main {
+    padding: 12px !important;
+    min-height: 0 !important;
+  }
+
+  .sa-ops-toolbar-text {
+    font-size: 13px !important;
+  }
+
+  .sa-settings-view .sa-panel {
+    padding: 14px !important;
+  }
+
+  .sa-header-actions {
+    width: 100%;
+  }
+
+  .sa-header-actions .sa-touch-btn {
+    flex: 1;
+  }
+}
+
+@media (min-width: 768px) {
+  .sa-desktop-only {
+    display: revert;
+  }
+
+  /* Flex header CTA that uses inline display:flex still works */
+  a.sa-desktop-only {
+    display: flex !important;
+  }
+
+  .sa-tab-bar.sa-desktop-only {
+    display: flex !important;
   }
 }
