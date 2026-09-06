@@ -1,11 +1,21 @@
--- OpsBrain demo tenant seed (opsbrain1@gmail.com)
+-- OpsBrain demo tenant seed
 -- Client: 07773bb3-4969-4bce-8ce2-faab3b26383c
--- Replaces "אסף עו״ד" with חיים בג'איו 1א–8ב (16 buildings) + demo tickets/residents/workers.
+-- Org:    a281af3c-99b6-4a4a-a5ba-9498e05e984e
+--
+-- Reskins the OpsBrain account for sales demos (buildings/tickets/residents/workers).
+-- Also seeds collections + worker stamp demo rows and enables those paid add-ons.
+-- Login user (email/password) is created separately:
+--   npx tsx scripts/ensure-opsbrain-demo-user.ts
 -- Logo: upload via Superadmin UI (not seeded here).
 --
--- Safe to re-run: deletes this client's projects/tickets/residents/workers first.
+-- Safe to re-run: deletes this client's demo rows first.
 
 BEGIN;
+
+DELETE FROM worker_attendance_events WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c';
+DELETE FROM worker_attendance WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c';
+DELETE FROM worker_nfc_tags WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c';
+DELETE FROM collection_charges WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c';
 
 DELETE FROM ticket_internal_messages
 WHERE ticket_id IN (SELECT id FROM tickets WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c');
@@ -104,7 +114,8 @@ params AS (
     ] AS descs,
     ARRAY['דני כהן','יעל לוי','משה אברהם','רונית שמעון','אבי גולן','נועה פרץ','אלירן מזרחי','שירה בן דוד'] AS reporters,
     ARRAY['0501234001','0501234002','0501234003','0501234004','0501234005','0501234006','0501234007','0501234008'] AS phones,
-    ARRAY['NEW','ASSIGNED','IN_PROGRESS','WAITING','DONE','CLOSED'] AS statuses,
+    -- Must match tickets_status_check (see migration 093 + lib/ticket-status.ts)
+    ARRAY['NEW','ASSIGNED','IN_PROGRESS','WAITING_PARTS','SITE_TOUR','PROFESSIONAL_ESCORT','CLOSED'] AS statuses,
     ARRAY['LOW','MEDIUM','HIGH','URGENT'] AS priorities
 ),
 series AS (
@@ -128,14 +139,218 @@ SELECT
   'whatsapp',
   'he',
   CASE WHEN s.i % 3 = 0 THEN NULL ELSE w.id END,
-  now() - make_interval(hours => s.i * 7),
-  now() - make_interval(hours => s.i * 7),
-  now() - make_interval(hours => s.i * 3),
-  CASE WHEN params.statuses[1 + ((s.i - 1) % array_length(params.statuses, 1))] IN ('DONE','CLOSED')
-       THEN now() - make_interval(hours => s.i * 2) ELSE NULL END
+  now() - make_interval(hours => (s.i * 7)::int),
+  now() - make_interval(hours => (s.i * 7)::int),
+  now() - make_interval(hours => (s.i * 3)::int),
+  CASE WHEN params.statuses[1 + ((s.i - 1) % array_length(params.statuses, 1))] IN ('CLOSED')
+       THEN now() - make_interval(hours => (s.i * 2)::int) ELSE NULL END
 FROM series s
 CROSS JOIN params
 CROSS JOIN worker w
 JOIN projects_n p ON p.rn = 1 + ((s.i - 1) % 16);
+
+-- Enable sales-demo paid add-ons (collections + worker stamp)
+INSERT INTO client_paid_addons (client_id, addon_key, enabled, enabled_at, notes)
+VALUES
+  ('07773bb3-4969-4bce-8ce2-faab3b26383c', 'collections', true, now(), 'OpsBrain sales demo'),
+  ('07773bb3-4969-4bce-8ce2-faab3b26383c', 'worker_stamp', true, now(), 'OpsBrain sales demo')
+ON CONFLICT (client_id, addon_key) DO UPDATE
+SET enabled = true,
+    enabled_at = EXCLUDED.enabled_at,
+    notes = EXCLUDED.notes,
+    updated_at = now();
+
+-- Demo collection charges (mixed statuses) against first few residents
+WITH r AS (
+  SELECT id, project_id, row_number() OVER (ORDER BY full_name) AS rn
+  FROM residents
+  WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c'
+  LIMIT 8
+)
+INSERT INTO collection_charges (
+  client_id, project_id, resident_id,
+  title, description, amount, currency, status,
+  period_label, sent_at, paid_at
+)
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  r.project_id,
+  r.id,
+  CASE r.rn
+    WHEN 1 THEN 'ועד בית — מרץ 2026'
+    WHEN 2 THEN 'ועד בית — מרץ 2026'
+    WHEN 3 THEN 'ועד בית — פברואר 2026'
+    WHEN 4 THEN 'תיקון מעלית — השתתפות'
+    WHEN 5 THEN 'ועד בית — ינואר 2026'
+    WHEN 6 THEN 'ניקיון חניון — חד פעמי'
+    WHEN 7 THEN 'ועד בית — מרץ 2026'
+    ELSE 'ביטוח מבנה — רבעון'
+  END,
+  'חיוב דמו להצגת מסך גבייה',
+  CASE r.rn
+    WHEN 4 THEN 350.00
+    WHEN 6 THEN 120.00
+    WHEN 8 THEN 480.00
+    ELSE 450.00
+  END,
+  'ILS',
+  CASE r.rn
+    WHEN 1 THEN 'paid'
+    WHEN 2 THEN 'sent'
+    WHEN 3 THEN 'paid'
+    WHEN 4 THEN 'sent'
+    WHEN 5 THEN 'draft'
+    WHEN 6 THEN 'failed'
+    WHEN 7 THEN 'sent'
+    ELSE 'cancelled'
+  END,
+  'Q1-2026',
+  CASE WHEN r.rn IN (5) THEN NULL ELSE now() - make_interval(days => r.rn::int) END,
+  CASE WHEN r.rn IN (1, 3) THEN now() - make_interval(days => (r.rn - 1)::int) ELSE NULL END
+FROM r;
+
+-- Demo NFC tags: office + 2 project tags
+INSERT INTO worker_nfc_tags (client_id, project_id, tag_code, tag_type, label, is_active)
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  NULL,
+  'DEMO-OFFICE-HBJ',
+  'office',
+  'משרד — החתמת נוכחות',
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM worker_nfc_tags
+  WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c' AND tag_code = 'DEMO-OFFICE-HBJ'
+);
+
+INSERT INTO worker_nfc_tags (client_id, project_id, tag_code, tag_type, label, is_active)
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  p.id,
+  format('DEMO-SITE-%s', p.project_code),
+  'project',
+  format('אתר %s', p.name),
+  true
+FROM (
+  SELECT id, name, project_code
+  FROM projects
+  WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c'
+  ORDER BY name
+  LIMIT 2
+) p
+WHERE NOT EXISTS (
+  SELECT 1 FROM worker_nfc_tags t
+  WHERE t.client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c'
+    AND t.tag_code = format('DEMO-SITE-%s', p.project_code)
+);
+
+-- Closed attendance shift yesterday + open shift today (for first worker)
+WITH w AS (
+  SELECT id FROM workers
+  WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c'
+  ORDER BY created_at
+  LIMIT 1
+),
+office AS (
+  SELECT id FROM worker_nfc_tags
+  WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c' AND tag_code = 'DEMO-OFFICE-HBJ'
+  LIMIT 1
+),
+site AS (
+  SELECT id, project_id FROM worker_nfc_tags
+  WHERE client_id = '07773bb3-4969-4bce-8ce2-faab3b26383c' AND tag_type = 'project'
+  ORDER BY tag_code
+  LIMIT 1
+),
+ins_closed AS (
+  INSERT INTO worker_attendance (
+    client_id, worker_id, started_at, ended_at,
+    start_tag_id, end_tag_id, start_source, end_source,
+    total_minutes, status
+  )
+  SELECT
+    '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+    w.id,
+    date_trunc('day', now()) - interval '1 day' + interval '8 hours',
+    date_trunc('day', now()) - interval '1 day' + interval '16 hours 30 minutes',
+    office.id,
+    office.id,
+    'online',
+    'online',
+    510,
+    'closed'
+  FROM w, office
+  RETURNING id, worker_id
+),
+ins_open AS (
+  INSERT INTO worker_attendance (
+    client_id, worker_id, started_at,
+    start_tag_id, start_source, status
+  )
+  SELECT
+    '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+    w.id,
+    date_trunc('day', now()) + interval '8 hours',
+    office.id,
+    'online',
+    'open'
+  FROM w, office
+  RETURNING id, worker_id
+)
+INSERT INTO worker_attendance_events (
+  client_id, worker_id, project_id, tag_id, tag_code,
+  event_type, client_action_id, client_recorded_at, source, sync_status
+)
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  w.id,
+  NULL,
+  office.id,
+  'DEMO-OFFICE-HBJ',
+  'clock_in',
+  'demo-clock-in-yesterday',
+  date_trunc('day', now()) - interval '1 day' + interval '8 hours',
+  'online',
+  'synced'
+FROM w, office
+UNION ALL
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  w.id,
+  site.project_id,
+  site.id,
+  (SELECT tag_code FROM worker_nfc_tags WHERE id = site.id),
+  'project_visit',
+  'demo-site-visit-yesterday',
+  date_trunc('day', now()) - interval '1 day' + interval '10 hours',
+  'online',
+  'synced'
+FROM w, site
+UNION ALL
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  w.id,
+  NULL,
+  office.id,
+  'DEMO-OFFICE-HBJ',
+  'clock_out',
+  'demo-clock-out-yesterday',
+  date_trunc('day', now()) - interval '1 day' + interval '16 hours 30 minutes',
+  'online',
+  'synced'
+FROM w, office
+UNION ALL
+SELECT
+  '07773bb3-4969-4bce-8ce2-faab3b26383c'::uuid,
+  w.id,
+  NULL,
+  office.id,
+  'DEMO-OFFICE-HBJ',
+  'clock_in',
+  'demo-clock-in-today',
+  date_trunc('day', now()) + interval '8 hours',
+  'online',
+  'synced'
+FROM w, office;
 
 COMMIT;

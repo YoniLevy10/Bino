@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type CSSProperties, type FormEvent } from 'react'
 import Image from 'next/image'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant-access'
@@ -30,11 +30,28 @@ function GoogleIcon() {
   )
 }
 
+const fieldStyle: CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  minHeight: 48,
+  padding: '12px 14px',
+  borderRadius: 12,
+  border: '1px solid #e2e8f0',
+  background: '#fff',
+  fontSize: 16,
+  color: '#0f172a',
+  outline: 'none',
+}
+
 export function LoginClient() {
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   const authError = searchParams.get('error')
+  const redirectTo = searchParams.get('redirectTo') || '/'
 
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(
     authError === 'auth'
@@ -71,6 +88,47 @@ export function LoginClient() {
     }
   }
 
+  async function signInWithPassword(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail || !password) {
+      setError('נא להזין אימייל וסיסמה')
+      return
+    }
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      clearTenantBrowserCaches()
+      const { error: pwError } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      })
+      if (pwError) {
+        const msg = pwError.message || ''
+        if (/invalid login credentials/i.test(msg)) {
+          throw new Error('אימייל או סיסמה שגויים')
+        }
+        if (/email not confirmed/i.test(msg)) {
+          throw new Error('יש לאשר את כתובת האימייל לפני הכניסה')
+        }
+        throw new Error(msg || 'התחברות נכשלה')
+      }
+      const next =
+        redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/'
+      router.replace(next)
+      router.refresh()
+    } catch (err) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: unknown }).message || '')
+          : 'התחברות נכשלה'
+      setError(msg || 'התחברות נכשלה')
+      setLoading(false)
+    }
+  }
+
   return (
     <div
       dir="rtl"
@@ -94,7 +152,7 @@ export function LoginClient() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '28px',
+          gap: '24px',
         }}
       >
         <Image
@@ -123,6 +181,99 @@ export function LoginClient() {
           </p>
         </div>
 
+        <form
+          onSubmit={(e) => void signInWithPassword(e)}
+          style={{
+            width: '100%',
+            maxWidth: 320,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#334155',
+            }}
+          >
+            אימייל
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+              disabled={loading}
+              style={{ ...fieldStyle, direction: 'ltr', textAlign: 'left' }}
+            />
+          </label>
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#334155',
+            }}
+          >
+            סיסמה
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              disabled={loading}
+              style={{ ...fieldStyle, direction: 'ltr', textAlign: 'left' }}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              minHeight: 52,
+              marginTop: 4,
+              borderRadius: 12,
+              border: 'none',
+              background: '#2563eb',
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: 700,
+              cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.75 : 1,
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+            }}
+          >
+            {loading ? 'מתחבר…' : 'התחברות'}
+          </button>
+        </form>
+
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 320,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            color: '#94a3b8',
+            fontSize: 13,
+          }}
+        >
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+          או
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        </div>
+
         <button
           type="button"
           onClick={() => void signInWithGoogle()}
@@ -148,7 +299,7 @@ export function LoginClient() {
           }}
         >
           <GoogleIcon />
-          {loading ? 'מפנים ל-Google…' : 'התחבר עם Google'}
+          {loading ? 'מפנים…' : 'התחבר עם Google'}
         </button>
 
         {error ? (
