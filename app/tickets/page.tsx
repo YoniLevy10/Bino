@@ -35,6 +35,7 @@ import { parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { shouldShowPageLoadError } from '@/lib/page-load-error'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
@@ -196,6 +197,7 @@ export default function TicketsPage() {
   const isMobile = useIsMobile()
   const { openMenu } = useMobileMenu()
   const lastFetchAtRef = useRef(0)
+  const hasPaintedDataRef = useRef(false)
   const professionalsLoadedRef = useRef(false)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
@@ -301,7 +303,10 @@ export default function TicketsPage() {
   }, [tenantClientId])
 
   const fetchData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
+    if (!silent) {
+      setLoading(true)
+      setPageLoadError(false)
+    }
     const result = await asyncHandler(
       async () => {
         const clientId = await resolveBamakorClientIdForBrowser()
@@ -347,11 +352,18 @@ export default function TicketsPage() {
           ticketsTruncated: normalizedTickets.length >= TICKETS_INITIAL_LIMIT,
         })
         lastFetchAtRef.current = Date.now()
+        hasPaintedDataRef.current = true
         return true
       },
-      { context: 'טעינת תקלות', showErrorToast: true }
+      { context: 'טעינת תקלות', showErrorToast: !silent }
     )
-    setPageLoadError(!result)
+    setPageLoadError(
+      shouldShowPageLoadError({
+        fetchSucceeded: !!result,
+        silent,
+        hasDataToShow: hasPaintedDataRef.current,
+      })
+    )
     if (!silent) setLoading(false)
   }, [])
 
@@ -379,6 +391,7 @@ export default function TicketsPage() {
         setWorkers(cached.workers)
         setProjects(cached.projects)
         setTicketsTruncated(cached.ticketsTruncated)
+        hasPaintedDataRef.current = true
         setLoading(false)
         void fetchData(true)
       } else {
@@ -1273,7 +1286,7 @@ export default function TicketsPage() {
           ) : pageLoadError ? (
             <ErrorState
               title="לא הצלחנו לטעון את התקלות"
-              message="בדקו חיבור לאינטרנט ונסו שוב."
+              message="נסו שוב בעוד רגע. אם הבעיה נמשכת — סגרו את האפליקציה ופתחו מחדש."
               onRetry={() => void fetchData()}
             />
           ) : filteredTickets.length === 0 ? (

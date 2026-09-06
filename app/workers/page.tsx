@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { shouldShowPageLoadError } from '@/lib/page-load-error'
 import {
   fetchWithTimeout,
   isFetchTimeoutError,
@@ -235,7 +236,13 @@ export default function WorkersPage() {
         },
         { context: 'טעינת עובדים', showErrorToast: !cached }
       )
-      setLoadError(!result)
+      setLoadError(
+        shouldShowPageLoadError({
+          fetchSucceeded: !!result,
+          silent: !!cached,
+          hasDataToShow: !!cached || !!result,
+        })
+      )
       setLoading(false)
     }
     void initialize()
@@ -735,7 +742,7 @@ export default function WorkersPage() {
         ) : loadError && workers.length === 0 ? (
           <ErrorState
             title="לא הצלחנו לטעון את העובדים"
-            message="בדקו חיבור לאינטרנט ונסו שוב."
+            message="נסו שוב בעוד רגע. אם הבעיה נמשכת — סגרו את האפליקציה ופתחו מחדש."
             onRetry={() => {
               setLoadError(false)
               setLoading(true)
@@ -748,7 +755,13 @@ export default function WorkersPage() {
                   },
                   { context: 'טעינת עובדים', showErrorToast: true }
                 )
-                setLoadError(!result)
+                setLoadError(
+                  shouldShowPageLoadError({
+                    fetchSucceeded: !!result,
+                    silent: false,
+                    hasDataToShow: false,
+                  })
+                )
                 setLoading(false)
               })()
             }}

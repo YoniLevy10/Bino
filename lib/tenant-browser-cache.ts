@@ -2,6 +2,9 @@
 
 export const TENANT_CID_SESSION_KEY = 'bamakor_cid_v1'
 
+/** Survives tab kill on mobile (paired with session key in bamakor-client). */
+export const TENANT_CID_LOCAL_KEY = 'bamakor_cid_local_v1'
+
 /** Sidebar nav order + enabled_nav_features (SidebarNavContext). */
 export const NAV_CACHE_PREFIX = 'bamakor_nav_v5_' as const
 
@@ -11,6 +14,7 @@ export function clearTenantBrowserCaches(): void {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.removeItem(TENANT_CID_SESSION_KEY)
+    localStorage.removeItem(TENANT_CID_LOCAL_KEY)
     const keysToRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
