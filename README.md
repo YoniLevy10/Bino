@@ -14,12 +14,12 @@
 
 | תיקייה | ענף | שימוש |
 |--------|-----|--------|
-| `bamakor-dashboard-dev` | `develop` | **פיתוח יומי** — יומן, שעון, CI, שיפורי מנהל |
-| `bamakor-dashboard` | `main` | **פרודקשן** — merge ממוקד / hotfix בלבד |
+| `bino-dashboard-dev` | `develop` | **פיתוח יומי** — יומן, שעון, CI, שיפורי מנהל |
+| `bino-dashboard` | `main` | **פרודקשן** — merge ממוקד / hotfix בלבד |
 
 כללי פיתוח (API, SMS, Supabase): `CLAUDE.md`.
 
-**פריסה:** `https://bamakor.vercel.app` (או `NEXT_PUBLIC_APP_URL`). אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
+**פריסה:** לפי `NEXT_PUBLIC_APP_URL` ב־Vercel. אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
 
 ---
 

@@ -63,7 +63,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "he_IL",
-    url: "https://bamakor.vercel.app",
+    url: process.env.NEXT_PUBLIC_APP_URL || undefined,
     siteName: "Bino",
     title: "Bino — ניהול תקלות ואחזקה",
     description: "מערכת ניהול נכסים ותקלות",

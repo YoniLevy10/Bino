@@ -42,8 +42,8 @@ export function getLegalSiteConfig(): LegalSiteConfig {
     trimEnv('LEGAL_EMAIL') ||
     emailFromMailto(trimEnv('RESEND_FROM_EMAIL')) ||
     emailFromMailto(trimEnv('VAPID_SUBJECT')) ||
-    'office@bamakor.com'
-  const publicBaseUrl = getPublicAppUrl() || 'https://bamakor.vercel.app'
+    ''
+  const publicBaseUrl = getPublicAppUrl()
 
   const readyForGrowAudit = Boolean(phone && address)
 

@@ -1,4 +1,4 @@
-# CLAUDE.md — bino-dashboard (formerly Bamakor)
+# CLAUDE.md — bino-dashboard
 
 Next.js 16 App Router, React 19, TypeScript, Supabase, Tailwind CSS, RTL Hebrew UI.
 Multi-tenant SaaS for building maintenance management; SMS via 019SMS, WhatsApp via Meta API.
@@ -117,7 +117,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key (server only) |
-| `NEXT_PUBLIC_APP_URL` | `https://bamakor.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | Public app URL (Vercel) |
 | `SMS_019_USERNAME` | 019SMS API username |
 | `SMS_019_PASSWORD` | 019SMS API password |
 | `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |
@@ -130,7 +130,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `VAPID_SUBJECT` | `mailto:levyyoni5@gmail.com` |
 | `CRON_SECRET` | Cron job auth secret |
 | `ADMIN_SETUP_SECRET` | Superadmin routes secret |
-| `BAMAKOR_CLIENT_ID` | Dev fallback client ID |
+| `BAMAKOR_CLIENT_ID` | Dev fallback client ID (legacy env name; keep for compatibility) |
 | `WHATSAPP_AI_ENABLED` | `true` to enable Vercel AI Gateway WhatsApp AI (rewrite + unknown-resident intake) |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (server only). On Vercel, OIDC (`VERCEL_OIDC_TOKEN`) also works |
 | `WHATSAPP_AI_INTAKE_ENABLED` | Optional; `false` disables unknown-resident AI intake while keeping rewrite. Default = follow `WHATSAPP_AI_ENABLED` |

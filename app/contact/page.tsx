@@ -51,9 +51,13 @@ export default function ContactPage() {
 
         <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>מייל</dt>
         <dd style={{ margin: '0 0 16px' }}>
-          <a href={`mailto:${cfg.email}`} style={{ color: '#1e40af', fontWeight: 600 }} dir="ltr">
-            {cfg.email}
-          </a>
+          {cfg.email ? (
+            <a href={`mailto:${cfg.email}`} style={{ color: '#1e40af', fontWeight: 600 }} dir="ltr">
+              {cfg.email}
+            </a>
+          ) : (
+            <span style={{ color: '#94a3b8' }}>יש להגדיר LEGAL_EMAIL</span>
+          )}
         </dd>
       </dl>
 

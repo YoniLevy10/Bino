@@ -70,7 +70,7 @@ export function getClientGrowContactPath(clientId: string): string {
 }
 
 export function getClientGrowPageUrl(clientId: string): string {
-  const base = getPublicAppUrl() || 'https://bamakor.vercel.app'
+  const base = getPublicAppUrl()
   return `${base}${getClientGrowPagePath(clientId)}`
 }
 
@@ -83,7 +83,7 @@ export function growLegalToSiteConfig(legal: ClientGrowLegal): LegalSiteConfig {
     phoneDisplay: phone ? formatLegalPhoneDisplay(phone) : 'טלפון יושלם בהגדרות הלקוח',
     address: legal.address || 'כתובת יושלם בהגדרות הלקוח',
     email: legal.email || '',
-    publicBaseUrl: getPublicAppUrl() || 'https://bamakor.vercel.app',
+    publicBaseUrl: getPublicAppUrl(),
     readyForGrowAudit: legal.ready,
   }
 }

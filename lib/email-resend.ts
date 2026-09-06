@@ -14,7 +14,7 @@ export async function sendResendEmail(opts: {
   const from =
     opts.from ||
     (process.env.RESEND_FROM_EMAIL || '').trim() ||
-    'Bino <office@bamakor.com>'
+    'Bino <noreply@bino.app>'
 
   const res = await fetchWithTimeout(
     'https://api.resend.com/emails',

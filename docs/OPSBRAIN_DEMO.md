@@ -14,11 +14,11 @@ OpsBrain is **our** reusable demo account. For every prospect we re-skin this te
 
 Login page supports Google **and** email/password.
 
-Default demo mailbox (override with env):
+Default demo mailbox (override with env — mailbox domain may still be legacy until DNS is updated):
 
 | | |
 |--|--|
-| Email | `savion@bamakor.com` |
+| Email | `savion@bamakor.com` (legacy mailbox; override via `DEMO_LOGIN_EMAIL`) |
 | Password | `savion2026!` |
 
 Create / refresh the auth user and link it to OpsBrain (pick one):

@@ -25,7 +25,8 @@ describe('getLegalSiteConfig', () => {
     const cfg = getLegalSiteConfig()
     expect(cfg.businessName).toBe('Bino')
     expect(cfg.readyForGrowAudit).toBe(false)
-    expect(cfg.email.length).toBeGreaterThan(3)
+    // No hardcoded legacy brand email — empty until LEGAL_EMAIL / RESEND_FROM_EMAIL is set
+    expect(cfg.email.includes('bamakor')).toBe(false)
 
     if (prevName !== undefined) process.env.LEGAL_BUSINESS_NAME = prevName
     if (prevPhone !== undefined) process.env.LEGAL_PHONE = prevPhone

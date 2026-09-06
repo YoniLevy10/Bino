@@ -51,7 +51,7 @@ const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string
   description: 'נזילה מהצנרת בחדר האמבטיה',
   reporter_name: 'ישראל ישראלי',
   building_line: 'בניין: ב׳\n',
-  dashboard_url: 'https://app.bamakor.com/tickets',
+  dashboard_url: 'https://example.com/tickets',
   client_name: 'ועד הבית',
 }
 

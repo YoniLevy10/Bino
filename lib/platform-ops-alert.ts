@@ -80,7 +80,7 @@ async function markAlertSent(dedupKey: string): Promise<void> {
 async function sendOpsEmail(subject: string, text: string): Promise<boolean> {
   const to = resolveOpsEmail()
   const apiKey = (process.env.RESEND_API_KEY || '').trim()
-  const from = (process.env.RESEND_FROM_EMAIL || 'Bino <office@bamakor.com>').trim()
+  const from = (process.env.RESEND_FROM_EMAIL || 'Bino <noreply@bino.app>').trim()
 
   if (!apiKey) {
     console.warn('[platform-ops-alert] RESEND_API_KEY not set — skipping email')

@@ -39,7 +39,7 @@ Operational guides for platform and tenant features.
 Program each NFC sticker with a URL record:
 
 ```
-https://bamakor.vercel.app/worker/nfc?t=TAG_CODE
+https://YOUR_APP_URL/worker/nfc?t=TAG_CODE
 ```
 
 - `TAG_CODE` — uppercase alphanumeric (e.g. `OFFICE`, `BMK1`). Normalized server-side.
