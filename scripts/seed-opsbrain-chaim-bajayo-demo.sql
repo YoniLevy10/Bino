@@ -138,11 +138,11 @@ SELECT
   'whatsapp',
   'he',
   CASE WHEN s.i % 3 = 0 THEN NULL ELSE w.id END,
-  now() - make_interval(hours => s.i * 7),
-  now() - make_interval(hours => s.i * 7),
-  now() - make_interval(hours => s.i * 3),
+  now() - make_interval(hours => (s.i * 7)::int),
+  now() - make_interval(hours => (s.i * 7)::int),
+  now() - make_interval(hours => (s.i * 3)::int),
   CASE WHEN params.statuses[1 + ((s.i - 1) % array_length(params.statuses, 1))] IN ('CLOSED')
-       THEN now() - make_interval(hours => s.i * 2) ELSE NULL END
+       THEN now() - make_interval(hours => (s.i * 2)::int) ELSE NULL END
 FROM series s
 CROSS JOIN params
 CROSS JOIN worker w
@@ -204,8 +204,8 @@ SELECT
     ELSE 'cancelled'
   END,
   'Q1-2026',
-  CASE WHEN r.rn IN (5) THEN NULL ELSE now() - make_interval(days => r.rn) END,
-  CASE WHEN r.rn IN (1, 3) THEN now() - make_interval(days => r.rn - 1) ELSE NULL END
+  CASE WHEN r.rn IN (5) THEN NULL ELSE now() - make_interval(days => r.rn::int) END,
+  CASE WHEN r.rn IN (1, 3) THEN now() - make_interval(days => (r.rn - 1)::int) ELSE NULL END
 FROM r;
 
 -- Demo NFC tags: office + 2 project tags
