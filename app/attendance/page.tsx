@@ -18,16 +18,10 @@ import {
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { AttendanceHelpSteps } from '../components/attendance/AttendanceHelpSteps'
 import { AttendanceShiftsReport } from '../components/attendance/AttendanceShiftsReport'
-import { AttendanceTodaySummary } from '../components/attendance/AttendanceTodaySummary'
-import { AttendanceSetupChecklist } from '../components/attendance/AttendanceSetupChecklist'
 import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
-import { AttendanceLiveWorkers } from '../components/attendance/AttendanceLiveWorkers'
 import { AttendanceAnomalies, type AttendanceAnomaliesData } from '../components/attendance/AttendanceAnomalies'
-import { AttendanceStickerProgress } from '../components/attendance/AttendanceStickerProgress'
 import { AttendanceHistoryTab } from '../components/attendance/AttendanceHistoryTab'
-import { AttendanceTagsPanel } from '../components/attendance/AttendanceTagsPanel'
 import { EVENT_TYPE_HE } from '@/lib/attendance-display'
 
 type PageTab = 'current' | 'history'
@@ -66,18 +60,17 @@ function projectName(row: AttendanceEventRow): string {
   return p.name ?? '—'
 }
 
+type TodaySummary = {
+  active_now: { worker_id: string; full_name: string; started_at: string }[]
+  clocked_in_today: { worker_id: string; full_name: string }[]
+  missing_checkout: { worker_id: string; full_name: string; started_at: string }[]
+}
+
 type DashboardPayload = {
   events?: AttendanceEventRow[]
   kpis?: typeof defaultKpis
-  tag_count?: number
-  today_summary?: {
-    active_now: { worker_id: string; full_name: string; started_at: string }[]
-    clocked_in_today: { worker_id: string; full_name: string }[]
-    missing_checkout: { worker_id: string; full_name: string; started_at: string }[]
-  }
+  today_summary?: TodaySummary
   anomalies?: AttendanceAnomaliesData
-  live_workers?: unknown[]
-  sticker?: { installed: number; total: number }
   shifts?: unknown[]
 }
 
@@ -87,21 +80,24 @@ const defaultKpis = {
   pending_review: 0,
 }
 
+function formatShortTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return '—'
+  }
+}
+
 export default function AttendancePage() {
   const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
   const [pageTab, setPageTab] = useState<PageTab>('current')
   const [events, setEvents] = useState<AttendanceEventRow[]>([])
-  const [tagCount, setTagCount] = useState(0)
-  const [stickerInstalled, setStickerInstalled] = useState(0)
-  const [stickerTotal, setStickerTotal] = useState(0)
   const [kpis, setKpis] = useState(defaultKpis)
-  const [todaySummary, setTodaySummary] = useState<DashboardPayload['today_summary'] | null>(null)
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null)
   const [anomalies, setAnomalies] = useState<DashboardPayload['anomalies'] | null>(null)
-  const [liveWorkers, setLiveWorkers] = useState<unknown[] | null>(null)
   const [prefetchedShifts, setPrefetchedShifts] = useState<unknown[] | null | undefined>(undefined)
   const [dashboardVersion, setDashboardVersion] = useState(0)
-  const [dashboardLoaded, setDashboardLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncFilter, setSyncFilter] = useState('')
   const [isMobile, setIsMobile] = useState(false)
@@ -110,11 +106,6 @@ export default function AttendancePage() {
   const currentMonthBounds = useMemo(() => {
     const d = new Date()
     return monthBounds(d.getFullYear(), d.getMonth())
-  }, [])
-
-  const onStickerProgress = useCallback((installed: number, total: number) => {
-    setStickerInstalled(installed)
-    setStickerTotal(total)
   }, [])
 
   useEffect(() => {
@@ -146,17 +137,10 @@ export default function AttendancePage() {
 
       setEvents(body.events ?? [])
       if (body.kpis) setKpis(body.kpis)
-      setTagCount(body.tag_count ?? 0)
       setTodaySummary(body.today_summary ?? null)
       setAnomalies(body.anomalies ?? null)
-      setLiveWorkers(body.live_workers ?? [])
       setPrefetchedShifts(body.shifts ?? [])
-      if (body.sticker) {
-        setStickerInstalled(body.sticker.installed)
-        setStickerTotal(body.sticker.total)
-      }
       setDashboardVersion((v) => v + 1)
-      setDashboardLoaded(true)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
     } finally {
@@ -195,74 +179,96 @@ export default function AttendancePage() {
     }
   }
 
+  const missingCheckoutCount = todaySummary?.missing_checkout?.length ?? 0
+  const activeNow = todaySummary?.active_now ?? []
+  const missingCheckout = todaySummary?.missing_checkout ?? []
+
+  const kpiTiles = [
+    {
+      key: 'active',
+      value: kpis.active_workers_now,
+      label: 'בשטח עכשיו',
+      accent: theme.colors.primary,
+    },
+    {
+      key: 'ins',
+      value: kpis.clock_ins_today,
+      label: 'כניסות היום',
+      accent: theme.colors.textPrimary,
+    },
+    {
+      key: 'pending',
+      value: kpis.pending_review,
+      label: 'ממתינים לאישור',
+      accent: kpis.pending_review > 0 ? theme.colors.warning : theme.colors.textPrimary,
+    },
+    {
+      key: 'missing',
+      value: missingCheckoutCount,
+      label: 'חסרה יציאה',
+      accent: missingCheckoutCount > 0 ? theme.colors.error : theme.colors.textPrimary,
+    },
+  ]
+
   const currentTabContent = (
     <>
-      <AttendanceHelpSteps />
-      <AttendanceHelpContact />
+      <div style={{ ...styles.kpiGrid, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)' }}>
+        {kpiTiles.map((tile) => (
+          <Card key={tile.key} style={styles.kpiCard}>
+            <div style={{ ...styles.kpiValue, color: tile.accent }}>{loading ? '—' : tile.value}</div>
+            <div style={styles.kpiLabel}>{tile.label}</div>
+          </Card>
+        ))}
+      </div>
 
-      <AttendanceSetupChecklist
-        tagCount={tagCount}
-        stickerInstalled={stickerInstalled}
-        stickerTotal={stickerTotal}
-      />
-
-      <AttendanceTagsPanel refreshKey={dashboardVersion} />
-
-      <AttendanceStickerProgress
-        installed={dashboardLoaded ? stickerInstalled : undefined}
-        total={dashboardLoaded ? stickerTotal : undefined}
-        onProgress={onStickerProgress}
-      />
-
-      {kpis.pending_review > 0 ? (
-        <Card style={{ marginBottom: 16, borderColor: theme.colors.warning, background: theme.colors.warningMuted }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
-            יש {kpis.pending_review} החתמות שדורשות את תשומת לבך — גללו למטה ולחצו «אשר».
-          </p>
+      {(activeNow.length > 0 || missingCheckout.length > 0) && !loading ? (
+        <Card style={styles.snapshotCard}>
+          <h3 style={styles.sectionTitle}>מי נכנס מתי</h3>
+          {activeNow.length > 0 ? (
+            <div style={styles.snapshotBlock}>
+              <div style={styles.snapshotLabel}>במשמרת עכשיו</div>
+              <ul style={styles.snapshotList}>
+                {activeNow.slice(0, isMobile ? 4 : 8).map((w) => (
+                  <li key={w.worker_id} style={styles.snapshotItem}>
+                    <span style={styles.snapshotName}>{w.full_name}</span>
+                    <span style={styles.snapshotMeta}>מ־{formatShortTime(w.started_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {missingCheckout.length > 0 ? (
+            <div style={styles.snapshotBlock}>
+              <div style={{ ...styles.snapshotLabel, color: theme.colors.error }}>חסרה יציאה</div>
+              <ul style={styles.snapshotList}>
+                {missingCheckout.slice(0, isMobile ? 4 : 8).map((w) => (
+                  <li key={w.worker_id} style={styles.snapshotItem}>
+                    <span style={styles.snapshotName}>{w.full_name}</span>
+                    <span style={styles.snapshotMeta}>נכנס {formatShortTime(w.started_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </Card>
       ) : null}
 
       <AttendanceAnomalies data={anomalies} loading={loading} />
-      <AttendanceTodaySummary data={todaySummary} loading={loading} />
-      <AttendanceLiveWorkers
-        workers={
-          liveWorkers as
-            | { worker_id: string; started_at: string; workers?: { full_name?: string } | { full_name?: string }[] | null }[]
-            | null
-        }
-        loading={loading}
-      />
-
-      <div style={styles.kpiGrid}>
-        <Card style={styles.kpiCard}>
-          <div style={styles.kpiValue}>{kpis.active_workers_now}</div>
-          <div style={styles.kpiLabel}>עובדים במשמרת עכשיו</div>
-        </Card>
-        <Card style={styles.kpiCard}>
-          <div style={styles.kpiValue}>{kpis.clock_ins_today}</div>
-          <div style={styles.kpiLabel}>כניסות היום</div>
-        </Card>
-        <Card style={styles.kpiCard}>
-          <div style={styles.kpiValue}>{kpis.pending_review}</div>
-          <div style={styles.kpiLabel}>ממתינים לאישור</div>
-        </Card>
-      </div>
 
       <AttendanceShiftsReport
         lockToCurrentMonth
         prefetchedShifts={prefetchedShifts as never}
         prefetchVersion={dashboardVersion}
+        isMobile={isMobile}
       />
 
       <Card>
         <h3 style={styles.sectionTitle}>החתמות החודש ({currentMonthBounds.label})</h3>
-        <p style={styles.hint}>
-          מציג רק את החודש הנוכחי. משמרות מחודשים קודמים נשמרות בלשונית «היסטוריה».
-        </p>
-        <div style={styles.filters}>
+        <p style={styles.hint}>מי נכנס ומתי — החודש הנוכחי. חודשים קודמים בלשונית «היסטוריה».</p>
+        <div style={{ ...styles.filters, flexDirection: isMobile ? 'column' : 'row' }}>
           {kpis.pending_review > 0 ? (
             <select
-              style={styles.input}
+              style={{ ...styles.input, width: isMobile ? '100%' : undefined }}
               value={syncFilter}
               onChange={(e) => setSyncFilter(e.target.value)}
             >
@@ -271,7 +277,12 @@ export default function AttendancePage() {
               <option value="synced">תקין</option>
             </select>
           ) : null}
-          <Button variant="secondary" size="sm" onClick={() => void load()}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void load()}
+            style={isMobile ? { width: '100%', minHeight: 48 } : undefined}
+          >
             רענון
           </Button>
         </div>
@@ -280,6 +291,37 @@ export default function AttendancePage() {
           <PageTransitionLoader />
         ) : events.length === 0 ? (
           <p style={styles.hint}>עדיין אין החתמות החודש — אחרי שהעובדים יצמידו את הטלפון למדבקה, יופיעו כאן.</p>
+        ) : isMobile ? (
+          <div style={styles.mobileList}>
+            {events.map((row) => (
+              <div key={row.id} style={styles.eventCard}>
+                <div style={styles.eventCardTop}>
+                  <span style={styles.eventName}>{workerName(row)}</span>
+                  <span style={styles.eventType}>{EVENT_TYPE_HE[row.event_type] ?? row.event_type}</span>
+                </div>
+                <div style={styles.eventMeta}>
+                  {projectName(row)} · {new Date(row.client_recorded_at).toLocaleString('he-IL')}
+                </div>
+                <div style={styles.eventActions}>
+                  {row.sync_status === 'pending_review' || row.sync_status === 'conflict' ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={busyId === row.id}
+                      onClick={() => void approveEvent(row.id)}
+                      style={{ minHeight: 44, width: '100%' }}
+                    >
+                      אשר
+                    </Button>
+                  ) : (
+                    <span style={{ fontSize: 12, color: theme.colors.textMuted }}>
+                      {SYNC_STATUS_HE[row.sync_status] ?? row.sync_status}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={styles.table}>
@@ -302,7 +344,7 @@ export default function AttendancePage() {
                       {new Date(row.client_recorded_at).toLocaleString('he-IL')}
                     </td>
                     <td style={styles.td}>
-                      {(row.sync_status === 'pending_review' || row.sync_status === 'conflict') ? (
+                      {row.sync_status === 'pending_review' || row.sync_status === 'conflict' ? (
                         <Button
                           variant="secondary"
                           size="sm"
@@ -324,6 +366,8 @@ export default function AttendancePage() {
           </div>
         )}
       </Card>
+
+      <AttendanceHelpContact />
     </>
   )
 
@@ -418,13 +462,32 @@ const styles: Record<string, CSSProperties> = {
   },
   kpiGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
     gap: 12,
     marginBottom: 16,
   },
   kpiCard: { padding: 16, textAlign: 'center' },
-  kpiValue: { fontSize: 28, fontWeight: 700, color: theme.colors.textPrimary },
+  kpiValue: { fontSize: 28, fontWeight: 700 },
   kpiLabel: { fontSize: 13, color: theme.colors.textMuted, marginTop: 4 },
+  snapshotCard: { marginBottom: 16, padding: 16 },
+  snapshotBlock: { marginBottom: 12 },
+  snapshotLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: theme.colors.textMuted,
+    marginBottom: 6,
+    letterSpacing: '0.02em',
+  },
+  snapshotList: { listStyle: 'none', margin: 0, padding: 0 },
+  snapshotItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    padding: '8px 0',
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  snapshotName: { fontWeight: 600, fontSize: 14 },
+  snapshotMeta: { fontSize: 13, color: theme.colors.textMuted, flexShrink: 0 },
   sectionTitle: { margin: '0 0 8px', fontSize: 16, fontWeight: 600 },
   hint: { margin: '0 0 12px', fontSize: 13, color: theme.colors.textMuted },
   input: {
@@ -433,8 +496,9 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     fontSize: 14,
     minWidth: 120,
+    minHeight: 44,
   },
-  filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'stretch' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
   th: {
     textAlign: 'right',
@@ -447,4 +511,22 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: `1px solid ${theme.colors.border}`,
     verticalAlign: 'top',
   },
+  mobileList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  eventCard: {
+    padding: 14,
+    borderRadius: 10,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.background,
+  },
+  eventCardTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  eventName: { fontWeight: 700, fontSize: 15 },
+  eventType: { fontSize: 13, fontWeight: 600, color: theme.colors.primary },
+  eventMeta: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 10 },
+  eventActions: { display: 'flex', justifyContent: 'flex-start' },
 }

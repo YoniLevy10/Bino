@@ -55,12 +55,14 @@ type AttendanceShiftsReportProps = {
   /** From /api/attendance/dashboard — skip duplicate fetch when unfiltered. */
   prefetchedShifts?: ShiftRow[] | null
   prefetchVersion?: number
+  isMobile?: boolean
 }
 
 export function AttendanceShiftsReport({
   lockToCurrentMonth = false,
   prefetchedShifts,
   prefetchVersion = 0,
+  isMobile = false,
 }: AttendanceShiftsReportProps) {
   const now = new Date()
   const [dateMode, setDateMode] = useState<'month' | 'range'>('month')
@@ -193,23 +195,6 @@ export function AttendanceShiftsReport({
     }
   }
 
-  function exportGreenInvoiceCsv() {
-    const header = 'employee_name,hours,rate,amount,period_start,period_end\n'
-    const lines = workerSummaries.map((w) => {
-      const hours = (w.minutes / 60).toFixed(2)
-      const rate = w.cost > 0 && w.minutes > 0 ? (w.cost / (w.minutes / 60)).toFixed(2) : '0'
-      return `"${w.name}",${hours},${rate},${w.cost.toFixed(2)},${fromDate || monthKey + '-01'},${toDate || monthKey + '-28'}`
-    })
-    const blob = new Blob([header + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `green-invoice-hours-${monthKey || fromDate}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('קובץ Green Invoice הורד')
-  }
-
   async function exportExcel() {
     setExporting(true)
     try {
@@ -288,16 +273,30 @@ export function AttendanceShiftsReport({
         </div>
       ) : null}
 
-      <div style={styles.toolbar}>
+      <div
+        style={{
+          ...styles.toolbar,
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
+        }}
+      >
         {!lockToCurrentMonth ? (
           <>
-            <select style={styles.select} value={dateMode} onChange={(e) => setDateMode(e.target.value as 'month' | 'range')}>
+            <select
+              style={{ ...styles.select, width: isMobile ? '100%' : undefined }}
+              value={dateMode}
+              onChange={(e) => setDateMode(e.target.value as 'month' | 'range')}
+            >
               <option value="month">לפי חודש</option>
               <option value="range">טווח תאריכים</option>
             </select>
 
             {dateMode === 'month' ? (
-              <select style={styles.select} value={monthKey} onChange={(e) => setMonthKey(e.target.value)}>
+              <select
+                style={{ ...styles.select, width: isMobile ? '100%' : undefined }}
+                value={monthKey}
+                onChange={(e) => setMonthKey(e.target.value)}
+              >
                 {monthOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -305,18 +304,31 @@ export function AttendanceShiftsReport({
                 ))}
               </select>
             ) : (
-              <>
-                <input type="date" style={styles.select} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                <span>—</span>
-                <input type="date" style={styles.select} value={toDate} onChange={(e) => setToDate(e.target.value)} />
-              </>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
+                <input
+                  type="date"
+                  style={{ ...styles.select, flex: 1, minWidth: 0 }}
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+                <input
+                  type="date"
+                  style={{ ...styles.select, flex: 1, minWidth: 0 }}
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
             )}
           </>
         ) : (
           <span style={styles.periodBadge}>{periodLabel}</span>
         )}
 
-        <select style={styles.select} value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
+        <select
+          style={{ ...styles.select, width: isMobile ? '100%' : undefined }}
+          value={workerId}
+          onChange={(e) => setWorkerId(e.target.value)}
+        >
           <option value="">כל העובדים</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>
@@ -325,28 +337,51 @@ export function AttendanceShiftsReport({
           ))}
         </select>
 
-        <Button variant="primary" size="sm" loading={exporting} onClick={() => void exportExcel()}>
-          Excel
-        </Button>
-        <Button variant="secondary" size="sm" onClick={printPdf}>
-          PDF / הדפסה
-        </Button>
-        <Button variant="secondary" size="sm" onClick={exportGreenInvoiceCsv}>
-          Green Invoice CSV
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => void load({ force: true })}>
-          רענון
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            setCreating(true)
-            setEditingId(null)
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
+            width: isMobile ? '100%' : undefined,
           }}
         >
-          הוסף משמרת
-        </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={exporting}
+            onClick={() => void exportExcel()}
+            style={isMobile ? { flex: 1, minHeight: 44 } : undefined}
+          >
+            Excel
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={printPdf}
+            style={isMobile ? { flex: 1, minHeight: 44 } : undefined}
+          >
+            PDF
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void load({ force: true })}
+            style={isMobile ? { flex: 1, minHeight: 44 } : undefined}
+          >
+            רענון
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setCreating(true)
+              setEditingId(null)
+            }}
+            style={isMobile ? { flex: 1, minHeight: 44 } : undefined}
+          >
+            הוסף משמרת
+          </Button>
+        </div>
       </div>
 
       {creating ? (
@@ -367,6 +402,52 @@ export function AttendanceShiftsReport({
         <PageTransitionLoader />
       ) : shifts.length === 0 ? (
         <p style={styles.hint}>אין משמרות בתקופה — עדיין לא נרשמו כניסות/יציאות.</p>
+      ) : isMobile ? (
+        <div style={styles.mobileList}>
+          {shifts.map((row) => (
+            <Fragment key={row.id}>
+              <div style={styles.shiftCard}>
+                <div style={styles.shiftCardTop}>
+                  <span style={styles.shiftName}>{workerName(row)}</span>
+                  <span style={styles.shiftHours}>{formatShiftMinutes(row.total_minutes)}</span>
+                </div>
+                <div style={styles.shiftMeta}>
+                  כניסה: {formatAttendanceDateTime(row.started_at)}
+                </div>
+                <div style={styles.shiftMeta}>
+                  יציאה: {row.ended_at ? formatAttendanceDateTime(row.ended_at) : '—'}
+                  {' · '}
+                  {SHIFT_STATUS_HE[row.status] ?? row.status}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEdit(row)}
+                  style={{ marginTop: 8, minHeight: 44, width: '100%' }}
+                >
+                  עריכה
+                </Button>
+              </div>
+              {editingId === row.id ? (
+                <div style={styles.editCell}>
+                  <AttendanceShiftEditForm
+                    shift={row}
+                    compact
+                    onCancel={() => setEditingId(null)}
+                    onSaved={async () => {
+                      setEditingId(null)
+                      await load({ force: true })
+                    }}
+                    onDeleted={async () => {
+                      setEditingId(null)
+                      await load({ force: true })
+                    }}
+                  />
+                </div>
+              ) : null}
+            </Fragment>
+          ))}
+        </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={styles.table}>
@@ -484,4 +565,21 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     fontSize: 14,
   },
+  mobileList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  shiftCard: {
+    padding: 14,
+    borderRadius: 10,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.background,
+  },
+  shiftCardTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  shiftName: { fontWeight: 700, fontSize: 15 },
+  shiftHours: { fontWeight: 700, color: theme.colors.primary, fontSize: 15 },
+  shiftMeta: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 2 },
 }
