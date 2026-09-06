@@ -12,6 +12,9 @@ export function shouldSyncTicketNotifications(): boolean {
  * Run work after the HTTP response is sent (Next.js `after()`), unless the
  * sync kill-switch is on — then the work is awaited inline.
  *
+ * When `after()` is unavailable (unit tests / non-request context), falls back
+ * to a fire-and-forget promise so callers never throw from scheduling alone.
+ *
  * Never throws to the caller when running in background mode; errors are logged.
  */
 export function runAfterResponse(taskName: string, work: () => Promise<void>): void | Promise<void> {
@@ -28,5 +31,12 @@ export function runAfterResponse(taskName: string, work: () => Promise<void>): v
     return run()
   }
 
-  after(() => run())
+  try {
+    after(() => {
+      void run()
+    })
+  } catch {
+    // Outside Next request scope (vitest, scripts): still execute without blocking the caller.
+    void run()
+  }
 }

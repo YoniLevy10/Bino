@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mockSendImage = vi.fn()
 const mockNotifyClosed = vi.fn()
@@ -76,6 +76,8 @@ function makeAdmin(opts: {
 describe('completeWorkerTicketWithPhoto', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Sync path so unit tests can assert notification side-effects without Next `after()` scope.
+    process.env.SYNC_TICKET_NOTIFICATIONS = '1'
     mockSignedUrl.mockResolvedValue('https://signed.example/photo.jpg')
     mockSendImage.mockResolvedValue({ sent: true, reporterPhone: '972501234567', mode: 'text_image' })
     mockNotifyClosed.mockResolvedValue({
@@ -83,6 +85,10 @@ describe('completeWorkerTicketWithPhoto', () => {
       smsSent: false,
       reporterHasPhone: true,
     })
+  })
+
+  afterEach(() => {
+    delete process.env.SYNC_TICKET_NOTIFICATIONS
   })
 
   it('sends completion image then closes ticket and notifies resident', async () => {
