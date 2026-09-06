@@ -131,6 +131,10 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `CRON_SECRET` | Cron job auth secret |
 | `ADMIN_SETUP_SECRET` | Superadmin routes secret |
 | `BAMAKOR_CLIENT_ID` | Dev fallback client ID |
+| `WHATSAPP_AI_ENABLED` | `true` to enable Anthropic WhatsApp AI (rewrite + unknown-resident intake) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (server only) |
+| `WHATSAPP_AI_INTAKE_ENABLED` | Optional; `false` disables unknown-resident AI intake while keeping rewrite. Default = follow `WHATSAPP_AI_ENABLED` |
+| `WHATSAPP_AI_MODEL` | Optional Claude model override (default Haiku) |
 
 ### Still missing
 

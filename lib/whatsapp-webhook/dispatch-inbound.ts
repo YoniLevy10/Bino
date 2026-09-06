@@ -89,6 +89,8 @@ import {
   findApprovedResidentByPhoneClient,
   reporterDisplayNameForNotification,
 } from '@/lib/residents-whatsapp'
+import { isWhatsAppAiIntakeEnabled } from '@/lib/whatsapp-ai'
+import { runUnknownResidentAiIntake } from '@/lib/whatsapp-webhook/ai-unknown-resident-intake'
 
 const logger = getLogger()
 
@@ -1427,7 +1429,39 @@ export async function runWhatsAppInboundBackground(
         (parseProjectListReplyId(interactiveReplyId) !== null ||
           parseLastProjectButtonReplyId(interactiveReplyId) !== null)
 
-      if (!isKnownResidentEarly && !isProjectListPick) {
+      // AI chatbot intake for unknown residents (replaces language→building FSM)
+      if (!isKnownResidentEarly && isWhatsAppAiIntakeEnabled()) {
+        const aiText =
+          (textBody || '').trim() ||
+          (parsedMessage.interactiveReplyTitle || '').trim() ||
+          (interactiveReplyId || '').trim()
+        if (!aiText) {
+          return
+        }
+        try {
+          const aiResult = await runUnknownResidentAiIntake({
+            supabaseAdmin,
+            clientId: webhookClientId,
+            from,
+            textBody: aiText,
+            waCreds: residentWhatsAppCreds,
+          })
+          if (aiResult.kind === 'handled') {
+            return
+          }
+          session = aiResult.session
+          residentLang = aiResult.language
+          openTicketAfterBuildingSearch = aiResult.description
+        } catch (aiErr) {
+          logger.warn('WEBHOOK', 'AI unknown-resident intake failed; falling back to FSM', {
+            err: aiErr instanceof Error ? aiErr.message : String(aiErr),
+          })
+          // fall through to legacy FSM below
+        }
+      }
+
+      // Legacy FSM — only when still no session (AI disabled, or AI failed)
+      if (!session && !isKnownResidentEarly && !isProjectListPick) {
         const hasLang = await hasExplicitResidentLanguage(
           supabaseAdmin,
           webhookClientId,
@@ -1470,6 +1504,10 @@ export async function runWhatsAppInboundBackground(
         }
       }
 
+      // If AI already created a session for immediate ticket open, skip legacy pending/building steps
+      if (session) {
+        // fall through to ticket creation below
+      } else {
       // STEP 2.5: PENDING SELECTION (list reply or numeric 1/2/3)
       let selectedIndex: number | null = null
       if (interactiveReplyId) {
@@ -1621,6 +1659,7 @@ export async function runWhatsAppInboundBackground(
           return
         }
       }
+      } // end else: legacy pending/building (skipped when AI already set session)
     }
 
     if (!session) return
