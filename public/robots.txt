@@ -1,7 +1,8 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://bamakor-dashboard.vercel.app/sitemap.xml
+# Sitemap URL comes from NEXT_PUBLIC_APP_URL at deploy time; keep relative to avoid hardcoding a brand host.
+Sitemap: /sitemap.xml
 
 # Disallow bot access to API routes
 Disallow: /api/

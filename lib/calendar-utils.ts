@@ -86,7 +86,7 @@ export function buildIcalCalendar(events: {
     `X-WR-CALNAME:${calendarName}`,
   ]
   for (const ev of events) {
-    const uid = `${ev.id}@bamakor.app`
+    const uid = `${ev.id}@bino.app`
     const dt = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     lines.push('BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${dt(new Date().toISOString())}`)
     lines.push(`DTSTART:${dt(ev.starts_at)}`, `DTEND:${dt(ev.ends_at)}`, `SUMMARY:${escapeIcal(ev.title)}`)
