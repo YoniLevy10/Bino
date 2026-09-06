@@ -73,6 +73,7 @@ import { resolveWhatsAppTemplateMessage, resolveSmsTemplateMessage } from '@/lib
 import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 import { notifyAlertWorkersOnNewTicket } from '@/lib/notify-field-workers-new-ticket'
+import { notifyNewTicketPush } from '@/lib/push-notifications'
 import {
   downloadWhatsAppMedia,
   uploadWhatsAppMediaToStorage,
@@ -1923,6 +1924,17 @@ export async function runWhatsAppInboundBackground(
             })
           }
         }
+
+        void notifyNewTicketPush(
+          supabaseAdmin,
+          webhookClientId,
+          ticketDescription || 'ללא פירוט',
+          { ticketNumber: createdTicket.ticket_number }
+        ).catch((pushErr) =>
+          logger.warn('WEBHOOK', 'new-ticket push failed', {
+            err: pushErr instanceof Error ? pushErr.message : String(pushErr),
+          })
+        )
       }
     } catch (notifyManagerError) {
       logger.warn('WEBHOOK', 'manager notification error', { err: notifyManagerError instanceof Error ? notifyManagerError.message : String(notifyManagerError) })

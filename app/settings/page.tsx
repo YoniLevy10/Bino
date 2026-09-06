@@ -26,6 +26,7 @@ import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { CollapsibleSection } from '../components/shared/CollapsibleSection'
+import { subscribeManagerPush } from '@/lib/manager-push-client'
 
 type ClientRow = {
   id: string
@@ -393,47 +394,15 @@ function SettingsPageInner() {
     setSavingGrow(false)
   }
 
-  function urlBase64ToUint8Array(base64String: string) {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-    const raw = atob(base64)
-    const outputArray = new Uint8Array(raw.length)
-    for (let i = 0; i < raw.length; ++i) outputArray[i] = raw.charCodeAt(i)
-    return outputArray
-  }
-
   async function enablePushNotifications() {
-    const vapid = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim()
-    if (!vapid) {
-      toast.error('חסר NEXT_PUBLIC_VAPID_PUBLIC_KEY בשרת')
-      return
-    }
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      toast.error('הדפדפן לא תומך בהתראות דחיפה')
-      return
-    }
     setPushEnabling(true)
     try {
-      const perm = await Notification.requestPermission()
-      if (perm !== 'granted') {
-        toast.error('ההרשאה נדחתה')
+      const result = await subscribeManagerPush()
+      if (!result.ok) {
+        toast.error(result.error || 'הפעלה נכשלה')
         return
       }
-      const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid),
-      })
-      const res = await fetchWithTimeout('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription: sub.toJSON() }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
-      toast.success('התראות הופעלו')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'הפעלה נכשלה')
+      toast.success('התראות על טיקטים חדשים הופעלו')
     } finally {
       setPushEnabling(false)
     }
@@ -732,26 +701,27 @@ function SettingsPageInner() {
                       </p>
                     )}
                   </div>
+                  <div>
+                    <label style={styles.formLabel}>התראות דחיפה (PWA)</label>
+                    <p style={styles.formHint}>
+                      קבלו התראה בטלפון כשנפתחת תקלה חדשה — גם כשהאפליקציה סגורה. באייפון יש להתקין למסך הבית
+                      קודם.
+                    </p>
+                    <LoadingButton
+                      variant="secondary"
+                      type="button"
+                      onClick={enablePushNotifications}
+                      loading={pushEnabling}
+                      loadingText="מפעיל..."
+                    >
+                      הפעל התראות
+                    </LoadingButton>
+                  </div>
                   <CollapsibleSection
                     title="כלים לבדיקה"
                     open={notifToolsOpen}
                     onToggle={() => setNotifToolsOpen((v) => !v)}
                   >
-                    <div>
-                      <label style={styles.formLabel}>התראות דחיפה (PWA)</label>
-                      <p style={styles.formHint}>
-                        קבלת התראה כשנפתחת תקלה חדשה. נדרשים מפתחות VAPID בשרת.
-                      </p>
-                      <LoadingButton
-                        variant="secondary"
-                        type="button"
-                        onClick={enablePushNotifications}
-                        loading={pushEnabling}
-                        loadingText="מפעיל..."
-                      >
-                        הפעל התראות
-                      </LoadingButton>
-                    </div>
                     <div>
                       <label style={styles.formLabel}>שליחת מייל (Resend)</label>
                       <p style={styles.formHint}>דורש RESEND_API_KEY בשרת.</p>
