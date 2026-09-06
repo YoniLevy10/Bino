@@ -20,7 +20,7 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const OPSBRAIN_CLIENT_ID =
   process.env.OPSBRAIN_CLIENT_ID?.trim() || '07773bb3-4969-4bce-8ce2-faab3b26383c'
@@ -43,7 +43,7 @@ function loadEnvLocal() {
 }
 
 async function findUserIdByEmail(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   email: string
 ): Promise<string | null> {
   // listUsers is paginated; demo mailbox should appear early, but scan a few pages.
