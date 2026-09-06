@@ -278,7 +278,9 @@ export async function POST(req: Request) {
         projectName: (project as { name?: string }).name ?? null,
       })
 
-      void notifyNewTicketPush(supabaseAdmin, project.client_id as string, description).catch(() => {})
+      void notifyNewTicketPush(supabaseAdmin, project.client_id as string, description, {
+        ticketNumber: createdTicket.ticket_number as number,
+      }).catch(() => {})
 
       return NextResponse.json({
         success: true,
@@ -529,7 +531,9 @@ export async function POST(req: Request) {
       projectName: (project as { name?: string }).name ?? null,
     })
 
-    void notifyNewTicketPush(supabaseAdmin, project.client_id as string, initialDescription).catch(() => {})
+    void notifyNewTicketPush(supabaseAdmin, project.client_id as string, initialDescription, {
+      ticketNumber: createdTicket.ticket_number as number,
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,

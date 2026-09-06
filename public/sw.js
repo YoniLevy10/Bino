@@ -1,5 +1,5 @@
-/* Bamakor PWA — v5: worker attendance offline shell (/worker, /worker/nfc) */
-const CACHE_VERSION = 'bamakor-v6'
+/* Bamakor PWA — v7: fix notification click routing for dashboard + worker */
+const CACHE_VERSION = 'bamakor-v7'
 const STATIC_CACHE = `bamakor-static-${CACHE_VERSION}`
 const HTML_CACHE = `bamakor-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
@@ -103,11 +103,11 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let title = 'במקור — אזור עובד'
+  let title = 'במקור'
   let body = ''
-  let url = '/worker'
+  let url = '/tickets'
   let badge = 1
-  let tag = 'worker-assign'
+  let tag = 'bamakor-push'
   try {
     const text = event.data?.text()
     if (text) {
@@ -149,9 +149,22 @@ self.addEventListener('push', (event) => {
   )
 })
 
+function pathMatchesClient(clientUrl, targetPath) {
+  try {
+    const path = new URL(clientUrl).pathname
+    if (targetPath.startsWith('/worker')) {
+      return path === '/worker' || path.startsWith('/worker/')
+    }
+    // Dashboard targets: prefer non-worker windows
+    return !path.startsWith('/worker')
+  } catch {
+    return false
+  }
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = event.notification?.data?.url || '/worker'
+  const target = event.notification?.data?.url || '/tickets'
   event.waitUntil(
     (async () => {
       try {
@@ -163,9 +176,13 @@ self.addEventListener('notificationclick', (event) => {
       }
       const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       for (const c of clientList) {
-        if (c.url && c.url.includes('/worker') && 'focus' in c) {
+        if (c.url && pathMatchesClient(c.url, target) && 'focus' in c) {
           await c.focus()
-          c.postMessage({ type: 'WORKER_PUSH_OPEN' })
+          if (target.startsWith('/worker')) {
+            c.postMessage({ type: 'WORKER_PUSH_OPEN' })
+          } else {
+            c.postMessage({ type: 'MANAGER_PUSH_OPEN', url: target })
+          }
           return
         }
       }
