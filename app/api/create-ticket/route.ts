@@ -9,8 +9,12 @@ import { notifyNewTicketPush } from '@/lib/push-notifications'
 import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
+import { runAfterResponse } from '@/lib/run-after-response'
 import { checkTicketsMonthlyQuota } from '@/lib/plan-quota-check'
 import { uploadTicketAttachments } from '@/lib/ticket-attachment-upload'
+
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
 
 function parseStartCode(message: string) {
   const match = message.trim().toUpperCase().match(/^START_(BMK\d+)(?:_(.+))?$/i)
@@ -268,14 +272,16 @@ export async function POST(req: Request) {
       const smsSenderWeb =
         (clientRowWeb as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
 
-      await autoAssignTicketFromProject(supabaseAdmin, {
-        ticketId: createdTicket.id,
-        clientId: project.client_id as string,
-        projectId: project.id as string,
-        ticketNumber: createdTicket.ticket_number as number,
-        description,
-        smsSenderName: smsSenderWeb,
-        projectName: (project as { name?: string }).name ?? null,
+      runAfterResponse('create-ticket-web-auto-assign', async () => {
+        await autoAssignTicketFromProject(supabaseAdmin, {
+          ticketId: createdTicket.id,
+          clientId: project.client_id as string,
+          projectId: project.id as string,
+          ticketNumber: createdTicket.ticket_number as number,
+          description,
+          smsSenderName: smsSenderWeb,
+          projectName: (project as { name?: string }).name ?? null,
+        })
       })
 
       void notifyNewTicketPush(supabaseAdmin, project.client_id as string, description, {
@@ -521,14 +527,16 @@ export async function POST(req: Request) {
     const smsSenderWa =
       (clientRowWa as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
 
-    await autoAssignTicketFromProject(supabaseAdmin, {
-      ticketId: createdTicket.id,
-      clientId: project.client_id as string,
-      projectId: project.id as string,
-      ticketNumber: createdTicket.ticket_number as number,
-      description: initialDescription,
-      smsSenderName: smsSenderWa,
-      projectName: (project as { name?: string }).name ?? null,
+    runAfterResponse('create-ticket-wa-auto-assign', async () => {
+      await autoAssignTicketFromProject(supabaseAdmin, {
+        ticketId: createdTicket.id,
+        clientId: project.client_id as string,
+        projectId: project.id as string,
+        ticketNumber: createdTicket.ticket_number as number,
+        description: initialDescription,
+        smsSenderName: smsSenderWa,
+        projectName: (project as { name?: string }).name ?? null,
+      })
     })
 
     void notifyNewTicketPush(supabaseAdmin, project.client_id as string, initialDescription, {

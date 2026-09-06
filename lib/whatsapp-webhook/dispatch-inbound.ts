@@ -92,6 +92,7 @@ import {
 } from '@/lib/residents-whatsapp'
 import { isWhatsAppAiIntakeEnabled } from '@/lib/whatsapp-ai'
 import { runUnknownResidentAiIntake } from '@/lib/whatsapp-webhook/ai-unknown-resident-intake'
+import { translateToHebrew } from '@/lib/google-translate'
 
 const logger = getLogger()
 
@@ -952,16 +953,10 @@ export async function runWhatsAppInboundBackground(
 
       if (searchResults.length === 0) {
         try {
-          const trUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=${encodeURIComponent(searchText)}`
-          const trRes = await fetchTimeout(trUrl, {}, 5000)
-          if (trRes) {
-            const trJson = await trRes.json() as unknown[][]
-            const segments = trJson[0] as unknown[][]
-            const hebrew = segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
-            if (hebrew && hebrew !== searchText) {
-              const translatedResults = await searchProjectsByBuilding(hebrew, supabaseAdmin, webhookClientId)
-              if (translatedResults.length > 0) searchResults = translatedResults
-            }
+          const hebrew = await translateToHebrew(searchText, 5000)
+          if (hebrew && hebrew !== searchText) {
+            const translatedResults = await searchProjectsByBuilding(hebrew, supabaseAdmin, webhookClientId)
+            if (translatedResults.length > 0) searchResults = translatedResults
           }
         } catch { /* translation failure is non-fatal */ }
       }

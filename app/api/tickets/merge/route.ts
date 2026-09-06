@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: validated.error.flatten() }, { status: 400 })
     }
 
+    // Same core as /api/merge-ticket — only the request field names differ.
     const result = await mergeTicketsForClient({
       supabaseAdmin,
       clientId: bamakorClientId,

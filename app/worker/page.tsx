@@ -523,7 +523,8 @@ function WorkerPageInner() {
         completion_image_sent?: boolean
         completion_image_error?: string
         reporter_has_phone?: boolean
-        whatsapp_sent?: boolean
+        whatsapp_sent?: boolean | null
+        notifications_queued?: boolean
       }
       if (!res.ok) throw new Error(json.error || 'סגירה נכשלה')
 
@@ -547,6 +548,7 @@ function WorkerPageInner() {
         success: true,
         reporter_has_phone: json.reporter_has_phone,
         whatsapp_sent: json.whatsapp_sent,
+        notifications_queued: json.notifications_queued,
       })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'סגירה נכשלה')
@@ -676,7 +678,8 @@ function WorkerPageInner() {
           error?: string
           details?: unknown
           reporter_has_phone?: boolean
-          whatsapp_sent?: boolean
+          whatsapp_sent?: boolean | null
+        notifications_queued?: boolean
         }
         if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
         if (status === 'CLOSED') {
@@ -686,6 +689,7 @@ function WorkerPageInner() {
             success: true,
             reporter_has_phone: json.reporter_has_phone,
             whatsapp_sent: json.whatsapp_sent,
+            notifications_queued: json.notifications_queued,
           })
         } else {
           toast.success(TM.ticketUpdated)
@@ -709,7 +713,8 @@ function WorkerPageInner() {
         error?: string
         closed_now?: boolean
         reporter_has_phone?: boolean
-        whatsapp_sent?: boolean
+        whatsapp_sent?: boolean | null
+        notifications_queued?: boolean
       }
       if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
       if (status === 'CLOSED') {
@@ -720,6 +725,7 @@ function WorkerPageInner() {
             success: true,
             reporter_has_phone: json.reporter_has_phone,
             whatsapp_sent: json.whatsapp_sent,
+            notifications_queued: json.notifications_queued,
           })
         }
       } else {

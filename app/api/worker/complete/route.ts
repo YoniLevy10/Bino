@@ -5,6 +5,9 @@ import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-tok
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { completeWorkerTicketWithPhoto } from '@/lib/worker-ticket-complete'
 
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
+
 function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
 }

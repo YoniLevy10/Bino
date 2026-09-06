@@ -5,6 +5,7 @@ import {
   SMS_019_SENDER,
 } from '@/lib/sms-019-core'
 import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
+import { sanitizeSmsCampaignBody } from '@/lib/sms-campaign-message'
 
 const RETRIES = 3
 const BETWEEN_MS = 2000
@@ -118,6 +119,13 @@ export async function send019StaffSms(
   }
   if (!message) {
     console.error('❌ SMS_SEND_FAILURE: message is empty')
+    return false
+  }
+
+  // 019SMS rejects emoji with HTTP 200 + non-zero XML status — strip for all staff SMS.
+  message = sanitizeSmsCampaignBody(message)
+  if (!message) {
+    console.error('❌ SMS_SEND_FAILURE: message empty after emoji sanitize')
     return false
   }
 

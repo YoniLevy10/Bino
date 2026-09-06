@@ -9,6 +9,9 @@ import { logAudit } from '@/lib/audit'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 
+/** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
+export const maxDuration = 60
+
 export async function POST(req: Request) {
   const logger = getLogger()
   const requestId = `forward-ticket-pro-${Date.now()}`

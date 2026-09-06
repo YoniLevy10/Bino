@@ -618,7 +618,7 @@ export default function DashboardPage() {
     await asyncHandler(
       async () => {
         const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
-        const { didAssign, closedNow, reporter_has_phone, whatsapp_sent } = await saveDashboardTicket({
+        const { didAssign, closedNow, reporter_has_phone, whatsapp_sent, notifications_queued } = await saveDashboardTicket({
           ticketId: selectedTicket.id,
           description: draftDescription,
           status: draftStatus,

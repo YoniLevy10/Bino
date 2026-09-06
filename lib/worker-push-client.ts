@@ -1,18 +1,10 @@
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { PUSH_FETCH_TIMEOUT_MS, urlBase64ToUint8Array } from '@/lib/push-client-core'
 import { ensureServiceWorkerReady, isStandaloneWorkerPwa } from '@/lib/service-worker-register'
 
-const PUSH_FETCH_TIMEOUT_MS = 30_000
 
 let subscribeInflight: Promise<{ ok: boolean; error?: string }> | null = null
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64)
-  const outputArray = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; ++i) outputArray[i] = raw.charCodeAt(i)
-  return outputArray
-}
 
 export function isWorkerPushSupported(): boolean {
   if (typeof window === 'undefined') return false
@@ -162,7 +154,7 @@ async function subscribeWorkerPushInner(token: string): Promise<{ ok: boolean; e
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid),
+        applicationServerKey: urlBase64ToUint8Array(vapid) as BufferSource,
       })
     }
 

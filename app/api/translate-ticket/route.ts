@@ -4,20 +4,7 @@ import { translateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
-
-async function googleTranslate(text: string): Promise<string> {
-  const url =
-    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=he&dt=t&q=` +
-    encodeURIComponent(text)
-  const res = await fetchWithTimeout(url, {}, 8000)
-  if (!res) throw new Error('Google Translate timeout')
-  if (!res.ok) throw new Error(`Google Translate HTTP ${res.status}`)
-  // Response: [ [ ["translated","original",...], ... ], null, "detected_lang" ]
-  const data = (await res.json()) as unknown[][]
-  const segments = data[0] as unknown[][]
-  return segments.map((s) => String((s as unknown[])[0] ?? '')).join('').trim()
-}
+import { translateToHebrew } from '@/lib/google-translate'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -51,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'טקסט ריק', requestId }, { status: 400 })
     }
 
-    const translation = await googleTranslate(text)
+    const translation = await translateToHebrew(text)
 
     if (!translation) {
       return NextResponse.json({ error: 'לא התקבל תרגום', requestId }, { status: 502 })

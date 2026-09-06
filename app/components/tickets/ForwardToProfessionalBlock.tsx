@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
 import { usePaidAddons } from '../PaidAddonsContext'
@@ -56,7 +56,7 @@ export function ForwardToProfessionalBlock({ ticketId, professionals, onForwarde
           note: note.trim() || null,
           set_status_escort: setEscort,
         }),
-      })
+      }, MUTATION_FETCH_TIMEOUT_MS)
       const json = (await res.json().catch(() => ({}))) as {
         error?: string
         sms_sent?: boolean
