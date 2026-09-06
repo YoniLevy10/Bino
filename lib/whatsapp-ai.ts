@@ -1,16 +1,20 @@
 /**
- * AI-powered WhatsApp helpers (Anthropic).
+ * AI-powered WhatsApp helpers via Vercel AI Gateway.
  *
  * Enable:
  *   WHATSAPP_AI_ENABLED=true
- *   ANTHROPIC_API_KEY=…
+ *   AI_GATEWAY_API_KEY=…  (or VERCEL_OIDC_TOKEN on Vercel)
  *
  * Intake also respects WHATSAPP_AI_INTAKE_ENABLED
  * (default on when AI enabled; set "false" to keep rewrite-only).
  */
-import Anthropic from '@anthropic-ai/sdk'
+import { generateText } from 'ai'
 import { interpolateWhatsAppTemplate } from '@/lib/whatsapp-templates'
 import type { ResidentLang } from '@/lib/whatsapp-bilingual-template'
+import {
+  hasAiGatewayAuth,
+  resolveWhatsAppAiModel,
+} from '@/lib/whatsapp-ai-gateway'
 
 const REWRITE_SYSTEM = `אתה עוזר WhatsApp של מערכת ניהול בניינים בישראל.
 תפקידך לשלוח הודעות קצרות, ידידותיות ומקצועיות לדיירים בעברית.
@@ -35,10 +39,7 @@ const INTAKE_SYSTEM = `אתה נציג שירות WhatsApp של במקור (Bama
 8. החזר JSON בלבד לפי הסכמה — בלי markdown ובלי הסברים.`
 
 export function isWhatsAppAiEnabled(): boolean {
-  return (
-    process.env.WHATSAPP_AI_ENABLED === 'true' &&
-    Boolean(process.env.ANTHROPIC_API_KEY?.trim())
-  )
+  return process.env.WHATSAPP_AI_ENABLED === 'true' && hasAiGatewayAuth()
 }
 
 export function isWhatsAppAiIntakeEnabled(): boolean {
@@ -54,27 +55,21 @@ export async function generateAIWhatsAppResponse(
 ): Promise<string> {
   const fallback = interpolateWhatsAppTemplate(templateText, vars)
   if (!isWhatsAppAiEnabled()) return fallback
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return fallback
+
+  const resolved = resolveWhatsAppAiModel('rewrite')
+  if (!resolved) return fallback
 
   try {
-    const client = new Anthropic({ apiKey })
-    const message = await client.messages.create({
-      model: process.env.WHATSAPP_AI_MODEL?.trim() || 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
+    const { text } = await generateText({
+      model: resolved.model,
       system: REWRITE_SYSTEM,
-      messages: [
-        {
-          role: 'user',
-          content:
-            `צור הודעת WhatsApp טבעית ויפה למצב הזה.\n` +
-            (context?.situation ? `מצב: ${context.situation}\n` : '') +
-            `תבנית בסיסית:\n${fallback}\n\nהחזר רק את טקסט ההודעה, ללא הסברים.`,
-        },
-      ],
+      prompt:
+        `צור הודעת WhatsApp טבעית ויפה למצב הזה.\n` +
+        (context?.situation ? `מצב: ${context.situation}\n` : '') +
+        `תבנית בסיסית:\n${fallback}\n\nהחזר רק את טקסט ההודעה, ללא הסברים.`,
+      maxOutputTokens: 300,
     })
-    const block = message.content[0]
-    if (block?.type === 'text' && block.text.trim()) return block.text.trim()
+    if (text?.trim()) return text.trim()
   } catch (e) {
     console.warn('[whatsapp-ai] rewrite failed:', e instanceof Error ? e.message : String(e))
   }
@@ -244,23 +239,20 @@ export async function decideUnknownResidentAiTurn(
   input: AiIntakePromptInput
 ): Promise<AiIntakeDecision | null> {
   if (!isWhatsAppAiIntakeEnabled()) return null
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return null
+
+  const resolved = resolveWhatsAppAiModel('intake')
+  if (!resolved) return null
 
   try {
-    const client = new Anthropic({ apiKey })
-    const message = await client.messages.create({
-      model:
-        process.env.WHATSAPP_AI_INTAKE_MODEL?.trim() ||
-        process.env.WHATSAPP_AI_MODEL?.trim() ||
-        'claude-haiku-4-5-20251001',
-      max_tokens: 600,
+    const { text } = await generateText({
+      model: resolved.model,
       system: INTAKE_SYSTEM,
-      messages: [{ role: 'user', content: buildIntakeUserPrompt(input) }],
+      prompt: buildIntakeUserPrompt(input),
+      maxOutputTokens: 600,
+      temperature: 0.2,
     })
-    const block = message.content[0]
-    if (block?.type !== 'text' || !block.text.trim()) return null
-    return parseAiIntakeDecision(block.text)
+    if (!text?.trim()) return null
+    return parseAiIntakeDecision(text)
   } catch (e) {
     console.warn(
       '[whatsapp-ai] intake decision failed:',

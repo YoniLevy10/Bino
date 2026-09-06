@@ -124,7 +124,8 @@ describe('emptyAiIntakeDecision', () => {
 describe('runUnknownResidentAiIntake', () => {
   it('searches building and asks for issue when one match', async () => {
     process.env.WHATSAPP_AI_ENABLED = 'true'
-    process.env.ANTHROPIC_API_KEY = 'test-key'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+    delete process.env.ANTHROPIC_API_KEY
     delete process.env.WHATSAPP_AI_INTAKE_ENABLED
 
     const sent: string[] = []
@@ -167,7 +168,8 @@ describe('runUnknownResidentAiIntake', () => {
 
   it('opens ticket when AI returns description + select', async () => {
     process.env.WHATSAPP_AI_ENABLED = 'true'
-    process.env.ANTHROPIC_API_KEY = 'test-key'
+    process.env.AI_GATEWAY_API_KEY = 'gw-test'
+    delete process.env.ANTHROPIC_API_KEY
 
     const project = {
       id: 'p1',

@@ -1,6 +1,6 @@
 /**
  * AI intake for unknown (unregistered) WhatsApp residents.
- * Replaces language→building FSM when WHATSAPP_AI_ENABLED=true.
+ * Replaces language→building FSM when WHATSAPP_AI_ENABLED=true + AI Gateway auth.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
