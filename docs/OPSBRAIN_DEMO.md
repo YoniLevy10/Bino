@@ -21,13 +21,19 @@ Default demo mailbox (override with env):
 | Email | `savion@bamakor.com` |
 | Password | `savion2026!` |
 
-Create / refresh the auth user and link it to OpsBrain:
+Create / refresh the auth user and link it to OpsBrain (pick one):
 
 ```bash
+# Needs SUPABASE_SERVICE_ROLE_KEY in .env.local
 npx tsx scripts/ensure-opsbrain-demo-user.ts
 ```
 
-Optional env:
+```sql
+-- Or run in Supabase SQL editor (no service-role key needed):
+-- scripts/ensure-opsbrain-demo-user.sql
+```
+
+Optional env for the TS script:
 
 ```bash
 DEMO_LOGIN_EMAIL=savion@bamakor.com
@@ -35,11 +41,9 @@ DEMO_LOGIN_PASSWORD='savion2026!'
 OPSBRAIN_CLIENT_ID=07773bb3-4969-4bce-8ce2-faab3b26383c
 ```
 
-Requires `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
-
 **Supabase Dashboard:** Authentication → Providers → Email must be enabled
-(password sign-in). Confirm email can stay off for this demo user (script sets
-`email_confirm: true`).
+(password sign-in). The SQL/TS helpers set `email_confirmed_at` so the demo
+mailbox can sign in even when “Confirm email” is on.
 
 ## Re-skin for a new prospect
 
