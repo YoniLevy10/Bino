@@ -23,12 +23,12 @@
     "import:residents-sql": "npx tsx scripts/generate-residents-import-sql.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.95.0",
     "@sentry/nextjs": "^10.51.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.101.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "ai": "^7.0.93",
     "next": "16.2.1",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
