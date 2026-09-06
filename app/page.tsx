@@ -58,8 +58,21 @@ import { removeTicketFromListState } from '@/lib/open-tickets'
 import { TicketMobileCard } from './components/tickets/TicketMobileCard'
 import { CloseTicketConfirmSheet } from './components/tickets/CloseTicketConfirmSheet'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
+import {
+  readTenantDashboardCache,
+  writeTenantDashboardCache,
+} from '@/lib/dashboard-tenant-cache'
 import { isTicketInTreatment } from '@/lib/ticket-status'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
+
+/** Resolve authenticated uid + tenant clientId before any cache paint. */
+async function resolveDashboardTenantScope(): Promise<{ uid: string; clientId: string }> {
+  const clientId = await resolveBamakorClientIdForBrowser()
+  const { data: sessionData } = await supabase.auth.getSession()
+  const uid = sessionData.session?.user?.id
+  if (!uid) throw new Error('נדרשת התחברות')
+  return { uid, clientId }
+}
 
 type TicketRow = {
   id: string
@@ -115,11 +128,9 @@ type TicketWithProjects = TicketRow & {
   projects?: Array<{ project_code: string; name: string }> | { project_code: string; name: string }
 }
 
-const DASHBOARD_CACHE_KEY = 'bamakor_dashboard_v2'
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
 const REFRESH_DEBOUNCE_MS = 30_000
 
-type DashboardCache = {
+type DashboardCachePayload = {
   tickets: TicketRow[]
   projects: ProjectRow[]
   workersMap: Record<string, string>
@@ -127,23 +138,6 @@ type DashboardCache = {
   residentsCount: number | null
   workersCount: number | null
   recentActivity: unknown[]
-  savedAt: number
-}
-
-function readDashboardCache(): DashboardCache | null {
-  try {
-    const raw = localStorage.getItem(DASHBOARD_CACHE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as DashboardCache
-    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
-    return parsed
-  } catch { return null }
-}
-
-function writeDashboardCache(data: Omit<DashboardCache, 'savedAt'>) {
-  try {
-    localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ ...data, savedAt: Date.now() }))
-  } catch { /* storage full or unavailable */ }
 }
 
 export default function DashboardPage() {
@@ -239,7 +233,7 @@ export default function DashboardPage() {
       closedCount: number
     }) => {
       try {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const { uid, clientId } = await resolveDashboardTenantScope()
         const [logsResult, resCountResult, wCountResult] = await Promise.all([
         supabase
           .from('ticket_logs')
@@ -286,7 +280,7 @@ export default function DashboardPage() {
         setWorkersCount(wCount)
         setRecentActivity(activity)
         cacheAuxRef.current = { residentsCount: resCount, workersCount: wCount, recentActivity: activity }
-        writeDashboardCache({
+        writeTenantDashboardCache(uid, clientId, {
           tickets: ctx.tickets,
           projects: ctx.projects,
           workersMap: ctx.workersMap,
@@ -309,7 +303,7 @@ export default function DashboardPage() {
     }
     const result = await asyncHandler(
       async () => {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const { uid, clientId } = await resolveDashboardTenantScope()
         const [ticketsResult, closedCountResult, projectsResult, workersResult] = await Promise.all([
           withClientId(
             supabase.from('tickets').select(`
@@ -375,7 +369,7 @@ export default function DashboardPage() {
         lastFetchAtRef.current = Date.now()
         hasPaintedDataRef.current = true
 
-        writeDashboardCache({
+        writeTenantDashboardCache(uid, clientId, {
           tickets: formatted,
           projects: nextProjects,
           workersMap: map,
@@ -422,25 +416,42 @@ export default function DashboardPage() {
   )
 
   useEffect(() => {
-    const cached = shouldSkipStalePageCache() ? null : readDashboardCache()
-    if (cached) {
-      setTickets(cached.tickets)
-      setProjects(cached.projects)
-      setWorkersMap(cached.workersMap)
-      setClosedCount(cached.closedCount ?? 0)
-      setResidentsCount(cached.residentsCount)
-      setWorkersCount(cached.workersCount)
-      setRecentActivity(cached.recentActivity as ActivityItem[])
-      cacheAuxRef.current = {
-        residentsCount: cached.residentsCount,
-        workersCount: cached.workersCount,
-        recentActivity: cached.recentActivity as ActivityItem[],
+    let cancelled = false
+    async function bootFromTenantCache() {
+      try {
+        // Never paint until the current session tenant is known — prevents cross-tenant flash.
+        const { uid, clientId } = await resolveDashboardTenantScope()
+        if (cancelled) return
+        const cached = shouldSkipStalePageCache()
+          ? null
+          : readTenantDashboardCache<DashboardCachePayload>(uid, clientId)
+        if (cancelled) return
+        if (cached) {
+          setTickets(cached.tickets)
+          setProjects(cached.projects)
+          setWorkersMap(cached.workersMap)
+          setClosedCount(cached.closedCount ?? 0)
+          setResidentsCount(cached.residentsCount)
+          setWorkersCount(cached.workersCount)
+          setRecentActivity(cached.recentActivity as ActivityItem[])
+          cacheAuxRef.current = {
+            residentsCount: cached.residentsCount,
+            workersCount: cached.workersCount,
+            recentActivity: cached.recentActivity as ActivityItem[],
+          }
+          hasPaintedDataRef.current = true
+          setLoading(false)
+          void loadData(true)
+          return
+        }
+      } catch {
+        /* fall through to network load */
       }
-      hasPaintedDataRef.current = true
-      setLoading(false)
-      void loadData(true)
-    } else {
-      void loadData()
+      if (!cancelled) void loadData()
+    }
+    void bootFromTenantCache()
+    return () => {
+      cancelled = true
     }
   }, [loadData])
 

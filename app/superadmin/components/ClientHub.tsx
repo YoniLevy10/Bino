@@ -2,6 +2,7 @@
 
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
+import { clearAllTenantUiCaches } from '@/lib/tenant-browser-cache'
 import { formatEffectiveLimit, effectiveLimitsForClient } from '../helpers'
 import type { ClientRow, ClientTask, PlanCatalogRow } from '../types'
 import { PLAN_COLORS, PLAN_LABELS } from '../types'
@@ -89,6 +90,10 @@ export function ClientHub({
                 target="_blank"
                 rel="noreferrer"
                 className="sa-quick-btn sa-quick-btn--primary"
+                onClick={() => {
+                  // Wipe shared origin storage before opening tenant B in a new tab.
+                  clearAllTenantUiCaches()
+                }}
               >
                 פתח
               </a>
