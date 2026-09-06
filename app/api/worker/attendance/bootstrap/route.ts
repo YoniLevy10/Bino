@@ -11,7 +11,7 @@ function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
 }
 
-/** Online setup: profile, NFC tags, projects, open shift for IndexedDB cache. */
+/** Online setup: profile, NFC tags, open shift for IndexedDB cache. */
 export async function GET(req: NextRequest) {
   try {
     const admin = getSupabaseAdmin()
@@ -31,19 +31,13 @@ export async function GET(req: NextRequest) {
 
     await autoCloseStaleOpenShiftsForWorker(admin, worker.client_id, worker.id)
 
-    const [tagsRes, projectsRes, shiftRes] = await Promise.all([
+    const [tagsRes, shiftRes] = await Promise.all([
       admin
         .from('worker_nfc_tags')
         .select('id, client_id, project_id, tag_code, tag_type, label, is_active')
         .eq('client_id', worker.client_id)
         .eq('is_active', true)
         .order('tag_code'),
-      admin
-        .from('projects')
-        .select('id, name, project_code')
-        .eq('client_id', worker.client_id)
-        .eq('is_active', true)
-        .order('name'),
       admin
         .from('worker_attendance')
         .select('id, started_at, status')
@@ -63,7 +57,6 @@ export async function GET(req: NextRequest) {
       client_id: worker.client_id,
       full_name: worker.full_name,
       tags: tagsRes.data ?? [],
-      projects: projectsRes.data ?? [],
       attendance_state: {
         has_open_shift: !!openShift,
         open_shift_id: openShift?.id ?? null,

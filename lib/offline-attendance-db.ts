@@ -159,6 +159,28 @@ export async function updateLocalAttendanceState(state: LocalAttendanceState & {
   await txStore(STORES.state, 'readwrite', (s) => s.put(state))
 }
 
+/** Write profile + tags + local attendance state in one IndexedDB transaction. */
+export async function saveAttendanceBootstrapBundle(opts: {
+  profile: WorkerOfflineProfile
+  clientId: string
+  tags: NfcTagRow[]
+  state: LocalAttendanceState & { worker_id: string }
+}): Promise<void> {
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([STORES.profile, STORES.tags, STORES.state], 'readwrite')
+    tx.objectStore(STORES.profile).put(opts.profile)
+    tx.objectStore(STORES.tags).put({
+      client_id: opts.clientId,
+      tags: opts.tags,
+      saved_at: new Date().toISOString(),
+    })
+    tx.objectStore(STORES.state).put(opts.state)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB bootstrap bundle write failed'))
+  })
+}
+
 export async function clearSyncedEvents(): Promise<void> {
   const pending = await getPendingAttendanceEvents()
   const db = await openDb()
