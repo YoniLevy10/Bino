@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { theme } from './ui'
 import { toast } from '@/lib/error-handler'
 import {
+  clearManagerPushAlerts,
   getManagerPushBlockedReason,
   isManagerPushFullyEnabled,
   isManagerPushSupported,
@@ -128,15 +129,48 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
   )
 }
 
-/** Background sync of push subscription when permission already granted. */
+/** Background sync of push subscription + clear stale app badge when manager opens the app. */
 export function ManagerPushSync() {
   const pathname = usePathname()
+  const router = useRouter()
   const skip = shouldSkipManagerPushUi(pathname)
 
   useEffect(() => {
     if (skip) return
     void syncManagerPushIfGranted()
   }, [skip, pathname])
+
+  useEffect(() => {
+    if (skip) return
+    void clearManagerPushAlerts()
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void clearManagerPushAlerts()
+    }
+    const onFocus = () => {
+      void clearManagerPushAlerts()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [skip, pathname])
+
+  useEffect(() => {
+    if (skip || !('serviceWorker' in navigator)) return
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type !== 'MANAGER_PUSH_OPEN') return
+      void clearManagerPushAlerts()
+      const url = typeof e.data?.url === 'string' ? e.data.url : '/tickets'
+      if (url && url !== pathname) {
+        router.push(url)
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg)
+  }, [skip, pathname, router])
 
   return null
 }

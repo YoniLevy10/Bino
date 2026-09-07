@@ -1,5 +1,9 @@
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { PUSH_FETCH_TIMEOUT_MS, urlBase64ToUint8Array } from '@/lib/push-client-core'
+import {
+  PUSH_FETCH_TIMEOUT_MS,
+  acknowledgePushAlertsBestEffort,
+  urlBase64ToUint8Array,
+} from '@/lib/push-client-core'
 import { ensureServiceWorkerReady, isStandaloneWorkerPwa } from '@/lib/service-worker-register'
 
 
@@ -74,14 +78,7 @@ export async function isWorkerPushFullyEnabled(): Promise<boolean> {
 }
 
 export async function clearWorkerAppBadge(): Promise<void> {
-  if (typeof navigator === 'undefined') return
-  try {
-    if ('clearAppBadge' in navigator) {
-      await navigator.clearAppBadge()
-    }
-  } catch {
-    /* unsupported platform */
-  }
+  await acknowledgePushAlertsBestEffort()
 }
 
 export async function setWorkerAppBadge(count: number): Promise<void> {
