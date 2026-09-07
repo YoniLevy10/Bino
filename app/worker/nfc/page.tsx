@@ -7,13 +7,14 @@
  * One-time SMS link required to bind this phone (OS/browser limit).
  */
 
-import { Suspense, useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import { normalizeWorkerToken, readWorkerToken, writeWorkerToken } from '@/lib/worker-portal-storage'
 import { initOfflineAttendanceDB } from '@/lib/offline-attendance-db'
 import { executeNfcStampFlow, type NfcStampPhase } from '@/lib/nfc-stamp-flow'
+import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
 import { normalizeTagCode } from '@/lib/nfc-tag-utils'
 
 type ScanPhase = 'loading' | NfcStampPhase
@@ -25,7 +26,9 @@ function NfcScanInner() {
   const [headline, setHeadline] = useState('')
   const [detail, setDetail] = useState('')
   const [tagLabel, setTagLabel] = useState('')
+  const ranForKey = useRef<string | null>(null)
 
+  // Stamp once per sticker URL — do not re-stamp when connectivity flips.
   useEffect(() => {
     void (async () => {
       const tagCode = normalizeTagCode(searchParams.get('t') ?? '')
@@ -45,9 +48,12 @@ function NfcScanInner() {
         return
       }
 
+      const runKey = `${token}|${tagCode}`
+      if (ranForKey.current === runKey) return
+      ranForKey.current = runKey
+
       if (fromUrl) {
         writeWorkerToken(token)
-        // Keep sticker URL clean after bind (token only needed once).
         try {
           const url = new URL(window.location.href)
           url.searchParams.delete('token')
@@ -59,10 +65,13 @@ function NfcScanInner() {
 
       await initOfflineAttendanceDB()
 
+      const isOnline =
+        typeof navigator !== 'undefined' ? navigator.onLine : online
+
       const outcome = await executeNfcStampFlow({
         token,
         tagCode,
-        online,
+        online: isOnline,
         onSyncDetail: (nextDetail) => setDetail(nextDetail),
       })
 
@@ -79,11 +88,22 @@ function NfcScanInner() {
       setDetail(outcome.detail)
       setTagLabel(outcome.tagLabel ?? '')
     })()
-  }, [searchParams, online])
+    // Intentionally omit `online` — connectivity flips must not re-stamp.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stamp once per sticker URL
+  }, [searchParams])
+
+  // When reception returns, flush any punches saved on the device.
+  useEffect(() => {
+    if (!online) return
+    const token = readWorkerToken()
+    if (!token) return
+    void syncPendingAttendanceEvents(token).catch(() => {
+      /* retry next online */
+    })
+  }, [online])
 
   const isSuccess = phase === 'done'
-  const icon =
-    phase === 'error' || phase === 'need_bind' ? '✕' : phase === 'duplicate' ? '⏱' : isSuccess ? '✓' : null
+  const icon = phase === 'error' || phase === 'need_bind' ? '✕' : isSuccess ? '✓' : null
 
   return (
     <div style={shell} dir="rtl">
@@ -102,15 +122,11 @@ function NfcScanInner() {
                   background:
                     phase === 'error' || phase === 'need_bind'
                       ? theme.colors.errorMuted
-                      : phase === 'duplicate'
-                        ? theme.colors.warningMuted
-                        : theme.colors.successMuted,
+                      : theme.colors.successMuted,
                   color:
                     phase === 'error' || phase === 'need_bind'
                       ? theme.colors.error
-                      : phase === 'duplicate'
-                        ? theme.colors.warning
-                        : theme.colors.success,
+                      : theme.colors.success,
                 }}
               >
                 {icon}
@@ -136,7 +152,7 @@ function NfcScanInner() {
                 <p style={sub}>אחרי הפתיחה — חזרו למדבקה והצמידו שוב.</p>
               </div>
             ) : null}
-            {phase === 'error' || phase === 'duplicate' ? (
+            {phase === 'error' ? (
               <p style={hint}>הצמידו שוב למדבקה אחרי תיקון הבעיה.</p>
             ) : null}
           </>

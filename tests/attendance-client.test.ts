@@ -35,8 +35,8 @@ describe('attendance-client local state', () => {
 describe('mergeAttendanceStateFromBootstrap', () => {
   const now = Date.now()
 
-  it('preserves last_tag_code within duplicate window even when server has no open shift', () => {
-    const localAt = new Date(now - 30_000).toISOString()
+  it('preserves last_tag_code within short debounce window', () => {
+    const localAt = new Date(now - 3_000).toISOString()
     const merged = mergeAttendanceStateFromBootstrap(
       {
         has_open_shift: true,
@@ -50,13 +50,34 @@ describe('mergeAttendanceStateFromBootstrap', () => {
         open_shift_id: null,
         open_shift_started_at: null,
       },
-      now
+      { nowMs: now }
     )
 
     expect(merged.last_tag_code).toBe('DOOR1')
     expect(merged.last_event_at).toBe(localAt)
     expect(merged.has_open_shift).toBe(true)
     expect(isDuplicateScan(merged.last_tag_code, merged.last_event_at, 'DOOR1', now)).toBe(true)
+  })
+
+  it('keeps local open-shift state when punches are still pending sync', () => {
+    const localAt = new Date(now - 60_000).toISOString()
+    const existing = {
+      has_open_shift: true,
+      open_shift_id: 'local',
+      last_event_type: 'clock_in' as const,
+      last_event_at: localAt,
+      last_tag_code: 'DOOR1',
+    }
+    const merged = mergeAttendanceStateFromBootstrap(
+      existing,
+      {
+        has_open_shift: false,
+        open_shift_id: null,
+        open_shift_started_at: null,
+      },
+      { hasPendingLocalEvents: true, nowMs: now }
+    )
+    expect(merged).toEqual(existing)
   })
 
   it('preserves last_tag_code for the same open shift outside the duplicate window', () => {
@@ -74,7 +95,7 @@ describe('mergeAttendanceStateFromBootstrap', () => {
         open_shift_id: 'shift-1',
         open_shift_started_at: localAt,
       },
-      now
+      { nowMs: now }
     )
 
     expect(merged.last_tag_code).toBe('DOOR1')
@@ -91,7 +112,7 @@ describe('mergeAttendanceStateFromBootstrap', () => {
         open_shift_id: 'shift-9',
         open_shift_started_at: started,
       },
-      now
+      { nowMs: now }
     )
     expect(merged.last_tag_code).toBeNull()
     expect(merged.has_open_shift).toBe(true)
@@ -192,6 +213,33 @@ describe('executeNfcStampFlow local-first', () => {
     await new Promise((r) => setTimeout(r, 80))
     expect(recordOrder).toContain('cache;')
     expect(recordOrder).toContain('sync;')
+  })
+
+  it('idempotent re-tap shows success not wait screen', async () => {
+    const deps: NfcStampFlowDeps = {
+      getProfile: async () => profile,
+      getTags: async () => [tag],
+      fetchBootstrap: async () => new Response('{}', { status: 500 }),
+      cacheBootstrap: async () => {},
+      recordScan: async () => ({
+        ok: true,
+        pending: null,
+        event_type: 'clock_in',
+        tag,
+        duplicate: true,
+      }),
+      syncPending: async () => ({ results: [] }),
+    }
+
+    const outcome = await executeNfcStampFlow({
+      token: 'tok',
+      tagCode: 'DOOR1',
+      online: true,
+      deps,
+    })
+
+    expect(outcome.phase).toBe('done')
+    expect(outcome.headline).toBe('נכנסת למשמרת')
   })
 
   it('cold online path bootstraps before stamp', async () => {

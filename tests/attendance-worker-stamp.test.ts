@@ -3,10 +3,17 @@ import { isDuplicateScan, DUPLICATE_SCAN_WINDOW_MS } from '@/lib/attendance-dupl
 import { formatShiftMinutes } from '@/lib/attendance-display'
 
 describe('attendance-duplicate', () => {
-  it('rejects same tag within 2 minutes', () => {
+  it('rejects same tag only within short debounce (NFC double-fire)', () => {
+    const now = Date.now()
+    const lastAt = new Date(now - 3_000).toISOString()
+    expect(isDuplicateScan('BMK1', lastAt, 'BMK1', now)).toBe(true)
+  })
+
+  it('allows same tag after debounce so clock_out can follow clock_in', () => {
     const now = Date.now()
     const lastAt = new Date(now - 30_000).toISOString()
-    expect(isDuplicateScan('BMK1', lastAt, 'BMK1', now)).toBe(true)
+    expect(isDuplicateScan('BMK1', lastAt, 'BMK1', now)).toBe(false)
+    expect(DUPLICATE_SCAN_WINDOW_MS).toBeLessThanOrEqual(10_000)
   })
 
   it('allows same tag after window', () => {
@@ -17,7 +24,7 @@ describe('attendance-duplicate', () => {
 
   it('allows different tag immediately', () => {
     const now = Date.now()
-    const lastAt = new Date(now - 10_000).toISOString()
+    const lastAt = new Date(now - 1_000).toISOString()
     expect(isDuplicateScan('BMK1', lastAt, 'BMK2', now)).toBe(false)
   })
 })
