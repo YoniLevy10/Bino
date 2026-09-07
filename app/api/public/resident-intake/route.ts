@@ -4,11 +4,34 @@ import { checkRateLimitIpEndpoint, sanitizeString } from '@/lib/api-validation'
 import { publicResidentIntakeBodySchema } from '@/lib/api-body-schemas'
 import { formatZodError } from '@/lib/format-zod-error'
 import { normalizePhone } from '@/lib/residents-whatsapp'
+import { mergeResidentIntakeFields } from '@/lib/resident-intake'
 import { getLogger } from '@/lib/logging'
+
+type ExistingResidentRow = {
+  id: string
+  project_id: string
+  full_name: string | null
+  phone: string | null
+  normalized_phone: string | null
+  email: string | null
+  apartment_number: string | null
+  is_renter: boolean | null
+  deleted_at: string | null
+}
+
+const EXISTING_SELECT =
+  'id, project_id, full_name, phone, normalized_phone, email, apartment_number, is_renter, deleted_at'
+
+/** Prefer active rows over soft-deleted ones. */
+function pickPreferredResidentRow(rows: ExistingResidentRow[]): ExistingResidentRow | null {
+  if (!rows.length) return null
+  return rows.find((r) => !r.deleted_at) ?? rows[0] ?? null
+}
 
 /**
  * Public resident intake — unauthenticated, scoped by client_id + project_code.
- * Upserts into `residents` by (client_id, project_id, normalized_phone).
+ * Upserts into `residents` by phone: same card gets missing details filled in
+ * (no overwrite of existing values, no duplicate rows).
  */
 export async function POST(req: NextRequest) {
   const logger = getLogger()
@@ -75,44 +98,90 @@ export async function POST(req: NextRequest) {
     }
 
     const phoneE164 = `+${normalizedDigits}`
-    const payload = {
-      project_id: project.id,
-      client_id: clientId,
+    const incoming = {
       full_name: fullName,
       phone: phoneE164,
       normalized_phone: normalizedDigits,
       email,
-      is_renter: isRenter,
       apartment_number: apartmentNumber,
+      is_renter: isRenter,
     }
 
-    const { data: existing, error: existingErr } = await admin
+    const { data: sameBuildingRows, error: sameBuildingErr } = await admin
       .from('residents')
-      .select('id')
+      .select(EXISTING_SELECT)
       .eq('client_id', clientId)
       .eq('project_id', project.id)
       .eq('normalized_phone', normalizedDigits)
-      .is('deleted_at', null)
-      .maybeSingle()
+      .limit(5)
 
-    if (existingErr) {
-      logger.error('RESIDENT_INTAKE', 'Duplicate lookup failed', new Error(existingErr.message), {
+    if (sameBuildingErr) {
+      logger.error('RESIDENT_INTAKE', 'Duplicate lookup failed', new Error(sameBuildingErr.message), {
         requestId,
         clientId,
       })
       return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
     }
 
+    let existing =
+      pickPreferredResidentRow((sameBuildingRows as ExistingResidentRow[] | null) ?? []) ?? null
+
+    if (!existing) {
+      const { data: tenantRows, error: tenantErr } = await admin
+        .from('residents')
+        .select(EXISTING_SELECT)
+        .eq('client_id', clientId)
+        .eq('normalized_phone', normalizedDigits)
+        .limit(5)
+
+      if (tenantErr) {
+        logger.error('RESIDENT_INTAKE', 'Tenant phone lookup failed', new Error(tenantErr.message), {
+          requestId,
+          clientId,
+        })
+        return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      }
+      existing = pickPreferredResidentRow((tenantRows as ExistingResidentRow[] | null) ?? [])
+    }
+
+    // Also match on raw E.164 phone (tenant unique index key) when normalized_phone was never backfilled.
+    if (!existing) {
+      const { data: byPhoneRows, error: byPhoneErr } = await admin
+        .from('residents')
+        .select(EXISTING_SELECT)
+        .eq('client_id', clientId)
+        .eq('phone', phoneE164)
+        .limit(5)
+
+      if (byPhoneErr) {
+        logger.error('RESIDENT_INTAKE', 'Phone lookup failed', new Error(byPhoneErr.message), {
+          requestId,
+          clientId,
+        })
+        return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      }
+      existing = pickPreferredResidentRow((byPhoneRows as ExistingResidentRow[] | null) ?? [])
+    }
+
     if (existing?.id) {
+      const { patch } = mergeResidentIntakeFields(existing, incoming, project.id)
+      const updatePayload: Record<string, unknown> = {
+        full_name: patch.full_name,
+        phone: patch.phone,
+        normalized_phone: patch.normalized_phone,
+        email: patch.email,
+        apartment_number: patch.apartment_number,
+        is_renter: patch.is_renter,
+        project_id: patch.project_id,
+        updated_at: new Date().toISOString(),
+      }
+      if (patch.deleted_at === null) {
+        updatePayload.deleted_at = null
+      }
+
       const { error: updErr } = await admin
         .from('residents')
-        .update({
-          full_name: payload.full_name,
-          phone: payload.phone,
-          email: payload.email,
-          is_renter: payload.is_renter,
-          apartment_number: payload.apartment_number,
-        })
+        .update(updatePayload)
         .eq('id', existing.id)
         .eq('client_id', clientId)
 
@@ -132,13 +201,69 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    const insertPayload = {
+      project_id: project.id,
+      client_id: clientId,
+      full_name: fullName,
+      phone: phoneE164,
+      normalized_phone: normalizedDigits,
+      email,
+      is_renter: isRenter,
+      apartment_number: apartmentNumber,
+    }
+
     const { data: created, error: insErr } = await admin
       .from('residents')
-      .insert(payload)
+      .insert(insertPayload)
       .select('id')
       .single()
 
     if (insErr) {
+      // Race / unique index: merge into the existing card instead of failing as a duplicate.
+      if (
+        insErr.code === '23505' ||
+        insErr.message?.includes('idx_residents_client_phone_unique') ||
+        insErr.message?.includes('idx_residents_project_normalized_phone_unique')
+      ) {
+        const { data: racedRows } = await admin
+          .from('residents')
+          .select(EXISTING_SELECT)
+          .eq('client_id', clientId)
+          .or(`normalized_phone.eq.${normalizedDigits},phone.eq.${phoneE164}`)
+          .limit(5)
+
+        const raced = pickPreferredResidentRow((racedRows as ExistingResidentRow[] | null) ?? [])
+        if (raced?.id) {
+          const { patch } = mergeResidentIntakeFields(raced, incoming, project.id)
+          const updatePayload: Record<string, unknown> = {
+            full_name: patch.full_name,
+            phone: patch.phone,
+            normalized_phone: patch.normalized_phone,
+            email: patch.email,
+            apartment_number: patch.apartment_number,
+            is_renter: patch.is_renter,
+            project_id: patch.project_id,
+            updated_at: new Date().toISOString(),
+          }
+          if (patch.deleted_at === null) updatePayload.deleted_at = null
+
+          const { error: raceUpdErr } = await admin
+            .from('residents')
+            .update(updatePayload)
+            .eq('id', raced.id)
+            .eq('client_id', clientId)
+
+          if (!raceUpdErr) {
+            return NextResponse.json({
+              ok: true,
+              updated: true,
+              resident_id: raced.id,
+              requestId,
+            })
+          }
+        }
+      }
+
       logger.error('RESIDENT_INTAKE', 'Insert resident failed', new Error(insErr.message), {
         requestId,
         clientId,

@@ -3,11 +3,111 @@
  * Max ~5 questions; creates/updates a row in `residents`.
  */
 
+import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
+
 export type ResidentIntakeLinkParams = {
   projectCode: string
   clientId: string
   /** Prefer NEXT_PUBLIC_APP_URL; fall back to window origin in the browser. */
   baseUrl?: string
+}
+
+/** Fields the public intake form may contribute onto an existing resident card. */
+export type ResidentIntakeIncomingFields = {
+  full_name: string
+  phone: string
+  normalized_phone: string
+  email: string | null
+  apartment_number: string
+  is_renter: boolean
+}
+
+export type ResidentIntakeExistingFields = {
+  full_name: string | null
+  phone: string | null
+  normalized_phone: string | null
+  email: string | null
+  apartment_number: string | null
+  is_renter: boolean | null
+  project_id: string
+  deleted_at?: string | null
+}
+
+function nonempty(value: string | null | undefined): string | null {
+  const t = (value || '').trim()
+  return t || null
+}
+
+/**
+ * Fill-only merge: keep existing card values when present; add missing/extra
+ * details from intake. Never blank out an existing email/apartment/name.
+ */
+export function mergeResidentIntakeFields(
+  existing: ResidentIntakeExistingFields,
+  incoming: ResidentIntakeIncomingFields,
+  targetProjectId: string
+): {
+  patch: {
+    full_name: string
+    phone: string
+    normalized_phone: string
+    email: string | null
+    apartment_number: string | null
+    is_renter: boolean
+    project_id: string
+    deleted_at: null | undefined
+  }
+  changed: boolean
+} {
+  const existingName = nonempty(existing.full_name)
+  const incomingName = nonempty(incoming.full_name) || ''
+  const keepExistingName =
+    !!existingName && !isWhatsAppPlaceholderResident({ full_name: existingName })
+  const full_name = keepExistingName ? existingName! : incomingName || existingName || ''
+
+  const email = nonempty(existing.email) || nonempty(incoming.email)
+  const apartment_number =
+    nonempty(existing.apartment_number) || nonempty(incoming.apartment_number)
+
+  const phone = nonempty(existing.phone) || nonempty(incoming.phone) || incoming.phone
+  const normalized_phone =
+    nonempty(existing.normalized_phone) ||
+    nonempty(incoming.normalized_phone) ||
+    incoming.normalized_phone
+
+  const is_renter = Boolean(existing.is_renter) || Boolean(incoming.is_renter)
+
+  // Soft-deleted or WhatsApp placeholder cards move into the intake building.
+  // Real cards in another building stay put — still no duplicate row.
+  const revive = !!existing.deleted_at
+  const placeholder = isWhatsAppPlaceholderResident({ full_name: existing.full_name })
+  const project_id =
+    revive || placeholder || existing.project_id === targetProjectId
+      ? targetProjectId
+      : existing.project_id
+
+  const patch = {
+    full_name,
+    phone,
+    normalized_phone,
+    email,
+    apartment_number,
+    is_renter,
+    project_id,
+    deleted_at: revive ? (null as null) : undefined,
+  }
+
+  const changed =
+    patch.full_name !== (existing.full_name || '') ||
+    patch.phone !== (existing.phone || '') ||
+    patch.normalized_phone !== (existing.normalized_phone || '') ||
+    (patch.email || null) !== (existing.email || null) ||
+    (patch.apartment_number || null) !== (existing.apartment_number || null) ||
+    patch.is_renter !== Boolean(existing.is_renter) ||
+    patch.project_id !== existing.project_id ||
+    revive
+
+  return { patch, changed }
 }
 
 export const RESIDENT_INTAKE_SHARE_PLACEHOLDERS = {
