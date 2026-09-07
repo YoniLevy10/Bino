@@ -262,6 +262,13 @@ export const workerPushSubscribeBodySchema = z.object({
   subscription: pushSubscribeBodySchema.shape.subscription,
 })
 
+/** Worker push unsubscribe — token required; subscription/endpoint optional for full revoke. */
+export const workerPushUnsubscribeBodySchema = z.object({
+  token: z.string().uuid(),
+  subscription: pushSubscribeBodySchema.shape.subscription.optional(),
+  endpoint: z.string().url().optional(),
+})
+
 /** Worker WhatsApp reply to ticket reporter from personal portal. */
 export const workerWhatsappReplyBodySchema = z.object({
   token: z.string().uuid(),

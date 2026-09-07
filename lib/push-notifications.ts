@@ -38,9 +38,17 @@ type NewTicketPushOpts = {
   ticketNumber?: number | null
 }
 
+function buildNewTicketPushTitle(clientName: string, ticketLabel: string): string {
+  const name = clientName.trim()
+  if (ticketLabel && name) return `טיקט חדש ${ticketLabel} · ${name}`
+  if (ticketLabel) return `טיקט חדש ${ticketLabel}`
+  if (name) return `טיקט חדש · ${name}`
+  return 'טיקט חדש נפתח'
+}
+
 /**
  * Notify everyone who installed the PWA and enabled push when a new ticket opens
- * (dashboard managers + subscribed field workers).
+ * (dashboard managers + subscribed field workers for THIS client_id only).
  */
 export async function notifyNewTicketPush(
   admin: SupabaseClient,
@@ -54,11 +62,22 @@ export async function notifyNewTicketPush(
     typeof opts?.ticketNumber === 'number' && opts.ticketNumber > 0
       ? `#${opts.ticketNumber}`
       : ''
-  const title = ticketLabel ? `טיקט חדש ${ticketLabel}` : 'טיקט חדש נפתח'
+
+  const { data: clientRow } = await admin
+    .from('clients')
+    .select('name')
+    .eq('id', clientId)
+    .maybeSingle()
+  const clientName =
+    clientRow && typeof (clientRow as { name?: unknown }).name === 'string'
+      ? String((clientRow as { name: string }).name)
+      : ''
+
+  const title = buildNewTicketPushTitle(clientName, ticketLabel)
   const body = (description || '').trim().slice(0, 60) || 'תקלה חדשה'
   const tag =
     typeof opts?.ticketNumber === 'number' && opts.ticketNumber > 0
-      ? `new-ticket-${opts.ticketNumber}`
+      ? `new-ticket-${clientId}-${opts.ticketNumber}`
       : `new-ticket-${clientId}`
 
   const [managerRes, workerRes] = await Promise.all([

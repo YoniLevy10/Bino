@@ -114,6 +114,29 @@ export async function registerWorkerPushOnServer(
   return { ok: true }
 }
 
+/** Remove this worker device from the server (best-effort). */
+export async function unsubscribeWorkerPushBestEffort(token: string): Promise<void> {
+  clearWorkerPushEnabled()
+  if (!token || !isWorkerPushSupported()) return
+  try {
+    const sub = await getWorkerPushSubscription()
+    const body: Record<string, unknown> = { token }
+    if (sub) body.subscription = sub.toJSON()
+    await fetchWithTimeout(
+      '/api/worker/push/subscribe',
+      {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        keepalive: true,
+      },
+      PUSH_FETCH_TIMEOUT_MS
+    )
+  } catch {
+    /* best-effort */
+  }
+}
+
 /** Subscribe + persist worker push on server. Requires notification permission. */
 export async function subscribeWorkerPush(token: string): Promise<{ ok: boolean; error?: string }> {
   if (subscribeInflight) return subscribeInflight
@@ -181,15 +204,18 @@ async function subscribeWorkerPushInner(token: string): Promise<{ ok: boolean; e
   }
 }
 
-/** Re-sync existing subscription to server after PWA relaunch (no duplicate calls). */
+/**
+ * Re-sync existing subscription for the current worker tenant.
+ * Always POSTs so this tenant exclusively claims the browser endpoint.
+ */
 export async function syncWorkerPushIfGranted(token: string): Promise<boolean> {
   if (!token || Notification.permission !== 'granted' || !isWorkerPushSupported()) return false
   try {
     const sub = await getWorkerPushSubscription()
     if (!sub) return false
-    if (hasWorkerPushEnabledFlag()) return true
     const result = await registerWorkerPushOnServer(token, sub)
     if (result.ok) markWorkerPushEnabled()
+    else clearWorkerPushEnabled()
     return result.ok
   } catch {
     return false

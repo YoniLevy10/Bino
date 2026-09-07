@@ -19,7 +19,11 @@ export const DASHBOARD_CACHE_LEGACY_KEY = 'bamakor_dashboard_v2'
 /** Prefixed dashboard SWR: bamakor_dashboard_v3_{uid}_{clientId} */
 export const DASHBOARD_CACHE_PREFIX = 'bamakor_dashboard_v3_' as const
 
-const LOCAL_EXACT_KEYS = [DASHBOARD_CACHE_LEGACY_KEY] as const
+const LOCAL_EXACT_KEYS = [
+  DASHBOARD_CACHE_LEGACY_KEY,
+  'bamakor_manager_push_enabled',
+  'bamakor_worker_push_enabled',
+] as const
 
 const LOCAL_PREFIXES = [
   'bamakor_branding_v1_',

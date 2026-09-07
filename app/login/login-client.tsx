@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
+import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
 import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant-access'
 
 function GoogleIcon() {
@@ -69,6 +70,7 @@ export function LoginClient() {
     try {
       const supabase = createClient()
       // Prevent stale sessions from a previous tenant showing after a failed login attempt.
+      await unsubscribeManagerPushBestEffort()
       await supabase.auth.signOut()
       clearTenantBrowserCaches()
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -99,6 +101,7 @@ export function LoginClient() {
     setLoading(true)
     try {
       const supabase = createClient()
+      await unsubscribeManagerPushBestEffort()
       await supabase.auth.signOut()
       clearTenantBrowserCaches()
       const { error: pwError } = await supabase.auth.signInWithPassword({
