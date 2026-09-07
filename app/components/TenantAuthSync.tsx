@@ -7,6 +7,8 @@ import { clearTenantBrowserCaches, LAST_AUTH_UID_KEY } from '@/lib/tenant-browse
 /**
  * Clears tenant branding / client-id caches when auth user changes or signs out.
  * Prevents showing the previous tenant after account switch.
+ * Push flags are cleared with caches; ManagerPushSync re-claims the endpoint for the new tenant.
+ * (Server unsubscribe must happen before signOut — see NavSignOutButton / login.)
  */
 export function TenantAuthSync() {
   useEffect(() => {

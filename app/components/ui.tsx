@@ -19,6 +19,7 @@ import {
 } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
+import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
 import { useClientBranding } from './ClientBrandingContext'
 import { useSidebarNav } from './SidebarNavContext'
 import { isNavItemActive, shouldShowMobileBottomNav, splitSidebarNavSections } from '@/lib/sidebar-nav'
@@ -279,6 +280,8 @@ function NavSignOutButton({ onAfterSignOut }: { onAfterSignOut?: () => void }) {
       onClick={async () => {
         setLoading(true)
         try {
+          // Drop push while session is still valid so Client A stops receiving on this phone.
+          await unsubscribeManagerPushBestEffort()
           const supabase = createClient()
           await supabase.auth.signOut()
           clearTenantBrowserCaches()

@@ -107,6 +107,33 @@ export async function registerManagerPushOnServer(
   return { ok: true }
 }
 
+/**
+ * Remove this device from the server before logout / tenant switch.
+ * Must run while the session is still valid.
+ */
+export async function unsubscribeManagerPushBestEffort(): Promise<void> {
+  clearManagerPushEnabled()
+  if (!isManagerPushSupported()) return
+  try {
+    const sub = await getManagerPushSubscription()
+    const body = sub
+      ? { subscription: sub.toJSON() }
+      : {}
+    await fetchWithTimeout(
+      '/api/push/subscribe',
+      {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        keepalive: true,
+      },
+      PUSH_FETCH_TIMEOUT_MS
+    )
+  } catch {
+    /* best-effort — exclusive reclaim on next login is the safety net */
+  }
+}
+
 /** Subscribe + persist manager push on server. Requires notification permission. */
 export async function subscribeManagerPush(): Promise<{ ok: boolean; error?: string }> {
   if (subscribeInflight) return subscribeInflight
@@ -171,16 +198,20 @@ async function subscribeManagerPushInner(): Promise<{ ok: boolean; error?: strin
   }
 }
 
-/** Re-sync existing subscription to server after PWA relaunch. */
+/**
+ * Re-sync existing subscription to the current tenant after PWA relaunch / login.
+ * Always POSTs so this tenant exclusively claims the browser endpoint
+ * (prevents Client A pushes after switching to Client B).
+ */
 export async function syncManagerPushIfGranted(): Promise<boolean> {
   if (typeof Notification === 'undefined') return false
   if (Notification.permission !== 'granted' || !isManagerPushSupported()) return false
   try {
     const sub = await getManagerPushSubscription()
     if (!sub) return false
-    if (hasManagerPushEnabledFlag()) return true
     const result = await registerManagerPushOnServer(sub)
     if (result.ok) markManagerPushEnabled()
+    else clearManagerPushEnabled()
     return result.ok
   } catch {
     return false
