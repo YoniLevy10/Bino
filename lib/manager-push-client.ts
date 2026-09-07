@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { PUSH_FETCH_TIMEOUT_MS, urlBase64ToUint8Array } from '@/lib/push-client-core'
+import { PUSH_FETCH_TIMEOUT_MS, acknowledgePushAlertsBestEffort, urlBase64ToUint8Array } from '@/lib/push-client-core'
 import {
   ensureServiceWorkerReady,
   isIosSafariLike,
@@ -216,4 +216,9 @@ export async function syncManagerPushIfGranted(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** Clear home-screen badge + dismiss tray notifications after manager opens the app. */
+export async function clearManagerPushAlerts(): Promise<void> {
+  await acknowledgePushAlertsBestEffort()
 }
