@@ -1212,7 +1212,7 @@ function WorkerListCard({
               {worker.is_active ? (
                 <button
                   type="button"
-                  style={{ ...styles.moreMenuItem, color: theme.colors.danger }}
+                  style={{ ...styles.moreMenuItem, color: theme.colors.error }}
                   onClick={() => {
                     setMoreOpen(false)
                     onDelete(worker)
