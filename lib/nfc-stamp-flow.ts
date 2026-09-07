@@ -13,7 +13,7 @@ import {
 } from '@/lib/worker-attendance-bootstrap'
 import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
 
-export type NfcStampPhase = 'done' | 'error' | 'duplicate' | 'need_bind'
+export type NfcStampPhase = 'done' | 'error' | 'need_bind'
 
 export type NfcStampOutcome = {
   phase: NfcStampPhase
@@ -26,6 +26,16 @@ export type NfcStampOutcome = {
   usedWarmCache: boolean
 }
 
+export type NfcStampRecordResult =
+  | {
+      ok: true
+      pending: PendingAttendanceEvent | null
+      event_type: AttendanceEventType
+      tag: NfcTagRow
+      duplicate?: boolean
+    }
+  | { ok: false; reason: 'unknown_tag' }
+
 export type NfcStampFlowDeps = {
   getProfile: (token: string) => Promise<WorkerOfflineProfile | null>
   getTags: (clientId: string) => Promise<NfcTagRow[]>
@@ -37,10 +47,7 @@ export type NfcStampFlowDeps = {
     tagCode: string,
     source: 'online' | 'offline',
     geo: null
-  ) => Promise<
-    | { ok: true; pending: PendingAttendanceEvent; event_type: AttendanceEventType; tag: NfcTagRow }
-    | { ok: false; reason: 'unknown_tag' | 'duplicate_scan' }
-  >
+  ) => Promise<NfcStampRecordResult>
   syncPending: (token: string) => Promise<{ results: Array<{ status?: string }> }>
 }
 
@@ -72,18 +79,10 @@ export async function hasWarmAttendanceCache(
 }
 
 function applyRecordedScan(
-  recorded: Awaited<ReturnType<NfcStampFlowDeps['recordScan']>>,
+  recorded: NfcStampRecordResult,
   meta: { awaitedNetworkBeforeStamp: boolean; usedWarmCache: boolean }
 ): NfcStampOutcome {
   if (!recorded.ok) {
-    if (recorded.reason === 'duplicate_scan') {
-      return {
-        phase: 'duplicate',
-        headline: 'כבר נרשמת לפני רגע',
-        detail: 'המתינו דקה, או המשיכו לעבוד.',
-        ...meta,
-      }
-    }
     return {
       phase: 'error',
       headline: 'המדבקה לא מוכרת',
@@ -92,6 +91,7 @@ function applyRecordedScan(
     }
   }
 
+  // Near-instant re-tap still shows success for the same in/out — never a wait screen.
   return {
     phase: 'done',
     headline: EVENT_HEADLINE[recorded.event_type] ?? 'נרשם',
@@ -213,7 +213,8 @@ async function bootstrapColdPath(
 /**
  * Local-first NFC stamp:
  * - Warm IndexedDB (profile + tags) → stamp immediately; bootstrap+sync in background when online.
- * - Cold / first device → bootstrap once (no /api/worker-auth), then stamp, then sync.
+ * - Cold / first device → bootstrap once, then stamp, then sync.
+ * Never blocks clock_in ↔ clock_out with a "wait a minute" screen.
  */
 export async function executeNfcStampFlow(opts: {
   token: string

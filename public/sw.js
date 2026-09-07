@@ -1,5 +1,5 @@
-/* Bino PWA — v9: NFC shell cache-first */
-const CACHE_VERSION = 'bino-v9'
+/* Bino PWA — v10: NFC stamp in/out without long debounce block */
+const CACHE_VERSION = 'bino-v10'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']

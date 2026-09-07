@@ -4,6 +4,7 @@ import { DUPLICATE_SCAN_WINDOW_MS } from '@/lib/attendance-duplicate'
 import {
   getLocalAttendanceState,
   getOrCreateDeviceId,
+  getPendingAttendanceEvents,
   initOfflineAttendanceDB,
   saveAttendanceBootstrapBundle,
 } from '@/lib/offline-attendance-db'
@@ -24,12 +25,20 @@ export type AttendanceBootstrapPayload = {
  * Merge server bootstrap shift state with existing local state.
  * Preserves last_tag_code (and fresher local stamp timing) so client-side
  * duplicate detection survives a background bootstrap refresh.
+ * When local punches are still pending sync, keep the local open-shift toggle.
  */
 export function mergeAttendanceStateFromBootstrap(
   existing: LocalAttendanceState | null,
   attendance_state: AttendanceBootstrapPayload['attendance_state'],
-  nowMs: number = Date.now()
+  opts?: { hasPendingLocalEvents?: boolean; nowMs?: number }
 ): LocalAttendanceState {
+  const nowMs = opts?.nowMs ?? Date.now()
+  const hasPending = opts?.hasPendingLocalEvents === true
+
+  if (hasPending && existing) {
+    return { ...existing }
+  }
+
   const serverHasOpen = attendance_state?.has_open_shift ?? false
   const serverOpenId = attendance_state?.open_shift_id ?? null
   const serverStartedAt = attendance_state?.open_shift_started_at ?? null
@@ -82,7 +91,10 @@ export async function cacheWorkerAttendanceBootstrap(
 ): Promise<void> {
   await initOfflineAttendanceDB()
   const existing = await getLocalAttendanceState(data.worker_id)
-  const merged = mergeAttendanceStateFromBootstrap(existing, data.attendance_state)
+  const pending = await getPendingAttendanceEvents()
+  const merged = mergeAttendanceStateFromBootstrap(existing, data.attendance_state, {
+    hasPendingLocalEvents: pending.length > 0,
+  })
 
   await saveAttendanceBootstrapBundle({
     profile: {

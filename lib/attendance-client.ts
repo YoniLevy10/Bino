@@ -113,8 +113,15 @@ export async function recordAttendanceScan(
   source: AttendanceEventSource,
   geo?: { lat: number; lng: number } | null
 ): Promise<
-  | { ok: true; pending: PendingAttendanceEvent; event_type: AttendanceEventType; tag: NfcTagRow }
-  | { ok: false; reason: 'unknown_tag' | 'duplicate_scan' }
+  | {
+      ok: true
+      pending: PendingAttendanceEvent | null
+      event_type: AttendanceEventType
+      tag: NfcTagRow
+      /** True when a near-instant re-tap was ignored; UI should still show success. */
+      duplicate?: boolean
+    }
+  | { ok: false; reason: 'unknown_tag' }
 > {
   const tags = await getOfflineNfcTags(clientId)
   const tag = findOfflineTag(tags, tagCode)
@@ -125,8 +132,12 @@ export async function recordAttendanceScan(
   if (state && rawState && state !== rawState) {
     await updateLocalAttendanceState({ worker_id: workerId, ...state })
   }
+
+  // Accidental NFC double-fire: keep local state, show the same success again.
   if (isDuplicateScan(state?.last_tag_code, state?.last_event_at, tag.tag_code)) {
-    return { ok: false, reason: 'duplicate_scan' }
+    const event_type =
+      state?.last_event_type ?? resolveEventTypeForTag(tag.tag_type, !!state?.has_open_shift)
+    return { ok: true, pending: null, event_type, tag, duplicate: true }
   }
 
   const { event_type, pending } = await buildAttendanceAction(workerId, tag, source, geo)
