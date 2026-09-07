@@ -557,7 +557,7 @@ export default function WorkersPage() {
   }
 
   async function deleteWorker(worker: WorkerRow) {
-    const confirmed = window.confirm(`Delete ${worker.full_name}? This action cannot be undone.`)
+    const confirmed = window.confirm(`למחוק את ${worker.full_name}? לא ניתן לשחזר את הפעולה.`)
     if (!confirmed) return
 
     await asyncHandler(
@@ -846,6 +846,7 @@ export default function WorkersPage() {
                   onCopyLink={copyWorkerFieldLink}
                   onTestSms={sendWorkerTestSms}
                   onToggleStatus={toggleWorkerStatus}
+                  onDelete={deleteWorker}
                 />
               ))}
             </div>
@@ -1108,6 +1109,7 @@ type WorkerListCardProps = {
   onCopyLink: (worker: WorkerRow, e?: MouseEvent) => void
   onTestSms: (worker: WorkerRow, e?: MouseEvent) => void
   onToggleStatus: (worker: WorkerRow) => void
+  onDelete: (worker: WorkerRow) => void
 }
 
 function WorkerListCard({
@@ -1120,6 +1122,7 @@ function WorkerListCard({
   onCopyLink,
   onTestSms,
   onToggleStatus,
+  onDelete,
 }: WorkerListCardProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -1206,9 +1209,29 @@ function WorkerListCard({
               >
                 {testingSmsWorkerId === worker.id ? 'שולח SMS...' : 'ניסיון SMS'}
               </button>
-              <button type="button" style={styles.moreMenuItem} onClick={() => { setMoreOpen(false); onToggleStatus(worker) }}>
-                {worker.is_active ? 'השבת עובד' : 'הפעל עובד'}
-              </button>
+              {worker.is_active ? (
+                <button
+                  type="button"
+                  style={{ ...styles.moreMenuItem, color: theme.colors.error }}
+                  onClick={() => {
+                    setMoreOpen(false)
+                    onDelete(worker)
+                  }}
+                >
+                  מחיקת עובד
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  style={styles.moreMenuItem}
+                  onClick={() => {
+                    setMoreOpen(false)
+                    onToggleStatus(worker)
+                  }}
+                >
+                  הפעל עובד
+                </button>
+              )}
             </div>
           ) : null}
         </div>

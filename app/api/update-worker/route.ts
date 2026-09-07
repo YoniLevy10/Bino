@@ -63,7 +63,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, requestId })
     }
 
-    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    // workers has no updated_at column (unlike tickets/residents) — do not set it
+    const payload: Record<string, unknown> = {}
     if (fields.full_name !== undefined) payload.full_name = sanitizeString(fields.full_name)
     let normalizedPrimary: string | undefined
     if (fields.phone !== undefined) {
@@ -93,6 +94,10 @@ export async function POST(req: Request) {
     if (fields.is_active !== undefined) payload.is_active = fields.is_active
     if (fields.hourly_rate !== undefined) payload.hourly_rate = fields.hourly_rate
 
+    if (Object.keys(payload).length === 0) {
+      return NextResponse.json({ error: 'נדרש לפחות שדה אחד לעדכון', requestId }, { status: 400 })
+    }
+
     const { data: updated, error } = await admin
       .from('workers')
       .update(payload)
@@ -104,7 +109,7 @@ export async function POST(req: Request) {
 
     if (error) {
       logger.error('WORKER_API', 'Update worker failed', new Error(error.message), { requestId, worker_id })
-      return NextResponse.json({ error: 'עדכון נכשל', requestId }, { status: 500 })
+      return NextResponse.json({ error: 'עדכון נכשל', details: error.message, requestId }, { status: 500 })
     }
 
     await logAudit({
