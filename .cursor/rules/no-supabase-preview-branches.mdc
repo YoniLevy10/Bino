@@ -1,0 +1,13 @@
+---
+description: Never create paid Supabase preview branches; delete git remotes after PR merge
+alwaysApply: true
+---
+
+# No paid Supabase preview branches
+
+Supabase Branching compute for Bamakor is expensive and not covered by Spend Cap.
+
+- Do **not** call `create_branch` (MCP/CLI/dashboard) unless the user explicitly asks.
+- Do **not** use preview DBs to test migrations; use local Supabase or apply reviewed migrations to production.
+- Keep git feature branches short-lived. After merge/close: delete the remote branch immediately (`git push origin --delete …`).
+- Never leave abandoned `cursor/*` remotes or persistent preview branches.

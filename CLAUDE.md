@@ -5,6 +5,22 @@ Multi-tenant SaaS for building maintenance management; SMS via 019SMS, WhatsApp 
 
 ---
 
+## Supabase Preview Branches — COST CRITICAL (all agents)
+
+Preview branches bill compute hours and are **not** covered by Spend Cap. Leaving `cursor/*` git remotes / open PRs with GitHub Branching enabled spins expensive Bamakor preview DBs.
+
+**Hard rules — no exceptions unless the user explicitly asks otherwise:**
+
+1. **Never** call Supabase MCP `create_branch` (or CLI/dashboard equivalent) on your own.
+2. **Never** create Supabase preview / persistent branches for “safe” migration testing. Apply schema to **production** with `apply_migration` / `supabase/migrations/*.sql` after review, or use local `supabase start` only.
+3. Prefer **one short-lived git branch per PR**. After the PR is merged or closed: `git push origin --delete <branch>` immediately. Do not leave abandoned `cursor/*` remotes.
+4. Do not reopen / recreate deleted preview branches. Do not mark branches persistent.
+5. If you need schema changes: put SQL in `supabase/migrations/`, open a normal code PR, and apply to production — **not** via a paid preview environment.
+
+Owner preference (2026-09): stop opening branches that create paid Supabase previews; merge useful work to `main` and delete leftovers.
+
+---
+
 ## Standard API Route Pattern
 
 Every protected API route MUST follow this order — no exceptions:
