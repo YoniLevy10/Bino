@@ -129,7 +129,7 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
   )
 }
 
-/** Background sync of push subscription + clear stale app badge when manager opens the app. */
+/** Background sync of push subscription + navigate on notification open. */
 export function ManagerPushSync() {
   const pathname = usePathname()
   const router = useRouter()
@@ -138,24 +138,6 @@ export function ManagerPushSync() {
   useEffect(() => {
     if (skip) return
     void syncManagerPushIfGranted()
-  }, [skip, pathname])
-
-  useEffect(() => {
-    if (skip) return
-    void clearManagerPushAlerts()
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void clearManagerPushAlerts()
-    }
-    const onFocus = () => {
-      void clearManagerPushAlerts()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', onFocus)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', onFocus)
-    }
   }, [skip, pathname])
 
   useEffect(() => {
