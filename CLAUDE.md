@@ -5,6 +5,26 @@ Multi-tenant SaaS for building maintenance management; SMS via 019SMS, WhatsApp 
 
 ---
 
+## Product differentiation — BINO (Building Intelligence & Operations)
+
+**Hard product rule for all agents:** every product, design, architecture, and engineering decision must strengthen BINO’s differentiation. Do **not** add generic features that only improve ticket CRUD / generic SaaS.
+
+BINO’s edge is **not** opening and managing tickets (many systems do that). BINO must build **smart operational memory per building**: learn from ticket history, equipment, vendors, costs, and resolution times; auto-recommend the right worker or vendor; detect recurring failures; alert early on SLA risk; predict systems likely to fail. New work must move the product from **recording work** → **deciding, preventing, and proving time/money saved** to the management company.
+
+**North-star metrics** (prioritize in UI, APIs, analytics, demos):
+
+1. זמן עד שיוך (time to assignment)
+2. זמן עד פתרון (time to resolution)
+3. שיעור תקלות חוזרות (recurring-failure rate)
+4. עלות תחזוקה לבניין (maintenance cost per building)
+5. אחוז התקלות שטופלו ללא התערבות מנהל (% handled without manager intervention)
+
+**Decision gate before building:** deepen operational memory? automate a decision or prevent a failure? prove savings? move a north-star metric? If only “better generic tickets” → do not prioritize unless the user explicitly overrides.
+
+Canonical Hebrew + always-apply Cursor rule: `.cursor/rules/bino-product-differentiation.mdc`.
+
+---
+
 ## Supabase Preview Branches — COST CRITICAL (all agents)
 
 Preview branches bill compute hours and are **not** covered by Spend Cap. Leaving `cursor/*` git remotes / open PRs with GitHub Branching enabled spins expensive Bamakor preview DBs.

@@ -1,0 +1,44 @@
+---
+description: BINO product differentiation — Building Intelligence & Operations; reject generic ticket-CRUD features
+alwaysApply: true
+---
+
+# BINO — Building Intelligence & Operations (product differentiation)
+
+These principles govern **every** product, design, architecture, and engineering decision. Do **not** add generic features that do not strengthen this differentiation.
+
+## What BINO is (and is not)
+
+BINO’s differentiation is **not** the ability to open and manage tickets — many systems already do that.
+
+BINO must be a system that builds **smart operational memory per building**: learn from ticket history, equipment, vendors, costs, and time-to-resolution; auto-recommend the right worker or vendor; detect recurring failures; alert early on SLA risk; and predict which systems may fail next.
+
+Every new feature must advance the shift from a system that **records work** to one that **makes decisions, prevents failures, and proves to the management company how much time and money were saved**.
+
+## North-star product metrics
+
+Prioritize and surface these metrics (product UI, APIs, analytics, demos):
+
+| Metric (HE) | Intent |
+|-------------|--------|
+| זמן עד שיוך | Time to assignment |
+| זמן עד פתרון | Time to resolution |
+| שיעור תקלות חוזרות | Recurring-failure rate |
+| עלות תחזוקה לבניין | Maintenance cost per building |
+| אחוז התקלות שטופלו ללא התערבות מנהל | % tickets handled without manager intervention |
+
+## Decision gate (required before building)
+
+Reject or reshape work that fails this gate:
+
+1. Does it deepen **operational memory** (history → learning → reusable judgment)?
+2. Does it **automate a decision** (assign, escalate, recommend vendor/worker) or **prevent** a failure?
+3. Does it **prove savings** (time/money) to the management company?
+4. Does it move a north-star metric above?
+
+If the answer is “only better ticket CRUD / generic SaaS” → do not ship it as a priority feature unless the user explicitly overrides.
+
+## Hebrew source (canonical)
+
+1. BINO — Building Intelligence & Operations  
+   הבידול של BINO אינו עצם היכולת לפתוח ולנהל תקלות, משום שמערכות רבות כבר עושות זאת. BINO צריכה להיות מערכת שמייצרת זיכרון תפעולי חכם לכל בניין: ללמוד מהיסטוריית התקלות, הציוד, הספקים, העלויות וזמני הטיפול; להמליץ אוטומטית על העובד או הספק המתאים; לזהות תקלות חוזרות; להתריע מראש על חריגות SLA; ולחזות אילו מערכות עלולות להיכשל בהמשך. כל פיצ׳ר חדש צריך לקדם מעבר ממערכת שמתעדת עבודה למערכת שמקבלת החלטות, מונעת תקלות ומוכיחה לחברת הניהול כמה זמן וכסף נחסכו. המדדים המרכזיים במוצר צריכים להיות זמן עד שיוך, זמן עד פתרון, שיעור תקלות חוזרות, עלות תחזוקה לבניין ואחוז התקלות שטופלו ללא התערבות מנהל.
