@@ -11,5 +11,5 @@ export async function GET() {
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.error, configured: false }, { status: 503 })
   }
-  return NextResponse.json({ ok: true, configured: true, url: result.url })
+  return NextResponse.json({ ok: true, configured: true })
 }
