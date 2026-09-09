@@ -3,8 +3,8 @@
 /**
  * דף הבית – לוח הבקרה הראשי.
  *
- * מציג: כרטיסי KPI (סה"כ תקלות / פתוחות / בטיפול / נסגרו), רשימת תקלות אחרונות,
- * ומאפשר לפתוח תקלה חדשה ולעבור לפרטי תקלה ב-Drawer.
+ * מציג: כרטיסי KPI (פעילות / פתוחות / בטיפול / נסגרו — ספירה מדויקת מה-DB),
+ * רשימת תקלות אחרונות, ומאפשר לפתוח תקלה חדשה ולעבור לפרטי תקלה ב-Drawer.
  *
  * ניווט:
  *  - "תקלה חדשה" → פותח AddTicketModal
@@ -63,6 +63,12 @@ import {
   writeTenantDashboardCache,
 } from '@/lib/dashboard-tenant-cache'
 import { isTicketInTreatment } from '@/lib/ticket-status'
+import {
+  EMPTY_DASHBOARD_TICKET_KPI_COUNTS,
+  fetchDashboardTicketKpiCounts,
+  resolveDashboardTicketKpiCounts,
+  type DashboardTicketKpiCounts,
+} from '@/lib/dashboard-ticket-kpi-counts'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 /** Resolve authenticated uid + tenant clientId before any cache paint. */
@@ -134,7 +140,9 @@ type DashboardCachePayload = {
   tickets: TicketRow[]
   projects: ProjectRow[]
   workersMap: Record<string, string>
-  closedCount: number
+  /** @deprecated use ticketKpis.closed — kept for older cache payloads */
+  closedCount?: number
+  ticketKpis?: DashboardTicketKpiCounts
   residentsCount: number | null
   workersCount: number | null
   recentActivity: unknown[]
@@ -151,7 +159,7 @@ export default function DashboardPage() {
   const isMobile = useIsMobile()
   const { openMenu } = useMobileMenu()
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
-  const [closedCount, setClosedCount] = useState(0)
+  const [ticketKpis, setTicketKpis] = useState<DashboardTicketKpiCounts>(EMPTY_DASHBOARD_TICKET_KPI_COUNTS)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
 
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
@@ -230,7 +238,7 @@ export default function DashboardPage() {
       tickets: TicketRow[]
       projects: ProjectRow[]
       workersMap: Record<string, string>
-      closedCount: number
+      ticketKpis: DashboardTicketKpiCounts
     }) => {
       try {
         const { uid, clientId } = await resolveDashboardTenantScope()
@@ -284,7 +292,8 @@ export default function DashboardPage() {
           tickets: ctx.tickets,
           projects: ctx.projects,
           workersMap: ctx.workersMap,
-          closedCount: ctx.closedCount,
+          closedCount: ctx.ticketKpis.closed,
+          ticketKpis: ctx.ticketKpis,
           residentsCount: resCount,
           workersCount: wCount,
           recentActivity: activity,
@@ -304,7 +313,7 @@ export default function DashboardPage() {
     const result = await asyncHandler(
       async () => {
         const { uid, clientId } = await resolveDashboardTenantScope()
-        const [ticketsResult, closedCountResult, projectsResult, workersResult] = await Promise.all([
+        const [ticketsResult, kpiCounts, projectsResult, workersResult] = await Promise.all([
           withClientId(
             supabase.from('tickets').select(`
               id, ticket_number, project_id, client_id, reporter_phone, description, 
@@ -317,12 +326,7 @@ export default function DashboardPage() {
             .neq('status', 'CLOSED')
             .order('created_at', { ascending: false })
             .limit(50),
-          withClientId(
-            supabase.from('tickets').select('id', { count: 'exact', head: true }),
-            clientId
-          )
-            .is('deleted_at', null)
-            .eq('status', 'CLOSED'),
+          fetchDashboardTicketKpiCounts(supabase, clientId),
           withClientId(
             supabase.from('projects').select('id, name, project_code'),
             clientId
@@ -360,10 +364,9 @@ export default function DashboardPage() {
           map[worker.id] = worker.full_name
         })
 
-        const nextClosedCount = closedCountResult.count ?? 0
         const nextProjects = projectsResult.data || []
         setTickets(formatted)
-        setClosedCount(nextClosedCount)
+        setTicketKpis(kpiCounts)
         setProjects(nextProjects)
         setWorkersMap(map)
         lastFetchAtRef.current = Date.now()
@@ -373,7 +376,8 @@ export default function DashboardPage() {
           tickets: formatted,
           projects: nextProjects,
           workersMap: map,
-          closedCount: nextClosedCount,
+          closedCount: kpiCounts.closed,
+          ticketKpis: kpiCounts,
           residentsCount: cacheAuxRef.current.residentsCount,
           workersCount: cacheAuxRef.current.workersCount,
           recentActivity: cacheAuxRef.current.recentActivity,
@@ -383,7 +387,7 @@ export default function DashboardPage() {
           tickets: formatted,
           projects: nextProjects,
           workersMap: map,
-          closedCount: nextClosedCount,
+          ticketKpis: kpiCounts,
         })
 
         return true
@@ -430,7 +434,7 @@ export default function DashboardPage() {
           setTickets(cached.tickets)
           setProjects(cached.projects)
           setWorkersMap(cached.workersMap)
-          setClosedCount(cached.closedCount ?? 0)
+          setTicketKpis(resolveDashboardTicketKpiCounts(cached))
           setResidentsCount(cached.residentsCount)
           setWorkersCount(cached.workersCount)
           setRecentActivity(cached.recentActivity as ActivityItem[])
@@ -524,12 +528,15 @@ export default function DashboardPage() {
     return items
   }
 
-  const stats = useMemo(() => {
-    const total = tickets.length
-    const open = tickets.filter((t) => t.status === 'NEW').length
-    const inProgress = tickets.filter((t) => isTicketInTreatment(t.status)).length
-    return { total, open, inProgress, closed: closedCount }
-  }, [tickets, closedCount])
+  const stats = useMemo(
+    () => ({
+      total: ticketKpis.active,
+      open: ticketKpis.open,
+      inProgress: ticketKpis.inProgress,
+      closed: ticketKpis.closed,
+    }),
+    [ticketKpis]
+  )
 
   const filteredTickets = useMemo(() => {
     let filtered = tickets
@@ -647,8 +654,16 @@ export default function DashboardPage() {
   }
 
   function removeClosedTicketFromView(ticketId: string) {
+    const closedRow = tickets.find((t) => t.id === ticketId)
     setTickets((prev) => removeTicketFromListState(prev, ticketId))
-    setClosedCount((c) => c + 1)
+    setTicketKpis((prev) => {
+      const next = { ...prev, closed: prev.closed + 1, active: Math.max(0, prev.active - 1) }
+      if (closedRow?.status === 'NEW') next.open = Math.max(0, next.open - 1)
+      else if (closedRow && isTicketInTreatment(closedRow.status)) {
+        next.inProgress = Math.max(0, next.inProgress - 1)
+      }
+      return next
+    })
     closeDrawer()
   }
 

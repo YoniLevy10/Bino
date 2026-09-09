@@ -2835,7 +2835,6 @@ export type Database = {
       }
       cleanup_expired_pending_selections: { Args: never; Returns: number }
       cleanup_stale_sessions: { Args: never; Returns: number }
-      generate_ticket_number: { Args: never; Returns: string }
       get_client_admin_emails: {
         Args: never
         Returns: {
