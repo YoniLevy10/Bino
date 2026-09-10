@@ -5,10 +5,16 @@ import { publicResidentIntakeBodySchema } from '@/lib/api-body-schemas'
 import { formatZodError } from '@/lib/format-zod-error'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 import { getLogger } from '@/lib/logging'
+import {
+  decideResidentIntakeUpsert,
+  isPostgresUniqueViolation,
+  type IntakeResidentRow,
+} from '@/lib/resident-intake-upsert'
 
 /**
  * Public resident intake — unauthenticated, scoped by client_id + project_code.
- * Upserts into `residents` by (client_id, project_id, normalized_phone).
+ * Upserts into `residents` by (client_id, normalized_phone), revives soft-deletes,
+ * and recovers from unique-constraint races instead of opaque 500s.
  */
 export async function POST(req: NextRequest) {
   const logger = getLogger()
@@ -75,7 +81,8 @@ export async function POST(req: NextRequest) {
     }
 
     const phoneE164 = `+${normalizedDigits}`
-    const payload = {
+    const nowIso = new Date().toISOString()
+    const baseFields = {
       project_id: project.id,
       client_id: clientId,
       full_name: fullName,
@@ -84,16 +91,24 @@ export async function POST(req: NextRequest) {
       email,
       is_renter: isRenter,
       apartment_number: apartmentNumber,
+      updated_at: nowIso,
+      deleted_at: null as string | null,
     }
 
-    const { data: existing, error: existingErr } = await admin
+    const applyUpdate = async (residentId: string) => {
+      const { error: updErr } = await admin
+        .from('residents')
+        .update(baseFields)
+        .eq('id', residentId)
+        .eq('client_id', clientId)
+      return updErr
+    }
+
+    const { data: candidates, error: existingErr } = await admin
       .from('residents')
-      .select('id')
+      .select('id, project_id, deleted_at')
       .eq('client_id', clientId)
-      .eq('project_id', project.id)
       .eq('normalized_phone', normalizedDigits)
-      .is('deleted_at', null)
-      .maybeSingle()
 
     if (existingErr) {
       logger.error('RESIDENT_INTAKE', 'Duplicate lookup failed', new Error(existingErr.message), {
@@ -103,19 +118,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
     }
 
-    if (existing?.id) {
-      const { error: updErr } = await admin
-        .from('residents')
-        .update({
-          full_name: payload.full_name,
-          phone: payload.phone,
-          email: payload.email,
-          is_renter: payload.is_renter,
-          apartment_number: payload.apartment_number,
-        })
-        .eq('id', existing.id)
-        .eq('client_id', clientId)
+    const decision = decideResidentIntakeUpsert({
+      targetProjectId: project.id,
+      candidates: (candidates || []) as IntakeResidentRow[],
+    })
 
+    if (decision.action === 'conflict_other_project') {
+      return NextResponse.json(
+        {
+          error:
+            'מספר הטלפון כבר רשום בבניין אחר אצל אותו לקוח. פנו להנהלה להעברה או עדכון.',
+          requestId,
+        },
+        { status: 409 }
+      )
+    }
+
+    if (decision.action === 'update') {
+      const updErr = await applyUpdate(decision.residentId)
       if (updErr) {
         logger.error('RESIDENT_INTAKE', 'Update resident failed', new Error(updErr.message), {
           requestId,
@@ -123,22 +143,81 @@ export async function POST(req: NextRequest) {
         })
         return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
       }
-
       return NextResponse.json({
         ok: true,
         updated: true,
-        resident_id: existing.id,
+        revived: decision.revive,
+        resident_id: decision.residentId,
         requestId,
       })
     }
 
     const { data: created, error: insErr } = await admin
       .from('residents')
-      .insert(payload)
+      .insert({
+        project_id: baseFields.project_id,
+        client_id: baseFields.client_id,
+        full_name: baseFields.full_name,
+        phone: baseFields.phone,
+        normalized_phone: baseFields.normalized_phone,
+        email: baseFields.email,
+        is_renter: baseFields.is_renter,
+        apartment_number: baseFields.apartment_number,
+      })
       .select('id')
       .single()
 
     if (insErr) {
+      if (isPostgresUniqueViolation(insErr)) {
+        const { data: raced, error: racedErr } = await admin
+          .from('residents')
+          .select('id, project_id, deleted_at')
+          .eq('client_id', clientId)
+          .eq('normalized_phone', normalizedDigits)
+
+        if (racedErr) {
+          logger.error('RESIDENT_INTAKE', 'Race re-lookup failed', new Error(racedErr.message), {
+            requestId,
+            clientId,
+          })
+          return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+        }
+
+        const racedDecision = decideResidentIntakeUpsert({
+          targetProjectId: project.id,
+          candidates: (raced || []) as IntakeResidentRow[],
+        })
+
+        if (racedDecision.action === 'conflict_other_project') {
+          return NextResponse.json(
+            {
+              error:
+                'מספר הטלפון כבר רשום בבניין אחר אצל אותו לקוח. פנו להנהלה להעברה או עדכון.',
+              requestId,
+            },
+            { status: 409 }
+          )
+        }
+
+        if (racedDecision.action === 'update') {
+          const raceUpdErr = await applyUpdate(racedDecision.residentId)
+          if (raceUpdErr) {
+            logger.error('RESIDENT_INTAKE', 'Race update failed', new Error(raceUpdErr.message), {
+              requestId,
+              clientId,
+            })
+            return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+          }
+          return NextResponse.json({
+            ok: true,
+            updated: true,
+            revived: racedDecision.revive,
+            resident_id: racedDecision.residentId,
+            requestId,
+          })
+        }
+      }
+
       logger.error('RESIDENT_INTAKE', 'Insert resident failed', new Error(insErr.message), {
         requestId,
         clientId,
