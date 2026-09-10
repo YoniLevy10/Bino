@@ -114,9 +114,15 @@ export async function POST(req: Request) {
     }
 
     if (soft_delete) {
+      // Clear phones so unique indexes free the number for re-registration via /intake.
       const { error } = await admin
         .from('residents')
-        .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          phone: null,
+          normalized_phone: null,
+        })
         .eq('id', resident_id)
         .eq('client_id', clientId)
       if (error) {
