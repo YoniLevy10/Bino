@@ -3,7 +3,8 @@ import { navIdFromPathname } from '@/lib/nav-from-pathname'
 
 describe('navIdFromPathname', () => {
   it('maps core dashboard routes', () => {
-    expect(navIdFromPathname('/')).toBe('dashboard')
+    expect(navIdFromPathname('/')).toBeNull()
+    expect(navIdFromPathname('/dashboard')).toBe('dashboard')
     expect(navIdFromPathname('/tickets')).toBe('tickets')
     expect(navIdFromPathname('/projects')).toBe('projects')
     expect(navIdFromPathname('/residents')).toBe('residents')

@@ -49,7 +49,7 @@ export function LoginClient() {
   const searchParams = useSearchParams()
 
   const authError = searchParams.get('error')
-  const redirectTo = searchParams.get('redirectTo') || '/'
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -119,7 +119,7 @@ export function LoginClient() {
         throw new Error(msg || 'התחברות נכשלה')
       }
       const next =
-        redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/'
+        redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
       router.replace(next)
       router.refresh()
     } catch (err) {

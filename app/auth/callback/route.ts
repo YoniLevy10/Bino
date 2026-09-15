@@ -8,9 +8,10 @@ import { upsertGoogleCalendarConnection } from '@/lib/google-calendar'
 import { getSingletonClientId } from '@/lib/singleton-client-server'
 
 function sanitizeNext(raw: string | null): string {
-  if (!raw) return '/'
-  if (!raw.startsWith('/')) return '/'
-  if (raw.startsWith('//')) return '/'
+  if (!raw) return '/dashboard'
+  if (!raw.startsWith('/')) return '/dashboard'
+  if (raw.startsWith('//')) return '/dashboard'
+  if (raw === '/') return '/dashboard'
   return raw
 }
 

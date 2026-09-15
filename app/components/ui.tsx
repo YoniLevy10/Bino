@@ -123,7 +123,7 @@ export const theme = {
 // ============================================================================
 
 const MOBILE_BOTTOM_NAV_LABELS: Partial<Record<string, string>> = {
-  '/': 'בית',
+  '/dashboard': 'בית',
   '/qr': 'QR',
   '/attendance': 'שעון',
   '/settings/whatsapp-templates': 'תבניות',

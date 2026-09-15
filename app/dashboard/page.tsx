@@ -40,23 +40,23 @@ import {
   ErrorState,
   EmptyState,
   theme 
-} from './components/ui'
-import type { ProfessionalOption } from './components/tickets/ForwardToProfessionalBlock'
+} from '../components/ui'
+import type { ProfessionalOption } from '../components/tickets/ForwardToProfessionalBlock'
 
 const TicketDetailDrawer = dynamic(
-  () => import('./components/tickets/TicketDetailDrawer').then((m) => ({ default: m.TicketDetailDrawer })),
+  () => import('../components/tickets/TicketDetailDrawer').then((m) => ({ default: m.TicketDetailDrawer })),
   { loading: () => null }
 )
 const AddTicketModal = dynamic(
-  () => import('./components/tickets/AddTicketModal').then((m) => ({ default: m.AddTicketModal })),
+  () => import('../components/tickets/AddTicketModal').then((m) => ({ default: m.AddTicketModal })),
   { loading: () => null }
 )
-import { PageTransitionLoader } from './components/page-skeleton'
-import { ImageLightbox } from './components/shared/ImageLightbox'
+import { PageTransitionLoader } from '../components/page-skeleton'
+import { ImageLightbox } from '../components/shared/ImageLightbox'
 import { useIsMobile } from '@/lib/use-is-mobile'
 import { removeTicketFromListState } from '@/lib/open-tickets'
-import { TicketMobileCard } from './components/tickets/TicketMobileCard'
-import { CloseTicketConfirmSheet } from './components/tickets/CloseTicketConfirmSheet'
+import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
+import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import {
   readTenantDashboardCache,

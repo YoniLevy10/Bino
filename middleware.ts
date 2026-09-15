@@ -14,8 +14,8 @@ export async function middleware(req: NextRequest) {
   // Public routes: do not block WhatsApp webhook or login screen
   // Also: /api/superadmin/* and /api/admin/* use x-admin-secret auth, not Supabase cookies
   if (
+    pathname === '/' ||
     pathname.startsWith('/api/webhook/whatsapp') ||
-    pathname.startsWith('/api/webhook/greeninvoice') ||
     pathname.startsWith('/api/webhook/grow') ||
     pathname.startsWith('/api/public/') ||
     pathname.startsWith('/api/worker-auth') ||
@@ -152,7 +152,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const url = req.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/dashboard'
     pendingResponse = NextResponse.redirect(url)
     return pendingResponse
   }

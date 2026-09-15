@@ -136,7 +136,7 @@ test.describe('דפים ציבוריים — עולים ללא login', () => {
 
 test.describe('הפניות auth — דפים מוגנים', () => {
   const routes = [
-    '/',
+    '/dashboard',
     '/tickets',
     '/projects',
     '/workers',

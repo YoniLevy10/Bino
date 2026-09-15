@@ -1,0 +1,377 @@
+/* BINO public marketing — motions + atmosphere (Heebo / brand blue from layout) */
+
+@keyframes bino-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bino-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bino-grid-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 48px 32px, -24px 16px;
+  }
+}
+
+.bino-marketing {
+  --bino-blue: #0066ff;
+  --bino-blue-deep: #0047b3;
+  --bino-ink: #0b1220;
+  --bino-ink-soft: #2a3548;
+  --bino-muted: #5a6578;
+  --bino-surface: #f2f5fa;
+  --bino-line: rgba(11, 18, 32, 0.1);
+  color: var(--bino-ink);
+  background: var(--bino-surface);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.bino-marketing a {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* —— Hero: one composition —— */
+.bino-hero {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 28px 20px 40px;
+  color: #fff;
+  isolation: isolate;
+}
+
+.bino-hero__plane {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(165deg, rgba(11, 18, 32, 0.55) 0%, rgba(0, 71, 179, 0.45) 42%, rgba(0, 102, 255, 0.72) 100%),
+    linear-gradient(180deg, #0b1220 0%, #123a7a 55%, #0066ff 100%);
+}
+
+.bino-hero__plane::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.45;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+  animation: bino-grid-drift 28s linear infinite;
+}
+
+.bino-hero__plane::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, rgba(11, 18, 32, 0.55));
+  pointer-events: none;
+}
+
+.bino-hero__inner {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.bino-brand {
+  display: block;
+  font-size: clamp(3.25rem, 14vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin: 0 0 20px;
+  animation: bino-fade-up 0.7s ease-out both;
+}
+
+.bino-headline {
+  margin: 0 0 12px;
+  font-size: clamp(1.35rem, 4.6vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  max-width: 22ch;
+  animation: bino-fade-up 0.75s ease-out 0.12s both;
+}
+
+.bino-support {
+  margin: 0 0 28px;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 34ch;
+  font-weight: 400;
+  animation: bino-fade-up 0.75s ease-out 0.22s both;
+}
+
+.bino-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  animation: bino-fade-in 0.8s ease-out 0.35s both;
+}
+
+.bino-cta__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 14px 22px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--bino-blue);
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.bino-cta__primary:hover {
+  background: #f0f5ff;
+  transform: translateY(-1px);
+}
+
+.bino-cta__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 18px;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  font-size: 0.98rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.bino-cta__secondary:hover {
+  color: #fff;
+}
+
+/* —— Below the fold —— */
+.bino-section {
+  padding: 56px 20px;
+  max-width: 880px;
+  margin-inline: auto;
+}
+
+.bino-section__title {
+  margin: 0 0 10px;
+  font-size: clamp(1.35rem, 3.5vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--bino-ink);
+}
+
+.bino-section__lead {
+  margin: 0 0 28px;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--bino-muted);
+  max-width: 40ch;
+}
+
+.bino-metrics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--bino-line);
+}
+
+.bino-metrics li {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--bino-line);
+  animation: bino-fade-up 0.6s ease-out both;
+}
+
+.bino-metrics li:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.bino-metrics li:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.bino-metrics li:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.bino-metrics li:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.bino-metrics li:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.bino-metrics__idx {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--bino-blue);
+  letter-spacing: 0.04em;
+  min-width: 1.5rem;
+}
+
+.bino-metrics__label {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--bino-ink);
+  line-height: 1.35;
+}
+
+.bino-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 28px;
+}
+
+.bino-steps li {
+  position: relative;
+  padding-inline-start: 0;
+}
+
+.bino-steps__num {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--bino-blue);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.bino-steps__title {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--bino-ink);
+}
+
+.bino-steps__body {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--bino-muted);
+  max-width: 42ch;
+}
+
+.bino-closing {
+  padding: 48px 20px 64px;
+  text-align: center;
+  background: linear-gradient(180deg, transparent, rgba(0, 102, 255, 0.06));
+}
+
+.bino-closing__title {
+  margin: 0 0 20px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--bino-ink);
+}
+
+.bino-closing .bino-cta {
+  max-width: 360px;
+  margin-inline: auto;
+  align-items: center;
+}
+
+.bino-closing .bino-cta__primary {
+  background: var(--bino-blue);
+  color: #fff;
+  width: 100%;
+}
+
+.bino-closing .bino-cta__primary:hover {
+  background: var(--bino-blue-deep);
+}
+
+.bino-closing .bino-cta__secondary {
+  color: var(--bino-ink-soft);
+}
+
+.bino-footer {
+  padding: 20px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--bino-muted);
+  border-top: 1px solid var(--bino-line);
+}
+
+.bino-footer a {
+  color: var(--bino-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bino-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 768px) {
+  .bino-hero {
+    justify-content: center;
+    padding: 48px 40px 64px;
+  }
+
+  .bino-hero__inner {
+    max-width: 780px;
+  }
+
+  .bino-cta {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .bino-cta__primary {
+    min-width: 220px;
+  }
+
+  .bino-section {
+    padding: 72px 40px;
+  }
+
+  .bino-steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+
+  .bino-closing .bino-cta {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bino-brand,
+  .bino-headline,
+  .bino-support,
+  .bino-cta,
+  .bino-metrics li,
+  .bino-hero__plane::before {
+    animation: none !important;
+  }
+}

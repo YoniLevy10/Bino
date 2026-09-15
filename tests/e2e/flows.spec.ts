@@ -85,7 +85,7 @@ test.describe('דפים ציבוריים', () => {
 
 test.describe('הפניות auth — דפים מוגנים', () => {
   const protectedRoutes = [
-    '/',
+    '/dashboard',
     '/tickets',
     '/projects',
     '/workers',
@@ -260,9 +260,9 @@ test.describe('עקביות ניווט', () => {
     }
   })
 
-  test('הפניית / → /login מחזירה קוד לא-5xx', async ({ request }) => {
+  test('דף הבית הציבורי / מחזיר קוד לא-5xx', async ({ request }) => {
     const res = await request.get('/')
-    // יכול להיות 200 (אם יש static export) או redirect
+    // Public marketing landing — should succeed without auth
     expect(res.status()).toBeLessThan(500)
   })
 })

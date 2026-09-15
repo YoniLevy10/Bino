@@ -3,7 +3,7 @@
   "name": "Bino",
   "short_name": "Bino",
   "description": "מערכת ניהול תקלות ואחזקה לבניינים",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F9F9FB",

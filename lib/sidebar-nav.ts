@@ -136,7 +136,7 @@ export function splitSidebarNavSections(items: SidebarNavItem[]): {
 }
 
 export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
-  dashboard: { id: 'dashboard', href: '/', label: 'לוח בקרה', icon: 'home' },
+  dashboard: { id: 'dashboard', href: '/dashboard', label: 'לוח בקרה', icon: 'home' },
   tickets: { id: 'tickets', href: '/tickets', label: 'תקלות', icon: 'ticket' },
   projects: { id: 'projects', href: '/projects', label: 'פרויקטים', icon: 'folder' },
   residents: { id: 'residents', href: '/residents', label: 'דיירים', icon: 'building' },
