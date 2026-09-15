@@ -19,6 +19,7 @@ import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPan
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { UsageAnalyticsPanel } from './UsageAnalyticsPanel'
 import { BottomNav } from './components/BottomNav'
+import { DesktopTabBar } from './components/DesktopTabBar'
 import { ClientsList } from './components/ClientsList'
 import { ClientHub } from './components/ClientHub'
 import { ClientTaskView } from './components/ClientTaskView'
@@ -465,6 +466,13 @@ export default function SuperAdminPage() {
           </button>
         </div>
       </header>
+
+      <DesktopTabBar
+        tab={tab}
+        opsBadge={opsUnresolved}
+        onChange={goTab}
+        hidden={hideBottomNav}
+      />
 
       {error ? <div className="sa-banner sa-banner-error">{error}</div> : null}
       {success ? <div className="sa-banner sa-banner-ok">{success}</div> : null}

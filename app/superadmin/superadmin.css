@@ -920,3 +920,54 @@
 @media (min-width: 768px) {
   .sa-desktop-only { display: block; }
 }
+
+/* Desktop top tabs (BottomNav is hidden from 768px up) */
+.sa-tab-bar {
+  display: none;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 6px;
+  background: #f3f4f6;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  flex-wrap: wrap;
+}
+
+.sa-tab-btn {
+  position: relative;
+  flex: 1;
+  min-width: 88px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sa-tab-btn.is-active {
+  background: #fff;
+  color: #0066ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.sa-tab-badge {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
