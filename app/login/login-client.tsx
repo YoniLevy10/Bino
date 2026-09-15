@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
@@ -63,6 +63,27 @@ export function LoginClient() {
           ? TENANT_ACCESS_DENIED_HE
           : ''
   )
+
+  // iOS PWA: if session cookies survived, skip the login form instead of
+  // forcing Google/password again (signIn* also called signOut and wiped them).
+  useEffect(() => {
+    const hardBlock =
+      authError === 'no_access' || authError === 'multi_tenant' || authError === 'auth'
+    if (hardBlock) return
+
+    let cancelled = false
+    const supabase = createClient()
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled || !data.session) return
+      const next =
+        redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
+      router.replace(next)
+      router.refresh()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authError, redirectTo, router])
 
   async function signInWithGoogle() {
     setError('')

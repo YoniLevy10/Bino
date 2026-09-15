@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { SUPABASE_AUTH_COOKIE_OPTIONS } from '@/lib/supabase-cookie-options'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -12,6 +13,7 @@ export function createClient(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   }
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: SUPABASE_AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll() {
         return cookieStore.getAll()

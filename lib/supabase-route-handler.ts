@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { SUPABASE_AUTH_COOKIE_OPTIONS } from '@/lib/supabase-cookie-options'
 
 export async function createSupabaseRouteHandlerClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -11,6 +12,7 @@ export async function createSupabaseRouteHandlerClient() {
   const cookieStore = await cookies()
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: SUPABASE_AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll() {
         return cookieStore.getAll()

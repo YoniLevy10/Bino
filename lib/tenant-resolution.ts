@@ -35,7 +35,12 @@ export async function listClientIdsForUserId(
     .select('organization_id')
     .eq('user_id', userId)
 
-  if (ouErr || !ouRows?.length) return []
+  // DB / network errors must throw — callers must not treat them as "no org"
+  // (middleware used to signOut on empty list and wiped iOS PWA sessions).
+  if (ouErr) {
+    throw new Error(`ORG_USERS_QUERY_FAILED: ${ouErr.message}`)
+  }
+  if (!ouRows?.length) return []
 
   const orgIds = Array.from(
     new Set(
@@ -52,7 +57,10 @@ export async function listClientIdsForUserId(
     .select('client_id')
     .in('id', orgIds)
 
-  if (orgErr || !orgRows?.length) return []
+  if (orgErr) {
+    throw new Error(`ORGS_QUERY_FAILED: ${orgErr.message}`)
+  }
+  if (!orgRows?.length) return []
 
   const clientIds = new Set<string>()
   for (const row of orgRows as Array<{ client_id?: string | null }>) {

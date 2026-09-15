@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { resolveClientIdForUserId, requireClientIdForUser } from '@/lib/tenant-resolution'
+import {
+  listClientIdsForUserId,
+  resolveClientIdForUserId,
+  requireClientIdForUser,
+} from '@/lib/tenant-resolution'
 
 describe('tenant resolution security', () => {
   const prevNodeEnv = process.env.NODE_ENV
@@ -81,6 +85,56 @@ describe('tenant resolution security', () => {
     } as unknown as Parameters<typeof resolveClientIdForUserId>[0]
 
     await expect(resolveClientIdForUserId(admin, 'orphan-user')).resolves.toBeNull()
+  })
+
+  it('listClientIdsForUserId throws on organization_users query error (not empty list)', async () => {
+    const admin = {
+      from: () => ({
+        select: () => ({
+          eq: () =>
+            Promise.resolve({
+              data: null,
+              error: { message: 'connection reset' },
+            }),
+        }),
+      }),
+    } as unknown as Parameters<typeof listClientIdsForUserId>[0]
+
+    await expect(listClientIdsForUserId(admin, 'u1')).rejects.toThrow(
+      'ORG_USERS_QUERY_FAILED'
+    )
+  })
+
+  it('listClientIdsForUserId throws on organizations query error', async () => {
+    const admin = {
+      from: (table: string) => {
+        if (table === 'organization_users') {
+          return {
+            select: () => ({
+              eq: () =>
+                Promise.resolve({
+                  data: [{ organization_id: 'org-a' }],
+                  error: null,
+                }),
+            }),
+          }
+        }
+        if (table === 'organizations') {
+          return {
+            select: () => ({
+              in: () =>
+                Promise.resolve({
+                  data: null,
+                  error: { message: 'timeout' },
+                }),
+            }),
+          }
+        }
+        throw new Error(`unexpected table ${table}`)
+      },
+    } as unknown as Parameters<typeof listClientIdsForUserId>[0]
+
+    await expect(listClientIdsForUserId(admin, 'u1')).rejects.toThrow('ORGS_QUERY_FAILED')
   })
 })
 
