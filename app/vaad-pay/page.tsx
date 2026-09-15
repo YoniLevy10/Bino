@@ -2,10 +2,14 @@ import type { Metadata } from 'next'
 import { getLegalSiteConfig } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { VaadPayContent } from '@/app/components/legal/VaadPayContent'
+import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+
+const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
-  title: 'תשלום דמי ועד | Bino',
-  description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים — Bino',
+  title: 'תשלום דמי ועד',
+  description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים — BINO',
+  alternates: { canonical: `${origin}/vaad-pay` },
 }
 
 /**

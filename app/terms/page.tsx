@@ -1,11 +1,16 @@
 import type { Metadata } from 'next'
 import { readFile } from 'fs/promises'
 import path from 'path'
-import { LegalPublicShell, legalProseStyle } from '@/app/components/legal/LegalPublicShell'
+import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
+import { MarkdownProse } from '@/app/components/legal/MarkdownProse'
+import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+
+const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
-  title: 'תקנון | Bino',
-  description: 'תקנון שימוש ושירות לתשלומי ועד וגבייה דיגיטלית',
+  title: 'תקנון',
+  description: 'תקנון שימוש ושירות לתשלומי ועד וגבייה דיגיטלית — BINO',
+  alternates: { canonical: `${origin}/terms` },
 }
 
 export default async function TermsPage() {
@@ -19,7 +24,7 @@ export default async function TermsPage() {
 
   return (
     <LegalPublicShell>
-      <div style={legalProseStyle}>{raw}</div>
+      <MarkdownProse source={raw} />
     </LegalPublicShell>
   )
 }

@@ -1,11 +1,16 @@
 import type { Metadata } from 'next'
 import { readFile } from 'fs/promises'
 import path from 'path'
-import { LegalPublicShell, legalProseStyle } from '@/app/components/legal/LegalPublicShell'
+import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
+import { MarkdownProse } from '@/app/components/legal/MarkdownProse'
+import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+
+const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
-  title: 'מדיניות פרטיות | Bino',
-  description: 'מדיניות פרטיות — Bino',
+  title: 'מדיניות פרטיות',
+  description: 'מדיניות פרטיות — BINO',
+  alternates: { canonical: `${origin}/privacy` },
 }
 
 /** Renders repo root `PRIVACY_POLICY_TEMPLATE.md` — public for Grow / residents. */
@@ -20,7 +25,7 @@ export default async function PrivacyPage() {
 
   return (
     <LegalPublicShell>
-      <div style={legalProseStyle}>{raw}</div>
+      <MarkdownProse source={raw} />
     </LegalPublicShell>
   )
 }

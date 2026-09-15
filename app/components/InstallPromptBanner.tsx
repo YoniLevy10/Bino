@@ -49,7 +49,19 @@ export function InstallPromptBanner() {
     setDismissed(true)
   }
 
-  if (pathname?.startsWith('/worker')) return null
+  // Keep marketing / legal surfaces clean for guests and crawlers
+  if (
+    !pathname ||
+    pathname === '/' ||
+    pathname === '/privacy' ||
+    pathname === '/terms' ||
+    pathname === '/contact' ||
+    pathname === '/vaad-pay' ||
+    pathname.startsWith('/vaad-pay/') ||
+    pathname.startsWith('/worker')
+  ) {
+    return null
+  }
   if (!prompt || dismissed) return null
 
   const iconSrc = logoUrl || '/apple-icon.png'

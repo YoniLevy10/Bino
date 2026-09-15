@@ -83,6 +83,7 @@ export function LegalPublicShell({
   )
 }
 
+/** @deprecated Prefer MarkdownProse for public legal pages. */
 export const legalProseStyle: CSSProperties = {
   whiteSpace: 'pre-wrap' as const,
   fontSize: 15,
