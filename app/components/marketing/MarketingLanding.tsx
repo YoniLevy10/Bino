@@ -161,7 +161,7 @@ export function MarketingLanding() {
                   <span className="bino-metrics__delta">
                     <span className="bino-metrics__before">{metric.before}</span>
                     <span className="bino-metrics__arrow" aria-hidden="true">
-                      →
+                      ←
                     </span>
                     <span className="bino-metrics__after">{metric.after}</span>
                     <span className="bino-metrics__note">{metric.note}</span>
