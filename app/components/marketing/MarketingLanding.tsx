@@ -112,7 +112,7 @@ export function MarketingLanding() {
         <section className="bino-showcase" aria-labelledby="bino-showcase-heading">
           <div className="bino-section bino-section--wide">
             <h2 id="bino-showcase-heading" className="bino-section__title">
-              כך נראית המודיעין התפעולי
+              כך נראה המודיעין התפעולי
             </h2>
             <p className="bino-section__lead">
               לא רשימת תקלות — זיכרון שממליץ, מתריע ומוכיח כמה זמן וכסף נחסכו.
