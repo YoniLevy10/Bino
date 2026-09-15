@@ -47,6 +47,9 @@ export type SalesLeadSourceRecord = {
   estimatedMrrIls?: number | null
   queryKey?: string | null
   placeTypes?: string[] | null
+  reviewCount?: number | null
+  rating?: number | null
+  openingHours?: string[] | null
 }
 
 export type SalesLead = {
@@ -79,6 +82,7 @@ export type SalesLead = {
   sourceRefs: SalesLeadSourceRef[]
   lastSeenAt: string | null
   contactedAt: string | null
+  nextContactAt: string | null
   createdAt: string
   updatedAt: string
 }

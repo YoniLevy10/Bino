@@ -44,7 +44,7 @@ vi.mock('@/lib/tenant-browser-cache', () => ({
   TENANT_CID_LOCAL_KEY: 'bamakor_cid_local_v1',
 }))
 
-describe('resolveBamakorClientIdForBrowser', () => {
+describe('resolveBinoClientIdForBrowser', () => {
   beforeEach(() => {
     vi.resetModules()
     installMemoryStorage()
@@ -64,8 +64,8 @@ describe('resolveBamakorClientIdForBrowser', () => {
     })
     resolveClientIdForUserId.mockResolvedValue('client-1')
 
-    const { resolveBamakorClientIdForBrowser } = await import('@/lib/bamakor-client')
-    await expect(resolveBamakorClientIdForBrowser()).resolves.toBe('client-1')
+    const { resolveBinoClientIdForBrowser } = await import('@/lib/bamakor-client')
+    await expect(resolveBinoClientIdForBrowser()).resolves.toBe('client-1')
     expect(resolveClientIdForUserId).toHaveBeenCalled()
   })
 
@@ -98,8 +98,8 @@ describe('resolveBamakorClientIdForBrowser', () => {
       error: null,
     })
 
-    const { resolveBamakorClientIdForBrowser } = await import('@/lib/bamakor-client')
-    await expect(resolveBamakorClientIdForBrowser()).resolves.toBe('client-cached')
+    const { resolveBinoClientIdForBrowser } = await import('@/lib/bamakor-client')
+    await expect(resolveBinoClientIdForBrowser()).resolves.toBe('client-cached')
     expect(resolveClientIdForUserId).not.toHaveBeenCalled()
   })
 })

@@ -6,7 +6,7 @@ import {
   type ClientGrowLegalRow,
 } from '@/lib/client-grow-legal'
 
-/** Public Grow page load — legal fields only, never Morning keys. */
+/** Public Grow page load — legal fields only, never payment API secrets. */
 export const loadPublicGrowMerchant = cache(async function loadPublicGrowMerchant(
   clientId: string
 ): Promise<ClientGrowLegalRow | null> {

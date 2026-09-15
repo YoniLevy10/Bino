@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
 import {
   parseTicketIdFromSearchParams,
@@ -63,7 +63,7 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
         onOpenTicketRef.current(fromList, { skipDeepLink: true })
         return
       }
-      const clientId = resolveClientId ? await resolveClientId() : await resolveBamakorClientIdForBrowser()
+      const clientId = resolveClientId ? await resolveClientId() : await resolveBinoClientIdForBrowser()
       const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
       if (fetched) {
         deepLinkHandledRef.current = ticketId

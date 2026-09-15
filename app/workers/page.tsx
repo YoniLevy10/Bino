@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { shouldShowPageLoadError } from '@/lib/page-load-error'
@@ -197,7 +197,7 @@ export default function WorkersPage() {
   const [loadingWorkerTickets, setLoadingWorkerTickets] = useState(false)
 
   async function loadClientId() {
-    const id = await resolveBamakorClientIdForBrowser()
+    const id = await resolveBinoClientIdForBrowser()
     setClientId(id)
     return id
   }
@@ -302,7 +302,7 @@ export default function WorkersPage() {
     setLoadingWorkerTickets(true)
     await asyncHandler(
       async () => {
-        const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+        const scoped = clientId || (await resolveBinoClientIdForBrowser())
         const { data, error } = await withClientId(
           supabase.from('tickets').select(`
             id, ticket_number, status, priority,

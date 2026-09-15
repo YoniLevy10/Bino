@@ -16,7 +16,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
@@ -255,7 +255,7 @@ export default function SummaryPage() {
   const loadMeta = useCallback(async (silent = false) => {
     if (!silent) setMetaLoading(true)
     try {
-      const clientId = await resolveBamakorClientIdForBrowser()
+      const clientId = await resolveBinoClientIdForBrowser()
       const [
         { data: projectsData, error: projectsError },
         { data: workersData, error: workersError },
@@ -296,7 +296,7 @@ export default function SummaryPage() {
     const periodKey = summaryPeriodKey(period, customFrom, customTo, range)
     let showedCachedKpi = false
     if (!silent) {
-      const clientId = await resolveBamakorClientIdForBrowser()
+      const clientId = await resolveBinoClientIdForBrowser()
       const cachedKpi = shouldSkipStalePageCache()
         ? null
         : readSummaryKpiCache(clientId, periodKey)
@@ -315,7 +315,7 @@ export default function SummaryPage() {
       }
     }
     try {
-      const clientId = await resolveBamakorClientIdForBrowser()
+      const clientId = await resolveBinoClientIdForBrowser()
       const params = new URLSearchParams({ from: fromIso, to: toIso })
       const res = await fetchWithTimeout(
         `/api/summary/kpi?${params}`,
@@ -390,7 +390,7 @@ export default function SummaryPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         const cached = shouldSkipStalePageCache() ? null : readSummaryMetaCache(clientId)
         if (cached) {
           setProjects(cached.projects)

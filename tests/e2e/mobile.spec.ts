@@ -12,8 +12,8 @@ iPhoneContext.describe('Dashboard - Mobile (iPhone 12)', () => {
   })
 
   iPhoneContext('Dashboard does not crash on mobile viewport', async ({ page }) => {
-    // Without auth, / redirects to /login — verify no crash on mobile
-    await page.goto('/')
+    // Without auth, /dashboard redirects to /login — verify no crash on mobile
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await expect(page).toHaveURL(/\/login/)
     await expect(page.locator('body')).toBeVisible()
@@ -85,8 +85,8 @@ androidContext.describe('Dashboard - Mobile (Pixel 5 Android)', () => {
   })
 
   androidContext('Dashboard loads on Android mobile', async ({ page }) => {
-    // Without auth, / redirects to /login — verify redirect works on Android viewport
-    await page.goto('/')
+    // Without auth, /dashboard redirects to /login — verify redirect works on Android viewport
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await expect(page).toHaveURL(/\/login/)
     await expect(page.locator('body')).toBeVisible()
@@ -101,12 +101,12 @@ androidContext.describe('Dashboard - Mobile (Pixel 5 Android)', () => {
   })
 
   androidContext('Dashboard navigation works on Android', async ({ page }) => {
-    // Without auth, / redirects to /login — verify that redirect completes without crash on Android
+    // Without auth, /dashboard redirects to /login — verify that redirect completes without crash on Android
     const errors: string[] = []
     page.on('pageerror', (e) => {
       if (!e.message.includes('hydrat')) errors.push(e.message)
     })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await page.waitForLoadState('domcontentloaded')
     expect(errors).toHaveLength(0)

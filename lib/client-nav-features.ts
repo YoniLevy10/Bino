@@ -125,7 +125,7 @@ export function resolveEnabledNavFeaturesForClient(
 }
 
 const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
-  '/': 'dashboard',
+  '/dashboard': 'dashboard',
   '/tickets': 'tickets',
   '/projects': 'projects',
   '/residents': 'residents',

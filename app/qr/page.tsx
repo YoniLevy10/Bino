@@ -34,7 +34,7 @@ import {
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { digitsForWaMeLink } from '@/lib/wa-me-phone'
 import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
@@ -96,7 +96,7 @@ export default function QrPage() {
     void (async () => {
       setWaPhoneLoading(true)
       try {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         const { data, error } = await supabase
           .from('clients')
           .select('whatsapp_business_phone, manager_phone, default_worker_phone')

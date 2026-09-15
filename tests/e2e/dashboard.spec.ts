@@ -2,11 +2,11 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Dashboard - Core Functionality', () => {
   test('Dashboard page loads successfully', async ({ page }) => {
-    // Without auth, / redirects to /login — verify that redirect and title
-    await page.goto('/')
+    // Without auth, /dashboard redirects to /login — verify that redirect and title
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await expect(page).toHaveURL(/\/login/)
-    await expect(page).toHaveTitle(/Bino|Dashboard/i)
+    await expect(page).toHaveTitle(/Bino|Dashboard|BINO/i)
   })
 
   test('Main navigation renders', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Dashboard - Core Functionality', () => {
   })
 
   test('Dashboard does not crash on initial load', async ({ page }) => {
-    // Navigating to / redirects to /login — verify no JS errors occur during that flow
+    // Navigating to /dashboard redirects to /login — verify no JS errors occur during that flow
     const errors: string[] = []
     page.on('pageerror', (e) => {
       const msg = e.message
@@ -36,7 +36,7 @@ test.describe('Dashboard - Core Functionality', () => {
       if (msg.includes("expected expression, got '<'")) return
       errors.push(msg)
     })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await page.waitForLoadState('domcontentloaded')
     expect(errors).toHaveLength(0)
@@ -69,15 +69,15 @@ test.describe('Dashboard - Navigation', () => {
 
 test.describe('Dashboard - Modals and Drawers', () => {
   test('New Ticket modal opens when button clicked', async ({ page }) => {
-    // Without auth, navigating to / redirects to /login — verify redirect happens cleanly
-    await page.goto('/')
+    // Without auth, navigating to /dashboard redirects to /login — verify redirect happens cleanly
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await expect(page).toHaveURL(/\/login/)
   })
 
   test('Modal can be closed', async ({ page }) => {
-    // Without auth, navigating to / redirects to /login — verify login page is shown
-    await page.goto('/')
+    // Without auth, navigating to /dashboard redirects to /login — verify login page is shown
+    await page.goto('/dashboard')
     await page.waitForURL(/\/login/, { timeout: 12_000 })
     await expect(page.locator('body')).toBeVisible()
     const googleBtn = page.locator('button').filter({ hasText: /google/i }).first()

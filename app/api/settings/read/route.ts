@@ -24,16 +24,11 @@ export async function GET() {
   const whatsapp_access_token_set = Boolean(
     typeof row.whatsapp_access_token === 'string' && row.whatsapp_access_token.trim()
   )
-  const greeninvoice_api_secret_set = Boolean(
-    typeof row.greeninvoice_api_secret === 'string' && row.greeninvoice_api_secret.trim()
-  )
 
   delete row.whatsapp_access_token
-  delete row.greeninvoice_api_secret
 
   return NextResponse.json({
     ...row,
     whatsapp_access_token_set,
-    greeninvoice_api_secret_set,
   })
 }

@@ -5,7 +5,7 @@ import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import {
   clearTenantBrowserCaches,
   LAST_AUTH_UID_KEY,
@@ -83,7 +83,7 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     }
     try {
       const supabase = createClient()
-      const clientId = await resolveBamakorClientIdForBrowser()
+      const clientId = await resolveBinoClientIdForBrowser()
 
       const cached = readBrandingCache(clientId)
       if (cached) {

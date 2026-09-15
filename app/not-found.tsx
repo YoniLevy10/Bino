@@ -27,7 +27,7 @@ export default function NotFound() {
         </p>
 
         {/* Back Button */}
-        <Link href="/" style={styles.backButton}>
+        <Link href="/dashboard" style={styles.backButton}>
           Back to Dashboard
         </Link>
       </div>

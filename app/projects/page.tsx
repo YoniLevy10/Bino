@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -145,7 +145,7 @@ export default function ProjectsPage() {
   const [projectHistoryOpen, setProjectHistoryOpen] = useState(false)
 
   async function loadClientId() {
-    const id = await resolveBamakorClientIdForBrowser()
+    const id = await resolveBinoClientIdForBrowser()
     setClientId(id)
     return id
   }
@@ -298,7 +298,7 @@ export default function ProjectsPage() {
   }
 
   async function fetchProjectOpenTickets(projectId: string) {
-    const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+    const scoped = clientId || (await resolveBinoClientIdForBrowser())
     const { data, error } = await withClientId(
       supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
       scoped
@@ -314,7 +314,7 @@ export default function ProjectsPage() {
   }
 
   async function fetchProjectClosedTickets(projectId: string) {
-    const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+    const scoped = clientId || (await resolveBinoClientIdForBrowser())
     const { data, error } = await withClientId(
       supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
       scoped
@@ -347,7 +347,7 @@ export default function ProjectsPage() {
   async function exportProjectHistory(project: ProjectRow) {
     setExportingHistory(true)
     try {
-      const scoped = clientId || (await resolveBamakorClientIdForBrowser())
+      const scoped = clientId || (await resolveBinoClientIdForBrowser())
       const { data, error } = await withClientId(
         supabase.from('tickets').select(
           'id, ticket_number, status, priority, description, created_at, closed_at, building_number, reporter_phone, reporter_name'

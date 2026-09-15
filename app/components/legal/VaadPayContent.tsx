@@ -58,7 +58,7 @@ export function VaadPayContent({
         <ul style={{ margin: 0, paddingRight: 20, color: '#334155', lineHeight: 1.7 }}>
           <li>תשלום חיוב ועד בית / גבייה דיגיטלית לפי קישור אישי</li>
           <li>אישור תשלום במייל (כשמוזן מייל בעמוד התשלום)</li>
-          <li>סליקה מאובטחת דרך ספק חיצוני (Morning / Grow)</li>
+          <li>סליקה מאובטחת דרך ספק חיצוני (Grow)</li>
         </ul>
       </section>
 

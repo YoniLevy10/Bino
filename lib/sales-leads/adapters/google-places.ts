@@ -16,7 +16,7 @@ import {
   getDiscoveryTotalBudget,
   getSalesSegmentSlugs,
 } from '@/lib/sales-leads/config'
-import { assessBuyerFit, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
+import { assessBuyerFit, estimateBuildingsFromSignals, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
 import {
   computeYieldScore,
   selectJobsForBudget,
@@ -35,6 +35,9 @@ type PlacesTextSearchResult = {
     websiteUri?: string
     googleMapsUri?: string
     types?: string[]
+    rating?: number
+    userRatingCount?: number
+    regularOpeningHours?: { weekdayDescriptions?: string[] }
     displayName?: { text?: string }
   }>
   nextPageToken?: string
@@ -50,6 +53,9 @@ const PLACES_FIELD_MASK = [
   'places.websiteUri',
   'places.googleMapsUri',
   'places.types',
+  'places.rating',
+  'places.userRatingCount',
+  'places.regularOpeningHours',
   'nextPageToken',
 ].join(',')
 
@@ -180,6 +186,8 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
             const website = place.websiteUri?.trim() || null
             const address = place.formattedAddress?.trim() || null
             const placeTypes = place.types ?? []
+            const reviewCount = place.userRatingCount ?? null
+            const rating = place.rating ?? null
 
             const assessment = assessBuyerFit({
               name,
@@ -190,6 +198,8 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
               placeTypes,
               segmentSlug: job.segmentSlug,
               searchAreaHint: job.area.labelHe,
+              reviewCount,
+              rating,
             })
 
             if (assessment.fitClass === 'unsuitable') {
@@ -208,6 +218,8 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
                 placeTypes,
                 segmentSlug: job.segmentSlug,
                 searchAreaHint: job.area.labelHe,
+                reviewCount,
+                rating,
               })
             ) {
               stats.rejectedFilter += 1
@@ -221,6 +233,13 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
               stats.needsReview += 1
               yieldRow.needsReview += 1
             }
+
+            const estimatedBuildings = estimateBuildingsFromSignals({
+              name,
+              businessName: name,
+              reviewCount,
+              segmentSlug: job.segmentSlug,
+            })
 
             out.push({
               name,
@@ -242,9 +261,13 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
               fitConfidence: assessment.confidence,
               fitReasons: assessment.reasons,
               contactability: assessment.contactability,
+              estimatedBuildings,
               estimatedMrrIls: assessment.estimatedMrrIls,
               queryKey: job.queryKey,
               placeTypes,
+              reviewCount,
+              rating,
+              openingHours: place.regularOpeningHours?.weekdayDescriptions ?? null,
             })
             stats.kept += 1
             keptBySegment.set(

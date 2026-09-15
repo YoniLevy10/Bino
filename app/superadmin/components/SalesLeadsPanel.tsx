@@ -14,6 +14,10 @@ import {
   fitClassLabelHe,
   statusLabelHe,
 } from '@/lib/sales-leads/fit-score'
+import {
+  defaultOutreachMessage,
+  outreachVariantsForLead,
+} from '@/lib/sales-leads/outreach-templates'
 import { whatsappLink } from '@/lib/sales-leads/phone'
 import { LEAD_STATUSES, type LeadStatus, type SalesLead } from '@/lib/sales-leads/types'
 
@@ -25,6 +29,9 @@ type Counters = {
   bySegment: Array<{ segmentSlug: string; count: number }>
   pipelineMrrIls: number
   targetMrrIls: number
+  dueToday?: number
+  withContactChannel?: number
+  contactChannelPct?: number
 }
 
 type RunRow = {
@@ -37,7 +44,7 @@ type RunRow = {
   error_message?: string | null
 }
 
-type SortMode = 'fit_score' | 'created_at' | 'estimated_mrr'
+type SortMode = 'fit_score' | 'created_at' | 'estimated_mrr' | 'next_contact'
 
 const STATUS_CHIPS: Array<{ value: string; label: string }> = [
   { value: 'discovered,qualified,contacted,demo_scheduled', label: 'פעילים' },
@@ -66,12 +73,33 @@ const QUICK_STATUSES: LeadStatus[] = [
   'do_not_contact',
 ]
 
-function waMessage(lead: SalesLead): string {
-  const who = lead.businessName || lead.name
-  const angle =
-    lead.outreachAngle ||
-    'זיכרון תפעולי לבניינים — שיוך אוטומטי, SLA, תקלות חוזרות והוכחת חיסכון'
-  return `שלום, כאן מ-BINO.\nראיתי את ${who} וחשבתי שזה יכול לעניין אתכם:\n${angle}\n\nאפשר לקבוע דמו קצר של 15 דקות?`
+function enrichmentNum(lead: SalesLead, key: 'rating' | 'reviewCount'): number | null {
+  const raw = lead.enrichment?.[key]
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : null
+}
+
+function mapsHref(lead: SalesLead): string | null {
+  const src = lead.sourceUrl?.trim()
+  if (src && /google\.[^/]+\/maps|maps\.google\.|goo\.gl\/maps|maps\.app\.goo\.gl/i.test(src)) {
+    return src
+  }
+  const addr = lead.businessAddress?.trim()
+  if (addr) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+  }
+  return null
+}
+
+function formatNextContact(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleString('he-IL', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function fitTone(score: number | null | undefined): string {
@@ -114,9 +142,12 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
   const [contactability, setContactability] = useState('mobile,landline,unknown')
   const [minFitScore, setMinFitScore] = useState(0)
   const [sort, setSort] = useState<SortMode>('fit_score')
+  const [dueTodayOnly, setDueTodayOnly] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busyId, setBusyId] = useState<string | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  /** Per-lead index into outreachVariantsForLead — cycles on each WhatsApp open. */
+  const [waVariantIdx, setWaVariantIdx] = useState<Record<string, number>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -130,7 +161,12 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       if (fitClass) params.set('fitClass', fitClass)
       if (contactability) params.set('contactability', contactability)
       if (minFitScore > 0) params.set('minFitScore', String(minFitScore))
-      params.set('sort', sort)
+      if (dueTodayOnly) {
+        params.set('dueToday', '1')
+        params.set('sort', 'next_contact')
+      } else {
+        params.set('sort', sort)
+      }
       params.set('limit', '100')
 
       const res = await fetch(`/api/superadmin/sales-leads?${params}`, {
@@ -154,7 +190,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     } finally {
       setLoading(false)
     }
-  }, [secret, q, city, segment, status, fitClass, contactability, minFitScore, sort])
+  }, [secret, q, city, segment, status, fitClass, contactability, minFitScore, sort, dueTodayOnly])
 
   useEffect(() => {
     void load()
@@ -274,18 +310,47 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     }
   }
 
+  async function patchLead(
+    id: string,
+    body: Record<string, unknown>,
+  ): Promise<SalesLead | null> {
+    const res = await fetch(`/api/superadmin/sales-leads/${id}`, {
+      method: 'PATCH',
+      headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = (await res.json()) as { lead?: SalesLead; error?: string }
+    if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
+    if (json.lead) setLeads((prev) => prev.map((l) => (l.id === id ? json.lead! : l)))
+    return json.lead ?? null
+  }
+
   async function patchStatus(id: string, next: LeadStatus) {
     setBusyId(id)
     setError('')
     try {
-      const res = await fetch(`/api/superadmin/sales-leads/${id}`, {
-        method: 'PATCH',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: next }),
-      })
-      const json = (await res.json()) as { lead?: SalesLead; error?: string }
-      if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
-      if (json.lead) setLeads((prev) => prev.map((l) => (l.id === id ? json.lead! : l)))
+      await patchLead(id, { status: next })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'שגיאה')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function patchEstimatedBuildings(lead: SalesLead) {
+    const current = lead.estimatedBuildings ?? ''
+    const raw = window.prompt('מספר בניינים משוער', String(current))
+    if (raw == null) return
+    const trimmed = raw.trim()
+    const n = trimmed === '' ? null : Number(trimmed)
+    if (n != null && (!Number.isFinite(n) || n < 0 || !Number.isInteger(n))) {
+      setError('מספר בניינים חייב להיות מספר שלם לא-שלילי')
+      return
+    }
+    setBusyId(lead.id)
+    setError('')
+    try {
+      await patchLead(lead.id, { estimatedBuildings: n })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה')
     } finally {
@@ -294,18 +359,28 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
   }
 
   async function openWhatsapp(lead: SalesLead) {
-    const href = whatsappLink(lead.whatsappPhone || lead.phone, waMessage(lead))
+    const variants = outreachVariantsForLead(lead)
+    const idx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
+    const { variant, body } = defaultOutreachMessage(lead, variants[idx]?.id)
+    const href = whatsappLink(lead.whatsappPhone || lead.phone, body)
     if (!href) {
       setError('אין מספר WhatsApp לליד הזה')
       return
     }
     window.open(href, '_blank', 'noopener,noreferrer')
+    setWaVariantIdx((prev) => ({
+      ...prev,
+      [lead.id]: (idx + 1) % Math.max(1, variants.length),
+    }))
     setBusyId(lead.id)
     try {
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'whatsapp_opened' }),
+        body: JSON.stringify({
+          action: 'whatsapp_opened',
+          outreachVariant: variant.id,
+        }),
       })
       const json = (await res.json()) as { lead?: SalesLead }
       if (res.ok && json.lead) {
@@ -426,6 +501,15 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
 
         {counters ? (
           <div className="sa-leads-kpis">
+            <button
+              type="button"
+              className={`sa-leads-due-chip${dueTodayOnly ? ' is-on' : ''}`}
+              onClick={() => setDueTodayOnly((v) => !v)}
+              title="סינון לידים עם nextContactAt להיום או שעבר"
+            >
+              <strong>לטיפול היום: {counters.dueToday ?? 0}</strong>
+              <span>{dueTodayOnly ? 'מסונן · לחץ לביטול' : 'לחץ לסינון'}</span>
+            </button>
             <div>
               <strong>{counters.total}</strong>
               <span>במאגר</span>
@@ -434,6 +518,12 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
               <strong>{counters.byFitClass.suitable ?? 0}</strong>
               <span>מתאימים</span>
             </div>
+            {typeof counters.contactChannelPct === 'number' ? (
+              <div>
+                <strong>{counters.contactChannelPct}%</strong>
+                <span>עם ערוץ קשר</span>
+              </div>
+            ) : null}
             <div>
               <strong>₪{counters.pipelineMrrIls.toLocaleString('he-IL')}</strong>
               <span>MRR בצנרת</span>
@@ -528,10 +618,15 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           </label>
           <label>
             מיון
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+            <select
+              value={dueTodayOnly ? 'next_contact' : sort}
+              disabled={dueTodayOnly}
+              onChange={(e) => setSort(e.target.value as SortMode)}
+            >
               <option value="fit_score">דירוג התאמה</option>
               <option value="estimated_mrr">MRR משוער</option>
               <option value="created_at">חדש ביותר</option>
+              <option value="next_contact">תאריך מעקב</option>
             </select>
           </label>
         </div>
@@ -620,6 +715,13 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         {ranked.map((lead, idx) => {
           const canWa = Boolean(whatsappLink(lead.whatsappPhone || lead.phone))
           const score = lead.fitScore
+          const rating = enrichmentNum(lead, 'rating')
+          const reviewCount = enrichmentNum(lead, 'reviewCount')
+          const maps = mapsHref(lead)
+          const nextContactLabel = formatNextContact(lead.nextContactAt)
+          const variants = outreachVariantsForLead(lead)
+          const nextVariantIdx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
+          const nextVariantLabel = variants[nextVariantIdx]?.labelHe
           return (
             <article
               key={lead.id}
@@ -647,6 +749,27 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                     {contactabilityLabelHe(lead.contactability)}
                     {lead.estimatedMrrIls ? ` · MRR ₪${lead.estimatedMrrIls}` : ''}
                   </p>
+                  <p className="sa-lead-meta-row">
+                    <button
+                      type="button"
+                      className="sa-lead-inline-edit"
+                      disabled={busyId === lead.id}
+                      onClick={() => void patchEstimatedBuildings(lead)}
+                      title="עריכת מספר בניינים"
+                    >
+                      בניינים: {lead.estimatedBuildings ?? '—'}
+                    </button>
+                    {rating != null || reviewCount != null ? (
+                      <span>
+                        דירוג Google:{' '}
+                        {rating != null ? rating.toFixed(1) : '—'}
+                        {reviewCount != null ? ` (${reviewCount} ביקורות)` : ''}
+                      </span>
+                    ) : null}
+                    {nextContactLabel ? (
+                      <span className="sa-lead-next-contact">מעקב: {nextContactLabel}</span>
+                    ) : null}
+                  </p>
                   {lead.outreachAngle ? (
                     <p className="sa-lead-angle">{lead.outreachAngle}</p>
                   ) : null}
@@ -657,6 +780,12 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                   ) : null}
                   <p className="sa-lead-phone">
                     {lead.phone || 'אין טלפון'}
+                    {lead.email ? (
+                      <>
+                        {' · '}
+                        <a href={`mailto:${lead.email}`}>{lead.email}</a>
+                      </>
+                    ) : null}
                     {lead.websiteUrl ? (
                       <>
                         {' · '}
@@ -665,7 +794,14 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                         </a>
                       </>
                     ) : null}
-                    {lead.sourceUrl ? (
+                    {maps ? (
+                      <>
+                        {' · '}
+                        <a href={maps} target="_blank" rel="noreferrer">
+                          מפות
+                        </a>
+                      </>
+                    ) : lead.sourceUrl ? (
                       <>
                         {' · '}
                         <a href={lead.sourceUrl} target="_blank" rel="noreferrer">
@@ -684,14 +820,28 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                     className="sa-btn sa-btn-primary"
                     disabled={busyId === lead.id}
                     onClick={() => void openWhatsapp(lead)}
+                    title={
+                      nextVariantLabel
+                        ? `וריאנט הבא: ${nextVariantLabel} (מחליף בכל פתיחה)`
+                        : undefined
+                    }
                   >
                     שלח WhatsApp
+                    {nextVariantLabel ? ` · ${nextVariantLabel}` : ''}
                   </button>
                 ) : (
                   <button type="button" className="sa-btn sa-btn-ghost" disabled>
                     אין WhatsApp
                   </button>
                 )}
+                {lead.email ? (
+                  <a
+                    className="sa-btn sa-btn-ghost"
+                    href={`mailto:${lead.email}?subject=${encodeURIComponent(`BINO — ${lead.businessName || lead.name}`)}`}
+                  >
+                    אימייל
+                  </a>
+                ) : null}
                 <select
                   className="sa-lead-status-select"
                   value={lead.status}
@@ -763,7 +913,8 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           gap: 10px;
           margin-top: 14px;
         }
-        .sa-leads-kpis div {
+        .sa-leads-kpis div,
+        .sa-leads-due-chip {
           background: ${theme.colors.background};
           border: 1px solid ${theme.colors.border};
           border-radius: 10px;
@@ -771,11 +922,26 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           display: flex;
           flex-direction: column;
           gap: 4px;
+          text-align: start;
         }
-        .sa-leads-kpis strong {
+        .sa-leads-due-chip {
+          cursor: pointer;
+          font: inherit;
+          color: inherit;
+          border-color: #f59e0b;
+          background: #fffbeb;
+        }
+        .sa-leads-due-chip.is-on {
+          border-color: ${theme.colors.primary};
+          background: #eff6ff;
+          box-shadow: inset 0 0 0 1px ${theme.colors.primary};
+        }
+        .sa-leads-kpis strong,
+        .sa-leads-due-chip strong {
           font-size: 18px;
         }
-        .sa-leads-kpis span {
+        .sa-leads-kpis span,
+        .sa-leads-due-chip span {
           font-size: 12px;
           color: ${theme.colors.textSecondary};
         }
@@ -930,6 +1096,33 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           font-size: 13px;
           color: ${theme.colors.textPrimary};
         }
+        .sa-lead-meta-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 12px;
+          align-items: center;
+          margin: 4px 0 0;
+          font-size: 12px;
+          color: ${theme.colors.textSecondary};
+        }
+        .sa-lead-inline-edit {
+          border: 1px dashed ${theme.colors.border};
+          background: transparent;
+          border-radius: 6px;
+          padding: 2px 8px;
+          font: inherit;
+          font-size: 12px;
+          color: ${theme.colors.textPrimary};
+          cursor: pointer;
+        }
+        .sa-lead-inline-edit:hover:not(:disabled) {
+          border-color: ${theme.colors.primary};
+          color: ${theme.colors.primary};
+        }
+        .sa-lead-next-contact {
+          color: #b45309;
+          font-weight: 600;
+        }
         .sa-lead-reasons {
           margin: 0 0 4px;
           font-size: 11px;
@@ -947,6 +1140,11 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           flex-wrap: wrap;
           gap: 6px;
           margin-top: 10px;
+          align-items: center;
+        }
+        .sa-lead-actions a.sa-btn {
+          text-decoration: none;
+          display: inline-flex;
           align-items: center;
         }
         .sa-lead-status-select {

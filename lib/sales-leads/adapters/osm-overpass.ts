@@ -10,7 +10,7 @@ import {
   type DiscoverySegmentMapping,
 } from '@/lib/sales-leads/discovery-mapping'
 import { getSalesSegmentSlugs } from '@/lib/sales-leads/config'
-import { assessBuyerFit, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
+import { assessBuyerFit, estimateBuildingsFromSignals, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 
 type OsmElement = {
@@ -138,6 +138,11 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
           fitConfidence: assessment.confidence,
           fitReasons: assessment.reasons,
           contactability: assessment.contactability,
+          estimatedBuildings: estimateBuildingsFromSignals({
+            name,
+            businessName: name,
+            segmentSlug: mapping.slug,
+          }),
           estimatedMrrIls: assessment.estimatedMrrIls,
         })
       }

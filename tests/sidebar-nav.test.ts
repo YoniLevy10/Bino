@@ -182,6 +182,7 @@ describe('shouldShowMobileBottomNav', () => {
 
   it('shows bottom nav on primary tenant routes', () => {
     expect(shouldShowMobileBottomNav('/tickets')).toBe(true)
-    expect(shouldShowMobileBottomNav('/')).toBe(true)
+    expect(shouldShowMobileBottomNav('/dashboard')).toBe(true)
+    expect(shouldShowMobileBottomNav('/')).toBe(false)
   })
 })

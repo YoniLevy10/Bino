@@ -130,9 +130,6 @@ export const sidebarPinBodySchema = z.object({
   pinned: z.boolean(),
 })
 
-const greenInvoiceEnvSchema = z.enum(['sandbox', 'production'])
-const greenInvoiceClearingSchema = z.enum(['cardcom', 'isracard', 'grow'])
-
 export const settingsUpdateBodySchema = z
   .object({
     manager_phone: z.string().max(40).nullable().optional(),
@@ -145,18 +142,6 @@ export const settingsUpdateBodySchema = z
     whatsapp_access_token: z.string().max(500).nullable().optional(),
     sidebar_nav_order: sidebarNavOrderSchema.optional(),
     sidebar_nav_labels: sidebarNavLabelsSchema.optional(),
-    greeninvoice_enabled: z.boolean().optional(),
-    greeninvoice_env: greenInvoiceEnvSchema.optional(),
-    greeninvoice_api_key_id: z.string().max(80).nullable().optional(),
-    greeninvoice_api_secret: z.string().max(200).nullable().optional(),
-    greeninvoice_business_id: z.string().max(80).nullable().optional(),
-    greeninvoice_clearing_plugin: greenInvoiceClearingSchema.nullable().optional(),
-    greeninvoice_default_doc_type: z.union([z.literal(300), z.literal(305), z.literal(320)]).optional(),
-    greeninvoice_vat_type: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
-    greeninvoice_send_invoice_email: z.boolean().optional(),
-    greeninvoice_remarks_template: z.string().max(2000).nullable().optional(),
-    greeninvoice_payment_success_url: z.string().max(500).nullable().optional(),
-    greeninvoice_payment_failure_url: z.string().max(500).nullable().optional(),
     grow_legal_business_name: z.string().max(120).nullable().optional(),
     grow_legal_phone: z.string().max(40).nullable().optional(),
     grow_legal_address: z.string().max(300).nullable().optional(),

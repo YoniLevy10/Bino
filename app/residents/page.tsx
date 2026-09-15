@@ -24,7 +24,7 @@ import {
 } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -216,7 +216,7 @@ function ResidentsPageInner() {
 
   async function refreshResidentsQuiet() {
     try {
-      const tenantId = await resolveBamakorClientIdForBrowser()
+      const tenantId = await resolveBinoClientIdForBrowser()
       const rRes = await withClientId(
         supabase
           .from('residents')
@@ -239,7 +239,7 @@ function ResidentsPageInner() {
     setResidentsTableMissing(false)
     setLoadError(false)
     try {
-      const tenantId = await resolveBamakorClientIdForBrowser()
+      const tenantId = await resolveBinoClientIdForBrowser()
       const [pRes, rRes, pendingRes] = await Promise.all([
         withClientId(supabase.from('projects').select('id, name, project_code, client_id'), tenantId).order('name'),
         withClientId(

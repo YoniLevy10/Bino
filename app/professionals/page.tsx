@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -125,7 +125,7 @@ export default function ProfessionalsPage() {
       setLoading(true)
       await asyncHandler(
         async () => {
-          const cid = await resolveBamakorClientIdForBrowser()
+          const cid = await resolveBinoClientIdForBrowser()
           setClientId(cid)
           await loadProfessionals(cid)
           return true

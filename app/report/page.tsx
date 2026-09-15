@@ -478,7 +478,7 @@ function ReportPageContent() {
           </div>
 
           <div style={styles.backRow}>
-            <Link href="/" style={styles.backLink}>
+            <Link href="/dashboard" style={styles.backLink}>
               Back to Dashboard
             </Link>
           </div>

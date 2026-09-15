@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import {
@@ -192,7 +192,7 @@ export function CollectionsBoard() {
       setLoading(true)
       await asyncHandler(
         async () => {
-          const cid = await resolveBamakorClientIdForBrowser()
+          const cid = await resolveBinoClientIdForBrowser()
           setClientId(cid)
           await Promise.all([loadProjects(cid), loadAccountStatus()])
           return true
