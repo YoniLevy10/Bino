@@ -18,7 +18,7 @@ import {
   defaultOutreachMessage,
   outreachVariantsForLead,
 } from '@/lib/sales-leads/outreach-templates'
-import { whatsappLink } from '@/lib/sales-leads/phone'
+import { formatPhoneLocalIl, openWhatsAppUrl, whatsappLink } from '@/lib/sales-leads/phone'
 import { LEAD_STATUSES, type LeadStatus, type SalesLead } from '@/lib/sales-leads/types'
 
 type Counters = {
@@ -108,15 +108,6 @@ function fitTone(score: number | null | undefined): string {
   if (score >= 60) return theme.colors.primary
   if (score >= 40) return '#b45309'
   return '#b91c1c'
-}
-
-function rankStars(score: number | null | undefined): string {
-  if (score == null) return '☆☆☆☆☆'
-  if (score >= 85) return '★★★★★'
-  if (score >= 70) return '★★★★☆'
-  if (score >= 55) return '★★★☆☆'
-  if (score >= 40) return '★★☆☆☆'
-  return '★☆☆☆☆'
 }
 
 export function SalesLeadsPanel({ secret }: { secret: string }) {
@@ -371,12 +362,36 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     const variants = outreachVariantsForLead(lead)
     const idx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
     const { variant, body } = defaultOutreachMessage(lead, variants[idx]?.id)
-    const href = whatsappLink(lead.whatsappPhone || lead.phone, body)
+    const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
+    const href = whatsappLink(phoneRaw, body)
     if (!href) {
       setError('אין מספר WhatsApp לליד הזה')
       return
     }
-    window.open(href, '_blank', 'noopener,noreferrer')
+
+    const localPhone =
+      formatPhoneLocalIl(phoneRaw) ||
+      formatPhoneLocalIl(lead.phoneNormalized) ||
+      phoneRaw?.trim() ||
+      ''
+
+    // Open first, while still in the user-gesture stack. Awaiting clipboard
+    // before open causes iOS/Android to drop the deep-linked phone.
+    openWhatsAppUrl(href)
+
+    try {
+      if (localPhone && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(localPhone)
+      }
+    } catch {
+      /* clipboard optional */
+    }
+
+    setOkMsg(
+      localPhone
+        ? `נפתח צ'אט WhatsApp · המספר ${localPhone} הועתק ללוח`
+        : 'נפתח צ׳אט WhatsApp',
+    )
     setWaVariantIdx((prev) => ({
       ...prev,
       [lead.id]: (idx + 1) % Math.max(1, variants.length),
@@ -476,6 +491,24 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     }
   }
 
+  function friendlyError(raw: string): string {
+    const t = raw.trim()
+    if (!t) return 'שגיאה'
+    if (/API_KEY_HTTP_REFERRER_BLOCKED|referer.*blocked/i.test(t)) {
+      return 'מפתח Google חסום בגלל הגבלת HTTP referrer — הגדירו Application restrictions ל-None (או IP) במפתח שרת, לא לדפדפן.'
+    }
+    if (/PERMISSION_DENIED|403/i.test(t) && /Places|Google/i.test(t)) {
+      return 'Google Places דחה את הבקשה — בדקו מפתח API, חיוב, והפעלת Places API (New).'
+    }
+    if (/GOOGLE_PLACES_API_KEY|GOOGLE_MAPS_API_KEY|חסר מפתח/i.test(t)) {
+      return t.length > 180 ? `${t.slice(0, 180)}…` : t
+    }
+    // Strip raw JSON blobs from UI
+    const withoutJson = t.replace(/\{[\s\S]*\}$/, '').trim()
+    const clean = withoutJson || t
+    return clean.length > 220 ? `${clean.slice(0, 220)}…` : clean
+  }
+
   const ranked = useMemo(() => leads, [leads])
 
   return (
@@ -517,8 +550,8 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
               onClick={() => setDueTodayOnly((v) => !v)}
               title="סינון לידים עם nextContactAt להיום או שעבר"
             >
-              <strong>לטיפול היום: {counters.dueToday ?? 0}</strong>
-              <span>{dueTodayOnly ? 'מסונן · לחץ לביטול' : 'לחץ לסינון'}</span>
+              <strong>{counters.dueToday ?? 0}</strong>
+              <span>לטיפול היום</span>
             </button>
             <div>
               <strong>{counters.total}</strong>
@@ -578,7 +611,11 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         ) : null}
       </section>
 
-      {error ? <div className="sa-banner sa-banner-error">{error}</div> : null}
+      {error ? (
+        <div className="sa-banner sa-banner-error sa-leads-error" title={error}>
+          {friendlyError(error)}
+        </div>
+      ) : null}
       {okMsg ? <div className="sa-banner sa-banner-ok">{okMsg}</div> : null}
 
       <section className="sa-panel sa-leads-filters">
@@ -735,7 +772,9 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
 
       <div className="sa-leads-list">
         {ranked.map((lead, idx) => {
-          const canWa = Boolean(whatsappLink(lead.whatsappPhone || lead.phone))
+          const canWa = Boolean(
+            whatsappLink(lead.whatsappPhone || lead.phone || lead.phoneNormalized),
+          )
           const score = lead.fitScore
           const rating = enrichmentNum(lead, 'rating')
           const reviewCount = enrichmentNum(lead, 'reviewCount')
@@ -744,12 +783,13 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           const variants = outreachVariantsForLead(lead)
           const nextVariantIdx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
           const nextVariantLabel = variants[nextVariantIdx]?.labelHe
+          const displayName = lead.businessName || lead.name
           return (
             <article
               key={lead.id}
               className={`sa-lead-card${selected.has(lead.id) ? ' is-selected' : ''}`}
             >
-              <div className="sa-lead-card-top">
+              <div className="sa-lead-card-head">
                 <label className="sa-check sa-lead-check">
                   <input
                     type="checkbox"
@@ -757,21 +797,33 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                     onChange={() => toggleOne(lead.id)}
                   />
                 </label>
-                <div className="sa-lead-rank" style={{ color: fitTone(score) }}>
-                  <span className="sa-lead-rank-num">#{idx + 1}</span>
-                  <strong>{score ?? '—'}</strong>
-                  <span className="sa-lead-stars">{rankStars(score)}</span>
-                  <span className="sa-lead-fit">{fitClassLabelHe(lead.fitClass)}</span>
-                </div>
                 <div className="sa-lead-main">
-                  <h3>{lead.businessName || lead.name}</h3>
-                  <p className="sa-muted">
-                    {lead.city} · {segmentLabelHe(lead.segmentSlug)} ·{' '}
-                    {statusLabelHe(lead.status)} ·{' '}
-                    {contactabilityLabelHe(lead.contactability)}
-                    {lead.estimatedMrrIls ? ` · MRR ₪${lead.estimatedMrrIls}` : ''}
+                  <div className="sa-lead-title-row">
+                    <span className="sa-lead-index">#{idx + 1}</span>
+                    <h3 className="sa-lead-name" title={displayName}>
+                      {displayName}
+                    </h3>
+                    <div className="sa-lead-score" style={{ color: fitTone(score) }}>
+                      <strong>{score ?? '—'}</strong>
+                      <span>{fitClassLabelHe(lead.fitClass)}</span>
+                    </div>
+                  </div>
+                  <p className="sa-lead-sub">
+                    <span>{lead.city}</span>
+                    <span className="sa-lead-dot">·</span>
+                    <span>{segmentLabelHe(lead.segmentSlug)}</span>
+                    <span className="sa-lead-dot">·</span>
+                    <span>{statusLabelHe(lead.status)}</span>
+                    <span className="sa-lead-dot">·</span>
+                    <span>{contactabilityLabelHe(lead.contactability)}</span>
+                    {lead.estimatedMrrIls ? (
+                      <>
+                        <span className="sa-lead-dot">·</span>
+                        <span>MRR ₪{lead.estimatedMrrIls}</span>
+                      </>
+                    ) : null}
                   </p>
-                  <p className="sa-lead-meta-row">
+                  <div className="sa-lead-meta-row">
                     <button
                       type="button"
                       className="sa-lead-inline-edit"
@@ -782,26 +834,20 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                       בניינים: {lead.estimatedBuildings ?? '—'}
                     </button>
                     {rating != null || reviewCount != null ? (
-                      <span>
-                        דירוג Google:{' '}
-                        {rating != null ? rating.toFixed(1) : '—'}
-                        {reviewCount != null ? ` (${reviewCount} ביקורות)` : ''}
+                      <span className="sa-lead-meta-chip">
+                        Google {rating != null ? rating.toFixed(1) : '—'}
+                        {reviewCount != null ? ` · ${reviewCount}` : ''}
                       </span>
                     ) : null}
                     {nextContactLabel ? (
                       <span className="sa-lead-next-contact">מעקב: {nextContactLabel}</span>
                     ) : null}
-                  </p>
+                  </div>
                   {lead.outreachAngle ? (
                     <p className="sa-lead-angle">{lead.outreachAngle}</p>
                   ) : null}
-                  {lead.fitReasons.length > 0 ? (
-                    <p className="sa-lead-reasons">
-                      {lead.fitReasons.slice(0, 4).join(' · ')}
-                    </p>
-                  ) : null}
                   <p className="sa-lead-phone">
-                    {lead.phone || 'אין טלפון'}
+                    <strong className="sa-lead-phone-num">{lead.phone || 'אין טלפון'}</strong>
                     {lead.email ? (
                       <>
                         {' · '}
@@ -839,7 +885,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                 {canWa ? (
                   <button
                     type="button"
-                    className="sa-btn sa-btn-primary"
+                    className="sa-btn sa-btn-primary sa-lead-wa"
                     disabled={busyId === lead.id}
                     onClick={() => void openWhatsapp(lead)}
                     title={
@@ -848,8 +894,10 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                         : undefined
                     }
                   >
-                    שלח WhatsApp
-                    {nextVariantLabel ? ` · ${nextVariantLabel}` : ''}
+                    WhatsApp
+                    {nextVariantLabel ? (
+                      <span className="sa-lead-wa-variant"> · {nextVariantLabel}</span>
+                    ) : null}
                   </button>
                 ) : (
                   <button type="button" className="sa-btn sa-btn-ghost" disabled>
@@ -859,7 +907,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                 {lead.email ? (
                   <a
                     className="sa-btn sa-btn-ghost"
-                    href={`mailto:${lead.email}?subject=${encodeURIComponent(`BINO — ${lead.businessName || lead.name}`)}`}
+                    href={`mailto:${lead.email}?subject=${encodeURIComponent(`BINO — ${displayName}`)}`}
                   >
                     אימייל
                   </a>
@@ -897,338 +945,26 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       </div>
 
       {runs.length > 0 ? (
-        <section className="sa-panel" style={{ marginTop: 16 }}>
-          <h3 style={{ marginTop: 0 }}>ריצות גילוי אחרונות</h3>
+        <section className="sa-panel sa-leads-runs">
+          <h3>ריצות גילוי אחרונות</h3>
           <ul className="sa-runs">
             {runs.map((r) => (
               <li key={r.id}>
-                {new Date(r.started_at).toLocaleString('he-IL')} · {r.city} · {r.status}
-                {typeof r.found_count === 'number' ? ` · נמצאו ${r.found_count}` : ''}
-                {typeof r.created_count === 'number' ? ` · נוצרו ${r.created_count}` : ''}
-                {r.error_message ? ` · ${r.error_message}` : ''}
+                <span className="sa-runs-main">
+                  {new Date(r.started_at).toLocaleString('he-IL')} · {r.city} · {r.status}
+                  {typeof r.found_count === 'number' ? ` · נמצאו ${r.found_count}` : ''}
+                  {typeof r.created_count === 'number' ? ` · נוצרו ${r.created_count}` : ''}
+                </span>
+                {r.error_message ? (
+                  <span className="sa-runs-err" title={r.error_message}>
+                    {friendlyError(r.error_message)}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
         </section>
       ) : null}
-
-      <style jsx>{`
-        .sa-leads-hero-top {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-          flex-wrap: wrap;
-          align-items: flex-start;
-        }
-        .sa-leads-hero h2 {
-          margin: 0;
-          font-size: 18px;
-        }
-        .sa-leads-hero-actions {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-        .sa-leads-kpis {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-          gap: 10px;
-          margin-top: 14px;
-        }
-        .sa-leads-kpis div,
-        .sa-leads-due-chip {
-          background: ${theme.colors.background};
-          border: 1px solid ${theme.colors.border};
-          border-radius: 10px;
-          padding: 10px 12px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          text-align: start;
-        }
-        .sa-leads-due-chip {
-          cursor: pointer;
-          font: inherit;
-          color: inherit;
-          border-color: #f59e0b;
-          background: #fffbeb;
-        }
-        .sa-leads-due-chip.is-on {
-          border-color: ${theme.colors.primary};
-          background: #eff6ff;
-          box-shadow: inset 0 0 0 1px ${theme.colors.primary};
-        }
-        .sa-leads-kpis strong,
-        .sa-leads-due-chip strong {
-          font-size: 18px;
-        }
-        .sa-leads-kpis span,
-        .sa-leads-due-chip span {
-          font-size: 12px;
-          color: ${theme.colors.textSecondary};
-        }
-        .sa-leads-setup-warn {
-          margin-top: 14px;
-          padding: 12px 14px;
-          border-radius: 12px;
-          border: 1px solid #f59e0b;
-          background: #fffbeb;
-          color: #92400e;
-        }
-        .sa-leads-setup-warn strong {
-          display: block;
-          margin-bottom: 4px;
-        }
-        .sa-leads-setup-warn p {
-          margin: 0;
-          font-size: 13px;
-          line-height: 1.45;
-        }
-        .sa-leads-setup-warn code {
-          font-size: 12px;
-          background: #fef3c7;
-          padding: 1px 4px;
-          border-radius: 4px;
-        }
-        .sa-discover-progress {
-          margin-top: 14px;
-          padding: 12px 14px;
-          border-radius: 12px;
-          border: 1px solid ${theme.colors.border};
-          background: ${theme.colors.background};
-        }
-        .sa-discover-progress-meta {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: baseline;
-          gap: 8px 12px;
-          margin-bottom: 10px;
-          font-size: 13px;
-          color: ${theme.colors.textSecondary};
-        }
-        .sa-discover-progress-meta strong {
-          font-size: 18px;
-          color: ${theme.colors.primary};
-          font-variant-numeric: tabular-nums;
-        }
-        .sa-discover-progress-counts {
-          margin-inline-start: auto;
-          font-size: 12px;
-        }
-        .sa-discover-progress-track {
-          height: 10px;
-          border-radius: 999px;
-          background: #e5e7eb;
-          overflow: hidden;
-        }
-        .sa-discover-progress-fill {
-          height: 100%;
-          border-radius: 999px;
-          background: linear-gradient(90deg, #0066ff, #38bdf8);
-          transition: width 0.45s ease;
-        }
-        .sa-filter-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 10px;
-        }
-        .sa-filter-grid label {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          font-size: 12px;
-          color: ${theme.colors.textSecondary};
-        }
-        .sa-filter-grid input,
-        .sa-filter-grid select,
-        .sa-lead-status-select {
-          width: 100%;
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid ${theme.colors.border};
-          background: ${theme.colors.surface};
-          color: ${theme.colors.textPrimary};
-        }
-        .sa-chip-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          align-items: center;
-          margin-top: 12px;
-        }
-        .sa-chip-label {
-          font-size: 12px;
-          color: ${theme.colors.textSecondary};
-          margin-inline-end: 4px;
-        }
-        .sa-chip {
-          border: 1px solid ${theme.colors.border};
-          background: ${theme.colors.background};
-          border-radius: 999px;
-          padding: 5px 10px;
-          font-size: 12px;
-          cursor: pointer;
-        }
-        .sa-chip.is-on {
-          border-color: ${theme.colors.primary};
-          color: ${theme.colors.primary};
-          background: ${theme.colors.surface};
-          font-weight: 600;
-        }
-        .sa-leads-count {
-          margin: 10px 0 0;
-        }
-        .sa-leads-bulk {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          margin-bottom: 12px;
-          border-color: ${theme.colors.primary};
-        }
-        .sa-leads-toolbar {
-          margin: 0 0 8px;
-        }
-        .sa-leads-list {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .sa-lead-card {
-          border: 1px solid ${theme.colors.border};
-          border-radius: 12px;
-          padding: 12px 14px;
-          background: ${theme.colors.surface};
-        }
-        .sa-lead-card.is-selected {
-          border-color: ${theme.colors.primary};
-          box-shadow: inset 0 0 0 1px ${theme.colors.primary};
-        }
-        .sa-lead-card-top {
-          display: grid;
-          grid-template-columns: auto 88px 1fr;
-          gap: 10px;
-          align-items: start;
-        }
-        .sa-lead-rank {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-          min-width: 72px;
-        }
-        .sa-lead-rank-num {
-          font-size: 11px;
-          opacity: 0.7;
-        }
-        .sa-lead-rank strong {
-          font-size: 22px;
-          line-height: 1;
-        }
-        .sa-lead-stars {
-          font-size: 11px;
-          letter-spacing: 1px;
-        }
-        .sa-lead-fit {
-          font-size: 11px;
-          font-weight: 600;
-        }
-        .sa-lead-main h3 {
-          margin: 0 0 4px;
-          font-size: 16px;
-        }
-        .sa-lead-angle {
-          margin: 6px 0;
-          font-size: 13px;
-          color: ${theme.colors.textPrimary};
-        }
-        .sa-lead-meta-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px 12px;
-          align-items: center;
-          margin: 4px 0 0;
-          font-size: 12px;
-          color: ${theme.colors.textSecondary};
-        }
-        .sa-lead-inline-edit {
-          border: 1px dashed ${theme.colors.border};
-          background: transparent;
-          border-radius: 6px;
-          padding: 2px 8px;
-          font: inherit;
-          font-size: 12px;
-          color: ${theme.colors.textPrimary};
-          cursor: pointer;
-        }
-        .sa-lead-inline-edit:hover:not(:disabled) {
-          border-color: ${theme.colors.primary};
-          color: ${theme.colors.primary};
-        }
-        .sa-lead-next-contact {
-          color: #b45309;
-          font-weight: 600;
-        }
-        .sa-lead-reasons {
-          margin: 0 0 4px;
-          font-size: 11px;
-          color: ${theme.colors.textSecondary};
-        }
-        .sa-lead-phone {
-          margin: 0;
-          font-size: 13px;
-        }
-        .sa-lead-phone a {
-          color: ${theme.colors.primary};
-        }
-        .sa-lead-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          margin-top: 10px;
-          align-items: center;
-        }
-        .sa-lead-actions a.sa-btn {
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-        }
-        .sa-lead-status-select {
-          width: auto;
-          min-width: 120px;
-        }
-        .sa-btn-danger {
-          background: #b91c1c;
-          color: #fff;
-          border: none;
-        }
-        .sa-btn-danger-ghost {
-          color: #b91c1c;
-          border-color: #fecaca;
-          background: transparent;
-        }
-        .sa-leads-empty {
-          padding: 24px 8px;
-          text-align: center;
-        }
-        .sa-runs {
-          margin: 0;
-          padding-inline-start: 18px;
-          color: ${theme.colors.textSecondary};
-          font-size: 13px;
-        }
-        @media (max-width: 640px) {
-          .sa-lead-card-top {
-            grid-template-columns: auto 1fr;
-          }
-          .sa-lead-rank {
-            grid-column: 2;
-            flex-direction: row;
-            justify-content: flex-start;
-            gap: 8px;
-            min-width: 0;
-          }
-        }
-      `}</style>
     </div>
   )
 }

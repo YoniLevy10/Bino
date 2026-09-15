@@ -3,8 +3,10 @@ export * from '@/lib/sales-leads/types'
 export * from '@/lib/sales-leads/fit-score'
 export {
   normalizePhone,
+  formatPhoneLocalIl,
   classifyPhoneKind,
   whatsappLink,
+  openWhatsAppUrl,
 } from '@/lib/sales-leads/phone'
 export { runSalesLeadDiscovery } from '@/lib/sales-leads/discover'
 export {
