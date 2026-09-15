@@ -68,3 +68,11 @@ The seed also enables paid add-ons and inserts demo rows for:
 - [ ] Email provider enabled in Supabase
 - [ ] Smoke-test: `/login` → email/password → dashboard shows OpsBrain data
 - [ ] Open גבייה + נוכחות/החתמות tabs briefly
+
+## Sales call
+
+Full sales-call runbook (Hebrew): [`docs/SALES_DEMO_RUNBOOK.md`](./SALES_DEMO_RUNBOOK.md).
+
+- Marketing link for prospects: public site root **`/`** (BINO landing + WhatsApp CTA to 0548102688).
+- Printable savings one-pager (sample numbers): `/savings-report`.
+- Never automate cold WhatsApp to leads — manual outreach only from Superadmin → **לידים**.
