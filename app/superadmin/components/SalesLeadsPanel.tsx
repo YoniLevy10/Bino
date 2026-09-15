@@ -124,6 +124,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
   const [total, setTotal] = useState(0)
   const [counters, setCounters] = useState<Counters | null>(null)
   const [runs, setRuns] = useState<RunRow[]>([])
+  const [placesConfigured, setPlacesConfigured] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [discovering, setDiscovering] = useState(false)
   const [discoverPct, setDiscoverPct] = useState(0)
@@ -177,6 +178,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         total?: number
         counters?: Counters
         runs?: RunRow[]
+        placesConfigured?: boolean
         error?: string
       }
       if (!res.ok) throw new Error(json.error || 'טעינה נכשלה')
@@ -184,6 +186,9 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       setTotal(json.total ?? 0)
       setCounters(json.counters ?? null)
       setRuns(json.runs ?? [])
+      if (typeof json.placesConfigured === 'boolean') {
+        setPlacesConfigured(json.placesConfigured)
+      }
       setSelected(new Set())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה')
@@ -283,9 +288,13 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         created?: number
         found?: number
         errorMessage?: string
+        placesConfigured?: boolean
+      }
+      if (typeof json.placesConfigured === 'boolean') {
+        setPlacesConfigured(json.placesConfigured)
       }
       if (!res.ok && json.status !== 'busy') {
-        throw new Error(json.error || json.errorMessage || 'גילוי נכשל')
+        throw new Error(json.errorMessage || json.error || 'גילוי נכשל')
       }
       setDiscoverPct(100)
       setDiscoverPhase(json.status === 'busy' ? 'ריצה כבר פעילה' : 'הושלם')
@@ -484,6 +493,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
               type="button"
               loading={discovering}
               className="sa-btn sa-btn-primary"
+              disabled={placesConfigured === false}
               onClick={() => void runDiscover()}
             >
               הרץ גילוי עכשיו
@@ -552,6 +562,18 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
                 style={{ width: `${Math.max(2, Math.min(100, discoverPct))}%` }}
               />
             </div>
+          </div>
+        ) : null}
+
+        {placesConfigured === false ? (
+          <div className="sa-leads-setup-warn" role="status">
+            <strong>חסר מפתח Google Places</strong>
+            <p>
+              המנוע לא יכול לגלות לידים בלי{' '}
+              <code>GOOGLE_PLACES_API_KEY</code> ב-Vercel (או{' '}
+              <code>GOOGLE_MAPS_API_KEY</code>). הפעילו גם Places API (New) וחיוב
+              ב-Google Cloud — אחרת הגילוי נכשל מיד.
+            </p>
           </div>
         ) : null}
       </section>
@@ -944,6 +966,29 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         .sa-leads-due-chip span {
           font-size: 12px;
           color: ${theme.colors.textSecondary};
+        }
+        .sa-leads-setup-warn {
+          margin-top: 14px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid #f59e0b;
+          background: #fffbeb;
+          color: #92400e;
+        }
+        .sa-leads-setup-warn strong {
+          display: block;
+          margin-bottom: 4px;
+        }
+        .sa-leads-setup-warn p {
+          margin: 0;
+          font-size: 13px;
+          line-height: 1.45;
+        }
+        .sa-leads-setup-warn code {
+          font-size: 12px;
+          background: #fef3c7;
+          padding: 1px 4px;
+          border-radius: 4px;
         }
         .sa-discover-progress {
           margin-top: 14px;

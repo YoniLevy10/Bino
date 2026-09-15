@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, afterEach } from 'vitest'
 import {
   CORE_FOCUS_CITIES,
+  getGooglePlacesApiKey,
   getSalesCitiesForRun,
+  isGooglePlacesConfigured,
   ISRAEL_SALES_CITIES,
+  shouldIncludeOsmWithPlaces,
 } from '@/lib/sales-leads/config'
 import { normalizePhone } from '@/lib/sales-leads/phone'
 import {
@@ -47,5 +50,62 @@ describe('sales-leads city rotation', () => {
 describe('sales-leads phone', () => {
   it('normalizes IL mobile phones', () => {
     expect(normalizePhone('050-1234567')).toBe('972501234567')
+  })
+})
+
+describe('sales-leads places env', () => {
+  const keys = [
+    'GOOGLE_PLACES_API_KEY',
+    'GOOGLE_MAPS_API_KEY',
+    'BINO_SALES_DISCOVERY_INCLUDE_OSM',
+  ] as const
+  const prev: Record<string, string | undefined> = {}
+
+  afterEach(() => {
+    for (const k of keys) {
+      if (!(k in prev)) continue
+      if (prev[k] === undefined) delete process.env[k]
+      else process.env[k] = prev[k]
+      delete prev[k]
+    }
+  })
+
+  function stash(k: (typeof keys)[number]) {
+    if (!(k in prev)) prev[k] = process.env[k]
+  }
+
+  it('reads GOOGLE_PLACES_API_KEY first', () => {
+    stash('GOOGLE_PLACES_API_KEY')
+    stash('GOOGLE_MAPS_API_KEY')
+    process.env.GOOGLE_PLACES_API_KEY = 'places-key'
+    process.env.GOOGLE_MAPS_API_KEY = 'maps-key'
+    expect(getGooglePlacesApiKey()).toBe('places-key')
+    expect(isGooglePlacesConfigured()).toBe(true)
+  })
+
+  it('falls back to GOOGLE_MAPS_API_KEY', () => {
+    stash('GOOGLE_PLACES_API_KEY')
+    stash('GOOGLE_MAPS_API_KEY')
+    delete process.env.GOOGLE_PLACES_API_KEY
+    process.env.GOOGLE_MAPS_API_KEY = 'maps-only'
+    expect(getGooglePlacesApiKey()).toBe('maps-only')
+    expect(isGooglePlacesConfigured()).toBe(true)
+  })
+
+  it('reports missing key', () => {
+    stash('GOOGLE_PLACES_API_KEY')
+    stash('GOOGLE_MAPS_API_KEY')
+    delete process.env.GOOGLE_PLACES_API_KEY
+    delete process.env.GOOGLE_MAPS_API_KEY
+    expect(getGooglePlacesApiKey()).toBeNull()
+    expect(isGooglePlacesConfigured()).toBe(false)
+  })
+
+  it('defaults OSM off when Places is primary', () => {
+    stash('BINO_SALES_DISCOVERY_INCLUDE_OSM')
+    delete process.env.BINO_SALES_DISCOVERY_INCLUDE_OSM
+    expect(shouldIncludeOsmWithPlaces()).toBe(false)
+    process.env.BINO_SALES_DISCOVERY_INCLUDE_OSM = '1'
+    expect(shouldIncludeOsmWithPlaces()).toBe(true)
   })
 })

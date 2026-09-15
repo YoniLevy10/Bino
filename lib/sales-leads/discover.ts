@@ -8,9 +8,14 @@ import type {
   SalesLeadSourceAdapter,
 } from '@/lib/sales-leads/adapters/types'
 import {
+  DISCOVERY_OSM_WALL_MS,
+  DISCOVERY_SOFT_DEADLINE_MS,
   getDiscoveryApiCallBudget,
   getDiscoveryTotalBudget,
+  getGooglePlacesApiKey,
   getSalesSegmentSlugs,
+  isGooglePlacesConfigured,
+  shouldIncludeOsmWithPlaces,
 } from '@/lib/sales-leads/config'
 import { getDiscoveryCities } from '@/lib/sales-leads/discovery-mapping'
 import {
@@ -31,6 +36,9 @@ const SOURCE_LABEL_HE: Record<string, string> = {
   google_places: 'Google Places',
   osm: 'OpenStreetMap',
 }
+
+const PLACES_KEY_MISSING_HE =
+  'חסר מפתח Google Places — הגדירו GOOGLE_PLACES_API_KEY (או GOOGLE_MAPS_API_KEY) ב-Vercel והפעילו Places API (New)'
 
 function clampPct(n: number): number {
   return Math.max(0, Math.min(99, Math.round(n)))
@@ -71,10 +79,12 @@ function buildAdapters(input?: {
   totalBudget?: number
   apiCallBudget?: number
   queryStats?: Awaited<ReturnType<typeof loadQueryStats>>
+  osmDeadlineMs?: number
   onProgressFor?: (source: DiscoveryAutoSource) => AdapterProgressCallback | undefined
 }): SalesLeadSourceAdapter[] {
   const wanted = new Set(input?.sources ?? (['google_places', 'osm'] as DiscoveryAutoSource[]))
   const adapters: SalesLeadSourceAdapter[] = []
+  const placesKey = getGooglePlacesApiKey()
   const common = {
     segmentSlugs: input?.segmentSlugs ?? getSalesSegmentSlugs(),
     city: input?.city ?? getDiscoveryCities()[0] ?? 'תל אביב',
@@ -83,21 +93,29 @@ function buildAdapters(input?: {
     queryStats: input?.queryStats,
   }
 
-  if (wanted.has('google_places') && process.env.GOOGLE_PLACES_API_KEY?.trim()) {
+  if (wanted.has('google_places') && placesKey) {
     adapters.push(
       new GooglePlacesSalesLeadAdapter({
         ...common,
+        apiKey: placesKey,
         onProgress: input?.onProgressFor?.('google_places'),
       }),
     )
   }
+
+  // OSM only when requested in `sources` AND (no Places key, or explicit include flag / osm-only).
   if (wanted.has('osm')) {
-    adapters.push(
-      new OsmOverpassSalesLeadAdapter({
-        ...common,
-        onProgress: input?.onProgressFor?.('osm'),
-      }),
-    )
+    const osmOnly = input?.sources?.length === 1 && input.sources[0] === 'osm'
+    const allowOsm = !placesKey || shouldIncludeOsmWithPlaces() || osmOnly
+    if (allowOsm) {
+      adapters.push(
+        new OsmOverpassSalesLeadAdapter({
+          ...common,
+          deadlineMs: input?.osmDeadlineMs,
+          onProgress: input?.onProgressFor?.('osm'),
+        }),
+      )
+    }
   }
   return adapters
 }
@@ -112,7 +130,11 @@ export async function getLatestDiscoveryProgress(
   found: number
   created: number
   errorMessage: string | null
+  placesConfigured: boolean
 }> {
+  // Opportunistic unlock so UI/status never stay stuck behind a dead lock.
+  await hasRunningDiscovery(admin)
+
   const { data } = await admin
     .from('sales_lead_discovery_runs')
     .select('id, status, city, found_count, created_count, error_message, details')
@@ -129,6 +151,7 @@ export async function getLatestDiscoveryProgress(
       found: 0,
       created: 0,
       errorMessage: null,
+      placesConfigured: isGooglePlacesConfigured(),
     }
   }
 
@@ -166,6 +189,7 @@ export async function getLatestDiscoveryProgress(
     found: Number(data.found_count ?? 0),
     created: Number(data.created_count ?? 0),
     errorMessage: (data.error_message as string | null) ?? null,
+    placesConfigured: isGooglePlacesConfigured(),
   }
 }
 
@@ -179,6 +203,11 @@ export async function runSalesLeadDiscovery(
     cities?: string[]
   },
 ): Promise<DiscoveryRunResult> {
+  const startedAt = Date.now()
+  const softDeadline = startedAt + DISCOVERY_SOFT_DEADLINE_MS
+  const placesKey = getGooglePlacesApiKey()
+  const placesConfigured = Boolean(placesKey)
+
   const cities =
     options.cities?.filter(Boolean) ??
     (options.city?.trim()
@@ -190,6 +219,26 @@ export async function runSalesLeadDiscovery(
   const segmentSlugs = options.segmentSlugs ?? getSalesSegmentSlugs()
   const perCityBudget = Math.max(80, Math.floor(budget / Math.max(1, cities.length)))
   const perCityApi = Math.max(20, Math.floor(apiCallBudget / Math.max(1, cities.length)))
+
+  const osmOnly =
+    options.sources?.length === 1 && options.sources[0] === 'osm'
+  if (!placesConfigured && !osmOnly) {
+    return {
+      runId: null,
+      status: 'failed',
+      city: cityLabel,
+      sources: [],
+      found: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: 1,
+      budget,
+      apiCallBudget,
+      errorMessage: PLACES_KEY_MISSING_HE,
+      bySource: {},
+    }
+  }
 
   if (await hasRunningDiscovery(admin)) {
     return {
@@ -209,19 +258,29 @@ export async function runSalesLeadDiscovery(
     }
   }
 
+  const defaultSources: DiscoveryAutoSource[] = placesConfigured
+    ? shouldIncludeOsmWithPlaces()
+      ? ['google_places', 'osm']
+      : ['google_places']
+    : ['osm']
+  const runSources = options.sources ?? defaultSources
+
   const { data: runRow, error: runErr } = await admin
     .from('sales_lead_discovery_runs')
     .insert({
       trigger: options.trigger,
       city: cityLabel,
       status: 'running',
-      sources: options.sources ?? ['google_places', 'osm'],
+      sources: runSources,
       details: {
         segmentSlugs,
         cities,
         progressPct: 2,
-        phase: `מתחיל גילוי · ${cityLabel}`,
+        phase: placesConfigured
+          ? `מתחיל גילוי · ${cityLabel}`
+          : `OSM בלבד · ${cityLabel}`,
         currentSource: null,
+        placesConfigured,
       },
     })
     .select('id')
@@ -255,32 +314,28 @@ export async function runSalesLeadDiscovery(
   let errors = 0
   const bySource: DiscoveryRunResult['bySource'] = {}
   const usedSources = new Set<string>()
+  let stoppedEarly: string | null = null
 
   const sourceWeight: Record<string, number> = {
-    google_places: 0.72,
-    osm: 0.28,
+    google_places: placesConfigured && !shouldIncludeOsmWithPlaces() ? 1 : 0.85,
+    osm: placesConfigured && !shouldIncludeOsmWithPlaces() ? 0 : 0.15,
   }
 
   try {
-    const hasPlaces = Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim())
-    if (!hasPlaces) {
-      await writeRunProgress(
-        admin,
-        runId,
-        {
-          progressPct: 4,
-          phase: 'GOOGLE_PLACES_API_KEY חסר — רץ OSM בלבד על המרכז',
-          currentSource: 'osm',
-        },
-        undefined,
-        { segmentSlugs, cities },
-      )
-    }
-
     for (let ci = 0; ci < cities.length; ci++) {
+      if (Date.now() >= softDeadline) {
+        stoppedEarly = 'soft_deadline'
+        break
+      }
+
       const city = cities[ci]!
       const cityStart = 5 + (ci / cities.length) * 90
       const cityEnd = 5 + ((ci + 1) / cities.length) * 90
+      const remainingMs = Math.max(5_000, softDeadline - Date.now())
+      const osmDeadlineMs = Math.min(
+        Date.now() + Math.min(DISCOVERY_OSM_WALL_MS, Math.floor(remainingMs * 0.35)),
+        softDeadline,
+      )
 
       await writeRunProgress(
         admin,
@@ -293,23 +348,25 @@ export async function runSalesLeadDiscovery(
           created,
         },
         { found, created, updated, skipped, errors },
-        { segmentSlugs, cities, bySource },
+        { segmentSlugs, cities, bySource, placesConfigured },
       )
 
       const adapters = buildAdapters({
-        sources: options.sources,
+        sources: runSources,
         segmentSlugs,
         city,
         totalBudget: perCityBudget,
         apiCallBudget: perCityApi,
         queryStats,
+        osmDeadlineMs,
         onProgressFor: (source) => {
           const weight = sourceWeight[source] ?? 0.5
-          const sibling = source === 'google_places' ? 0 : sourceWeight.google_places
-          // Map adapter-local progress into this city's slice
+          const sibling =
+            source === 'google_places' ? 0 : sourceWeight.google_places ?? 0
           return async (event) => {
             const ratio = event.total > 0 ? event.done / event.total : 0
-            const withinCity = (source === 'google_places' ? 0 : sibling) + ratio * weight
+            const withinCity =
+              (source === 'google_places' ? 0 : sibling) + ratio * weight
             const pct = clampPct(cityStart + withinCity * (cityEnd - cityStart))
             const label = SOURCE_LABEL_HE[source] ?? source
             await writeRunProgress(
@@ -323,7 +380,7 @@ export async function runSalesLeadDiscovery(
                 created,
               },
               { found: found + event.kept, created, updated, skipped, errors },
-              { segmentSlugs, cities, bySource },
+              { segmentSlugs, cities, bySource, placesConfigured },
             )
           }
         },
@@ -335,6 +392,10 @@ export async function runSalesLeadDiscovery(
       }
 
       for (const adapter of adapters) {
+        if (Date.now() >= softDeadline) {
+          stoppedEarly = 'soft_deadline'
+          break
+        }
         usedSources.add(adapter.name)
         const ingest = await ingestFromAdapter(admin, adapter)
         found += ingest.found
@@ -360,11 +421,20 @@ export async function runSalesLeadDiscovery(
 
         if (adapter.name === 'google_places') {
           const places = adapter as PlacesAdapter
+          if (places.lastStats?.searchErrors?.length) {
+            bySource.google_places!.errors = [
+              ...bySource.google_places!.errors,
+              ...places.lastStats.searchErrors.slice(0, 10),
+            ].slice(0, 20)
+            errors += places.lastStats.searchErrors.length
+          }
           if (places.lastStats?.queryYields?.length) {
             await upsertQueryStats(admin, places.lastStats.queryYields)
           }
         }
       }
+
+      if (stoppedEarly) break
 
       await writeRunProgress(
         admin,
@@ -377,20 +447,27 @@ export async function runSalesLeadDiscovery(
           created,
         },
         { found, created, updated, skipped, errors },
-        { segmentSlugs, cities, bySource },
+        { segmentSlugs, cities, bySource, placesConfigured, stoppedEarly },
       )
     }
 
     if (usedSources.size === 0) {
-      const msg =
-        'אין מקורות זמינים — הגדירו GOOGLE_PLACES_API_KEY או אפשרו OSM'
+      const msg = placesConfigured
+        ? 'אין מקורות זמינים לריצה'
+        : PLACES_KEY_MISSING_HE
       await admin
         .from('sales_lead_discovery_runs')
         .update({
           status: 'failed',
           error_message: msg,
           finished_at: new Date().toISOString(),
-          details: { progressPct: 100, phase: 'נכשל', segmentSlugs, cities },
+          details: {
+            progressPct: 100,
+            phase: 'נכשל',
+            segmentSlugs,
+            cities,
+            placesConfigured,
+          },
         })
         .eq('id', runId)
       return {
@@ -410,6 +487,61 @@ export async function runSalesLeadDiscovery(
       }
     }
 
+    const placesStats = bySource.google_places
+    const placesHardFail =
+      placesConfigured &&
+      usedSources.has('google_places') &&
+      found === 0 &&
+      (placesStats?.errors.length ?? 0) > 0 &&
+      (placesStats?.found ?? 0) === 0
+
+    if (placesHardFail) {
+      const msg = `Google Places נכשל בכל השאילתות — בדקו מפתח API, חיוב, והפעלת Places API (New). ${placesStats?.errors[0] ?? ''}`
+      await admin
+        .from('sales_lead_discovery_runs')
+        .update({
+          status: 'failed',
+          error_message: msg.slice(0, 500),
+          found_count: found,
+          created_count: created,
+          updated_count: updated,
+          skipped_count: skipped,
+          error_count: errors,
+          sources: [...usedSources],
+          details: {
+            bySource,
+            segmentSlugs,
+            cities,
+            progressPct: 100,
+            phase: 'נכשל',
+            placesConfigured,
+            found,
+            created,
+          },
+          finished_at: new Date().toISOString(),
+        })
+        .eq('id', runId)
+      return {
+        runId,
+        status: 'failed',
+        city: cityLabel,
+        sources: [...usedSources],
+        found,
+        created,
+        updated,
+        skipped,
+        errors: errors + 1,
+        budget,
+        apiCallBudget,
+        errorMessage: msg.slice(0, 500),
+        bySource,
+      }
+    }
+
+    const phaseDone = stoppedEarly
+      ? `הושלם חלקית (תקציב זמן) · נמצאו ${found}`
+      : 'הושלם'
+
     await admin
       .from('sales_lead_discovery_runs')
       .update({
@@ -425,10 +557,13 @@ export async function runSalesLeadDiscovery(
           segmentSlugs,
           cities,
           progressPct: 100,
-          phase: 'הושלם',
+          phase: phaseDone,
           currentSource: null,
           found,
           created,
+          placesConfigured,
+          stoppedEarly,
+          elapsedMs: Date.now() - startedAt,
         },
         finished_at: new Date().toISOString(),
       })
@@ -447,6 +582,9 @@ export async function runSalesLeadDiscovery(
       budget,
       apiCallBudget,
       bySource,
+      ...(stoppedEarly
+        ? { errorMessage: 'הושלם חלקית — נעצר לפני timeout של Vercel' }
+        : {}),
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : 'discovery failed'
@@ -469,6 +607,7 @@ export async function runSalesLeadDiscovery(
           currentSource: null,
           found,
           created,
+          placesConfigured,
         },
         finished_at: new Date().toISOString(),
       })

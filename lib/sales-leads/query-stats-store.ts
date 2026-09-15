@@ -1,8 +1,42 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { DISCOVERY_STALE_RUN_MS } from '@/lib/sales-leads/config'
 import type { QueryStatRow, QueryYieldUpdate } from '@/lib/sales-leads/query-queue'
 import { computeYieldScore } from '@/lib/sales-leads/query-queue'
 
+/**
+ * Serverless kills leave status=running forever and block all new discovery.
+ * Fail any running row older than DISCOVERY_STALE_RUN_MS.
+ */
+export async function recoverStaleDiscoveryRuns(
+  admin: SupabaseClient,
+  olderThanMs = DISCOVERY_STALE_RUN_MS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - olderThanMs).toISOString()
+  const { data, error } = await admin
+    .from('sales_lead_discovery_runs')
+    .update({
+      status: 'failed',
+      error_message: 'ריצה נתקעה (timeout) — שוחרר אוטומטית',
+      finished_at: new Date().toISOString(),
+      details: {
+        progressPct: 100,
+        phase: 'נכשל — timeout',
+        recoveredStale: true,
+      },
+    })
+    .eq('status', 'running')
+    .lt('started_at', cutoff)
+    .select('id')
+
+  if (error) {
+    console.error('[sales-leads.recoverStale]', error.message)
+    return 0
+  }
+  return data?.length ?? 0
+}
+
 export async function hasRunningDiscovery(admin: SupabaseClient): Promise<boolean> {
+  await recoverStaleDiscoveryRuns(admin)
   const { data } = await admin
     .from('sales_lead_discovery_runs')
     .select('id')

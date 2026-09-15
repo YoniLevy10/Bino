@@ -4,12 +4,14 @@ import {
   superAdminUnauthorizedResponse,
 } from '@/lib/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { isGooglePlacesConfigured } from '@/lib/sales-leads/config'
 import {
   deleteSalesLeadsBulk,
   getLeadCounters,
   listRecentRuns,
   listSalesLeads,
 } from '@/lib/sales-leads/service'
+import { recoverStaleDiscoveryRuns } from '@/lib/sales-leads/query-stats-store'
 import type { LeadStatus } from '@/lib/sales-leads/types'
 import { LEAD_STATUSES } from '@/lib/sales-leads/types'
 
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const admin = getSupabaseAdmin()
+    await recoverStaleDiscoveryRuns(admin)
     const [{ leads, total }, counters, runs] = await Promise.all([
       listSalesLeads(admin, {
         q,
@@ -74,7 +77,13 @@ export async function GET(req: NextRequest) {
       getLeadCounters(admin),
       listRecentRuns(admin, 8),
     ])
-    return NextResponse.json({ leads, total, counters, runs })
+    return NextResponse.json({
+      leads,
+      total,
+      counters,
+      runs,
+      placesConfigured: isGooglePlacesConfigured(),
+    })
   } catch (e) {
     console.error('[superadmin.sales-leads]', e)
     return NextResponse.json(

@@ -179,3 +179,37 @@ export function getDiscoveryApiCallBudget(): number {
   if (Number.isFinite(n) && n > 0) return Math.min(Math.floor(n), 400)
   return DISCOVERY_API_CALL_BUDGET
 }
+
+/**
+ * Google Places API (New) key. Primary: GOOGLE_PLACES_API_KEY.
+ * Fallback: GOOGLE_MAPS_API_KEY (common when one Maps Platform key is shared).
+ */
+export function getGooglePlacesApiKey(): string | null {
+  const primary = process.env.GOOGLE_PLACES_API_KEY?.trim()
+  if (primary) return primary
+  const fallback = process.env.GOOGLE_MAPS_API_KEY?.trim()
+  if (fallback) return fallback
+  return null
+}
+
+export function isGooglePlacesConfigured(): boolean {
+  return Boolean(getGooglePlacesApiKey())
+}
+
+/** Mark orphaned "running" rows failed after this age (Vercel maxDuration ≈ 300s). */
+export const DISCOVERY_STALE_RUN_MS = 8 * 60 * 1000
+
+/**
+ * Soft wall-clock budget so we finish cleanly before the serverless kill
+ * (leave ~30s margin under maxDuration=300).
+ */
+export const DISCOVERY_SOFT_DEADLINE_MS = 270_000
+
+/** OSM Overpass is slow/noisy in IL for property tags — cap wall time when used. */
+export const DISCOVERY_OSM_WALL_MS = 75_000
+
+/** When Places is available, skip OSM unless BINO_SALES_DISCOVERY_INCLUDE_OSM=1. */
+export function shouldIncludeOsmWithPlaces(): boolean {
+  const raw = process.env.BINO_SALES_DISCOVERY_INCLUDE_OSM?.trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'yes'
+}

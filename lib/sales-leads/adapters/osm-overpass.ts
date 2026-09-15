@@ -31,6 +31,8 @@ export type OsmAdapterOptions = {
   segmentSlugs?: string[]
   city?: string
   perSegmentLimit?: number
+  /** Absolute epoch ms — stop issuing Overpass calls after this. */
+  deadlineMs?: number
   onProgress?: AdapterProgressCallback
 }
 
@@ -39,16 +41,25 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
   private readonly mappings: DiscoverySegmentMapping[]
   private readonly city: string
   private readonly perSegmentLimit: number
+  private readonly deadlineMs: number | null
   private readonly onProgress?: AdapterProgressCallback
   lastCategoryErrors: string[] = []
 
   constructor(options: OsmAdapterOptions = {}) {
     this.city = options.city ?? getDiscoveryCity()
     this.perSegmentLimit = Math.min(options.perSegmentLimit ?? 40, 80)
+    this.deadlineMs =
+      typeof options.deadlineMs === 'number' && Number.isFinite(options.deadlineMs)
+        ? options.deadlineMs
+        : null
     this.mappings = getDiscoveryMappingsForSlugs(
       options.segmentSlugs ?? getSalesSegmentSlugs(),
     )
     this.onProgress = options.onProgress
+  }
+
+  private pastDeadline(): boolean {
+    return this.deadlineMs != null && Date.now() >= this.deadlineMs
   }
 
   async fetchRecords(): Promise<SalesLeadSourceRecord[]> {
@@ -59,6 +70,19 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
     let done = 0
 
     for (const mapping of activeMappings) {
+      if (this.pastDeadline()) {
+        categoryErrors.push(`${mapping.slug}: skipped (deadline)`)
+        done += 1
+        if (this.onProgress) {
+          await this.onProgress({
+            done,
+            total: Math.max(1, activeMappings.length),
+            kept: out.length,
+            label: `${mapping.slug} (deadline)`,
+          })
+        }
+        continue
+      }
       let elements: OsmElement[] = []
       try {
         elements = await this.queryCategory(mapping)
@@ -181,11 +205,19 @@ out center tags;
   }
 
   private async queryCategory(mapping: DiscoverySegmentMapping): Promise<OsmElement[]> {
+    if (this.pastDeadline()) {
+      throw new Error('OSM deadline reached')
+    }
     const query = this.buildOverpassQuery(mapping)
     const body = `data=${encodeURIComponent(query)}`
     const errors: string[] = []
+    // Cap per-request wait so we can respect soft deadlines.
+    const remaining =
+      this.deadlineMs != null ? Math.max(3_000, this.deadlineMs - Date.now()) : 25_000
+    const timeoutMs = Math.min(25_000, remaining)
 
     for (const endpoint of OVERPASS_ENDPOINTS) {
+      if (this.pastDeadline()) break
       const res = await fetchWithTimeout(
         endpoint,
         {
@@ -193,7 +225,7 @@ out center tags;
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body,
         },
-        35_000,
+        timeoutMs,
       )
       if (!res) {
         errors.push(`${endpoint}: timeout`)
