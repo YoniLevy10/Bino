@@ -18,7 +18,7 @@ import {
   defaultOutreachMessage,
   outreachVariantsForLead,
 } from '@/lib/sales-leads/outreach-templates'
-import { whatsappLink } from '@/lib/sales-leads/phone'
+import { formatPhoneLocalIl, openWhatsAppUrl, whatsappLink } from '@/lib/sales-leads/phone'
 import { LEAD_STATUSES, type LeadStatus, type SalesLead } from '@/lib/sales-leads/types'
 
 type Counters = {
@@ -362,12 +362,36 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     const variants = outreachVariantsForLead(lead)
     const idx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
     const { variant, body } = defaultOutreachMessage(lead, variants[idx]?.id)
-    const href = whatsappLink(lead.whatsappPhone || lead.phone, body)
+    const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
+    const href = whatsappLink(phoneRaw, body)
     if (!href) {
       setError('אין מספר WhatsApp לליד הזה')
       return
     }
-    window.open(href, '_blank', 'noopener,noreferrer')
+
+    const localPhone =
+      formatPhoneLocalIl(phoneRaw) ||
+      formatPhoneLocalIl(lead.phoneNormalized) ||
+      phoneRaw?.trim() ||
+      ''
+
+    // Open first, while still in the user-gesture stack. Awaiting clipboard
+    // before open causes iOS/Android to drop the deep-linked phone.
+    openWhatsAppUrl(href)
+
+    try {
+      if (localPhone && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(localPhone)
+      }
+    } catch {
+      /* clipboard optional */
+    }
+
+    setOkMsg(
+      localPhone
+        ? `נפתח צ'אט WhatsApp · המספר ${localPhone} הועתק ללוח`
+        : 'נפתח צ׳אט WhatsApp',
+    )
     setWaVariantIdx((prev) => ({
       ...prev,
       [lead.id]: (idx + 1) % Math.max(1, variants.length),
@@ -748,7 +772,9 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
 
       <div className="sa-leads-list">
         {ranked.map((lead, idx) => {
-          const canWa = Boolean(whatsappLink(lead.whatsappPhone || lead.phone))
+          const canWa = Boolean(
+            whatsappLink(lead.whatsappPhone || lead.phone || lead.phoneNormalized),
+          )
           const score = lead.fitScore
           const rating = enrichmentNum(lead, 'rating')
           const reviewCount = enrichmentNum(lead, 'reviewCount')

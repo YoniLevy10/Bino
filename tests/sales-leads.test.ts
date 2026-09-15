@@ -7,7 +7,11 @@ import {
   ISRAEL_SALES_CITIES,
   shouldIncludeOsmWithPlaces,
 } from '@/lib/sales-leads/config'
-import { normalizePhone } from '@/lib/sales-leads/phone'
+import {
+  formatPhoneLocalIl,
+  normalizePhone,
+  whatsappLink,
+} from '@/lib/sales-leads/phone'
 import {
   DISCOVERY_SEGMENT_MAP,
   placesSearchJobsFor,
@@ -50,6 +54,18 @@ describe('sales-leads city rotation', () => {
 describe('sales-leads phone', () => {
   it('normalizes IL mobile phones', () => {
     expect(normalizePhone('050-1234567')).toBe('972501234567')
+  })
+
+  it('builds api.whatsapp.com deep link with phone + text', () => {
+    const href = whatsappLink('050-1234567', 'שלום')
+    expect(href).toMatch(/^https:\/\/api\.whatsapp\.com\/send\?/)
+    expect(href).toContain('phone=972501234567')
+    expect(href).toContain('text=')
+  })
+
+  it('formats local IL number for clipboard', () => {
+    expect(formatPhoneLocalIl('972547211542')).toBe('0547211542')
+    expect(formatPhoneLocalIl('054-721-1542')).toBe('0547211542')
   })
 })
 
