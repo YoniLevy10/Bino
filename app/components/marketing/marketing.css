@@ -29,6 +29,17 @@
   }
 }
 
+@keyframes bino-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .bino-marketing {
   --bino-blue: #0066ff;
   --bino-blue-deep: #0047b3;
@@ -65,6 +76,7 @@
   inset: 0;
   z-index: -1;
   background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0, 102, 255, 0.45), transparent 55%),
     linear-gradient(165deg, rgba(11, 18, 32, 0.55) 0%, rgba(0, 71, 179, 0.45) 42%, rgba(0, 102, 255, 0.72) 100%),
     linear-gradient(180deg, #0b1220 0%, #123a7a 55%, #0066ff 100%);
 }
@@ -172,11 +184,23 @@
   color: #fff;
 }
 
+.bino-cta__secondary--dark {
+  color: var(--bino-ink-soft);
+}
+
+.bino-cta__secondary--dark:hover {
+  color: var(--bino-ink);
+}
+
 /* —— Below the fold —— */
 .bino-section {
   padding: 56px 20px;
   max-width: 880px;
   margin-inline: auto;
+}
+
+.bino-section--wide {
+  max-width: 1100px;
 }
 
 .bino-section__title {
@@ -195,6 +219,70 @@
   max-width: 40ch;
 }
 
+.bino-showcase {
+  background:
+    linear-gradient(180deg, rgba(11, 18, 32, 0.04), transparent 40%),
+    var(--bino-surface);
+  border-block: 1px solid var(--bino-line);
+}
+
+.bino-showcase__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 28px;
+}
+
+.bino-showcase__item {
+  animation: bino-reveal 0.75s ease-out both;
+}
+
+.bino-showcase__item:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.bino-showcase__item:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.bino-showcase__item:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.bino-showcase__frame {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 1px 0 rgba(11, 18, 32, 0.06),
+    0 24px 48px -28px rgba(11, 18, 32, 0.35);
+  border: 1px solid rgba(11, 18, 32, 0.08);
+}
+
+.bino-showcase__img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bino-showcase__caption {
+  margin: 12px 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bino-ink-soft);
+}
+
+.bino-sample-note {
+  margin: -12px 0 24px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: 42ch;
+}
+
 .bino-metrics {
   list-style: none;
   margin: 0;
@@ -205,7 +293,7 @@
 .bino-metrics li {
   display: flex;
   gap: 16px;
-  align-items: baseline;
+  align-items: flex-start;
   padding: 18px 0;
   border-bottom: 1px solid var(--bino-line);
   animation: bino-fade-up 0.6s ease-out both;
@@ -234,6 +322,14 @@
   color: var(--bino-blue);
   letter-spacing: 0.04em;
   min-width: 1.5rem;
+  padding-top: 4px;
+}
+
+.bino-metrics__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .bino-metrics__label {
@@ -241,6 +337,44 @@
   font-weight: 600;
   color: var(--bino-ink);
   line-height: 1.35;
+}
+
+.bino-metrics__delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 10px;
+  font-size: 0.95rem;
+}
+
+.bino-metrics__before {
+  color: var(--bino-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(90, 101, 120, 0.45);
+}
+
+.bino-metrics__arrow {
+  color: var(--bino-muted);
+}
+
+.bino-metrics__after {
+  color: var(--bino-blue);
+  font-weight: 700;
+}
+
+.bino-metrics__note {
+  color: var(--bino-muted);
+  font-size: 0.88rem;
+}
+
+.bino-metrics__more {
+  margin: 20px 0 0;
+  font-size: 0.95rem;
+}
+
+.bino-metrics__more a {
+  color: var(--bino-blue);
+  font-weight: 600;
 }
 
 .bino-steps {
@@ -309,10 +443,6 @@
   background: var(--bino-blue-deep);
 }
 
-.bino-closing .bino-cta__secondary {
-  color: var(--bino-ink-soft);
-}
-
 .bino-footer {
   padding: 20px;
   text-align: center;
@@ -355,6 +485,12 @@
     padding: 72px 40px;
   }
 
+  .bino-showcase__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
   .bino-steps {
     grid-template-columns: repeat(3, 1fr);
     gap: 32px;
@@ -371,6 +507,7 @@
   .bino-support,
   .bino-cta,
   .bino-metrics li,
+  .bino-showcase__item,
   .bino-hero__plane::before {
     animation: none !important;
   }

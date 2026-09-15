@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="title desc">
+  <title id="title">УХЧ ЧЩбЫХЯ кдвХЬЩ</title>
+  <desc id="desc">ЮУУЩ ЫХЫС ждХаЩ йЬ BINO ЬдаЩ ХРЧиЩ  акХаЩ УХТЮФ</desc>
+  <rect width="960" height="640" rx="24" fill="#f2f5fa"/>
+  <rect x="32" y="32" width="896" height="576" rx="18" fill="#fff" stroke="#d7dee9"/>
+  <text x="896" y="84" text-anchor="end" fill="#0f766e" font-family="Heebo, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="2">BINO · УХЧ ЧЩбЫХЯ</text>
+  <text x="896" y="124" text-anchor="end" fill="#0b1220" font-family="Heebo, Arial, sans-serif" font-size="28" font-weight="800">ЧЩбЫХЯ ЮХЫЧ ЬЧСик ФаЩФХЬ</text>
+  <text x="896" y="158" text-anchor="end" fill="#5a6578" font-family="Heebo, Arial, sans-serif" font-size="15">ЮбдиЩ УХТЮФ · ЬдаЩ / РЧиЩ BINO</text>
+
+  <rect x="64" y="196" width="832" height="48" rx="10" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="872" y="226" text-anchor="end" fill="#92400e" font-family="Heebo, Arial, sans-serif" font-size="14" font-weight="700">УХТЮФ ЬФЮЧйФ СЬСУ  ЬР акХаЩ ЬзХЧ РЮЩкЩ</text>
+
+  <rect x="64" y="268" width="260" height="140" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="300" y="304" text-anchor="end" fill="#5a6578" font-family="Heebo, Arial, sans-serif" font-size="14">ЦЮЯ вУ йЩХЪ</text>
+  <text x="300" y="344" text-anchor="end" fill="#94a3b8" font-family="Heebo, Arial, sans-serif" font-size="16">48 Узу ’</text>
+  <text x="300" y="380" text-anchor="end" fill="#0066ff" font-family="Heebo, Arial, sans-serif" font-size="28" font-weight="800">12 Узу</text>
+
+  <rect x="348" y="268" width="260" height="140" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="584" y="304" text-anchor="end" fill="#5a6578" font-family="Heebo, Arial, sans-serif" font-size="14">ЦЮЯ вУ дкиХЯ</text>
+  <text x="584" y="344" text-anchor="end" fill="#94a3b8" font-family="Heebo, Arial, sans-serif" font-size="16">36 йу ’</text>
+  <text x="584" y="380" text-anchor="end" fill="#0066ff" font-family="Heebo, Arial, sans-serif" font-size="28" font-weight="800">14 йу</text>
+
+  <rect x="632" y="268" width="264" height="140" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="872" y="304" text-anchor="end" fill="#5a6578" font-family="Heebo, Arial, sans-serif" font-size="14">кзЬХк ЧХЦиХк</text>
+  <text x="872" y="344" text-anchor="end" fill="#94a3b8" font-family="Heebo, Arial, sans-serif" font-size="16">28% ’</text>
+  <text x="872" y="380" text-anchor="end" fill="#0066ff" font-family="Heebo, Arial, sans-serif" font-size="28" font-weight="800">11%</text>
+
+  <rect x="64" y="436" width="400" height="140" rx="14" fill="#0b1220"/>
+  <text x="440" y="480" text-anchor="end" fill="rgba(255,255,255,0.75)" font-family="Heebo, Arial, sans-serif" font-size="14">вЬХк кЧЦХзФ ЬСаЩЩЯ / ЧХУй</text>
+  <text x="440" y="528" text-anchor="end" fill="#fff" font-family="Heebo, Arial, sans-serif" font-size="26" font-weight="800">Є4,800 ’ Є3,100</text>
+
+  <rect x="488" y="436" width="408" height="140" rx="14" fill="#0066ff"/>
+  <text x="872" y="480" text-anchor="end" fill="rgba(255,255,255,0.85)" font-family="Heebo, Arial, sans-serif" font-size="14">ШХдЬ ЬЬР ФквиСХк ЮаФЬ</text>
+  <text x="872" y="528" text-anchor="end" fill="#fff" font-family="Heebo, Arial, sans-serif" font-size="26" font-weight="800">22% ’ 67%</text>
+</svg>

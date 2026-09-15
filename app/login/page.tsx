@@ -1,5 +1,12 @@
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { LoginClient } from './login-client'
+
+export const metadata: Metadata = {
+  title: 'כניסה',
+  description: 'כניסה למערכת BINO',
+  robots: { index: false, follow: false },
+}
 
 function LoginFallback() {
   return <LoginClientFallback />

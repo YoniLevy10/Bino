@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Link from 'next/link'
 import { Inter, Heebo } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "./components/ToastContainer";
@@ -13,6 +12,12 @@ import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import {
+  BINO_MARKETING_DESCRIPTION,
+  BINO_MARKETING_OG_DESCRIPTION,
+  BINO_MARKETING_TITLE,
+  getMarketingSiteOrigin,
+} from "@/lib/marketing-site";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -37,11 +42,26 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 
+const siteOrigin = getMarketingSiteOrigin();
+
 export const metadata: Metadata = {
-  title: "Bino — ניהול תקלות ואחזקה",
-  description: "Bino — Building Intelligence & Operations. מערכת ניהול נכסים, תקלות בזמן אמת, שיבוץ עובדים ואינטגרציה לוואטסאפ",
-  applicationName: "Bino",
-  keywords: ["Bino", "Building Intelligence", "property management", "maintenance", "tickets", "project management", "real-time"],
+  metadataBase: new URL(siteOrigin),
+  title: {
+    default: BINO_MARKETING_TITLE,
+    template: "%s | BINO",
+  },
+  description: BINO_MARKETING_DESCRIPTION,
+  applicationName: "BINO",
+  keywords: [
+    "BINO",
+    "Building Intelligence",
+    "זיכרון תפעולי",
+    "ניהול בניינים",
+    "תחזוקה",
+    "חברת ניהול",
+    "תקלות חוזרות",
+    "SLA",
+  ],
   authors: [{ name: "Yoni Levy" }],
   creator: "Yoni Levy",
   // Search Console: DNS TXT is not available on *.vercel.app (Vercel owns DNS).
@@ -52,7 +72,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Bino",
+    title: "BINO",
   },
   formatDetection: {
     telephone: false,
@@ -61,39 +81,29 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
-      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-icon.png", sizes: "1254x1254", type: "image/png" },
     ],
-    apple: "/apple-icon.png",
+    apple: [{ url: "/apple-icon.png", sizes: "1254x1254", type: "image/png" }],
     shortcut: "/apple-icon.png",
   },
   openGraph: {
     type: "website",
     locale: "he_IL",
-    url: process.env.NEXT_PUBLIC_APP_URL || undefined,
-    siteName: "Bino",
-    title: "Bino — ניהול תקלות ואחזקה",
-    description: "מערכת ניהול נכסים ותקלות",
-    images: [
-      {
-        url: "/apple-icon.png",
-        width: 180,
-        height: 180,
-        alt: "Bino Logo",
-        type: "image/png",
-      },
-    ],
+    url: siteOrigin,
+    siteName: "BINO",
+    title: BINO_MARKETING_TITLE,
+    description: BINO_MARKETING_OG_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bino — ניהול תקלות ואחזקה",
-    description: "מערכת ניהול נכסים ותקלות",
-    images: ["/apple-icon.png"],
+    title: BINO_MARKETING_TITLE,
+    description: BINO_MARKETING_OG_DESCRIPTION,
   },
   category: "productivity",
   other: {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Bino",
+    "apple-mobile-web-app-title": "BINO",
   },
 };
 

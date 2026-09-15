@@ -2,10 +2,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLegalSiteConfig, legalTelHref } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
+import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+
+const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
-  title: 'יצירת קשר | Bino',
-  description: 'טלפון, כתובת ומייל ליצירת קשר — Bino',
+  title: 'יצירת קשר',
+  description: 'טלפון, כתובת ומייל ליצירת קשר — BINO',
+  alternates: { canonical: `${origin}/contact` },
 }
 
 export default function ContactPage() {

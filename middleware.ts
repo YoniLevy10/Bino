@@ -46,7 +46,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Let Next handle static assets
+  // Let Next handle static assets + SEO crawl endpoints
   if (
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
@@ -56,7 +56,12 @@ export async function middleware(req: NextRequest) {
     pathname === '/manifest.worker.json' ||
     pathname === '/manifest.superadmin.json' ||
     pathname === '/sw.js' ||
-    pathname === '/offline.html'
+    pathname === '/offline.html' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname.startsWith('/marketing/') ||
+    pathname === '/opengraph-image' ||
+    pathname.startsWith('/opengraph-image')
   ) {
     return NextResponse.next()
   }
