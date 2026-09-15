@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { assessBuyerFit, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
-import { getSalesCityForToday, ISRAEL_SALES_CITIES } from '@/lib/sales-leads/config'
+import {
+  CORE_FOCUS_CITIES,
+  getSalesCitiesForRun,
+  ISRAEL_SALES_CITIES,
+} from '@/lib/sales-leads/config'
 import { findDuplicate } from '@/lib/sales-leads/dedupe'
 import { normalizePhone } from '@/lib/sales-leads/phone'
 import { selectJobsForBudget, computeYieldScore } from '@/lib/sales-leads/query-queue'
@@ -66,12 +70,18 @@ describe('sales-leads discovery mapping', () => {
 })
 
 describe('sales-leads city rotation', () => {
-  it('rotates across Israel cities', () => {
-    const a = getSalesCityForToday(new Date('2026-01-01T12:00:00Z'))
-    const b = getSalesCityForToday(new Date('2026-01-02T12:00:00Z'))
-    expect(ISRAEL_SALES_CITIES).toContain(a)
-    expect(ISRAEL_SALES_CITIES).toContain(b)
-    expect(a).not.toBe(b)
+  it('keeps Tel Aviv + Jerusalem anchors and rotates center cities by day', () => {
+    const a = getSalesCitiesForRun(new Date('2026-01-01T12:00:00Z'))
+    const b = getSalesCitiesForRun(new Date('2026-01-02T12:00:00Z'))
+    for (const city of CORE_FOCUS_CITIES) {
+      expect(a).toContain(city)
+      expect(b).toContain(city)
+    }
+    for (const city of a) expect(ISRAEL_SALES_CITIES).toContain(city)
+    const rotateA = a.filter((c) => !(CORE_FOCUS_CITIES as readonly string[]).includes(c))
+    const rotateB = b.filter((c) => !(CORE_FOCUS_CITIES as readonly string[]).includes(c))
+    expect(rotateA.length).toBeGreaterThan(0)
+    expect(rotateA).not.toEqual(rotateB)
   })
 })
 
