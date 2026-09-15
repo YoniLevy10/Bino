@@ -55,17 +55,17 @@ const HOW_IT_WORKS = [
 
 const PRODUCT_SHOTS = [
   {
-    src: '/marketing/ops-memory.svg',
+    src: '/marketing/ops-memory.png',
     alt: 'מסך זיכרון תפעולי של BINO: היסטוריית תקלות, ציוד ותובנות לבניין',
     caption: 'זיכרון תפעולי לכל בניין',
   },
   {
-    src: '/marketing/smart-assign.svg',
+    src: '/marketing/smart-assign.png',
     alt: 'מסך שיוך חכם ב־BINO: המלצה על העובד המתאים לפי היסטוריית הבניין',
     caption: 'המלצה אוטומטית לעובד או ספק',
   },
   {
-    src: '/marketing/savings-proof.svg',
+    src: '/marketing/savings-proof.png',
     alt: 'דוח חיסכון של BINO עם מדדי כוכב צפוני לפני ואחרי — נתוני דוגמה',
     caption: 'הוכחת חיסכון לחברת הניהול',
   },
