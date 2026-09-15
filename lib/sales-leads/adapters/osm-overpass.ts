@@ -1,4 +1,7 @@
-import type { SalesLeadSourceAdapter } from '@/lib/sales-leads/adapters/types'
+import type {
+  AdapterProgressCallback,
+  SalesLeadSourceAdapter,
+} from '@/lib/sales-leads/adapters/types'
 import type { SalesLeadSourceRecord } from '@/lib/sales-leads/types'
 import {
   getCityGeoProfile,
@@ -28,6 +31,7 @@ export type OsmAdapterOptions = {
   segmentSlugs?: string[]
   city?: string
   perSegmentLimit?: number
+  onProgress?: AdapterProgressCallback
 }
 
 export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
@@ -35,6 +39,7 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
   private readonly mappings: DiscoverySegmentMapping[]
   private readonly city: string
   private readonly perSegmentLimit: number
+  private readonly onProgress?: AdapterProgressCallback
   lastCategoryErrors: string[] = []
 
   constructor(options: OsmAdapterOptions = {}) {
@@ -43,15 +48,17 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
     this.mappings = getDiscoveryMappingsForSlugs(
       options.segmentSlugs ?? getSalesSegmentSlugs(),
     )
+    this.onProgress = options.onProgress
   }
 
   async fetchRecords(): Promise<SalesLeadSourceRecord[]> {
     const out: SalesLeadSourceRecord[] = []
     const seen = new Set<string>()
     const categoryErrors: string[] = []
+    const activeMappings = this.mappings.filter((m) => m.osmFilters.length > 0)
+    let done = 0
 
-    for (const mapping of this.mappings) {
-      if (mapping.osmFilters.length === 0) continue
+    for (const mapping of activeMappings) {
       let elements: OsmElement[] = []
       try {
         elements = await this.queryCategory(mapping)
@@ -59,6 +66,15 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
         categoryErrors.push(
           `${mapping.slug}: ${e instanceof Error ? e.message : 'Overpass failed'}`,
         )
+        done += 1
+        if (this.onProgress) {
+          await this.onProgress({
+            done,
+            total: Math.max(1, activeMappings.length),
+            kept: out.length,
+            label: mapping.slug,
+          })
+        }
         continue
       }
 
@@ -123,6 +139,16 @@ export class OsmOverpassSalesLeadAdapter implements SalesLeadSourceAdapter {
           fitReasons: assessment.reasons,
           contactability: assessment.contactability,
           estimatedMrrIls: assessment.estimatedMrrIls,
+        })
+      }
+
+      done += 1
+      if (this.onProgress) {
+        await this.onProgress({
+          done,
+          total: Math.max(1, activeMappings.length),
+          kept: out.length,
+          label: mapping.slug,
         })
       }
     }

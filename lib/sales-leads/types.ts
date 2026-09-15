@@ -86,6 +86,14 @@ export type SalesLead = {
 export type DiscoveryTrigger = 'cron' | 'manual'
 export type DiscoveryAutoSource = 'google_places' | 'osm'
 
+export type DiscoveryProgress = {
+  progressPct: number
+  phase: string
+  currentSource?: string | null
+  found?: number
+  created?: number
+}
+
 export type DiscoveryRunResult = {
   runId: string | null
   status: 'completed' | 'failed' | 'busy'

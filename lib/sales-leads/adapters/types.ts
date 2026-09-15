@@ -1,5 +1,14 @@
 import type { SalesLeadSourceRecord } from '@/lib/sales-leads/types'
 
+export type AdapterProgressEvent = {
+  done: number
+  total: number
+  kept: number
+  label?: string
+}
+
+export type AdapterProgressCallback = (event: AdapterProgressEvent) => void | Promise<void>
+
 export interface SalesLeadSourceAdapter {
   readonly name: string
   fetchRecords(input?: unknown): Promise<SalesLeadSourceRecord[]>
