@@ -16,6 +16,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname === '/' ||
     pathname === '/savings-report' ||
+    pathname.startsWith('/savings-report/') ||
     pathname.startsWith('/api/webhook/whatsapp') ||
     pathname.startsWith('/api/webhook/grow') ||
     pathname.startsWith('/api/public/') ||

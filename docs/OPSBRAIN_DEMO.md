@@ -69,11 +69,11 @@ The seed also enables paid add-ons and inserts demo rows for:
 - [ ] Smoke-test: `/login` → email/password → dashboard shows OpsBrain data
 - [ ] Open גבייה + נוכחות/החתמות tabs briefly
 
-## Sales call (quick)
+## Sales call
 
 Full Hebrew runbook: [`docs/SALES_DEMO_RUNBOOK.md`](./SALES_DEMO_RUNBOOK.md).
 
 1. Re-skin OpsBrain (this doc) before the call.
-2. Send the public marketing site `/` — WhatsApp CTA to **054-810-2688**.
+2. Send the public marketing site **`/`** — BINO landing with WhatsApp CTA to **054-810-2688**.
 3. Optional leave-behind: `/savings-report` (sample savings one-pager).
-4. **Never** automate cold WhatsApp to sales leads — manual outreach only from `/superadmin` → לידים.
+4. **Never** automate cold WhatsApp to sales leads — manual outreach only from `/superadmin` → **לידים**.

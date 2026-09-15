@@ -3,149 +3,241 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'דוח חיסכון תפעולי — BINO',
-  description: 'דוגמה להוכחת חיסכון במדדי BINO מול לפני המערכת',
+  description:
+    'דוח חיסכון לדוגמה: מדדי הכוכב הצפוני של BINO מול לפני המערכת. מספרים לדוגמה בלבד.',
   robots: { index: false, follow: false },
 }
 
 const WA_URL =
   'https://wa.me/972548102688?text=' +
-  encodeURIComponent('שלום, ראיתי את דוח החיסכון של BINO ואשמח לדמו קצר')
+  encodeURIComponent('שלום, ראיתי את דוח החיסכון של BINO ואשמח לשיחה קצרה')
 
-const ROWS = [
+type MetricRow = {
+  name: string
+  before: string
+  after: string
+  note: string
+}
+
+/** SAMPLE / demo numbers only — clearly labeled in the UI as דוגמה */
+const SAMPLE_METRICS: MetricRow[] = [
   {
-    metric: 'זמן עד שיוך',
-    before: 'שעות עד ימים',
-    after: 'דקות עם המלצה אוטומטית',
-    sample: '↓ ~70%',
+    name: 'זמן עד שיוך',
+    before: '48 דק׳',
+    after: '12 דק׳',
+    note: 'ירידה של ~75%',
   },
   {
-    metric: 'זמן עד פתרון',
-    before: 'תלוי בזיכרון של המנהל',
-    after: 'מסלול ידוע לפי היסטוריית הבניין',
-    sample: '↓ ~40%',
+    name: 'זמן עד פתרון',
+    before: '36 שעות',
+    after: '14 שעות',
+    note: 'ירידה של ~61%',
   },
   {
-    metric: 'שיעור תקלות חוזרות',
-    before: 'בלי זיהוי שיטתי',
-    after: 'התראה על דפוסים חוזרים',
-    sample: '↓ ניכר',
+    name: 'שיעור תקלות חוזרות',
+    before: '28%',
+    after: '11%',
+    note: 'פחות כשלים חוזרים',
   },
   {
-    metric: 'עלות תחזוקה לבניין',
-    before: 'אקסל מפוזר',
-    after: 'עלות שקופה לכל בניין',
-    sample: 'שקיפות מלאה',
+    name: 'עלות תחזוקה לבניין',
+    before: '₪4,800 / חודש',
+    after: '₪3,100 / חודש',
+    note: 'חיסכון ~₪1,700 לבניין',
   },
   {
-    metric: '% תקלות בלי התערבות מנהל',
-    before: 'נמוך — הכל עובר דרך מנהל',
-    after: 'שיוך אוטומטי + SLA',
-    sample: '↑ יעד מוצרי',
+    name: 'אחוז התקלות שטופלו ללא התערבות מנהל',
+    before: '22%',
+    after: '67%',
+    note: 'פחות עומס על המנהל',
   },
-] as const
+]
 
 export default function SavingsReportPage() {
   return (
-    <main
-      dir="rtl"
-      lang="he"
-      style={{
-        minHeight: '100vh',
-        background: '#fff',
-        color: '#0f172a',
-        fontFamily: 'var(--font-heebo), Heebo, Arial, sans-serif',
-        padding: '32px 20px 64px',
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            letterSpacing: '0.12em',
-            color: '#0066FF',
-            fontWeight: 700,
-          }}
-        >
-          BINO
-        </p>
-        <h1 style={{ margin: '8px 0 6px', fontSize: 28, lineHeight: 1.25 }}>
-          דוח חיסכון תפעולי
-        </h1>
-        <p style={{ margin: '0 0 8px', color: '#475569', fontSize: 15 }}>
-          הוכחה לחברת הניהול: כמה זמן וכסף נחסכים כשיש זיכרון תפעולי חכם לבניין — לא עוד מערכת
-          תקלות בלבד.
-        </p>
-        <p
-          style={{
-            margin: '0 0 24px',
-            display: 'inline-block',
-            background: '#FEF3C7',
-            color: '#92400E',
-            fontSize: 13,
-            fontWeight: 600,
-            padding: '6px 10px',
-            borderRadius: 8,
-          }}
-        >
-          מספרים לדוגמה בלבד — עד קיים case study עם הסכמת לקוח משלם
+    <div className="savings-report" lang="he" dir="rtl">
+      <style>{`
+        .savings-report {
+          --ink: #0f172a;
+          --muted: #475569;
+          --line: #cbd5e1;
+          --accent: #0f766e;
+          --warn-bg: #fffbeb;
+          --warn-border: #f59e0b;
+          --warn-ink: #92400e;
+          min-height: 100vh;
+          background: #fff;
+          color: var(--ink);
+          font-family: var(--font-heebo), "Heebo", "Segoe UI", Tahoma, Arial, sans-serif;
+          line-height: 1.5;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .savings-report * { box-sizing: border-box; }
+        .savings-report .page {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 32px 28px 48px;
+        }
+        .savings-report .brand {
+          font-size: 13px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--accent);
+          font-weight: 700;
+          margin: 0 0 8px;
+        }
+        .savings-report h1 {
+          margin: 0 0 10px;
+          font-size: 28px;
+          font-weight: 800;
+          line-height: 1.25;
+        }
+        .savings-report .lede {
+          margin: 0 0 20px;
+          color: var(--muted);
+          font-size: 15px;
+          max-width: 38em;
+        }
+        .savings-report .sample-banner {
+          padding: 12px 14px;
+          margin: 0 0 24px;
+          background: var(--warn-bg);
+          border: 1px solid var(--warn-border);
+          border-radius: 8px;
+          color: var(--warn-ink);
+          font-size: 14px;
+          font-weight: 600;
+        }
+        .savings-report .sample-banner strong { font-weight: 800; }
+        .savings-report table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+          margin: 0 0 28px;
+        }
+        .savings-report th,
+        .savings-report td {
+          border: 1px solid var(--line);
+          padding: 10px 12px;
+          text-align: right;
+          vertical-align: top;
+        }
+        .savings-report th {
+          background: #f8fafc;
+          font-weight: 700;
+          font-size: 13px;
+        }
+        .savings-report td.metric-name { font-weight: 700; width: 32%; }
+        .savings-report td.num {
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .savings-report td.note { color: var(--muted); font-size: 13px; }
+        .savings-report .sample-tag {
+          display: inline-block;
+          margin-inline-start: 6px;
+          padding: 1px 6px;
+          border-radius: 4px;
+          background: #fef3c7;
+          color: var(--warn-ink);
+          font-size: 11px;
+          font-weight: 800;
+          vertical-align: middle;
+        }
+        .savings-report .footer-cta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: center;
+          margin-top: 8px;
+          padding-top: 20px;
+          border-top: 1px solid var(--line);
+        }
+        .savings-report .btn-wa {
+          display: inline-block;
+          padding: 10px 18px;
+          background: #128c7e;
+          color: #fff !important;
+          text-decoration: none;
+          font-weight: 700;
+          border-radius: 8px;
+          font-size: 15px;
+        }
+        .savings-report .btn-home {
+          color: var(--accent);
+          font-weight: 600;
+          font-size: 14px;
+          text-decoration: none;
+        }
+        .savings-report .print-hint {
+          margin: 16px 0 0;
+          font-size: 12px;
+          color: var(--muted);
+        }
+        @media print {
+          .savings-report { background: #fff; min-height: 0; }
+          .savings-report .page { padding: 0; max-width: none; }
+          .savings-report .no-print { display: none !important; }
+          .savings-report .btn-wa { border: 1px solid #128c7e; }
+          .savings-report a { color: inherit; text-decoration: none; }
+        }
+        @page { margin: 16mm; }
+      `}</style>
+
+      <main className="page">
+        <p className="brand">BINO</p>
+        <h1>דוח חיסכון תפעולי — BINO</h1>
+        <p className="lede">
+          השוואת מדדי הכוכב הצפוני מול מצב ״לפני BINO״. המספרים למטה הם{' '}
+          <strong>דוגמה להמחשה בלבד</strong> — לא נתוני לקוח אמיתי.
         </p>
 
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            fontSize: 14,
-            marginBottom: 28,
-          }}
-        >
+        <div className="sample-banner" role="note">
+          <strong>דוגמה / SAMPLE</strong> — הנתונים בטבלה אינם מדידה מלקוח ספציפי.
+          משמשים להמחשת כיוון החיסכון בשיחת מכירה.
+        </div>
+
+        <table>
           <thead>
-            <tr style={{ borderBottom: '2px solid #0f172a', textAlign: 'right' }}>
-              <th style={{ padding: '10px 8px' }}>מדד</th>
-              <th style={{ padding: '10px 8px' }}>לפני BINO</th>
-              <th style={{ padding: '10px 8px' }}>עם BINO</th>
-              <th style={{ padding: '10px 8px' }}>דוגמה</th>
+            <tr>
+              <th scope="col">מדד</th>
+              <th scope="col">לפני BINO</th>
+              <th scope="col">עם BINO</th>
+              <th scope="col">השפעה</th>
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row) => (
-              <tr key={row.metric} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '12px 8px', fontWeight: 600 }}>{row.metric}</td>
-                <td style={{ padding: '12px 8px', color: '#64748b' }}>{row.before}</td>
-                <td style={{ padding: '12px 8px' }}>{row.after}</td>
-                <td style={{ padding: '12px 8px', color: '#0066FF', fontWeight: 600 }}>
-                  {row.sample}
+            {SAMPLE_METRICS.map((row) => (
+              <tr key={row.name}>
+                <td className="metric-name">
+                  {row.name}
+                  <span className="sample-tag">דוגמה</span>
                 </td>
+                <td className="num">{row.before}</td>
+                <td className="num">{row.after}</td>
+                <td className="note">{row.note}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          <a
-            href={WA_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-block',
-              background: '#0066FF',
-              color: '#fff',
-              textDecoration: 'none',
-              padding: '12px 18px',
-              borderRadius: 12,
-              fontWeight: 600,
-            }}
-          >
-            לתיאום הדגמה בוואטסאפ
+        <p className="lede" style={{ marginBottom: 8 }}>
+          BINO בונה זיכרון תפעולי לכל בניין: לומדת מהיסטוריה, ממליצה על עובד/ספק, מזהה תקלות
+          חוזרות ומוכיחה לחברת הניהול כמה זמן וכסף נחסכו.
+        </p>
+
+        <div className="footer-cta">
+          <a className="btn-wa" href={WA_URL} target="_blank" rel="noopener noreferrer">
+            לתיאום שיחה בוואטסאפ · 054-810-2688
           </a>
-          <Link href="/" style={{ color: '#0066FF', fontWeight: 600 }}>
-            חזרה לדף BINO
+          <Link className="btn-home no-print" href="/">
+            ← חזרה לדף הבית
           </Link>
         </div>
-        <p style={{ marginTop: 20, fontSize: 12, color: '#94a3b8' }}>
-          להדפסה: Ctrl/Cmd+P · מתאים כחד־עמוד לשיחת דמו
-        </p>
-      </div>
-    </main>
+
+        <p className="print-hint no-print">להדפסה: Ctrl/Cmd+P · רקע לבן, מותאם ל-RTL.</p>
+      </main>
+    </div>
   )
 }
