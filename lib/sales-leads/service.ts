@@ -256,22 +256,42 @@ export async function listSalesLeads(
     fitClass?: string | string[]
     city?: string
     segmentSlug?: string
+    contactability?: string | string[]
+    minFitScore?: number
+    sort?: 'fit_score' | 'created_at' | 'estimated_mrr'
     limit?: number
     offset?: number
   } = {},
 ): Promise<{ leads: SalesLead[]; total: number }> {
   const limit = Math.min(filters.limit ?? 50, 200)
   const offset = filters.offset ?? 0
+  const sort = filters.sort ?? 'fit_score'
+  const sortColumn =
+    sort === 'created_at'
+      ? 'created_at'
+      : sort === 'estimated_mrr'
+        ? 'estimated_mrr_ils'
+        : 'fit_score'
 
   let query = admin
     .from('sales_leads')
     .select('*', { count: 'exact' })
-    .order('fit_score', { ascending: false, nullsFirst: false })
+    .order(sortColumn, { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
   if (filters.city) query = query.eq('city', filters.city)
   if (filters.segmentSlug) query = query.eq('segment_slug', filters.segmentSlug)
+  if (filters.contactability) {
+    const kinds = (Array.isArray(filters.contactability)
+      ? filters.contactability
+      : [filters.contactability]
+    )
+      .flatMap((c) => c.split(','))
+      .map((c) => c.trim())
+      .filter(Boolean)
+    if (kinds.length) query = query.in('contactability', kinds)
+  }
   if (filters.fitClass) {
     const classes = (Array.isArray(filters.fitClass) ? filters.fitClass : [filters.fitClass])
       .flatMap((c) => c.split(','))
@@ -285,6 +305,9 @@ export async function listSalesLeads(
       .map((s) => s.trim())
       .filter(Boolean)
     if (statuses.length) query = query.in('status', statuses)
+  }
+  if (filters.minFitScore != null && Number.isFinite(filters.minFitScore)) {
+    query = query.gte('fit_score', filters.minFitScore)
   }
   if (filters.q?.trim()) {
     const q = `%${filters.q.trim()}%`
@@ -392,4 +415,97 @@ export async function listRecentRuns(admin: SupabaseClient, limit = 10) {
     .limit(limit)
   if (error) throw error
   return data ?? []
+}
+
+export async function deleteSalesLead(
+  admin: SupabaseClient,
+  leadId: string,
+  actor = 'superadmin',
+): Promise<void> {
+  const { data: current, error: curErr } = await admin
+    .from('sales_leads')
+    .select('id, status')
+    .eq('id', leadId)
+    .maybeSingle()
+  if (curErr || !current) throw new Error(curErr?.message ?? 'lead not found')
+
+  await admin.from('sales_lead_events').insert({
+    lead_id: leadId,
+    actor,
+    action: 'deleted',
+    from_status: current.status,
+    to_status: null,
+    payload: {},
+  })
+
+  const { error } = await admin.from('sales_leads').delete().eq('id', leadId)
+  if (error) throw error
+}
+
+export async function deleteSalesLeadsBulk(
+  admin: SupabaseClient,
+  leadIds: string[],
+  actor = 'superadmin',
+): Promise<{ deleted: number }> {
+  const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))]
+  if (ids.length === 0) return { deleted: 0 }
+  if (ids.length > 200) throw new Error('max 200 deletes per request')
+
+  await admin.from('sales_lead_events').insert(
+    ids.map((id) => ({
+      lead_id: id,
+      actor,
+      action: 'deleted',
+      payload: { bulk: true },
+    })),
+  )
+
+  const { error, count } = await admin
+    .from('sales_leads')
+    .delete({ count: 'exact' })
+    .in('id', ids)
+  if (error) throw error
+  return { deleted: count ?? ids.length }
+}
+
+export async function markLeadWhatsappOpened(
+  admin: SupabaseClient,
+  leadId: string,
+  actor = 'superadmin',
+): Promise<SalesLead> {
+  const { data: current, error: curErr } = await admin
+    .from('sales_leads')
+    .select('*')
+    .eq('id', leadId)
+    .maybeSingle()
+  if (curErr || !current) throw new Error(curErr?.message ?? 'lead not found')
+
+  const nextStatus =
+    current.status === 'discovered' || current.status === 'qualified'
+      ? 'contacted'
+      : (current.status as LeadStatus)
+
+  const patch: Record<string, unknown> = {
+    status: nextStatus,
+  }
+  if (!current.contacted_at) patch.contacted_at = new Date().toISOString()
+
+  const { data: updated, error } = await admin
+    .from('sales_leads')
+    .update(patch)
+    .eq('id', leadId)
+    .select('*')
+    .maybeSingle()
+  if (error || !updated) throw new Error(error?.message ?? 'update failed')
+
+  await admin.from('sales_lead_events').insert({
+    lead_id: leadId,
+    actor,
+    action: 'whatsapp_opened',
+    from_status: current.status,
+    to_status: nextStatus,
+    payload: {},
+  })
+
+  return rowToLead(updated as Record<string, unknown>)
 }

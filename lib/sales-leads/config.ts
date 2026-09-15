@@ -51,6 +51,27 @@ export const CORE_SALES_SEGMENT_SLUGS = [
 
 export type SalesSegmentSlug = (typeof CORE_SALES_SEGMENT_SLUGS)[number]
 
+/** Hebrew labels for Superadmin filters / cards. */
+export const SEGMENT_LABELS_HE: Record<string, string> = {
+  building_mgmt: 'ניהול / אחזקת בניינים',
+  property_mgmt: 'ניהול נכסים',
+  facility_mgmt: 'ניהול מתקנים (FM)',
+  condo_tower: 'מגדלי מגורים',
+  vaad_bayit_mgmt: 'ניהול ועדי בתים',
+  housing_corp: 'חברות דיור',
+  student_housing: 'מעונות סטודנטים',
+  senior_housing: 'דיור מוגן',
+  real_estate_dev: 'יזמות + אחזקה',
+  office_park: 'פארקי משרדים / מתחמים',
+  aparthotel: 'דירות נופש / אפרטהוטל',
+  kibbutz_housing: 'קיבוץ / מושב',
+}
+
+export function segmentLabelHe(slug: string | null | undefined): string {
+  if (!slug) return 'לא מסווג'
+  return SEGMENT_LABELS_HE[slug] ?? slug
+}
+
 export const DISCOVERY_TOTAL_BUDGET = 800
 export const DISCOVERY_PER_SEGMENT_CAP = 80
 export const DISCOVERY_API_CALL_BUDGET = 120

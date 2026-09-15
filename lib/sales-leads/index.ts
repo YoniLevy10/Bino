@@ -12,4 +12,7 @@ export {
   getLeadCounters,
   updateLeadStatus,
   listRecentRuns,
+  deleteSalesLead,
+  deleteSalesLeadsBulk,
+  markLeadWhatsappOpened,
 } from '@/lib/sales-leads/service'
