@@ -60,13 +60,25 @@
 
 | מפתח | תיאור |
 |------|--------|
-| `GOOGLE_PLACES_API_KEY` | חובה לגילוי Places |
+| `GOOGLE_PLACES_API_KEY` | **חובה** לגילוי — מפתח Google Places API (New) |
+| `GOOGLE_MAPS_API_KEY` | חלופה אם אין `GOOGLE_PLACES_API_KEY` (אותו מפתח Maps Platform) |
 | `CRON_SECRET` | אימות הקרון |
 | `ADMIN_SETUP_SECRET` | Superadmin API |
 | `BINO_SALES_CITY` | כפיית עיר אחת (אופציונלי) |
 | `BINO_SALES_CITIES` | רשימת ערים לריצה (אופציונלי, עדיף על עיר אחת) |
 | `BINO_SALES_SEGMENT_SLUGS` | רשימת סגמנטים מופרדת בפסיקים |
 | `BINO_SALES_DISCOVERY_API_CALL_BUDGET` | תקציב קריאות Places (ברירת מחדל 120) |
+| `BINO_SALES_DISCOVERY_INCLUDE_OSM` | `1` כדי להריץ גם OSM (ברירת מחדל: Places בלבד) |
+
+### חובה בצד Google Cloud
+
+1. ליצור מפתח API ב-[Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. להפעיל **Places API (New)** (לא רק Places API legacy).
+3. לוודא שיש **billing** פעיל על הפרויקט.
+4. להדביק את המפתח ב-Vercel → Environment Variables → Production (+ Preview אם צריך) בשם `GOOGLE_PLACES_API_KEY`.
+5. Redeploy אחרי הוספת המשתנה.
+
+בלי המפתח הגילוי נכשל מיד עם הודעה ברורה בפאנל הלידים — OSM לבדו כמעט לא מחזיר חברות ניהול בישראל.
 
 ## דירוג התאמה (הפוך מ-Fixly)
 
@@ -77,10 +89,13 @@
 
 ## הפעלה
 
-1. להחיל מיגרציה `098_sales_leads.sql` על production (לא preview branch).
-2. להגדיר `GOOGLE_PLACES_API_KEY` ב-Vercel.
-3. אחרי deploy — הקרון רץ יומית; או Superadmin → לידים → «הרץ גילוי עכשיו».
-4. לפתוח WhatsApp מהכרטיס → סטטוס עובר ל-`contacted`.
+1. להחיל מיגרציה `098_sales_leads.sql` (+ `099_…`) על production (לא preview branch).
+2. להגדיר `GOOGLE_PLACES_API_KEY` ב-Vercel + להפעיל Places API (New) וחיוב ב-Google Cloud.
+3. Redeploy.
+4. Superadmin → לידים → «הרץ גילוי עכשיו» (או לחכות לקרון 05:00 UTC).
+5. לפתוח WhatsApp מהכרטיס → סטטוס עובר ל-`contacted`.
+
+אם הגילוי «לא עובד»: בדקו בפאנל באנר «חסר מפתח Google Places», ובטבלת `sales_lead_discovery_runs` את `error_message`. ריצות `running` ישנות (>8 דק׳) משתחררות אוטומטית.
 
 ## מדידת הצלחה
 

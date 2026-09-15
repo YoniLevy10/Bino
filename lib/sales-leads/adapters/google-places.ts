@@ -14,6 +14,7 @@ import {
   getDiscoveryApiCallBudget,
   getDiscoveryPerSegmentCap,
   getDiscoveryTotalBudget,
+  getGooglePlacesApiKey,
   getSalesSegmentSlugs,
 } from '@/lib/sales-leads/config'
 import { assessBuyerFit, estimateBuildingsFromSignals, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
@@ -97,7 +98,7 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
   lastStats: GooglePlacesFetchStats = emptyStats()
 
   constructor(options: GooglePlacesAdapterOptions = {}) {
-    const key = options.apiKey ?? process.env.GOOGLE_PLACES_API_KEY?.trim()
+    const key = options.apiKey ?? getGooglePlacesApiKey()
     if (!key) throw new Error('GOOGLE_PLACES_API_KEY is missing')
     this.apiKey = key
     this.city = options.city ?? getDiscoveryCity()
