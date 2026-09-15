@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
     const ticketQuery = supabaseAdmin
       .from('tickets')
-      .select('id, status, reporter_phone, project_id, client_id, projects (name)')
+      .select('id, ticket_number, status, reporter_phone, project_id, client_id, projects (name)')
       .eq('id', ticket_id)
       .eq('client_id', bamakorClientId)
       .is('deleted_at', null)
@@ -115,6 +115,7 @@ export async function POST(req: Request) {
     })
 
     type TicketWithProject = {
+      ticket_number?: number | null
       reporter_phone?: string | null
       project_id?: string | null
       projects?: { name?: string | null } | { name?: string | null }[] | null
@@ -122,6 +123,7 @@ export async function POST(req: Request) {
     const trow = ticket as TicketWithProject
     const proj = trow.projects
     const projectName = Array.isArray(proj) ? proj[0]?.name : proj?.name
+    const ticketNumberLabel = String(trow.ticket_number ?? '')
 
     // Notify after response unless SYNC_TICKET_NOTIFICATIONS=1.
     let notificationsQueued = false
@@ -149,7 +151,7 @@ export async function POST(req: Request) {
           supabaseAdmin, clientId,
           'sms_manager_ticket_closed',
           SMS_TEMPLATE_EDITOR_DEFAULTS.sms_manager_ticket_closed,
-          { project_name: projectName || 'הבניין', ticket_number: String(ticket_id) }
+          { project_name: projectName || 'הבניין', ticket_number: ticketNumberLabel }
         )
         await sendManagerSMS(managerPhone, smsMsg, smsSenderName, clientId)
       })()
