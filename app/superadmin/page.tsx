@@ -18,6 +18,7 @@ import {
 import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { UsageAnalyticsPanel } from './UsageAnalyticsPanel'
+import { OpsIntelligencePanel } from './OpsIntelligencePanel'
 import { BottomNav } from './components/BottomNav'
 import { DesktopTabBar } from './components/DesktopTabBar'
 import { ClientsList } from './components/ClientsList'
@@ -602,6 +603,12 @@ export default function SuperAdminPage() {
         {tab === 'usage' ? (
           <div className="sa-tab-panel">
             <UsageAnalyticsPanel secret={secret} />
+          </div>
+        ) : null}
+
+        {tab === 'intelligence' ? (
+          <div className="sa-tab-panel">
+            <OpsIntelligencePanel secret={secret} />
           </div>
         ) : null}
 

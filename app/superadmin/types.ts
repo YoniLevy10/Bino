@@ -47,7 +47,7 @@ export type EditState = {
   max_tickets_per_month: string
 }
 
-export type TabMode = 'clients' | 'leads' | 'ops' | 'usage' | 'settings'
+export type TabMode = 'clients' | 'leads' | 'ops' | 'usage' | 'intelligence' | 'settings'
 
 export type ClientTask =
   | 'hub'

@@ -27,6 +27,7 @@ export function parseSuperadminHash(hash: string): SuperadminRoute {
   if (raw === 'leads') return { kind: 'tab', tab: 'leads' }
   if (raw === 'ops') return { kind: 'tab', tab: 'ops' }
   if (raw === 'usage') return { kind: 'tab', tab: 'usage' }
+  if (raw === 'intelligence') return { kind: 'tab', tab: 'intelligence' }
   if (raw === 'settings') return { kind: 'tab', tab: 'settings' }
 
   const parts = raw.split('/').filter(Boolean)

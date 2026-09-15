@@ -6,6 +6,7 @@ const TABS: { id: TabMode; label: string }[] = [
   { id: 'clients', label: 'לקוחות' },
   { id: 'leads', label: 'לידים' },
   { id: 'usage', label: 'שימוש' },
+  { id: 'intelligence', label: 'תובנות' },
   { id: 'ops', label: 'תפעול' },
   { id: 'settings', label: 'הגדרות' },
 ]
