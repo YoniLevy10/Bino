@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import {
   WHATSAPP_TEMPLATE_KEYS,
   type WhatsAppTemplateKey,
@@ -154,7 +154,7 @@ export default function WhatsappTemplatesPage() {
     async function load() {
       setLoading(true)
       try {
-        const cid = await resolveBamakorClientIdForBrowser()
+        const cid = await resolveBinoClientIdForBrowser()
         if (cancelled) return
         setClientId(cid)
         const { data, error } = await supabase

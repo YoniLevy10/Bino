@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { theme } from './ui'
 import { ticketDetailPath } from '@/lib/ticket-deep-link'
@@ -40,7 +40,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
     setLoading(true)
     const timer = setTimeout(async () => {
       try {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         const num = parseInt(q, 10)
         const [ticketsRes, residentsRes] = await Promise.all([
           withClientId(

@@ -25,6 +25,19 @@ Canonical Hebrew + always-apply Cursor rule: `.cursor/rules/bino-product-differe
 
 ---
 
+## Sales leads — hard rules (all agents)
+
+1. **NEVER automate cold WhatsApp sending to sales leads.** Israeli anti-spam law + Meta ban risk. The superadmin Sales Leads panel is **intentional manual** outreach only (`wa.me` / copy templates). Do not add bulk send, cron blast, or API auto-DM to leads.
+2. **`sales_leads` dedupe scale:** `loadExistingLite` in `lib/sales-leads/service.ts` loads up to ~8k rows into memory. Fine through ~1–5k leads; revisit DB-level upsert / indexed lookups before ~10k+.
+
+---
+
+## Payments — Grow only
+
+Collections / VaadPay use **Grow** only. Morning (Green Invoice) app code, webhooks, and settings writes were removed. Legacy DB columns (`greeninvoice_*` on `clients` / `collection_charges`) may remain for old rows — **read fallback** of `greeninvoice_payment_url` is OK; do **not** write `greeninvoice_*` for new charges. Prefer `grow_payment_url`.
+
+---
+
 ## Supabase Preview Branches — COST CRITICAL (all agents)
 
 Preview branches bill compute hours and are **not** covered by Spend Cap. Leaving `cursor/*` git remotes / open PRs with GitHub Branching enabled spins expensive Bamakor preview DBs.
@@ -182,7 +195,6 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
-| `GREENINVOICE_WEBHOOK_SECRET` | Legacy Morning webhook token (old charges only) |
 | `GROW_API_KEY` | Grow platform apiKey from Lial — **required for collections** |
 | `GROW_PAGE_CODE` | Grow platform pageCode — **required for collections** |
 | `GROW_WEBHOOK_SECRET` | Random secret; Grow notify URL uses `?token=` — **required for collections** |
@@ -191,5 +203,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `LEGAL_PHONE` | Platform-only contact phone on public legal pages |
 | `LEGAL_ADDRESS` | Platform-only address on public legal pages |
 | `LEGAL_EMAIL` | Optional; falls back to `RESEND_FROM_EMAIL` / `VAPID_SUBJECT` |
+
+~~`GREENINVOICE_WEBHOOK_SECRET`~~ — **removed from app code** (Morning webhook deleted). Legacy `greeninvoice_*` DB columns may still exist; do not reintroduce Morning env vars or dual-write.
 
 Grow for a paying tenant: Settings → Grow (`userId` after they open a Grow account) and the public page `/vaad-pay/{clientId}`. Platform keys stay in Vercel. See `docs/PAYMENTS.md`.

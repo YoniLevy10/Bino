@@ -61,22 +61,6 @@ export function getConfiguredGrowWebhookUrl(): {
   return { ok: true, url }
 }
 
-/** @deprecated use buildGrowWebhookNotifyUrl */
-export function buildGreenInvoiceWebhookNotifyUrl(): string | null {
-  return buildGrowWebhookNotifyUrl()
-}
-
-/** @deprecated use getConfiguredGrowWebhookUrl */
-export function getConfiguredGreenInvoiceWebhookUrl(): {
-  ok: true
-  url: string
-} | {
-  ok: false
-  error: string
-} {
-  return getConfiguredGrowWebhookUrl()
-}
-
 export function buildPublicPayUrl(publicToken: string): string {
   const base = getPublicAppUrl()
   const path = `/pay/${encodeURIComponent(publicToken)}`
@@ -116,14 +100,6 @@ export async function loadClientCollectionsRow(
     .maybeSingle()
   if (error || !data) return null
   return data as ClientCollectionsRow
-}
-
-/** @deprecated use loadClientCollectionsRow */
-export async function loadClientGreenInvoiceRow(
-  admin: SupabaseClient,
-  clientId: string
-): Promise<ClientCollectionsRow | null> {
-  return loadClientCollectionsRow(admin, clientId)
 }
 
 export type ClientCollectionsRow = ClientGrowPaymentsRow & {
@@ -288,7 +264,6 @@ export async function sendCollectionCharge(
       status: 'sent' satisfies CollectionChargeStatus,
       grow_payment_url: paymentUrl,
       grow_payment_link_id: paymentLinkId,
-      greeninvoice_payment_url: paymentUrl,
       sent_at: sentAt,
       updated_at: nowIso(),
     })
@@ -478,58 +453,4 @@ export async function markChargePaidByGrowIds(
   }
 
   return { matched, newlyPaidIds }
-}
-
-/** Keep matching in-flight Morning charges until Grow fully replaces them. */
-export async function markChargePaidByMorningIds(
-  admin: SupabaseClient,
-  ids: { paymentIds: string[]; documentIds: string[] }
-): Promise<{ matched: number }> {
-  const uniquePaymentIds = [...new Set(ids.paymentIds.filter(Boolean))]
-  const uniqueDocIds = [...new Set(ids.documentIds.filter(Boolean))]
-  if (uniquePaymentIds.length === 0 && uniqueDocIds.length === 0) {
-    return { matched: 0 }
-  }
-
-  let matched = 0
-  const paidAt = nowIso()
-  const newlyPaidIds: string[] = []
-
-  if (uniquePaymentIds.length > 0) {
-    const { data } = await admin
-      .from('collection_charges')
-      .update({
-        status: 'paid' satisfies CollectionChargeStatus,
-        paid_at: paidAt,
-        updated_at: paidAt,
-      })
-      .in('greeninvoice_payment_id', uniquePaymentIds)
-      .neq('status', 'paid')
-      .select('id')
-    matched += data?.length ?? 0
-    for (const row of data ?? []) newlyPaidIds.push(row.id)
-  }
-
-  if (uniqueDocIds.length > 0) {
-    const { data } = await admin
-      .from('collection_charges')
-      .update({
-        status: 'paid' satisfies CollectionChargeStatus,
-        paid_at: paidAt,
-        updated_at: paidAt,
-      })
-      .in('greeninvoice_document_id', uniqueDocIds)
-      .neq('status', 'paid')
-      .select('id')
-    matched += data?.length ?? 0
-    for (const row of data ?? []) {
-      if (!newlyPaidIds.includes(row.id)) newlyPaidIds.push(row.id)
-    }
-  }
-
-  for (const id of newlyPaidIds) {
-    void sendCollectionReceiptEmailIfNeeded(admin, id).catch(() => {})
-  }
-
-  return { matched }
 }

@@ -14,7 +14,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import {
   appendAddonsNavAlways,
@@ -154,7 +154,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         if (generation !== loadGenerationRef.current) return
 
         if (!options?.skipCache) {

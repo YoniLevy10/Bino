@@ -63,6 +63,8 @@ const CITY_EXTRA_AREAS: Record<string, DiscoverySearchArea[]> = {
     { labelHe: 'ירושלים מרכז', lat: 31.7683, lng: 35.2137, radiusMeters: 9000 },
     { labelHe: 'ירושלים מערב', lat: 31.78, lng: 35.18, radiusMeters: 8000 },
     { labelHe: 'מבשרת / הר חוצבים', lat: 31.8, lng: 35.15, radiusMeters: 7000 },
+    { labelHe: 'בית שמש', lat: 31.7514, lng: 34.9886, radiusMeters: 9000 },
+    { labelHe: 'מעלה אדומים', lat: 31.7776, lng: 35.2985, radiusMeters: 8000 },
   ],
   'ראשון לציון': [
     { labelHe: 'ראשון לציון', lat: 31.973, lng: 34.7925, radiusMeters: 9000 },

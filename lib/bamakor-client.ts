@@ -90,7 +90,7 @@ async function resolveBrowserAuthUser(): Promise<{ id: string }> {
   return user
 }
 
-export async function resolveBamakorClientIdForBrowser(): Promise<string> {
+export async function resolveBinoClientIdForBrowser(): Promise<string> {
   const user = await resolveBrowserAuthUser()
 
   const cached = readCidCache(user.id) || readCidLocalCache(user.id)
@@ -113,3 +113,6 @@ export async function resolveBamakorClientIdForBrowser(): Promise<string> {
 
   throw new Error('לא נמצא client_id לארגון — פנו לתמיכה')
 }
+
+/** @deprecated use resolveBinoClientIdForBrowser — BAMAKOR_CLIENT_ID env alias kept */
+export const resolveBamakorClientIdForBrowser = resolveBinoClientIdForBrowser

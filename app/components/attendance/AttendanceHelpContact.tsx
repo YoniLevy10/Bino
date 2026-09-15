@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { theme } from '../ui'
 
-const BAMAKOR_SUPPORT = '972559899132'
+const BINO_SUPPORT = '972559899132'
 
 export function AttendanceHelpContact() {
   const [phone, setPhone] = useState<string | null>(null)
@@ -17,7 +17,7 @@ export function AttendanceHelpContact() {
     })()
   }, [])
 
-  const waNum = (phone || BAMAKOR_SUPPORT).replace(/\D/g, '')
+  const waNum = (phone || BINO_SUPPORT).replace(/\D/g, '')
   const waUrl = `https://wa.me/${waNum}?text=${encodeURIComponent('שלום, צריך עזרה עם חתמת עובדים')}`
 
   return (

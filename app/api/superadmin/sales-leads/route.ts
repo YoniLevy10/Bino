@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   const contactability = url.searchParams.get('contactability') ?? undefined
   const minFitScoreRaw = url.searchParams.get('minFitScore')
   const sortRaw = url.searchParams.get('sort')
+  const dueToday = url.searchParams.get('dueToday') === '1'
   const limit = Number(url.searchParams.get('limit') ?? 100)
   const offset = Number(url.searchParams.get('offset') ?? 0)
 
@@ -45,9 +46,14 @@ export async function GET(req: NextRequest) {
       : undefined
 
   const sort =
-    sortRaw === 'created_at' || sortRaw === 'estimated_mrr' || sortRaw === 'fit_score'
+    sortRaw === 'created_at' ||
+    sortRaw === 'estimated_mrr' ||
+    sortRaw === 'fit_score' ||
+    sortRaw === 'next_contact'
       ? sortRaw
-      : 'fit_score'
+      : dueToday
+        ? 'next_contact'
+        : 'fit_score'
 
   try {
     const admin = getSupabaseAdmin()
@@ -60,6 +66,7 @@ export async function GET(req: NextRequest) {
         fitClass: fitClass || undefined,
         contactability: contactability || undefined,
         minFitScore,
+        dueToday: dueToday || undefined,
         sort,
         limit,
         offset,

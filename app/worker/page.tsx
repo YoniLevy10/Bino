@@ -8,7 +8,7 @@ import { toast } from '@/lib/error-handler'
 import { fetchWithTimeout, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { toastReporterClosedNotifySummary } from '@/lib/reporter-closed-notify-toast'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import {
   AppShell,
@@ -276,7 +276,7 @@ function WorkerPageInner() {
       return
     }
     void (async () => {
-      try { setClientId(await resolveBamakorClientIdForBrowser()) }
+      try { setClientId(await resolveBinoClientIdForBrowser()) }
       catch { setClientId(null) }
       finally { setSessionResolved(true) }
     })()

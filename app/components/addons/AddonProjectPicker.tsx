@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { asyncHandler } from '@/lib/error-handler'
 import { Card, EmptyState, LoadingSpinner, Select, theme } from '../ui'
 
@@ -65,7 +65,7 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
     setLoading(true)
     await asyncHandler(
       async () => {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         const { data, error } = await supabase
           .from('projects')
           .select('id, name, project_code')

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
 import type { ResidentProjectRow } from './AddResidentModal'
 import { ProjectResidentIntakePanel } from '../projects/ProjectResidentIntakePanel'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 
 type Props = {
   open: boolean
@@ -33,7 +33,7 @@ export function ShareResidentIntakeLinkModal({
     let cancelled = false
     void (async () => {
       try {
-        const id = await resolveBamakorClientIdForBrowser()
+        const id = await resolveBinoClientIdForBrowser()
         if (!cancelled) setFallbackClientId(id)
       } catch {
         if (!cancelled) setFallbackClientId(null)

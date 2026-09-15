@@ -28,10 +28,21 @@ const ORG_BUYER_MARKERS = [
   /facility/i,
   /property\s*manag/i,
   /building\s*manag/i,
+  /housing\s*(authority|agency|corp)/i,
   /ועד\s*בית/,
   /דיור/,
   /מעונות/,
   /דיור\s*מוגן/,
+  /דיור\s*ציבורי/,
+  /חברה\s*עירונית/,
+  /עירי[הת]/,
+  /מועצה\s*(מקומית|אזורית)/,
+  /מינהל\s*(הדיור|מקרקעי)/,
+  /עמידר/,
+  /עמיגור/,
+  /שיכון\s*ופיתוח/,
+  /ניהול\s*נכסים/,
+  /ניהול\s*דירות/,
   /יזמ/,
   /נדל.?ן/,
   /קיבוץ/,
@@ -109,6 +120,51 @@ export type FitScoreInput = {
   placeTypes?: string[] | null
   segmentSlug?: string | null
   searchAreaHint?: string | null
+  /** Google review count — proxy for org size when name is generic. */
+  reviewCount?: number | null
+  rating?: number | null
+}
+
+/** Heuristic building count from name/size markers + review volume. */
+export function estimateBuildingsFromSignals(input: {
+  name?: string | null
+  businessName?: string | null
+  reviewCount?: number | null
+  segmentSlug?: string | null
+}): number | null {
+  const label = `${input.name ?? ''} ${input.businessName ?? ''}`.trim()
+  let estimate: number | null = null
+
+  if (/מגדל|מגדלים|פורטפוליו|רשת|ארצ/.test(label)) estimate = 25
+  else if (/בניינים|מבנים|נכסים|מתחמ/.test(label)) estimate = 12
+  else if (/ועד\s*בית|דיור|מעונות/.test(label)) estimate = 5
+
+  const reviews = input.reviewCount
+  if (reviews != null && Number.isFinite(reviews) && reviews > 0) {
+    // ~4 reviews ≉ 400 units historically; treat as soft size proxy
+    const fromReviews = Math.max(1, Math.round(reviews / 8))
+    estimate = estimate == null ? Math.min(fromReviews, 80) : Math.max(estimate, Math.min(fromReviews, 80))
+  }
+
+  if (estimate == null && input.segmentSlug) {
+    const defaults: Record<string, number> = {
+      housing_corp: 40,
+      facility_mgmt: 20,
+      building_mgmt: 15,
+      property_mgmt: 12,
+      condo_tower: 8,
+      vaad_bayit_mgmt: 6,
+      student_housing: 10,
+      senior_housing: 8,
+      office_park: 10,
+      aparthotel: 15,
+      kibbutz_housing: 20,
+      real_estate_dev: 10,
+    }
+    estimate = defaults[input.segmentSlug] ?? null
+  }
+
+  return estimate
 }
 
 export function assessBuyerFit(input: FitScoreInput): FitAssessment {
@@ -191,6 +247,23 @@ export function assessBuyerFit(input: FitScoreInput): FitAssessment {
     reasons.push('search_area_hint')
   }
 
+  const reviewCount = input.reviewCount
+  if (reviewCount != null && Number.isFinite(reviewCount) && reviewCount > 0) {
+    if (reviewCount >= 40) {
+      score += 12
+      confidence += 10
+      reasons.push('review_count_large')
+    } else if (reviewCount >= 10) {
+      score += 6
+      confidence += 6
+      reasons.push('review_count_medium')
+    } else {
+      score += 2
+      confidence += 2
+      reasons.push('review_count_small')
+    }
+  }
+
   score = Math.max(0, Math.min(100, Math.round(score)))
   confidence = Math.max(0, Math.min(100, Math.round(confidence)))
 
@@ -204,10 +277,21 @@ export function assessBuyerFit(input: FitScoreInput): FitAssessment {
     fitClass = 'needs_review'
   }
 
-  const estimatedMrrIls =
+  const buildings = estimateBuildingsFromSignals({
+    name: input.name,
+    businessName: input.businessName,
+    reviewCount: input.reviewCount,
+    segmentSlug: input.segmentSlug,
+  })
+  const segmentHint =
     input.segmentSlug && SEGMENT_MRR_HINT[input.segmentSlug]
       ? SEGMENT_MRR_HINT[input.segmentSlug]
       : null
+  // Rough: ~₪80–150 MRR per building vs static segment hint — prefer buildings when known
+  const estimatedMrrIls =
+    buildings != null && buildings > 0
+      ? Math.round(buildings * 100)
+      : segmentHint
 
   return {
     score,

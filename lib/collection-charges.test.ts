@@ -7,12 +7,7 @@ import {
   COLLECTION_CHARGE_STATUSES,
 } from '@/lib/collection-charges'
 import {
-  authorizeGreenInvoiceWebhook,
-  extractGreenInvoiceWebhookIds,
-} from '@/lib/greeninvoice-webhook'
-import {
   buildGrowWebhookNotifyUrl,
-  buildGreenInvoiceWebhookNotifyUrl,
   buildPublicPayUrl,
   defaultSuccessFailureUrls,
   requireConfiguredCredentials,
@@ -56,7 +51,7 @@ describe('collection charge helpers', () => {
     expect(isCollectionChargeStatus('')).toBe(false)
   })
 
-  it('prefers Grow payment URL over legacy Morning URL', () => {
+  it('prefers Grow payment URL over legacy Morning URL (read fallback)', () => {
     expect(
       chargePaymentUrl({
         grow_payment_url: 'https://grow.example/pay',
@@ -67,75 +62,6 @@ describe('collection charge helpers', () => {
       'https://m'
     )
     expect(chargePaymentUrl({ grow_payment_url: '  ', greeninvoice_payment_url: '' })).toBeNull()
-  })
-})
-
-describe('greeninvoice webhook parsing', () => {
-  it('extracts payment/receive ids without treating id as document', () => {
-    const ids = extractGreenInvoiceWebhookIds({
-      id: 'pay-111',
-      channel: 'document',
-      productId: 'plugin-should-not-match-as-payment',
-      documentId: 'doc-222',
-      transactions: [{ id: 'tx-333' }],
-    })
-    expect(ids.paymentIds).toContain('pay-111')
-    expect(ids.paymentIds).toContain('tx-333')
-    expect(ids.paymentIds).not.toContain('plugin-should-not-match-as-payment')
-    expect(ids.documentIds).toContain('doc-222')
-  })
-
-  it('treats document/created top-level id as document id', () => {
-    const ids = extractGreenInvoiceWebhookIds({
-      id: 'doc-aaa',
-      type: 320,
-      number: 60129,
-      transactions: [{ id: 'tx-bbb' }],
-    })
-    expect(ids.documentIds).toEqual(['doc-aaa'])
-    expect(ids.paymentIds).toEqual(['tx-bbb'])
-  })
-
-  it('authorizes webhook token correctly', () => {
-    expect(
-      authorizeGreenInvoiceWebhook({
-        expectedSecret: '',
-        tokenFromQuery: null,
-        tokenFromHeader: null,
-      })
-    ).toBe(false)
-
-    expect(
-      authorizeGreenInvoiceWebhook({
-        expectedSecret: 'secret',
-        tokenFromQuery: 'secret',
-        tokenFromHeader: null,
-      })
-    ).toBe(true)
-
-    expect(
-      authorizeGreenInvoiceWebhook({
-        expectedSecret: 'secret',
-        tokenFromQuery: null,
-        tokenFromHeader: 'secret',
-      })
-    ).toBe(true)
-
-    expect(
-      authorizeGreenInvoiceWebhook({
-        expectedSecret: 'secret',
-        tokenFromQuery: 'wrong',
-        tokenFromHeader: null,
-      })
-    ).toBe(false)
-
-    expect(
-      authorizeGreenInvoiceWebhook({
-        expectedSecret: 'secret',
-        tokenFromQuery: null,
-        tokenFromHeader: null,
-      })
-    ).toBe(false)
   })
 })
 
@@ -164,9 +90,6 @@ describe('collection charge ops URL helpers', () => {
       'https://bamakor.vercel.app/pay/11111111-1111-1111-1111-111111111111'
     )
     expect(buildGrowWebhookNotifyUrl()).toBe(
-      'https://bamakor.vercel.app/api/webhook/grow?token=hook-secret'
-    )
-    expect(buildGreenInvoiceWebhookNotifyUrl()).toBe(
       'https://bamakor.vercel.app/api/webhook/grow?token=hook-secret'
     )
   })
@@ -320,50 +243,6 @@ describe('markChargePaidByGrowIds', () => {
       publicTokens: ['11111111-1111-4111-8111-111111111111'],
       paymentLinkIds: [],
       transactionIds: ['tx-1'],
-    })
-    expect(matched.matched).toBe(1)
-    expect(calls.some((c) => c.op === 'update')).toBe(true)
-  })
-})
-
-describe('markChargePaidByMorningIds', () => {
-  it('updates by payment ids and skips empty', async () => {
-    const { markChargePaidByMorningIds } = await import('@/lib/collection-charge-ops')
-
-    const calls: Array<{ table: string; op: string }> = []
-    const makeChain = () => {
-      const c: Record<string, unknown> = {}
-      c.update = () => {
-        calls.push({ table: 'collection_charges', op: 'update' })
-        return c
-      }
-      c.in = () => c
-      c.neq = () => c
-      c.eq = () => c
-      c.is = () => c
-      c.maybeSingle = async () => ({ data: null, error: null })
-      c.select = () => {
-        const terminal = Promise.resolve({ data: [{ id: '1' }], error: null })
-        return Object.assign(terminal, c)
-      }
-      return c
-    }
-    const admin = {
-      from: (table: string) => {
-        calls.push({ table, op: 'from' })
-        return makeChain()
-      },
-    }
-
-    const empty = await markChargePaidByMorningIds(admin as never, {
-      paymentIds: [],
-      documentIds: [],
-    })
-    expect(empty.matched).toBe(0)
-
-    const matched = await markChargePaidByMorningIds(admin as never, {
-      paymentIds: ['pay-1'],
-      documentIds: [],
     })
     expect(matched.matched).toBe(1)
     expect(calls.some((c) => c.op === 'update')).toBe(true)

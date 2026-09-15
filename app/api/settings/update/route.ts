@@ -6,10 +6,6 @@ import { settingsUpdateBodySchema } from '@/lib/api-body-schemas'
 import { logAudit } from '@/lib/audit'
 import { formatZodError } from '@/lib/format-zod-error'
 import {
-  assertTenantCanEnableMorning,
-  findOtherClientUsingMorningApiKey,
-} from '@/lib/greeninvoice-tenant-account'
-import {
   assertTenantCanEnableGrow,
   findOtherClientUsingGrowUserId,
   normalizeGrowUserId,
@@ -37,70 +33,6 @@ export async function POST(req: Request) {
     payload.grow_user_id = normalizeGrowUserId(
       payload.grow_user_id as string | null | undefined
     )
-  }
-
-  const touchesMorning =
-    'greeninvoice_enabled' in payload ||
-    'greeninvoice_api_key_id' in payload ||
-    'greeninvoice_api_secret' in payload
-
-  if (touchesMorning) {
-    const { data: current, error: currentErr } = await admin
-      .from('clients')
-      .select(
-        'greeninvoice_enabled, greeninvoice_api_key_id, greeninvoice_api_secret'
-      )
-      .eq('id', clientId)
-      .maybeSingle()
-
-    if (currentErr || !current) {
-      return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
-    }
-
-    const nextKeyId =
-      payload.greeninvoice_api_key_id !== undefined
-        ? (payload.greeninvoice_api_key_id as string | null)
-        : current.greeninvoice_api_key_id
-
-    const nextSecretRaw =
-      payload.greeninvoice_api_secret !== undefined
-        ? (payload.greeninvoice_api_secret as string | null)
-        : current.greeninvoice_api_secret
-
-    const nextEnabled =
-      payload.greeninvoice_enabled !== undefined
-        ? Boolean(payload.greeninvoice_enabled)
-        : current.greeninvoice_enabled === true
-
-    const hasSecret = Boolean(
-      typeof nextSecretRaw === 'string' && nextSecretRaw.trim()
-    )
-
-    const enableCheck = assertTenantCanEnableMorning({
-      enabled: nextEnabled,
-      apiKeyId: nextKeyId,
-      hasSecret,
-    })
-    if (!enableCheck.ok) {
-      return NextResponse.json({ error: enableCheck.error }, { status: 400 })
-    }
-
-    if (typeof nextKeyId === 'string' && nextKeyId.trim()) {
-      const conflict = await findOtherClientUsingMorningApiKey(
-        admin,
-        nextKeyId,
-        clientId
-      )
-      if (conflict) {
-        return NextResponse.json(
-          {
-            error:
-              'מפתח API זה כבר משויך ללקוח אחר במערכת. כל לקוח חייב חשבון Morning נפרד — אי אפשר לשתף כתובת/מפתחות בין חשבונות.',
-          },
-          { status: 409 }
-        )
-      }
-    }
   }
 
   const touchesGrow = 'grow_enabled' in payload || 'grow_user_id' in payload
@@ -154,13 +86,10 @@ export async function POST(req: Request) {
 
   if (error) {
     if (error.code === '23505') {
-      const details = `${error.message} ${error.details || ''}`
-      const growConflict = /grow_user_id/i.test(details)
       return NextResponse.json(
         {
-          error: growConflict
-            ? 'מזהה Grow זה כבר בשימוש אצל לקוח אחר. הזינו את ה-userId מחשבון Grow שלכם בלבד.'
-            : 'מפתח API זה כבר בשימוש אצל לקוח אחר. הזינו מפתחות מחשבון Morning האישי שלכם בלבד.',
+          error:
+            'מזהה Grow זה כבר בשימוש אצל לקוח אחר. הזינו את ה-userId מחשבון Grow שלכם בלבד.',
         },
         { status: 409 }
       )

@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, Suspense, type CSSProperties } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -162,7 +162,7 @@ function CalendarPageInner() {
     void asyncHandler(
       async () => {
         setLoading(true)
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         const { data: projData } = await withClientId(
           supabase.from('projects').select('id, name').order('name'),
           clientId

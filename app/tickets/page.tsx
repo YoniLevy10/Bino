@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import { parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
@@ -286,7 +286,7 @@ export default function TicketsPage() {
   const loadProfessionals = useCallback(async () => {
     if (professionalsLoadedRef.current) return
     try {
-      const clientId = tenantClientId || (await resolveBamakorClientIdForBrowser())
+      const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
       const { data, error } = await withClientId(
         supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
         clientId
@@ -309,7 +309,7 @@ export default function TicketsPage() {
     }
     const result = await asyncHandler(
       async () => {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         setTenantClientId(clientId)
         const [ticketsResult, workersResult, projectsResult] = await Promise.all([
           withClientId(supabase.from('tickets').select(TICKETS_LIST_SELECT), clientId)
@@ -384,7 +384,7 @@ export default function TicketsPage() {
 
   useEffect(() => {
     void (async () => {
-      const clientId = await resolveBamakorClientIdForBrowser()
+      const clientId = await resolveBinoClientIdForBrowser()
       const cached = shouldSkipStalePageCache() ? null : readTicketsCache(clientId)
       if (cached) {
         setTickets(cached.tickets.filter((t) => t.status !== 'CLOSED'))
@@ -610,7 +610,7 @@ export default function TicketsPage() {
     if (!ticket.project_id) return
     setMergeLoading(true)
     try {
-      const cid = tenantClientId || (await resolveBamakorClientIdForBrowser())
+      const cid = tenantClientId || (await resolveBinoClientIdForBrowser())
       const { data, error } = await withClientId(
         supabase.from('tickets').select(
           `
@@ -725,7 +725,7 @@ export default function TicketsPage() {
     selectedTicketId: selectedTicket?.id,
     onOpenTicket: (ticket, opts) => openTicketFnRef.current(ticket, opts),
     mapFetchedTicket: (row) => row as TicketRow,
-    resolveClientId: async () => tenantClientId || (await resolveBamakorClientIdForBrowser()),
+    resolveClientId: async () => tenantClientId || (await resolveBinoClientIdForBrowser()),
   })
 
   const closeDrawer = useCallback(() => {

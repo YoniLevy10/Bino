@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { resolveBamakorClientIdForBrowser } from '@/lib/bamakor-client'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { summaryTicketToDetail } from '@/lib/summary-ticket-detail'
@@ -69,7 +69,7 @@ export function useManagerTicketDrawer(opts?: { onRefresh?: () => void | Promise
       if (openingTicketId) return
       setOpeningTicketId(ticketId)
       try {
-        const clientId = await resolveBamakorClientIdForBrowser()
+        const clientId = await resolveBinoClientIdForBrowser()
         const fetched = await fetchTicketForDetail(supabase, clientId, ticketId)
         if (fetched) openTicketRow(fetched)
         else toast.error('התקלה לא נמצאה')

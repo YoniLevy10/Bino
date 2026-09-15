@@ -59,11 +59,35 @@ function rowToLead(row: Record<string, unknown>): SalesLead {
       : [],
     lastSeenAt: (row.last_seen_at as string | null) ?? null,
     contactedAt: (row.contacted_at as string | null) ?? null,
+    nextContactAt: (row.next_contact_at as string | null) ?? null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   }
 }
 
+/** Clears follow-up when lead leaves the active outreach funnel. */
+const CLEAR_NEXT_CONTACT_STATUSES: ReadonlySet<LeadStatus> = new Set([
+  'demo_scheduled',
+  'won',
+  'lost',
+  'do_not_contact',
+  'rejected',
+])
+
+function plusDaysIso(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+}
+
+function endOfLocalDayIso(): string {
+  const d = new Date()
+  d.setHours(23, 59, 59, 999)
+  return d.toISOString()
+}
+
+/**
+ * loadExistingLite pulls up to 8k rows for in-memory dedupe — fine through ~1–5k leads.
+ * Revisit DB-level upsert / indexed lookups before ~10k+ (see CLAUDE.md).
+ */
 async function loadExistingLite(admin: SupabaseClient): Promise<ExistingLeadLite[]> {
   const { data, error } = await admin
     .from('sales_leads')
@@ -207,6 +231,9 @@ export async function ingestFromAdapter(
       enrichment: {
         placeTypes: record.placeTypes ?? [],
         queryKey: record.queryKey ?? null,
+        rating: record.rating ?? null,
+        reviewCount: record.reviewCount ?? null,
+        openingHours: record.openingHours ?? null,
       },
       source_refs: [sourceRef],
       last_seen_at: now,
@@ -258,7 +285,8 @@ export async function listSalesLeads(
     segmentSlug?: string
     contactability?: string | string[]
     minFitScore?: number
-    sort?: 'fit_score' | 'created_at' | 'estimated_mrr'
+    dueToday?: boolean
+    sort?: 'fit_score' | 'created_at' | 'estimated_mrr' | 'next_contact'
     limit?: number
     offset?: number
   } = {},
@@ -271,31 +299,31 @@ export async function listSalesLeads(
       ? 'created_at'
       : sort === 'estimated_mrr'
         ? 'estimated_mrr_ils'
-        : 'fit_score'
+        : sort === 'next_contact'
+          ? 'next_contact_at'
+          : 'fit_score'
 
   let query = admin
     .from('sales_leads')
     .select('*', { count: 'exact' })
-    .order(sortColumn, { ascending: false, nullsFirst: false })
-    .order('created_at', { ascending: false })
+    .order(sortColumn, { ascending: sort === 'next_contact', nullsFirst: false })
     .range(offset, offset + limit - 1)
 
   if (filters.city) query = query.eq('city', filters.city)
   if (filters.segmentSlug) query = query.eq('segment_slug', filters.segmentSlug)
   if (filters.contactability) {
-    const kinds = (Array.isArray(filters.contactability)
-      ? filters.contactability
-      : [filters.contactability]
+    const vals = (
+      Array.isArray(filters.contactability) ? filters.contactability : [filters.contactability]
     )
-      .flatMap((c) => c.split(','))
-      .map((c) => c.trim())
+      .flatMap((s) => String(s).split(','))
+      .map((s) => s.trim())
       .filter(Boolean)
-    if (kinds.length) query = query.in('contactability', kinds)
+    if (vals.length) query = query.in('contactability', vals)
   }
   if (filters.fitClass) {
     const classes = (Array.isArray(filters.fitClass) ? filters.fitClass : [filters.fitClass])
-      .flatMap((c) => c.split(','))
-      .map((c) => c.trim())
+      .flatMap((s) => String(s).split(','))
+      .map((s) => s.trim())
       .filter(Boolean)
     if (classes.length) query = query.in('fit_class', classes)
   }
@@ -308,6 +336,12 @@ export async function listSalesLeads(
   }
   if (filters.minFitScore != null && Number.isFinite(filters.minFitScore)) {
     query = query.gte('fit_score', filters.minFitScore)
+  }
+  if (filters.dueToday) {
+    query = query
+      .lte('next_contact_at', endOfLocalDayIso())
+      .not('next_contact_at', 'is', null)
+      .in('status', ['discovered', 'qualified', 'contacted'])
   }
   if (filters.q?.trim()) {
     const q = `%${filters.q.trim()}%`
@@ -327,7 +361,9 @@ export async function listSalesLeads(
 export async function getLeadCounters(admin: SupabaseClient) {
   const { data } = await admin
     .from('sales_leads')
-    .select('status, fit_class, city, segment_slug, estimated_mrr_ils')
+    .select(
+      'status, fit_class, city, segment_slug, estimated_mrr_ils, next_contact_at, phone, whatsapp_phone, email, contactability',
+    )
     .limit(10000)
 
   const rows = data ?? []
@@ -336,6 +372,9 @@ export async function getLeadCounters(admin: SupabaseClient) {
   const byCity = new Map<string, number>()
   const bySegment = new Map<string, number>()
   let pipelineMrr = 0
+  let dueToday = 0
+  let withContactChannel = 0
+  const dueCutoff = endOfLocalDayIso()
 
   for (const r of rows) {
     const st = String(r.status)
@@ -349,10 +388,24 @@ export async function getLeadCounters(admin: SupabaseClient) {
     if (['discovered', 'qualified', 'contacted', 'demo_scheduled'].includes(st)) {
       pipelineMrr += Number(r.estimated_mrr_ils ?? 0)
     }
+    const nextAt = r.next_contact_at as string | null
+    if (
+      nextAt &&
+      nextAt <= dueCutoff &&
+      ['discovered', 'qualified', 'contacted'].includes(st)
+    ) {
+      dueToday += 1
+    }
+    if (r.phone || r.whatsapp_phone || r.email || r.contactability === 'mobile') {
+      withContactChannel += 1
+    }
   }
 
   return {
     total: rows.length,
+    dueToday,
+    withContactChannel,
+    contactChannelPct: rows.length ? Math.round((withContactChannel / rows.length) * 100) : 0,
     byStatus,
     byFitClass,
     byCity: [...byCity.entries()]
@@ -386,6 +439,12 @@ export async function updateLeadStatus(
   if (status === 'contacted' && !current.contacted_at) {
     patch.contacted_at = new Date().toISOString()
   }
+  if (status === 'contacted' && !current.next_contact_at) {
+    patch.next_contact_at = plusDaysIso(3)
+  }
+  if (CLEAR_NEXT_CONTACT_STATUSES.has(status)) {
+    patch.next_contact_at = null
+  }
 
   const { data: updated, error } = await admin
     .from('sales_leads')
@@ -403,6 +462,92 @@ export async function updateLeadStatus(
     to_status: status,
     payload: {},
   })
+
+  return rowToLead(updated as Record<string, unknown>)
+}
+
+export type LeadPatchFields = {
+  status?: LeadStatus
+  nextContactAt?: string | null
+  estimatedBuildings?: number | null
+  notes?: string | null
+  outreachVariant?: string | null
+}
+
+export async function updateLeadFields(
+  admin: SupabaseClient,
+  leadId: string,
+  fields: LeadPatchFields,
+  actor = 'superadmin',
+): Promise<SalesLead> {
+  if (fields.status) {
+    const lead = await updateLeadStatus(admin, leadId, fields.status, actor)
+    // Apply remaining field patches after status transition
+    const rest: LeadPatchFields = { ...fields }
+    delete rest.status
+    if (
+      rest.nextContactAt === undefined &&
+      rest.estimatedBuildings === undefined &&
+      rest.notes === undefined &&
+      !rest.outreachVariant
+    ) {
+      return lead
+    }
+    return updateLeadFields(admin, leadId, rest, actor)
+  }
+
+  const { data: current, error: curErr } = await admin
+    .from('sales_leads')
+    .select('*')
+    .eq('id', leadId)
+    .maybeSingle()
+  if (curErr || !current) throw new Error(curErr?.message ?? 'lead not found')
+
+  const patch: Record<string, unknown> = {}
+  if (fields.nextContactAt !== undefined) patch.next_contact_at = fields.nextContactAt
+  if (fields.estimatedBuildings !== undefined) {
+    patch.estimated_buildings = fields.estimatedBuildings
+    if (fields.estimatedBuildings != null && fields.estimatedBuildings > 0) {
+      patch.estimated_mrr_ils = Math.round(fields.estimatedBuildings * 100)
+    }
+  }
+  if (fields.notes !== undefined) patch.notes = fields.notes
+
+  if (Object.keys(patch).length === 0 && !fields.outreachVariant) {
+    return rowToLead(current as Record<string, unknown>)
+  }
+
+  let updated = current
+  if (Object.keys(patch).length > 0) {
+    const { data, error } = await admin
+      .from('sales_leads')
+      .update(patch)
+      .eq('id', leadId)
+      .select('*')
+      .maybeSingle()
+    if (error || !data) throw new Error(error?.message ?? 'update failed')
+    updated = data
+  }
+
+  if (fields.outreachVariant) {
+    await admin.from('sales_lead_events').insert({
+      lead_id: leadId,
+      actor,
+      action: 'outreach_variant',
+      from_status: current.status,
+      to_status: current.status,
+      payload: { variant: fields.outreachVariant },
+    })
+  } else if (Object.keys(patch).length > 0) {
+    await admin.from('sales_lead_events').insert({
+      lead_id: leadId,
+      actor,
+      action: 'fields_update',
+      from_status: current.status,
+      to_status: current.status,
+      payload: patch,
+    })
+  }
 
   return rowToLead(updated as Record<string, unknown>)
 }
@@ -489,6 +634,13 @@ export async function markLeadWhatsappOpened(
     status: nextStatus,
   }
   if (!current.contacted_at) patch.contacted_at = new Date().toISOString()
+  if (
+    nextStatus === 'contacted' &&
+    !current.next_contact_at &&
+    (current.status === 'discovered' || current.status === 'qualified' || current.status === 'contacted')
+  ) {
+    patch.next_contact_at = plusDaysIso(3)
+  }
 
   const { data: updated, error } = await admin
     .from('sales_leads')
@@ -508,4 +660,123 @@ export async function markLeadWhatsappOpened(
   })
 
   return rowToLead(updated as Record<string, unknown>)
+}
+
+export async function enrichLeadFromWebsite(
+  admin: SupabaseClient,
+  leadId: string,
+  actor = 'enrichment',
+): Promise<SalesLead | null> {
+  const { harvestWebsiteContacts } = await import('@/lib/sales-leads/enrich/website-harvest')
+  const { data: current, error: curErr } = await admin
+    .from('sales_leads')
+    .select('*')
+    .eq('id', leadId)
+    .maybeSingle()
+  if (curErr || !current) throw new Error(curErr?.message ?? 'lead not found')
+
+  const website = (current.website_url as string | null)?.trim()
+  if (!website) return null
+
+  const harvest = await harvestWebsiteContacts(website)
+  const enrichment = {
+    ...(current.enrichment && typeof current.enrichment === 'object'
+      ? (current.enrichment as Record<string, unknown>)
+      : {}),
+    websiteHarvest: {
+      ...harvest,
+      harvestedAt: new Date().toISOString(),
+    },
+  }
+
+  const patch: Record<string, unknown> = { enrichment }
+  if (!current.email && harvest.emails[0]) patch.email = harvest.emails[0]
+  if (!current.whatsapp_phone && harvest.whatsappPhones[0]) {
+    patch.whatsapp_phone = harvest.whatsappPhones[0]
+  }
+  if (!current.phone && harvest.phones[0]) {
+    patch.phone = harvest.phones[0]
+    patch.phone_normalized = harvest.phones[0]
+  }
+  if (
+    !current.contactability ||
+    current.contactability === 'none' ||
+    current.contactability === 'unknown'
+  ) {
+    if (
+      harvest.whatsappPhones[0] ||
+      (harvest.phones[0] && String(harvest.phones[0]).startsWith('9725'))
+    ) {
+      patch.contactability = 'mobile'
+    } else if (harvest.phones[0]) {
+      patch.contactability = 'landline'
+    }
+  }
+
+  const { data: updated, error } = await admin
+    .from('sales_leads')
+    .update(patch)
+    .eq('id', leadId)
+    .select('*')
+    .maybeSingle()
+  if (error || !updated) throw new Error(error?.message ?? 'enrich update failed')
+
+  await admin.from('sales_lead_events').insert({
+    lead_id: leadId,
+    actor,
+    action: 'website_harvest',
+    from_status: current.status,
+    to_status: current.status,
+    payload: {
+      emails: harvest.emails.length,
+      phones: harvest.phones.length,
+      wa: harvest.whatsappPhones.length,
+      robotsBlocked: harvest.robotsBlocked,
+      error: harvest.error ?? null,
+    },
+  })
+
+  return rowToLead(updated as Record<string, unknown>)
+}
+
+/** Enrich leads that have a website but missing email/whatsapp. Cap per run for serverless. */
+export async function enrichSalesLeadsBatch(
+  admin: SupabaseClient,
+  limit = 25,
+): Promise<{ attempted: number; enriched: number; errors: string[] }> {
+  const { data, error } = await admin
+    .from('sales_leads')
+    .select('id, website_url, email, whatsapp_phone')
+    .not('website_url', 'is', null)
+    .neq('website_url', '')
+    .or('email.is.null,whatsapp_phone.is.null')
+    .order('updated_at', { ascending: true })
+    .limit(limit)
+
+  if (error) throw error
+  const rows = data ?? []
+  let enriched = 0
+  const errors: string[] = []
+
+  for (const row of rows) {
+    try {
+      const lead = await enrichLeadFromWebsite(admin, row.id as string, 'cron')
+      if (lead) enriched += 1
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : 'enrich failed')
+    }
+  }
+
+  return { attempted: rows.length, enriched, errors }
+}
+
+export async function countDueFollowUps(admin: SupabaseClient): Promise<number> {
+  const cutoff = endOfLocalDayIso()
+  const { count, error } = await admin
+    .from('sales_leads')
+    .select('id', { count: 'exact', head: true })
+    .lte('next_contact_at', cutoff)
+    .in('status', ['discovered', 'qualified', 'contacted'])
+  if (error) throw error
+  return count ?? 0
 }

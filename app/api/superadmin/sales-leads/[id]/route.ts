@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   deleteSalesLead,
   markLeadWhatsappOpened,
+  updateLeadFields,
   updateLeadStatus,
 } from '@/lib/sales-leads/service'
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/sales-leads/types'
@@ -19,7 +20,14 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
   const { id } = await ctx.params
 
-  let body: { status?: string; action?: string } = {}
+  let body: {
+    status?: string
+    action?: string
+    nextContactAt?: string | null
+    estimatedBuildings?: number | null
+    notes?: string | null
+    outreachVariant?: string | null
+  } = {}
   try {
     body = (await req.json()) as typeof body
   } catch {
@@ -31,11 +39,35 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
     if (body.action === 'whatsapp_opened') {
       const lead = await markLeadWhatsappOpened(admin, id)
+      if (body.outreachVariant) {
+        await updateLeadFields(admin, id, { outreachVariant: body.outreachVariant })
+      }
       return NextResponse.json({ lead })
     }
 
-    if (!body.status || !(LEAD_STATUSES as readonly string[]).includes(body.status)) {
+    const hasFieldPatch =
+      body.nextContactAt !== undefined ||
+      body.estimatedBuildings !== undefined ||
+      body.notes !== undefined ||
+      Boolean(body.outreachVariant)
+
+    if (body.status && !(LEAD_STATUSES as readonly string[]).includes(body.status)) {
       return NextResponse.json({ error: 'invalid status' }, { status: 400 })
+    }
+
+    if (!body.status && !hasFieldPatch) {
+      return NextResponse.json({ error: 'invalid status' }, { status: 400 })
+    }
+
+    if (hasFieldPatch || body.status) {
+      const lead = await updateLeadFields(admin, id, {
+        status: body.status as LeadStatus | undefined,
+        nextContactAt: body.nextContactAt,
+        estimatedBuildings: body.estimatedBuildings,
+        notes: body.notes,
+        outreachVariant: body.outreachVariant,
+      })
+      return NextResponse.json({ lead })
     }
 
     const lead = await updateLeadStatus(admin, id, body.status as LeadStatus)
