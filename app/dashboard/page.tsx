@@ -73,7 +73,7 @@ import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 /** Resolve authenticated uid + tenant clientId before any cache paint. */
 async function resolveDashboardTenantScope(): Promise<{ uid: string; clientId: string }> {
-  const clientId = await resolveBamakorClientIdForBrowser()
+  const clientId = await resolveBinoClientIdForBrowser()
   const { data: sessionData } = await supabase.auth.getSession()
   const uid = sessionData.session?.user?.id
   if (!uid) throw new Error('נדרשת התחברות')
@@ -217,7 +217,7 @@ export default function DashboardPage() {
   const loadProfessionals = useCallback(async () => {
     if (professionalsLoadedRef.current) return
     try {
-      const clientId = await resolveBamakorClientIdForBrowser()
+      const clientId = await resolveBinoClientIdForBrowser()
       const { data, error } = await withClientId(
         supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
         clientId
