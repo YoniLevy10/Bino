@@ -98,6 +98,10 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
   const [runs, setRuns] = useState<RunRow[]>([])
   const [loading, setLoading] = useState(false)
   const [discovering, setDiscovering] = useState(false)
+  const [discoverPct, setDiscoverPct] = useState(0)
+  const [discoverPhase, setDiscoverPhase] = useState('')
+  const [discoverFound, setDiscoverFound] = useState(0)
+  const [discoverCreated, setDiscoverCreated] = useState(0)
   const [error, setError] = useState('')
   const [okMsg, setOkMsg] = useState('')
 
@@ -186,8 +190,51 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
 
   async function runDiscover() {
     setDiscovering(true)
+    setDiscoverPct(1)
+    setDiscoverPhase('מתחיל גילוי…')
+    setDiscoverFound(0)
+    setDiscoverCreated(0)
     setError('')
     setOkMsg('')
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    const pollProgress = async () => {
+      try {
+        const res = await fetch('/api/superadmin/sales-leads/discover', {
+          headers: adminHeaders(secret),
+        })
+        if (!res.ok) return
+        const json = (await res.json()) as {
+          status?: string | null
+          found?: number
+          created?: number
+          progress?: {
+            progressPct?: number
+            phase?: string
+            found?: number
+            created?: number
+          } | null
+        }
+        const pct = json.progress?.progressPct
+        if (typeof pct === 'number') {
+          setDiscoverPct((prev) => Math.max(prev, Math.min(99, pct)))
+        }
+        if (json.progress?.phase) setDiscoverPhase(json.progress.phase)
+        if (typeof json.progress?.found === 'number') setDiscoverFound(json.progress.found)
+        else if (typeof json.found === 'number') setDiscoverFound(json.found)
+        if (typeof json.progress?.created === 'number') setDiscoverCreated(json.progress.created)
+        else if (typeof json.created === 'number') setDiscoverCreated(json.created)
+      } catch {
+        /* ignore poll errors while discover runs */
+      }
+    }
+
+    pollTimer = setInterval(() => {
+      void pollProgress()
+      setDiscoverPct((prev) => (prev < 90 ? Math.min(90, prev + 0.4) : prev))
+    }, 1200)
+    void pollProgress()
+
     try {
       const res = await fetch('/api/superadmin/sales-leads/discover', {
         method: 'POST',
@@ -199,10 +246,15 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         status?: string
         created?: number
         found?: number
+        errorMessage?: string
       }
       if (!res.ok && json.status !== 'busy') {
-        throw new Error(json.error || 'גילוי נכשל')
+        throw new Error(json.error || json.errorMessage || 'גילוי נכשל')
       }
+      setDiscoverPct(100)
+      setDiscoverPhase(json.status === 'busy' ? 'ריצה כבר פעילה' : 'הושלם')
+      setDiscoverFound(json.found ?? 0)
+      setDiscoverCreated(json.created ?? 0)
       setOkMsg(
         json.status === 'busy'
           ? 'ריצה כבר פעילה — נסו שוב בעוד דקה'
@@ -211,8 +263,14 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה')
+      setDiscoverPhase('נכשל')
     } finally {
-      setDiscovering(false)
+      if (pollTimer) clearInterval(pollTimer)
+      setTimeout(() => {
+        setDiscovering(false)
+        setDiscoverPct(0)
+        setDiscoverPhase('')
+      }, 900)
     }
   }
 
@@ -343,7 +401,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           <div>
             <h2>מנוע לידים · מכירת BINO</h2>
             <p className="sa-muted">
-              סריקה יומית בישראל (Places + OSM) · ICP רחב ליעד ₪100K MRR · פנייה מהירה ב-WhatsApp
+              מיקוד: ירושלים · תל אביב · גוש דן/מרכז · Places + OSM · יעד ₪100K MRR
             </p>
           </div>
           <div className="sa-leads-hero-actions">
@@ -383,6 +441,26 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
             <div>
               <strong>{progressPct}%</strong>
               <span>מול יעד 100K</span>
+            </div>
+          </div>
+        ) : null}
+
+        {discovering || discoverPct > 0 ? (
+          <div className="sa-discover-progress" aria-live="polite">
+            <div className="sa-discover-progress-meta">
+              <strong>{Math.round(discoverPct)}%</strong>
+              <span>{discoverPhase || 'גילוי בתהליך…'}</span>
+              {(discoverFound > 0 || discoverCreated > 0) && (
+                <span className="sa-discover-progress-counts">
+                  נמצאו {discoverFound} · נוצרו {discoverCreated}
+                </span>
+              )}
+            </div>
+            <div className="sa-discover-progress-track">
+              <div
+                className="sa-discover-progress-fill"
+                style={{ width: `${Math.max(2, Math.min(100, discoverPct))}%` }}
+              />
             </div>
           </div>
         ) : null}
@@ -700,6 +778,43 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         .sa-leads-kpis span {
           font-size: 12px;
           color: ${theme.colors.textSecondary};
+        }
+        .sa-discover-progress {
+          margin-top: 14px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid ${theme.colors.border};
+          background: ${theme.colors.background};
+        }
+        .sa-discover-progress-meta {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 8px 12px;
+          margin-bottom: 10px;
+          font-size: 13px;
+          color: ${theme.colors.textSecondary};
+        }
+        .sa-discover-progress-meta strong {
+          font-size: 18px;
+          color: ${theme.colors.primary};
+          font-variant-numeric: tabular-nums;
+        }
+        .sa-discover-progress-counts {
+          margin-inline-start: auto;
+          font-size: 12px;
+        }
+        .sa-discover-progress-track {
+          height: 10px;
+          border-radius: 999px;
+          background: #e5e7eb;
+          overflow: hidden;
+        }
+        .sa-discover-progress-fill {
+          height: 100%;
+          border-radius: 999px;
+          background: linear-gradient(90deg, #0066ff, #38bdf8);
+          transition: width 0.45s ease;
         }
         .sa-filter-grid {
           display: grid;

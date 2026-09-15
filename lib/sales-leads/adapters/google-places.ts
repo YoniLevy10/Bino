@@ -1,4 +1,7 @@
-import type { SalesLeadSourceAdapter } from '@/lib/sales-leads/adapters/types'
+import type {
+  AdapterProgressCallback,
+  SalesLeadSourceAdapter,
+} from '@/lib/sales-leads/adapters/types'
 import type { SalesLeadSourceRecord } from '@/lib/sales-leads/types'
 import {
   getCityGeoProfile,
@@ -71,6 +74,7 @@ export type GooglePlacesAdapterOptions = {
   apiCallBudget?: number
   perSegmentLimit?: number
   queryStats?: QueryStatRow[]
+  onProgress?: AdapterProgressCallback
 }
 
 export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
@@ -83,6 +87,7 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
   private readonly perSegmentLimit: number
   private readonly queryStats: QueryStatRow[]
   private readonly mappings: ReturnType<typeof getDiscoveryMappingsForSlugs>
+  private readonly onProgress?: AdapterProgressCallback
   lastStats: GooglePlacesFetchStats = emptyStats()
 
   constructor(options: GooglePlacesAdapterOptions = {}) {
@@ -101,6 +106,7 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
       getDiscoveryPerSegmentCap(),
     )
     this.queryStats = options.queryStats ?? []
+    this.onProgress = options.onProgress
   }
 
   async fetchRecords(): Promise<SalesLeadSourceRecord[]> {
@@ -118,6 +124,7 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
     const jobBudget = Math.max(1, Math.floor(this.apiCallBudget * 0.7))
     const selected = selectJobsForBudget(allJobs, this.queryStats, jobBudget)
     const keptBySegment = new Map<string, number>()
+    let jobsDone = 0
 
     for (const job of selected) {
       if (stats.searchCalls >= this.apiCallBudget) {
@@ -256,6 +263,15 @@ export class GooglePlacesSalesLeadAdapter implements SalesLeadSourceAdapter {
       }
 
       yieldMap.set(job.queryKey, yieldRow)
+      jobsDone += 1
+      if (this.onProgress) {
+        await this.onProgress({
+          done: jobsDone,
+          total: Math.max(1, selected.length),
+          kept: stats.kept,
+          label: job.textQuery,
+        })
+      }
     }
 
     stats.queryYields = [...yieldMap.values()].map((y) => ({
