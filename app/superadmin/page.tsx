@@ -23,6 +23,7 @@ import { ClientsList } from './components/ClientsList'
 import { ClientHub } from './components/ClientHub'
 import { ClientTaskView } from './components/ClientTaskView'
 import { SettingsView } from './components/SettingsView'
+import { SalesLeadsPanel } from './components/SalesLeadsPanel'
 import { clientHash, parseSuperadminHash, tabHash, writeHash } from './hashRoute'
 import {
   adminHeaders,
@@ -448,7 +449,7 @@ export default function SuperAdminPage() {
       <header className="sa-topbar">
         <div>
           <h1 className="sa-header-title">Super Admin</h1>
-          <p className="sa-muted">ניהול לקוחות · תפעול · שימוש</p>
+          <p className="sa-muted">ניהול לקוחות · לידים · תפעול · שימוש</p>
         </div>
         <div className="sa-topbar-actions sa-header-actions">
           <LoadingButton
@@ -572,6 +573,8 @@ export default function SuperAdminPage() {
             onBack={backToHub}
           />
         ) : null}
+
+        {tab === 'leads' ? <SalesLeadsPanel secret={secret} /> : null}
 
         {tab === 'ops' ? (
           <div className="sa-tab-panel">

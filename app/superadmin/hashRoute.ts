@@ -24,6 +24,7 @@ function isTask(value: string): value is ClientTask {
 export function parseSuperadminHash(hash: string): SuperadminRoute {
   const raw = hash.replace(/^#/, '').trim()
   if (!raw || raw === 'clients') return { kind: 'tab', tab: 'clients' }
+  if (raw === 'leads') return { kind: 'tab', tab: 'leads' }
   if (raw === 'ops') return { kind: 'tab', tab: 'ops' }
   if (raw === 'usage') return { kind: 'tab', tab: 'usage' }
   if (raw === 'settings') return { kind: 'tab', tab: 'settings' }
