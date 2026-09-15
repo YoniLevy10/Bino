@@ -19,7 +19,7 @@ export type TicketDetailParityFeature = (typeof TICKET_DETAIL_PARITY_FEATURES)[n
 export const TICKET_DETAIL_ENTRY_POINTS = [
   {
     id: 'dashboard',
-    pageFile: 'app/page.tsx',
+    pageFile: 'app/dashboard/page.tsx',
     drawerComponent: 'TicketDetailDrawer',
   },
   {
@@ -41,5 +41,5 @@ export const TICKET_DETAIL_NAV_SOURCES = [
   { id: 'summary_history', file: 'app/summary/page.tsx', mustUse: 'handleOpenTicket' },
   { id: 'projects_drawer', file: 'app/projects/page.tsx', mustUse: 'ticketDetailPath' },
   { id: 'workers_drawer', file: 'app/workers/page.tsx', mustUse: 'ticketDetailPath' },
-  { id: 'dashboard_activity', file: 'app/page.tsx', mustUse: 'openTicketById' },
+  { id: 'dashboard_activity', file: 'app/dashboard/page.tsx', mustUse: 'openTicketById' },
 ] as const
