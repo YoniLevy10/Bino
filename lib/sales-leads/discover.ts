@@ -12,7 +12,7 @@ import {
   getDiscoveryTotalBudget,
   getSalesSegmentSlugs,
 } from '@/lib/sales-leads/config'
-import { getDiscoveryCity } from '@/lib/sales-leads/discovery-mapping'
+import { getDiscoveryCities } from '@/lib/sales-leads/discovery-mapping'
 import {
   hasRunningDiscovery,
   loadQueryStats,
@@ -77,7 +77,7 @@ function buildAdapters(input?: {
   const adapters: SalesLeadSourceAdapter[] = []
   const common = {
     segmentSlugs: input?.segmentSlugs ?? getSalesSegmentSlugs(),
-    city: input?.city ?? getDiscoveryCity(),
+    city: input?.city ?? getDiscoveryCities()[0] ?? 'תל אביב',
     totalBudget: input?.totalBudget ?? getDiscoveryTotalBudget(),
     apiCallBudget: input?.apiCallBudget ?? getDiscoveryApiCallBudget(),
     queryStats: input?.queryStats,
@@ -176,18 +176,26 @@ export async function runSalesLeadDiscovery(
     sources?: DiscoveryAutoSource[]
     segmentSlugs?: string[]
     city?: string
+    cities?: string[]
   },
 ): Promise<DiscoveryRunResult> {
-  const city = options.city ?? getDiscoveryCity()
+  const cities =
+    options.cities?.filter(Boolean) ??
+    (options.city?.trim()
+      ? [options.city.trim()]
+      : getDiscoveryCities())
+  const cityLabel = cities.length === 1 ? cities[0]! : cities.join(' · ')
   const budget = getDiscoveryTotalBudget()
   const apiCallBudget = getDiscoveryApiCallBudget()
   const segmentSlugs = options.segmentSlugs ?? getSalesSegmentSlugs()
+  const perCityBudget = Math.max(80, Math.floor(budget / Math.max(1, cities.length)))
+  const perCityApi = Math.max(20, Math.floor(apiCallBudget / Math.max(1, cities.length)))
 
   if (await hasRunningDiscovery(admin)) {
     return {
       runId: null,
       status: 'busy',
-      city,
+      city: cityLabel,
       sources: [],
       found: 0,
       created: 0,
@@ -205,13 +213,14 @@ export async function runSalesLeadDiscovery(
     .from('sales_lead_discovery_runs')
     .insert({
       trigger: options.trigger,
-      city,
+      city: cityLabel,
       status: 'running',
       sources: options.sources ?? ['google_places', 'osm'],
       details: {
         segmentSlugs,
+        cities,
         progressPct: 2,
-        phase: 'מתחיל גילוי…',
+        phase: `מתחיל גילוי · ${cityLabel}`,
         currentSource: null,
       },
     })
@@ -222,7 +231,7 @@ export async function runSalesLeadDiscovery(
     return {
       runId: null,
       status: 'failed',
-      city,
+      city: cityLabel,
       sources: [],
       found: 0,
       created: 0,
@@ -239,129 +248,121 @@ export async function runSalesLeadDiscovery(
   const runId = runRow.id as string
   const queryStats = await loadQueryStats(admin)
 
-  const sourceRanges: Record<string, { start: number; end: number }> = {
-    google_places: { start: 8, end: 70 },
-    osm: { start: 70, end: 94 },
-  }
-
   let found = 0
   let created = 0
   let updated = 0
   let skipped = 0
   let errors = 0
   const bySource: DiscoveryRunResult['bySource'] = {}
+  const usedSources = new Set<string>()
 
-  const adapters = buildAdapters({
-    sources: options.sources,
-    segmentSlugs,
-    city,
-    totalBudget: budget,
-    apiCallBudget,
-    queryStats,
-    onProgressFor: (source) => {
-      const range = sourceRanges[source] ?? { start: 10, end: 90 }
-      return async (event) => {
-        const ratio = event.total > 0 ? event.done / event.total : 0
-        const pct = clampPct(range.start + ratio * (range.end - range.start))
-        const label = SOURCE_LABEL_HE[source] ?? source
-        await writeRunProgress(
-          admin,
-          runId,
-          {
-            progressPct: pct,
-            phase: `סורק ${label}${event.label ? ` · ${event.label}` : ''} (${event.done}/${event.total})`,
-            currentSource: source,
-            found: found + event.kept,
-            created,
-          },
-          { found: found + event.kept, created, updated, skipped, errors },
-          { segmentSlugs, bySource },
-        )
-      }
-    },
-  })
-
-  if (adapters.length === 0) {
-    const msg =
-      'אין מקורות זמינים — הגדירו GOOGLE_PLACES_API_KEY או אפשרו OSM'
-    await admin
-      .from('sales_lead_discovery_runs')
-      .update({
-        status: 'failed',
-        error_message: msg,
-        finished_at: new Date().toISOString(),
-        details: { progressPct: 100, phase: 'נכשל', segmentSlugs },
-      })
-      .eq('id', runId)
-    return {
-      runId,
-      status: 'failed',
-      city,
-      sources: [],
-      found: 0,
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      errors: 1,
-      budget,
-      apiCallBudget,
-      errorMessage: msg,
-      bySource: {},
-    }
-  }
-
-  // Recompute ranges if only one source is active
-  if (adapters.length === 1) {
-    sourceRanges[adapters[0].name] = { start: 8, end: 94 }
+  const sourceWeight: Record<string, number> = {
+    google_places: 0.72,
+    osm: 0.28,
   }
 
   try {
-    await writeRunProgress(
-      admin,
-      runId,
-      { progressPct: 5, phase: 'מכין מקורות…', currentSource: null },
-      undefined,
-      { segmentSlugs },
-    )
-
-    for (let i = 0; i < adapters.length; i++) {
-      const adapter = adapters[i]
-      const range = sourceRanges[adapter.name] ?? {
-        start: 8 + (i / adapters.length) * 86,
-        end: 8 + ((i + 1) / adapters.length) * 86,
-      }
+    const hasPlaces = Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim())
+    if (!hasPlaces) {
       await writeRunProgress(
         admin,
         runId,
         {
-          progressPct: clampPct(range.start),
-          phase: `מתחיל ${SOURCE_LABEL_HE[adapter.name] ?? adapter.name}…`,
-          currentSource: adapter.name,
+          progressPct: 4,
+          phase: 'GOOGLE_PLACES_API_KEY חסר — רץ OSM בלבד על המרכז',
+          currentSource: 'osm',
+        },
+        undefined,
+        { segmentSlugs, cities },
+      )
+    }
+
+    for (let ci = 0; ci < cities.length; ci++) {
+      const city = cities[ci]!
+      const cityStart = 5 + (ci / cities.length) * 90
+      const cityEnd = 5 + ((ci + 1) / cities.length) * 90
+
+      await writeRunProgress(
+        admin,
+        runId,
+        {
+          progressPct: clampPct(cityStart),
+          phase: `עיר ${ci + 1}/${cities.length}: ${city}`,
+          currentSource: null,
           found,
           created,
         },
         { found, created, updated, skipped, errors },
-        { segmentSlugs, bySource },
+        { segmentSlugs, cities, bySource },
       )
 
-      const ingest = await ingestFromAdapter(admin, adapter)
-      found += ingest.found
-      created += ingest.created
-      updated += ingest.updated
-      skipped += ingest.skipped
-      errors += ingest.errors.length
-      bySource[adapter.name] = {
-        found: ingest.found,
-        created: ingest.created,
-        updated: ingest.updated,
-        skipped: ingest.skipped,
-        errors: ingest.errors.slice(0, 20),
+      const adapters = buildAdapters({
+        sources: options.sources,
+        segmentSlugs,
+        city,
+        totalBudget: perCityBudget,
+        apiCallBudget: perCityApi,
+        queryStats,
+        onProgressFor: (source) => {
+          const weight = sourceWeight[source] ?? 0.5
+          const sibling = source === 'google_places' ? 0 : sourceWeight.google_places
+          // Map adapter-local progress into this city's slice
+          return async (event) => {
+            const ratio = event.total > 0 ? event.done / event.total : 0
+            const withinCity = (source === 'google_places' ? 0 : sibling) + ratio * weight
+            const pct = clampPct(cityStart + withinCity * (cityEnd - cityStart))
+            const label = SOURCE_LABEL_HE[source] ?? source
+            await writeRunProgress(
+              admin,
+              runId,
+              {
+                progressPct: pct,
+                phase: `${city} · ${label}${event.label ? ` · ${event.label}` : ''} (${event.done}/${event.total})`,
+                currentSource: source,
+                found: found + event.kept,
+                created,
+              },
+              { found: found + event.kept, created, updated, skipped, errors },
+              { segmentSlugs, cities, bySource },
+            )
+          }
+        },
+      })
+
+      if (adapters.length === 0) {
+        errors += 1
+        continue
       }
 
-      if (adapter.name === 'google_places') {
-        const places = adapter as PlacesAdapter
-        if (places.lastStats?.queryYields?.length) {
-          await upsertQueryStats(admin, places.lastStats.queryYields)
+      for (const adapter of adapters) {
+        usedSources.add(adapter.name)
+        const ingest = await ingestFromAdapter(admin, adapter)
+        found += ingest.found
+        created += ingest.created
+        updated += ingest.updated
+        skipped += ingest.skipped
+        errors += ingest.errors.length
+
+        const prev = bySource[adapter.name] ?? {
+          found: 0,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          errors: [] as string[],
+        }
+        bySource[adapter.name] = {
+          found: prev.found + ingest.found,
+          created: prev.created + ingest.created,
+          updated: prev.updated + ingest.updated,
+          skipped: prev.skipped + ingest.skipped,
+          errors: [...prev.errors, ...ingest.errors.slice(0, 10)].slice(0, 20),
+        }
+
+        if (adapter.name === 'google_places') {
+          const places = adapter as PlacesAdapter
+          if (places.lastStats?.queryYields?.length) {
+            await upsertQueryStats(admin, places.lastStats.queryYields)
+          }
         }
       }
 
@@ -369,15 +370,44 @@ export async function runSalesLeadDiscovery(
         admin,
         runId,
         {
-          progressPct: clampPct(range.end),
-          phase: `סיים ${SOURCE_LABEL_HE[adapter.name] ?? adapter.name}`,
-          currentSource: adapter.name,
+          progressPct: clampPct(cityEnd),
+          phase: `סיים ${city}`,
+          currentSource: null,
           found,
           created,
         },
         { found, created, updated, skipped, errors },
-        { segmentSlugs, bySource },
+        { segmentSlugs, cities, bySource },
       )
+    }
+
+    if (usedSources.size === 0) {
+      const msg =
+        'אין מקורות זמינים — הגדירו GOOGLE_PLACES_API_KEY או אפשרו OSM'
+      await admin
+        .from('sales_lead_discovery_runs')
+        .update({
+          status: 'failed',
+          error_message: msg,
+          finished_at: new Date().toISOString(),
+          details: { progressPct: 100, phase: 'נכשל', segmentSlugs, cities },
+        })
+        .eq('id', runId)
+      return {
+        runId,
+        status: 'failed',
+        city: cityLabel,
+        sources: [],
+        found: 0,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        errors: 1,
+        budget,
+        apiCallBudget,
+        errorMessage: msg,
+        bySource: {},
+      }
     }
 
     await admin
@@ -389,10 +419,11 @@ export async function runSalesLeadDiscovery(
         updated_count: updated,
         skipped_count: skipped,
         error_count: errors,
-        sources: adapters.map((a) => a.name),
+        sources: [...usedSources],
         details: {
           bySource,
           segmentSlugs,
+          cities,
           progressPct: 100,
           phase: 'הושלם',
           currentSource: null,
@@ -406,8 +437,8 @@ export async function runSalesLeadDiscovery(
     return {
       runId,
       status: 'completed',
-      city,
-      sources: adapters.map((a) => a.name),
+      city: cityLabel,
+      sources: [...usedSources],
       found,
       created,
       updated,
@@ -432,6 +463,7 @@ export async function runSalesLeadDiscovery(
         details: {
           bySource,
           segmentSlugs,
+          cities,
           progressPct: 100,
           phase: 'נכשל',
           currentSource: null,
@@ -445,8 +477,8 @@ export async function runSalesLeadDiscovery(
     return {
       runId,
       status: 'failed',
-      city,
-      sources: adapters.map((a) => a.name),
+      city: cityLabel,
+      sources: [...usedSources],
       found,
       created,
       updated,

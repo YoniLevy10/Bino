@@ -6,29 +6,35 @@
 
 export const DEFAULT_SALES_CITY = 'תל אביב'
 
-/** Daily city rotation across Israel (UTC day-of-year). */
+/**
+ * Focus geography: Jerusalem + Tel Aviv + Gush Dan / center.
+ * Peripheral cities (Eilat, Tiberias, …) wasted runs and returned 0 matches.
+ */
 export const ISRAEL_SALES_CITIES = [
   'תל אביב',
   'ירושלים',
-  'חיפה',
-  'באר שבע',
+  'רמת גן',
+  'גבעתיים',
+  'בני ברק',
+  'חולון',
+  'בת ים',
   'ראשון לציון',
   'פתח תקווה',
-  'נתניה',
-  'אשדוד',
-  'חולון',
-  'בני ברק',
-  'רמת גן',
-  'אשקלון',
-  'רחובות',
   'הרצליה',
+  'רעננה',
   'כפר סבא',
+  'הוד השרון',
+  'רמת השרון',
   'מודיעין',
-  'חדרה',
-  'נהריה',
-  'אילת',
-  'טבריה',
+  'רחובות',
+  'נס ציונה',
 ] as const
+
+/** Always include these anchors in every unscoped discovery run. */
+export const CORE_FOCUS_CITIES = ['תל אביב', 'ירושלים'] as const
+
+/** How many focus cities to scan per unscoped run (anchors + rotating center). */
+export const DISCOVERY_CITIES_PER_RUN = 5
 
 /**
  * Buyer segments that can pay for BINO and move north-star revenue.
@@ -109,13 +115,42 @@ export function getSalesCity(): string {
   return process.env.BINO_SALES_CITY?.trim() || DEFAULT_SALES_CITY
 }
 
-/** Rotate city by UTC day unless BINO_SALES_CITY is set. */
+/** Rotate a single focus city by UTC day unless BINO_SALES_CITY is set. */
 export function getSalesCityForToday(now = new Date()): string {
+  const cities = getSalesCitiesForRun(now)
+  return cities[0] ?? DEFAULT_SALES_CITY
+}
+
+/**
+ * Cities to scan in one unscoped run: Tel Aviv + Jerusalem anchors,
+ * plus rotating center/Gush Dan cities. Override with BINO_SALES_CITY
+ * (single) or BINO_SALES_CITIES (comma-separated).
+ */
+export function getSalesCitiesForRun(now = new Date()): string[] {
+  const multi = process.env.BINO_SALES_CITIES?.trim()
+  if (multi) {
+    return multi
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 8)
+  }
   const forced = process.env.BINO_SALES_CITY?.trim()
-  if (forced) return forced
+  if (forced) return [forced]
+
+  const pool = [...ISRAEL_SALES_CITIES]
   const start = Date.UTC(now.getUTCFullYear(), 0, 0)
   const day = Math.floor((now.getTime() - start) / 86_400_000)
-  return ISRAEL_SALES_CITIES[day % ISRAEL_SALES_CITIES.length]
+  const selected = new Set<string>([...CORE_FOCUS_CITIES])
+  const rotating = pool.filter(
+    (c) => !(CORE_FOCUS_CITIES as readonly string[]).includes(c),
+  )
+  const need = Math.max(0, DISCOVERY_CITIES_PER_RUN - selected.size)
+  for (let i = 0; i < need && rotating.length > 0; i++) {
+    selected.add(rotating[(day + i) % rotating.length])
+  }
+  // Stable order: list order (anchors first in ISRAEL_SALES_CITIES)
+  return pool.filter((c) => selected.has(c))
 }
 
 export function getSalesSegmentSlugs(): string[] {

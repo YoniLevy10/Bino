@@ -1,6 +1,7 @@
 import {
   CORE_SALES_SEGMENT_SLUGS,
   getSalesCity,
+  getSalesCitiesForRun,
   getSalesCityForToday,
 } from '@/lib/sales-leads/config'
 
@@ -30,50 +31,50 @@ export type CityGeoProfile = {
 }
 
 const CITY_COORDS: Record<string, { lat: number; lng: number; radius: number }> = {
-  'תל אביב': { lat: 32.0853, lng: 34.7818, radius: 14000 },
-  ירושלים: { lat: 31.7683, lng: 35.2137, radius: 14000 },
-  חיפה: { lat: 32.794, lng: 34.9896, radius: 12000 },
-  'באר שבע': { lat: 31.2518, lng: 34.7913, radius: 12000 },
-  'ראשון לציון': { lat: 31.973, lng: 34.7925, radius: 10000 },
-  'פתח תקווה': { lat: 32.084, lng: 34.8878, radius: 9000 },
-  נתניה: { lat: 32.3215, lng: 34.8532, radius: 10000 },
-  אשדוד: { lat: 31.8044, lng: 34.6553, radius: 10000 },
-  חולון: { lat: 32.0158, lng: 34.7874, radius: 8000 },
+  'תל אביב': { lat: 32.0853, lng: 34.7818, radius: 16000 },
+  ירושלים: { lat: 31.7683, lng: 35.2137, radius: 16000 },
+  'רמת גן': { lat: 32.0823, lng: 34.8144, radius: 8000 },
+  גבעתיים: { lat: 32.0723, lng: 34.8089, radius: 6000 },
   'בני ברק': { lat: 32.0849, lng: 34.8352, radius: 7000 },
-  'רמת גן': { lat: 32.0823, lng: 34.8144, radius: 7000 },
-  אשקלון: { lat: 31.6688, lng: 34.5743, radius: 9000 },
-  רחובות: { lat: 31.8928, lng: 34.8113, radius: 8000 },
-  הרצליה: { lat: 32.1624, lng: 34.8447, radius: 8000 },
+  חולון: { lat: 32.0158, lng: 34.7874, radius: 8000 },
+  'בת ים': { lat: 32.0167, lng: 34.75, radius: 7000 },
+  'ראשון לציון': { lat: 31.973, lng: 34.7925, radius: 11000 },
+  'פתח תקווה': { lat: 32.084, lng: 34.8878, radius: 10000 },
+  הרצליה: { lat: 32.1624, lng: 34.8447, radius: 9000 },
+  רעננה: { lat: 32.1848, lng: 34.8706, radius: 8000 },
   'כפר סבא': { lat: 32.1782, lng: 34.9076, radius: 8000 },
-  מודיעין: { lat: 31.897, lng: 35.0104, radius: 9000 },
-  חדרה: { lat: 32.434, lng: 34.9196, radius: 9000 },
-  נהריה: { lat: 33.0059, lng: 35.0941, radius: 8000 },
-  אילת: { lat: 29.5577, lng: 34.9519, radius: 10000 },
-  טבריה: { lat: 32.7922, lng: 35.5312, radius: 8000 },
+  'הוד השרון': { lat: 32.15, lng: 34.888, radius: 7000 },
+  'רמת השרון': { lat: 32.1461, lng: 34.8392, radius: 7000 },
+  מודיעין: { lat: 31.897, lng: 35.0104, radius: 10000 },
+  רחובות: { lat: 31.8928, lng: 34.8113, radius: 9000 },
+  'נס ציונה': { lat: 31.9293, lng: 34.7986, radius: 7000 },
 }
 
-export function getCityGeoProfile(city?: string | null): CityGeoProfile {
-  const c = (city ?? getSalesCity()).trim()
-  const known = CITY_COORDS[c]
-  const envLat = Number(process.env.BINO_SALES_CITY_LAT)
-  const envLng = Number(process.env.BINO_SALES_CITY_LNG)
-  const envRadius = Number(process.env.BINO_SALES_CITY_RADIUS_M)
-  const lat = known?.lat ?? (Number.isFinite(envLat) ? envLat : 32.0853)
-  const lng = known?.lng ?? (Number.isFinite(envLng) ? envLng : 34.7818)
-  const radius = known?.radius ?? (Number.isFinite(envRadius) && envRadius > 0 ? envRadius : 12000)
-  const delta = radius / 111_000
-  return {
-    city: c,
-    center: { lat, lng, radiusMeters: radius },
-    bbox: {
-      south: lat - delta,
-      west: lng - delta,
-      north: lat + delta,
-      east: lng + delta,
-    },
-    areas: [{ labelHe: c, labelEn: c, lat, lng, radiusMeters: radius }],
-  }
+/** Extra Places biases so Tel Aviv / Jerusalem runs cover the metro / center belt. */
+const CITY_EXTRA_AREAS: Record<string, DiscoverySearchArea[]> = {
+  'תל אביב': [
+    { labelHe: 'תל אביב מרכז', lat: 32.0853, lng: 34.7818, radiusMeters: 9000 },
+    { labelHe: 'רמת גן', lat: 32.0823, lng: 34.8144, radiusMeters: 7000 },
+    { labelHe: 'בני ברק', lat: 32.0849, lng: 34.8352, radiusMeters: 6000 },
+    { labelHe: 'חולון בת ים', lat: 32.016, lng: 34.77, radiusMeters: 8000 },
+    { labelHe: 'הרצליה רמת השרון', lat: 32.155, lng: 34.842, radiusMeters: 8000 },
+  ],
+  ירושלים: [
+    { labelHe: 'ירושלים מרכז', lat: 31.7683, lng: 35.2137, radiusMeters: 9000 },
+    { labelHe: 'ירושלים מערב', lat: 31.78, lng: 35.18, radiusMeters: 8000 },
+    { labelHe: 'מבשרת / הר חוצבים', lat: 31.8, lng: 35.15, radiusMeters: 7000 },
+  ],
+  'ראשון לציון': [
+    { labelHe: 'ראשון לציון', lat: 31.973, lng: 34.7925, radiusMeters: 9000 },
+    { labelHe: 'נס ציונה רחובות', lat: 31.91, lng: 34.805, radiusMeters: 9000 },
+  ],
+  'פתח תקווה': [
+    { labelHe: 'פתח תקווה', lat: 32.084, lng: 34.8878, radiusMeters: 9000 },
+    { labelHe: 'הוד השרון כפר סבא', lat: 32.165, lng: 34.9, radiusMeters: 9000 },
+  ],
 }
+
+const PROPERTY_OSM = ['office=property_management', 'office=estate_agent'] as const
 
 /**
  * Buyer-side discovery queries — organizations that feel maintenance pain
@@ -88,10 +89,11 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'ניהול ואחזקת מבנים',
       'חברת ניהול בתים משותפים',
       'שירותי ניהול בניינים',
+      'חברת ניהול ואחזקה',
     ],
     placesQueryEn: 'building management company',
-    placesQueriesEnExtra: ['property maintenance company Israel'],
-    osmFilters: ['office=property_management'],
+    placesQueriesEnExtra: ['property maintenance company Israel', 'building maintenance company Tel Aviv'],
+    osmFilters: [...PROPERTY_OSM],
     outreachAngleHe:
       'זיכרון תפעולי לבניינים — שיוך אוטומטי, SLA, תקלות חוזרות והוכחת חיסכון',
   },
@@ -103,10 +105,12 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'ניהול דירות להשקעה',
       'ניהול נדלן מניב',
       'property management',
+      'ניהול נכסים תל אביב',
+      'ניהול נכסים ירושלים',
     ],
     placesQueryEn: 'property management',
-    placesQueriesEnExtra: ['residential property manager'],
-    osmFilters: ['office=property_management'],
+    placesQueriesEnExtra: ['residential property manager', 'property management company Israel'],
+    osmFilters: [...PROPERTY_OSM],
     outreachAngleHe: 'תיק נכסים עם תקלות חוזרות — המלצת עובד/ספק והוכחת עלות לבניין',
   },
   {
@@ -117,10 +121,11 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'חברת facility',
       'אחזקת מתקנים',
       'ניהול תחזוקה מוסדית',
+      'חברת אחזקה מוסדית',
     ],
     placesQueryEn: 'facility management company',
     placesQueriesEnExtra: ['FM company Israel'],
-    osmFilters: ['office=company'],
+    osmFilters: [...PROPERTY_OSM],
     outreachAngleHe: 'מניעת כשלים ותחזית מערכות — מעבר מתיעוד עבודה להחלטות',
   },
   {
@@ -131,10 +136,11 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'חברת ניהול קונדו',
       'ניהול מתחם מגורים',
       'אחזקת מגדלים',
+      'ניהול מגדלים תל אביב',
     ],
     placesQueryEn: 'residential tower management',
     placesQueriesEnExtra: ['condo management company'],
-    osmFilters: [],
+    osmFilters: [...PROPERTY_OSM],
     outreachAngleHe: 'תקשורת דיירים + SLA במגדל — בלי התערבות מנהל בכל תקלה',
   },
   {
@@ -145,10 +151,12 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'שירותי ועד בית',
       'ניהול בתים משותפים',
       'גזברות ועד בית',
+      'ניהול ועדי בתים תל אביב',
+      'ניהול ועדי בתים ירושלים',
     ],
     placesQueryEn: 'condo association management',
     placesQueriesEnExtra: ['homeowners association management'],
-    osmFilters: [],
+    osmFilters: [...PROPERTY_OSM],
     outreachAngleHe: 'ועדים מרובים במערכת אחת — זמן עד שיוך ופתרון כמדד מכירה',
   },
   {
@@ -162,7 +170,7 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
     ],
     placesQueryEn: 'public housing corporation',
     placesQueriesEnExtra: ['municipal housing company'],
-    osmFilters: ['office=government'],
+    osmFilters: ['office=government', ...PROPERTY_OSM],
     outreachAngleHe: 'פורטפוליו גדול — עלות תחזוקה לבניין וזיהוי תקלות חוזרות',
   },
   {
@@ -173,6 +181,8 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'דיור סטודנטים',
       'אחזקת מעונות',
       'student dormitory management',
+      'מעונות סטודנטים תל אביב',
+      'מעונות סטודנטים ירושלים',
     ],
     placesQueryEn: 'student housing management',
     placesQueriesEnExtra: ['student dorms Israel'],
@@ -187,6 +197,8 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'אחזקת דיור מוגן',
       'רשת דיור מוגן',
       'assisted living management',
+      'דיור מוגן תל אביב',
+      'דיור מוגן ירושלים',
     ],
     placesQueryEn: 'assisted living management',
     placesQueriesEnExtra: ['senior housing facility'],
@@ -204,7 +216,7 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
     ],
     placesQueryEn: 'real estate developer property management',
     placesQueriesEnExtra: ['post handover building management'],
-    osmFilters: ['office=estate_agent'],
+    osmFilters: [...PROPERTY_OSM],
     outreachAngleHe: 'אחרי מסירה — זיכרון תפעולי שמוכיח חיסכון ליזם/רוכשים',
   },
   {
@@ -215,10 +227,11 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'אחזקת קניון',
       'ניהול מתחם עסקים',
       'business park management',
+      'ניהול מתחם משרדים הרצליה',
     ],
     placesQueryEn: 'office park management',
     placesQueriesEnExtra: ['commercial property management'],
-    osmFilters: ['office=coworking'],
+    osmFilters: ['office=coworking', ...PROPERTY_OSM],
     outreachAngleHe: 'מתחמים מסחריים — ספקים, עלויות, ומניעת כשלים חוזרים',
   },
   {
@@ -229,6 +242,7 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
       'ניהול דירות Airbnb',
       'חברת ניהול יחידות אירוח',
       'short term rental management',
+      'ניהול דירות נופש תל אביב',
     ],
     placesQueryEn: 'aparthotel management',
     placesQueriesEnExtra: ['vacation rental property management'],
@@ -250,6 +264,33 @@ export const DISCOVERY_SEGMENT_MAP: DiscoverySegmentMapping[] = [
     outreachAngleHe: 'נכסי קהילה מרובים — תור עבודה חכם בלי עומס על המזכירות',
   },
 ]
+
+export function getCityGeoProfile(city?: string | null): CityGeoProfile {
+  const c = (city ?? getSalesCity()).trim()
+  const known = CITY_COORDS[c]
+  const envLat = Number(process.env.BINO_SALES_CITY_LAT)
+  const envLng = Number(process.env.BINO_SALES_CITY_LNG)
+  const envRadius = Number(process.env.BINO_SALES_CITY_RADIUS_M)
+  const lat = known?.lat ?? (Number.isFinite(envLat) ? envLat : 32.0853)
+  const lng = known?.lng ?? (Number.isFinite(envLng) ? envLng : 34.7818)
+  const radius = known?.radius ?? (Number.isFinite(envRadius) && envRadius > 0 ? envRadius : 12000)
+  const delta = radius / 111_000
+  const extras = CITY_EXTRA_AREAS[c]
+  const areas: DiscoverySearchArea[] = extras?.length
+    ? extras
+    : [{ labelHe: c, labelEn: c, lat, lng, radiusMeters: radius }]
+  return {
+    city: c,
+    center: { lat, lng, radiusMeters: radius },
+    bbox: {
+      south: lat - delta,
+      west: lng - delta,
+      north: lat + delta,
+      east: lng + delta,
+    },
+    areas,
+  }
+}
 
 export function placesQueriesFor(mapping: DiscoverySegmentMapping): string[] {
   return [
@@ -303,6 +344,10 @@ export function placesSearchJobsFor(
 
 export function getDiscoveryCity(): string {
   return getSalesCityForToday()
+}
+
+export function getDiscoveryCities(): string[] {
+  return getSalesCitiesForRun()
 }
 
 export function getDiscoveryMappingsForSlugs(slugs: string[]): DiscoverySegmentMapping[] {

@@ -44,7 +44,7 @@
 | Google Places API (New) | `GOOGLE_PLACES_API_KEY` |
 | OpenStreetMap Overpass | חינם |
 
-עיר: רוטציה יומית על 20 ערים בישראל (`ISRAEL_SALES_CITIES`), או כפייה ב־`BINO_SALES_CITY`.
+גיאוגרפיה: **ירושלים + תל אביב + המרכז/גוש דן** (`ISRAEL_SALES_CITIES`). כל ריצה בלי עיר כפויה סורקת כמה ערים יחד (תמיד ת״א+ירושלים + ערים מתחלפות מהמרכז). כפייה: `BINO_SALES_CITY` (עיר אחת) או `BINO_SALES_CITIES` (רשימה מופרדת בפסיקים).
 
 ## רכיבים
 
@@ -63,7 +63,8 @@
 | `GOOGLE_PLACES_API_KEY` | חובה לגילוי Places |
 | `CRON_SECRET` | אימות הקרון |
 | `ADMIN_SETUP_SECRET` | Superadmin API |
-| `BINO_SALES_CITY` | כפיית עיר (אופציונלי) |
+| `BINO_SALES_CITY` | כפיית עיר אחת (אופציונלי) |
+| `BINO_SALES_CITIES` | רשימת ערים לריצה (אופציונלי, עדיף על עיר אחת) |
 | `BINO_SALES_SEGMENT_SLUGS` | רשימת סגמנטים מופרדת בפסיקים |
 | `BINO_SALES_DISCOVERY_API_CALL_BUDGET` | תקציב קריאות Places (ברירת מחדל 120) |
 

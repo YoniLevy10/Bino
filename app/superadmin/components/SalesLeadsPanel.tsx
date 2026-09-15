@@ -401,7 +401,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           <div>
             <h2>מנוע לידים · מכירת BINO</h2>
             <p className="sa-muted">
-              סריקה יומית בישראל (Places + OSM) · ICP רחב ליעד ₪100K MRR · פנייה מהירה ב-WhatsApp
+              מיקוד: ירושלים · תל אביב · גוש דן/מרכז · Places + OSM · יעד ₪100K MRR
             </p>
           </div>
           <div className="sa-leads-hero-actions">
