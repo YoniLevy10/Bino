@@ -115,7 +115,7 @@ export function getSalesCity(): string {
   return process.env.BINO_SALES_CITY?.trim() || DEFAULT_SALES_CITY
 }
 
-/** Rotate a single focus city by UTC day unless BINO_SALES_CITY is set. */
+/** Primary city label for a run (first of getSalesCitiesForRun — usually Tel Aviv anchor). */
 export function getSalesCityForToday(now = new Date()): string {
   const cities = getSalesCitiesForRun(now)
   return cities[0] ?? DEFAULT_SALES_CITY

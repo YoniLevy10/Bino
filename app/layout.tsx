@@ -44,6 +44,11 @@ export const metadata: Metadata = {
   keywords: ["Bino", "Building Intelligence", "property management", "maintenance", "tickets", "project management", "real-time"],
   authors: [{ name: "Yoni Levy" }],
   creator: "Yoni Levy",
+  // Search Console: DNS TXT is not available on *.vercel.app (Vercel owns DNS).
+  // Use HTML-tag verification after deploy.
+  verification: {
+    google: "KWe0L5esKCrG5HbUBOUB-EJlZcIylSsilC8XkNurxjg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
