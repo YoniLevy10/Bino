@@ -18,7 +18,7 @@ import {
   defaultOutreachMessage,
   outreachVariantsForLead,
 } from '@/lib/sales-leads/outreach-templates'
-import { formatPhoneLocalIl, openWhatsAppUrl, whatsappLink } from '@/lib/sales-leads/phone'
+import { formatPhoneLocalIl, whatsappLink } from '@/lib/sales-leads/phone'
 import { LEAD_STATUSES, type LeadStatus, type SalesLead } from '@/lib/sales-leads/types'
 
 type Counters = {
@@ -358,26 +358,13 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     }
   }
 
-  async function openWhatsapp(lead: SalesLead) {
-    const variants = outreachVariantsForLead(lead)
-    const idx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
-    const { variant, body } = defaultOutreachMessage(lead, variants[idx]?.id)
+  async function onWhatsappOpened(lead: SalesLead, variantId: string) {
     const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
-    const href = whatsappLink(phoneRaw, body)
-    if (!href) {
-      setError('אין מספר WhatsApp לליד הזה')
-      return
-    }
-
     const localPhone =
       formatPhoneLocalIl(phoneRaw) ||
       formatPhoneLocalIl(lead.phoneNormalized) ||
       phoneRaw?.trim() ||
       ''
-
-    // Open first, while still in the user-gesture stack. Awaiting clipboard
-    // before open causes iOS/Android to drop the deep-linked phone.
-    openWhatsAppUrl(href)
 
     try {
       if (localPhone && navigator.clipboard?.writeText) {
@@ -392,10 +379,11 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         ? `נפתח צ'אט WhatsApp · המספר ${localPhone} הועתק ללוח`
         : 'נפתח צ׳אט WhatsApp',
     )
-    setWaVariantIdx((prev) => ({
-      ...prev,
-      [lead.id]: (idx + 1) % Math.max(1, variants.length),
-    }))
+    setWaVariantIdx((prev) => {
+      const variants = outreachVariantsForLead(lead)
+      const idx = (prev[lead.id] ?? 0) % Math.max(1, variants.length)
+      return { ...prev, [lead.id]: (idx + 1) % Math.max(1, variants.length) }
+    })
     setBusyId(lead.id)
     try {
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
@@ -403,7 +391,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'whatsapp_opened',
-          outreachVariant: variant.id,
+          outreachVariant: variantId,
         }),
       })
       const json = (await res.json()) as { lead?: SalesLead }
@@ -772,17 +760,19 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
 
       <div className="sa-leads-list">
         {ranked.map((lead, idx) => {
-          const canWa = Boolean(
-            whatsappLink(lead.whatsappPhone || lead.phone || lead.phoneNormalized),
-          )
+          const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
+          const variants = outreachVariantsForLead(lead)
+          const nextVariantIdx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
+          const nextVariant = variants[nextVariantIdx]
+          const nextVariantLabel = nextVariant?.labelHe
+          const { body: waBody } = defaultOutreachMessage(lead, nextVariant?.id)
+          const waHref = whatsappLink(phoneRaw, waBody)
+          const canWa = Boolean(waHref)
           const score = lead.fitScore
           const rating = enrichmentNum(lead, 'rating')
           const reviewCount = enrichmentNum(lead, 'reviewCount')
           const maps = mapsHref(lead)
           const nextContactLabel = formatNextContact(lead.nextContactAt)
-          const variants = outreachVariantsForLead(lead)
-          const nextVariantIdx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
-          const nextVariantLabel = variants[nextVariantIdx]?.labelHe
           const displayName = lead.businessName || lead.name
           return (
             <article
@@ -882,23 +872,24 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
               </div>
 
               <div className="sa-lead-actions">
-                {canWa ? (
-                  <button
-                    type="button"
+                {canWa && waHref && nextVariant ? (
+                  <a
                     className="sa-btn sa-btn-primary sa-lead-wa"
-                    disabled={busyId === lead.id}
-                    onClick={() => void openWhatsapp(lead)}
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => void onWhatsappOpened(lead, nextVariant.id)}
                     title={
                       nextVariantLabel
-                        ? `וריאנט הבא: ${nextVariantLabel} (מחליף בכל פתיחה)`
-                        : undefined
+                        ? `וריאנט: ${nextVariantLabel} (מחליף בכל פתיחה)`
+                        : 'פתיחת WhatsApp עם הודעה מוכנה'
                     }
                   >
                     WhatsApp
                     {nextVariantLabel ? (
                       <span className="sa-lead-wa-variant"> · {nextVariantLabel}</span>
                     ) : null}
-                  </button>
+                  </a>
                 ) : (
                   <button type="button" className="sa-btn sa-btn-ghost" disabled>
                     אין WhatsApp

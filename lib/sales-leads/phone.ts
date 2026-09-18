@@ -39,26 +39,38 @@ export function classifyPhoneKind(raw: string | null | undefined): PhoneKind {
 }
 
 /**
- * Deep-link into a WhatsApp chat with a specific phone.
+ * Deep-link into a WhatsApp chat with phone + optional prefilled text.
+ *
+ * Use encodeURIComponent (spaces as %20). URLSearchParams uses "+" for spaces,
+ * and WhatsApp often opens the chat without the draft text when "+" is used.
+ *
  * Prefer api.whatsapp.com/send?phone= — more reliable than wa.me on iOS/PWA
  * where window.open(wa.me/…) often opens WhatsApp without the contact.
  */
 export function whatsappLink(phone: string | null | undefined, text?: string): string | null {
   const n = normalizePhone(phone)
   if (!n) return null
-  const params = new URLSearchParams()
-  params.set('phone', n)
-  if (text?.trim()) params.set('text', text.trim())
-  return `https://api.whatsapp.com/send?${params.toString()}`
+  if (text?.trim()) {
+    return `https://api.whatsapp.com/send?phone=${n}&text=${encodeURIComponent(text.trim())}`
+  }
+  return `https://api.whatsapp.com/send?phone=${n}`
 }
 
-/** Open WhatsApp via a real <a> click (mobile-safe). Returns false if no href. */
+/**
+ * Open WhatsApp via a real <a> click (mobile-safe).
+ * Avoid target=_blank on touch — same-tab handoff keeps phone+text on iOS.
+ */
 export function openWhatsAppUrl(href: string): boolean {
   if (typeof document === 'undefined' || !href) return false
   const a = document.createElement('a')
   a.href = href
-  a.target = '_blank'
-  a.rel = 'noopener noreferrer'
+  const touch =
+    typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  if (!touch) {
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+  }
   a.setAttribute('aria-hidden', 'true')
   document.body.appendChild(a)
   a.click()

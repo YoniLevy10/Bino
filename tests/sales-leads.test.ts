@@ -56,11 +56,12 @@ describe('sales-leads phone', () => {
     expect(normalizePhone('050-1234567')).toBe('972501234567')
   })
 
-  it('builds api.whatsapp.com deep link with phone + text', () => {
-    const href = whatsappLink('050-1234567', 'שלום')
+  it('builds api.whatsapp.com deep link with phone + encodeURIComponent text', () => {
+    const href = whatsappLink('050-1234567', 'שלום עולם')
     expect(href).toMatch(/^https:\/\/api\.whatsapp\.com\/send\?/)
     expect(href).toContain('phone=972501234567')
-    expect(href).toContain('text=')
+    expect(href).toContain(`text=${encodeURIComponent('שלום עולם')}`)
+    expect(href).not.toMatch(/text=[^&]*\+/)
   })
 
   it('formats local IL number for clipboard', () => {
