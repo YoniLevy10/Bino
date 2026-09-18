@@ -44,14 +44,15 @@ function lead(partial: Partial<SalesLead>): SalesLead {
 }
 
 describe('outreachVariantsForLead', () => {
-  it('opens warm and does not push a demo call on first touch', () => {
+  it('is pain-led, invites chat, and does not push a demo call', () => {
     const variants = outreachVariantsForLead(
       lead({ segmentSlug: 'vaad_bayit_mgmt' })
     )
     expect(variants.length).toBeGreaterThan(0)
     for (const v of variants) {
       expect(v.body).toMatch(/BINO/)
-      expect(v.body).toMatch(/תענו כאן/)
+      expect(v.body).toMatch(/תענו|שיחה/)
+      expect(v.body).toMatch(/תקלה|שיוך|SLA|ספק|חוזר/)
       expect(v.body).not.toMatch(/15 דק/)
       expect(v.body).not.toMatch(/שיחת הדגמה/)
       expect(v.body).not.toMatch(/מדד מכירה/)
