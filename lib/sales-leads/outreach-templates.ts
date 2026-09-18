@@ -1,10 +1,7 @@
 /**
- * Segment-specific WhatsApp opening message variants for manual outreach.
- * Cold first touch: warm + pain-led + invite to open a chat.
- * Phone / meeting only after interest — never auto-sent.
+ * Personal WhatsApp opening messages for manual sales outreach.
+ * Cold first touch in Yoni's voice — never auto-sent.
  * A/B tracked via sales_lead_events action=outreach_variant.
- *
- * `outreachAngle` stays in the superadmin UI for the seller; not pasted raw.
  */
 
 import type { SalesLead } from '@/lib/sales-leads/types'
@@ -15,96 +12,74 @@ export type OutreachVariant = {
   body: string
 }
 
-function who(lead: SalesLead): string {
-  return lead.businessName || lead.name
+function company(lead: SalesLead): string {
+  return (lead.businessName || lead.name || '').trim() || 'החברה'
 }
 
-function cityBit(lead: SalesLead): string {
-  return lead.city ? ` ב${lead.city}` : ''
+/** Short greeting name — company, trimmed of legal suffixes when possible. */
+function greetingName(lead: SalesLead): string {
+  const raw = company(lead)
+  return raw
+    .replace(/\s+(בע["״']?מ\.?|ltd\.?|llc\.?)$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim() || 'היי'
 }
 
-/** Invite to open a conversation — not a demo/call ask yet. */
+/** How we "found" them — city / company, not raw source jargon. */
+function foundVia(lead: SalesLead): string {
+  const city = (lead.city || lead.searchCity || '').trim()
+  const co = company(lead)
+  const slug = lead.segmentSlug || ''
+
+  if (slug === 'vaad_bayit_mgmt') {
+    return city ? `חברות ניהול ועדי בתים ב${city}` : 'חברות ניהול ועדי בתים'
+  }
+  if (slug === 'facility_mgmt') {
+    return city ? `חברות FM / אחזקה ב${city}` : 'חברות FM ואחזקה'
+  }
+  if (slug === 'housing_corp') {
+    return city ? `חברות דיור ב${city}` : 'חברות דיור'
+  }
+  if (city) return `חברות ניהול ואחזקה ב${city}`
+  return co
+}
+
+const CORE_PITCH = `פיתחתי את BINO – מערכת לחברות ניהול ואחזקה שמרכזת במקום אחד את כל העבודה מול הבניינים: תקלות ודיווחים מהדיירים, עובדים, מעקב טיפול, דוחות וניהול שוטף.
+
+המטרה היא בעיקר להוריד את כל הבלאגן של וואטסאפ, טלפונים ואקסלים ולתת למנהל תמונה ברורה של מה קורה בכל בניין.
+
+אנחנו כבר עובדים עם חברת ניהול בפועל, ואני כרגע מחפש עוד כמה חברות לבדוק איתן התאמה.`
+
 const CLOSE =
-  '\n\nאם זה מוכר גם אצלכם — תענו «כן» או «מעניין», ואפתח שיחה קצרה ממש כאן.'
+  'אם רלוונטי לך, אשמח להראות לך ב-10 דקות איך זה עובד ולשמוע איך אתם מנהלים את זה היום.'
+
+function personalOpen(lead: SalesLead): string {
+  const name = greetingName(lead)
+  const via = foundVia(lead)
+  return `היי ${name}, מה נשמע?\nאני יוני, הגעתי אליך דרך ${via}.`
+}
 
 export function outreachVariantsForLead(lead: SalesLead): OutreachVariant[] {
-  const w = who(lead)
-  const city = cityBit(lead)
-  const slug = lead.segmentSlug || 'building_mgmt'
+  const open = personalOpen(lead)
+  const w = company(lead)
 
-  const bySegment: Record<string, OutreachVariant[]> = {
-    vaad_bayit_mgmt: [
-      {
-        id: 'vaad_a',
-        labelHe: 'כל תקלה עליי',
-        body: `היי, כאן יוני מ-BINO 🙂\nל${w}${city}: כמה מהיום שלכם עדיין הולך על «מי מטפל בזה?» — כשכל תקלה חוזרת אליכם, גם כשיש עובד או ספק?\n\nBINO בונה זיכרון תפעולי לכל בניין: ממליץ אוטומטית למי לשייך, מזהה תקלות חוזרות, ומראה כמה זמן המנהל חוסך.${CLOSE}`,
-      },
-      {
-        id: 'vaad_b',
-        labelHe: 'תקלות חוזרות',
-        body: `שלום, כאן יוני מ-BINO.\nשאלה שמנהלי ועדים מכירים טוב מדי: אותו בניין, אותה תקלה — שוב.\n\nאנחנו עוזרים ל${w} לקצר זמן עד שיוך וזמן עד פתרון, ולהוריד את שיעור התקלות שחוזרות על עצמן — בלי שמנהל ייכנס לכל שיחה.${CLOSE}`,
-      },
-      {
-        id: 'vaad_c',
-        labelHe: 'כמה ועדים = עומס',
-        body: `היי מ-BINO 🙂\nכשמנהלים כמה ועדים${city}, הכאב היומיומי הוא אותו דבר: וואטסאפים, טלפונים, ותקלות שחוזרות — בלי מקום אחד שזוכר מה כבר ניסו בכל בניין.\n\nBINO מחזיק את הזיכרון הזה בשביל ${w} — וממליץ מי לשייך הכי נכון, מהר.${CLOSE}`,
-      },
-    ],
-    facility_mgmt: [
-      {
-        id: 'fm_a',
-        labelHe: 'כיבוי שריפות',
-        body: `היי, כאן יוני מ-BINO 🙂\nל${w}${city}: כמה מהשבוע הולך על כיבוי שריפות — במקום לתפוס מערכת לפני שהיא נופלת?\n\nBINO לומד מהיסטוריית התקלות והציוד, מתריע מוקדם על סיכון SLA, וממליץ מי לספק/עובד לשלוח.${CLOSE}`,
-      },
-      {
-        id: 'fm_b',
-        labelHe: 'ספקים בראש',
-        body: `שלום מ-BINO.\nהכאב הקלאסי ב-FM: הידע על ספקים, מחירים ותקלות חוזרות יושב בראש של אדם אחד — וכשהוא עמוס, הכל נתקע.\n\nל${w} אנחנו בונים זיכרון אחד למתקן: מי תיקן, כמה עלה, ומה כדאי לנסות בפעם הבאה.${CLOSE}`,
-      },
-      {
-        id: 'fm_c',
-        labelHe: 'SLA בלחץ',
-        body: `היי, כאן יוני מ-BINO.\nחריגת SLA כואבת פעמיים — ללקוח ולצוות.\n${w}${city}: במקום לגלות אחרי הפספוס, BINO מתריע מראש ומקצר זמן עד שיוך ופתרון.${CLOSE}`,
-      },
-    ],
-    housing_corp: [
-      {
-        id: 'hc_a',
-        labelHe: 'עלות לבניין',
-        body: `היי, כאן יוני מ-BINO 🙂\nלחברות דיור כמו ${w} הכאב היומיומי ברור: לא יודעים באמת מה עולה כל בניין, ואיפה אותן תקלות חוזרות שוב ושוב.\n\nBINO מראה עלות תחזוקה לבניין + שיעור תקלות חוזרות — וממליץ מי מטפל הכי נכון.${CLOSE}`,
-      },
-      {
-        id: 'hc_b',
-        labelHe: 'תיק גדול בלי זיכרון',
-        body: `שלום מ-BINO.\n${w}${city} — תיק גדול בלי זיכרון תפעולי אחיד זה אקסלים, ניחושים, ואותן טעויות שוב.\n\nאנחנו בונים זיכרון לכל נכס: מה נכשל, מי תיקן, כמה זמן לקח — כדי לקצר פתרון ולהוכיח חיסכון.${CLOSE}`,
-      },
-      {
-        id: 'hc_c',
-        labelHe: 'זמן עד פתרון',
-        body: `היי, כאן יוני מ-BINO.\nכשהפורטפוליו גדול, כל יום בלי שיוך מהיר עולה כסף ומוניטין.\nל${w}: BINO מקצר זמן עד שיוך וזמן עד פתרון, ומזהה מראש איפה הכשלים חוזרים.${CLOSE}`,
-      },
-    ],
-  }
-
-  const generic: OutreachVariant[] = [
+  return [
     {
-      id: 'gen_a',
-      labelHe: 'מי מטפל בזה',
-      body: `היי, כאן יוני מ-BINO 🙂\nל${w}${city}: כמה מהיום הולך על «מי מטפל בזה?» — כשכל תקלה חוזרת למנהל, גם כשיש עובד או ספק?\n\nBINO בונה זיכרון תפעולי חכם לכל בניין: ממליץ אוטומטית למי לשייך, מזהה תקלות חוזרות, ומוכיח כמה זמן וכסף נחסכו.${CLOSE}`,
+      id: 'personal_a',
+      labelHe: 'אישי · בלאגן יומיומי',
+      body: `${open}\n\n${CORE_PITCH}\n\n${CLOSE}`,
     },
     {
-      id: 'gen_b',
-      labelHe: 'לא עוד מערכת תקלות',
-      body: `שלום, כאן יוני מ-BINO.\n${w} — אנחנו לא עוד מערכת שרק מתעדת תקלות.\nאנחנו לומדים מההיסטוריה של הבניין ומקבלים החלטות בשבילכם: מי מטפל, מתי יש סיכון SLA, ואיפה חוזר אותו כשל.${CLOSE}`,
+      id: 'personal_b',
+      labelHe: 'אישי · מי מטפל',
+      body: `${open}\n\nפיתחתי את BINO – מערכת לחברות ניהול ואחזקה שמרכזת במקום אחד את כל העבודה מול הבניינים: תקלות מהדיירים, שיוך לעובדים/ספקים, מעקב טיפול ודוחות.\n\nהכאב היומיומי שאני שומע שוב ושוב אצל חברות כמו ${w}: כל תקלה חוזרת למנהל, וואטסאפים בלי סוף, ואף אחד לא זוכר מה כבר ניסו בכל בניין.\n\nאנחנו כבר עובדים עם חברת ניהול בפועל, ואני מחפש עוד כמה חברות לבדוק איתן התאמה.\n\n${CLOSE}`,
     },
     {
-      id: 'gen_c',
-      labelHe: 'כאב יומיומי',
-      body: `היי מ-BINO 🙂\nהכאב היומיומי בחברות ניהול כמו ${w}${city}: זמן עד שיוך ארוך, תקלות שחוזרות, ומנהל שנכנס לכל שיחה.\n\nBINO הופך את זה לזיכרון חכם + המלצות אוטומטיות — כדי שיותר תקלות ייסגרו בלי התערבות מנהל.${CLOSE}`,
+      id: 'personal_c',
+      labelHe: 'אישי · תקלות חוזרות',
+      body: `${open}\n\nפיתחתי את BINO כדי שחברות ניהול ואחזקה יוכלו לראות מה קורה בכל בניין במקום אחד — בלי לרדוף אחרי וואטסאפ, טלפונים ואקסלים.\n\nבמיוחד כשאותן תקלות חוזרות, או כשאין זיכרון מי תיקן ומה עלה.\n\nאנחנו כבר עובדים עם חברת ניהול בפועל, ואני כרגע מחפש עוד כמה חברות לבדוק איתן התאמה.\n\n${CLOSE}`,
     },
   ]
-
-  return bySegment[slug] ?? generic
 }
 
 export function defaultOutreachMessage(lead: SalesLead, variantId?: string | null): {

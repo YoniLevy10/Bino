@@ -44,27 +44,39 @@ function lead(partial: Partial<SalesLead>): SalesLead {
 }
 
 describe('outreachVariantsForLead', () => {
-  it('is pain-led, invites chat, and does not push a demo call', () => {
-    const variants = outreachVariantsForLead(
-      lead({ segmentSlug: 'vaad_bayit_mgmt' })
+  it('matches the personal founder-voice template', () => {
+    const { body } = defaultOutreachMessage(
+      lead({
+        businessName: 'ניהול בניינים אבי',
+        city: 'רמת גן',
+        segmentSlug: 'vaad_bayit_mgmt',
+      })
     )
-    expect(variants.length).toBeGreaterThan(0)
+    expect(body).toContain('היי ניהול בניינים אבי, מה נשמע?')
+    expect(body).toContain('אני יוני, הגעתי אליך דרך חברות ניהול ועדי בתים ברמת גן.')
+    expect(body).toContain('פיתחתי את BINO')
+    expect(body).toContain('בלאגן של וואטסאפ, טלפונים ואקסלים')
+    expect(body).toContain('עובדים עם חברת ניהול בפועל')
+    expect(body).toContain('ב-10 דקות')
+    expect(body).toContain('איך אתם מנהלים את זה היום')
+  })
+
+  it('keeps three personal A/B variants', () => {
+    const variants = outreachVariantsForLead(lead({}))
+    expect(variants.map((v) => v.id)).toEqual([
+      'personal_a',
+      'personal_b',
+      'personal_c',
+    ])
     for (const v of variants) {
-      expect(v.body).toMatch(/BINO/)
-      expect(v.body).toMatch(/תענו|שיחה/)
-      expect(v.body).toMatch(/תקלה|שיוך|SLA|ספק|חוזר/)
-      expect(v.body).not.toMatch(/15 דק/)
-      expect(v.body).not.toMatch(/שיחת הדגמה/)
-      expect(v.body).not.toMatch(/מדד מכירה/)
+      expect(v.body).toMatch(/אני יוני/)
+      expect(v.body).toMatch(/10 דקות/)
     }
   })
 
   it('picks a requested variant id', () => {
-    const { variant, body } = defaultOutreachMessage(
-      lead({ name: 'FM', businessName: 'FM', segmentSlug: 'facility_mgmt' }),
-      'fm_b'
-    )
-    expect(variant.id).toBe('fm_b')
-    expect(body).toContain('ספקים')
+    const { variant, body } = defaultOutreachMessage(lead({}), 'personal_b')
+    expect(variant.id).toBe('personal_b')
+    expect(body).toContain('כל תקלה חוזרת למנהל')
   })
 })
