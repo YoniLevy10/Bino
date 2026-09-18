@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true, dueToday: 0, notified: false })
     }
 
+    const appUrl = getPublicAppUrl()
     const body =
       `מכירות בינו\n` +
       `לידים למעקב היום: ${dueToday}\n` +
