@@ -1,8 +1,12 @@
 import { ImageResponse } from 'next/og'
+import { satoriVisualRtl } from '@/lib/satori-rtl'
 
 export const alt = 'BINO — זיכרון תפעולי חכם לבניינים'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
+
+const LINE_HE = 'זיכרון תפעולי חכם לכל בניין'
+const SUB_HE = 'לומדת · מחליטה · מונעת כשלים · מוכיחה חיסכון'
 
 async function loadHeebo(): Promise<ArrayBuffer | null> {
   try {
@@ -29,6 +33,7 @@ export default async function OpenGraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-end',
+          alignItems: 'flex-end',
           padding: '64px 72px',
           background:
             'linear-gradient(165deg, #0b1220 0%, #123a7a 48%, #0066ff 100%)',
@@ -50,8 +55,10 @@ export default async function OpenGraphImage() {
           style={{
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'flex-end',
             gap: 18,
             maxWidth: 900,
+            textAlign: 'right',
           }}
         >
           <div
@@ -71,9 +78,10 @@ export default async function OpenGraphImage() {
               lineHeight: 1.25,
               letterSpacing: '-0.02em',
               maxWidth: 760,
+              textAlign: 'right',
             }}
           >
-            זיכרון תפעולי חכם לכל בניין
+            {satoriVisualRtl(LINE_HE)}
           </div>
           <div
             style={{
@@ -82,9 +90,10 @@ export default async function OpenGraphImage() {
               opacity: 0.9,
               lineHeight: 1.4,
               maxWidth: 720,
+              textAlign: 'right',
             }}
           >
-            לומדת · מחליטה · מונעת כשלים · מוכיחה חיסכון
+            {satoriVisualRtl(SUB_HE)}
           </div>
         </div>
       </div>

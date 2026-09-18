@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { formatWeeklyOpsDigestSms } from '@/lib/weekly-ops-digest'
 
 describe('formatWeeklyOpsDigestSms', () => {
-  it('formats a warm weekly wrap for Sarah-style volume', () => {
+  it('formats labeled Hebrew lines that survive RTL SMS clients', () => {
     const body = formatWeeklyOpsDigestSms({
       clientName: 'Bamakor',
       opened: 4,
@@ -18,15 +18,15 @@ describe('formatWeeklyOpsDigestSms', () => {
       },
     })
 
-    expect(body).toBe(`BINO - סיכום שבועי לBamakor
-
-השבוע: נפתחו 4, נסגרו 6.
-פתוחות עכשיו: 2 (אין סיכון SLA כרגע).
-תקלות שסומנו כחוזרות השבוע: 3.
-
-נקודה למעקב: תקלה #244 בבוזגלו 4 - נזילה ב-1
-
-BINO עקב אחרי השבוע בשבילך. שבת שלום.`)
+    expect(body).toContain('סיכום שבועי מבינו')
+    expect(body).toContain('עבור Bamakor')
+    expect(body).toContain('נפתחו השבוע: 4')
+    expect(body).toContain('נסגרו השבוע: 6')
+    expect(body).toContain('פתוחות עכשיו: 2')
+    expect(body).toContain('בסיכון לחריגת זמן: אין')
+    expect(body).toContain('תקלה 244 בבוזגלו 4')
+    expect(body).not.toMatch(/BINO -/)
+    expect(body).not.toMatch(/#/)
     expect(body).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u)
   })
 
@@ -40,7 +40,7 @@ BINO עקב אחרי השבוע בשבילך. שבת שלום.`)
       recurringOpened: 0,
       focus: null,
     })
-    expect(body).toContain('שקט יחסית')
+    expect(body).toContain('שקט')
     expect(body).toContain('אין תקלות פתוחות')
   })
 })

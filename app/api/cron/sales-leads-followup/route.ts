@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true, dueToday: 0, notified: false })
     }
 
-    const appUrl = getPublicAppUrl()
-    const link = appUrl ? `${appUrl}/superadmin` : '/superadmin'
-    const body = `BINO מכירות: ${dueToday} לידים ממתינים למעקב היום. ${link}`
+    const body =
+      `מכירות בינו\n` +
+      `לידים למעקב היום: ${dueToday}\n` +
+      (appUrl ? `מסך לידים: ${appUrl}/superadmin` : 'מסך לידים: /superadmin')
 
     await sendManagerSMS(OPS_PHONE, body, null, null)
 
