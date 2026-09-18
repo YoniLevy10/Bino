@@ -1,9 +1,12 @@
 /**
  * Segment-specific WhatsApp opening message variants for manual outreach.
+ * Cold first touch only — warm tone; phone/meeting come after interest.
  * A/B tracked via sales_lead_events action=outreach_variant — never auto-sent.
+ *
+ * Note: `outreachAngle` stays in the superadmin UI for the seller; it is NOT
+ * pasted into the WhatsApp body (too jargon-y for a cold open).
  */
 
-import { outreachAngleForSegment } from '@/lib/sales-leads/discovery-mapping'
 import type { SalesLead } from '@/lib/sales-leads/types'
 
 export type OutreachVariant = {
@@ -20,65 +23,65 @@ function cityBit(lead: SalesLead): string {
   return lead.city ? ` ב${lead.city}` : ''
 }
 
+/** Soft close — invite a reply; do not push call/meeting on first touch. */
+const CLOSE =
+  '\n\nאם זה מדבר אליכם — פשוט תענו כאן, ואשמח להסביר בקצרה ובלי לחץ.'
+
 export function outreachVariantsForLead(lead: SalesLead): OutreachVariant[] {
   const w = who(lead)
   const city = cityBit(lead)
-  const angle = lead.outreachAngle || outreachAngleForSegment(lead.segmentSlug)
   const slug = lead.segmentSlug || 'building_mgmt'
-
-  const close =
-    '\n\nאפשר לקבוע שיחת הדגמה קצרה של 15 דקות? (או לשלוח לינק לדף של BINO)'
 
   const bySegment: Record<string, OutreachVariant[]> = {
     vaad_bayit_mgmt: [
       {
         id: 'vaad_a',
-        labelHe: 'ועדים מרובים',
-        body: `שלום, כאן מ-BINO.\nראיתי את ${w}${city} — חברות שמנהלות כמה ועדים חוסכות המון זמן כשיש זיכרון תפעולי אחד לכל בניין.\n${angle}${close}`,
+        labelHe: 'חיבור אישי',
+        body: `היי, כאן יוני מ-BINO 🙂\nנתקלתי ב${w}${city} וחשבתי שכדאי להגיד שלום.\nאנחנו עוזרים לחברות שמנהלות כמה ועדים — שהכל יהיה מסודר יותר, בלי לרדוף אחרי כל תקלה ידנית.${CLOSE}`,
       },
       {
         id: 'vaad_b',
-        labelHe: 'בלי מנהל בכל תקלה',
-        body: `שלום מ-BINO,\nל${w}: המדד שלנו הוא אחוז התקלות שנסגרות בלי התערבות מנהל — עם שיוך אוטומטי ו-SLA.\n${angle}${close}`,
+        labelHe: 'שקט למנהל',
+        body: `שלום, כאן יוני מ-BINO.\nאצל הרבה מנהלי ועדים היום נשבר מזה שכל תקלה חוזרת אליהם.\nל${w} חשבתי שאולי יעניין לשמוע איך אפשר לסגור יותר דברים בלי התערבות בכל פעם.${CLOSE}`,
       },
       {
         id: 'vaad_c',
-        labelHe: 'חיסכון מוכח',
-        body: `היי, BINO כאן.\nאצל ועדי בית הזמן עד שיוך ופתרון הוא הכאב האמיתי. ${w}${city} נשמע בדיוק לזה.\n${angle}${close}`,
+        labelHe: 'זמן ושקט',
+        body: `היי מ-BINO,\nרציתי לפנות אליכם ב${w}${city} בעדינות — אנחנו עוזרים לוועדים לעבוד יותר בשקט: שיוך מהיר יותר, פחות תקלות חוזרות, ופחות רעש על המנהל.${CLOSE}`,
       },
     ],
     facility_mgmt: [
       {
         id: 'fm_a',
-        labelHe: 'מניעת כשלים',
-        body: `שלום, כאן BINO.\nל${w}${city}: אנחנו עוזרים ל-FM לעבור מתיעוד עבודה להתראות מוקדמות על מערכות שעלולות להיכשל.\n${angle}${close}`,
+        labelHe: 'לפני הכשל',
+        body: `היי, כאן יוני מ-BINO 🙂\nראיתי את ${w}${city} וחשבתי שזה יכול להיות רלוונטי לכם.\nאנחנו עוזרים לצוותי FM לראות בעיות לפני שהן הופכות לתקלה גדולה — לא רק לתעד אחרי שהן קרו.${CLOSE}`,
       },
       {
         id: 'fm_b',
-        labelHe: 'ספקים ועלויות',
-        body: `שלום מ-BINO,\n${w} — זיכרון של ספקים, עלויות ותקלות חוזרות לכל מתקן, עם המלצה אוטומטית למי לשייך.\n${angle}${close}`,
+        labelHe: 'ספקים בשקט',
+        body: `שלום מ-BINO,\nל${w}: הרבה פעמים הידע על ספקים, עלויות ותקלות חוזרות נשאר בראש של מישהו אחד.\nאנחנו עוזרים לשמור את זה במקום אחד, ולהמליץ למי לפנות בלי לנחש.${CLOSE}`,
       },
       {
         id: 'fm_c',
-        labelHe: 'SLA',
-        body: `היי, BINO.\nחריגות SLA עולות ביוקר. ${w}${city} יכולים לראות סיכון מראש במקום אחרי הפספוס.\n${angle}${close}`,
+        labelHe: 'בלי הפתעות',
+        body: `היי, כאן יוני מ-BINO.\nחריגות SLA מעייפות את כולם. חשבתי על ${w}${city} — אולי יעניין אתכם לראות סיכון מראש, במקום לגלות אחרי הפספוס.${CLOSE}`,
       },
     ],
     housing_corp: [
       {
         id: 'hc_a',
         labelHe: 'עלות לבניין',
-        body: `שלום מ-BINO,\nלחברות דיור כמו ${w} המדד הקריטי הוא עלות תחזוקה לבניין + שיעור תקלות חוזרות.\n${angle}${close}`,
+        body: `היי, כאן יוני מ-BINO 🙂\nלחברות דיור כמו ${w} חשוב לראות מה עולה כל בניין ואיפה חוזרות אותן תקלות.\nרציתי לבדוק אם זה משהו שמדבר אליכם.${CLOSE}`,
       },
       {
         id: 'hc_b',
-        labelHe: 'פורטפוליו',
-        body: `שלום, BINO כאן.\n${w}${city}: זיכרון תפעולי אחיד לכל נכס בפורטפוליו — בלי אקסל ובלי ניחושים.\n${angle}${close}`,
+        labelHe: 'פורטפוליו רגוע',
+        body: `שלום מ-BINO,\n${w}${city} — נשמע כמו תיק גדול. אנחנו עוזרים לשמור זיכרון תפעולי אחיד לכל נכס, בלי אקסלים ובלי לנחש מה כבר ניסו.${CLOSE}`,
       },
       {
         id: 'hc_c',
-        labelHe: 'דמו 15 דק׳',
-        body: `היי, כאן BINO.\nנשמח להראות ל${w} איך מזהים תקלות חוזרות ומקצרים זמן עד פתרון בתיק גדול.\n${angle}${close}`,
+        labelHe: 'הזמנה עדינה',
+        body: `היי, כאן יוני מ-BINO.\nאשמח להכיר את ${w} ולוודא אם בכלל רלוונטי לכם — איך מקצרים זמן עד פתרון ומזהים תקלות שחוזרות על עצמן.${CLOSE}`,
       },
     ],
   }
@@ -86,18 +89,18 @@ export function outreachVariantsForLead(lead: SalesLead): OutreachVariant[] {
   const generic: OutreachVariant[] = [
     {
       id: 'gen_a',
-      labelHe: 'זווית מקצועית',
-      body: `שלום, כאן מ-BINO.\nראיתי את ${w}${city} וחשבתי שזה יכול לעניין אתכם:\n${angle}${close}`,
+      labelHe: 'שלום חם',
+      body: `היי, כאן יוני מ-BINO 🙂\nנתקלתי ב${w}${city} וחשבתי שכדאי להגיד שלום.\nאנחנו עוזרים לחברות ניהול ואחזקה לעבוד עם זיכרון חכם לכל בניין — פחות בלאגן, יותר החלטות נכונות.${CLOSE}`,
     },
     {
       id: 'gen_b',
-      labelHe: 'לא עוד מערכת תקלות',
-      body: `שלום מ-BINO,\n${w} — אנחנו לא עוד מערכת תקלות. אנחנו בונים זיכרון תפעולי חכם לבניינים וממליצים אוטומטית מי מטפל.\n${angle}${close}`,
+      labelHe: 'לא עוד מערכת',
+      body: `שלום, כאן יוני מ-BINO.\n${w} — רציתי להגיד בקצרה: אנחנו לא עוד מערכת תקלות.\nאנחנו בונים זיכרון תפעולי לבניינים, וממליצים אוטומטית מי הכי מתאים לטפל.${CLOSE}`,
     },
     {
       id: 'gen_c',
-      labelHe: 'הוכחת חיסכון',
-      body: `היי, BINO כאן.\nלחברות ניהול כמו ${w}${city} אנחנו מוכיחים חיסכון בזמן ובכסף — זמן עד שיוך, זמן עד פתרון, תקלות חוזרות.\n${angle}${close}`,
+      labelHe: 'חיסכון בשקט',
+      body: `היי מ-BINO 🙂\nלחברות כמו ${w}${city} אנחנו עוזרים לראות חיסכון אמיתי בזמן ובכסף — מי מטפל מהר יותר, מה חוזר, ומה עולה לכל בניין.${CLOSE}`,
     },
   ]
 
