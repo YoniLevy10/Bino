@@ -1,6 +1,11 @@
 /**
  * Weekly Friday ops digest SMS for pilot managers (Sarah / Bamakor).
  * Plain Hebrew — no emoji (019SMS). Never auto-WhatsApp.
+ *
+ * Formatting notes for Israeli SMS (RTL + Latin mix):
+ * - Prefer Hebrew labels; keep Latin brand on its own line when needed
+ * - Avoid "#", trailing "." after mixed runs, and ASCII "-" next to digits
+ * - Short labeled lines survive iOS Messages better than long prose
  */
 
 export type WeeklyDigestFocusTicket = {
@@ -20,41 +25,56 @@ export type WeeklyDigestStats = {
   focus: WeeklyDigestFocusTicket | null
 }
 
+/** Strip chars that commonly flip RTL runs in SMS clients. */
+function smsSafeDesc(raw: string): string {
+  return raw
+    .replace(/[\u200e\u200f\ufeff]/g, '')
+    .replace(/[‐‑‒–—―]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export function formatWeeklyOpsDigestSms(stats: WeeklyDigestStats): string {
-  const name = stats.clientName.trim() || 'החברה'
-  const lines: string[] = [`BINO - סיכום שבועי ל${name}`, '']
+  const name = smsSafeDesc(stats.clientName) || 'החברה'
+  const lines: string[] = ['סיכום שבועי מבינו', `עבור ${name}`, '']
 
   if (stats.opened === 0 && stats.closed === 0) {
-    lines.push('השבוע היה שקט יחסית: לא נפתחו ולא נסגרו תקלות חדשות.')
+    lines.push('השבוע היה שקט: לא נפתחו ולא נסגרו תקלות.')
   } else {
-    lines.push(`השבוע: נפתחו ${stats.opened}, נסגרו ${stats.closed}.`)
+    lines.push(`נפתחו השבוע: ${stats.opened}`)
+    lines.push(`נסגרו השבוע: ${stats.closed}`)
   }
 
+  lines.push(`פתוחות עכשיו: ${stats.openNow}`)
   if (stats.openSlaRisk > 0) {
-    lines.push(`פתוחות עכשיו: ${stats.openNow} (מתוכן ${stats.openSlaRisk} בסיכון SLA).`)
+    lines.push(`בסיכון לחריגת זמן: ${stats.openSlaRisk}`)
   } else {
-    lines.push(`פתוחות עכשיו: ${stats.openNow} (אין סיכון SLA כרגע).`)
+    lines.push('בסיכון לחריגת זמן: אין')
   }
 
   if (stats.recurringOpened > 0) {
-    lines.push(`תקלות שסומנו כחוזרות השבוע: ${stats.recurringOpened}.`)
+    lines.push(`תקלות חוזרות שנפתחו: ${stats.recurringOpened}`)
   }
 
   if (stats.focus) {
-    const desc = stats.focus.description.trim() || '-'
-    const short = desc.length > 70 ? `${desc.slice(0, 70)}…` : desc
-    const slaBit = stats.focus.slaAlerted ? ' [SLA]' : ''
+    const building = smsSafeDesc(stats.focus.building) || 'בניין'
+    const desc = smsSafeDesc(stats.focus.description) || 'ללא תיאור'
+    const short = desc.length > 60 ? `${desc.slice(0, 60)}…` : desc
     lines.push('')
-    lines.push(
-      `נקודה למעקב: תקלה #${stats.focus.ticketNumber} ב${stats.focus.building || 'בניין'}${slaBit} - ${short}`
-    )
+    lines.push('נקודה למעקב:')
+    lines.push(`תקלה ${stats.focus.ticketNumber} ב${building}`)
+    if (stats.focus.slaAlerted) {
+      lines.push('סטטוס: חריגת זמן')
+    }
+    lines.push(short)
   } else if (stats.openNow === 0) {
     lines.push('')
-    lines.push('אין תקלות פתוחות כרגע — כל הכבוד.')
+    lines.push('אין תקלות פתוחות כרגע. כל הכבוד.')
   }
 
   lines.push('')
-  lines.push('BINO עקב אחרי השבוע בשבילך. שבת שלום.')
+  lines.push('בינו שמרה עליך השבוע')
+  lines.push('שבת שלום')
   return lines.join('\n')
 }
 
