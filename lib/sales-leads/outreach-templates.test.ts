@@ -44,7 +44,7 @@ function lead(partial: Partial<SalesLead>): SalesLead {
 }
 
 describe('outreachVariantsForLead', () => {
-  it('matches the personal founder-voice template', () => {
+  it('matches the personal founder-voice template without a found-via line', () => {
     const { body } = defaultOutreachMessage(
       lead({
         businessName: 'ניהול בניינים אבי',
@@ -52,13 +52,15 @@ describe('outreachVariantsForLead', () => {
         segmentSlug: 'vaad_bayit_mgmt',
       })
     )
-    expect(body).toContain('היי ניהול בניינים אבי, מה נשמע?')
-    expect(body).toContain('אני יוני, הגעתי אליך דרך חברות ניהול ועדי בתים ברמת גן.')
-    expect(body).toContain('פיתחתי את BINO')
-    expect(body).toContain('בלאגן של וואטסאפ, טלפונים ואקסלים')
-    expect(body).toContain('עובדים עם חברת ניהול בפועל')
-    expect(body).toContain('ב-10 דקות')
-    expect(body).toContain('איך אתם מנהלים את זה היום')
+    expect(body).toBe(`היי ניהול בניינים אבי, מה נשמע?
+אני יוני, פיתחתי את BINO – מערכת לחברות ניהול ואחזקה שמרכזת במקום אחד את כל העבודה מול הבניינים: תקלות ודיווחים מהדיירים, עובדים, מעקב טיפול, דוחות וניהול שוטף.
+
+המטרה היא בעיקר להוריד את כל הבלאגן של וואטסאפ, טלפונים ואקסלים ולתת למנהל תמונה ברורה של מה קורה בכל בניין.
+
+אנחנו כבר עובדים עם חברת ניהול בפועל, ואני כרגע מחפש עוד כמה חברות לבדוק איתן התאמה.
+
+אם רלוונטי לך, אשמח להראות לך ב-10 דקות איך זה עובד ולשמוע איך אתם מנהלים את זה היום.`)
+    expect(body).not.toMatch(/הגעתי אליך דרך/)
   })
 
   it('keeps three personal A/B variants', () => {
@@ -71,6 +73,7 @@ describe('outreachVariantsForLead', () => {
     for (const v of variants) {
       expect(v.body).toMatch(/אני יוני/)
       expect(v.body).toMatch(/10 דקות/)
+      expect(v.body).not.toMatch(/הגעתי אליך דרך/)
     }
   })
 
