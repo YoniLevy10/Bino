@@ -7,12 +7,19 @@ export function OfflineIndicator() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    // Avoid flash on first render — only show after first status change
-    const handleOffline = () => { setOffline(true); setVisible(true) }
+    const handleOffline = () => {
+      setOffline(true)
+      setVisible(true)
+    }
     const handleOnline = () => {
       setOffline(false)
       // Keep the "חזרת לאוויר" message visible briefly then fade out
       setTimeout(() => setVisible(false), 2500)
+    }
+
+    // Cold open in airplane mode — show banner immediately (not only on transition)
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      handleOffline()
     }
 
     window.addEventListener('offline', handleOffline)

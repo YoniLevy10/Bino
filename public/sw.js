@@ -1,16 +1,16 @@
-/* Bino PWA — v10: NFC stamp in/out without long debounce block */
-const CACHE_VERSION = 'bino-v10'
+/* Bino PWA — v11: avoid offline white screen; serve last warm shell or offline.html */
+const CACHE_VERSION = 'bino-v11'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
-const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
+
+/** Static-only precache — do NOT precache Next app routes (HTML without JS = white screen). */
+const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/manifest.worker.json', '/apple-icon.png', '/icon.png']
+
+/** Routes that may open offline after the user has loaded them online (warm /_next/static cache). */
+const OFFLINE_SHELL_PATHS = ['/dashboard', '/worker', '/worker/nfc', '/tickets']
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches
-      .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-    // No skipWaiting() — let the app decide when to activate (shows update banner)
-  )
+  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)))
 })
 
 self.addEventListener('activate', (event) => {
@@ -26,7 +26,6 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// When the app sends SKIP_WAITING, activate this SW immediately
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting()
@@ -58,44 +57,112 @@ function isNavigationRequest(request) {
   return request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html')
 }
 
-/** NFC stamp shell: match by pathname so ?t= / ?token= queries still hit precache. */
 function isWorkerNfcNavigation(pathname) {
   return pathname === '/worker/nfc'
 }
 
+function pathOnlyRequest(pathname) {
+  return new Request(pathname, { credentials: 'same-origin' })
+}
+
+async function putHtml(request, pathname, response) {
+  if (!response || !response.ok) return
+  const html = await caches.open(HTML_CACHE)
+  const copyReq = response.clone()
+  const copyPath = response.clone()
+  await Promise.all([html.put(request, copyReq), html.put(pathOnlyRequest(pathname), copyPath)])
+}
+
+async function hasWarmStaticCache() {
+  try {
+    const cache = await caches.open(STATIC_CACHE)
+    const keys = await cache.keys()
+    return keys.some((req) => {
+      try {
+        return new URL(req.url).pathname.startsWith('/_next/static')
+      } catch {
+        return false
+      }
+    })
+  } catch {
+    return false
+  }
+}
+
+async function matchHtml(request, pathname) {
+  const exact = await caches.match(request)
+  if (exact) return exact
+  const byPath = await caches.match(pathOnlyRequest(pathname))
+  if (byPath) return byPath
+  const ignoreSearch = await caches.match(request, { ignoreSearch: true })
+  if (ignoreSearch) return ignoreSearch
+  return null
+}
+
+async function offlineFallbackPage() {
+  const off = await caches.match('/offline.html')
+  return off || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+}
+
+/**
+ * Offline navigations need a warm JS/CSS cache. Serving HTML alone paints a white screen.
+ * Prefer last shell for known routes; otherwise always offline.html.
+ */
+async function respondOfflineNavigation(request, pathname) {
+  const warm = await hasWarmStaticCache()
+  if (warm) {
+    const cached = await matchHtml(request, pathname)
+    if (cached) return cached
+
+    for (const shell of OFFLINE_SHELL_PATHS) {
+      if (pathname === shell || pathname.startsWith(shell + '/')) {
+        const shellHit = await caches.match(pathOnlyRequest(shell))
+        if (shellHit) return shellHit
+      }
+    }
+
+    // Same app area fallbacks (manager vs worker)
+    if (pathname.startsWith('/worker')) {
+      const workerShell = await caches.match(pathOnlyRequest('/worker'))
+      if (workerShell) return workerShell
+    } else {
+      const dash = await caches.match(pathOnlyRequest('/dashboard'))
+      if (dash) return dash
+    }
+  }
+  return offlineFallbackPage()
+}
+
 function cacheFirstNfcShell(request, pathname) {
-  const pathRequest = new Request(pathname)
   const revalidate = () =>
     fetch(request)
-      .then((res) => {
+      .then(async (res) => {
         if (res.ok) {
-          const forHtmlRequest = res.clone()
-          const forHtmlPath = res.clone()
-          const forStaticPath = res.clone()
-          caches.open(HTML_CACHE).then((c) => {
-            void c.put(request, forHtmlRequest)
-            void c.put(pathRequest, forHtmlPath)
-          })
+          await putHtml(request, pathname, res.clone())
+          const forStatic = res.clone()
           caches.open(STATIC_CACHE).then((c) => {
-            void c.put(pathRequest, forStaticPath)
+            void c.put(pathOnlyRequest(pathname), forStatic)
           })
         }
         return res
       })
       .catch(() => null)
 
-  return caches.match(pathRequest).then((byPath) => {
-    const cachedPromise = byPath ? Promise.resolve(byPath) : caches.match(request)
-    return cachedPromise.then((cached) => {
-      if (cached) {
+  return matchHtml(request, pathname).then(async (cached) => {
+    if (cached) {
+      const warm = await hasWarmStaticCache()
+      if (warm) {
         void revalidate()
         return cached
       }
-      return revalidate().then((res) => {
-        if (res) return res
-        return caches.match('/offline.html').then((off) => off || Response.error())
-      })
-    })
+      // Stale HTML without JS chunks — do not white-screen
+      const network = await revalidate()
+      if (network) return network
+      return offlineFallbackPage()
+    }
+    const network = await revalidate()
+    if (network) return network
+    return respondOfflineNavigation(request, pathname)
   })
 }
 
@@ -114,37 +181,40 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
       fetch(request)
-        .then((res) => {
-          const copy = res.clone()
+        .then(async (res) => {
           if (res.ok) {
-            caches.open(HTML_CACHE).then((c) => c.put(request, copy))
+            await putHtml(request, url.pathname, res.clone())
           }
           return res
         })
-        .catch(() =>
-          caches.match(request).then((cached) => {
-            if (cached) return cached
-            return caches.match('/offline.html').then((off) => off || Response.error())
-          })
-        )
+        .catch(() => respondOfflineNavigation(request, url.pathname))
     )
     return
   }
 
-  if (isStaticAsset(url.pathname) || url.pathname === '/manifest.json' || url.pathname === '/apple-icon.png') {
+  if (
+    isStaticAsset(url.pathname) ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/manifest.worker.json' ||
+    url.pathname === '/apple-icon.png' ||
+    url.pathname === '/icon.png'
+  ) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached
-        return fetch(request).then((res) => {
-          const copy = res.clone()
-          if (res.ok) {
-            caches.open(STATIC_CACHE).then((c) => c.put(request, copy))
-          }
-          return res
-        })
+        return fetch(request)
+          .then((res) => {
+            if (res.ok) {
+              const copy = res.clone()
+              caches.open(STATIC_CACHE).then((c) => {
+                void c.put(request, copy)
+              })
+            }
+            return res
+          })
+          .catch(() => new Response('', { status: 503, statusText: 'Offline' }))
       })
     )
-    return
   }
 })
 
@@ -201,7 +271,6 @@ function pathMatchesClient(clientUrl, targetPath) {
     if (targetPath.startsWith('/worker')) {
       return path === '/worker' || path.startsWith('/worker/')
     }
-    // Dashboard targets: prefer non-worker windows
     return !path.startsWith('/worker')
   } catch {
     return false
