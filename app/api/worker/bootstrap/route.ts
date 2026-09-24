@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
       client_id: worker.client_id,
       full_name: worker.full_name,
       worker_stamp_enabled: workerStampEnabled,
+      can_mark_professional_escort: worker.can_mark_professional_escort === true,
       tickets: ticketsResult.data || [],
     })
   } catch {

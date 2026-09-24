@@ -25,6 +25,9 @@ type WorkerRow = {
   phone?: string | null
   extra_phones?: string[] | null
   access_token?: string | null
+  notify_sms?: boolean | null
+  notify_whatsapp?: boolean | null
+  notify_push?: boolean | null
 }
 
 /**
@@ -73,6 +76,10 @@ async function sendAssignTicketNotifications(opts: {
     return { workerSms, workerSmsNote, workerWhatsApp, workerWhatsAppNote }
   }
 
+  const wantSms = w.notify_sms !== false
+  const wantWa = w.notify_whatsapp !== false
+  const wantPush = w.notify_push !== false
+
   const workerToken = w.access_token?.trim()
   const portalUrl = workerToken ? getWorkerPortalUrl(workerToken) : null
   const smsMessage = portalUrl
@@ -80,30 +87,38 @@ async function sendAssignTicketNotifications(opts: {
     : `שויכת לתקלה #${ticketNumber} ב${buildingName}: ${description || 'ללא תיאור'}. בקשו מהמשרד קישור לאזור האישי.`
 
   const [smsSettled, waSettled, pushSettled] = await Promise.allSettled([
-    sendWorkerSMSAll(workerPhones, smsMessage, smsSenderName, clientId),
-    notifyWorkerAssignmentWhatsApp(supabase, {
-      clientId,
-      workerPhones,
-      buildingName,
-      ticketNumber,
-      description,
-    }),
-    notifyWorkerAssignedPush(
-      supabase,
-      workerId,
-      clientId,
-      ticketNumber,
-      description,
-      ticketId
-    ),
+    wantSms
+      ? sendWorkerSMSAll(workerPhones, smsMessage, smsSenderName, clientId)
+      : Promise.resolve(null),
+    wantWa
+      ? notifyWorkerAssignmentWhatsApp(supabase, {
+          clientId,
+          workerPhones,
+          buildingName,
+          ticketNumber,
+          description,
+        })
+      : Promise.resolve({ sent: 0, failed: 0 } as WorkerAssignmentWaResult),
+    wantPush
+      ? notifyWorkerAssignedPush(
+          supabase,
+          workerId,
+          clientId,
+          ticketNumber,
+          description,
+          ticketId
+        )
+      : Promise.resolve(),
   ])
 
-  if (smsSettled.status === 'fulfilled') {
+  if (!wantSms) {
+    workerSmsNote = 'SMS כבוי להעדפות העובד.'
+  } else if (smsSettled.status === 'fulfilled') {
     const batch = smsSettled.value
     workerSms = batch
-    if (!batch.ok && batch.sent > 0) {
+    if (batch && !batch.ok && batch.sent > 0) {
       workerSmsNote = `SMS נשלח ל-${batch.sent} מתוך ${batch.total} מספרים.`
-    } else if (!batch.ok) {
+    } else if (batch && !batch.ok) {
       workerSmsNote = 'שליחת SMS לעובד נכשלה.'
     }
   } else {
@@ -113,7 +128,9 @@ async function sendAssignTicketNotifications(opts: {
     })
   }
 
-  if (waSettled.status === 'fulfilled') {
+  if (!wantWa) {
+    workerWhatsAppNote = 'WhatsApp כבוי להעדפות העובד.'
+  } else if (waSettled.status === 'fulfilled') {
     workerWhatsApp = waSettled.value
     if (workerWhatsApp.sent > 0 && workerWhatsApp.failed === 0) {
       workerWhatsAppNote = `WhatsApp template נשלח ל-${workerWhatsApp.sent} מספרים.`
@@ -167,7 +184,7 @@ export async function assignTicketToWorker(
 
   const { data: worker, error: workerError } = await supabase
     .from('workers')
-    .select('id, full_name, phone, extra_phones, access_token')
+    .select('id, full_name, phone, extra_phones, access_token, notify_sms, notify_whatsapp, notify_push')
     .eq('id', workerId)
     .eq('client_id', clientId)
     .is('deleted_at', null)

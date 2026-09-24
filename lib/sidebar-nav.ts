@@ -6,10 +6,12 @@ export const INTERNAL_SIDEBAR_NAV_ITEM_IDS = ['failed_notifications', 'error_log
 /** Stable ids — used in DB `clients.sidebar_nav_order` and settings UI. */
 export const SIDEBAR_NAV_ITEM_IDS = [
   'dashboard',
+  'tasks',
   'tickets',
   'projects',
   'residents',
   'workers',
+  'site_tours',
   'summary',
   'calendar',
   'attendance',
@@ -80,10 +82,12 @@ export const MOBILE_BOTTOM_PRIMARY_IDS: readonly SidebarNavItemId[] = [
  */
 export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
   'tickets',
   'projects',
   'residents',
   'workers',
+  'site_tours',
   'whatsapp_inbox',
   'attendance',
   'collections',
@@ -137,10 +141,12 @@ export function splitSidebarNavSections(items: SidebarNavItem[]): {
 
 export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   dashboard: { id: 'dashboard', href: '/dashboard', label: 'לוח בקרה', icon: 'home' },
+  tasks: { id: 'tasks', href: '/tasks', label: 'ניהול משימות', icon: 'grid' },
   tickets: { id: 'tickets', href: '/tickets', label: 'תקלות', icon: 'ticket' },
   projects: { id: 'projects', href: '/projects', label: 'פרויקטים', icon: 'folder' },
   residents: { id: 'residents', href: '/residents', label: 'דיירים', icon: 'building' },
   workers: { id: 'workers', href: '/workers', label: 'העובדים שלי', icon: 'users' },
+  site_tours: { id: 'site_tours', href: '/site-tours', label: 'סיורים', icon: 'folder' },
   summary: { id: 'summary', href: '/summary', label: 'סיכום', icon: 'chart' },
   calendar: { id: 'calendar', href: '/calendar', label: 'יומן משרד', icon: 'grid' },
   attendance: { id: 'attendance', href: '/attendance', label: 'החתמת עובדים', icon: 'clock' },
@@ -196,10 +202,12 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
  */
 export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
   'tickets',
   'projects',
   'residents',
   'workers',
+  'site_tours',
   'whatsapp_inbox',
   'attendance',
   'collections',

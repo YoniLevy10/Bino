@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 import type { theme } from '../ui'
 
 export type WorkerTicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
-export type WorkerPortalTab = 'TICKETS' | 'TOURS' | 'ATTENDANCE'
+export type WorkerPortalTab = 'TICKETS' | 'TOURS' | 'ATTENDANCE' | 'MAINTENANCE'
 
 type WorkerPortalToolbarProps = {
   colors: typeof theme.colors
@@ -27,6 +27,7 @@ type WorkerPortalToolbarProps = {
 
 const PORTAL_TABS: { id: WorkerPortalTab; label: string }[] = [
   { id: 'TICKETS', label: 'תקלות' },
+  { id: 'MAINTENANCE', label: 'אחזקה' },
   { id: 'TOURS', label: 'סיורים' },
   { id: 'ATTENDANCE', label: 'שעות' },
 ]
@@ -77,6 +78,8 @@ export function WorkerPortalToolbar({
         <span style={styles.count(colors)}>
           {portalTab === 'TOURS'
             ? 'רישום סיורים בפרויקטים'
+            : portalTab === 'MAINTENANCE'
+              ? 'משימות אחזקה להיום'
             : portalTab === 'ATTENDANCE'
               ? 'הצמידו את הטלפון למדבקה'
               : filteredCount === ticketCount

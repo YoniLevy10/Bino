@@ -18,6 +18,8 @@ export type WorkerTourLog = {
   project_name: string
   completed_at: string
   notes: string | null
+  defect_ticket_id?: string | null
+  photos?: { public_url: string; mime_type: string | null }[]
 }
 
 type WorkerToursPanelProps = {
@@ -47,7 +49,13 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
   const [tours, setTours] = useState<WorkerTourLog[]>([])
   const [search, setSearch] = useState('')
   const [timesByProject, setTimesByProject] = useState<Record<string, string>>({})
+  const [notesByProject, setNotesByProject] = useState<Record<string, string>>({})
   const [loggingId, setLoggingId] = useState<string | null>(null)
+  const [defectTourId, setDefectTourId] = useState<string | null>(null)
+  const [defectText, setDefectText] = useState('')
+  const [defectBusy, setDefectBusy] = useState(false)
+  const [photoByProject, setPhotoByProject] = useState<Record<string, File | null>>({})
+  const [defectPhoto, setDefectPhoto] = useState<File | null>(null)
 
   const loadTours = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true)
@@ -95,15 +103,29 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
     try {
       const local = projectTime(project.id)
       const completedAt = new Date(local)
-      const res = await fetchWithTimeout('/api/worker/tours', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          project_id: project.id,
-          completed_at: completedAt.toISOString(),
-        }),
-      })
+      const photo = photoByProject[project.id]
+      let res: Response
+      if (photo) {
+        const fd = new FormData()
+        fd.append('token', token)
+        fd.append('project_id', project.id)
+        fd.append('completed_at', completedAt.toISOString())
+        const notes = notesByProject[project.id]?.trim()
+        if (notes) fd.append('notes', notes)
+        fd.append('file', photo)
+        res = await fetchWithTimeout('/api/worker/tours', { method: 'POST', body: fd })
+      } else {
+        res = await fetchWithTimeout('/api/worker/tours', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            project_id: project.id,
+            completed_at: completedAt.toISOString(),
+            notes: notesByProject[project.id]?.trim() || undefined,
+          }),
+        })
+      }
       const data = (await res.json()) as { error?: string; tour?: WorkerTourLog }
       if (!res.ok) {
         toast.error(data.error || 'רישום הסיור נכשל')
@@ -113,11 +135,49 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
         setTours((prev) => [data.tour!, ...prev.filter((t) => t.id !== data.tour!.id)])
       }
       setTimesByProject((prev) => ({ ...prev, [project.id]: toDatetimeLocalValue(new Date()) }))
+      setPhotoByProject((prev) => ({ ...prev, [project.id]: null }))
       toast.success(`סיור ב${project.name} נרשם`)
     } catch {
       toast.error('רישום הסיור נכשל')
     } finally {
       setLoggingId(null)
+    }
+  }
+
+  async function reportDefect(tourId: string) {
+    if (!defectText.trim()) {
+      toast.error('נא לכתוב תיאור ליקוי')
+      return
+    }
+    setDefectBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('token', token)
+      fd.append('tour_id', tourId)
+      fd.append('description', defectText.trim())
+      if (defectPhoto) fd.append('file', defectPhoto)
+      const res = await fetchWithTimeout('/api/worker/tours/defect', { method: 'POST', body: fd })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        ticket_number?: number
+      }
+      if (!res.ok) {
+        toast.error(data.error || 'דיווח ליקוי נכשל')
+        return
+      }
+      toast.success(
+        typeof data.ticket_number === 'number'
+          ? `נפתחה תקלה #${data.ticket_number}`
+          : 'הליקוי דווח ונפתחה תקלה'
+      )
+      setDefectTourId(null)
+      setDefectText('')
+      setDefectPhoto(null)
+      await loadTours({ silent: true })
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setDefectBusy(false)
     }
   }
 
@@ -132,7 +192,7 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
   return (
     <div style={styles.wrap}>
       <p style={{ ...styles.hint, color: colors.textMuted }}>
-        בחרו פרויקט, הגדירו שעת הסיור ולחצו &quot;רשמתי סיור&quot; — בלי לפתוח תקלה.
+        בחרו פרויקט, הוסיפו הערה אם צריך, ורשמו סיור. אפשר לדווח ליקוי מההיסטוריה ולפתוח תקלה.
       </p>
 
       <input
@@ -199,6 +259,38 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                   רשמתי סיור
                 </Button>
               </div>
+              <textarea
+                value={notesByProject[p.id] || ''}
+                onChange={(e) => setNotesByProject((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                placeholder="הערות מהסיור (אופציונלי)"
+                rows={2}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginTop: 8,
+                  borderRadius: 10,
+                  border: `1px solid ${colors.border}`,
+                  padding: 8,
+                  fontSize: 13,
+                  background: colors.muted,
+                  color: colors.textPrimary,
+                }}
+              />
+              <label style={{ fontSize: 13, color: colors.textSecondary, display: 'block', marginTop: 6 }}>
+                תמונה מהסיור (אופציונלי)
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: 'block', marginTop: 4, width: '100%' }}
+                  onChange={(e) =>
+                    setPhotoByProject((prev) => ({
+                      ...prev,
+                      [p.id]: e.target.files?.[0] || null,
+                    }))
+                  }
+                />
+              </label>
             </div>
           ))}
         </div>
@@ -215,10 +307,91 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                   ...styles.tourRow,
                   borderColor: colors.borderSubtle,
                   background: colors.muted,
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 6,
                 }}
               >
-                <div style={{ ...styles.tourName, color: colors.textPrimary }}>{t.project_name}</div>
-                <div style={{ ...styles.tourTime, color: colors.textMuted }}>{formatTourTime(t.completed_at)}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ ...styles.tourName, color: colors.textPrimary }}>{t.project_name}</div>
+                  <div style={{ ...styles.tourTime, color: colors.textMuted }}>
+                    {formatTourTime(t.completed_at)}
+                  </div>
+                </div>
+                {t.notes ? (
+                  <div style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'right' }}>
+                    {t.notes}
+                  </div>
+                ) : null}
+                {t.photos && t.photos.length > 0 ? (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {t.photos.map((ph, idx) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={`${t.id}-${idx}`}
+                        src={ph.public_url}
+                        alt=""
+                        style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                {defectTourId === t.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <textarea
+                      value={defectText}
+                      onChange={(e) => setDefectText(e.target.value)}
+                      placeholder="תיאור הליקוי"
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        padding: 8,
+                        fontSize: 13,
+                      }}
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => setDefectPhoto(e.target.files?.[0] || null)}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button
+                        size="sm"
+                        loading={defectBusy}
+                        onClick={() => void reportDefect(t.id)}
+                      >
+                        פתח תקלה
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setDefectTourId(null)
+                          setDefectText('')
+                          setDefectPhoto(null)
+                        }}
+                      >
+                        ביטול
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDefectTourId(t.id)
+                      setDefectText('')
+                      setDefectPhoto(null)
+                    }}
+                  >
+                    דווח ליקוי
+                  </Button>
+                )}
               </div>
             ))}
           </div>

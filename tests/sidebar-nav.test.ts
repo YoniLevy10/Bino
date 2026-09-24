@@ -69,10 +69,12 @@ describe('resolveSidebarNavItems', () => {
     const items = resolveSidebarNavItems(['summary', 'tickets', 'dashboard'])
     expect(items.map((i) => i.id)).toEqual([
       'dashboard',
+      'tasks',
       'tickets',
       'projects',
       'residents',
       'workers',
+      'site_tours',
       'summary',
     ])
   })
@@ -85,10 +87,12 @@ describe('resolveSidebarNavItems', () => {
     )
     expect(items.map((i) => i.id)).toEqual([
       'dashboard',
+      'tasks',
       'tickets',
       'projects',
       'residents',
       'workers',
+      'site_tours',
       'whatsapp_inbox',
       'attendance',
       'summary',

@@ -43,6 +43,13 @@ const WorkerAttendancePanel = dynamic(
   () => import('../components/worker/WorkerAttendancePanel').then((m) => ({ default: m.WorkerAttendancePanel })),
   { loading: () => null, ssr: false }
 )
+const WorkerMaintenancePanel = dynamic(
+  () =>
+    import('../components/worker/WorkerMaintenancePanel').then((m) => ({
+      default: m.WorkerMaintenancePanel,
+    })),
+  { loading: () => null }
+)
 import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
@@ -85,6 +92,7 @@ type TokenSession = {
   clientId: string
   fullName: string
   workerStampEnabled: boolean
+  canMarkProfessionalEscort: boolean
 }
 
 function normalizeApiTickets(raw: ApiTicketRow[]): Ticket[] {
@@ -218,6 +226,7 @@ function WorkerPageInner() {
           client_id?: string
           full_name?: string
           worker_stamp_enabled?: boolean
+          can_mark_professional_escort?: boolean
           tickets?: ApiTicketRow[]
         }
         if (!data.worker_id || !data.client_id) {
@@ -235,6 +244,7 @@ function WorkerPageInner() {
           clientId: data.client_id,
           fullName: data.full_name || '',
           workerStampEnabled: !!data.worker_stamp_enabled,
+          canMarkProfessionalEscort: !!data.can_mark_professional_escort,
         })
         const normalized = normalizeApiTickets(data.tickets || [])
         setTickets(normalized)
@@ -252,6 +262,7 @@ function WorkerPageInner() {
             clientId: '',
             fullName: '',
             workerStampEnabled: false,
+            canMarkProfessionalEscort: false,
           })
           setUsingCache(true)
         } else {
@@ -459,6 +470,33 @@ function WorkerPageInner() {
     setConfirmCloseId(ticketId)
     if (tokenSession && !attachmentsByTicket[ticketId]) {
       void loadAttachments(tokenSession.token, ticketId)
+    }
+  }
+
+  async function markProfessionalEscort(ticketId: string, note: string, file: File | null) {
+    if (!tokenSession) return
+    setBusyKey(`${ticketId}:ESCORT`)
+    try {
+      const fd = new FormData()
+      fd.append('token', tokenSession.token)
+      fd.append('ticket_id', ticketId)
+      if (note.trim()) fd.append('note', note.trim())
+      if (file) fd.append('file', file)
+      const res = await fetchWithTimeout('/api/worker/escort', { method: 'POST', body: fd }, WORKER_PHOTO_TIMEOUT_MS)
+      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast.error(json.error || 'סימון ליווי נכשל')
+        return
+      }
+      toast.success('סומן ליווי בעל מקצוע — התקלה נשארה פתוחה')
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: 'PROFESSIONAL_ESCORT' } : t))
+      )
+      void loadAttachments(tokenSession.token, ticketId)
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setBusyKey(null)
     }
   }
 
@@ -819,6 +857,8 @@ function WorkerPageInner() {
               colors={palette}
               refreshKey={toursRefreshKey}
             />
+          ) : portalTab === 'MAINTENANCE' ? (
+            <WorkerMaintenancePanel token={tokenSession.token} colors={palette} />
           ) : loadingTickets ? (
             <div style={styles.center}><LoadingSpinner /></div>
           ) : filteredTickets.length === 0 ? (
@@ -861,6 +901,9 @@ function WorkerPageInner() {
                   onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
                   uploadingPhoto={uploadingPhotoId === t.id}
                   showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
+                  canMarkEscort={tokenSession.canMarkProfessionalEscort}
+                  onEscort={(note, file) => void markProfessionalEscort(t.id, note, file)}
+                  escortBusy={busyKey === `${t.id}:ESCORT`}
                   chatSlot={
                     expandedChatId === t.id ? (
                       <div style={styles.officeChatWrap}>

@@ -72,7 +72,12 @@ type WorkerRow = {
   created_at: string
   client_id: string
   access_token?: string | null
+  notify_sms?: boolean | null
+  notify_whatsapp?: boolean | null
+  notify_push?: boolean | null
+  can_mark_professional_escort?: boolean | null
 }
+
 
 type TicketRow = {
   id: string
@@ -113,7 +118,7 @@ const emptyForm: WorkerForm = {
 
 const WORKERS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const WORKERS_LIST_SELECT =
-  'id, full_name, phone, extra_phones, email, role, is_active, hourly_rate, created_at, client_id, access_token'
+  'id, full_name, phone, extra_phones, email, role, is_active, hourly_rate, created_at, client_id, access_token, notify_sms, notify_whatsapp, notify_push, can_mark_professional_escort'
 
 type WorkersCache = {
   workers: WorkerRow[]
@@ -1024,6 +1029,70 @@ export default function WorkersPage() {
                 <span style={styles.detailLabel}>אימייל</span>
                 <span style={styles.detailValue}>{selectedWorker.email || '-'}</span>
               </div>
+            </div>
+
+            <div style={styles.detailSection}>
+              <h4 style={styles.ticketsSectionTitle}>התראות וליווי</h4>
+              {(
+                [
+                  ['notify_sms', 'SMS בשיבוץ', selectedWorker.notify_sms !== false],
+                  ['notify_whatsapp', 'WhatsApp בשיבוץ', selectedWorker.notify_whatsapp !== false],
+                  ['notify_push', 'התראת אפליקציה', selectedWorker.notify_push !== false],
+                  [
+                    'can_mark_professional_escort',
+                    'יכול לסמן ליווי בעל מקצוע',
+                    selectedWorker.can_mark_professional_escort === true,
+                  ],
+                ] as const
+              ).map(([key, label, checked]) => (
+                <label
+                  key={key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 8,
+                    fontSize: 14,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const value = e.target.checked
+                      void (async () => {
+                        try {
+                          const res = await fetchWithTimeout(
+                            '/api/workers/notify-prefs',
+                            {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ worker_id: selectedWorker.id, [key]: value }),
+                            },
+                            MUTATION_FETCH_TIMEOUT_MS
+                          )
+                          if (!res.ok) {
+                            toast.error('עדכון העדפות נכשל')
+                            return
+                          }
+                          setWorkers((prev) =>
+                            prev.map((w) =>
+                              w.id === selectedWorker.id ? { ...w, [key]: value } : w
+                            )
+                          )
+                          setSelectedWorker((prev) =>
+                            prev && prev.id === selectedWorker.id ? { ...prev, [key]: value } : prev
+                          )
+                          toast.success('ההעדפות עודכנו')
+                        } catch {
+                          toast.error('שגיאת חיבור')
+                        }
+                      })()
+                    }}
+                  />
+                  {label}
+                </label>
+              ))}
             </div>
 
             <div style={styles.ticketsSection}>

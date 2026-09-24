@@ -281,7 +281,7 @@ export const workerLogTourBodySchema = z.object({
   token: z.string().uuid(),
   project_id: z.string().uuid(),
   completed_at: z.string().datetime({ offset: true }).optional(),
-  notes: z.string().max(500).optional(),
+  notes: z.string().max(2000).optional(),
 })
 
 export const settingsTestWhatsAppBodySchema = z
@@ -342,6 +342,59 @@ export const forwardTicketToProfessionalBodySchema = z.object({
   professional_id: z.string().uuid(),
   note: z.string().max(500).nullable().optional(),
   set_status_escort: z.boolean().optional(),
+})
+
+/** הזנקת קריאת Fixly פתוחה (שידור לתפיסה). */
+export const launchFixlyBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  trade: z.string().min(1).max(80),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+})
+
+export const maintenanceTaskStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'DONE'])
+export const maintenanceTaskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+
+export const createMaintenanceTaskBodySchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(4000).nullable().optional(),
+  project_id: z.string().uuid().nullable().optional(),
+  assigned_worker_id: z.string().uuid().nullable().optional(),
+  priority: maintenanceTaskPrioritySchema.optional(),
+  due_at: z.string().min(10).max(40).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+})
+
+export const updateMaintenanceTaskBodySchema = z.object({
+  task_id: z.string().uuid(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(4000).nullable().optional(),
+  project_id: z.string().uuid().nullable().optional(),
+  assigned_worker_id: z.string().uuid().nullable().optional(),
+  priority: maintenanceTaskPrioritySchema.optional(),
+  status: maintenanceTaskStatusSchema.optional(),
+  due_at: z.string().min(10).max(40).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+})
+
+export const workerMaintenanceTaskUpdateBodySchema = z.object({
+  token: z.string().uuid(),
+  task_id: z.string().uuid(),
+  status: maintenanceTaskStatusSchema.optional(),
+  notes: z.string().max(2000).nullable().optional(),
+})
+
+export const workerEscortBodySchema = z.object({
+  token: z.string().uuid(),
+  ticket_id: z.string().uuid(),
+  note: z.string().max(1000).nullable().optional(),
+})
+
+export const workerNotifyPrefsBodySchema = z.object({
+  worker_id: z.string().uuid(),
+  notify_sms: z.boolean().optional(),
+  notify_whatsapp: z.boolean().optional(),
+  notify_push: z.boolean().optional(),
+  can_mark_professional_escort: z.boolean().optional(),
 })
 
 const attendanceEventTypeSchema = z.enum([
