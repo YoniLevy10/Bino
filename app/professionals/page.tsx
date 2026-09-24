@@ -102,7 +102,9 @@ export default function ProfessionalsPage() {
     const cid = nextClientId || clientId
     if (!cid) return
     const { data, error } = await withClientId(
-      supabase.from('professionals').select('*'),
+      supabase.from('professionals').select(
+        'id, full_name, phone, extra_phones, trade, company_name, email, notes, is_active'
+      ),
       cid
     )
       .is('deleted_at', null)

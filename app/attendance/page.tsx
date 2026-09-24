@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { monthBounds } from '@/lib/attendance-display'
+import { useAttendanceDashboard } from '@/lib/hooks/use-attendance-dashboard'
 import {
   AppShell,
   MobileHeader,
@@ -66,14 +67,6 @@ type TodaySummary = {
   missing_checkout: { worker_id: string; full_name: string; started_at: string }[]
 }
 
-type DashboardPayload = {
-  events?: AttendanceEventRow[]
-  kpis?: typeof defaultKpis
-  today_summary?: TodaySummary
-  anomalies?: AttendanceAnomaliesData
-  shifts?: unknown[]
-}
-
 const defaultKpis = {
   active_workers_now: 0,
   clock_ins_today: 0,
@@ -92,13 +85,6 @@ export default function AttendancePage() {
   const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
   const [pageTab, setPageTab] = useState<PageTab>('current')
-  const [events, setEvents] = useState<AttendanceEventRow[]>([])
-  const [kpis, setKpis] = useState(defaultKpis)
-  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null)
-  const [anomalies, setAnomalies] = useState<DashboardPayload['anomalies'] | null>(null)
-  const [prefetchedShifts, setPrefetchedShifts] = useState<unknown[] | null | undefined>(undefined)
-  const [dashboardVersion, setDashboardVersion] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [syncFilter, setSyncFilter] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -107,6 +93,26 @@ export default function AttendancePage() {
     const d = new Date()
     return monthBounds(d.getFullYear(), d.getMonth())
   }, [])
+
+  const {
+    data: dashboardData,
+    isLoading,
+    hasData,
+    error: dashboardError,
+    refetch,
+  } = useAttendanceDashboard({
+    from: currentMonthBounds.from,
+    to: currentMonthBounds.to,
+    syncFilter,
+    enabled: pageTab === 'current',
+  })
+
+  const events = (dashboardData?.events as AttendanceEventRow[] | undefined) ?? []
+  const kpis = dashboardData?.kpis ?? defaultKpis
+  const todaySummary = (dashboardData?.today_summary as TodaySummary | null | undefined) ?? null
+  const anomalies = (dashboardData?.anomalies as AttendanceAnomaliesData | null | undefined) ?? null
+  const prefetchedShifts = hasData ? (dashboardData?.shifts ?? []) : undefined
+  const loading = isLoading && !hasData
 
   useEffect(() => {
     if (searchParams.get('tab') === 'history') setPageTab('history')
@@ -121,33 +127,6 @@ export default function AttendancePage() {
     window.history.replaceState(null, '', newUrl)
   }, [pageTab])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        from: currentMonthBounds.from,
-        to: currentMonthBounds.to,
-        limit: '500',
-      })
-      if (syncFilter) params.set('sync_status', syncFilter)
-
-      const res = await fetchWithTimeout(`/api/attendance/dashboard?${params.toString()}`)
-      const body = (await res.json().catch(() => ({}))) as DashboardPayload & { error?: string }
-      if (!res.ok) throw new Error(body.error || 'טעינה נכשלה')
-
-      setEvents(body.events ?? [])
-      if (body.kpis) setKpis(body.kpis)
-      setTodaySummary(body.today_summary ?? null)
-      setAnomalies(body.anomalies ?? null)
-      setPrefetchedShifts(body.shifts ?? [])
-      setDashboardVersion((v) => v + 1)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'טעינה נכשלה')
-    } finally {
-      setLoading(false)
-    }
-  }, [syncFilter, currentMonthBounds.from, currentMonthBounds.to])
-
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
     check()
@@ -156,9 +135,13 @@ export default function AttendancePage() {
   }, [])
 
   useEffect(() => {
-    if (pageTab !== 'current') return
-    void load()
-  }, [load, pageTab])
+    if (!dashboardError) return
+    toast.error(dashboardError instanceof Error ? dashboardError.message : 'טעינה נכשלה')
+  }, [dashboardError])
+
+  const load = useCallback(async () => {
+    await refetch()
+  }, [refetch])
 
   async function approveEvent(id: string) {
     setBusyId(id)
@@ -258,7 +241,7 @@ export default function AttendancePage() {
       <AttendanceShiftsReport
         lockToCurrentMonth
         prefetchedShifts={prefetchedShifts as never}
-        prefetchVersion={dashboardVersion}
+        prefetchVersion={hasData ? 1 : 0}
         isMobile={isMobile}
       />
 

@@ -26,6 +26,7 @@ import {
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validateEmail } from '@/lib/validators'
 import { ticketDetailPath } from '@/lib/ticket-deep-link'
+import { WORKERS_LIST_SELECT } from '@/lib/hooks/use-workers-list'
 import {
   AppShell,
   MobileHeader,
@@ -117,8 +118,6 @@ const emptyForm: WorkerForm = {
 }
 
 const WORKERS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const WORKERS_LIST_SELECT =
-  'id, full_name, phone, extra_phones, email, role, is_active, hourly_rate, created_at, client_id, access_token, notify_sms, notify_whatsapp, notify_push, can_mark_professional_escort'
 
 type WorkersCache = {
   workers: WorkerRow[]
@@ -614,16 +613,29 @@ export default function WorkersPage() {
 
   function copyWorkerFieldLink(worker: WorkerRow, e?: MouseEvent) {
     e?.stopPropagation()
-    const token = worker.access_token
-    if (!token) {
-      toast.error('אין טוקן לעובד')
-      return
-    }
-    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/worker?token=${encodeURIComponent(token)}`
-    void navigator.clipboard.writeText(url).then(
-      () => toast.success('הקישור הועתק'),
-      () => toast.error('העתקה נכשלה')
-    )
+    void (async () => {
+      try {
+        let token = worker.access_token?.trim() || null
+        if (!token) {
+          const { data, error } = await supabase
+            .from('workers')
+            .select('access_token')
+            .eq('id', worker.id)
+            .maybeSingle()
+          if (error) throw error
+          token = (data as { access_token?: string | null } | null)?.access_token?.trim() || null
+        }
+        if (!token) {
+          toast.error('אין טוקן לעובד')
+          return
+        }
+        const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/worker?token=${encodeURIComponent(token)}`
+        await navigator.clipboard.writeText(url)
+        toast.success('הקישור הועתק')
+      } catch {
+        toast.error('העתקה נכשלה')
+      }
+    })()
   }
 
   async function sendWorkerTestSms(worker: WorkerRow, e?: MouseEvent) {

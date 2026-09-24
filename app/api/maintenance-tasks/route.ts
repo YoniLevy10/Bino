@@ -6,6 +6,7 @@ import {
   createMaintenanceTaskBodySchema,
   updateMaintenanceTaskBodySchema,
 } from '@/lib/api-body-schemas'
+import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 
 const TASK_SELECT =
   'id, client_id, project_id, assigned_worker_id, title, description, priority, status, due_at, notes, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name)'
@@ -41,11 +42,50 @@ export async function GET() {
     return NextResponse.json({ error: tasksRes.error.message }, { status: 500 })
   }
 
+  const tasks = tasksRes.data || []
+  const previewTaskIds = tasks.slice(0, 40).map((t) => t.id as string)
+
+  let attachmentsByTask: Record<
+    string,
+    Array<{
+      id: string
+      file_name: string | null
+      mime_type: string | null
+      created_at: string
+      public_url: string | null
+    }>
+  > = {}
+
+  if (previewTaskIds.length > 0) {
+    const { data: attRows } = await admin
+      .from('maintenance_task_attachments')
+      .select('id, task_id, file_name, file_url, mime_type, created_at')
+      .eq('client_id', clientId)
+      .in('task_id', previewTaskIds)
+      .order('created_at', { ascending: false })
+
+    const signed = await withSignedAttachmentUrls(admin, attRows || [])
+    attachmentsByTask = {}
+    for (const a of signed) {
+      const taskId = (a as { task_id?: string }).task_id
+      if (!taskId) continue
+      if (!attachmentsByTask[taskId]) attachmentsByTask[taskId] = []
+      attachmentsByTask[taskId].push({
+        id: a.id as string,
+        file_name: (a.file_name as string | null) ?? null,
+        mime_type: (a.mime_type as string | null) ?? null,
+        created_at: a.created_at as string,
+        public_url: a.signed_url,
+      })
+    }
+  }
+
   return NextResponse.json({
-    tasks: tasksRes.data || [],
+    tasks,
     workers: workersRes.data || [],
     projects: projectsRes.data || [],
-    open_count: (tasksRes.data || []).filter((t) => t.status !== 'DONE').length,
+    open_count: tasks.filter((t) => t.status !== 'DONE').length,
+    attachments_by_task: attachmentsByTask,
   })
 }
 

@@ -8,6 +8,9 @@ export const TENANT_CID_LOCAL_KEY = 'bamakor_cid_local_v1'
 /** Sidebar nav order + enabled_nav_features (SidebarNavContext). */
 export const NAV_CACHE_PREFIX = 'bamakor_nav_v5_' as const
 
+/** Paid add-on entitlements (PaidAddonsContext). */
+export const ADDONS_CACHE_PREFIX = 'bamakor_addons_v1_' as const
+
 /** Auth uid tracker used by TenantAuthSync + branding gate. */
 export const LAST_AUTH_UID_KEY = 'bamakor_last_auth_uid'
 
@@ -29,6 +32,7 @@ const LOCAL_PREFIXES = [
   'bamakor_branding_v1_',
   'bamakor_nav_v4_',
   NAV_CACHE_PREFIX,
+  ADDONS_CACHE_PREFIX,
   DASHBOARD_CACHE_PREFIX,
   'bamakor_tickets_v2_',
   'bamakor_projects_v1_',

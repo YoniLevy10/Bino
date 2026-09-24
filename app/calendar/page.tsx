@@ -4,15 +4,13 @@
  * דף יומן משרד — פגישות ועד, אנשי מקצוע ואירועים פנימיים.
  * תצוגת חודש/שבוע, יצירה/עריכה/מחיקה, ייצוא iCal, סנכרון Google Calendar.
  */
-import { useCallback, useEffect, useMemo, useState, Suspense, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense, type CSSProperties } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
   CALENDAR_EVENT_TYPE_LABELS,
   dateKeyLocal,
@@ -55,7 +53,6 @@ type CalendarEvent = {
   event_type: CalendarEventType
 }
 
-type ProjectOption = { id: string; name: string }
 type ViewMode = 'month' | 'week'
 
 const emptyForm = {
@@ -81,8 +78,11 @@ function CalendarPageInner() {
   const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { projects, isLoading: projectsLoading, hasData: projectsHasData } = useTenantProjectsList()
   const [isMobile, setIsMobile] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const [hasEventsData, setHasEventsData] = useState(false)
+  const hasEventsDataRef = useRef(false)
   const [saving, setSaving] = useState(false)
   const [gcalBusy, setGcalBusy] = useState(false)
   const [gcal, setGcal] = useState<{
@@ -97,7 +97,6 @@ function CalendarPageInner() {
   })
   const [selectedDay, setSelectedDay] = useState<Date | null>(() => new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [projects, setProjects] = useState<ProjectOption[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [projectFilter, setProjectFilter] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -161,19 +160,18 @@ function CalendarPageInner() {
   useEffect(() => {
     void asyncHandler(
       async () => {
-        setLoading(true)
-        const clientId = await resolveBinoClientIdForBrowser()
-        const { data: projData } = await withClientId(
-          supabase.from('projects').select('id, name').order('name'),
-          clientId
-        )
-        setProjects((projData as ProjectOption[]) || [])
+        if (!hasEventsDataRef.current) setEventsLoading(true)
         await Promise.all([load(), loadGcalStatus()])
+        hasEventsDataRef.current = true
+        setHasEventsData(true)
         return true
       },
       { context: 'טעינת יומן', showErrorToast: true }
-    ).finally(() => setLoading(false))
+    ).finally(() => setEventsLoading(false))
   }, [load, loadGcalStatus])
+
+  const loading =
+    (eventsLoading && !hasEventsData) || (projectsLoading && !projectsHasData)
 
   async function connectGoogleCalendar() {
     setGcalBusy(true)

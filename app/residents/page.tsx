@@ -29,6 +29,7 @@ import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { AddResidentModal, type ResidentProjectRow } from '../components/residents/AddResidentModal'
 import { ImportResidentsModal } from '../components/residents/ImportResidentsModal'
 import { ShareResidentIntakeLinkModal } from '../components/residents/ShareResidentIntakeLinkModal'
@@ -109,10 +110,29 @@ export default function ResidentsPage() {
 function ResidentsPageInner() {
   const router = useRouter()
   const { openMenu } = useMobileMenu()
-  const [projects, setProjects] = useState<ResidentProjectRow[]>([])
+  const {
+    clientId: tenantClientId,
+    projects: projectRows,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+  } = useTenantProjectsList()
+  const projects: ResidentProjectRow[] = useMemo(
+    () =>
+      projectRows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        project_code: p.project_code || '',
+        client_id: p.client_id || tenantClientId || undefined,
+      })),
+    [projectRows, tenantClientId]
+  )
   const [residents, setResidents] = useState<ResidentRow[]>([])
   const [residentsTableMissing, setResidentsTableMissing] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [residentsLoading, setResidentsLoading] = useState(true)
+  const [hasResidentsData, setHasResidentsData] = useState(false)
+  const [residentsHasMore, setResidentsHasMore] = useState(false)
+  const [residentsOffset, setResidentsOffset] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('ALL')
@@ -216,7 +236,7 @@ function ResidentsPageInner() {
 
   async function refreshResidentsQuiet() {
     try {
-      const tenantId = await resolveBinoClientIdForBrowser()
+      const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
       const rRes = await withClientId(
         supabase
           .from('residents')
@@ -225,66 +245,73 @@ function ResidentsPageInner() {
       )
         .is('deleted_at', null)
         .order('full_name')
+        .limit(500)
 
       if (!rRes.error) {
-        startTransition(() => setResidents((rRes.data as ResidentRow[]) || []))
+        const rows = (rRes.data as ResidentRow[]) || []
+        startTransition(() => {
+          setResidents(rows)
+          setResidentsHasMore(rows.length >= 500)
+          setResidentsOffset(rows.length)
+        })
       }
     } catch {
       // keep existing list on background refresh failure
     }
   }
 
-  async function load() {
-    setLoading(true)
+  const RESIDENTS_PAGE_SIZE = 500
+
+  async function loadResidentsPage(opts?: { append?: boolean; offset?: number }) {
+    const append = opts?.append === true
+    const offset = opts?.offset ?? 0
+    if (append) setLoadingMore(true)
+    else if (!hasResidentsData) setResidentsLoading(true)
     setResidentsTableMissing(false)
     setLoadError(false)
     try {
-      const tenantId = await resolveBinoClientIdForBrowser()
-      const [pRes, rRes, pendingRes] = await Promise.all([
-        withClientId(supabase.from('projects').select('id, name, project_code, client_id'), tenantId).order('name'),
-        withClientId(
-          supabase.from('residents').select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
-          tenantId
-        )
-          .is('deleted_at', null)
-          .order('full_name'),
-        fetchWithTimeout('/api/pending-residents'),
-      ])
-
-      if (pRes.error) throw pRes.error
-      setProjects((pRes.data as ResidentProjectRow[]) || [])
+      const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
+      const rRes = await withClientId(
+        supabase
+          .from('residents')
+          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
+        tenantId
+      )
+        .is('deleted_at', null)
+        .order('full_name')
+        .range(offset, offset + RESIDENTS_PAGE_SIZE - 1)
 
       if (rRes.error) {
         if (isResidentsTableMissingError(rRes.error)) {
           setResidents([])
           setResidentsTableMissing(true)
+          setResidentsHasMore(false)
         } else {
           toast.error(rRes.error.message || TM.genericLoadError)
+          if (!append) setLoadError(true)
         }
       } else {
-        setResidents((rRes.data as ResidentRow[]) || [])
-      }
-      setLoadError(false)
-
-      try {
-        const data = await pendingRes.json()
-        if (pendingRes.ok) {
-          const items = (data.items as typeof pendingItems) || []
-          setPendingItems(items)
-          setPendingBadge(items.length)
-        } else {
-          setPendingItems([])
-          setPendingBadge(0)
-        }
-      } catch {
-        setPendingItems([])
-        setPendingBadge(0)
+        const rows = (rRes.data as ResidentRow[]) || []
+        setResidents((prev) => (append ? [...prev, ...rows] : rows))
+        setResidentsHasMore(rows.length >= RESIDENTS_PAGE_SIZE)
+        setResidentsOffset(offset + rows.length)
+        setHasResidentsData(true)
+        setLoadError(false)
       }
     } catch (e) {
-      setLoadError(true)
+      if (!append) setLoadError(true)
       toast.error(e instanceof Error ? e.message : TM.genericLoadError)
     }
-    setLoading(false)
+    if (append) setLoadingMore(false)
+    else setResidentsLoading(false)
+  }
+
+  async function load() {
+    await loadResidentsPage({ append: false, offset: 0 })
+  }
+
+  async function loadMoreResidents() {
+    await loadResidentsPage({ append: true, offset: residentsOffset })
   }
 
   function openAdd() {
@@ -464,8 +491,9 @@ function ResidentsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // mount only
 
+  // Single pending-residents fetch source (badge + pending tab) — avoids double fetch when tab=pending on mount
   useEffect(() => {
-    if (mainTab === 'pending') void loadPending({ silent: pendingItems.length > 0 })
+    void loadPending({ silent: mainTab !== 'pending' || pendingItems.length > 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab])
 
@@ -476,6 +504,9 @@ function ResidentsPageInner() {
     return () => window.removeEventListener('focus', onFocus)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const loading =
+    (residentsLoading && !hasResidentsData) || (projectsLoading && !projectsHasData)
 
   function displayPendingPhone(digits: string) {
     const d = digits.replace(/\D/g, '')
@@ -1099,6 +1130,18 @@ function ResidentsPageInner() {
               {filtered.length === 0 && !isMobile && (
                 <p style={styles.empty}>אין דיירים להצגה. הוסיפו רשומות ב-Supabase.</p>
               )}
+              {residentsHasMore && projectFilter === 'ALL' && !deferredSearchTerm.trim() ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={loadingMore}
+                    onClick={() => void loadMoreResidents()}
+                  >
+                    טען עוד
+                  </Button>
+                </div>
+              ) : null}
             </div>
           )}
           </div>

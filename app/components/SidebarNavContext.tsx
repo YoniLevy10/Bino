@@ -76,7 +76,7 @@ type NavCachePayload = {
   navLabels: SidebarNavLabels
 }
 
-function readNavCache(clientId: string): NavCachePayload | null {
+function readNavCache(clientId: string): (NavCachePayload & { ts: number }) | null {
   try {
     const raw = localStorage.getItem(`${NAV_CACHE_PREFIX}${clientId}`)
     if (!raw) return null
@@ -93,6 +93,7 @@ function readNavCache(clientId: string): NavCachePayload | null {
       orderIds,
       enabledFeatures: parseEnabledNavFeaturesFromDb(parsed.enabledFeatures ?? null),
       navLabels: parseSidebarNavLabelsFromDb(parsed.navLabels ?? null),
+      ts: parsed.ts,
     }
   } catch {}
   return null
@@ -119,10 +120,13 @@ function buildNavItems(
 type LoadNavOptions = {
   /** Skip localStorage hydration — use after sign-in or explicit refresh. */
   skipCache?: boolean
+  /** Force network even when localStorage TTL is still valid. */
+  forceNetwork?: boolean
 }
 
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const isWorker = isWorkerPortalPath(pathname)
   const { addons } = usePaidAddons()
   const enabledAddonKeys = useMemo(() => enabledAddonKeysFromEntitlements(addons), [addons])
 
@@ -148,11 +152,6 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
       const generation = ++loadGenerationRef.current
       let hadCachedState = false
 
-      if (isWorkerPortalPath(pathname)) {
-        setIsBootstrapped(true)
-        return
-      }
-
       try {
         const clientId = await resolveBinoClientIdForBrowser()
         if (generation !== loadGenerationRef.current) return
@@ -162,6 +161,9 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
           if (cached) {
             hadCachedState = true
             applyNavState(cached.orderIds, cached.enabledFeatures, cached.navLabels)
+            setIsBootstrapped(true)
+            lastSuccessfulFetchRef.current = cached.ts
+            if (!options?.forceNetwork) return
           }
         }
 
@@ -206,7 +208,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [applyNavState, pathname]
+    [applyNavState]
   )
 
   const maybeRefetchNav = useCallback(
@@ -219,36 +221,43 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
+    if (isWorker) {
+      setIsBootstrapped(true)
+      return
+    }
     void loadNav()
-  }, [loadNav])
+  }, [isWorker, loadNav])
 
   useEffect(() => {
+    if (isWorker) return
     const supabase = createClient()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        void loadNav({ skipCache: true })
+        void loadNav({ skipCache: true, forceNetwork: true })
       }
     })
     return () => {
       subscription.unsubscribe()
     }
-  }, [loadNav])
+  }, [isWorker, loadNav])
 
   useEffect(() => {
+    if (isWorker) return
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      maybeRefetchNav()
+      maybeRefetchNav({ forceNetwork: true })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [maybeRefetchNav])
+  }, [isWorker, maybeRefetchNav])
 
   useAppRefreshListener(
     useCallback(() => {
-      void loadNav({ skipCache: true })
-    }, [loadNav])
+      if (isWorker) return
+      void loadNav({ skipCache: true, forceNetwork: true })
+    }, [isWorker, loadNav])
   )
 
   const lockedAddonsCount = useMemo(
@@ -273,7 +282,10 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     [applyNavState, enabledFeatures, navLabels]
   )
 
-  const refreshNav = useCallback(() => loadNav({ skipCache: true }), [loadNav])
+  const refreshNav = useCallback(
+    () => loadNav({ skipCache: true, forceNetwork: true }),
+    [loadNav]
+  )
 
   const value = useMemo(
     () => ({

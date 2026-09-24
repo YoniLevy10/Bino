@@ -16,23 +16,35 @@ const CID_LOCAL_TTL = 24 * 60 * 60 * 1000 // 24h — survives tab kill on mobile
 
 type CidCachePayload = { cid: string; uid: string; ts: number }
 
-function readCidCache(userId: string): string | null {
+function readCidCacheEntry(): CidCachePayload | null {
   try {
     const raw = sessionStorage.getItem(CID_CACHE_KEY)
     if (!raw) return null
-    const { cid, uid, ts } = JSON.parse(raw) as CidCachePayload
-    if (uid === userId && cid && Date.now() - ts < CID_CACHE_TTL) return cid
+    const parsed = JSON.parse(raw) as CidCachePayload
+    if (parsed?.cid && parsed?.uid && typeof parsed.ts === 'number') return parsed
   } catch {}
   return null
 }
 
-function readCidLocalCache(userId: string): string | null {
+function readCidLocalCacheEntry(): CidCachePayload | null {
   try {
     const raw = localStorage.getItem(CID_LOCAL_KEY)
     if (!raw) return null
-    const { cid, uid, ts } = JSON.parse(raw) as CidCachePayload
-    if (uid === userId && cid && Date.now() - ts < CID_LOCAL_TTL) return cid
+    const parsed = JSON.parse(raw) as CidCachePayload
+    if (parsed?.cid && parsed?.uid && typeof parsed.ts === 'number') return parsed
   } catch {}
+  return null
+}
+
+function readCidCache(userId: string): string | null {
+  const entry = readCidCacheEntry()
+  if (entry && entry.uid === userId && Date.now() - entry.ts < CID_CACHE_TTL) return entry.cid
+  return null
+}
+
+function readCidLocalCache(userId: string): string | null {
+  const entry = readCidLocalCacheEntry()
+  if (entry && entry.uid === userId && Date.now() - entry.ts < CID_LOCAL_TTL) return entry.cid
   return null
 }
 
@@ -51,11 +63,19 @@ function sleep(ms: number) {
 }
 
 /**
- * Resolve the signed-in user for tenant scoping.
- * Prefer local session on resume: getUser() is a network call and often flakes
- * when a mobile PWA/Safari tab wakes up, even though Wi‑Fi is fine.
+ * Prefer local session when cid is already cached — getUser() is a network call.
+ * Fall back to getUser + retries when there is no usable local session.
  */
-async function resolveBrowserAuthUser(): Promise<{ id: string }> {
+async function resolveBrowserAuthUser(opts?: {
+  preferLocalSession?: boolean
+}): Promise<{ id: string }> {
+  if (opts?.preferLocalSession) {
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (sessionData.session?.user) {
+      return sessionData.session.user
+    }
+  }
+
   const firstUserRes = await supabase.auth.getUser()
   let user = firstUserRes.data.user
 
@@ -91,11 +111,33 @@ async function resolveBrowserAuthUser(): Promise<{ id: string }> {
 }
 
 export async function resolveBinoClientIdForBrowser(): Promise<string> {
+  // Fast path: if we already know uid+cid from storage, use local session only
+  // (avoids getUser network on every provider/page resolve).
+  const sessionEntry = readCidCacheEntry()
+  const localEntry = readCidLocalCacheEntry()
+  const hotEntry =
+    sessionEntry && Date.now() - sessionEntry.ts < CID_CACHE_TTL
+      ? sessionEntry
+      : localEntry && Date.now() - localEntry.ts < CID_LOCAL_TTL
+        ? localEntry
+        : null
+
+  if (hotEntry) {
+    try {
+      const user = await resolveBrowserAuthUser({ preferLocalSession: true })
+      if (user.id === hotEntry.uid) {
+        writeCidCache(user.id, hotEntry.cid)
+        return hotEntry.cid
+      }
+    } catch {
+      /* fall through to full resolve */
+    }
+  }
+
   const user = await resolveBrowserAuthUser()
 
   const cached = readCidCache(user.id) || readCidLocalCache(user.id)
   if (cached) {
-    // Refresh session cache so subsequent navigations stay hot.
     writeCidCache(user.id, cached)
     return cached
   }

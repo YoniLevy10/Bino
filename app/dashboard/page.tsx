@@ -243,27 +243,25 @@ export default function DashboardPage() {
     }) => {
       try {
         const { uid, clientId } = await resolveDashboardTenantScope()
-        const [logsResult, resCountResult, wCountResult, openTasksResult] = await Promise.all([
-        supabase
-          .from('ticket_logs')
-          .select(
-            `
+        const [logsResult, resCountResult, openTasksResult] = await Promise.all([
+          supabase
+            .from('ticket_logs')
+            .select(
+              `
               id, ticket_id, action_type, created_at,
-              tickets (
+              tickets!inner (
                 ticket_number,
                 description,
                 status,
+                client_id,
                 projects (name, project_code)
               )
             `
-          )
+            )
+            .eq('tickets.client_id', clientId)
             .order('created_at', { ascending: false })
             .limit(5),
           withClientId(supabase.from('residents').select('id', { count: 'exact', head: true }), clientId).is(
-            'deleted_at',
-            null
-          ),
-          withClientId(supabase.from('workers').select('id', { count: 'exact', head: true }), clientId).is(
             'deleted_at',
             null
           ),
@@ -276,7 +274,7 @@ export default function DashboardPage() {
         ])
 
         const resCount = resCountResult.count ?? null
-        const wCount = wCountResult.count ?? null
+        const wCount = Object.keys(ctx.workersMap).length
         const tasksOpen = openTasksResult.count ?? null
         setOpenTasksCount(tasksOpen)
         const fromLogs = buildActivityFromLogs(logsResult.data, logsResult.error)

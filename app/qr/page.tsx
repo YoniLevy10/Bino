@@ -30,11 +30,11 @@ import {
   SearchInput,
   Drawer,
   EmptyState,
-  LoadingSpinner,
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { digitsForWaMeLink } from '@/lib/wa-me-phone'
 import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
@@ -53,32 +53,35 @@ type ProjectRow = {
 
 export default function QrPage() {
   const { openMenu } = useMobileMenu()
-  const [projects, setProjects] = useState<ProjectRow[]>([])
+  const {
+    clientId: tenantClientId,
+    projects: projectRows,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+  } = useTenantProjectsList()
+  const projects: ProjectRow[] = useMemo(
+    () =>
+      projectRows.map((p) => ({
+        id: p.id,
+        client_id: p.client_id || tenantClientId || '',
+        name: p.name,
+        project_code: p.project_code || '',
+        address: p.address,
+        qr_identifier: p.qr_identifier,
+        is_active: p.is_active,
+        created_at: p.created_at ?? undefined,
+      })),
+    [projectRows, tenantClientId]
+  )
+  const loading = projectsLoading && !projectsHasData
   const [waMeDigits, setWaMeDigits] = useState<string | null>(null)
   const [waPhoneLoading, setWaPhoneLoading] = useState(true)
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   const qrRefs = useRef<Record<string, HTMLDivElement | null>>({})
-
-  async function loadProjects() {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('projects')
-      .select('id, client_id, name, project_code, address, qr_identifier, is_active, created_at')
-      .order('project_code', { ascending: true })
-
-    if (error) {
-      toast.error(error.message || 'Failed to load projects')
-      setProjects([])
-    } else {
-      setProjects((data as ProjectRow[]) || [])
-    }
-    setLoading(false)
-  }
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -88,15 +91,10 @@ export default function QrPage() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial projects list
-    void loadProjects()
-  }, [])
-
-  useEffect(() => {
     void (async () => {
       setWaPhoneLoading(true)
       try {
-        const clientId = await resolveBinoClientIdForBrowser()
+        const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
         const { data, error } = await supabase
           .from('clients')
           .select('whatsapp_business_phone, manager_phone, default_worker_phone')
@@ -121,7 +119,7 @@ export default function QrPage() {
         setWaPhoneLoading(false)
       }
     })()
-  }, [])
+  }, [tenantClientId])
 
   async function copyText(value: string, label: string) {
     try {

@@ -8,6 +8,12 @@ import {
   navItemIdForPathname,
 } from '@/lib/client-nav-features'
 import { SUPABASE_AUTH_COOKIE_OPTIONS } from '@/lib/supabase-cookie-options'
+import {
+  clearMiddlewareTenantCache,
+  readMiddlewareTenantCache,
+  writeMiddlewareTenantCache,
+} from '@/lib/middleware-tenant-cache'
+import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
 type Pending = { response: NextResponse }
 
@@ -133,6 +139,7 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
+    clearMiddlewareTenantCache(pending.response)
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -143,50 +150,72 @@ export async function middleware(req: NextRequest) {
   }
 
   let clientId: string
-  try {
-    const admin = getSupabaseAdmin()
-    const clientIds = await listClientIdsForUserId(admin, user.id)
-    if (clientIds.length === 0) {
-      // Definitive: user has no org membership — clear session
-      await supabase.auth.signOut()
+  let enabledNavFeatures: SidebarNavItemId[] | null | undefined
+  const cachedTenant = readMiddlewareTenantCache(req, user.id)
+
+  if (cachedTenant) {
+    clientId = cachedTenant.clientId
+    enabledNavFeatures = cachedTenant.enabledNavFeatures
+  } else {
+    try {
+      const admin = getSupabaseAdmin()
+      const clientIds = await listClientIdsForUserId(admin, user.id)
+      if (clientIds.length === 0) {
+        clearMiddlewareTenantCache(pending.response)
+        await supabase.auth.signOut()
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'אין גישה — חשבון לא משויך לארגון' },
+            { status: 403 }
+          )
+        }
+        const url = req.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('error', 'no_access')
+        return redirectWithCookies(pending, url)
+      }
+      if (clientIds.length > 1) {
+        clearMiddlewareTenantCache(pending.response)
+        await supabase.auth.signOut()
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'החשבון משויך ליותר מלקוח אחד — פנו לתמיכה' },
+            { status: 403 }
+          )
+        }
+        const url = req.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('error', 'multi_tenant')
+        return redirectWithCookies(pending, url)
+      }
+      clientId = clientIds[0]
+
+      // Prefetch nav features into the same cookie so gated paths skip a second clients read.
+      try {
+        enabledNavFeatures = await fetchClientEnabledNavFeatures(admin, clientId)
+      } catch {
+        enabledNavFeatures = undefined
+      }
+
+      writeMiddlewareTenantCache(pending.response, {
+        uid: user.id,
+        clientId,
+        enabledNavFeatures: enabledNavFeatures ?? null,
+      })
+    } catch (err) {
+      // Transient DB / admin / network failure — NEVER signOut.
+      // Signing out here was wiping iOS PWA sessions on resume flakes.
+      console.error('[middleware] tenant resolution transient failure — keeping session', err)
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
-          { error: 'אין גישה — חשבון לא משויך לארגון' },
-          { status: 403 }
+          { error: 'שגיאת שרת זמנית — נסו שוב' },
+          { status: 503 }
         )
       }
-      const url = req.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('error', 'no_access')
-      return redirectWithCookies(pending, url)
+      // Allow the page through; client-side resolveBinoClientIdForBrowser has
+      // localStorage cache + retries for mobile resume.
+      return pending.response
     }
-    if (clientIds.length > 1) {
-      await supabase.auth.signOut()
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { error: 'החשבון משויך ליותר מלקוח אחד — פנו לתמיכה' },
-          { status: 403 }
-        )
-      }
-      const url = req.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('error', 'multi_tenant')
-      return redirectWithCookies(pending, url)
-    }
-    clientId = clientIds[0]
-  } catch (err) {
-    // Transient DB / admin / network failure — NEVER signOut.
-    // Signing out here was wiping iOS PWA sessions on resume flakes.
-    console.error('[middleware] tenant resolution transient failure — keeping session', err)
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'שגיאת שרת זמנית — נסו שוב' },
-        { status: 503 }
-      )
-    }
-    // Allow the page through; client-side resolveBinoClientIdForBrowser has
-    // localStorage cache + retries for mobile resume.
-    return pending.response
   }
 
   // Platform / marketing / diagnostic routes — not exposed to tenants (ops via superadmin + email).
@@ -217,8 +246,16 @@ export async function middleware(req: NextRequest) {
   const navFeatureId = navItemIdForPathname(pathname)
   if (navFeatureId) {
     try {
-      const admin = getSupabaseAdmin()
-      const enabled = await fetchClientEnabledNavFeatures(admin, clientId)
+      let enabled = enabledNavFeatures
+      if (enabled === undefined) {
+        const admin = getSupabaseAdmin()
+        enabled = await fetchClientEnabledNavFeatures(admin, clientId)
+        writeMiddlewareTenantCache(pending.response, {
+          uid: user.id,
+          clientId,
+          enabledNavFeatures: enabled,
+        })
+      }
       if (!isNavFeatureEnabled(enabled, navFeatureId)) {
         const url = req.nextUrl.clone()
         url.pathname = '/addons'

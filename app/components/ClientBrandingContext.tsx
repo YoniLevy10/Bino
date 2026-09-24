@@ -11,6 +11,7 @@ import {
   LAST_AUTH_UID_KEY,
   TENANT_CID_SESSION_KEY,
 } from '@/lib/tenant-browser-cache'
+import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 export type ClientBranding = {
   displayName: string
@@ -19,13 +20,17 @@ export type ClientBranding = {
 
 const DEFAULT_BRANDING: ClientBranding = { displayName: 'Bino', logoUrl: null }
 const BRANDING_CACHE_TTL = 24 * 60 * 60 * 1000
+/** Min interval between background network refetches when cache is still valid. */
+const BRANDING_REFETCH_MIN_INTERVAL_MS = 60 * 1000
 
-function readBrandingCache(clientId: string): ClientBranding | null {
+function readBrandingCache(clientId: string): { branding: ClientBranding; ts: number } | null {
   try {
     const raw = localStorage.getItem(`bamakor_branding_v1_${clientId}`)
     if (!raw) return null
     const { branding, ts } = JSON.parse(raw) as { branding: ClientBranding; ts: number }
-    if (branding && Date.now() - ts < BRANDING_CACHE_TTL) return branding
+    if (branding && typeof ts === 'number' && Date.now() - ts < BRANDING_CACHE_TTL) {
+      return { branding, ts }
+    }
   } catch {}
   return null
 }
@@ -43,7 +48,7 @@ export function tryReadBrandingFromSessionCache(): ClientBranding | null {
     if (!cid || !uid) return null
     const lastUid = sessionStorage.getItem(LAST_AUTH_UID_KEY)
     if (!lastUid || lastUid !== uid) return null
-    return readBrandingCache(cid)
+    return readBrandingCache(cid)?.branding ?? null
   } catch {
     return null
   }
@@ -64,58 +69,80 @@ const ClientBrandingContext = createContext<ClientBrandingContextValue>({
   isBootstrapped: false,
 })
 
+type LoadBrandingOptions = {
+  resetFirst?: boolean
+  /** Force network even when localStorage TTL is still valid. */
+  forceNetwork?: boolean
+}
+
 export function ClientBrandingProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const isWorker = isWorkerPortalPath(pathname)
 
   const [branding, setBranding] = useState<ClientBranding>(DEFAULT_BRANDING)
   const [isBootstrapped, setIsBootstrapped] = useState(false)
   const authUidRef = useRef<string>('')
+  const lastNetworkFetchRef = useRef(0)
 
-  const loadBranding = useCallback(async (opts?: { resetFirst?: boolean }) => {
-    if (isWorkerPortalPath(pathname)) {
+  const fetchBrandingFromNetwork = useCallback(async () => {
+    const supabase = createClient()
+    const clientId = await resolveBinoClientIdForBrowser()
+    const { data } = await supabase
+      .from('clients')
+      .select('name, logo_url')
+      .eq('id', clientId)
+      .maybeSingle()
+    if (data) {
+      const fresh: ClientBranding = {
+        displayName: (data as { name?: string | null }).name?.trim() || 'Bino',
+        logoUrl: (data as { logo_url?: string | null }).logo_url?.trim() || null,
+      }
+      setBranding(fresh)
+      writeBrandingCache(clientId, fresh)
+      lastNetworkFetchRef.current = Date.now()
+    }
+  }, [])
+
+  const loadBranding = useCallback(
+    async (opts?: LoadBrandingOptions) => {
+      if (opts?.resetFirst) {
+        setBranding(DEFAULT_BRANDING)
+        setIsBootstrapped(false)
+      }
+      try {
+        const clientId = await resolveBinoClientIdForBrowser()
+        const cached = readBrandingCache(clientId)
+        if (cached) {
+          setBranding(cached.branding)
+          setIsBootstrapped(true)
+          lastNetworkFetchRef.current = cached.ts
+          if (!opts?.forceNetwork) {
+            return
+          }
+        }
+        await fetchBrandingFromNetwork()
+      } catch {
+        // keep default branding on any error
+      } finally {
+        setIsBootstrapped(true)
+      }
+    },
+    [fetchBrandingFromNetwork]
+  )
+
+  // Worker portal: local defaults only — never hit tenant branding APIs.
+  // Manager shell: load once on mount (not on every pathname change).
+  useEffect(() => {
+    if (isWorker) {
       setBranding(DEFAULT_BRANDING)
       setIsBootstrapped(true)
       return
     }
-    if (opts?.resetFirst) {
-      setBranding(DEFAULT_BRANDING)
-      setIsBootstrapped(false)
-    }
-    try {
-      const supabase = createClient()
-      const clientId = await resolveBinoClientIdForBrowser()
-
-      const cached = readBrandingCache(clientId)
-      if (cached) {
-        setBranding(cached)
-        setIsBootstrapped(true)
-      }
-
-      const { data } = await supabase
-        .from('clients')
-        .select('name, logo_url')
-        .eq('id', clientId)
-        .maybeSingle()
-      if (data) {
-        const fresh: ClientBranding = {
-          displayName: (data as { name?: string | null }).name?.trim() || 'Bino',
-          logoUrl: (data as { logo_url?: string | null }).logo_url?.trim() || null,
-        }
-        setBranding(fresh)
-        writeBrandingCache(clientId, fresh)
-      }
-    } catch {
-      // keep default branding on any error
-    } finally {
-      setIsBootstrapped(true)
-    }
-  }, [pathname])
-
-  useEffect(() => {
     void loadBranding()
-  }, [loadBranding])
+  }, [isWorker, loadBranding])
 
   useEffect(() => {
+    if (isWorker) return
     const supabase = createClient()
     const {
       data: { subscription },
@@ -134,7 +161,7 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
       if (uid && prevUid && prevUid !== uid) {
         clearTenantBrowserCaches()
         authUidRef.current = uid
-        void loadBranding({ resetFirst: true })
+        void loadBranding({ resetFirst: true, forceNetwork: true })
         return
       }
 
@@ -146,7 +173,26 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [loadBranding])
+  }, [isWorker, loadBranding])
+
+  useEffect(() => {
+    if (isWorker) return
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      const elapsed = Date.now() - lastNetworkFetchRef.current
+      if (lastNetworkFetchRef.current > 0 && elapsed < BRANDING_REFETCH_MIN_INTERVAL_MS) return
+      void loadBranding({ forceNetwork: true })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [isWorker, loadBranding])
+
+  useAppRefreshListener(
+    useCallback(() => {
+      if (isWorker) return
+      void loadBranding({ forceNetwork: true })
+    }, [isWorker, loadBranding])
+  )
 
   useEffect(() => {
     if (!isBootstrapped) return

@@ -20,13 +20,37 @@ export const EMPTY_DASHBOARD_TICKET_KPI_COUNTS: DashboardTicketKpiCounts = {
   closed: 0,
 }
 
-type CountClient = Pick<SupabaseClient, 'from'>
+type CountClient = Pick<SupabaseClient, 'from' | 'rpc'>
 
-/** Exact tenant ticket KPIs (not derived from a capped open-ticket list). */
+/** Exact tenant ticket KPIs via single RPC (fallback: four parallel head counts). */
 export async function fetchDashboardTicketKpiCounts(
   supabase: CountClient,
   clientId: string
 ): Promise<DashboardTicketKpiCounts> {
+  try {
+    const { data, error } = await supabase.rpc('dashboard_ticket_kpi_counts', {
+      p_client_id: clientId,
+    })
+    if (!error && data != null) {
+      const row = (Array.isArray(data) ? data[0] : data) as {
+        active?: number | string | null
+        open_count?: number | string | null
+        in_progress?: number | string | null
+        closed?: number | string | null
+      } | null
+      if (row) {
+        return {
+          active: Number(row.active ?? 0),
+          open: Number(row.open_count ?? 0),
+          inProgress: Number(row.in_progress ?? 0),
+          closed: Number(row.closed ?? 0),
+        }
+      }
+    }
+  } catch {
+    /* fall through to head counts */
+  }
+
   const base = () =>
     withClientId(supabase.from('tickets').select('id', { count: 'exact', head: true }), clientId).is(
       'deleted_at',
