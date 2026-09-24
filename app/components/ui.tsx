@@ -242,6 +242,14 @@ function NavIcon({ type, active }: { type: string; active?: boolean }) {
         <path d="m19 9-5 5-4-4-3 3" />
       </svg>
     ),
+    coin: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M14.5 9.5c-.4-.8-1.3-1.3-2.5-1.3-1.7 0-3 1-3 2.5s1.3 2.5 3 2.5c1.7 0 3 1 3 2.5s-1.3 2.5-3 2.5c-1.2 0-2.1-.5-2.5-1.3" />
+        <path d="M12 6.5v1.2" />
+        <path d="M12 16.3v1.2" />
+      </svg>
+    ),
     clock: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
