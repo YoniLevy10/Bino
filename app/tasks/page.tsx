@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import {
   AppShell,
   Button,
-  Card,
+  Drawer,
   LoadingSpinner,
   MobileHeader,
   PageHeader,
@@ -44,11 +44,7 @@ type TaskAttachment = {
 type WorkerOpt = { id: string; full_name: string }
 type ProjectOpt = { id: string; name: string }
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'ממתינה',
-  IN_PROGRESS: 'בביצוע',
-  DONE: 'הושלמה',
-}
+type ListFilter = 'open' | 'today' | 'all'
 
 const PRIORITY_LABEL: Record<string, string> = {
   LOW: 'נמוכה',
@@ -95,6 +91,16 @@ function Field({
   )
 }
 
+const emptyForm = {
+  title: '',
+  description: '',
+  notes: '',
+  projectId: '',
+  workerId: '',
+  priority: 'MEDIUM',
+  dueAt: '',
+}
+
 export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState<TaskRow[]>([])
@@ -103,17 +109,12 @@ export default function TasksPage() {
   const [isMobile, setIsMobile] = useState(false)
   const { openMenu } = useMobileMenu()
   const [saving, setSaving] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [notes, setNotes] = useState('')
-  const [projectId, setProjectId] = useState('')
-  const [workerId, setWorkerId] = useState('')
-  const [priority, setPriority] = useState('MEDIUM')
-  const [dueAt, setDueAt] = useState('')
-  const [dayOnly, setDayOnly] = useState(true)
-  const [groupByWorker, setGroupByWorker] = useState(true)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<Partial<TaskRow>>({})
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<TaskRow | null>(null)
+  const [form, setForm] = useState(emptyForm)
+  const [listFilter, setListFilter] = useState<ListFilter>('open')
+  const [groupByWorker, setGroupByWorker] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [attachmentsByTask, setAttachmentsByTask] = useState<Record<string, TaskAttachment[]>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -170,9 +171,12 @@ export default function TasksPage() {
   }, [load])
 
   const visible = useMemo(() => {
-    if (!dayOnly) return tasks
-    return tasks.filter((t) => isMaintenanceTaskForToday({ dueAt: t.due_at, status: t.status }))
-  }, [tasks, dayOnly])
+    if (listFilter === 'all') return tasks
+    if (listFilter === 'today') {
+      return tasks.filter((t) => isMaintenanceTaskForToday({ dueAt: t.due_at, status: t.status }))
+    }
+    return tasks.filter((t) => t.status !== 'DONE')
+  }, [tasks, listFilter])
 
   const grouped = useMemo(() => {
     if (!groupByWorker) return [{ key: 'all', label: null as string | null, items: visible }]
@@ -190,47 +194,96 @@ export default function TasksPage() {
     }))
   }, [visible, groupByWorker])
 
-  async function createTask() {
-    if (!title.trim()) {
+  function openCreate() {
+    setEditingTask(null)
+    setForm(emptyForm)
+    setCreateFile(null)
+    if (createFileRef.current) createFileRef.current.value = ''
+    setDrawerOpen(true)
+  }
+
+  function openEdit(t: TaskRow) {
+    setEditingTask(t)
+    setForm({
+      title: t.title,
+      description: t.description || '',
+      notes: t.notes || '',
+      projectId: t.project_id || '',
+      workerId: t.assigned_worker_id || '',
+      priority: t.priority || 'MEDIUM',
+      dueAt: toLocalInput(t.due_at),
+    })
+    setCreateFile(null)
+    if (createFileRef.current) createFileRef.current.value = ''
+    setDrawerOpen(true)
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false)
+    setEditingTask(null)
+    setForm(emptyForm)
+    setCreateFile(null)
+  }
+
+  async function saveTask() {
+    if (!form.title.trim()) {
       toast.error('נא למלא כותרת')
       return
     }
     setSaving(true)
     try {
-      const res = await fetchWithTimeout(
-        '/api/maintenance-tasks',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: title.trim(),
-            description: description.trim() || null,
-            notes: notes.trim() || null,
-            project_id: projectId || null,
-            assigned_worker_id: workerId || null,
-            priority,
-            due_at: dueAt ? new Date(dueAt).toISOString() : null,
-          }),
-        },
-        MUTATION_FETCH_TIMEOUT_MS
-      )
-      const json = (await res.json().catch(() => ({}))) as { error?: string; task?: TaskRow }
-      if (!res.ok) {
-        toast.error(typeof json.error === 'string' ? json.error : 'יצירה נכשלה')
-        return
+      if (editingTask) {
+        const res = await fetchWithTimeout(
+          '/api/maintenance-tasks',
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              task_id: editingTask.id,
+              title: form.title.trim(),
+              description: form.description.trim() || null,
+              notes: form.notes.trim() || null,
+              project_id: form.projectId || null,
+              assigned_worker_id: form.workerId || null,
+              priority: form.priority,
+              due_at: form.dueAt ? new Date(form.dueAt).toISOString() : null,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        if (!res.ok) {
+          toast.error('עדכון נכשל')
+          return
+        }
+        if (createFile) await uploadPhoto(editingTask.id, createFile)
+        toast.success('המשימה עודכנה')
+      } else {
+        const res = await fetchWithTimeout(
+          '/api/maintenance-tasks',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: form.title.trim(),
+              description: form.description.trim() || null,
+              notes: form.notes.trim() || null,
+              project_id: form.projectId || null,
+              assigned_worker_id: form.workerId || null,
+              priority: form.priority,
+              due_at: form.dueAt ? new Date(form.dueAt).toISOString() : null,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = (await res.json().catch(() => ({}))) as { error?: string; task?: TaskRow }
+        if (!res.ok) {
+          toast.error(typeof json.error === 'string' ? json.error : 'יצירה נכשלה')
+          return
+        }
+        if (createFile && json.task?.id) await uploadPhoto(json.task.id, createFile)
+        toast.success('המשימה נוצרה')
       }
-      if (createFile && json.task?.id) {
-        await uploadPhoto(json.task.id, createFile)
-      }
-      toast.success('המשימה נוצרה')
-      setTitle('')
-      setDescription('')
-      setNotes('')
-      setProjectId('')
-      setWorkerId('')
-      setDueAt('')
-      setCreateFile(null)
-      if (createFileRef.current) createFileRef.current.value = ''
+      closeDrawer()
       await load()
     } catch {
       toast.error('שגיאת חיבור')
@@ -256,12 +309,19 @@ export default function TasksPage() {
         return
       }
       if (okMsg) toast.success(okMsg)
-      setEditingId(null)
       await load()
     } catch {
       toast.error('שגיאת חיבור')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function toggleDone(t: TaskRow) {
+    if (t.status === 'DONE') {
+      await patchTask(t.id, { status: 'PENDING' })
+    } else {
+      await patchTask(t.id, { status: 'DONE' }, 'הושלמה')
     }
   }
 
@@ -279,6 +339,7 @@ export default function TasksPage() {
         return
       }
       toast.success('המשימה נמחקה')
+      if (expandedId === taskId) setExpandedId(null)
       await load()
     } catch {
       toast.error('שגיאת חיבור')
@@ -308,157 +369,63 @@ export default function TasksPage() {
     }
   }
 
-  function startEdit(t: TaskRow) {
-    setEditingId(t.id)
-    setEditDraft({
-      title: t.title,
-      description: t.description,
-      notes: t.notes,
-      priority: t.priority,
-      status: t.status,
-      project_id: t.project_id,
-      assigned_worker_id: t.assigned_worker_id,
-      due_at: t.due_at,
-    })
-  }
+  const createBtn = (
+    <Button variant="primary" onClick={openCreate}>
+      משימה חדשה
+    </Button>
+  )
 
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
         <MobileHeader
-          title="ניהול משימות"
-          subtitle="משימות אחזקה נפרדות מתקלות"
+          title="משימות"
+          subtitle="רשימת משימות אחזקה"
           onMenuClick={openMenu}
         />
       )}
+
+      {isMobile && <div style={styles.mobileCreateRow}>{createBtn}</div>}
+
       <div style={styles.wrap(isMobile)}>
         {!isMobile && (
-          <PageHeader title="ניהול משימות" subtitle="משימות אחזקה נפרדות ממערכת התקלות" />
+          <PageHeader
+            title="משימות"
+            subtitle="רשימת משימות אחזקה — כמו todo"
+            actions={createBtn}
+          />
         )}
 
-        <Card>
-          <div style={styles.sectionTitle}>משימה חדשה</div>
-          <div style={styles.formGrid(isMobile)}>
-            <Field label="כותרת" full>
-              <input
-                style={styles.input}
-                placeholder="למשל: בדיקת משאבה"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </Field>
-            <Field label="תיאור" full>
-              <textarea
-                style={styles.textarea}
-                placeholder="פירוט קצר (אופציונלי)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-              />
-            </Field>
-            <Field label="הערות פנימיות" full>
-              <textarea
-                style={styles.textarea}
-                placeholder="הערות למנהל / לעובד"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-            </Field>
-            <Field label="בניין">
-              <select style={styles.input} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                <option value="">ללא בניין</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="עובד אחראי">
-              <select style={styles.input} value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
-                <option value="">ללא עובד</option>
-                {workers.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.full_name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="עדיפות">
-              <select style={styles.input} value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="LOW">נמוכה</option>
-                <option value="MEDIUM">בינונית</option>
-                <option value="HIGH">גבוהה</option>
-                <option value="URGENT">דחופה</option>
-              </select>
-            </Field>
-            <Field label="תאריך ושעה לביצוע" hint="אופציונלי — בלי תאריך המשימה נשארת פתוחה עד שסוגרים אותה">
-              <input
-                type="datetime-local"
-                style={styles.input}
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-              />
-            </Field>
-            <Field label="קובץ / תמונה" full hint={createFile ? createFile.name : 'אופציונלי'}>
-              <div style={styles.attachRow}>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => createFileRef.current?.click()}
-                >
-                  {createFile ? 'החלף קובץ' : 'צרף קובץ'}
-                </Button>
-                {createFile ? (
-                  <button
-                    type="button"
-                    style={styles.clearAttach}
-                    onClick={() => {
-                      setCreateFile(null)
-                      if (createFileRef.current) createFileRef.current.value = ''
-                    }}
-                  >
-                    הסר
-                  </button>
-                ) : null}
-                <input
-                  ref={createFileRef}
-                  type="file"
-                  accept="image/*,application/pdf,video/mp4,video/webm"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    setCreateFile(e.target.files?.[0] || null)
-                  }}
-                />
-              </div>
-            </Field>
-            <div style={styles.createActions}>
-              <Button type="button" onClick={() => void createTask()} disabled={saving}>
-                {saving ? 'שומר…' : 'צור משימה'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-
         <div style={styles.toolbar}>
-          <div style={styles.filters}>
-            <label style={styles.check}>
-              <input type="checkbox" checked={dayOnly} onChange={(e) => setDayOnly(e.target.checked)} />
-              <span>משימות היום / פתוחות ללא תאריך</span>
-            </label>
-            <label style={styles.check}>
-              <input
-                type="checkbox"
-                checked={groupByWorker}
-                onChange={(e) => setGroupByWorker(e.target.checked)}
-              />
-              <span>קיבוץ לפי עובד</span>
-            </label>
+          <div style={styles.chips}>
+            {(
+              [
+                { id: 'open', label: 'פתוחות' },
+                { id: 'today', label: 'היום' },
+                { id: 'all', label: 'הכל' },
+              ] as const
+            ).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setListFilter(c.id)}
+                style={{
+                  ...styles.chip,
+                  ...(listFilter === c.id ? styles.chipActive : null),
+                }}
+              >
+                {c.label}
+              </button>
+            ))}
           </div>
-          <Button type="button" variant="secondary" onClick={() => void load()}>
-            רענון
-          </Button>
+          <label style={styles.check}>
+            <input
+              type="checkbox"
+              checked={groupByWorker}
+              onChange={(e) => setGroupByWorker(e.target.checked)}
+            />
+            <span>לפי עובד</span>
+          </label>
         </div>
 
         {loading ? (
@@ -466,168 +433,74 @@ export default function TasksPage() {
         ) : visible.length === 0 ? (
           <div style={styles.emptyBox}>
             <p style={styles.empty}>אין משימות להצגה</p>
-            {dayOnly ? (
-              <p style={styles.emptyHint}>כבו את הסינון «משימות היום» כדי לראות את כל המשימות</p>
-            ) : null}
+            <div style={{ marginTop: 12 }}>{createBtn}</div>
           </div>
         ) : (
-          <div style={styles.list}>
+          <div style={styles.listCard}>
             {grouped.map((group) => (
-              <div key={group.key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div key={group.key}>
                 {group.label ? (
-                  <h3 style={styles.groupTitle}>
+                  <div style={styles.groupTitle}>
                     {group.label}
-                    <span style={styles.groupCount}> ({group.items.length})</span>
-                  </h3>
+                    <span style={styles.groupCount}> · {group.items.length}</span>
+                  </div>
                 ) : null}
                 {group.items.map((t) => {
-                  const editing = editingId === t.id
+                  const done = t.status === 'DONE'
+                  const expanded = expandedId === t.id
                   const atts = attachmentsByTask[t.id] || []
                   const busy = busyId === t.id
                   return (
-                    <Card key={t.id}>
-                      {editing ? (
-                        <div style={{ display: 'grid', gap: 10 }}>
-                          <Field label="כותרת" full>
-                            <input
-                              style={styles.input}
-                              value={editDraft.title || ''}
-                              onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
-                            />
-                          </Field>
-                          <Field label="תיאור" full>
-                            <textarea
-                              style={styles.textarea}
-                              rows={2}
-                              value={editDraft.description || ''}
-                              onChange={(e) =>
-                                setEditDraft((d) => ({ ...d, description: e.target.value }))
-                              }
-                            />
-                          </Field>
-                          <Field label="הערות" full>
-                            <textarea
-                              style={styles.textarea}
-                              rows={2}
-                              value={editDraft.notes || ''}
-                              onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
-                            />
-                          </Field>
-                          <div style={styles.formGrid(true)}>
-                            <Field label="בניין">
-                              <select
-                                style={styles.input}
-                                value={editDraft.project_id || ''}
-                                onChange={(e) =>
-                                  setEditDraft((d) => ({ ...d, project_id: e.target.value || null }))
-                                }
-                              >
-                                <option value="">ללא בניין</option>
-                                {projects.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
-                            <Field label="עובד">
-                              <select
-                                style={styles.input}
-                                value={editDraft.assigned_worker_id || ''}
-                                onChange={(e) =>
-                                  setEditDraft((d) => ({
-                                    ...d,
-                                    assigned_worker_id: e.target.value || null,
-                                  }))
-                                }
-                              >
-                                <option value="">ללא עובד</option>
-                                {workers.map((w) => (
-                                  <option key={w.id} value={w.id}>
-                                    {w.full_name}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
-                            <Field label="עדיפות">
-                              <select
-                                style={styles.input}
-                                value={editDraft.priority || 'MEDIUM'}
-                                onChange={(e) => setEditDraft((d) => ({ ...d, priority: e.target.value }))}
-                              >
-                                <option value="LOW">נמוכה</option>
-                                <option value="MEDIUM">בינונית</option>
-                                <option value="HIGH">גבוהה</option>
-                                <option value="URGENT">דחופה</option>
-                              </select>
-                            </Field>
-                            <Field label="סטטוס">
-                              <select
-                                style={styles.input}
-                                value={editDraft.status || 'PENDING'}
-                                onChange={(e) => setEditDraft((d) => ({ ...d, status: e.target.value }))}
-                              >
-                                <option value="PENDING">ממתינה</option>
-                                <option value="IN_PROGRESS">בביצוע</option>
-                                <option value="DONE">הושלמה</option>
-                              </select>
-                            </Field>
-                            <Field label="תאריך ושעה לביצוע" full>
-                              <input
-                                type="datetime-local"
-                                style={styles.input}
-                                value={toLocalInput(editDraft.due_at ?? null)}
-                                onChange={(e) =>
-                                  setEditDraft((d) => ({
-                                    ...d,
-                                    due_at: e.target.value
-                                      ? new Date(e.target.value).toISOString()
-                                      : null,
-                                  }))
-                                }
-                              />
-                            </Field>
+                    <div key={t.id} style={styles.todoRow}>
+                      <div style={styles.todoMain}>
+                        <button
+                          type="button"
+                          aria-label={done ? 'פתח מחדש' : 'סמן כהושלם'}
+                          disabled={busy}
+                          onClick={() => void toggleDone(t)}
+                          style={{
+                            ...styles.checkBtn,
+                            ...(done ? styles.checkBtnDone : null),
+                          }}
+                        >
+                          {done ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          style={styles.todoBody}
+                          onClick={() => setExpandedId(expanded ? null : t.id)}
+                        >
+                          <div
+                            style={{
+                              ...styles.todoTitle,
+                              ...(done ? styles.todoTitleDone : null),
+                            }}
+                          >
+                            {t.title}
                           </div>
-                          <div style={styles.cardActions}>
-                            <Button
-                              type="button"
-                              disabled={busy}
-                              onClick={() =>
-                                void patchTask(
-                                  t.id,
-                                  {
-                                    title: editDraft.title,
-                                    description: editDraft.description,
-                                    notes: editDraft.notes,
-                                    priority: editDraft.priority,
-                                    status: editDraft.status,
-                                    project_id: editDraft.project_id ?? null,
-                                    assigned_worker_id: editDraft.assigned_worker_id ?? null,
-                                    due_at: editDraft.due_at ?? null,
-                                  },
-                                  'המשימה עודכנה'
-                                )
-                              }
-                            >
-                              שמור
-                            </Button>
-                            <Button type="button" variant="secondary" onClick={() => setEditingId(null)}>
-                              ביטול
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={styles.taskHead}>
-                            <div style={styles.taskTitle}>{t.title}</div>
-                            <span style={styles.badge}>{STATUS_LABEL[t.status] || t.status}</span>
-                          </div>
-                          <div style={styles.meta}>
-                            {projectName(t)} · {relName(t)} · {PRIORITY_LABEL[t.priority] || t.priority}
+                          <div style={styles.todoMeta}>
+                            {projectName(t)} · {relName(t)}
                             {t.due_at
-                              ? ` · עד ${new Date(t.due_at).toLocaleString('he-IL')}`
-                              : ' · ללא תאריך יעד'}
+                              ? ` · ${new Date(t.due_at).toLocaleString('he-IL', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}`
+                              : ''}
+                            {t.priority === 'HIGH' || t.priority === 'URGENT'
+                              ? ` · ${PRIORITY_LABEL[t.priority]}`
+                              : ''}
                           </div>
+                        </button>
+                      </div>
+
+                      {expanded ? (
+                        <div style={styles.expand}>
                           {t.description ? <p style={styles.desc}>{t.description}</p> : null}
                           {t.notes ? <p style={styles.notesLine}>הערות: {t.notes}</p> : null}
                           {atts.length > 0 ? (
@@ -656,34 +529,7 @@ export default function TasksPage() {
                             </div>
                           ) : null}
                           <div style={styles.cardActions}>
-                            {t.status !== 'DONE' ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                disabled={busy}
-                                onClick={() => void patchTask(t.id, { status: 'DONE' }, 'המשימה הושלמה')}
-                              >
-                                סיום / השלמה
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                disabled={busy}
-                                onClick={() =>
-                                  void patchTask(t.id, { status: 'PENDING' }, 'המשימה נפתחה מחדש')
-                                }
-                              >
-                                פתח מחדש
-                              </Button>
-                            )}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => startEdit(t)}
-                            >
+                            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(t)}>
                               עריכה
                             </Button>
                             <Button
@@ -692,7 +538,7 @@ export default function TasksPage() {
                               variant="secondary"
                               onClick={() => fileRefs.current[t.id]?.click()}
                             >
-                              צרף קובץ / תמונה
+                              צרף קובץ
                             </Button>
                             <input
                               ref={(el) => {
@@ -717,7 +563,7 @@ export default function TasksPage() {
                               מחיקה
                             </Button>
                           </div>
-                          <div style={styles.quickAssign}>
+                          <div style={{ marginTop: 8 }}>
                             <select
                               style={styles.input}
                               value={t.assigned_worker_id || ''}
@@ -735,9 +581,9 @@ export default function TasksPage() {
                               ))}
                             </select>
                           </div>
-                        </>
-                      )}
-                    </Card>
+                        </div>
+                      ) : null}
+                    </div>
                   )
                 })}
               </div>
@@ -745,50 +591,306 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      <Drawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        title={editingTask ? 'עריכת משימה' : 'משימה חדשה'}
+        subtitle={editingTask ? 'עדכון פרטי המשימה' : 'הוספה לרשימת המשימות'}
+        isMobile={isMobile}
+        footer={
+          <div style={styles.drawerFooter}>
+            <Button type="button" variant="secondary" onClick={closeDrawer} disabled={saving}>
+              ביטול
+            </Button>
+            <Button type="button" onClick={() => void saveTask()} disabled={saving}>
+              {saving ? 'שומר…' : editingTask ? 'שמור' : 'צור משימה'}
+            </Button>
+          </div>
+        }
+      >
+        <div style={styles.formGrid}>
+          <Field label="כותרת" full>
+            <input
+              style={styles.input}
+              placeholder="למשל: בדיקת משאבה"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              autoFocus={!isMobile}
+            />
+          </Field>
+          <Field label="תיאור" full>
+            <textarea
+              style={styles.textarea}
+              placeholder="פירוט קצר (אופציונלי)"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+            />
+          </Field>
+          <Field label="הערות פנימיות" full>
+            <textarea
+              style={styles.textarea}
+              placeholder="הערות למנהל / לעובד"
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={2}
+            />
+          </Field>
+          <Field label="בניין">
+            <select
+              style={styles.input}
+              value={form.projectId}
+              onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
+            >
+              <option value="">ללא בניין</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="עובד אחראי">
+            <select
+              style={styles.input}
+              value={form.workerId}
+              onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
+            >
+              <option value="">ללא עובד</option>
+              {workers.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.full_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="עדיפות">
+            <select
+              style={styles.input}
+              value={form.priority}
+              onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+            >
+              <option value="LOW">נמוכה</option>
+              <option value="MEDIUM">בינונית</option>
+              <option value="HIGH">גבוהה</option>
+              <option value="URGENT">דחופה</option>
+            </select>
+          </Field>
+          <Field
+            label="תאריך ושעה לביצוע"
+            hint="אופציונלי — בלי תאריך המשימה נשארת פתוחה"
+          >
+            <input
+              type="datetime-local"
+              style={styles.input}
+              value={form.dueAt}
+              onChange={(e) => setForm((f) => ({ ...f, dueAt: e.target.value }))}
+            />
+          </Field>
+          <Field label="קובץ / תמונה" full hint={createFile ? createFile.name : 'אופציונלי'}>
+            <div style={styles.attachRow}>
+              <Button type="button" variant="secondary" onClick={() => createFileRef.current?.click()}>
+                {createFile ? 'החלף קובץ' : 'צרף קובץ'}
+              </Button>
+              {createFile ? (
+                <button
+                  type="button"
+                  style={styles.clearAttach}
+                  onClick={() => {
+                    setCreateFile(null)
+                    if (createFileRef.current) createFileRef.current.value = ''
+                  }}
+                >
+                  הסר
+                </button>
+              ) : null}
+              <input
+                ref={createFileRef}
+                type="file"
+                accept="image/*,application/pdf,video/mp4,video/webm"
+                style={{ display: 'none' }}
+                onChange={(e) => setCreateFile(e.target.files?.[0] || null)}
+              />
+            </div>
+          </Field>
+        </div>
+      </Drawer>
     </AppShell>
   )
 }
 
 const styles = {
   wrap: (mobile: boolean): CSSProperties => ({
-    padding: mobile ? '16px 16px 32px' : '32px 40px',
-    maxWidth: mobile ? '100%' : 920,
+    padding: mobile ? '12px 16px 32px' : '32px 40px',
+    maxWidth: mobile ? '100%' : 820,
     margin: '0 auto',
     width: '100%',
     boxSizing: 'border-box',
     minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 14,
   }),
-  sectionTitle: {
-    fontSize: 15,
+  mobileCreateRow: {
+    padding: '12px 16px 0',
+    display: 'flex',
+    justifyContent: 'flex-start',
+  } as CSSProperties,
+  toolbar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  } as CSSProperties,
+  chips: { display: 'flex', gap: 8, flexWrap: 'wrap' } as CSSProperties,
+  chip: {
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    color: theme.colors.textSecondary,
+    borderRadius: 999,
+    padding: '8px 14px',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+  } as CSSProperties,
+  chipActive: {
+    background: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  } as CSSProperties,
+  check: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  } as CSSProperties,
+  listCard: {
+    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: 16,
+    overflow: 'hidden',
+  } as CSSProperties,
+  groupTitle: {
+    padding: '12px 16px 6px',
+    fontSize: 13,
     fontWeight: 800,
-    marginBottom: 12,
+    color: theme.colors.textSecondary,
+    background: theme.colors.background,
+    borderBottom: `1px solid ${theme.colors.border}`,
+  } as CSSProperties,
+  groupCount: { fontWeight: 500 } as CSSProperties,
+  todoRow: {
+    borderBottom: `1px solid ${theme.colors.border}`,
+    padding: '12px 14px',
+  } as CSSProperties,
+  todoMain: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+  } as CSSProperties,
+  checkBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    border: `2px solid ${theme.colors.border}`,
+    background: 'transparent',
+    flexShrink: 0,
+    marginTop: 2,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    color: '#fff',
+  } as CSSProperties,
+  checkBtnDone: {
+    background: theme.colors.success,
+    borderColor: theme.colors.success,
+  } as CSSProperties,
+  todoBody: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'right',
+    background: 'transparent',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    font: 'inherit',
+    color: 'inherit',
+  } as CSSProperties,
+  todoTitle: {
+    fontWeight: 700,
+    fontSize: 15,
+    lineHeight: 1.35,
+    wordBreak: 'break-word',
     color: theme.colors.textPrimary,
-  },
-  formGrid: (mobile: boolean): CSSProperties => ({
+  } as CSSProperties,
+  todoTitleDone: {
+    textDecoration: 'line-through',
+    color: theme.colors.textSecondary,
+    fontWeight: 600,
+  } as CSSProperties,
+  todoMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    lineHeight: 1.4,
+    wordBreak: 'break-word',
+  } as CSSProperties,
+  expand: {
+    marginTop: 12,
+    marginInlineStart: 38,
+    paddingTop: 10,
+    borderTop: `1px dashed ${theme.colors.border}`,
+  } as CSSProperties,
+  desc: {
+    fontSize: 14,
+    margin: '0 0 8px',
+    lineHeight: 1.45,
+    wordBreak: 'break-word',
+  } as CSSProperties,
+  notesLine: {
+    fontSize: 13,
+    margin: '0 0 8px',
+    color: theme.colors.textSecondary,
+    wordBreak: 'break-word',
+  } as CSSProperties,
+  cardActions: { display: 'flex', flexWrap: 'wrap', gap: 8 } as CSSProperties,
+  emptyBox: {
+    textAlign: 'center',
+    padding: '36px 16px',
+    borderRadius: 16,
+    border: `1px dashed ${theme.colors.border}`,
+    background: theme.colors.surface,
+  } as CSSProperties,
+  empty: { margin: 0, color: theme.colors.textSecondary, fontWeight: 600 } as CSSProperties,
+  attRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 } as CSSProperties,
+  thumb: { width: 56, height: 56, objectFit: 'cover', borderRadius: 10 } as CSSProperties,
+  formGrid: {
     display: 'grid',
     gap: 12,
-    gridTemplateColumns: mobile ? '1fr' : '1fr 1fr',
+    gridTemplateColumns: '1fr',
     minWidth: 0,
-  }),
+  } as CSSProperties,
   field: {
     display: 'flex',
-    flexDirection: 'column' as const,
+    flexDirection: 'column',
     gap: 6,
     minWidth: 0,
-  },
+  } as CSSProperties,
   fieldLabel: {
     fontSize: 13,
     fontWeight: 700,
     color: theme.colors.textSecondary,
-  },
+  } as CSSProperties,
   fieldHint: {
     fontSize: 12,
     color: theme.colors.textSecondary,
     lineHeight: 1.35,
-  },
+  } as CSSProperties,
   input: {
     width: '100%',
     maxWidth: '100%',
@@ -798,9 +900,9 @@ const styles = {
     fontSize: 16,
     background: theme.colors.surface,
     color: theme.colors.textPrimary,
-    boxSizing: 'border-box' as const,
+    boxSizing: 'border-box',
     minWidth: 0,
-  },
+  } as CSSProperties,
   textarea: {
     width: '100%',
     maxWidth: '100%',
@@ -810,12 +912,12 @@ const styles = {
     fontSize: 16,
     background: theme.colors.surface,
     color: theme.colors.textPrimary,
-    boxSizing: 'border-box' as const,
+    boxSizing: 'border-box',
     minWidth: 0,
-    resize: 'vertical' as const,
+    resize: 'vertical',
     fontFamily: 'inherit',
-  },
-  attachRow: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const },
+  } as CSSProperties,
+  attachRow: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } as CSSProperties,
   clearAttach: {
     border: 'none',
     background: 'transparent',
@@ -824,76 +926,10 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     padding: 0,
-  },
-  createActions: { gridColumn: '1 / -1' as const, marginTop: 4 },
-  toolbar: {
+  } as CSSProperties,
+  drawerFooter: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-    flexWrap: 'wrap' as const,
-    minWidth: 0,
-  },
-  filters: { display: 'flex', flexDirection: 'column' as const, gap: 10, flex: 1, minWidth: 0 },
-  check: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 8,
-    fontSize: 14,
-    lineHeight: 1.35,
-    minWidth: 0,
-  },
-  list: { display: 'flex', flexDirection: 'column' as const, gap: 10, minWidth: 0 },
-  groupTitle: { margin: '4px 0 0', fontSize: 16, color: theme.colors.textPrimary },
-  groupCount: { color: theme.colors.textSecondary, fontWeight: 500 },
-  taskHead: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 6,
-    flexWrap: 'wrap' as const,
-    alignItems: 'flex-start',
-  },
-  taskTitle: { fontWeight: 800, fontSize: 16, wordBreak: 'break-word' as const, flex: 1 },
-  badge: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: theme.colors.primary,
-    background: theme.colors.primaryMuted,
-    padding: '4px 10px',
-    borderRadius: 999,
-    flexShrink: 0,
-  },
-  meta: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    marginBottom: 6,
-    wordBreak: 'break-word' as const,
-    lineHeight: 1.4,
-  },
-  desc: { fontSize: 14, margin: '0 0 8px', lineHeight: 1.45, wordBreak: 'break-word' as const },
-  notesLine: {
-    fontSize: 13,
-    margin: '0 0 8px',
-    color: theme.colors.textSecondary,
-    wordBreak: 'break-word' as const,
-  },
-  cardActions: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: 8,
-    marginTop: 10,
-  },
-  quickAssign: { marginTop: 10 },
-  emptyBox: {
-    textAlign: 'center' as const,
-    padding: '28px 16px',
-    borderRadius: 16,
-    border: `1px dashed ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  empty: { margin: 0, color: theme.colors.textSecondary, fontWeight: 600 },
-  emptyHint: { margin: '8px 0 0', fontSize: 13, color: theme.colors.textSecondary },
-  attRow: { display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 4 },
-  thumb: { width: 64, height: 64, objectFit: 'cover' as const, borderRadius: 10 },
+    gap: 10,
+    justifyContent: 'stretch',
+  } as CSSProperties,
 }
