@@ -26,10 +26,12 @@ export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = ADDON_ONLY_S
  */
 export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
   'tickets',
   'projects',
   'residents',
   'workers',
+  'site_tours',
   'summary',
   'qr',
   'whatsapp_templates',

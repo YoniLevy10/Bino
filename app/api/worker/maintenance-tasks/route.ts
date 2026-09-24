@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     }
 
     const token = sanitizeId(req.nextUrl.searchParams.get('token'))
+    const todayOnly = req.nextUrl.searchParams.get('today') !== '0'
     if (!token) return NextResponse.json({ error: 'אין גישה' }, { status: 401 })
 
     const worker = await resolveWorkerFromToken(token)
@@ -43,7 +44,17 @@ export async function GET(req: NextRequest) {
       .limit(100)
 
     if (error) return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
-    return NextResponse.json({ tasks: data || [] })
+
+    const { isMaintenanceTaskForToday } = await import('@/lib/maintenance-task-day')
+    const tasks = (data || []).filter((row) =>
+      todayOnly
+        ? isMaintenanceTaskForToday({
+            dueAt: (row as { due_at?: string | null }).due_at,
+            status: (row as { status: string }).status,
+          })
+        : true
+    )
+    return NextResponse.json({ tasks })
   } catch {
     return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
   }

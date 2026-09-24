@@ -61,6 +61,7 @@ const FEATURE_LABELS: Record<UsageFeatureKey, string> = {
   projects: 'פרויקטים',
   residents: 'דיירים',
   workers: 'עובדים',
+  site_tours: 'סיורים',
   summary: 'סיכום',
   calendar: 'יומן משרד',
   attendance: 'חתמת עובדים',

@@ -51,10 +51,12 @@ describe('client nav features', () => {
   it('setup package keeps free tools even when they are not top-level sidebar items', () => {
     expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toEqual([
       'dashboard',
+      'tasks',
       'tickets',
       'projects',
       'residents',
       'workers',
+      'site_tours',
       'summary',
       'qr',
       'whatsapp_templates',

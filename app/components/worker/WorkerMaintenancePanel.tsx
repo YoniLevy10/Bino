@@ -120,7 +120,11 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
   if (loading) return <LoadingSpinner />
 
   if (tasks.length === 0) {
-    return <p style={{ textAlign: 'center', color: colors.textSecondary }}>אין משימות אחזקה פתוחות</p>
+    return (
+      <p style={{ textAlign: 'center', color: colors.textSecondary }}>
+        אין משימות אחזקה להיום
+      </p>
+    )
   }
 
   return (

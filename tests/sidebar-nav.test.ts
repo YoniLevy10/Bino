@@ -74,6 +74,7 @@ describe('resolveSidebarNavItems', () => {
       'projects',
       'residents',
       'workers',
+      'site_tours',
       'summary',
     ])
   })
@@ -91,6 +92,7 @@ describe('resolveSidebarNavItems', () => {
       'projects',
       'residents',
       'workers',
+      'site_tours',
       'whatsapp_inbox',
       'attendance',
       'summary',

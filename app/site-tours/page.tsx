@@ -14,6 +14,7 @@ type TourRow = {
   project_name: string
   project_address: string | null
   worker_name: string
+  photos?: { public_url: string; mime_type: string | null }[]
 }
 
 export default function SiteToursPage() {
@@ -51,12 +52,14 @@ export default function SiteToursPage() {
 
   return (
     <AppShell>
-      <PageHeader title="סיורים" subtitle="היסטוריית סיורים, הערות וממצאים מהשטח" />
+      <PageHeader title="סיורים" subtitle="היסטוריית סיורים, הערות, תמונות וממצאים מהשטח" />
       <div style={{ padding: isMobile ? 12 : 20, maxWidth: 900, margin: '0 auto' }}>
         {loading ? (
           <LoadingSpinner />
         ) : tours.length === 0 ? (
-          <p style={{ textAlign: 'center', color: theme.colors.textSecondary }}>אין סיורים בחודשיים האחרונים</p>
+          <p style={{ textAlign: 'center', color: theme.colors.textSecondary }}>
+            אין סיורים בחודשיים האחרונים
+          </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {tours.map((t) => (
@@ -69,10 +72,28 @@ export default function SiteToursPage() {
                 {t.notes ? (
                   <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.45 }}>{t.notes}</p>
                 ) : null}
+                {t.photos && t.photos.length > 0 ? (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                    {t.photos.map((ph, idx) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={`${t.id}-${idx}`}
+                        src={ph.public_url}
+                        alt=""
+                        style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8 }}
+                      />
+                    ))}
+                  </div>
+                ) : null}
                 {t.defect_ticket_id ? (
                   <a
                     href={`/tickets?ticket=${t.defect_ticket_id}`}
-                    style={{ display: 'inline-block', marginTop: 8, color: theme.colors.primary, fontWeight: 700 }}
+                    style={{
+                      display: 'inline-block',
+                      marginTop: 8,
+                      color: theme.colors.primary,
+                      fontWeight: 700,
+                    }}
                   >
                     תקלת ליקוי מהסיור
                   </a>
