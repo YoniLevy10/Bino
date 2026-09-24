@@ -22,6 +22,13 @@ type Props = {
   refreshKey?: number
 }
 
+const PRIORITY_HE: Record<string, string> = {
+  LOW: 'נמוכה',
+  MEDIUM: 'בינונית',
+  HIGH: 'גבוהה',
+  URGENT: 'דחופה',
+}
+
 function projectLabel(t: MaintenanceTask): string {
   const p = Array.isArray(t.projects) ? t.projects[0] : t.projects
   if (!p?.name) return 'ללא בניין'
@@ -33,6 +40,7 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
   const [tasks, setTasks] = useState<MaintenanceTask[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [noteById, setNoteById] = useState<Record<string, string>>({})
+  const [attachedNameById, setAttachedNameById] = useState<Record<string, string>>({})
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
@@ -109,7 +117,8 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
         toast.error('העלאת תמונה נכשלה')
         return
       }
-      toast.success('התמונה צורפה')
+      setAttachedNameById((prev) => ({ ...prev, [taskId]: file.name }))
+      toast.success('התמונה / הקובץ צורפו')
     } catch {
       toast.error('שגיאת חיבור')
     } finally {
@@ -121,91 +130,174 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
 
   if (tasks.length === 0) {
     return (
-      <p style={{ textAlign: 'center', color: colors.textSecondary }}>
-        אין משימות אחזקה להיום
-      </p>
+      <div style={emptyStyles(colors).box}>
+        <p style={emptyStyles(colors).title}>אין משימות אחזקה להיום</p>
+        <p style={emptyStyles(colors).sub}>כשהמנהלת תשייך משימה — היא תופיע כאן</p>
+      </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px 24px' }}>
-      {tasks.map((t) => (
-        <div
-          key={t.id}
-          style={{
-            border: `1px solid ${colors.border}`,
-            borderRadius: 14,
-            padding: 14,
-            background: colors.surface,
-          }}
-        >
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{t.title}</div>
-          <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 6 }}>
-            {projectLabel(t)}
-            {t.due_at ? ` · ${new Date(t.due_at).toLocaleString('he-IL')}` : ''}
-            {` · ${t.status === 'IN_PROGRESS' ? 'בביצוע' : 'ממתינה'}`}
-          </div>
-          {t.description ? (
-            <p style={{ fontSize: 14, margin: '0 0 10px', lineHeight: 1.45 }}>{t.description}</p>
-          ) : null}
-          <textarea
-            value={noteById[t.id] ?? t.notes ?? ''}
-            onChange={(e) => setNoteById((prev) => ({ ...prev, [t.id]: e.target.value }))}
-            placeholder="הערה"
-            rows={2}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              borderRadius: 10,
-              border: `1px solid ${colors.border}`,
-              padding: 10,
-              marginBottom: 8,
-              fontSize: 14,
-            }}
-          />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {t.status === 'PENDING' ? (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '0 12px 28px' }}>
+      {tasks.map((t) => {
+        const busy = busyId === t.id
+        const statusLabel =
+          t.status === 'IN_PROGRESS' ? 'בביצוע' : t.status === 'DONE' ? 'הושלמה' : 'ממתינה'
+        return (
+          <div key={t.id} style={cardStyles(colors).card}>
+            <div style={cardStyles(colors).head}>
+              <div style={cardStyles(colors).title}>{t.title}</div>
+              <span style={cardStyles(colors).badge}>{statusLabel}</span>
+            </div>
+            <div style={cardStyles(colors).meta}>
+              {projectLabel(t)}
+              {t.due_at ? ` · ${new Date(t.due_at).toLocaleString('he-IL')}` : ' · ללא תאריך יעד'}
+              {` · עדיפות ${PRIORITY_HE[t.priority] || t.priority}`}
+            </div>
+            {t.description ? <p style={cardStyles(colors).desc}>{t.description}</p> : null}
+
+            <label style={cardStyles(colors).field}>
+              <span style={cardStyles(colors).fieldLabel}>הערה שלך</span>
+              <textarea
+                value={noteById[t.id] ?? t.notes ?? ''}
+                onChange={(e) => setNoteById((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                placeholder="מה בוצע / מה חשוב לדעת"
+                rows={2}
+                style={cardStyles(colors).textarea}
+              />
+            </label>
+
+            <div style={cardStyles(colors).attachBox}>
+              <div style={cardStyles(colors).attachText}>
+                <div style={cardStyles(colors).attachTitle}>תמונה / קובץ</div>
+                <div style={cardStyles(colors).attachHint}>
+                  {attachedNameById[t.id]
+                    ? `צורף: ${attachedNameById[t.id]}`
+                    : 'צלמו או בחרו קובץ לתיעוד הביצוע'}
+                </div>
+              </div>
               <Button
                 type="button"
-                disabled={busyId === t.id}
-                onClick={() => void updateStatus(t.id, 'IN_PROGRESS')}
+                variant="secondary"
+                disabled={busy}
+                onClick={() => fileRefs.current[t.id]?.click()}
               >
-                התחל
+                העלאה
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busyId === t.id}
-              onClick={() => void updateStatus(t.id, 'DONE')}
-            >
-              סיים
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busyId === t.id}
-              onClick={() => fileRefs.current[t.id]?.click()}
-            >
-              צרף תמונה
-            </Button>
-            <input
-              ref={(el) => {
-                fileRefs.current[t.id] = el
-              }}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void uploadPhoto(t.id, f)
-                e.target.value = ''
-              }}
-            />
+              <input
+                ref={(el) => {
+                  fileRefs.current[t.id] = el
+                }}
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void uploadPhoto(t.id, f)
+                  e.target.value = ''
+                }}
+              />
+            </div>
+
+            <div style={cardStyles(colors).actions}>
+              {t.status === 'PENDING' ? (
+                <Button type="button" disabled={busy} onClick={() => void updateStatus(t.id, 'IN_PROGRESS')}>
+                  התחל משימה
+                </Button>
+              ) : null}
+              {t.status !== 'DONE' ? (
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void updateStatus(t.id, 'DONE')}
+                >
+                  סיום / השלמה
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
+}
+
+function emptyStyles(colors: typeof theme.colors): Record<string, CSSProperties> {
+  return {
+    box: {
+      margin: '8px 12px 24px',
+      padding: '28px 16px',
+      textAlign: 'center',
+      borderRadius: 16,
+      border: `1px dashed ${colors.border}`,
+      background: colors.surface,
+    },
+    title: { margin: 0, fontWeight: 800, color: colors.textPrimary },
+    sub: { margin: '8px 0 0', fontSize: 13, color: colors.textSecondary },
+  }
+}
+
+function cardStyles(colors: typeof theme.colors): Record<string, CSSProperties> {
+  return {
+    card: {
+      border: `1px solid ${colors.border}`,
+      borderRadius: 16,
+      padding: 16,
+      background: colors.surface,
+      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+    },
+    head: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 10,
+      alignItems: 'flex-start',
+      marginBottom: 6,
+    },
+    title: { fontWeight: 800, fontSize: 16, lineHeight: 1.35, flex: 1, wordBreak: 'break-word' },
+    badge: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: colors.primary,
+      background: colors.primaryMuted,
+      padding: '4px 10px',
+      borderRadius: 999,
+      flexShrink: 0,
+    },
+    meta: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 8,
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
+    },
+    desc: { fontSize: 14, margin: '0 0 12px', lineHeight: 1.45, wordBreak: 'break-word' },
+    field: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 },
+    fieldLabel: { fontSize: 13, fontWeight: 700, color: colors.textSecondary },
+    textarea: {
+      width: '100%',
+      boxSizing: 'border-box',
+      borderRadius: 12,
+      border: `1px solid ${colors.border}`,
+      padding: 12,
+      fontSize: 16,
+      fontFamily: 'inherit',
+      resize: 'vertical',
+      background: colors.background || '#f8fafc',
+    },
+    attachBox: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      padding: 12,
+      borderRadius: 14,
+      border: `1px dashed ${colors.border}`,
+      background: colors.background || '#f8fafc',
+      marginBottom: 12,
+    },
+    attachText: { flex: 1, minWidth: 0 },
+    attachTitle: { fontWeight: 800, fontSize: 14 },
+    attachHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2, wordBreak: 'break-word' },
+    actions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  }
 }
