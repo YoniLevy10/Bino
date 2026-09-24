@@ -15,20 +15,38 @@ export async function GET() {
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
-  const { data, error } = await admin
-    .from('maintenance_tasks')
-    .select(TASK_SELECT)
-    .eq('client_id', auth.ctx.clientId)
-    .is('deleted_at', null)
-    .order('due_at', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: false })
-    .limit(300)
+  const clientId = auth.ctx.clientId
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  const [tasksRes, workersRes, projectsRes] = await Promise.all([
+    admin
+      .from('maintenance_tasks')
+      .select(TASK_SELECT)
+      .eq('client_id', clientId)
+      .is('deleted_at', null)
+      .order('due_at', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(300),
+    admin
+      .from('workers')
+      .select('id, full_name')
+      .eq('client_id', clientId)
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('full_name'),
+    // projects has no deleted_at column — do not filter it
+    admin.from('projects').select('id, name').eq('client_id', clientId).order('name'),
+  ])
+
+  if (tasksRes.error) {
+    return NextResponse.json({ error: tasksRes.error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ tasks: data || [] })
+  return NextResponse.json({
+    tasks: tasksRes.data || [],
+    workers: workersRes.data || [],
+    projects: projectsRes.data || [],
+    open_count: (tasksRes.data || []).filter((t) => t.status !== 'DONE').length,
+  })
 }
 
 export async function POST(req: Request) {

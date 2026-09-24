@@ -192,6 +192,7 @@ export default function DashboardPage() {
   const [activeKpi, setActiveKpi] = useState<'ALL' | 'NEW' | 'IN_PROGRESS'>('ALL')
   const [residentsCount, setResidentsCount] = useState<number | null>(null)
   const [workersCount, setWorkersCount] = useState<number | null>(null)
+  const [openTasksCount, setOpenTasksCount] = useState<number | null>(null)
 
   type ActivityItem = {
     id: string
@@ -242,7 +243,7 @@ export default function DashboardPage() {
     }) => {
       try {
         const { uid, clientId } = await resolveDashboardTenantScope()
-        const [logsResult, resCountResult, wCountResult] = await Promise.all([
+        const [logsResult, resCountResult, wCountResult, openTasksResult] = await Promise.all([
         supabase
           .from('ticket_logs')
           .select(
@@ -266,10 +267,18 @@ export default function DashboardPage() {
             'deleted_at',
             null
           ),
+          withClientId(
+            supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }),
+            clientId
+          )
+            .is('deleted_at', null)
+            .neq('status', 'DONE'),
         ])
 
         const resCount = resCountResult.count ?? null
         const wCount = wCountResult.count ?? null
+        const tasksOpen = openTasksResult.count ?? null
+        setOpenTasksCount(tasksOpen)
         const fromLogs = buildActivityFromLogs(logsResult.data, logsResult.error)
         const activity =
           fromLogs.length > 0
@@ -821,7 +830,15 @@ export default function DashboardPage() {
               <KpiCard label="פעילות" value={stats.total} accent="primary" onClick={() => setActiveKpi('ALL')} />
               <KpiCard label="פתוחות" value={stats.open} accent="warning" onClick={() => setActiveKpi('NEW')} />
               <KpiCard label="בטיפול" value={stats.inProgress} accent="primary" onClick={() => setActiveKpi('IN_PROGRESS')} />
-              <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => router.push('/summary?tab=history')} />
+              <KpiCard
+                label="משימות"
+                value={openTasksCount ?? 0}
+                accent="warning"
+                onClick={() => router.push('/tasks')}
+              />
+              {!isMobile && (
+                <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => router.push('/summary?tab=history')} />
+              )}
               {!isMobile && residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} accent="primary" />}
               {!isMobile && workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} accent="success" />}
             </div>
