@@ -47,7 +47,11 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
   const [tours, setTours] = useState<WorkerTourLog[]>([])
   const [search, setSearch] = useState('')
   const [timesByProject, setTimesByProject] = useState<Record<string, string>>({})
+  const [notesByProject, setNotesByProject] = useState<Record<string, string>>({})
   const [loggingId, setLoggingId] = useState<string | null>(null)
+  const [defectTourId, setDefectTourId] = useState<string | null>(null)
+  const [defectText, setDefectText] = useState('')
+  const [defectBusy, setDefectBusy] = useState(false)
 
   const loadTours = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true)
@@ -102,6 +106,7 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
           token,
           project_id: project.id,
           completed_at: completedAt.toISOString(),
+          notes: notesByProject[project.id]?.trim() || undefined,
         }),
       })
       const data = (await res.json()) as { error?: string; tour?: WorkerTourLog }
@@ -121,6 +126,45 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
     }
   }
 
+  async function reportDefect(tourId: string) {
+    if (!defectText.trim()) {
+      toast.error('נא לכתוב תיאור ליקוי')
+      return
+    }
+    setDefectBusy(true)
+    try {
+      const res = await fetchWithTimeout('/api/worker/tours/defect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          tour_id: tourId,
+          description: defectText.trim(),
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        ticket_number?: number
+      }
+      if (!res.ok) {
+        toast.error(data.error || 'דיווח ליקוי נכשל')
+        return
+      }
+      toast.success(
+        typeof data.ticket_number === 'number'
+          ? `נפתחה תקלה #${data.ticket_number}`
+          : 'הליקוי דווח ונפתחה תקלה'
+      )
+      setDefectTourId(null)
+      setDefectText('')
+      await loadTours({ silent: true })
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setDefectBusy(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={styles.center}>
@@ -132,7 +176,7 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
   return (
     <div style={styles.wrap}>
       <p style={{ ...styles.hint, color: colors.textMuted }}>
-        בחרו פרויקט, הגדירו שעת הסיור ולחצו &quot;רשמתי סיור&quot; — בלי לפתוח תקלה.
+        בחרו פרויקט, הוסיפו הערה אם צריך, ורשמו סיור. אפשר לדווח ליקוי מההיסטוריה ולפתוח תקלה.
       </p>
 
       <input
@@ -199,6 +243,23 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                   רשמתי סיור
                 </Button>
               </div>
+              <textarea
+                value={notesByProject[p.id] || ''}
+                onChange={(e) => setNotesByProject((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                placeholder="הערות מהסיור (אופציונלי)"
+                rows={2}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginTop: 8,
+                  borderRadius: 10,
+                  border: `1px solid ${colors.border}`,
+                  padding: 8,
+                  fontSize: 13,
+                  background: colors.muted,
+                  color: colors.textPrimary,
+                }}
+              />
             </div>
           ))}
         </div>
@@ -215,10 +276,70 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                   ...styles.tourRow,
                   borderColor: colors.borderSubtle,
                   background: colors.muted,
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 6,
                 }}
               >
-                <div style={{ ...styles.tourName, color: colors.textPrimary }}>{t.project_name}</div>
-                <div style={{ ...styles.tourTime, color: colors.textMuted }}>{formatTourTime(t.completed_at)}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ ...styles.tourName, color: colors.textPrimary }}>{t.project_name}</div>
+                  <div style={{ ...styles.tourTime, color: colors.textMuted }}>
+                    {formatTourTime(t.completed_at)}
+                  </div>
+                </div>
+                {t.notes ? (
+                  <div style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'right' }}>
+                    {t.notes}
+                  </div>
+                ) : null}
+                {defectTourId === t.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <textarea
+                      value={defectText}
+                      onChange={(e) => setDefectText(e.target.value)}
+                      placeholder="תיאור הליקוי"
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        padding: 8,
+                        fontSize: 13,
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button
+                        size="sm"
+                        loading={defectBusy}
+                        onClick={() => void reportDefect(t.id)}
+                      >
+                        פתח תקלה
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setDefectTourId(null)
+                          setDefectText('')
+                        }}
+                      >
+                        ביטול
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDefectTourId(t.id)
+                      setDefectText('')
+                    }}
+                  >
+                    דווח ליקוי
+                  </Button>
+                )}
               </div>
             ))}
           </div>

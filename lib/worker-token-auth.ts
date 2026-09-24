@@ -1,14 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
-export type WorkerTokenRow = { id: string; client_id: string; full_name: string }
+export type WorkerTokenRow = {
+  id: string
+  client_id: string
+  full_name: string
+  can_mark_professional_escort?: boolean
+}
 
 export async function resolveWorkerFromToken(token: string | null): Promise<WorkerTokenRow | null> {
   if (!token) return null
   const admin = getSupabaseAdmin()
   const { data, error } = await admin
     .from('workers')
-    .select('id, client_id, full_name, is_active')
+    .select('id, client_id, full_name, is_active, can_mark_professional_escort')
     .eq('access_token', token)
     .is('deleted_at', null)
     .maybeSingle()

@@ -2545,6 +2545,7 @@ export type Database = {
           client_id: string
           completed_at: string
           created_at: string
+          defect_ticket_id: string | null
           id: string
           notes: string | null
           project_id: string
@@ -2554,6 +2555,7 @@ export type Database = {
           client_id: string
           completed_at?: string
           created_at?: string
+          defect_ticket_id?: string | null
           id?: string
           notes?: string | null
           project_id: string
@@ -2563,6 +2565,7 @@ export type Database = {
           client_id?: string
           completed_at?: string
           created_at?: string
+          defect_ticket_id?: string | null
           id?: string
           notes?: string | null
           project_id?: string
@@ -2608,6 +2611,12 @@ export type Database = {
           phone: string
           receives_new_ticket_alerts: boolean
           role: string | null
+          notify_sms: boolean
+          notify_whatsapp: boolean
+          notify_push: boolean
+          can_mark_professional_escort: boolean
+          hourly_rate: number | null
+          updated_at: string | null
         }
         Insert: {
           access_token?: string | null
@@ -2624,6 +2633,12 @@ export type Database = {
           phone: string
           receives_new_ticket_alerts?: boolean
           role?: string | null
+          notify_sms?: boolean
+          notify_whatsapp?: boolean
+          notify_push?: boolean
+          can_mark_professional_escort?: boolean
+          hourly_rate?: number | null
+          updated_at?: string | null
         }
         Update: {
           access_token?: string | null
@@ -2640,6 +2655,12 @@ export type Database = {
           phone?: string
           receives_new_ticket_alerts?: boolean
           role?: string | null
+          notify_sms?: boolean
+          notify_whatsapp?: boolean
+          notify_push?: boolean
+          can_mark_professional_escort?: boolean
+          hourly_rate?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {

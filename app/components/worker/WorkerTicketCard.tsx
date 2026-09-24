@@ -50,6 +50,9 @@ type WorkerTicketCardProps = {
   onUploadPhoto?: (file: File) => void
   uploadingPhoto?: boolean
   showAttendanceHint?: boolean
+  canMarkEscort?: boolean
+  onEscort?: (note: string, file: File | null) => void
+  escortBusy?: boolean
 }
 
 const QUICK_STATUSES: { value: TicketStatus; label: string; tone: 'primary' | 'muted' | 'success' }[] = [
@@ -91,10 +94,17 @@ export function WorkerTicketCard({
   onUploadPhoto,
   uploadingPhoto = false,
   showAttendanceHint = false,
+  canMarkEscort = false,
+  onEscort,
+  escortBusy = false,
 }: WorkerTicketCardProps) {
   const [descOpen, setDescOpen] = useState(false)
   const [moreStatusOpen, setMoreStatusOpen] = useState(false)
+  const [escortOpen, setEscortOpen] = useState(false)
+  const [escortNote, setEscortNote] = useState('')
+  const [escortFile, setEscortFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const escortFileRef = useRef<HTMLInputElement>(null)
   const desc = ticket.description?.trim() || '—'
   const longDesc = desc.length > 120
   const priority = ticket.priority || 'MEDIUM'
@@ -279,6 +289,73 @@ export function WorkerTicketCard({
             עכשיו: {ticketStatusLabelHe(ticket.status, { feminine: true })}
           </div>
         </div>
+
+        {canMarkEscort && onEscort && ticket.status !== 'CLOSED' ? (
+          <div style={styles.section(colors)}>
+            <button
+              type="button"
+              style={styles.moreStatusToggle(colors)}
+              onClick={() => setEscortOpen((v) => !v)}
+            >
+              {escortOpen ? '▼ ליווי בעל מקצוע' : '▶ ליווי בעל מקצוע'}
+            </button>
+            {escortOpen ? (
+              <div style={{ marginTop: 8 }}>
+                <p style={{ fontSize: 13, color: colors.textSecondary, margin: '0 0 8px' }}>
+                  מסמנים ליווי בלי לסגור את התקלה. אפשר להוסיף הערה ותמונה.
+                </p>
+                <textarea
+                  value={escortNote}
+                  onChange={(e) => setEscortNote(e.target.value)}
+                  placeholder='לדוגמה: החשמלאי הגיע, נדרש חלק נוסף'
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    borderRadius: 10,
+                    border: `1px solid ${colors.border}`,
+                    padding: 10,
+                    marginBottom: 8,
+                    fontSize: 14,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={escortBusy}
+                    onClick={() => escortFileRef.current?.click()}
+                  >
+                    {escortFile ? escortFile.name.slice(0, 18) : 'צרף תמונה'}
+                  </Button>
+                  <input
+                    ref={escortFileRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      setEscortFile(e.target.files?.[0] || null)
+                      e.target.value = ''
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    disabled={escortBusy}
+                    onClick={() => {
+                      onEscort(escortNote, escortFile)
+                      setEscortNote('')
+                      setEscortFile(null)
+                      setEscortOpen(false)
+                    }}
+                  >
+                    {escortBusy ? 'שומר…' : 'סמן ליווי'}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div style={styles.officeRow}>
           <button

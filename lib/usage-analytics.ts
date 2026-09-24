@@ -56,6 +56,7 @@ export type UsageAnalyticsReport = {
 
 const FEATURE_LABELS: Record<UsageFeatureKey, string> = {
   dashboard: 'לוח בקרה',
+  tasks: 'ניהול משימות',
   tickets: 'תקלות',
   projects: 'פרויקטים',
   residents: 'דיירים',
@@ -173,6 +174,7 @@ export async function buildUsageAnalyticsReport(
 
   await Promise.all([
     ingest('tickets', 'tickets', { deletedNull: true }),
+    ingest('tasks', 'maintenance_tasks', { deletedNull: true }),
     ingest('projects', 'projects'),
     ingest('residents', 'residents', { deletedNull: true }),
     ingest('workers', 'workers', { deletedNull: true }),

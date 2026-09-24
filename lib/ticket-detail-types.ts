@@ -15,6 +15,7 @@ export type TicketDetailRow = {
   building_number?: string | null
   created_at?: string
   closed_at?: string | null
+  ticket_metadata?: unknown
 }
 
 export type TicketDetailAttachment = {
