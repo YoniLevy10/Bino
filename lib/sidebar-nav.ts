@@ -192,7 +192,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     id: 'collections',
     href: '/collections',
     label: 'גביית ועד',
-    icon: 'chart',
+    icon: 'coin',
   },
 }
 
