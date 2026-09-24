@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AppShell,
   Button,
@@ -19,6 +20,8 @@ import {
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { isMaintenanceTaskForToday } from '@/lib/maintenance-task-day'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
+import { queryKeys } from '@/lib/query-keys'
 
 type TaskRow = {
   id: string
@@ -101,11 +104,32 @@ const emptyForm = {
   dueAt: '',
 }
 
+type MaintenanceTasksPayload = {
+  tasks: TaskRow[]
+  workers: WorkerOpt[]
+  projects: ProjectOpt[]
+  attachments_by_task: Record<string, TaskAttachment[]>
+}
+
+async function fetchMaintenanceTasks(): Promise<MaintenanceTasksPayload> {
+  const tasksRes = await fetchWithTimeout('/api/maintenance-tasks')
+  if (!tasksRes.ok) throw new Error('טעינת משימות נכשלה')
+  const json = (await tasksRes.json()) as {
+    tasks?: TaskRow[]
+    workers?: WorkerOpt[]
+    projects?: ProjectOpt[]
+    attachments_by_task?: Record<string, TaskAttachment[]>
+  }
+  return {
+    tasks: json.tasks || [],
+    workers: json.workers || [],
+    projects: json.projects || [],
+    attachments_by_task: json.attachments_by_task || {},
+  }
+}
+
 export default function TasksPage() {
-  const [loading, setLoading] = useState(true)
-  const [tasks, setTasks] = useState<TaskRow[]>([])
-  const [workers, setWorkers] = useState<WorkerOpt[]>([])
-  const [projects, setProjects] = useState<ProjectOpt[]>([])
+  const queryClient = useQueryClient()
   const [isMobile, setIsMobile] = useState(false)
   const { openMenu } = useMobileMenu()
   const [saving, setSaving] = useState(false)
@@ -121,12 +145,37 @@ export default function TasksPage() {
   const createFileRef = useRef<HTMLInputElement | null>(null)
   const [createFile, setCreateFile] = useState<File | null>(null)
 
+  const clientIdQuery = useQuery({
+    queryKey: ['tenant-client-id'],
+    queryFn: () => resolveBinoClientIdForBrowser(),
+    staleTime: 5 * 60_000,
+  })
+  const clientId = clientIdQuery.data
+
+  const tasksQuery = useQuery({
+    queryKey: clientId ? queryKeys.maintenanceTasks(clientId) : ['maintenance-tasks', 'pending'],
+    queryFn: fetchMaintenanceTasks,
+    enabled: Boolean(clientId),
+    staleTime: 30_000,
+  })
+
+  const tasks = tasksQuery.data?.tasks ?? []
+  const workers = tasksQuery.data?.workers ?? []
+  const projects = tasksQuery.data?.projects ?? []
+  const loading = clientIdQuery.isLoading || (tasksQuery.isLoading && !tasksQuery.data)
+
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useEffect(() => {
+    const fromApi = tasksQuery.data?.attachments_by_task
+    if (!fromApi) return
+    setAttachmentsByTask((prev) => ({ ...fromApi, ...prev }))
+  }, [tasksQuery.data?.attachments_by_task])
 
   const loadAttachments = useCallback(async (taskId: string) => {
     try {
@@ -142,33 +191,18 @@ export default function TasksPage() {
   }, [])
 
   const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const tasksRes = await fetchWithTimeout('/api/maintenance-tasks')
-      if (!tasksRes.ok) {
-        toast.error('טעינת משימות נכשלה')
-        return
-      }
-      const json = (await tasksRes.json()) as {
-        tasks?: TaskRow[]
-        workers?: WorkerOpt[]
-        projects?: ProjectOpt[]
-      }
-      const list = json.tasks || []
-      setTasks(list)
-      setWorkers(json.workers || [])
-      setProjects(json.projects || [])
-      await Promise.all(list.slice(0, 40).map((t) => loadAttachments(t.id)))
-    } catch {
-      toast.error('שגיאת חיבור')
-    } finally {
-      setLoading(false)
+    if (clientId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.maintenanceTasks(clientId) })
+    } else {
+      await tasksQuery.refetch()
     }
-  }, [loadAttachments])
+  }, [clientId, queryClient, tasksQuery])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    if (tasksQuery.isError) {
+      toast.error(tasksQuery.error instanceof Error ? tasksQuery.error.message : 'שגיאת חיבור')
+    }
+  }, [tasksQuery.isError, tasksQuery.error])
 
   const visible = useMemo(() => {
     if (listFilter === 'all') return tasks

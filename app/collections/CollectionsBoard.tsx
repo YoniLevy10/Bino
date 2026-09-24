@@ -1,9 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import {
@@ -11,6 +10,7 @@ import {
   MUTATION_FETCH_TIMEOUT_MS,
 } from '@/lib/fetch-with-timeout'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
   COLLECTION_CHARGE_STATUS_COLORS,
   COLLECTION_CHARGE_STATUS_LABELS,
@@ -66,9 +66,19 @@ function residentPhone(r: { phone: string | null; normalized_phone?: string | nu
 
 export function CollectionsBoard() {
   const [isMobile, setIsMobile] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [clientId, setClientId] = useState('')
-  const [projects, setProjects] = useState<ProjectOption[]>([])
+  const [boardLoading, setBoardLoading] = useState(true)
+  const [hasBoardData, setHasBoardData] = useState(false)
+  const hasBoardDataRef = useRef(false)
+  const {
+    clientId,
+    projects: projectRows,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+  } = useTenantProjectsList()
+  const projects: ProjectOption[] = useMemo(
+    () => projectRows.map((p) => ({ id: p.id, name: p.name })),
+    [projectRows]
+  )
   const [items, setItems] = useState<CollectionChargeListItem[]>([])
   const [chips, setChips] = useState<SummaryChips>({ sent: 0, paid: 0, pending: 0, failed: 0 })
 
@@ -146,15 +156,6 @@ export function CollectionsBoard() {
     }
   }, [])
 
-  const loadProjects = useCallback(async (cid: string) => {
-    const { data, error } = await withClientId(
-      supabase.from('projects').select('id, name'),
-      cid
-    ).order('name')
-    if (error) throw error
-    setProjects((data as ProjectOption[]) || [])
-  }, [])
-
   const loadCharges = useCallback(async () => {
     const params = new URLSearchParams()
     if (projectFilter) params.set('project_id', projectFilter)
@@ -187,34 +188,26 @@ export function CollectionsBoard() {
     if (sumRes.ok && sumJson.chips) setChips(sumJson.chips)
   }, [periodFilter, projectFilter, searchTerm, statusFilter])
 
+  // Resolve clientId (via hook) then parallel: account-status + charges + summary
   useEffect(() => {
+    if (!clientId) return
     void (async () => {
-      setLoading(true)
+      if (!hasBoardDataRef.current) setBoardLoading(true)
       await asyncHandler(
         async () => {
-          const cid = await resolveBinoClientIdForBrowser()
-          setClientId(cid)
-          await Promise.all([loadProjects(cid), loadAccountStatus()])
+          await Promise.all([loadAccountStatus(), loadCharges()])
+          hasBoardDataRef.current = true
+          setHasBoardData(true)
           return true
         },
         { context: 'טעינת גביית ועד', showErrorToast: true }
       )
-      setLoading(false)
+      setBoardLoading(false)
     })()
-  }, [loadProjects, loadAccountStatus])
+  }, [clientId, loadAccountStatus, loadCharges])
 
-  useEffect(() => {
-    if (!clientId) return
-    void (async () => {
-      await asyncHandler(
-        async () => {
-          await loadCharges()
-          return true
-        },
-        { context: 'טעינת חיובים', showErrorToast: true }
-      )
-    })()
-  }, [clientId, loadCharges])
+  const loading =
+    (boardLoading && !hasBoardData) || (projectsLoading && !projectsHasData) || !clientId
 
   async function refresh() {
     await asyncHandler(

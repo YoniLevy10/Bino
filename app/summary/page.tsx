@@ -15,15 +15,15 @@
  */
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { withClientId } from '@/lib/supabase/with-client-id'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { isTicketInTreatment, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
 import { downloadExcelWorkbook } from '@/lib/excel-download'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
+import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import {
   AppShell,
   MobileHeader,
@@ -54,39 +54,18 @@ import { PageTransitionLoader, SectionLoader } from '../components/page-skeleton
 import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
 
-const CACHE_KEY = 'bamakor_summary_meta_v1'
 const KPI_CACHE_KEY = 'bamakor_summary_kpi_v1'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const SUMMARY_FETCH_TIMEOUT_MS = 30_000
 
 type PageTab = 'summary' | 'history'
 
-type SummaryMetaCache = {
-  projects: ProjectRow[]
-  workers: WorkerRow[]
-  savedAt: number
-}
-
-function readSummaryMetaCache(clientId: string): SummaryMetaCache | null {
-  try {
-    const raw = localStorage.getItem(`${CACHE_KEY}_${clientId}`)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as SummaryMetaCache
-    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null
-    return parsed
-  } catch { return null }
-}
-
-function writeSummaryMetaCache(clientId: string, data: Omit<SummaryMetaCache, 'savedAt'>) {
-  try {
-    localStorage.setItem(`${CACHE_KEY}_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
-  } catch {}
-}
-
 type SummaryKpiCache = {
   openNow: number
   assignedNow: number
-  ticketsInRange: TicketRow[]
+  openedInRange?: number
+  closedInRange?: number
+  ticketsInRange: SummaryTicketRow[]
   savedAt: number
 }
 
@@ -200,14 +179,37 @@ export default function SummaryPage() {
   const { openMenu } = useMobileMenu()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { projects: projectRows, refetch: refetchProjects } = useTenantProjectsList()
+  const { workers: workerRows, refetch: refetchWorkers } = useTenantWorkersList({
+    activeOnly: true,
+  })
+
+  const projects: ProjectRow[] = useMemo(
+    () =>
+      projectRows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        project_code: p.project_code || '',
+      })),
+    [projectRows]
+  )
+  const workers: WorkerRow[] = useMemo(
+    () =>
+      workerRows.map((w) => ({
+        id: w.id,
+        full_name: w.full_name,
+        phone: w.phone || '',
+        is_active: w.is_active !== false,
+      })),
+    [workerRows]
+  )
+
   const [summaryTickets, setSummaryTickets] = useState<TicketRow[]>([])
   const [historyTickets, setHistoryTickets] = useState<TicketRow[]>([])
   const [openNow, setOpenNow] = useState(0)
   const [assignedNow, setAssignedNow] = useState(0)
-  const [projects, setProjects] = useState<ProjectRow[]>([])
-  const [workers, setWorkers] = useState<WorkerRow[]>([])
-  const [metaLoading, setMetaLoading] = useState(true)
-  const [metaLoadError, setMetaLoadError] = useState(false)
+  const [openedInRangeApi, setOpenedInRangeApi] = useState<number | null>(null)
+  const [closedInRangeApi, setClosedInRangeApi] = useState<number | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [summaryLoadError, setSummaryLoadError] = useState(false)
   const [summaryDataPeriodKey, setSummaryDataPeriodKey] = useState<string | null>(null)
@@ -252,39 +254,6 @@ export default function SummaryPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const loadMeta = useCallback(async (silent = false) => {
-    if (!silent) setMetaLoading(true)
-    try {
-      const clientId = await resolveBinoClientIdForBrowser()
-      const [
-        { data: projectsData, error: projectsError },
-        { data: workersData, error: workersError },
-      ] = await Promise.all([
-        withClientId(
-          supabase.from('projects').select('id, name, project_code'),
-          clientId
-        ).order('project_code', { ascending: true }),
-        withClientId(
-          supabase.from('workers').select('id, full_name, phone, is_active').eq('is_active', true),
-          clientId
-        ).is('deleted_at', null),
-      ])
-      if (projectsError) throw projectsError
-      if (workersError) throw workersError
-
-      const freshProjects = (projectsData as ProjectRow[]) || []
-      const freshWorkers = (workersData as WorkerRow[]) || []
-      setProjects(freshProjects)
-      setWorkers(freshWorkers)
-      writeSummaryMetaCache(clientId, { projects: freshProjects, workers: freshWorkers })
-      setMetaLoadError(false)
-    } catch (err) {
-      console.error('Failed to load summary meta:', err)
-      if (!silent) setMetaLoadError(true)
-    }
-    if (!silent) setMetaLoading(false)
-  }, [])
-
   const loadSummary = useCallback(async (silent = false) => {
     const range = resolveDateRange(period, customFrom, customTo)
     if (!range) {
@@ -303,6 +272,12 @@ export default function SummaryPage() {
       if (cachedKpi) {
         setOpenNow(cachedKpi.openNow)
         setAssignedNow(cachedKpi.assignedNow)
+        setOpenedInRangeApi(
+          typeof cachedKpi.openedInRange === 'number' ? cachedKpi.openedInRange : null
+        )
+        setClosedInRangeApi(
+          typeof cachedKpi.closedInRange === 'number' ? cachedKpi.closedInRange : null
+        )
         setSummaryTickets(cachedKpi.ticketsInRange)
         setSummaryDataPeriodKey(periodKey)
         setSummaryLoading(false)
@@ -310,6 +285,8 @@ export default function SummaryPage() {
       } else {
         // Drop previous period's rows so KPIs/export cannot keep week data under an "all" label.
         setSummaryTickets([])
+        setOpenedInRangeApi(null)
+        setClosedInRangeApi(null)
         setSummaryDataPeriodKey(null)
         setSummaryLoading(true)
       }
@@ -326,15 +303,21 @@ export default function SummaryPage() {
       const data = (await res.json()) as {
         openNow: number
         assignedNow: number
+        openedInRange?: number
+        closedInRange?: number
         ticketsInRange: TicketRow[]
       }
       setOpenNow(data.openNow)
       setAssignedNow(data.assignedNow)
+      setOpenedInRangeApi(typeof data.openedInRange === 'number' ? data.openedInRange : null)
+      setClosedInRangeApi(typeof data.closedInRange === 'number' ? data.closedInRange : null)
       setSummaryTickets(data.ticketsInRange)
       setSummaryDataPeriodKey(periodKey)
       writeSummaryKpiCache(clientId, periodKey, {
         openNow: data.openNow,
         assignedNow: data.assignedNow,
+        openedInRange: data.openedInRange,
+        closedInRange: data.closedInRange,
         ticketsInRange: data.ticketsInRange,
       })
       setSummaryLoadError(false)
@@ -388,25 +371,6 @@ export default function SummaryPage() {
   }, [historyPeriod, customFrom, customTo])
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const clientId = await resolveBinoClientIdForBrowser()
-        const cached = shouldSkipStalePageCache() ? null : readSummaryMetaCache(clientId)
-        if (cached) {
-          setProjects(cached.projects)
-          setWorkers(cached.workers)
-          setMetaLoading(false)
-          void loadMeta(true)
-        } else {
-          void loadMeta()
-        }
-      } catch {
-        void loadMeta()
-      }
-    })()
-  }, [loadMeta])
-
-  useEffect(() => {
     void loadSummary()
   }, [loadSummary])
 
@@ -418,13 +382,14 @@ export default function SummaryPage() {
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      void loadMeta(true)
+      void refetchProjects()
+      void refetchWorkers()
       if (pageTab === 'summary') void loadSummary(true)
       else void loadHistory(true)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [loadMeta, loadSummary, loadHistory, pageTab])
+  }, [refetchProjects, refetchWorkers, loadSummary, loadHistory, pageTab])
 
   const showSummarySkeleton = pageTab === 'summary' && summaryLoading && summaryTickets.length === 0 && !summaryLoadError
   const showHistoryInlineLoader = pageTab === 'history' && historyLoading && !historyLoaded && !historyLoadError
@@ -522,13 +487,15 @@ export default function SummaryPage() {
 
   const closedInRangeCount = useMemo(() => {
     if (!activeRange || !summaryDataMatchesPeriod) return 0
+    if (closedInRangeApi != null) return closedInRangeApi
     return computeSummaryRangeKpis(summaryTickets, activeRange).closedInRange
-  }, [summaryTickets, activeRange, summaryDataMatchesPeriod])
+  }, [summaryTickets, activeRange, summaryDataMatchesPeriod, closedInRangeApi])
 
   const openedInRangeCount = useMemo(() => {
     if (!activeRange || !summaryDataMatchesPeriod) return 0
+    if (openedInRangeApi != null) return openedInRangeApi
     return computeSummaryRangeKpis(summaryTickets, activeRange).openedInRange
-  }, [summaryTickets, activeRange, summaryDataMatchesPeriod])
+  }, [summaryTickets, activeRange, summaryDataMatchesPeriod, openedInRangeApi])
 
   const summary = useMemo(() => {
     return {

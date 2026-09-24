@@ -14,6 +14,7 @@
  */
 import Link from 'next/link'
 import { useEffect, useState, type CSSProperties } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   AppShell,
   MobileHeader,
@@ -27,12 +28,13 @@ import {
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageTransitionLoader } from '../components/page-skeleton'
-import { asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plan-pricing'
 import type { PlanPricingCatalogRow } from '@/lib/plan-pricing'
 import { usePaidAddons } from '../components/PaidAddonsContext'
 import type { PlanTier } from '@/lib/plan-limits'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
+import { queryKeys } from '@/lib/query-keys'
 
 type PlanLimits = {
   buildings: number
@@ -76,64 +78,69 @@ function formatLimitCell(value: number): string {
   return value === Infinity ? 'ללא הגבלה' : value.toLocaleString('he-IL')
 }
 
+type PricingPayload = {
+  plan_tier?: PlanTier
+  currentPlan?: PlanPricingCatalogRow
+  catalog?: PlanPricingCatalogRow[]
+  setup_fee_ils?: number
+}
+
+async function fetchBillingBundle(): Promise<{ summary: Summary; pricing: PricingPayload | null }> {
+  const [summaryRes, pricingRes] = await Promise.all([
+    fetchWithTimeout('/api/billing/summary'),
+    fetchWithTimeout('/api/billing/pricing'),
+  ])
+  const json = (await summaryRes.json()) as Summary & { error?: string }
+  if (!summaryRes.ok) throw new Error(json.error || 'טעינה נכשלה')
+  const summary: Summary = {
+    ticketsThisMonth: json.ticketsThisMonth,
+    residentsTotal: json.residentsTotal,
+    workersActive: json.workersActive,
+    buildingsActive: json.buildingsActive,
+    ticketsByWeek: json.ticketsByWeek || [],
+    plan: json.plan,
+    plans: json.plans,
+  }
+  let pricing: PricingPayload | null = null
+  if (pricingRes.ok) {
+    pricing = (await pricingRes.json()) as PricingPayload
+  }
+  return { summary, pricing }
+}
+
 export default function BillingPage() {
   const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
-  const [data, setData] = useState<Summary | null>(null)
   const { addons, isBootstrapped: addonsReady } = usePaidAddons()
-  const [planTier, setPlanTier] = useState<PlanTier | null>(null)
-  const [currentPlan, setCurrentPlan] = useState<PlanPricingCatalogRow | null>(null)
-  const [planCatalog, setPlanCatalog] = useState<PlanPricingCatalogRow[]>([])
-  const [setupFeeIls, setSetupFeeIls] = useState<number | null>(null)
+
+  const clientIdQuery = useQuery({
+    queryKey: ['tenant-client-id'],
+    queryFn: () => resolveBinoClientIdForBrowser(),
+    staleTime: 5 * 60_000,
+  })
+  const clientId = clientIdQuery.data
+
+  const billingQuery = useQuery({
+    queryKey: clientId ? queryKeys.billingSummary(clientId) : ['billing-summary', 'pending'],
+    queryFn: fetchBillingBundle,
+    enabled: Boolean(clientId),
+    staleTime: 60_000,
+  })
+
+  const data = billingQuery.data?.summary ?? null
+  const pricing = billingQuery.data?.pricing
+  const planTier = pricing?.plan_tier ?? null
+  const currentPlan = pricing?.currentPlan ?? null
+  const planCatalog = pricing?.catalog ?? []
+  const setupFeeIls = typeof pricing?.setup_fee_ils === 'number' ? pricing.setup_fee_ils : null
+  const loading = clientIdQuery.isLoading || (billingQuery.isLoading && !billingQuery.data)
+  const loadError = Boolean(billingQuery.error || clientIdQuery.error)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
-  }, [])
-
-  useEffect(() => {
-    void (async () => {
-      setLoading(true)
-      const result = await asyncHandler(
-        async () => {
-          const [summaryRes, pricingRes] = await Promise.all([
-            fetchWithTimeout('/api/billing/summary'),
-            fetchWithTimeout('/api/billing/pricing'),
-          ])
-          const json = (await summaryRes.json()) as Summary & { error?: string }
-          if (!summaryRes.ok) throw new Error(json.error || 'טעינה נכשלה')
-          setData({
-            ticketsThisMonth: json.ticketsThisMonth,
-            residentsTotal: json.residentsTotal,
-            workersActive: json.workersActive,
-            buildingsActive: json.buildingsActive,
-            ticketsByWeek: json.ticketsByWeek || [],
-            plan: json.plan,
-            plans: json.plans,
-          })
-          const pricingJson = (await pricingRes.json()) as {
-            plan_tier?: PlanTier
-            currentPlan?: PlanPricingCatalogRow
-            catalog?: PlanPricingCatalogRow[]
-            setup_fee_ils?: number
-          }
-          if (pricingRes.ok) {
-            if (pricingJson.plan_tier) setPlanTier(pricingJson.plan_tier)
-            setCurrentPlan(pricingJson.currentPlan ?? null)
-            setPlanCatalog(pricingJson.catalog || [])
-            if (typeof pricingJson.setup_fee_ils === 'number') setSetupFeeIls(pricingJson.setup_fee_ils)
-          }
-          return true
-        },
-        { context: 'טעינת חיוב', showErrorToast: true }
-      )
-      setLoadError(!result)
-      setLoading(false)
-    })()
   }, [])
 
   const maxWeek = Math.max(1, ...(data?.ticketsByWeek.map((w) => w.count) || [1]))
@@ -159,45 +166,7 @@ export default function BillingPage() {
             title="לא הצלחנו לטעון את נתוני החיוב"
             message="בדקו חיבור לאינטרנט ונסו שוב."
             onRetry={() => {
-              setLoadError(false)
-              setLoading(true)
-              void (async () => {
-                const result = await asyncHandler(
-                  async () => {
-                    const [summaryRes, pricingRes] = await Promise.all([
-                      fetchWithTimeout('/api/billing/summary'),
-                      fetchWithTimeout('/api/billing/pricing'),
-                    ])
-                    const json = (await summaryRes.json()) as Summary & { error?: string }
-                    if (!summaryRes.ok) throw new Error(json.error || 'טעינה נכשלה')
-                    setData({
-                      ticketsThisMonth: json.ticketsThisMonth,
-                      residentsTotal: json.residentsTotal,
-                      workersActive: json.workersActive,
-                      buildingsActive: json.buildingsActive,
-                      ticketsByWeek: json.ticketsByWeek || [],
-                      plan: json.plan,
-                      plans: json.plans,
-                    })
-                    const pricingJson = (await pricingRes.json()) as {
-                      plan_tier?: PlanTier
-                      currentPlan?: PlanPricingCatalogRow
-                      catalog?: PlanPricingCatalogRow[]
-                      setup_fee_ils?: number
-                    }
-                    if (pricingRes.ok) {
-                      if (pricingJson.plan_tier) setPlanTier(pricingJson.plan_tier)
-                      setCurrentPlan(pricingJson.currentPlan ?? null)
-                      setPlanCatalog(pricingJson.catalog || [])
-                      if (typeof pricingJson.setup_fee_ils === 'number') setSetupFeeIls(pricingJson.setup_fee_ils)
-                    }
-                    return true
-                  },
-                  { context: 'טעינת חיוב', showErrorToast: true }
-                )
-                setLoadError(!result)
-                setLoading(false)
-              })()
+              void billingQuery.refetch()
             }}
           />
         ) : (

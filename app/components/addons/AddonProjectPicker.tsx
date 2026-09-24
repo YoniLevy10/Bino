@@ -1,11 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { asyncHandler } from '@/lib/error-handler'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { Card, EmptyState, LoadingSpinner, Select, theme } from '../ui'
 
 export type AddonProjectOption = {
@@ -57,36 +55,29 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
   const initialUrlProjectRef = useRef(projectFromUrl)
   const didInitialUrlSyncRef = useRef(false)
 
-  const [projects, setProjects] = useState<AddonProjectOption[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedId, setSelectedId] = useState('')
+  const {
+    projects: projectRows,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+  } = useTenantProjectsList({ activeOnly: true })
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    await asyncHandler(
-      async () => {
-        const clientId = await resolveBinoClientIdForBrowser()
-        const { data, error } = await supabase
-          .from('projects')
-          .select('id, name, project_code')
-          .eq('client_id', clientId)
-          .eq('is_active', true)
-          .order('name', { ascending: true })
-        if (error) throw error
-        const rows = (data as AddonProjectOption[]) || []
-        setProjects(rows)
-        setSelectedId((prev) =>
-          resolveSelectedProjectId(rows, prev, initialUrlProjectRef.current)
-        )
-      },
-      { context: 'טעינת פרויקטים', showErrorToast: true }
-    )
-    setLoading(false)
-  }, [])
+  const projects: AddonProjectOption[] = useMemo(
+    () =>
+      projectRows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        project_code: p.project_code || '',
+      })),
+    [projectRows]
+  )
+
+  const [selectedId, setSelectedId] = useState('')
+  const loading = projectsLoading && !projectsHasData
 
   useEffect(() => {
-    void load()
-  }, [load])
+    if (projects.length === 0) return
+    setSelectedId((prev) => resolveSelectedProjectId(projects, prev, initialUrlProjectRef.current))
+  }, [projects])
 
   useEffect(() => {
     if (loading || projects.length === 0 || !selectedId || didInitialUrlSyncRef.current) return

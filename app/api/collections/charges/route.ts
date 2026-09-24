@@ -12,6 +12,7 @@ import {
 import { formatZodError } from '@/lib/format-zod-error'
 import {
   COLLECTION_CHARGE_LIST_SELECT,
+  COLLECTION_CHARGE_ROW_SELECT,
   COLLECTION_CHARGE_STATUSES,
   isCollectionChargeStatus,
   type CollectionChargeListItem,
@@ -158,14 +159,14 @@ export async function POST(req: Request) {
       period_label: body.period_label?.trim() || null,
       created_by: auth.ctx.userId,
     })
-    .select('*')
+    .select(COLLECTION_CHARGE_ROW_SELECT)
     .single()
 
   if (insertErr || !inserted) {
     return NextResponse.json({ error: insertErr?.message || 'יצירת חיוב נכשלה' }, { status: 500 })
   }
 
-  let charge = inserted as CollectionChargeRow
+  let charge = inserted as unknown as CollectionChargeRow
 
   if (body.send) {
     const clientRow = (await loadClientCollectionsRow(admin, clientId)) as ClientCollectionsRow | null

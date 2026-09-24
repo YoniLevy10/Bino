@@ -58,6 +58,18 @@ type AttendanceShiftsReportProps = {
   isMobile?: boolean
 }
 
+function workersFromShifts(shifts: ShiftRow[] | null | undefined): WorkerOpt[] {
+  if (!shifts?.length) return []
+  const map = new Map<string, string>()
+  for (const s of shifts) {
+    if (!s.worker_id || map.has(s.worker_id)) continue
+    map.set(s.worker_id, workerName(s))
+  }
+  return Array.from(map.entries())
+    .map(([id, full_name]) => ({ id, full_name }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'))
+}
+
 export function AttendanceShiftsReport({
   lockToCurrentMonth = false,
   prefetchedShifts,
@@ -99,6 +111,11 @@ export function AttendanceShiftsReport({
   }, [lockToCurrentMonth, dateMode, monthKey, fromDate, toDate])
 
   useEffect(() => {
+    const fromPrefetch = workersFromShifts(prefetchedShifts)
+    if (fromPrefetch.length > 0) {
+      setWorkers(fromPrefetch)
+      return
+    }
     void (async () => {
       const { data } = await supabase
         .from('workers')
@@ -108,7 +125,7 @@ export function AttendanceShiftsReport({
         .order('full_name')
       setWorkers((data as WorkerOpt[]) ?? [])
     })()
-  }, [])
+  }, [prefetchedShifts, prefetchVersion])
 
   const load = useCallback(
     async (opts?: { force?: boolean }) => {

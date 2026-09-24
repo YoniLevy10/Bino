@@ -65,6 +65,17 @@ export function chargePaymentUrl(row: {
   return url || null
 }
 
+/** Row columns only (no joins) — use after insert/update `.select()`. */
+export const COLLECTION_CHARGE_ROW_SELECT = `
+  id, client_id, project_id, resident_id, title, description, amount, currency, status,
+  public_token, batch_id, period_label,
+  grow_payment_url, grow_payment_link_id, grow_transaction_id,
+  greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
+  greeninvoice_payment_url, greeninvoice_payment_id,
+  sent_at, paid_at, receipt_email, receipt_phone, receipt_email_sent_at,
+  created_by, created_at, updated_at
+`.replace(/\s+/g, ' ').trim()
+
 export const COLLECTION_CHARGE_LIST_SELECT = `
   id, client_id, project_id, resident_id, title, description, amount, currency, status,
   public_token, batch_id, period_label,
