@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -25,6 +26,13 @@ import { TM } from '@/lib/toast-messages'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
+import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
+import {
+  useTenantOpenTickets,
+  type OpenTicketRow,
+} from '@/lib/hooks/use-open-tickets'
+import { queryKeys } from '@/lib/query-keys'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
@@ -130,11 +138,29 @@ type ProjectRow = {
   project_code: string
 }
 
-type TicketWithProjects = TicketRow & {
-  projects?: Array<{ project_code: string; name: string }> | { project_code: string; name: string }
-}
-
+const DASHBOARD_OPEN_TICKETS_LIMIT = 50
 const REFRESH_DEBOUNCE_MS = 30_000
+
+function formatOpenTicketsForDashboard(rows: OpenTicketRow[]): TicketRow[] {
+  return rows.map((row) => {
+    const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
+    return {
+      id: row.id,
+      ticket_number: Number(row.ticket_number),
+      project_id: row.project_id ?? undefined,
+      client_id: row.client_id ?? null,
+      project_code: project?.project_code || '',
+      project_name: project?.name || '',
+      reporter_phone: row.reporter_phone || '',
+      description: row.description || '',
+      status: row.status,
+      priority: row.priority ?? undefined,
+      assigned_worker_id: row.assigned_worker_id ?? null,
+      created_at: row.created_at || '',
+      closed_at: row.closed_at ?? null,
+    }
+  })
+}
 
 type DashboardCachePayload = {
   tickets: TicketRow[]
@@ -150,9 +176,28 @@ type DashboardCachePayload = {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const {
+    clientId: rqClientId,
+    tickets: rqTickets,
+    hasData: ticketsHasData,
+    refetch: refetchOpenTickets,
+  } = useTenantOpenTickets({ limit: DASHBOARD_OPEN_TICKETS_LIMIT })
+  const {
+    projects: rqProjects,
+    hasData: projectsHasData,
+    refetch: refetchProjects,
+  } = useTenantProjectsList()
+  const {
+    workers: rqWorkers,
+    hasData: workersHasData,
+    refetch: refetchWorkers,
+  } = useTenantWorkersList()
+
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [cachePainted, setCachePainted] = useState(false)
+  const [kpiReady, setKpiReady] = useState(false)
   const [pageLoadError, setPageLoadError] = useState(false)
   const [workersMap, setWorkersMap] = useState<Record<string, string>>({})
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
@@ -209,11 +254,24 @@ export default function DashboardPage() {
   const professionalsLoadedRef = useRef(false)
   /** True after cache paint or successful network load — keeps UI up on silent refresh failure. */
   const hasPaintedDataRef = useRef(false)
+  const ticketsRef = useRef(tickets)
+  const projectsRef = useRef(projects)
+  const workersMapRef = useRef(workersMap)
+  ticketsRef.current = tickets
+  projectsRef.current = projects
+  workersMapRef.current = workersMap
   const cacheAuxRef = useRef({
     residentsCount: null as number | null,
     workersCount: null as number | null,
     recentActivity: [] as ActivityItem[],
   })
+
+  const loading = !cachePainted && !kpiReady
+
+  const invalidateOpenTickets = useCallback(async () => {
+    const clientId = rqClientId || (await resolveBinoClientIdForBrowser())
+    await queryClient.invalidateQueries({ queryKey: queryKeys.ticketsOpen(clientId) })
+  }, [queryClient, rqClientId])
 
   const loadProfessionals = useCallback(async () => {
     if (professionalsLoadedRef.current) return
@@ -312,104 +370,85 @@ export default function DashboardPage() {
     []
   )
 
-  const loadData = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true)
-      setPageLoadError(false)
-    }
-    const result = await asyncHandler(
-      async () => {
-        const { uid, clientId } = await resolveDashboardTenantScope()
-        const [ticketsResult, kpiCounts, projectsResult, workersResult] = await Promise.all([
-          withClientId(
-            supabase.from('tickets').select(`
-              id, ticket_number, project_id, client_id, reporter_phone, description, 
-              status, priority, assigned_worker_id, created_at, closed_at,
-              projects (project_code, name)
-            `),
-            clientId
+  const loadData = useCallback(
+    async (silent = false) => {
+      if (!silent) setPageLoadError(false)
+      const result = await asyncHandler(
+        async () => {
+          const { uid, clientId } = await resolveDashboardTenantScope()
+          const [kpiCounts, ticketsRes, projectsRes, workersRes] = await Promise.all([
+            fetchDashboardTicketKpiCounts(supabase, clientId),
+            refetchOpenTickets(),
+            refetchProjects(),
+            refetchWorkers(),
+          ])
+          if (ticketsRes.error) throw ticketsRes.error
+          if (projectsRes.error) throw projectsRes.error
+          if (workersRes.error) throw workersRes.error
+
+          const formatted = formatOpenTicketsForDashboard(
+            (ticketsRes.data as OpenTicketRow[] | undefined) ?? []
           )
-            .is('deleted_at', null)
-            .neq('status', 'CLOSED')
-            .order('created_at', { ascending: false })
-            .limit(50),
-          fetchDashboardTicketKpiCounts(supabase, clientId),
-          withClientId(
-            supabase.from('projects').select('id, name, project_code'),
-            clientId
-          ).order('project_code', { ascending: true }),
-          withClientId(
-            supabase.from('workers').select('id, full_name'),
-            clientId
+          const nextProjects = ((projectsRes.data as { id: string; name: string; project_code?: string | null }[] | undefined) ?? []).map(
+            (p) => ({
+              id: p.id,
+              name: p.name,
+              project_code: p.project_code || '',
+            })
           )
-            .is('deleted_at', null)
-            .order('full_name', { ascending: true }),
-        ])
+          const map: Record<string, string> = {}
+          ;((workersRes.data as { id: string; full_name: string }[] | undefined) ?? []).forEach(
+            (worker) => {
+              map[worker.id] = worker.full_name
+            }
+          )
 
-        if (ticketsResult.error) throw ticketsResult.error
-        if (projectsResult.error) throw projectsResult.error
-        if (workersResult.error) throw workersResult.error
+          setTickets(formatted)
+          setTicketKpis(kpiCounts)
+          setProjects(nextProjects)
+          setWorkersMap(map)
+          setWorkersCount(Object.keys(map).length)
+          lastFetchAtRef.current = Date.now()
+          hasPaintedDataRef.current = true
+          setCachePainted(true)
+          setKpiReady(true)
 
-        const formatted: TicketRow[] = (ticketsResult.data || []).map((row: TicketWithProjects) => ({
-          id: row.id,
-          ticket_number: row.ticket_number,
-          project_id: row.project_id,
-          client_id: (row as { client_id?: string | null }).client_id ?? null,
-          project_code: Array.isArray(row.projects) ? row.projects?.[0]?.project_code || '' : row.projects?.project_code || '',
-          project_name: Array.isArray(row.projects) ? row.projects?.[0]?.name || '' : row.projects?.name || '',
-          reporter_phone: row.reporter_phone,
-          description: row.description,
-          status: row.status,
-          priority: row.priority,
-          assigned_worker_id: row.assigned_worker_id,
-          created_at: row.created_at,
-          closed_at: row.closed_at,
-        }))
+          writeTenantDashboardCache(uid, clientId, {
+            tickets: formatted,
+            projects: nextProjects,
+            workersMap: map,
+            closedCount: kpiCounts.closed,
+            ticketKpis: kpiCounts,
+            residentsCount: cacheAuxRef.current.residentsCount,
+            workersCount: cacheAuxRef.current.workersCount,
+            recentActivity: cacheAuxRef.current.recentActivity,
+          })
 
-        const map: Record<string, string> = {}
-        workersResult.data?.forEach((worker: { id: string; full_name: string }) => {
-          map[worker.id] = worker.full_name
+          void loadSecondaryData({
+            tickets: formatted,
+            projects: nextProjects,
+            workersMap: map,
+            ticketKpis: kpiCounts,
+          })
+
+          return true
+        },
+        { context: 'טעינת הדשבורד', showErrorToast: !silent }
+      )
+      setPageLoadError(
+        shouldShowPageLoadError({
+          fetchSucceeded: !!result,
+          silent,
+          hasDataToShow: hasPaintedDataRef.current,
         })
-
-        const nextProjects = projectsResult.data || []
-        setTickets(formatted)
-        setTicketKpis(kpiCounts)
-        setProjects(nextProjects)
-        setWorkersMap(map)
-        lastFetchAtRef.current = Date.now()
-        hasPaintedDataRef.current = true
-
-        writeTenantDashboardCache(uid, clientId, {
-          tickets: formatted,
-          projects: nextProjects,
-          workersMap: map,
-          closedCount: kpiCounts.closed,
-          ticketKpis: kpiCounts,
-          residentsCount: cacheAuxRef.current.residentsCount,
-          workersCount: cacheAuxRef.current.workersCount,
-          recentActivity: cacheAuxRef.current.recentActivity,
-        })
-
-        void loadSecondaryData({
-          tickets: formatted,
-          projects: nextProjects,
-          workersMap: map,
-          ticketKpis: kpiCounts,
-        })
-
-        return true
-      },
-      { context: 'טעינת הדשבורד', showErrorToast: !silent }
-    )
-    setPageLoadError(
-      shouldShowPageLoadError({
-        fetchSucceeded: !!result,
-        silent,
-        hasDataToShow: hasPaintedDataRef.current,
-      })
-    )
-    if (!silent) setLoading(false)
-  }, [loadSecondaryData])
+      )
+      if (!silent) {
+        setCachePainted(true)
+        setKpiReady(true)
+      }
+    },
+    [loadSecondaryData, refetchOpenTickets, refetchProjects, refetchWorkers]
+  )
 
   const debouncedLoadData = useCallback(
     (silent = false) => {
@@ -426,13 +465,43 @@ export default function DashboardPage() {
     }, [loadData])
   )
 
+  // Sync shared RQ cache → local list state (warm navigation)
+  useEffect(() => {
+    if (!ticketsHasData) return
+    setTickets(formatOpenTicketsForDashboard(rqTickets))
+    hasPaintedDataRef.current = true
+  }, [rqTickets, ticketsHasData])
+
+  useEffect(() => {
+    if (!projectsHasData) return
+    setProjects(
+      rqProjects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        project_code: p.project_code || '',
+      }))
+    )
+  }, [rqProjects, projectsHasData])
+
+  useEffect(() => {
+    if (!workersHasData) return
+    const map: Record<string, string> = {}
+    rqWorkers.forEach((worker) => {
+      map[worker.id] = worker.full_name
+    })
+    setWorkersMap(map)
+    setWorkersCount(Object.keys(map).length)
+  }, [rqWorkers, workersHasData])
+
   useEffect(() => {
     let cancelled = false
     async function bootFromTenantCache() {
       try {
-        // Never paint until the current session tenant is known — prevents cross-tenant flash.
         const { uid, clientId } = await resolveDashboardTenantScope()
         if (cancelled) return
+        const rqCachedTickets = queryClient.getQueryData(queryKeys.ticketsOpen(clientId)) as
+          | OpenTicketRow[]
+          | undefined
         const cached = shouldSkipStalePageCache()
           ? null
           : readTenantDashboardCache<DashboardCachePayload>(uid, clientId)
@@ -442,6 +511,7 @@ export default function DashboardPage() {
           setProjects(cached.projects)
           setWorkersMap(cached.workersMap)
           setTicketKpis(resolveDashboardTicketKpiCounts(cached))
+          setKpiReady(true)
           setResidentsCount(cached.residentsCount)
           setWorkersCount(cached.workersCount)
           setRecentActivity(cached.recentActivity as ActivityItem[])
@@ -451,7 +521,42 @@ export default function DashboardPage() {
             recentActivity: cached.recentActivity as ActivityItem[],
           }
           hasPaintedDataRef.current = true
-          setLoading(false)
+          setCachePainted(true)
+          if (!rqCachedTickets) {
+            queryClient.setQueryData(
+              queryKeys.ticketsOpen(clientId),
+              cached.tickets.map((t) => ({
+                id: t.id,
+                ticket_number: t.ticket_number,
+                client_id: t.client_id,
+                project_id: t.project_id,
+                reporter_phone: t.reporter_phone,
+                description: t.description,
+                status: t.status,
+                priority: t.priority,
+                assigned_worker_id: t.assigned_worker_id,
+                created_at: t.created_at,
+                closed_at: t.closed_at,
+                projects: { name: t.project_name, project_code: t.project_code },
+              })) satisfies OpenTicketRow[]
+            )
+          }
+          if (!queryClient.getQueryData(queryKeys.projects(clientId))) {
+            queryClient.setQueryData(queryKeys.projects(clientId), cached.projects)
+          }
+          if (!queryClient.getQueryData(queryKeys.workers(clientId))) {
+            queryClient.setQueryData(
+              queryKeys.workers(clientId),
+              Object.entries(cached.workersMap).map(([id, full_name]) => ({ id, full_name }))
+            )
+          }
+          void loadData(true)
+          return
+        }
+        if (rqCachedTickets) {
+          setTickets(formatOpenTicketsForDashboard(rqCachedTickets))
+          hasPaintedDataRef.current = true
+          setCachePainted(true)
           void loadData(true)
           return
         }
@@ -464,7 +569,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [loadData])
+  }, [loadData, queryClient])
 
   // Supabase Realtime — silent refresh when DB changes
   useEffect(() => {
@@ -474,7 +579,9 @@ export default function DashboardPage() {
         debouncedLoadData(true)
       })
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [debouncedLoadData])
 
   // Visibility API — silent refresh when returning to tab
@@ -650,7 +757,9 @@ export default function DashboardPage() {
             whatsapp_sent,
           })
           removeClosedTicketFromView(selectedTicket.id)
+          void invalidateOpenTickets()
         } else {
+          await invalidateOpenTickets()
           await loadData(true)
         }
         return true
@@ -663,6 +772,13 @@ export default function DashboardPage() {
   function removeClosedTicketFromView(ticketId: string) {
     const closedRow = tickets.find((t) => t.id === ticketId)
     setTickets((prev) => removeTicketFromListState(prev, ticketId))
+    if (rqClientId) {
+      queryClient.setQueryData(
+        queryKeys.ticketsOpen(rqClientId),
+        (old: OpenTicketRow[] | undefined) =>
+          old ? old.filter((t) => t.id !== ticketId) : old
+      )
+    }
     setTicketKpis((prev) => {
       const next = { ...prev, closed: prev.closed + 1, active: Math.max(0, prev.active - 1) }
       if (closedRow?.status === 'NEW') next.open = Math.max(0, next.open - 1)
@@ -693,6 +809,7 @@ export default function DashboardPage() {
     toast.success(TM.ticketClosed)
     toastReporterClosedNotifySummary(closeBody)
     removeClosedTicketFromView(ticketId)
+    void invalidateOpenTickets()
     return closeBody
   }
 
@@ -745,7 +862,8 @@ export default function DashboardPage() {
       setAddTicketReporterName('')
       setAddTicketReporterPhone('')
       setShowAddTicketModal(false)
-      await loadData()
+      await invalidateOpenTickets()
+      await loadData(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : TM.genericSaveError
       setAddTicketError(message)
@@ -993,6 +1111,7 @@ export default function DashboardPage() {
         workersMap={workersMap}
         professionals={professionals}
         onTicketForwarded={async () => {
+          await invalidateOpenTickets()
           await loadData(true)
           if (selectedTicket) {
             setDraftStatus('PROFESSIONAL_ESCORT')

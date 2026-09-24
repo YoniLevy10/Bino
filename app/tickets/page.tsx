@@ -27,12 +27,20 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import { parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
+import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
+import {
+  useTenantOpenTickets,
+  type OpenTicketRow,
+} from '@/lib/hooks/use-open-tickets'
+import { queryKeys } from '@/lib/query-keys'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { shouldShowPageLoadError } from '@/lib/page-load-error'
@@ -174,20 +182,78 @@ function writeTicketsCache(clientId: string, data: Omit<TicketsCache, 'savedAt'>
   } catch { /* storage full or unavailable */ }
 }
 
-const TICKETS_LIST_SELECT = `
-  id, ticket_number, client_id, project_id, reporter_phone, reporter_name,
-  description, status, priority, assigned_worker_id, building_number,
-  created_at, closed_at,
-  projects (name, project_code)
-`.trim()
+function normalizeOpenTicketRows(rows: OpenTicketRow[]): TicketRow[] {
+  return rows.map((ticket) => {
+    const project = Array.isArray(ticket.projects) ? ticket.projects[0] : ticket.projects
+    return {
+      id: ticket.id,
+      ticket_number: Number(ticket.ticket_number),
+      client_id: ticket.client_id,
+      project_id: ticket.project_id,
+      project_code: project?.project_code || '',
+      project_name: project?.name || '',
+      reporter_phone: ticket.reporter_phone,
+      reporter_name: ticket.reporter_name,
+      description: ticket.description,
+      status: ticket.status,
+      priority: ticket.priority,
+      assigned_worker_id: ticket.assigned_worker_id,
+      building_number: ticket.building_number,
+      created_at: ticket.created_at,
+      closed_at: ticket.closed_at,
+      projects: ticket.projects,
+    }
+  })
+}
+
+function ticketRowsToOpenRows(tickets: TicketRow[]): OpenTicketRow[] {
+  return tickets.map((t) => ({
+    id: t.id,
+    ticket_number: t.ticket_number,
+    client_id: t.client_id,
+    project_id: t.project_id,
+    reporter_phone: t.reporter_phone,
+    reporter_name: t.reporter_name,
+    description: t.description,
+    status: t.status,
+    priority: t.priority,
+    assigned_worker_id: t.assigned_worker_id,
+    building_number: t.building_number,
+    created_at: t.created_at || '',
+    closed_at: t.closed_at,
+    projects: t.projects ?? { name: t.project_name, project_code: t.project_code },
+  }))
+}
 
 export default function TicketsPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const {
+    clientId: rqClientId,
+    tickets: rqTickets,
+    isLoading: ticketsLoading,
+    hasData: ticketsHasData,
+    refetch: refetchOpenTickets,
+    error: ticketsQueryError,
+  } = useTenantOpenTickets({ limit: TICKETS_INITIAL_LIMIT })
+  const {
+    projects: rqProjects,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+    refetch: refetchProjects,
+  } = useTenantProjectsList()
+  const {
+    workers: rqWorkers,
+    isLoading: workersLoading,
+    hasData: workersHasData,
+    refetch: refetchWorkers,
+  } = useTenantWorkersList()
+
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [cachePainted, setCachePainted] = useState(false)
   const [pageLoadError, setPageLoadError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -236,8 +302,13 @@ export default function TicketsPage() {
   const [mergeLoading, setMergeLoading] = useState(false)
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
   const [desktopToolsOpen, setDesktopToolsOpen] = useState(false)
-  const [tenantClientId, setTenantClientId] = useState('')
   const [ticketsTruncated, setTicketsTruncated] = useState(false)
+  const tenantClientId = rqClientId || ''
+  const loading =
+    !cachePainted &&
+    ((ticketsLoading && !ticketsHasData) ||
+      (projectsLoading && !projectsHasData) ||
+      (workersLoading && !workersHasData))
   const [pendingDeepLinkTicket, setPendingDeepLinkTicket] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     return parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
@@ -302,70 +373,40 @@ export default function TicketsPage() {
     }
   }, [tenantClientId])
 
-  const fetchData = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true)
-      setPageLoadError(false)
-    }
-    const result = await asyncHandler(
-      async () => {
-        const clientId = await resolveBinoClientIdForBrowser()
-        setTenantClientId(clientId)
-        const [ticketsResult, workersResult, projectsResult] = await Promise.all([
-          withClientId(supabase.from('tickets').select(TICKETS_LIST_SELECT), clientId)
-            .is('deleted_at', null)
-            .neq('status', 'CLOSED')
-            .order('created_at', { ascending: false })
-            .limit(TICKETS_INITIAL_LIMIT),
-          withClientId(supabase.from('workers').select('id, full_name, phone, email, role, is_active'), clientId)
-            .is('deleted_at', null)
-            .order('full_name', { ascending: true }),
-          withClientId(supabase.from('projects').select('id, name, project_code'), clientId).order(
-            'project_code',
-            { ascending: true }
-          ),
-        ])
+  const invalidateOpenTickets = useCallback(async () => {
+    const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
+    await queryClient.invalidateQueries({ queryKey: queryKeys.ticketsOpen(clientId) })
+  }, [queryClient, tenantClientId])
 
-        if (ticketsResult.error) throw ticketsResult.error
-        if (workersResult.error) throw workersResult.error
-        if (projectsResult.error) throw projectsResult.error
-
-        const normalizedTickets: TicketRow[] = ((ticketsResult.data ?? []) as unknown as TicketRow[]).map(
-          (ticket) => {
-            const project = Array.isArray(ticket.projects) ? ticket.projects[0] : ticket.projects
-            return {
-              ...ticket,
-              project_code: project?.project_code || '',
-              project_name: project?.name || '',
-            }
-          }
-        )
-
-        setTickets(normalizedTickets)
-        setTicketsTruncated(normalizedTickets.length >= TICKETS_INITIAL_LIMIT)
-        setWorkers((workersResult.data as WorkerRow[]) || [])
-        setProjects((projectsResult.data as ProjectRow[]) || [])
-        writeTicketsCache(clientId, {
-          tickets: normalizedTickets,
-          workers: (workersResult.data as WorkerRow[]) || [],
-          projects: (projectsResult.data as ProjectRow[]) || [],
-          ticketsTruncated: normalizedTickets.length >= TICKETS_INITIAL_LIMIT,
+  const fetchData = useCallback(
+    async (silent = false) => {
+      if (!silent) setPageLoadError(false)
+      const result = await asyncHandler(
+        async () => {
+          const [ticketsRes, projectsRes, workersRes] = await Promise.all([
+            refetchOpenTickets(),
+            refetchProjects(),
+            refetchWorkers(),
+          ])
+          if (ticketsRes.error) throw ticketsRes.error
+          if (projectsRes.error) throw projectsRes.error
+          if (workersRes.error) throw workersRes.error
+          lastFetchAtRef.current = Date.now()
+          hasPaintedDataRef.current = true
+          return true
+        },
+        { context: 'טעינת תקלות', showErrorToast: !silent }
+      )
+      setPageLoadError(
+        shouldShowPageLoadError({
+          fetchSucceeded: !!result,
+          silent,
+          hasDataToShow: hasPaintedDataRef.current,
         })
-        lastFetchAtRef.current = Date.now()
-        hasPaintedDataRef.current = true
-        return true
-      },
-      { context: 'טעינת תקלות', showErrorToast: !silent }
-    )
-    setPageLoadError(
-      shouldShowPageLoadError({
-        fetchSucceeded: !!result,
-        silent,
-        hasDataToShow: hasPaintedDataRef.current,
-      })
-    )
-    if (!silent) setLoading(false)
-  }, [])
+      )
+    },
+    [refetchOpenTickets, refetchProjects, refetchWorkers]
+  )
 
   const debouncedFetchData = useCallback(
     (silent = false) => {
@@ -382,23 +423,103 @@ export default function TicketsPage() {
     }, [fetchData])
   )
 
+  // Hydrate from localStorage; seed RQ only when cache is empty (warm nav keeps RQ).
   useEffect(() => {
+    let cancelled = false
     void (async () => {
-      const clientId = await resolveBinoClientIdForBrowser()
-      const cached = shouldSkipStalePageCache() ? null : readTicketsCache(clientId)
-      if (cached) {
+      try {
+        const clientId = await resolveBinoClientIdForBrowser()
+        if (cancelled) return
+        const existingRq = queryClient.getQueryData(queryKeys.ticketsOpen(clientId))
+        if (existingRq) {
+          hasPaintedDataRef.current = true
+          setCachePainted(true)
+          return
+        }
+        const cached = shouldSkipStalePageCache() ? null : readTicketsCache(clientId)
+        if (!cached || cancelled) return
         setTickets(cached.tickets.filter((t) => t.status !== 'CLOSED'))
         setWorkers(cached.workers)
         setProjects(cached.projects)
         setTicketsTruncated(cached.ticketsTruncated)
         hasPaintedDataRef.current = true
-        setLoading(false)
+        setCachePainted(true)
+        if (!queryClient.getQueryData(queryKeys.ticketsOpen(clientId))) {
+          queryClient.setQueryData(
+            queryKeys.ticketsOpen(clientId),
+            ticketRowsToOpenRows(cached.tickets.filter((t) => t.status !== 'CLOSED'))
+          )
+        }
+        if (!queryClient.getQueryData(queryKeys.projects(clientId))) {
+          queryClient.setQueryData(queryKeys.projects(clientId), cached.projects)
+        }
+        if (!queryClient.getQueryData(queryKeys.workers(clientId))) {
+          queryClient.setQueryData(queryKeys.workers(clientId), cached.workers)
+        }
         void fetchData(true)
-      } else {
-        void fetchData()
+      } catch {
+        /* hooks will load */
       }
     })()
-  }, [fetchData])
+    return () => {
+      cancelled = true
+    }
+  }, [queryClient, fetchData])
+
+  // Prefer shared RQ data for list state
+  useEffect(() => {
+    if (!ticketsHasData) return
+    const normalized = normalizeOpenTicketRows(rqTickets)
+    setTickets(normalized)
+    setTicketsTruncated(normalized.length >= TICKETS_INITIAL_LIMIT)
+    hasPaintedDataRef.current = true
+    lastFetchAtRef.current = Date.now()
+    setCachePainted(true)
+  }, [rqTickets, ticketsHasData])
+
+  useEffect(() => {
+    if (!projectsHasData) return
+    setProjects(
+      rqProjects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        project_code: p.project_code || '',
+      }))
+    )
+  }, [rqProjects, projectsHasData])
+
+  useEffect(() => {
+    if (!workersHasData) return
+    setWorkers(
+      rqWorkers.map((w) => ({
+        id: w.id,
+        full_name: w.full_name,
+        phone: w.phone,
+        email: w.email,
+        role: w.role,
+        is_active: w.is_active,
+      }))
+    )
+  }, [rqWorkers, workersHasData])
+
+  // Persist LS snapshot when we have fresh RQ data
+  useEffect(() => {
+    if (!tenantClientId || !ticketsHasData) return
+    writeTicketsCache(tenantClientId, {
+      tickets,
+      workers,
+      projects,
+      ticketsTruncated,
+    })
+  }, [tenantClientId, tickets, workers, projects, ticketsTruncated, ticketsHasData])
+
+  useEffect(() => {
+    if (ticketsQueryError && !hasPaintedDataRef.current) {
+      setPageLoadError(true)
+    } else if (ticketsHasData) {
+      setPageLoadError(false)
+    }
+  }, [ticketsQueryError, ticketsHasData])
 
   // Supabase Realtime — silent refresh when tickets change
   useEffect(() => {
@@ -408,7 +529,9 @@ export default function TicketsPage() {
         debouncedFetchData(true)
       })
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [debouncedFetchData])
 
   // Visibility API — silent refresh when returning to tab
@@ -513,7 +636,7 @@ export default function TicketsPage() {
       if (selectedTicket && (deletedIds ? deletedIds.includes(selectedTicket.id) : true)) {
         closeDrawer()
       }
-      await fetchData()
+      await invalidateOpenTickets()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'מחיקה נכשלה')
     }
@@ -659,7 +782,7 @@ export default function TicketsPage() {
       if (!res.ok) throw new Error(json.error || 'מיזוג נכשל')
       toast.success(`מוזג לתקלה #${json.merged_into_ticket_number}`)
       closeDrawer()
-      await fetchData()
+      await invalidateOpenTickets()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'מיזוג נכשל')
     }
@@ -808,7 +931,7 @@ export default function TicketsPage() {
         })
       }
 
-      await fetchData()
+      await invalidateOpenTickets()
       setSelectedTicket((prev) => prev ? { ...prev, priority: draftPriority, status: draftStatus, assigned_worker_id: draftWorkerId || null } : prev)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : TM.genericSaveError)
@@ -826,6 +949,10 @@ export default function TicketsPage() {
           projects,
           ticketsTruncated,
         })
+        queryClient.setQueryData(
+          queryKeys.ticketsOpen(tenantClientId),
+          ticketRowsToOpenRows(next)
+        )
       }
       return next
     })
@@ -851,6 +978,7 @@ export default function TicketsPage() {
     toast.success(TM.ticketClosed)
     toastReporterClosedNotifySummary(closeBody)
     removeClosedTicketFromView(ticketId)
+    void invalidateOpenTickets()
     return closeBody
   }
 
@@ -934,7 +1062,7 @@ export default function TicketsPage() {
       toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה ✓`)
       setAddTicketForm({ project_code: '', description: '', reporter_name: '', reporter_phone: '' })
       setShowAddTicketModal(false)
-      await fetchData()
+      await invalidateOpenTickets()
     } catch (err) {
       const message = err instanceof Error ? err.message : TM.genericSaveError
       setAddTicketError(message)
@@ -1442,7 +1570,7 @@ export default function TicketsPage() {
         onMerge={runMerge}
         onDelete={() => void deleteSingleTicket()}
         onTicketForwarded={async () => {
-          await fetchData(true)
+          await invalidateOpenTickets()
           if (selectedTicket && draftStatus !== 'PROFESSIONAL_ESCORT') {
             setDraftStatus('PROFESSIONAL_ESCORT')
           }
