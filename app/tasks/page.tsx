@@ -1,7 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { AppShell, Button, Card, LoadingSpinner, PageHeader, theme } from '../components/ui'
+import {
+  AppShell,
+  Button,
+  Card,
+  LoadingSpinner,
+  MobileHeader,
+  PageHeader,
+  theme,
+  useMobileMenu,
+} from '../components/ui'
 import {
   fetchWithTimeout,
   MUTATION_FETCH_TIMEOUT_MS,
@@ -67,6 +76,7 @@ export default function TasksPage() {
   const [workers, setWorkers] = useState<WorkerOpt[]>([])
   const [projects, setProjects] = useState<ProjectOpt[]>([])
   const [isMobile, setIsMobile] = useState(false)
+  const { openMenu } = useMobileMenu()
   const [saving, setSaving] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -272,9 +282,18 @@ export default function TasksPage() {
   }
 
   return (
-    <AppShell>
-      <PageHeader title="ניהול משימות" subtitle="משימות אחזקה נפרדות ממערכת התקלות" />
+    <AppShell isMobile={isMobile}>
+      {isMobile && (
+        <MobileHeader
+          title="ניהול משימות"
+          subtitle="משימות אחזקה נפרדות מתקלות"
+          onMenuClick={openMenu}
+        />
+      )}
       <div style={styles.wrap(isMobile)}>
+        {!isMobile && (
+          <PageHeader title="ניהול משימות" subtitle="משימות אחזקה נפרדות ממערכת התקלות" />
+        )}
         <Card>
           <div style={styles.formGrid(isMobile)}>
             <input
@@ -332,7 +351,7 @@ export default function TasksPage() {
         </Card>
 
         <div style={styles.toolbar}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
             <label style={styles.check}>
               <input type="checkbox" checked={dayOnly} onChange={(e) => setDayOnly(e.target.checked)} />
               משימות היום / פתוחות ללא תאריך
@@ -525,7 +544,15 @@ export default function TasksPage() {
                               )}
                             </div>
                           ) : null}
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              marginTop: 8,
+                              minWidth: 0,
+                            }}
+                          >
                             <Button type="button" size="sm" variant="secondary" onClick={() => startEdit(t)}>
                               עריכה
                             </Button>
@@ -551,7 +578,11 @@ export default function TasksPage() {
                               }}
                             />
                             <select
-                              style={{ ...styles.input, width: 'auto', minWidth: 140 }}
+                              style={{
+                                ...styles.input,
+                                width: isMobile ? '100%' : 'auto',
+                                minWidth: isMobile ? 0 : 140,
+                              }}
                               value={t.assigned_worker_id || ''}
                               onChange={(e) =>
                                 void patchTask(t.id, { assigned_worker_id: e.target.value || null })
@@ -565,7 +596,11 @@ export default function TasksPage() {
                               ))}
                             </select>
                             <select
-                              style={{ ...styles.input, width: 'auto', minWidth: 120 }}
+                              style={{
+                                ...styles.input,
+                                width: isMobile ? '100%' : 'auto',
+                                minWidth: isMobile ? 0 : 120,
+                              }}
                               value={t.status}
                               onChange={(e) => void patchTask(t.id, { status: e.target.value })}
                             >
@@ -590,9 +625,12 @@ export default function TasksPage() {
 
 const styles = {
   wrap: (mobile: boolean): CSSProperties => ({
-    padding: mobile ? 12 : 20,
-    maxWidth: 960,
+    padding: mobile ? '16px 16px 32px' : '32px 40px',
+    maxWidth: mobile ? '100%' : 960,
     margin: '0 auto',
+    width: '100%',
+    boxSizing: 'border-box',
+    minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: 14,
@@ -601,34 +639,55 @@ const styles = {
     display: 'grid',
     gap: 10,
     gridTemplateColumns: mobile ? '1fr' : '1fr 1fr',
+    minWidth: 0,
   }),
   input: {
     width: '100%',
+    maxWidth: '100%',
     padding: '10px 12px',
     borderRadius: 10,
     border: `1px solid ${theme.colors.border}`,
-    fontSize: 14,
+    fontSize: 16,
     boxSizing: 'border-box' as const,
+    minWidth: 0,
   },
   textarea: {
     width: '100%',
+    maxWidth: '100%',
     padding: '10px 12px',
     borderRadius: 10,
     border: `1px solid ${theme.colors.border}`,
-    fontSize: 14,
+    fontSize: 16,
     gridColumn: '1 / -1',
     boxSizing: 'border-box' as const,
+    minWidth: 0,
+    resize: 'vertical' as const,
   },
   toolbar: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     flexWrap: 'wrap' as const,
+    minWidth: 0,
   },
-  check: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 },
-  list: { display: 'flex', flexDirection: 'column' as const, gap: 10 },
-  taskHead: { display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+  check: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+    fontSize: 14,
+    lineHeight: 1.35,
+    minWidth: 0,
+  },
+  list: { display: 'flex', flexDirection: 'column' as const, gap: 10, minWidth: 0 },
+  taskHead: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 6,
+    flexWrap: 'wrap' as const,
+    minWidth: 0,
+  },
   badge: {
     fontSize: 12,
     fontWeight: 700,
@@ -636,10 +695,11 @@ const styles = {
     background: theme.colors.primaryMuted,
     padding: '4px 8px',
     borderRadius: 8,
+    flexShrink: 0,
   },
-  meta: { fontSize: 13, color: theme.colors.textSecondary, marginBottom: 6 },
-  desc: { fontSize: 14, margin: '0 0 8px', lineHeight: 1.45 },
-  actions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
+  meta: { fontSize: 13, color: theme.colors.textSecondary, marginBottom: 6, wordBreak: 'break-word' as const },
+  desc: { fontSize: 14, margin: '0 0 8px', lineHeight: 1.45, wordBreak: 'break-word' as const },
+  actions: { display: 'grid', gridTemplateColumns: '1fr', gap: 8 },
   empty: { textAlign: 'center' as const, color: theme.colors.textSecondary },
   attRow: { display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 4 },
   thumb: { width: 64, height: 64, objectFit: 'cover' as const, borderRadius: 8 },
