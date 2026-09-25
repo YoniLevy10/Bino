@@ -1,0 +1,52 @@
+{
+  "framework": "Next.js",
+  "app": {
+    "name": "BINO",
+    "tagline": "זיכרון תפעולי חכם לבניינים",
+    "platform": "web",
+    "url": "bino.app",
+    "icon": "icon.png",
+    "description": "BINO בונה זיכרון תפעולי לכל בניין: לומדת מהיסטוריית תקלות, ממליצה על עובדים וספקים, מזהה תקלות חוזרות ומוכיחה חיסכון לחברת הניהול."
+  },
+  "brand": {
+    "primary": "#0066FF",
+    "primaryLight": "#E5F0FF",
+    "background": "#F2F5FA",
+    "surface": "#FFFFFF",
+    "textPrimary": "#0B1220",
+    "textSecondary": "#5A6578",
+    "success": "#34C759",
+    "danger": "#FF3B30"
+  },
+  "category": "SaaS",
+  "themeDefault": "light",
+  "coreAction": "learn building history → recommend worker/vendor → prove time/money saved",
+  "valueProps": [
+    "זיכרון תפעולי חכם לכל בניין",
+    "המלצה אוטומטית לעובד או ספק",
+    "זיהוי תקלות חוזרות והתראות SLA",
+    "הוכחת חיסכון לחברת הניהול"
+  ],
+  "northStarMetrics": [
+    "זמן עד שיוך",
+    "זמן עד פתרון",
+    "שיעור תקלות חוזרות",
+    "עלות תחזוקה לבניין",
+    "אחוז טיפול ללא התערבות מנהל"
+  ],
+  "routes": ["/", "/dashboard", "/tickets", "/projects", "/workers", "/summary", "/report"],
+  "features": [
+    "WhatsApp + טופס דיווח לדיירים",
+    "לוח בקרה KPI",
+    "שיוך חכם לעובדים",
+    "דוחות חיסכון",
+    "פורטל עובד שטח"
+  ],
+  "language": "he",
+  "creative": {
+    "angle": "flywheel",
+    "durationSec": 33,
+    "theme": "mixed",
+    "music": "music/upbeat-corporate.mp3"
+  }
+}

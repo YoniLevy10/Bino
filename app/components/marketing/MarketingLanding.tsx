@@ -109,6 +109,29 @@ export function MarketingLanding() {
       </header>
 
       <main>
+        <section className="bino-demo" aria-labelledby="bino-demo-heading">
+          <div className="bino-section bino-section--wide">
+            <h2 id="bino-demo-heading" className="bino-section__title">
+              סרטון מערכת
+            </h2>
+            <p className="bino-section__lead">
+              מזיכרון תפעולי — לשיוך חכם ולהוכחת חיסכון. כ־33 שניות.
+            </p>
+            <div className="bino-demo__frame">
+              <video
+                className="bino-demo__video"
+                controls
+                playsInline
+                preload="metadata"
+                poster="/marketing/ops-memory.png"
+                aria-label="סרטון הדגמה של BINO — זיכרון תפעולי חכם לבניינים"
+              >
+                <source src="/marketing/bino-system-demo.mp4" type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        </section>
+
         <section className="bino-showcase" aria-labelledby="bino-showcase-heading">
           <div className="bino-section bino-section--wide">
             <h2 id="bino-showcase-heading" className="bino-section__title">
