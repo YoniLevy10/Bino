@@ -57,3 +57,8 @@ supabase/.temp/
 # local agent tooling (do not ship)
 .agents/
 skills-lock.json
+
+# Appshot Remotion project
+appshot-video/node_modules/
+appshot-video/.remotion/
+appshot-video/out/
