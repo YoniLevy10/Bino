@@ -62,3 +62,6 @@ skills-lock.json
 appshot-video/node_modules/
 appshot-video/.remotion/
 appshot-video/out/
+
+# Playwright MCP local captures
+.playwright-mcp/
