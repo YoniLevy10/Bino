@@ -8,7 +8,10 @@ import {
   TICKET_ATTACHMENT_MAX_WORKER_BYTES,
   TICKET_ATTACHMENT_WORKER_MIME_TYPES,
 } from '@/lib/ticket-attachment-upload'
-import { createServerSignedAttachmentUrl } from '@/lib/ticket-attachment-url'
+import {
+  createServerSignedAttachmentUrl,
+  signTourPhotosParallel,
+} from '@/lib/ticket-attachment-url'
 
 const TOURS_LOOKBACK_DAYS = 30
 const TOURS_LIMIT = 80
@@ -92,26 +95,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const tours = await Promise.all(
-      (toursRes.data || []).map(async (row) => {
-        const proj = Array.isArray(row.projects) ? row.projects[0] : row.projects
-        const rawPhotos = photoByTour.get(row.id as string) || []
-        const photos = []
-        for (const ph of rawPhotos.slice(0, 4)) {
-          const url = await createServerSignedAttachmentUrl(admin, ph.file_url)
-          if (url) photos.push({ public_url: url, mime_type: ph.mime_type })
-        }
-        return {
-          id: row.id,
-          project_id: row.project_id,
-          project_name: (proj as { name?: string } | null)?.name || '',
-          completed_at: row.completed_at,
-          notes: row.notes,
-          defect_ticket_id: row.defect_ticket_id,
-          photos,
-        }
-      })
-    )
+    const signedByTour = await signTourPhotosParallel(admin, photoByTour, 4)
+
+    const tours = (toursRes.data || []).map((row) => {
+      const proj = Array.isArray(row.projects) ? row.projects[0] : row.projects
+      return {
+        id: row.id,
+        project_id: row.project_id,
+        project_name: (proj as { name?: string } | null)?.name || '',
+        completed_at: row.completed_at,
+        notes: row.notes,
+        defect_ticket_id: row.defect_ticket_id,
+        photos: signedByTour.get(row.id as string) || [],
+      }
+    })
 
     return NextResponse.json({
       projects: projectsRes.data || [],

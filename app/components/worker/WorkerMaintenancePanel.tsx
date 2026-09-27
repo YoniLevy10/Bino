@@ -71,7 +71,10 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
   }, [refreshKey, load])
 
   async function updateStatus(taskId: string, status: string) {
+    if (busyId) return
     setBusyId(taskId)
+    const previous = tasks
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)))
     try {
       const notes = noteById[taskId]?.trim() || undefined
       const res = await fetchWithTimeout(
@@ -89,12 +92,14 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
         MUTATION_FETCH_TIMEOUT_MS
       )
       if (!res.ok) {
+        setTasks(previous)
         toast.error('עדכון נכשל')
         return
       }
       toast.success(status === 'DONE' ? 'המשימה הושלמה' : 'הסטטוס עודכן')
-      await load({ silent: true })
+      void load({ silent: true })
     } catch {
+      setTasks(previous)
       toast.error('שגיאת חיבור')
     } finally {
       setBusyId(null)

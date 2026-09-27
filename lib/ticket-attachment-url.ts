@@ -38,3 +38,37 @@ export async function createServerSignedAttachmentUrl(
   if (error || !data?.signedUrl) return null
   return data.signedUrl
 }
+
+type SignedPhotoInput = { file_url: string; mime_type: string | null }
+type SignedPhotoOut = { public_url: string; mime_type: string | null }
+
+/**
+ * Sign many attachment paths in parallel (site tours / worker tours).
+ * Caps per-group via `maxPerGroup` so list endpoints stay bounded.
+ */
+export async function signTourPhotosParallel(
+  admin: SupabaseClient,
+  photosByGroup: Map<string, SignedPhotoInput[]>,
+  maxPerGroup = 6
+): Promise<Map<string, SignedPhotoOut[]>> {
+  const jobs: { groupId: string; file_url: string; mime_type: string | null }[] = []
+  for (const [groupId, list] of photosByGroup) {
+    for (const ph of list.slice(0, maxPerGroup)) {
+      jobs.push({ groupId, file_url: ph.file_url, mime_type: ph.mime_type })
+    }
+  }
+  const settled = await Promise.all(
+    jobs.map(async (job) => {
+      const url = await createServerSignedAttachmentUrl(admin, job.file_url)
+      return url ? { groupId: job.groupId, public_url: url, mime_type: job.mime_type } : null
+    })
+  )
+  const out = new Map<string, SignedPhotoOut[]>()
+  for (const row of settled) {
+    if (!row) continue
+    const list = out.get(row.groupId) || []
+    list.push({ public_url: row.public_url, mime_type: row.mime_type })
+    out.set(row.groupId, list)
+  }
+  return out
+}

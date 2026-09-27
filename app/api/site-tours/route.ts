@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { createServerSignedAttachmentUrl } from '@/lib/ticket-attachment-url'
+import { signTourPhotosParallel } from '@/lib/ticket-attachment-url'
 
 /** Manager view: recent site tours with worker + notes + photos + defect link. */
 export async function GET() {
@@ -43,28 +43,22 @@ export async function GET() {
     }
   }
 
-  const tours = await Promise.all(
-    (data || []).map(async (row) => {
-      const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
-      const worker = Array.isArray(row.workers) ? row.workers[0] : row.workers
-      const raw = photosByTour.get(row.id as string) || []
-      const photos = []
-      for (const ph of raw.slice(0, 6)) {
-        const url = await createServerSignedAttachmentUrl(admin, ph.file_url)
-        if (url) photos.push({ public_url: url, mime_type: ph.mime_type })
-      }
-      return {
-        id: row.id,
-        completed_at: row.completed_at,
-        notes: row.notes,
-        defect_ticket_id: row.defect_ticket_id,
-        project_name: (project as { name?: string } | null)?.name || '',
-        project_address: (project as { address?: string } | null)?.address || null,
-        worker_name: (worker as { full_name?: string } | null)?.full_name || '',
-        photos,
-      }
-    })
-  )
+  const signedByTour = await signTourPhotosParallel(admin, photosByTour, 6)
+
+  const tours = (data || []).map((row) => {
+    const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
+    const worker = Array.isArray(row.workers) ? row.workers[0] : row.workers
+    return {
+      id: row.id,
+      completed_at: row.completed_at,
+      notes: row.notes,
+      defect_ticket_id: row.defect_ticket_id,
+      project_name: (project as { name?: string } | null)?.name || '',
+      project_address: (project as { address?: string } | null)?.address || null,
+      worker_name: (worker as { full_name?: string } | null)?.full_name || '',
+      photos: signedByTour.get(row.id as string) || [],
+    }
+  })
 
   return NextResponse.json({ tours })
 }

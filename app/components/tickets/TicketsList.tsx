@@ -62,7 +62,8 @@ export function TicketsList({
 
   async function handleStatusChange(ticketId: string, newStatus: string) {
     if (!onStatusChange) return
-    
+    if (updatingTicketId) return
+
     setUpdatingTicketId(ticketId)
     const success = await onStatusChange(ticketId, newStatus)
     if (success) {
