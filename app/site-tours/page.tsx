@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   AppShell,
   Card,
@@ -10,26 +10,14 @@ import {
   theme,
   useMobileMenu,
 } from '../components/ui'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-
-type TourRow = {
-  id: string
-  completed_at: string
-  notes: string | null
-  defect_ticket_id: string | null
-  project_name: string
-  project_address: string | null
-  worker_name: string
-  photos?: { public_url: string; mime_type: string | null }[]
-}
+import { useSiteTours } from '@/lib/hooks/use-site-tours'
 
 export default function SiteToursPage() {
-  const [loading, setLoading] = useState(true)
-  const [tours, setTours] = useState<TourRow[]>([])
   const [isMobile, setIsMobile] = useState(false)
   const { openMenu } = useMobileMenu()
+  const { tours, isLoading, error, hasData } = useSiteTours()
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -38,26 +26,11 @@ export default function SiteToursPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetchWithTimeout('/api/site-tours')
-      if (!res.ok) {
-        toast.error('טעינת סיורים נכשלה')
-        return
-      }
-      const json = (await res.json()) as { tours?: TourRow[] }
-      setTours(json.tours || [])
-    } catch {
-      toast.error('שגיאת חיבור')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    void load()
-  }, [load])
+    if (error) toast.error(error instanceof Error ? error.message : 'טעינת סיורים נכשלה')
+  }, [error])
+
+  const showSpinner = isLoading && !hasData
 
   return (
     <AppShell isMobile={isMobile}>
@@ -72,7 +45,7 @@ export default function SiteToursPage() {
         {!isMobile && (
           <PageHeader title="סיורים" subtitle="היסטוריית סיורים, הערות, תמונות וממצאים מהשטח" />
         )}
-        {loading ? (
+        {showSpinner ? (
           <LoadingSpinner />
         ) : tours.length === 0 ? (
           <p style={styles.empty}>אין סיורים בחודשיים האחרונים</p>

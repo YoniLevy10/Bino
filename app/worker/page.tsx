@@ -145,6 +145,12 @@ function WorkerPageInner() {
   const [translatingId, setTranslatingId] = useState<string | null>(null)
   const [ticketFilter, setTicketFilter] = useState<WorkerTicketFilter>('ALL')
   const [portalTab, setPortalTab] = useState<WorkerPortalTab>('TICKETS')
+  const [visitedTabs, setVisitedTabs] = useState<Record<WorkerPortalTab, boolean>>({
+    TICKETS: true,
+    TOURS: false,
+    MAINTENANCE: false,
+    ATTENDANCE: false,
+  })
   const [toursRefreshKey, setToursRefreshKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [usingCache, setUsingCache] = useState(false)
@@ -704,8 +710,15 @@ function WorkerPageInner() {
   }
 
   async function setTicketStatus(ticketId: string, status: TicketStatus) {
+    if (busyKey) return
     if (tokenSession) {
       setBusyKey(`${ticketId}:${status}`)
+      const previousTickets = tickets
+      if (status !== 'CLOSED') {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? { ...t, status } : t))
+        )
+      }
       try {
         const res = await fetchWithTimeout('/api/worker/tickets', {
           method: 'PATCH',
@@ -732,8 +745,9 @@ function WorkerPageInner() {
         } else {
           toast.success(TM.ticketUpdated)
         }
-        await loadTicketsToken(tokenSession.token, tokenSession.workerId)
+        void loadTicketsToken(tokenSession.token, tokenSession.workerId, { silent: true })
       } catch (e) {
+        setTickets(previousTickets)
         toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
       } finally { setBusyKey(null) }
       return
@@ -741,6 +755,12 @@ function WorkerPageInner() {
 
     if (!clientId) { toast.error('מזהה לקוח לא זמין — התחברו מחדש'); return }
     setBusyKey(`${ticketId}:${status}`)
+    const previousTickets = tickets
+    if (status !== 'CLOSED') {
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status } : t))
+      )
+    }
     try {
       const res = await fetchWithTimeout('/api/update-ticket', {
         method: 'POST',
@@ -769,8 +789,9 @@ function WorkerPageInner() {
       } else {
         toast.success(TM.ticketUpdated)
       }
-      await loadTicketsDashboard(workerId)
+      if (workerId) void loadTicketsDashboard(workerId)
     } catch (e) {
+      setTickets(previousTickets)
       toast.error(e instanceof Error ? e.message : 'עדכון נכשל')
     } finally { setBusyKey(null) }
   }
@@ -823,7 +844,10 @@ function WorkerPageInner() {
           refreshing={refreshing}
           usingCache={usingCache}
           darkMode={darkMode}
-          onPortalTabChange={setPortalTab}
+          onPortalTabChange={(tab) => {
+            setPortalTab(tab)
+            setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }))
+          }}
           onFilterChange={setTicketFilter}
           onRefresh={() => {
             if (portalTab === 'TOURS') {
@@ -840,8 +864,8 @@ function WorkerPageInner() {
         />
 
         <div style={styles.scrollArea}>
-          {portalTab === 'ATTENDANCE' ? (
-            <>
+          {visitedTabs.ATTENDANCE ? (
+            <div style={{ display: portalTab === 'ATTENDANCE' ? 'block' : 'none' }}>
               <WorkerAttendancePanel
                 token={tokenSession.token}
                 workerId={tokenSession.workerId}
@@ -850,16 +874,24 @@ function WorkerPageInner() {
               <div style={{ padding: '0 16px' }}>
                 <AttendanceHelpContact />
               </div>
-            </>
-          ) : portalTab === 'TOURS' ? (
-            <WorkerToursPanel
-              token={tokenSession.token}
-              colors={palette}
-              refreshKey={toursRefreshKey}
-            />
-          ) : portalTab === 'MAINTENANCE' ? (
-            <WorkerMaintenancePanel token={tokenSession.token} colors={palette} />
-          ) : loadingTickets ? (
+            </div>
+          ) : null}
+          {visitedTabs.TOURS ? (
+            <div style={{ display: portalTab === 'TOURS' ? 'block' : 'none' }}>
+              <WorkerToursPanel
+                token={tokenSession.token}
+                colors={palette}
+                refreshKey={toursRefreshKey}
+              />
+            </div>
+          ) : null}
+          {visitedTabs.MAINTENANCE ? (
+            <div style={{ display: portalTab === 'MAINTENANCE' ? 'block' : 'none' }}>
+              <WorkerMaintenancePanel token={tokenSession.token} colors={palette} />
+            </div>
+          ) : null}
+          <div style={{ display: portalTab === 'TICKETS' ? 'block' : 'none' }}>
+          {loadingTickets ? (
             <div style={styles.center}><LoadingSpinner /></div>
           ) : filteredTickets.length === 0 ? (
             <div style={styles.emptyState}>
@@ -972,6 +1004,7 @@ function WorkerPageInner() {
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {confirmCloseId ? (
