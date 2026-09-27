@@ -549,38 +549,40 @@ function SettingsPageInner() {
           <PageHeader title="הגדרות" subtitle="כללי, התראות ווואטסאפ" />
         )}
 
-        <Card>
-          <div style={{ padding: '16px 18px' }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: theme.colors.text }}>
-              מסמכים משפטיים
+        <div style={{ marginBottom: 16 }}>
+          <Card>
+            <div style={{ padding: '16px 18px' }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: theme.colors.textPrimary }}>
+                מסמכים משפטיים
+              </div>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                עמודים ציבוריים לתקנון, פרטיות ויצירת קשר (גם לדיירים ולאישור סליקה).
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '10px 16px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                <Link href="/terms" prefetch={false} style={{ color: theme.colors.primary }}>
+                  תקנון שימוש ושירות
+                </Link>
+                <Link href="/privacy" prefetch={false} style={{ color: theme.colors.primary }}>
+                  מדיניות פרטיות
+                </Link>
+                <Link href="/contact" prefetch={false} style={{ color: theme.colors.primary }}>
+                  יצירת קשר
+                </Link>
+                <Link href="/vaad-pay" prefetch={false} style={{ color: theme.colors.primary }}>
+                  עמוד שירות תשלומים
+                </Link>
+              </div>
             </div>
-            <p style={{ margin: '0 0 12px', fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.5 }}>
-              עמודים ציבוריים לתקנון, פרטיות ויצירת קשר (גם לדיירים ולאישור סליקה).
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '10px 16px',
-                fontSize: 14,
-                fontWeight: 600,
-              }}
-            >
-              <Link href="/terms" prefetch={false} style={{ color: theme.colors.primary }}>
-                תקנון שימוש ושירות
-              </Link>
-              <Link href="/privacy" prefetch={false} style={{ color: theme.colors.primary }}>
-                מדיניות פרטיות
-              </Link>
-              <Link href="/contact" prefetch={false} style={{ color: theme.colors.primary }}>
-                יצירת קשר
-              </Link>
-              <Link href="/vaad-pay" prefetch={false} style={{ color: theme.colors.primary }}>
-                עמוד שירות תשלומים
-              </Link>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
 
         {loading ? (
           <PageTransitionLoader />
