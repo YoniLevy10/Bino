@@ -6,6 +6,22 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '@/lib/supabase/fetch-all-rows'
+import {
+  attentionScore,
+  buildBriefing,
+  buildFirstAssignMap,
+  computeOpsSlice,
+  hourlyRateMap,
+  isClosedTicket,
+  isMergedAway,
+  summarizeWorkers,
+  type OpsSlice,
+  type OpsTicket,
+  type OpsWorkerRef,
+  type OpsWorkerRow,
+} from '@/lib/ops-intelligence-slices'
+
+export { avg, hoursBetween, median, pct, percentile, round1 } from '@/lib/ops-intelligence-slices'
 
 export type OpsDataGap = {
   key: string
@@ -47,7 +63,10 @@ export type OpsIntelligenceReport = {
     last_ticket_at: string | null
     by_source: { source: string; count: number }[]
     data_gaps: OpsDataGap[]
+    merged_excluded: number
   }
+  portfolio: OpsSlice
+  briefing: string
   north_star: {
     avg_hours_to_assignment: number | null
     median_hours_to_assignment: number | null
@@ -79,6 +98,8 @@ export type OpsIntelligenceReport = {
   }[]
   repeat_reporters: {
     phone: string
+    client_id: string | null
+    project_id: string
     client_name: string
     project_name: string
     tickets: number
@@ -92,26 +113,24 @@ export type OpsIntelligenceReport = {
     assigned: number
     avg_hours_to_close: number | null
     sla_alerted: number
+    attention_score: number
+    slice: OpsSlice
   }[]
+  projects: {
+    project_id: string
+    client_id: string | null
+    name: string
+    client_name: string
+    has_default_worker: boolean
+    attention_score: number
+    slice: OpsSlice
+  }[]
+  workers: OpsWorkerRow[]
+  workers_by_project: OpsWorkerRow[]
   monthly: { month: string; tickets: number; closed: number; recurring: number }[]
 }
 
-type TicketRow = {
-  id: string
-  client_id: string | null
-  project_id: string
-  status: string
-  created_at: string
-  closed_at: string | null
-  assigned_worker_id: string | null
-  reporter_phone: string | null
-  is_recurring: boolean | null
-  sla_alerted: boolean | null
-  escalated_at: string | null
-  source: string | null
-  source_channel: string | null
-  ticket_metadata: unknown
-}
+type TicketRow = OpsTicket
 
 type LogRow = {
   ticket_id: string
@@ -129,56 +148,6 @@ type ProjectRow = {
 
 type ClientRow = { id: string; name: string | null }
 
-export function hoursBetween(startIso: string, endIso: string): number | null {
-  const a = Date.parse(startIso)
-  const b = Date.parse(endIso)
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null
-  return (b - a) / 3_600_000
-}
-
-export function median(values: number[]): number | null {
-  if (!values.length) return null
-  const sorted = [...values].sort((x, y) => x - y)
-  const mid = Math.floor(sorted.length / 2)
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1]! + sorted[mid]!) / 2
-  }
-  return sorted[mid]!
-}
-
-export function avg(values: number[]): number | null {
-  if (!values.length) return null
-  return values.reduce((s, v) => s + v, 0) / values.length
-}
-
-export function round1(n: number | null): number | null {
-  if (n == null || !Number.isFinite(n)) return null
-  return Math.round(n * 10) / 10
-}
-
-export function pct(part: number, whole: number): number {
-  if (whole <= 0) return 0
-  return Math.round((part / whole) * 1000) / 10
-}
-
-function isAutoFromProjectMeta(meta: unknown): boolean {
-  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return false
-  return (meta as { auto_from_project?: unknown }).auto_from_project === true
-}
-
-function sourceOf(t: TicketRow): string {
-  const s = (t.source ?? t.source_channel ?? '').trim()
-  return s || 'unknown'
-}
-
-function monthKey(iso: string): string {
-  const d = new Date(iso)
-  if (!Number.isFinite(d.getTime())) return 'unknown'
-  const y = d.getUTCFullYear()
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-  return `${y}-${m}`
-}
-
 export type OpsStatsInput = {
   lookbackDays: number
   ticketsAllActive: TicketRow[]
@@ -190,6 +159,29 @@ export type OpsStatsInput = {
   workersCount: number
   professionalsCount: number
   ticketLogsCount: number
+  /** Worker rows used for names and labor estimates. Defaults to none. */
+  workerRefs?: OpsWorkerRef[]
+  /** Freeze "now" for open-ticket aging. Defaults to the current time. */
+  nowIso?: string
+}
+
+function bucketBy(list: TicketRow[], keyFn: (t: TicketRow) => string): Map<string, TicketRow[]> {
+  const map = new Map<string, TicketRow[]>()
+  for (const t of list) {
+    const key = keyFn(t)
+    const cur = map.get(key)
+    if (cur) cur.push(t)
+    else map.set(key, [t])
+  }
+  return map
+}
+
+function hasStructuredMetadata(t: TicketRow): boolean {
+  if (t.ticket_metadata == null) return false
+  if (typeof t.ticket_metadata === 'object' && !Array.isArray(t.ticket_metadata)) {
+    return Object.keys(t.ticket_metadata as object).length > 0
+  }
+  return true
 }
 
 /** Pure builder used by tests + `buildOpsIntelligenceReport`. */
@@ -205,54 +197,135 @@ export function buildOpsIntelligenceFromStats(input: OpsStatsInput): OpsIntellig
     workersCount,
     professionalsCount,
     ticketLogsCount,
+    workerRefs = [],
+    nowIso,
   } = input
 
   const clientName = new Map(clients.map((c) => [c.id, (c.name ?? '').trim() || 'ללא שם']))
   const projectName = new Map(projects.map((p) => [p.id, (p.name ?? '').trim() || 'ללא שם']))
-  const projectClient = new Map(projects.map((p) => [p.id, p.client_id]))
+  const projectById = new Map(projects.map((p) => [p.id, p]))
+  const nameOfClient = (id: string | null) => (id ? clientName.get(id) ?? 'ללא שם' : 'ללא לקוח')
+  const nameOfProject = (id: string) => projectName.get(id) ?? 'ללא שם'
 
-  const createdByTicket = new Map(ticketsInWindow.map((t) => [t.id, t.created_at]))
-  const assignHours: number[] = []
-  let autoAssign = 0
-  let assignEvents = 0
+  const operationalAll = ticketsAllActive.filter((t) => !isMergedAway(t))
+  const windowOps = ticketsInWindow.filter((t) => !isMergedAway(t))
+  const mergedExcluded = ticketsInWindow.filter((t) => isMergedAway(t)).length
+  const openNow = operationalAll.filter((t) => !isClosedTicket(t))
+  const nowMs = Date.parse(nowIso ?? new Date().toISOString())
+  const rates = hourlyRateMap(workerRefs)
+  const assignByTicket = buildFirstAssignMap(logs, windowOps)
 
-  for (const log of logs) {
-    if (log.action_type !== 'ASSIGNED_TO_WORKER') continue
-    const created = createdByTicket.get(log.ticket_id)
-    if (!created) continue
-    const h = hoursBetween(created, log.created_at)
-    if (h == null) continue
-    assignHours.push(h)
-    assignEvents += 1
-    if (isAutoFromProjectMeta(log.meta)) autoAssign += 1
-  }
+  const portfolio = computeOpsSlice({
+    windowTickets: windowOps,
+    openTickets: openNow,
+    assignByTicket,
+    hourlyRateByWorker: rates,
+    nowMs,
+    portfolioTickets: windowOps.length,
+    portfolioMedianResolution: null,
+  })
 
-  const resolutionHours = ticketsInWindow
-    .filter((t) => t.closed_at)
-    .map((t) => hoursBetween(t.created_at, t.closed_at!))
-    .filter((h): h is number => h != null)
+  const windowByClient = bucketBy(windowOps, (t) => t.client_id ?? '')
+  const openByClient = bucketBy(openNow, (t) => t.client_id ?? '')
+  const clientIds = new Set<string>([...windowByClient.keys(), ...openByClient.keys()])
 
-  const closedInWindow = ticketsInWindow.filter((t) => t.closed_at).length
-  const assignedInWindow = ticketsInWindow.filter((t) => t.assigned_worker_id).length
-  const recurringCount = ticketsInWindow.filter((t) => t.is_recurring === true).length
-  const slaAlerted = ticketsInWindow.filter((t) => t.sla_alerted === true).length
-  const escalated = ticketsInWindow.filter((t) => t.escalated_at != null).length
-  const withMetadata = ticketsInWindow.filter((t) => {
-    if (t.ticket_metadata == null) return false
-    if (typeof t.ticket_metadata === 'object' && !Array.isArray(t.ticket_metadata)) {
-      return Object.keys(t.ticket_metadata as object).length > 0
+  const clientsOut = [...clientIds]
+    .filter((id) => id.length > 0)
+    .map((id) => {
+      const slice = computeOpsSlice({
+        windowTickets: windowByClient.get(id) ?? [],
+        openTickets: openByClient.get(id) ?? [],
+        assignByTicket,
+        hourlyRateByWorker: rates,
+        nowMs,
+        portfolioTickets: windowOps.length,
+        portfolioMedianResolution: portfolio.median_hours_to_resolution,
+      })
+      return {
+        client_id: id,
+        name: nameOfClient(id),
+        tickets: slice.tickets,
+        closed: slice.closed,
+        recurring: slice.recurring_count,
+        assigned: slice.assigned,
+        avg_hours_to_close: slice.avg_hours_to_resolution,
+        sla_alerted: slice.sla_alerted_count,
+        attention_score: attentionScore(slice),
+        slice,
+      }
+    })
+    .sort((a, b) => b.attention_score - a.attention_score || b.tickets - a.tickets)
+
+  const windowByProject = bucketBy(windowOps, (t) => t.project_id)
+  const openByProject = bucketBy(openNow, (t) => t.project_id)
+  const projectIds = new Set<string>([...windowByProject.keys(), ...openByProject.keys()])
+
+  const projectRows = [...projectIds].map((id) => {
+    const meta = projectById.get(id)
+    const list = windowByProject.get(id) ?? []
+    const clientId = list[0]?.client_id ?? openByProject.get(id)?.[0]?.client_id ?? meta?.client_id ?? null
+    const slice = computeOpsSlice({
+      windowTickets: list,
+      openTickets: openByProject.get(id) ?? [],
+      assignByTicket,
+      hourlyRateByWorker: rates,
+      nowMs,
+      portfolioTickets: windowOps.length,
+      portfolioMedianResolution: portfolio.median_hours_to_resolution,
+    })
+    return {
+      project_id: id,
+      client_id: clientId,
+      name: nameOfProject(id),
+      client_name: nameOfClient(clientId),
+      has_default_worker: Boolean(meta?.assigned_worker_id),
+      attention_score: attentionScore(slice),
+      slice,
     }
-    return true
-  }).length
+  }).sort((a, b) => b.attention_score - a.attention_score || b.slice.tickets - a.slice.tickets)
 
-  const bySourceMap = new Map<string, number>()
-  for (const t of ticketsInWindow) {
-    const s = sourceOf(t)
-    bySourceMap.set(s, (bySourceMap.get(s) ?? 0) + 1)
+  const hot_buildings = [...projectRows]
+    .sort((a, b) => b.slice.tickets - a.slice.tickets || b.slice.recurring_count - a.slice.recurring_count)
+    .slice(0, 10)
+    .map((p) => ({
+      project_id: p.project_id,
+      name: p.name,
+      client_name: p.client_name,
+      tickets: p.slice.tickets,
+      recurring: p.slice.recurring_count,
+      avg_hours_to_close: p.slice.avg_hours_to_resolution,
+    }))
+
+  const reporterKey = new Map<string, { phone: string; client_id: string | null; project_id: string; n: number }>()
+  for (const t of windowOps) {
+    const phone = (t.reporter_phone ?? '').trim()
+    if (!phone) continue
+    const key = `${t.client_id ?? ''}|${t.project_id}|${phone}`
+    const cur = reporterKey.get(key)
+    if (cur) cur.n += 1
+    else reporterKey.set(key, { phone, client_id: t.client_id, project_id: t.project_id, n: 1 })
   }
-  const by_source = [...bySourceMap.entries()]
-    .map(([source, count]) => ({ source, count }))
-    .sort((a, b) => b.count - a.count)
+  const repeat_reporters = [...reporterKey.values()]
+    .filter((r) => r.n >= 3)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 20)
+    .map((r) => ({
+      phone: r.phone,
+      client_id: r.client_id,
+      project_id: r.project_id,
+      client_name: nameOfClient(r.client_id),
+      project_name: nameOfProject(r.project_id),
+      tickets: r.n,
+    }))
+
+  const workerNames = { clientName: nameOfClient, projectName: nameOfProject }
+  const workerTables = summarizeWorkers(windowOps, workerRefs, workerNames)
+
+  const windowN = windowOps.length
+  const assignN = portfolio.assignment_sample_size
+  const withMetadata = windowOps.filter(hasStructuredMetadata).length
+  const buildingsWithDefaultWorker = projects.filter((p) => p.assigned_worker_id).length
+  const by_source = portfolio.source_mix.map((s) => ({ source: s.key, count: s.count }))
 
   const first = ticketsAllActive.reduce<string | null>((min, t) => {
     if (!min || t.created_at < min) return t.created_at
@@ -263,28 +336,30 @@ export function buildOpsIntelligenceFromStats(input: OpsStatsInput): OpsIntellig
     return max
   }, null)
 
-  const buildingsWithDefaultWorker = projects.filter((p) => p.assigned_worker_id).length
-  const windowN = ticketsInWindow.length
-
   const north_star = {
-    avg_hours_to_assignment: round1(avg(assignHours)),
-    median_hours_to_assignment: round1(median(assignHours)),
-    assignment_sample_size: assignHours.length,
-    assignment_coverage_pct: pct(assignedInWindow, windowN),
-    auto_assign_pct: assignEvents > 0 ? pct(autoAssign, assignEvents) : null,
-    auto_assign_sample_size: assignEvents,
-    avg_hours_to_resolution: round1(avg(resolutionHours)),
-    median_hours_to_resolution: round1(median(resolutionHours)),
-    resolution_sample_size: resolutionHours.length,
-    recurring_rate_pct: pct(recurringCount, windowN),
-    recurring_count: recurringCount,
-    sla_alert_rate_pct: pct(slaAlerted, windowN),
-    sla_alerted_count: slaAlerted,
-    escalation_rate_pct: pct(escalated, windowN),
-    escalated_count: escalated,
-    maintenance_cost_available: false,
-    without_manager_proxy_pct: assignEvents > 0 ? pct(autoAssign, assignEvents) : null,
+    avg_hours_to_assignment: portfolio.avg_hours_to_assignment,
+    median_hours_to_assignment: portfolio.median_hours_to_assignment,
+    assignment_sample_size: assignN,
+    assignment_coverage_pct: portfolio.assignment_rate_pct,
+    auto_assign_pct: portfolio.auto_assign_pct,
+    auto_assign_sample_size: portfolio.auto_assign_sample_size,
+    avg_hours_to_resolution: portfolio.avg_hours_to_resolution,
+    median_hours_to_resolution: portfolio.median_hours_to_resolution,
+    resolution_sample_size: portfolio.resolution_sample_size,
+    recurring_rate_pct: portfolio.recurring_rate_pct,
+    recurring_count: portfolio.recurring_count,
+    sla_alert_rate_pct: portfolio.sla_alert_rate_pct,
+    sla_alerted_count: portfolio.sla_alerted_count,
+    escalation_rate_pct: portfolio.escalation_rate_pct,
+    escalated_count: portfolio.escalated_count,
+    maintenance_cost_available: portfolio.labor_cost_estimate != null,
+    without_manager_proxy_pct: portfolio.auto_assign_pct,
   }
+
+  const laborDetail =
+    portfolio.labor_cost_estimate == null
+      ? 'אין תעריף שעתי על עובדים שסגרו תקלות — עלות תחזוקה לא ניתנת לאמידה'
+      : `אומדן עלות עבודה ${portfolio.labor_cost_estimate.toLocaleString('he-IL')} ₪ על ${portfolio.labor_priced_closed}/${portfolio.labor_closed} סגירות עם תעריף. זה שעות עד סגירה כפול תעריף, לא חשבונית ספק.`
 
   const data_gaps: OpsDataGap[] = [
     {
@@ -301,17 +376,17 @@ export function buildOpsIntelligenceFromStats(input: OpsStatsInput): OpsIntellig
     {
       key: 'assigned_at',
       label: 'זמן עד שיוך',
-      status: assignHours.length >= 20 ? 'ok' : assignHours.length > 0 ? 'thin' : 'missing',
+      status: assignN >= 20 ? 'ok' : assignN > 0 ? 'thin' : 'missing',
       detail:
-        assignHours.length > 0
-          ? `מחושב מ-${assignHours.length} אירועי ASSIGNED_TO_WORKER בלוג (אין עמודת assigned_at)`
+        assignN > 0
+          ? `חציון לפי השיוך הראשון בלוג, ${assignN} תקלות (שיוך חוזר לא נספר שוב)`
           : 'אין אירועי שיוך בלוג בחלון — לא ניתן לחשב זמן עד שיוך',
     },
     {
       key: 'cost',
       label: 'עלות תחזוקה לבניין',
-      status: 'missing',
-      detail: 'אין עלות לתקלה / ספק — המדד north-star לא ניתן לחישוב',
+      status: portfolio.labor_cost_estimate == null ? 'missing' : 'thin',
+      detail: laborDetail,
     },
     {
       key: 'professionals',
@@ -353,9 +428,9 @@ export function buildOpsIntelligenceFromStats(input: OpsStatsInput): OpsIntellig
   ]
 
   const inventory = {
-    tickets_active: ticketsAllActive.length,
+    tickets_active: operationalAll.length,
     tickets_in_window: windowN,
-    tickets_closed_in_window: closedInWindow,
+    tickets_closed_in_window: portfolio.closed,
     ticket_logs: ticketLogsCount,
     clients: clients.length,
     projects: projects.length,
@@ -367,88 +442,15 @@ export function buildOpsIntelligenceFromStats(input: OpsStatsInput): OpsIntellig
     last_ticket_at: last,
     by_source,
     data_gaps,
+    merged_excluded: mergedExcluded,
   }
 
-  // Hot buildings (window)
-  const byProject = new Map<string, TicketRow[]>()
-  for (const t of ticketsInWindow) {
-    const list = byProject.get(t.project_id) ?? []
-    list.push(t)
-    byProject.set(t.project_id, list)
-  }
-  const hot_buildings = [...byProject.entries()]
-    .map(([project_id, list]) => {
-      const cid = list[0]?.client_id ?? projectClient.get(project_id) ?? null
-      const closeHours = list
-        .filter((t) => t.closed_at)
-        .map((t) => hoursBetween(t.created_at, t.closed_at!))
-        .filter((h): h is number => h != null)
-      return {
-        project_id,
-        name: projectName.get(project_id) ?? 'ללא שם',
-        client_name: cid ? clientName.get(cid) ?? '—' : '—',
-        tickets: list.length,
-        recurring: list.filter((t) => t.is_recurring === true).length,
-        avg_hours_to_close: round1(avg(closeHours)),
-      }
-    })
-    .sort((a, b) => b.tickets - a.tickets || b.recurring - a.recurring)
-    .slice(0, 10)
-
-  // Repeat reporters (same phone + project, ≥3 in window)
-  const reporterKey = new Map<string, { phone: string; client_id: string | null; project_id: string; n: number }>()
-  for (const t of ticketsInWindow) {
-    const phone = (t.reporter_phone ?? '').trim()
-    if (!phone) continue
-    const key = `${t.client_id ?? ''}|${t.project_id}|${phone}`
-    const cur = reporterKey.get(key)
-    if (cur) cur.n += 1
-    else reporterKey.set(key, { phone, client_id: t.client_id, project_id: t.project_id, n: 1 })
-  }
-  const repeat_reporters = [...reporterKey.values()]
-    .filter((r) => r.n >= 3)
-    .sort((a, b) => b.n - a.n)
-    .slice(0, 15)
-    .map((r) => ({
-      phone: r.phone,
-      client_name: r.client_id ? clientName.get(r.client_id) ?? '—' : '—',
-      project_name: projectName.get(r.project_id) ?? '—',
-      tickets: r.n,
-    }))
-
-  const clientsOut = clients
-    .map((c) => {
-      const list = ticketsInWindow.filter((t) => t.client_id === c.id)
-      const closeHours = list
-        .filter((t) => t.closed_at)
-        .map((t) => hoursBetween(t.created_at, t.closed_at!))
-        .filter((h): h is number => h != null)
-      return {
-        client_id: c.id,
-        name: clientName.get(c.id) ?? '—',
-        tickets: list.length,
-        closed: list.filter((t) => t.closed_at).length,
-        recurring: list.filter((t) => t.is_recurring === true).length,
-        assigned: list.filter((t) => t.assigned_worker_id).length,
-        avg_hours_to_close: round1(avg(closeHours)),
-        sla_alerted: list.filter((t) => t.sla_alerted === true).length,
-      }
-    })
-    .filter((c) => c.tickets > 0)
-    .sort((a, b) => b.tickets - a.tickets)
-
-  const monthMap = new Map<string, { tickets: number; closed: number; recurring: number }>()
-  for (const t of ticketsInWindow) {
-    const m = monthKey(t.created_at)
-    const cur = monthMap.get(m) ?? { tickets: 0, closed: 0, recurring: 0 }
-    cur.tickets += 1
-    if (t.closed_at) cur.closed += 1
-    if (t.is_recurring) cur.recurring += 1
-    monthMap.set(m, cur)
-  }
-  const monthly = [...monthMap.entries()]
-    .map(([month, v]) => ({ month, ...v }))
-    .sort((a, b) => a.month.localeCompare(b.month))
+  const monthly = portfolio.monthly.map((m) => ({
+    month: m.month,
+    tickets: m.opened,
+    closed: m.closed,
+    recurring: m.recurring,
+  }))
 
   const learnings = buildLearnings({
     windowN,
@@ -478,12 +480,17 @@ export function buildOpsIntelligenceFromStats(input: OpsStatsInput): OpsIntellig
     generated_at: new Date().toISOString(),
     lookback_days: lookbackDays,
     inventory,
+    portfolio,
+    briefing: buildBriefing(portfolio, lookbackDays, 'בכל המערכת'),
     north_star,
     learnings,
     suggestions,
     hot_buildings,
     repeat_reporters,
     clients: clientsOut,
+    projects: projectRows,
+    workers: workerTables.byClient,
+    workers_by_project: workerTables.byProject,
     monthly,
   }
 }
@@ -801,13 +808,13 @@ export async function buildOpsIntelligenceReport(
 ): Promise<OpsIntelligenceReport> {
   const sinceIso = new Date(Date.now() - lookbackDays * 86_400_000).toISOString()
 
-  const [ticketsAllActive, clients, projects, residentsCount, workersCount, professionalsCount, ticketLogsCount] =
+  const [ticketsAllActive, clients, projects, residentsCount, workerRefs, professionalsCount, ticketLogsCount] =
     await Promise.all([
       fetchAllRows<TicketRow>((from, to) =>
         admin
           .from('tickets')
           .select(
-            'id, client_id, project_id, status, created_at, closed_at, assigned_worker_id, reporter_phone, is_recurring, sla_alerted, escalated_at, source, source_channel, ticket_metadata'
+            'id, client_id, project_id, status, created_at, opened_at, closed_at, assigned_worker_id, reporter_phone, is_recurring, sla_alerted, escalated_at, source, source_channel, ticket_metadata, priority, is_merged'
           )
           .is('deleted_at', null)
           .range(from, to)
@@ -817,7 +824,9 @@ export async function buildOpsIntelligenceReport(
         admin.from('projects').select('id, name, client_id, assigned_worker_id').range(from, to)
       ),
       countTable(admin, 'residents'),
-      countTable(admin, 'workers'),
+      fetchAllRows<OpsWorkerRef>((from, to) =>
+        admin.from('workers').select('id, full_name, client_id, hourly_rate').is('deleted_at', null).range(from, to)
+      ),
       countTable(admin, 'professionals'),
       countTable(admin, 'ticket_logs'),
     ])
@@ -843,8 +852,9 @@ export async function buildOpsIntelligenceReport(
     clients,
     projects,
     residentsCount,
-    workersCount,
+    workersCount: workerRefs.length,
     professionalsCount,
     ticketLogsCount,
+    workerRefs,
   })
 }

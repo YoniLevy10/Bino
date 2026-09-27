@@ -36,11 +36,8 @@ const fieldStyle: CSSProperties = {
   boxSizing: 'border-box',
   minHeight: 48,
   padding: '12px 14px',
-  borderRadius: 12,
-  border: '1px solid #e2e8f0',
-  background: '#fff',
   fontSize: 16,
-  color: '#0f172a',
+  color: '#1A1A2E',
   outline: 'none',
 }
 
@@ -165,7 +162,7 @@ export function LoginClient() {
         padding: '32px 20px',
         paddingTop: 'calc(32px + env(safe-area-inset-top, 0px))',
         paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
-        background: 'linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%)',
+        background: 'transparent',
         boxSizing: 'border-box',
       }}
     >
@@ -185,7 +182,7 @@ export function LoginClient() {
           width={88}
           height={88}
           priority
-          style={{ borderRadius: 20, boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)' }}
+          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 8px 24px rgba(0, 122, 255, 0.12)' }}
         />
 
         <div style={{ textAlign: 'center' }}>
@@ -194,28 +191,32 @@ export function LoginClient() {
               margin: '0 0 8px 0',
               fontSize: '32px',
               fontWeight: 800,
-              color: '#0f172a',
+              color: '#1A1A2E',
               letterSpacing: '-0.02em',
             }}
           >
             Bino
           </h1>
-          <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#64748b', lineHeight: 1.4, fontWeight: 600, letterSpacing: '0.04em' }}>
+          <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#86868B', lineHeight: 1.4, fontWeight: 600, letterSpacing: '0.04em' }}>
             Building Intelligence &amp; Operations
           </p>
-          <p style={{ margin: 0, fontSize: '17px', color: '#475569', lineHeight: 1.5, fontWeight: 500 }}>
+          <p style={{ margin: 0, fontSize: '17px', color: '#3C3C43', lineHeight: 1.5, fontWeight: 500 }}>
             מערכת ניהול תקלות לבניינים
           </p>
         </div>
 
         <form
+          className="lg-glass"
           onSubmit={(e) => void signInWithPassword(e)}
           style={{
             width: '100%',
-            maxWidth: 320,
+            maxWidth: 360,
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
+            padding: 20,
+            borderRadius: 28,
+            boxSizing: 'border-box',
           }}
         >
           <label
@@ -225,7 +226,7 @@ export function LoginClient() {
               gap: 6,
               fontSize: 13,
               fontWeight: 600,
-              color: '#334155',
+              color: '#3C3C43',
             }}
           >
             אימייל
@@ -238,6 +239,7 @@ export function LoginClient() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
               disabled={loading}
+              className="lg-field"
               style={{ ...fieldStyle, direction: 'ltr', textAlign: 'left' }}
             />
           </label>
@@ -248,7 +250,7 @@ export function LoginClient() {
               gap: 6,
               fontSize: 13,
               fontWeight: 600,
-              color: '#334155',
+              color: '#3C3C43',
             }}
           >
             סיסמה
@@ -260,25 +262,25 @@ export function LoginClient() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               disabled={loading}
+              className="lg-field"
               style={{ ...fieldStyle, direction: 'ltr', textAlign: 'left' }}
             />
           </label>
           <button
             type="submit"
             disabled={loading}
+            className="lg-btn-primary"
             style={{
               width: '100%',
               minHeight: 52,
               marginTop: 4,
-              borderRadius: 12,
+              borderRadius: 14,
               border: 'none',
-              background: '#2563eb',
               color: '#fff',
               fontSize: 16,
               fontWeight: 700,
               cursor: loading ? 'wait' : 'pointer',
               opacity: loading ? 0.75 : 1,
-              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
             }}
           >
             {loading ? 'מתחבר…' : 'התחברות'}
@@ -288,7 +290,7 @@ export function LoginClient() {
         <div
           style={{
             width: '100%',
-            maxWidth: 320,
+            maxWidth: 360,
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -305,23 +307,22 @@ export function LoginClient() {
           type="button"
           onClick={() => void signInWithGoogle()}
           disabled={loading}
+          className="lg-glass"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '12px',
             width: '100%',
-            maxWidth: '320px',
+            maxWidth: '360px',
             minHeight: '52px',
             padding: '14px 22px',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            background: '#ffffff',
-            color: '#0f172a',
+            borderRadius: 14,
+            border: 'none',
+            color: '#1A1A2E',
             fontSize: '16px',
             fontWeight: 700,
             cursor: loading ? 'wait' : 'pointer',
-            boxShadow: '0 4px 14px rgba(15, 23, 42, 0.08)',
             opacity: loading ? 0.75 : 1,
           }}
         >

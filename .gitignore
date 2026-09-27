@@ -57,3 +57,4 @@ supabase/.temp/
 # local agent tooling (do not ship)
 .agents/
 skills-lock.json
+.env*.local

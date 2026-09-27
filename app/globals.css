@@ -29,13 +29,13 @@
   --color-text-muted: #86868B;
   --color-text-inverse: #FFFFFF;
   
-  /* Primary Accent - Deep blue (Apple-style) */
-  --color-primary: #0066FF;
-  --color-primary-hover: #0055DD;
-  --color-primary-active: #0044BB;
-  --color-primary-muted: rgba(0, 102, 255, 0.08);
-  --color-primary-subtle: rgba(0, 102, 255, 0.12);
-  --color-primary-text: #0066FF;
+  /* Primary — iOS system blue */
+  --color-primary: #007AFF;
+  --color-primary-hover: #0066E0;
+  --color-primary-active: #0055C4;
+  --color-primary-muted: rgba(0, 122, 255, 0.12);
+  --color-primary-subtle: rgba(0, 122, 255, 0.18);
+  --color-primary-text: #007AFF;
   
   /* Status Colors - Soft, accessible */
   --color-success: #34C759;
@@ -44,8 +44,8 @@
   --color-warning-muted: #FFF4E5;
   --color-error: #FF3B30;
   --color-error-muted: #FFEBE9;
-  --color-info: #0066FF;
-  --color-info-muted: #E5F0FF;
+  --color-info: #007AFF;
+  --color-info-muted: #E5F2FF;
   
   /* Radius - Apple-style rounded corners */
   --radius: 12px;
@@ -55,10 +55,10 @@
 }
 
 :root {
-  --background: #F9F9FB;
+  --background: #dfe7f2;
   --foreground: #1A1A2E;
-  /* Fixed mobile bottom nav bar (see MobileBottomNav in ui.tsx) */
-  --mobile-bottom-nav-height: 64px;
+  /* Floating glass tab bar (see MobileBottomNav in ui.tsx) */
+  --mobile-bottom-nav-height: 78px;
 }
 
 * {
@@ -74,7 +74,12 @@ html {
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1100px 640px at 88% -12%, rgba(0, 122, 255, 0.28), transparent 56%),
+    radial-gradient(900px 580px at -6% 112%, rgba(90, 200, 250, 0.26), transparent 52%),
+    radial-gradient(720px 480px at 42% 18%, rgba(255, 255, 255, 0.5), transparent 62%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans), "Segoe UI", "Arial Hebrew", "Noto Sans Hebrew", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -119,7 +124,7 @@ button, a, [role="button"], [role="tab"], label {
 }
 
 ::selection {
-  background: rgba(0, 102, 255, 0.2);
+  background: rgba(0, 122, 255, 0.22);
   color: inherit;
 }
 
@@ -235,7 +240,7 @@ select {
   width: 420px;
   height: 420px;
   border-radius: 9999px;
-  background: rgba(0, 102, 255, 0.08);
+  background: rgba(0, 122, 255, 0.1);
   filter: blur(64px);
   pointer-events: none;
   animation: bamakor-splash-glow 3s ease-in-out infinite;
@@ -261,7 +266,7 @@ select {
   width: 45%;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0066ff 0%, #3399ff 100%);
+  background: linear-gradient(90deg, #007aff 0%, #5ac8fa 100%);
   animation: bamakor-page-loader-bar 1.1s ease-in-out infinite;
 }
 
@@ -462,5 +467,84 @@ select {
       calc(88dvh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px)),
       calc(100svh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px))
     ) !important;
+  }
+}
+
+/* iOS 27 Liquid Glass — tinted for readability, darkened edge, specular highlight.
+   Depth comes from the material, not a drop shadow. */
+.lg-glass,
+.lg-chrome,
+.lg-sidebar,
+.lg-tabbar {
+  background: rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(28px) saturate(1.75);
+  backdrop-filter: blur(28px) saturate(1.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+}
+
+.lg-chrome,
+.lg-sidebar {
+  background: rgba(246, 246, 250, 0.78);
+  -webkit-backdrop-filter: blur(40px) saturate(1.65);
+  backdrop-filter: blur(40px) saturate(1.65);
+}
+
+.lg-sidebar {
+  border-inline-end: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.lg-tabbar {
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: blur(36px) saturate(1.85);
+  backdrop-filter: blur(36px) saturate(1.85);
+}
+
+.lg-nav-active {
+  background: rgba(0, 122, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 0.5px rgba(0, 122, 255, 0.22);
+}
+
+.lg-btn-primary {
+  background: linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%);
+  color: #fff;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 0 0 0 0.5px rgba(0, 40, 100, 0.18);
+}
+
+.lg-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.lg-field {
+  background: rgba(255, 255, 255, 0.55);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+}
+
+.lg-field:focus {
+  outline: none;
+  border-color: rgba(0, 122, 255, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 0 0 4px rgba(0, 122, 255, 0.18);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .lg-glass,
+  .lg-chrome,
+  .lg-sidebar,
+  .lg-tabbar,
+  .lg-field {
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }

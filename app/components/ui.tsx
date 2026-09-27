@@ -40,7 +40,7 @@ const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default:
 
 export const theme = {
   colors: {
-    background: '#F9F9FB',
+    background: '#dfe7f2',
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
     surfaceHover: '#F5F5F7',
@@ -53,21 +53,21 @@ export const theme = {
     textSecondary: '#3C3C43',
     textMuted: '#86868B',
     textInverse: '#FFFFFF',
-    primary: '#0066FF',
-    primaryHover: '#0055DD',
-    primaryActive: '#0044BB',
-    primaryMuted: 'rgba(0, 102, 255, 0.08)',
-    primarySubtle: 'rgba(0, 102, 255, 0.12)',
-    primaryText: '#0066FF',
-    accent: '#0066FF',
+    primary: '#007AFF',
+    primaryHover: '#0066E0',
+    primaryActive: '#0055C4',
+    primaryMuted: 'rgba(0, 122, 255, 0.12)',
+    primarySubtle: 'rgba(0, 122, 255, 0.18)',
+    primaryText: '#007AFF',
+    accent: '#007AFF',
     success: '#34C759',
     successMuted: '#E8F9ED',
     warning: '#FF9500',
     warningMuted: '#FFF4E5',
     error: '#FF3B30',
     errorMuted: '#FFEBE9',
-    info: '#0066FF',
-    infoMuted: '#E5F0FF',
+    info: '#007AFF',
+    infoMuted: '#E5F2FF',
     overlay: 'rgba(0, 0, 0, 0.4)',
     overlayLight: 'rgba(0, 0, 0, 0.2)',
   },
@@ -112,9 +112,9 @@ export const theme = {
     xs: '0 1px 2px rgba(0, 0, 0, 0.04)',
     sm: '0 2px 8px rgba(0, 0, 0, 0.04)',
     md: '0 4px 12px rgba(0, 0, 0, 0.06)',
-    lg: '0 8px 30px rgba(0, 0, 0, 0.08)',
-    xl: '0 20px 50px rgba(0, 0, 0, 0.12)',
-    focus: '0 0 0 4px rgba(0, 102, 255, 0.15)',
+    lg: '0 8px 24px rgba(0, 0, 0, 0.05)',
+    xl: '0 16px 40px rgba(0, 0, 0, 0.08)',
+    focus: '0 0 0 4px rgba(0, 122, 255, 0.18)',
   },
 }
 
@@ -375,6 +375,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
         key={item.id}
         href={item.href}
         {...navLinkPrefetchHandlers(item.href, router.prefetch)}
+        className={isActive ? 'lg-nav-active' : undefined}
         style={{
           ...sidebarStyles.navLink,
           ...(isActive ? sidebarStyles.navLinkActive : {}),
@@ -393,7 +394,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   }
 
   return (
-    <aside style={sidebarStyles.container}>
+    <aside className="lg-sidebar" style={sidebarStyles.container}>
       <div style={sidebarStyles.brand}>
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -447,6 +448,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
           <Link
             href="/settings"
             {...navLinkPrefetchHandlers('/settings', router.prefetch)}
+            className={pathname === '/settings' ? 'lg-nav-active' : undefined}
             style={{
               ...sidebarStyles.navLink,
               ...(pathname === '/settings' ? sidebarStyles.navLinkActive : {}),
@@ -473,8 +475,6 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
 const sidebarStyles: Record<string, CSSProperties> = {
   container: {
     width: '240px',
-    background: theme.colors.surface,
-    borderInlineEnd: `1px solid ${theme.colors.border}`,
     padding: '24px 12px',
     position: 'fixed',
     top: 0,
@@ -606,7 +606,6 @@ const sidebarStyles: Record<string, CSSProperties> = {
     minWidth: 0,
   },
   navLinkActive: {
-    background: theme.colors.primaryMuted,
     color: theme.colors.primary,
   },
   navLinkLocked: {
@@ -667,7 +666,7 @@ export function TopBar({
   actions?: ReactNode
 }) {
   return (
-    <header style={topBarStyles.container}>
+    <header className="lg-chrome" style={topBarStyles.container}>
       <h1 style={topBarStyles.title}>{title}</h1>
       <div style={topBarStyles.actions}>{actions}</div>
     </header>
@@ -680,7 +679,6 @@ const topBarStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '24px 40px',
-    background: theme.colors.background,
     position: 'sticky',
     top: 0,
     zIndex: 50,
@@ -715,7 +713,7 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav style={bottomNavStyles.bar} aria-label="ניווט ראשי">
+      <nav className="lg-tabbar" style={bottomNavStyles.bar} aria-label="ניווט ראשי">
         <div style={bottomNavStyles.scroll}>
           {mobileBottomPrimary.map((item) => {
             const active = isNavItemActive(pathname, item)
@@ -747,7 +745,7 @@ export function MobileBottomNav() {
             style={{
               ...bottomNavStyles.link,
               border: 'none',
-              background: moreActive ? theme.colors.primaryMuted : 'transparent',
+              background: 'transparent',
               cursor: 'pointer',
               ...(moreActive ? bottomNavStyles.linkActive : {}),
             }}
@@ -780,19 +778,16 @@ export function MobileBottomNav() {
 const bottomNavStyles: Record<string, CSSProperties> = {
   bar: {
     position: 'fixed',
-    insetInline: 0,
-    bottom: 0,
+    insetInline: '12px',
+    bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
     zIndex: 95,
     display: 'flex',
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
     gap: 0,
     paddingTop: '6px',
-    paddingBottom: 'calc(6px + env(safe-area-inset-bottom, 0px))',
-    paddingInline: '4px',
-    background: theme.colors.surface,
-    borderTop: `1px solid ${theme.colors.border}`,
-    boxShadow: '0 -2px 16px rgba(0,0,0,0.06)',
+    paddingBottom: '6px',
+    paddingInline: '6px',
   },
   scroll: {
     flex: 1,
@@ -837,7 +832,8 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   linkActive: {
     color: theme.colors.primary,
-    background: theme.colors.primaryMuted,
+    background: 'rgba(0, 122, 255, 0.12)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
   },
   iconWrap: {
     display: 'flex',
@@ -907,7 +903,7 @@ function AppShellInner({
       <PageViewTracker />
       <div
         dir="rtl"
-        style={{ display: 'flex', minHeight: '100vh', background: theme.colors.background }}
+        style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}
         suppressHydrationWarning
       >
         <Sidebar hidden={mobile} />
@@ -959,17 +955,16 @@ function BackToTop() {
       type="button"
       aria-label="חזרה למעלה"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="lg-glass"
       style={{
         position: 'fixed',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
         left: '28px',
         zIndex: 96,
         width: '48px',
         height: '48px',
         borderRadius: theme.radius.full,
-        background: theme.colors.surface,
-        border: `1px solid ${theme.colors.border}`,
-        boxShadow: theme.shadows.lg,
+        border: 'none',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -1008,7 +1003,7 @@ export function MobileHeader({
   const showMenuButton = !!onMenuClick && !mobileMenu?.bottomNavVisible
 
   return (
-    <header style={mobileHeaderStyles.container}>
+    <header className="lg-chrome" style={mobileHeaderStyles.container}>
       <div style={mobileHeaderStyles.left}>
         <div>
           <h1 style={mobileHeaderStyles.title}>{title}</h1>
@@ -1063,8 +1058,9 @@ const mobileHeaderStyles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     padding: '20px 20px',
     paddingTop: 'calc(20px + env(safe-area-inset-top))',
-    background: theme.colors.surface,
-    borderBottom: `1px solid ${theme.colors.border}`,
+    position: 'sticky',
+    top: 0,
+    zIndex: 40,
   },
   left: {
     display: 'flex',
@@ -1126,7 +1122,7 @@ export function MobileMenu({
   return (
     <>
       <div style={mobileMenuStyles.overlay} onClick={onClose} />
-      <div style={mobileMenuStyles.panel}>
+      <div className="lg-chrome" style={mobileMenuStyles.panel}>
         <div style={mobileMenuStyles.header}>
           <div style={mobileMenuStyles.brand}>
             {logoUrl ? (
@@ -1249,7 +1245,6 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     insetInlineEnd: 0,
     bottom: 0,
     width: 'min(300px, 92vw)',
-    background: theme.colors.surface,
     zIndex: 201,
     padding: '24px 16px',
     paddingTop: 'calc(24px + env(safe-area-inset-top, 0px))',
@@ -1436,6 +1431,7 @@ export function KpiCard({
       type="button"
       onClick={onClick}
       data-ui="kpi-card"
+      className="lg-glass"
       style={{
         ...kpiStyles.card,
         borderInlineStartColor: accentColor,
@@ -1450,8 +1446,7 @@ export function KpiCard({
 
 const kpiStyles: Record<string, CSSProperties> = {
   card: {
-    background: theme.colors.surface,
-    border: `1px solid ${theme.colors.border}`,
+    border: 'none',
     borderInlineStart: '3px solid',
     borderRadius: theme.radius.lg,
     padding: '24px',
@@ -1494,7 +1489,7 @@ export function Card({
   style?: CSSProperties
 }) {
   return (
-    <div style={{ ...cardStyles.container, ...style }} data-ui="card">
+    <div className="lg-glass" style={{ ...cardStyles.container, ...style }} data-ui="card">
       {(title || actions) && (
         <div style={cardStyles.header}>
           <div>
@@ -1511,9 +1506,7 @@ export function Card({
 
 const cardStyles: Record<string, CSSProperties> = {
   container: {
-    background: theme.colors.surface,
     borderRadius: theme.radius.xl,
-    boxShadow: theme.shadows.sm,
     overflow: 'hidden',
   },
   header: {
@@ -1565,8 +1558,8 @@ export function Button({
   loading?: boolean
 }) {
   const variantStyles: Record<string, CSSProperties> = {
-    primary: { background: theme.colors.primary, color: theme.colors.textInverse, border: 'none' },
-    secondary: { background: theme.colors.surface, color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` },
+    primary: { color: theme.colors.textInverse, border: 'none' },
+    secondary: { color: theme.colors.textPrimary, border: 'none' },
     ghost: { background: 'transparent', color: theme.colors.textSecondary, border: 'none' },
     danger: { background: theme.colors.errorMuted, color: theme.colors.error, border: `1px solid ${theme.colors.error}` },
   }
@@ -1584,7 +1577,7 @@ export function Button({
       disabled={disabled || loading}
       data-ui="button"
       data-size={size}
-      className={[className].filter(Boolean).join(' ') || undefined}
+      className={['lg-btn', variant === 'primary' ? 'lg-btn-primary' : '', variant === 'secondary' ? 'lg-glass' : '', className].filter(Boolean).join(' ') || undefined}
       style={{
         ...buttonStyles.base,
         ...variantStyles[variant],
@@ -1606,7 +1599,7 @@ const buttonStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    borderRadius: theme.radius.md,
+    borderRadius: 14,
     fontWeight: 600,
     transition: 'all 0.15s ease',
     whiteSpace: 'nowrap',

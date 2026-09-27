@@ -7,8 +7,10 @@ import {
   hoursBetween,
   median,
   pct,
+  percentile,
   type OpsIntelligenceReport,
 } from '@/lib/ops-intelligence-analytics'
+import type { OpsTicket } from '@/lib/ops-intelligence-slices'
 
 describe('ops-intelligence helpers', () => {
   it('hoursBetween / median / avg / pct', () => {
@@ -18,6 +20,8 @@ describe('ops-intelligence helpers', () => {
     expect(avg([2, 4])).toBe(3)
     expect(pct(1, 4)).toBe(25)
     expect(pct(0, 0)).toBe(0)
+    expect(percentile([6, 24], 90)).toBeCloseTo(22.2, 5)
+    expect(percentile([], 90)).toBeNull()
   })
 })
 
@@ -207,5 +211,95 @@ describe('buildLearnings / buildSuggestions', () => {
       data_gaps: [],
     })
     expect(suggestions[0]?.priority).toBe('high')
+  })
+})
+
+function ticket(partial: Partial<OpsTicket> & Pick<OpsTicket, 'id' | 'created_at'>): OpsTicket {
+  return {
+    client_id: 'c1',
+    project_id: 'p1',
+    status: 'CLOSED',
+    closed_at: null,
+    assigned_worker_id: 'w1',
+    reporter_phone: '972501111111',
+    is_recurring: false,
+    sla_alerted: false,
+    escalated_at: null,
+    source: 'whatsapp',
+    source_channel: null,
+    ...partial,
+  }
+}
+
+describe('analyst cuts', () => {
+  it('uses the first assignment, drops merged tickets, and prices labor from hourly rate', () => {
+    const report = buildOpsIntelligenceFromStats({
+      lookbackDays: 90,
+      nowIso: '2026-08-20T10:00:00.000Z',
+      ticketsAllActive: [
+        ticket({
+          id: 't1',
+          created_at: '2026-08-01T10:00:00.000Z',
+          opened_at: '2026-08-01T12:00:00.000Z',
+          closed_at: '2026-08-01T14:00:00.000Z',
+          priority: 'HIGH',
+        }),
+        ticket({
+          id: 'merged',
+          created_at: '2026-08-02T10:00:00.000Z',
+          closed_at: '2026-08-02T12:00:00.000Z',
+          is_merged: true,
+        }),
+      ],
+      ticketsInWindow: [
+        ticket({
+          id: 't1',
+          created_at: '2026-08-01T10:00:00.000Z',
+          opened_at: '2026-08-01T12:00:00.000Z',
+          closed_at: '2026-08-01T14:00:00.000Z',
+          priority: 'HIGH',
+        }),
+        ticket({
+          id: 'merged',
+          created_at: '2026-08-02T10:00:00.000Z',
+          closed_at: '2026-08-02T12:00:00.000Z',
+          is_merged: true,
+        }),
+      ],
+      logs: [
+        {
+          ticket_id: 't1',
+          action_type: 'ASSIGNED_TO_WORKER',
+          created_at: '2026-08-01T13:00:00.000Z',
+          meta: { auto_from_project: true },
+        },
+        {
+          ticket_id: 't1',
+          action_type: 'ASSIGNED_TO_WORKER',
+          created_at: '2026-08-01T18:00:00.000Z',
+          meta: { auto_from_project: false },
+        },
+      ],
+      clients: [{ id: 'c1', name: 'Bamakor' }],
+      projects: [{ id: 'p1', name: 'בניין א', client_id: 'c1', assigned_worker_id: 'w1' }],
+      residentsCount: 1,
+      workersCount: 1,
+      professionalsCount: 0,
+      ticketLogsCount: 2,
+      workerRefs: [{ id: 'w1', full_name: 'דנה', client_id: 'c1', hourly_rate: 100 }],
+    })
+
+    expect(report.inventory.tickets_in_window).toBe(1)
+    expect(report.inventory.merged_excluded).toBe(1)
+    expect(report.north_star.median_hours_to_assignment).toBe(1)
+    expect(report.north_star.auto_assign_pct).toBe(100)
+    expect(report.north_star.avg_hours_to_resolution).toBe(2)
+    expect(report.portfolio.labor_cost_estimate).toBe(200)
+    expect(report.clients[0]?.slice.tickets).toBe(1)
+    expect(report.projects[0]?.slice.p90_hours_to_resolution).toBe(2)
+    expect(report.workers[0]?.name).toBe('דנה')
+    expect(report.workers[0]?.labor_cost_estimate).toBe(200)
+    expect(report.portfolio.priority_mix[0]?.label).toBe('גבוהה')
+    expect(report.inventory.data_gaps.find((g) => g.key === 'cost')?.status).toBe('thin')
   })
 })

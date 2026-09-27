@@ -418,8 +418,13 @@ export default function SuperAdminPage() {
     return (
       <div className="sa-lock" dir="rtl">
         <form className="sa-lock-card" onSubmit={unlock}>
-          <h1>Super Admin</h1>
-          <p>הזן סיסמת מנהל מערכת</p>
+          <div className="sa-brand">
+            <span className="sa-brand-mark" aria-hidden>B</span>
+            <div>
+              <h1>Super Admin</h1>
+              <p className="sa-muted">הזן סיסמת מנהל מערכת</p>
+            </div>
+          </div>
           <input
             type="password"
             value={inputSecret}
@@ -449,9 +454,12 @@ export default function SuperAdminPage() {
   return (
     <div className="sa-page" dir="rtl">
       <header className="sa-topbar">
-        <div>
-          <h1 className="sa-header-title">Super Admin</h1>
-          <p className="sa-muted">ניהול לקוחות · לידים · תפעול · שימוש</p>
+        <div className="sa-brand">
+          <span className="sa-brand-mark" aria-hidden>B</span>
+          <div>
+            <h1 className="sa-header-title">Super Admin</h1>
+            <p className="sa-muted">לקוחות, לידים, שימוש, תובנות ותפעול</p>
+          </div>
         </div>
         <div className="sa-topbar-actions sa-header-actions">
           <LoadingButton

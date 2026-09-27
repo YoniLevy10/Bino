@@ -75,35 +75,30 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
   }, [load])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="sa-work">
+      <div className="sa-section-head">
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: theme.colors.textPrimary }}>
-            ניתוח שימוש בפיצ׳רים
-          </h2>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: theme.colors.textMuted }}>
-            מבוסס על נתונים אמיתיים ב-DB (תקלות, דיירים, תוספים וכו׳) + כניסות ללשוניות כשיש מעקב
-          </p>
+          <h2>ניתוח שימוש בפיצ׳רים</h2>
+          <p>נתונים אמיתיים מהמערכת: תקלות, דיירים, תוספים, וכניסות ללשוניות כשיש מעקב.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="sa-section-actions">
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            style={selectStyle}
             aria-label="חלון זמן"
           >
             <option value={7}>7 ימים</option>
             <option value={30}>30 ימים</option>
             <option value={90}>90 ימים</option>
           </select>
-          <button type="button" onClick={() => void load()} disabled={loading} style={btnStyle}>
+          <button type="button" className="sa-btn sa-btn-primary" onClick={() => void load()} disabled={loading}>
             {loading ? 'טוען…' : 'רענון'}
           </button>
           <button
             type="button"
+            className="sa-btn"
             onClick={() => void exportExcel()}
             disabled={!report || loading || exporting}
-            style={btnSecondaryStyle}
             title="ייצוא Excel של כל המיצוי (פיצ׳רים, לשוניות, לקוחות, תובנות)"
           >
             {exporting ? 'מייצא…' : 'ייצוא Excel'}
@@ -334,31 +329,6 @@ function StatChip({ label, value }: { label: string; value: number }) {
       <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.textMuted }}>{label}</div>
     </div>
   )
-}
-
-const selectStyle: CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: theme.radius.md,
-  border: `1.5px solid ${theme.colors.border}`,
-  background: theme.colors.surface,
-  fontSize: 14,
-}
-
-const btnStyle: CSSProperties = {
-  padding: '8px 14px',
-  borderRadius: theme.radius.md,
-  border: `1.5px solid ${theme.colors.primary}`,
-  background: theme.colors.primary,
-  color: '#fff',
-  fontWeight: 600,
-  fontSize: 14,
-  cursor: 'pointer',
-}
-
-const btnSecondaryStyle: CSSProperties = {
-  ...btnStyle,
-  background: theme.colors.surface,
-  color: theme.colors.primary,
 }
 
 const bannerStyle: CSSProperties = {
