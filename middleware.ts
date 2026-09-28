@@ -103,7 +103,8 @@ export async function middleware(req: NextRequest) {
     pathname === '/worker' ||
     pathname.startsWith('/worker/') ||
     pathname.startsWith('/attendance/scan') ||
-    pathname === '/offline.html'
+    pathname === '/offline.html' ||
+    pathname.startsWith('/.well-known/')
   ) {
     return NextResponse.next()
   }

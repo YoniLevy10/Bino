@@ -16,19 +16,28 @@ export function growApiBaseUrl(env: GrowEnv = 'production'): string {
 /** Platform credentials — Bino as the system. Per-tenant merchant is grow_user_id. */
 export type GrowPlatformConfig = {
   env: GrowEnv
+  /** Body field `apiKey` on Grow light API calls. */
   apiKey: string
+  /**
+   * HTTP header `x-api-key`. Grow issues this separately from body `apiKey`
+   * (see payment-link docs from Grow onboarding).
+   */
+  xApiKey: string
   pageCode: string
   webhookSecret: string
 }
 
 export function readGrowPlatformConfig(): GrowPlatformConfig | null {
   const apiKey = (process.env.GROW_API_KEY || '').trim()
+  // Prefer dedicated header secret; fall back only if Grow reuses the body key.
+  const xApiKey = (process.env.GROW_X_API_KEY || process.env.GROW_API_KEY || '').trim()
   const pageCode = (process.env.GROW_PAGE_CODE || '').trim()
   const webhookSecret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
-  if (!apiKey || !pageCode || !webhookSecret) return null
+  if (!apiKey || !xApiKey || !pageCode || !webhookSecret) return null
   return {
     env: parseGrowEnv(process.env.GROW_ENV),
     apiKey,
+    xApiKey,
     pageCode,
     webhookSecret,
   }

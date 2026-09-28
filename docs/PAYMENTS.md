@@ -20,19 +20,21 @@ Grow מחברים את Bino כפלטפורמה:
 
 v1 = **דרישת תשלום** (`createPaymentLink`), לא ארנק iframe. חשבונית מס ב-Grow תבוא בהמשך; כרגע אישור במייל מ-Resend כמו היום.
 
+שדות קריטיים ב־`createPaymentLink`: `sum` (סכום כולל — בלי זה Grow מחזיר 707), גוף `apiKey` + header `x-api-key` (שני מפתחות נפרדים מליאל), `userId` של הלקוח, `pageCode` דרישת תשלום, ו־`notifyUrl` עם `GROW_WEBHOOK_SECRET`.
+
 ## מי ממלא מה
 
 | | יזם הפלטפורמה | הלקוח (למשל שרה) |
 |---|---|---|
 | בונה את המערכת / מביא לקוחות | כן | — |
 | כסף מדיירים | **לא, בשום צורה** | חשבון Grow שלה |
-| מפתחות API | `GROW_API_KEY`, `GROW_PAGE_CODE`, `GROW_WEBHOOK_SECRET` ב-Vercel | `userId` בהגדרות → Grow |
+| מפתחות API | `GROW_API_KEY`, `GROW_X_API_KEY`, `GROW_PAGE_CODE`, `GROW_WEBHOOK_SECRET` ב-Vercel | `userId` בהגדרות → Grow |
 | עמוד עסק ציבורי | `/vaad-pay` של הפלטפורמה | `/vaad-pay/{clientId}` עם **השם/טלפון/כתובת שלה** |
 
 ## הפעלה (פיילוט)
 
 1. להריץ `092_grow_payments.sql` ב-SQL Editor.
-2. ב-Vercel: `GROW_API_KEY`, `GROW_PAGE_CODE`, `GROW_WEBHOOK_SECRET`. לבדיקות בלי כסף אמיתי: `GROW_ENV=sandbox` + מפתחות בדיקה מ-Grow (ליאל).
+2. ב-Vercel: `GROW_API_KEY` (שדה גוף), `GROW_X_API_KEY` (header `x-api-key` — מפתח נפרד מליאל), `GROW_PAGE_CODE`, `GROW_WEBHOOK_SECRET`. לבדיקות בלי כסף אמיתי: `GROW_ENV=sandbox` + מפתחות בדיקה מ-Grow (ליאל).
 3. סופר-אדמין: תוסף גבייה ללקוחה.
 4. הלקוחה פותחת חשבון Grow חדש. אחרי ש-Grow מחברים אותה לפלטפורמה — מדביקה `userId` בהגדרות → Grow ומפעילה חיבור.
 5. חיוב ניסיון אחד → «שולם» + מייל קבלה.
@@ -43,7 +45,7 @@ v1 = **דרישת תשלום** (`createPaymentLink`), לא ארנק iframe. חש
 
 Sandbox = מפתחות בדיקה של Grow, לא «מצב נסתר בקוד».
 
-- בלי `GROW_API_KEY` / `GROW_PAGE_CODE` / `userId` בדיקה מליאל **אי אפשר באמת לחייב**, גם אם הקוד מוכן.
+- בלי `GROW_API_KEY` / `GROW_X_API_KEY` / `GROW_PAGE_CODE` / `userId` בדיקה מליאל **אי אפשר באמת לחייב**, גם אם הקוד מוכן.
 - אחרי שיש מפתחות בדיקה: `GROW_ENV=sandbox` ב-Vercel, `userId` בדיקה בהגדרות, לוחצים תשלום בלי כסף אמיתי.
 - לייב: `GROW_ENV=production` (או השמטה) + `userId` האמיתי של שרה.
 

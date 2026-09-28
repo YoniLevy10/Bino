@@ -22,7 +22,7 @@ describe('buildGrowCollectionsAccountStatus', () => {
       userId: 'u1',
     })
     expect(s.ready).toBe(false)
-    expect(s.message).toMatch(/GROW_API_KEY/)
+    expect(s.message).toMatch(/GROW_X_API_KEY/)
   })
 
   it('is ready when platform + enabled + userId', () => {

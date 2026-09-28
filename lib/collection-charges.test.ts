@@ -69,12 +69,14 @@ describe('collection charge ops URL helpers', () => {
   const prevApp = process.env.NEXT_PUBLIC_APP_URL
   const prevGrowSecret = process.env.GROW_WEBHOOK_SECRET
   const prevGrowKey = process.env.GROW_API_KEY
+  const prevGrowXKey = process.env.GROW_X_API_KEY
   const prevGrowPage = process.env.GROW_PAGE_CODE
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_APP_URL = 'https://bamakor.vercel.app'
     process.env.GROW_WEBHOOK_SECRET = 'hook-secret'
     process.env.GROW_API_KEY = 'api-key'
+    process.env.GROW_X_API_KEY = 'x-api-key'
     process.env.GROW_PAGE_CODE = 'page-code'
   })
 
@@ -82,6 +84,7 @@ describe('collection charge ops URL helpers', () => {
     process.env.NEXT_PUBLIC_APP_URL = prevApp
     process.env.GROW_WEBHOOK_SECRET = prevGrowSecret
     process.env.GROW_API_KEY = prevGrowKey
+    process.env.GROW_X_API_KEY = prevGrowXKey
     process.env.GROW_PAGE_CODE = prevGrowPage
   })
 

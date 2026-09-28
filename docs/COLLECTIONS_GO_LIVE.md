@@ -33,14 +33,14 @@ Bino מחזיקה מפתחות פלטפורמה (`apiKey` + `pageCode`). כל ל
 
 | # | פריט | סטטוס |
 |---|------|--------|
-| B1 | `GROW_API_KEY` + `GROW_PAGE_CODE` + `GROW_WEBHOOK_SECRET` ב-Vercel | ⬜ מליאל |
-| B2 | מפתחות sandbox מליאל + `GROW_ENV=sandbox` לבדיקה בלי כסף אמיתי | ⬜ |
-| B3 | תוסף `collections` מופעל ללקוחה | ⬜ |
-| B4 | הלקוחה פתחה חשבון Grow והדביקה `userId` בהגדרות | ⬜ |
-| B5 | תשלום ניסיון אחד → סטטוס «שולם» ב־`/collections` | ⬜ |
-| B6 | `RESEND_API_KEY` (+ `RESEND_FROM_EMAIL` אופציונלי) — אישור תשלום במייל | ✅ אם כבר קיים |
-| B7 | הלקוחה מילאה שם/טלפון/כתובת בהגדרות → Grow (לא `LEGAL_*` של הפלטפורמה) | ⬜ |
-| B8 | מיגרציה **092** (עמודות Grow) רצה בפרודקשן | ⬜ |
+| B1 | `GROW_API_KEY` + `GROW_X_API_KEY` + `GROW_PAGE_CODE` + `GROW_WEBHOOK_SECRET` ב-Vercel | ✅ sandbox מליאל |
+| B2 | מפתחות sandbox מליאל + `GROW_ENV=sandbox` לבדיקה בלי כסף אמיתי | ✅ |
+| B3 | תוסף `collections` מופעל ללקוחה | ✅ Bamakor + סביון |
+| B4 | הלקוחה פתחה חשבון Grow והדביקה `userId` בהגדרות | ✅ Bamakor = userId טסט |
+| B5 | תשלום ניסיון אחד → סטטוס «שולם» ב־`/collections` | ⬜ כרטיס טסט אחרי דיפלוי |
+| B6 | `RESEND_API_KEY` (+ `RESEND_FROM_EMAIL` אופציונלי) — אישור תשלום במייל | ✅ |
+| B7 | הלקוחה מילאה שם/טלפון/כתובת בהגדרות → Grow (לא `LEGAL_*` של הפלטפורמה) | ✅ Bamakor בסיסי |
+| B8 | מיגרציה **092** (עמודות Grow) רצה בפרודקשן | ✅ |
 
 ### הפעלה
 

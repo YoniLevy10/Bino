@@ -13,7 +13,7 @@ Operational guides for platform and tenant features.
 
 ### לפני שליחה לדיירים
 
-1. `GROW_API_KEY` + `GROW_PAGE_CODE` + `GROW_WEBHOOK_SECRET` מוגדרים ב-Vercel.
+1. `GROW_API_KEY` + `GROW_X_API_KEY` + `GROW_PAGE_CODE` + `GROW_WEBHOOK_SECRET` מוגדרים ב-Vercel.
 2. הלקוח פתח חשבון Grow, הדביק `userId` בהגדרות → Grow והפעיל חיבור.
 3. הלקוח מילא שם/טלפון/כתובת **של העסק שקולט את הכסף**.
 4. תוסף גבייה מופעל ללקוח.

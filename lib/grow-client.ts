@@ -58,7 +58,7 @@ async function postGrowForm(
   env: GrowEnv,
   path: string,
   fields: Record<string, string>,
-  apiKey: string
+  xApiKey: string
 ): Promise<{ status: number; data: unknown } | { status: 0; data: null }> {
   const body = new FormData()
   for (const [key, value] of Object.entries(fields)) {
@@ -70,7 +70,7 @@ async function postGrowForm(
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': xApiKey,
       },
       body,
     },
@@ -134,6 +134,8 @@ export async function createGrowPaymentLink(
   }
 
   const vatType = request.vatType === 3 ? '3' : '1'
+  // Grow requires top-level `sum` (total). Product line price alone returns err 707.
+  const sum = Number.isInteger(amount) ? String(amount) : amount.toFixed(2)
   const fields: Record<string, string> = {
     apiKey: platform.apiKey,
     userId: request.userId.trim(),
@@ -141,6 +143,7 @@ export async function createGrowPaymentLink(
     paymentLinkType: '1',
     isActive: '1',
     chargeType: '1',
+    sum,
     title: sanitizeGrowPlainText(request.title, 80) || 'חיוב ועד',
     successUrl: request.successUrl,
     cancelUrl: request.cancelUrl,
@@ -151,7 +154,7 @@ export async function createGrowPaymentLink(
     'paymentTypes[0][type]': 'payments',
     'paymentTypes[0][payments][paymentsPaymentNum]': '1',
     'products[data][0][name]': sanitizeGrowPlainText(request.title, 80) || 'חיוב ועד',
-    'products[data][0][price]': String(amount),
+    'products[data][0][price]': sum,
     'products[data][0][quantity]': '1',
     'products[data][0][vatType]': vatType,
     'transactionType[0]': '1',
@@ -165,7 +168,7 @@ export async function createGrowPaymentLink(
     fields['pageFieldSettings[email][value]'] = request.email.trim()
   }
 
-  const posted = await postGrowForm(platform.env, '/createPaymentLink', fields, platform.apiKey)
+  const posted = await postGrowForm(platform.env, '/createPaymentLink', fields, platform.xApiKey)
   if (posted.status === 0) {
     return { ok: false, error: 'פסק זמן בחיבור ל-Grow' }
   }
@@ -200,7 +203,7 @@ export async function approveGrowTransaction(
     transactionTypeId: request.transactionTypeId || '1',
     paymentType: request.paymentType || '2',
   }
-  const posted = await postGrowForm(platform.env, '/approveTransaction', fields, platform.apiKey)
+  const posted = await postGrowForm(platform.env, '/approveTransaction', fields, platform.xApiKey)
   if (posted.status === 0) return { ok: false }
   const rec = posted.data && typeof posted.data === 'object' ? (posted.data as { status?: unknown }) : null
   return { ok: rec?.status === 1 || rec?.status === '1' || posted.status === 200 }
