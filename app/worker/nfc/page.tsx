@@ -9,7 +9,7 @@
 
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Button, LoadingSpinner, theme } from '@/app/components/ui'
+import { Button, theme } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import { normalizeWorkerToken, readWorkerToken, writeWorkerToken } from '@/lib/worker-portal-storage'
