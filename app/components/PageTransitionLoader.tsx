@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
+import { tryReadWorkerPortalBranding } from '@/lib/worker-branding'
 import { useClientBranding, tryReadBrandingFromSessionCache } from './ClientBrandingContext'
 
 const DEFAULT_LOGO = '/apple-icon.png'
@@ -13,14 +16,29 @@ const logoStyle = {
   boxShadow: '0 6px 24px rgba(26, 26, 46, 0.08)',
 }
 
-export function PageTransitionLoader({ compact = false }: { compact?: boolean }) {
+export function PageTransitionLoader({
+  compact = false,
+  logoUrl: logoUrlOverride,
+}: {
+  compact?: boolean
+  /** Explicit logo (e.g. worker bootstrap) — wins over cache/context. */
+  logoUrl?: string | null
+}) {
+  const pathname = usePathname()
+  const isWorker = isWorkerPortalPath(pathname)
   const { logoUrl: ctxLogoUrl, isBootstrapped } = useClientBranding()
-  const [cachedBranding] = useState(() => tryReadBrandingFromSessionCache())
-  // Neutral platform logo until tenant branding for this session is ready.
+  const [managerCached] = useState(() => (isWorker ? null : tryReadBrandingFromSessionCache()))
+
+  // Live-read worker cache so logo appears as soon as bootstrap writes it.
+  const workerCached = isWorker ? tryReadWorkerPortalBranding() : null
+
   const src =
-    isBootstrapped && (ctxLogoUrl || cachedBranding?.logoUrl)
-      ? ctxLogoUrl || cachedBranding!.logoUrl!
-      : DEFAULT_LOGO
+    (logoUrlOverride && logoUrlOverride.trim()) ||
+    (isWorker ? workerCached?.logoUrl : null) ||
+    (!isWorker && isBootstrapped && (ctxLogoUrl || managerCached?.logoUrl)
+      ? ctxLogoUrl || managerCached!.logoUrl!
+      : null) ||
+    DEFAULT_LOGO
 
   return (
     <div
@@ -34,7 +52,7 @@ export function PageTransitionLoader({ compact = false }: { compact?: boolean })
         justifyContent: 'center',
         gap: compact ? 12 : 20,
         padding: compact ? 16 : 24,
-        background: 'var(--color-background, #F9F9FB)',
+        background: isWorker ? 'transparent' : 'var(--color-background, #F9F9FB)',
       }}
       aria-busy="true"
       aria-label="טוען"

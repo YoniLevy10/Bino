@@ -10,6 +10,7 @@ import { TM } from '@/lib/toast-messages'
 import { toastReporterClosedNotifySummary } from '@/lib/reporter-closed-notify-toast'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { writeWorkerPortalBranding, tryReadWorkerPortalBranding } from '@/lib/worker-branding'
 import {
   AppShell,
   MobileHeader,
@@ -36,7 +37,7 @@ const WorkerToursPanel = dynamic(
 )
 const TicketWhatsAppThread = dynamic(
   () => import('../components/tickets/TicketWhatsAppThread').then((m) => ({ default: m.TicketWhatsAppThread })),
-  { loading: () => <LoadingSpinner /> }
+  { loading: () => <LoadingSpinner size="sm" /> }
 )
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
 const WorkerAttendancePanel = dynamic(
@@ -170,6 +171,9 @@ function WorkerPageInner() {
   const [closePhotoUploading, setClosePhotoUploading] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(
+    () => tryReadWorkerPortalBranding()?.logoUrl ?? null
+  )
 
   const palette = darkMode ? workerDarkColors : theme.colors
 
@@ -240,6 +244,8 @@ function WorkerPageInner() {
           worker_id?: string
           client_id?: string
           full_name?: string
+          client_name?: string | null
+          logo_url?: string | null
           worker_stamp_enabled?: boolean
           can_mark_professional_escort?: boolean
           tickets?: ApiTicketRow[]
@@ -253,6 +259,12 @@ function WorkerPageInner() {
         }
         writeWorkerToken(token)
         writeLastWorkerId(data.worker_id)
+        writeWorkerPortalBranding({
+          clientId: data.client_id,
+          displayName: data.client_name?.trim() || 'Bino',
+          logoUrl: data.logo_url?.trim() || null,
+        })
+        setClientLogoUrl(data.logo_url?.trim() || null)
         setTokenSession({
           token,
           workerId: data.worker_id,
@@ -816,7 +828,7 @@ function WorkerPageInner() {
         dir="rtl"
       >
         <div className="worker-ambient-wash" aria-hidden />
-        <div style={styles.center}><LoadingSpinner /></div>
+        <PageTransitionLoader compact logoUrl={clientLogoUrl} />
       </div>
     )
   }
@@ -932,7 +944,7 @@ function WorkerPageInner() {
             style={{ display: portalTab === 'TICKETS' ? 'block' : 'none' }}
           >
           {loadingTickets ? (
-            <div style={styles.center}><LoadingSpinner /></div>
+            <PageTransitionLoader compact logoUrl={clientLogoUrl} />
           ) : filteredTickets.length === 0 ? (
             <div className="lg-glass" style={styles.emptyStateGlass}>
               <div style={{ ...styles.emptyIcon, background: palette.successMuted, color: palette.success }}>✓</div>
@@ -983,7 +995,7 @@ function WorkerPageInner() {
                           הודעה למשרד בלבד — הדייר לא רואה את זה
                         </p>
                         {chatLoading ? (
-                          <div style={styles.chatLoading}><LoadingSpinner /></div>
+                          <div style={styles.chatLoading}><LoadingSpinner size="sm" /></div>
                         ) : chatMessages.length === 0 ? (
                           <p style={{ ...styles.chatEmpty, color: palette.textMuted }}>אין הודעות עדיין — כתבו למטה</p>
                         ) : (
@@ -1105,7 +1117,7 @@ function WorkerPageInner() {
     )
   }
   if (!tokenChecked || !sessionResolved) {
-    return <PageTransitionLoader />
+    return <PageTransitionLoader logoUrl={clientLogoUrl} />
   }
 
   return (
