@@ -46,6 +46,14 @@ type ClientRow = {
   grow_legal_phone?: string | null
   grow_legal_address?: string | null
   grow_legal_email?: string | null
+  grow_onboarding_status?: string | null
+  grow_onboarding_url?: string | null
+  grow_onboarding_phone?: string | null
+  grow_business_number?: string | null
+  grow_onboarding_started_at?: string | null
+  grow_onboarding_completed_at?: string | null
+  grow_package_name?: string | null
+  grow_encrypted_lead?: string | null
 }
 
 const TABS = [
@@ -113,6 +121,12 @@ function SettingsPageInner() {
   const [growLegalAddress, setGrowLegalAddress] = useState('')
   const [growLegalEmail, setGrowLegalEmail] = useState('')
   const [savingGrow, setSavingGrow] = useState(false)
+  const [growOnboardStatus, setGrowOnboardStatus] = useState<string | null>(null)
+  const [growOnboardUrl, setGrowOnboardUrl] = useState('')
+  const [growBusinessNumber, setGrowBusinessNumber] = useState('')
+  const [growOnboardPhone, setGrowOnboardPhone] = useState('')
+  const [growRegisterReady, setGrowRegisterReady] = useState<boolean | null>(null)
+  const [startingGrowOnboard, setStartingGrowOnboard] = useState(false)
 
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingNotifications, setSavingNotifications] = useState(false)
@@ -228,6 +242,10 @@ function SettingsPageInner() {
         setGrowLegalPhone(row.grow_legal_phone || '')
         setGrowLegalAddress(row.grow_legal_address || '')
         setGrowLegalEmail(row.grow_legal_email || '')
+        setGrowOnboardStatus(row.grow_onboarding_status || null)
+        setGrowOnboardUrl(row.grow_onboarding_url || '')
+        setGrowBusinessNumber(row.grow_business_number || '')
+        setGrowOnboardPhone(row.grow_onboarding_phone || '')
         setSettingsHydrated(true)
 
         return true
@@ -236,6 +254,40 @@ function SettingsPageInner() {
     )
     setLoading(false)
   }
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetchWithTimeout('/api/collections/grow-onboard')
+        const json = (await res.json().catch(() => ({}))) as {
+          register_ready?: boolean
+          onboarding?: ClientRow | null
+        }
+        if (cancelled) return
+        if (res.ok) {
+          setGrowRegisterReady(json.register_ready === true)
+          if (json.onboarding) {
+            setGrowOnboardStatus(json.onboarding.grow_onboarding_status || null)
+            setGrowOnboardUrl(json.onboarding.grow_onboarding_url || '')
+            setGrowBusinessNumber(json.onboarding.grow_business_number || '')
+            setGrowOnboardPhone(json.onboarding.grow_onboarding_phone || '')
+            if (json.onboarding.grow_user_id) setGrowUserId(json.onboarding.grow_user_id)
+            if (json.onboarding.grow_enabled != null) {
+              setGrowEnabled(json.onboarding.grow_enabled === true)
+            }
+          }
+        } else {
+          setGrowRegisterReady(false)
+        }
+      } catch {
+        if (!cancelled) setGrowRegisterReady(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from Supabase
@@ -392,6 +444,50 @@ function SettingsPageInner() {
       { context: 'שמירת הגדרות Grow נכשלה', showErrorToast: true }
     )
     setSavingGrow(false)
+  }
+
+  async function startGrowOnboarding() {
+    if (!clientId) return
+    setStartingGrowOnboard(true)
+    await asyncHandler(
+      async () => {
+        const res = await fetchWithTimeout(
+          '/api/collections/grow-onboard',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              business_number: growBusinessNumber.trim(),
+              phone: growOnboardPhone.trim() || growLegalPhone.trim(),
+              send_sms: true,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string
+          url?: string
+          status?: string
+          code?: string
+        }
+        if (!res.ok) {
+          if (json.code === 'EXISTING_BUSINESS') {
+            setGrowOnboardStatus('existing')
+          }
+          throw new Error(json.error || 'הזנקת הרשמה נכשלה')
+        }
+        setGrowOnboardStatus(json.status || 'pending')
+        setGrowOnboardUrl(json.url || '')
+        toast.success('קישור הרשמה ל-Grow מוכן')
+        if (json.url) {
+          window.open(json.url, '_blank', 'noopener,noreferrer')
+        }
+        await load()
+        return true
+      },
+      { context: 'הזנקת הרשמת Grow נכשלה', showErrorToast: true }
+    )
+    setStartingGrowOnboard(false)
   }
 
   async function enablePushNotifications() {
@@ -934,10 +1030,85 @@ function SettingsPageInner() {
                       לגבייה
                     </Link>
                   </p>
-                  <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
-                    פתחו חשבון חדש ב-Grow לחברת הניהול. אחרי ש-Grow מחברים אתכם לפלטפורמת Bino תקבלו
-                    userId — הדביקו אותו כאן והפעילו חיבור.
-                  </p>
+
+                  <div style={styles.morningSection}>
+                    <div style={styles.morningSectionTitle}>הצטרפות ל-Grow (GetLink)</div>
+                    <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
+                      מלאו מספר עוסק ונייד — Bino תפתח קישור הרשמה ב-Grow. אחרי אישור, userId נשמר
+                      אוטומטית דרך Webhook ההרשמה (אם מוגדר אצל Grow לכתובת Bino).
+                    </p>
+                    {growRegisterReady === false ? (
+                      <span style={{ ...styles.formHint, color: '#c2410c' }}>
+                        הרשמה אוטומטית לא מוגדרת בשרת — ניתן להדביק userId ידנית למטה, או לפנות להנהלת
+                        Bino להגדרת מפתחות GetLink.
+                      </span>
+                    ) : null}
+                    {growOnboardStatus ? (
+                      <span style={styles.formHint}>
+                        סטטוס הרשמה:{' '}
+                        {growOnboardStatus === 'approved'
+                          ? 'אושר — userId נשמר'
+                          : growOnboardStatus === 'pending'
+                            ? 'ממתין לאישור Grow'
+                            : growOnboardStatus === 'existing'
+                              ? 'עסק קיים — הדביקו userId ידנית או פנו ל-Grow'
+                              : growOnboardStatus === 'rejected'
+                                ? 'נדחה ב-Grow'
+                                : growOnboardStatus}
+                      </span>
+                    ) : null}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                        gap: 12,
+                      }}
+                    >
+                      <div style={styles.formGroup}>
+                        <label style={styles.formLabel}>מספר עוסק / ת״ז</label>
+                        <input
+                          value={growBusinessNumber}
+                          onChange={(e) => setGrowBusinessNumber(e.target.value)}
+                          style={styles.input}
+                          placeholder="9 ספרות"
+                          dir="ltr"
+                          maxLength={20}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.formLabel}>נייד להרשמה</label>
+                        <input
+                          value={growOnboardPhone}
+                          onChange={(e) => setGrowOnboardPhone(e.target.value)}
+                          style={styles.input}
+                          placeholder="05xxxxxxxx"
+                          dir="ltr"
+                          maxLength={20}
+                        />
+                      </div>
+                    </div>
+                    <div style={styles.drawerActions}>
+                      <LoadingButton
+                        variant="secondary"
+                        type="button"
+                        onClick={startGrowOnboarding}
+                        loading={startingGrowOnboard}
+                        loadingText="פותח…"
+                        disabled={growRegisterReady === false}
+                      >
+                        פתח הרשמה ב-Grow
+                      </LoadingButton>
+                      {growOnboardUrl ? (
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={() => window.open(growOnboardUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          פתח קישור שוב
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
 
                   <label style={styles.checkboxLabel}>
                     <input
@@ -955,7 +1126,7 @@ function SettingsPageInner() {
                       value={growUserId}
                       onChange={(e) => setGrowUserId(e.target.value)}
                       style={styles.input}
-                      placeholder="מה ש-Grow שולחים אחרי ההצטרפות"
+                      placeholder="נשמר אוטומטית אחרי אישור, או הדבקה ידנית"
                       autoComplete="off"
                       dir="ltr"
                     />

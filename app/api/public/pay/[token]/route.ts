@@ -92,9 +92,11 @@ export async function GET(_req: Request, context: RouteContext) {
   const project = Array.isArray(raw.projects) ? raw.projects[0] || null : raw.projects
 
   const paymentUrl = chargePaymentUrl(raw)
-  const canPay =
-    Boolean(paymentUrl) &&
-    (raw.status === 'sent' || raw.status === 'draft' || raw.status === 'failed')
+  const payableStatus =
+    raw.status === 'sent' || raw.status === 'draft' || raw.status === 'failed'
+  const canPay = Boolean(paymentUrl) && payableStatus
+  /** Wallet SDK available whenever charge is open — createPaymentProcess runs server-side. */
+  const canWalletPay = payableStatus
 
   const suggestedEmail = raw.receipt_email || resident?.email || null
   const suggestedPhone =
@@ -108,6 +110,7 @@ export async function GET(_req: Request, context: RouteContext) {
     currency: raw.currency,
     status: raw.status,
     can_pay: canPay,
+    can_wallet_pay: canWalletPay,
     payment_url: canPay ? paymentUrl : null,
     paid_at: raw.paid_at,
     receipt_email: raw.receipt_email,

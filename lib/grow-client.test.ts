@@ -39,6 +39,7 @@ describe('readGrowPlatformConfig', () => {
       apiKey: 'body-key',
       xApiKey: 'header-key',
       pageCode: 'page',
+      walletPageCode: 'page',
       webhookSecret: 'hook',
     })
   })

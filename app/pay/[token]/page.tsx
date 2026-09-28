@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 
 type PayPayload = {
@@ -13,6 +13,7 @@ type PayPayload = {
   currency: string
   status: string
   can_pay: boolean
+  can_wallet_pay?: boolean
   payment_url: string | null
   paid_at: string | null
   receipt_email?: string | null
@@ -34,8 +35,49 @@ const STATUS_HE: Record<string, string> = {
   cancelled: 'בוטל',
 }
 
+declare global {
+  interface Window {
+    growPayment?: {
+      init: (opts: {
+        environment: string
+        version: string
+        events: Record<string, (payload?: unknown) => void>
+      }) => void
+      renderPaymentOptions: (authCode: string) => void
+    }
+  }
+}
+
+const GROW_SDK_SRC = 'https://cdn.meshulam.co.il/sdk/gs.min.js'
+
+function loadGrowSdk(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('no window'))
+      return
+    }
+    if (window.growPayment) {
+      resolve()
+      return
+    }
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GROW_SDK_SRC}"]`)
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener('error', () => reject(new Error('טעינת SDK נכשלה')), { once: true })
+      return
+    }
+    const s = document.createElement('script')
+    s.src = GROW_SDK_SRC
+    s.async = true
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('טעינת SDK נכשלה'))
+    document.head.appendChild(s)
+  })
+}
+
 export default function PublicPayPage() {
   const params = useParams()
+  const router = useRouter()
   const token = typeof params?.token === 'string' ? params.token : ''
   const [data, setData] = useState<PayPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +88,21 @@ export default function PublicPayPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [walletBusy, setWalletBusy] = useState(false)
+  const [walletHint, setWalletHint] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sdkReadyRef = useRef(false)
+
+  async function refreshStatus(): Promise<PayPayload | null> {
+    if (!token) return null
+    const res = await fetchWithTimeout(`/api/public/pay/${encodeURIComponent(token)}`, {
+      method: 'GET',
+    })
+    const json = (await res.json()) as PayPayload & { error?: string }
+    if (!res.ok) return null
+    setData(json)
+    return json
+  }
 
   useEffect(() => {
     if (!token) {
@@ -74,6 +131,67 @@ export default function PublicPayPage() {
     })()
   }, [token])
 
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [])
+
+  function startPaidPoll() {
+    if (pollRef.current) clearInterval(pollRef.current)
+    let ticks = 0
+    pollRef.current = setInterval(() => {
+      ticks += 1
+      void refreshStatus().then((row) => {
+        if (row?.status === 'paid') {
+          if (pollRef.current) clearInterval(pollRef.current)
+          setWalletHint('התשלום אושר בשרת.')
+          router.push(`/pay/success?t=${encodeURIComponent(token)}`)
+        }
+      })
+      if (ticks >= 40 && pollRef.current) {
+        clearInterval(pollRef.current)
+        setWalletHint('ממתינים לאישור מהשרת… אם שילמתם — רעננו בעוד רגע.')
+      }
+    }, 3000)
+  }
+
+  async function saveReceiptContact(): Promise<boolean> {
+    if (!token) return false
+    if (!wantReceipt && !phone.trim()) return true
+    if (wantReceipt && !email.trim()) {
+      setFormError('להודעת אישור במייל — הזינו כתובת מייל')
+      return false
+    }
+    setSaving(true)
+    try {
+      const res = await fetchWithTimeout(
+        `/api/public/pay/${encodeURIComponent(token)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: wantReceipt ? email.trim() || null : email.trim() || null,
+            phone: phone.trim() || null,
+          }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setFormError(json.error || 'שמירת פרטים נכשלה')
+        setSaving(false)
+        return false
+      }
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'שמירה נכשלה')
+      setSaving(false)
+      return false
+    }
+    setSaving(false)
+    return true
+  }
+
   async function continueToPay(e: FormEvent) {
     e.preventDefault()
     if (!data?.payment_url || !token) return
@@ -84,41 +202,98 @@ export default function PublicPayPage() {
       return
     }
 
-    if (wantReceipt && !email.trim()) {
-      setFormError('להודעת אישור במייל — הזינו כתובת מייל')
+    const ok = await saveReceiptContact()
+    if (!ok) return
+
+    window.location.href = data.payment_url
+  }
+
+  async function openWallet() {
+    if (!data || !token) return
+    setFormError(null)
+    setWalletHint(null)
+
+    if (!acceptedTerms) {
+      setFormError('יש לאשר את התקנון לפני המשך לתשלום')
+      return
+    }
+    if (!phone.trim()) {
+      setFormError('נדרש מספר טלפון לפתיחת הארנק')
       return
     }
 
-    if (wantReceipt || phone.trim()) {
-      setSaving(true)
-      try {
-        const res = await fetchWithTimeout(
-          `/api/public/pay/${encodeURIComponent(token)}`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: wantReceipt ? email.trim() || null : email.trim() || null,
-              phone: phone.trim() || null,
-            }),
-          },
-          MUTATION_FETCH_TIMEOUT_MS
-        )
-        const json = (await res.json().catch(() => ({}))) as { error?: string }
-        if (!res.ok) {
-          setFormError(json.error || 'שמירת פרטים נכשלה')
-          setSaving(false)
-          return
-        }
-      } catch (err) {
-        setFormError(err instanceof Error ? err.message : 'שמירה נכשלה')
-        setSaving(false)
+    const contactOk = await saveReceiptContact()
+    if (!contactOk) return
+
+    setWalletBusy(true)
+    try {
+      await loadGrowSdk()
+      const res = await fetchWithTimeout(
+        `/api/public/pay/${encodeURIComponent(token)}/wallet`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phone.trim(),
+            email: wantReceipt ? email.trim() || null : email.trim() || null,
+            full_name: data.resident_name || undefined,
+          }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        authCode?: string
+        sdkEnvironment?: 'DEV' | 'PRODUCTION'
+        doNotMarkPaidClientSide?: boolean
+      }
+      if (!res.ok || !json.authCode) {
+        setFormError(json.error || 'פתיחת הארנק נכשלה')
+        setWalletBusy(false)
         return
       }
-      setSaving(false)
-    }
 
-    window.location.href = data.payment_url
+      if (!window.growPayment) {
+        setFormError('SDK של Grow לא נטען')
+        setWalletBusy(false)
+        return
+      }
+
+      if (!sdkReadyRef.current) {
+        window.growPayment.init({
+          environment: json.sdkEnvironment || 'DEV',
+          version: '1',
+          events: {
+            onSuccess: () => {
+              // Never mark paid client-side — only S2S webhook does.
+              setWalletHint('התשלום התקבל ב-Grow. ממתינים לאישור בשרת…')
+              startPaidPoll()
+            },
+            onFailure: () => {
+              setWalletHint('התשלום לא הושלם.')
+              setWalletBusy(false)
+            },
+            onError: () => {
+              setWalletHint('שגיאה בארנק התשלום.')
+              setWalletBusy(false)
+            },
+            onTimeout: () => {
+              setWalletHint('פג הזמן בארנק. אפשר לנסות שוב.')
+              setWalletBusy(false)
+            },
+            onWalletChange: () => {},
+          },
+        })
+        sdkReadyRef.current = true
+      }
+
+      window.growPayment.renderPaymentOptions(json.authCode)
+      setWalletHint('בחרו אמצעי תשלום בחלון Grow. הסטטוס «שולם» יתעדכן רק אחרי אישור השרת.')
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'פתיחת ארנק נכשלה')
+    } finally {
+      setWalletBusy(false)
+    }
   }
 
   if (loading) {
@@ -140,6 +315,8 @@ export default function PublicPayPage() {
       </main>
     )
   }
+
+  const showPayForm = data.can_pay || data.can_wallet_pay
 
   return (
     <main dir="rtl" style={styles.shell}>
@@ -165,7 +342,7 @@ export default function PublicPayPage() {
         {data.description ? <p style={styles.sub}>{data.description}</p> : null}
         <p style={styles.status}>סטטוס: {STATUS_HE[data.status] || data.status}</p>
 
-        {data.can_pay && data.payment_url ? (
+        {showPayForm ? (
           <form onSubmit={(e) => void continueToPay(e)} style={styles.form}>
             <p style={styles.formLead}>
               אישור התשלום יישלח <strong>במייל</strong> (בלי SMS) — חסכוני ונוח.
@@ -191,7 +368,7 @@ export default function PublicPayPage() {
               />
             </label>
             <label style={styles.fieldLabel}>
-              טלפון (אופציונלי)
+              טלפון (נדרש לארנק)
               <input
                 type="tel"
                 value={phone}
@@ -230,9 +407,26 @@ export default function PublicPayPage() {
               </Link>
             </p>
             {formError ? <p style={styles.formErr}>{formError}</p> : null}
-            <button type="submit" style={styles.ctaBtn} disabled={saving || !acceptedTerms}>
-              {saving ? 'שומר…' : 'המשך לתשלום מאובטח'}
-            </button>
+            {walletHint ? <p style={styles.walletHint}>{walletHint}</p> : null}
+            {data.can_wallet_pay ? (
+              <button
+                type="button"
+                style={styles.ctaBtn}
+                disabled={saving || walletBusy || !acceptedTerms}
+                onClick={() => void openWallet()}
+              >
+                {walletBusy ? 'פותח ארנק…' : 'תשלום בארנק (כרטיס / ביט / Apple Pay)'}
+              </button>
+            ) : null}
+            {data.can_pay && data.payment_url ? (
+              <button
+                type="submit"
+                style={data.can_wallet_pay ? styles.secondaryBtn : styles.ctaBtn}
+                disabled={saving || walletBusy || !acceptedTerms}
+              >
+                {saving ? 'שומר…' : 'המשך לקישור תשלום מאובטח'}
+              </button>
+            ) : null}
           </form>
         ) : data.status === 'paid' ? (
           <div>
@@ -246,7 +440,7 @@ export default function PublicPayPage() {
             ) : null}
           </div>
         ) : (
-          <p style={styles.sub}>אין קישור תשלום פעיל לחיוב זה.</p>
+          <p style={styles.sub}>אין אפשרות תשלום פעילה לחיוב זה.</p>
         )}
       </div>
     </main>
@@ -352,6 +546,13 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     textAlign: 'center',
   },
+  walletHint: {
+    margin: 0,
+    color: '#1e40af',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 1.45,
+  },
   inlineLink: {
     color: '#1e40af',
     fontWeight: 700,
@@ -373,6 +574,19 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     fontSize: 16,
     border: 'none',
+    cursor: 'pointer',
+    marginTop: 4,
+  },
+  secondaryBtn: {
+    display: 'block',
+    width: '100%',
+    padding: '12px 28px',
+    background: 'transparent',
+    color: '#1e40af',
+    borderRadius: 12,
+    fontWeight: 700,
+    fontSize: 15,
+    border: '1px solid #93c5fd',
     cursor: 'pointer',
     marginTop: 4,
   },

@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
-import { markChargePaidByGrowIds } from '@/lib/collection-charge-ops'
+import {
+  findChargeIdsByGrowIds,
+  markChargePaidByGrowIds,
+  persistGrowTransactionIds,
+  recordGrowApproveResult,
+} from '@/lib/collection-charge-ops'
 import { approveGrowTransaction } from '@/lib/grow-client'
 import { readGrowPlatformConfig } from '@/lib/grow-config'
 import {
@@ -15,7 +20,6 @@ async function parsePayload(req: Request): Promise<unknown> {
   const rawBody = await req.text()
   if (!rawBody) return null
 
-  // Grow S2S: application/x-www-form-urlencoded with data[field] keys (verified via updateMyUrl).
   if (
     contentType.includes('application/x-www-form-urlencoded') ||
     (!contentType.includes('application/json') &&
@@ -28,7 +32,6 @@ async function parsePayload(req: Request): Promise<unknown> {
     params.forEach((value, key) => {
       asObj[key] = value
     })
-    // Prefer expanded bracket tree; also keep JSON blobs if a single field holds JSON.
     const expanded = expandBracketFormKeys(asObj)
     for (const value of Object.values(asObj)) {
       if (value.trim().startsWith('{')) {
@@ -40,11 +43,6 @@ async function parsePayload(req: Request): Promise<unknown> {
       }
     }
     return expanded
-  }
-
-  if (contentType.includes('multipart/form-data')) {
-    // Rare; reconstruct from raw is hard — callers should use urlencoded.
-    // Fall through: try JSON, else return raw marker for logs.
   }
 
   try {
@@ -81,6 +79,7 @@ export async function POST(req: Request) {
     logger.info('WEBHOOK', 'Grow webhook received', {
       paid: ids.paid,
       paymentLinkIds: ids.paymentLinkIds.slice(0, 5),
+      processIds: ids.processIds.slice(0, 5),
       transactionIds: ids.transactionIds.slice(0, 5),
       hasSum: Boolean(ids.sum),
     })
@@ -92,8 +91,20 @@ export async function POST(req: Request) {
     const admin = getSupabaseAdmin()
     const result = await markChargePaidByGrowIds(admin, ids)
 
-    // Always attempt approve when Grow sent transaction ids — also covers Grow retries
-    // after a prior mark-paid where approve previously failed.
+    const chargeIds = await findChargeIdsByGrowIds(admin, {
+      publicTokens: ids.publicTokens,
+      paymentLinkIds: ids.paymentLinkIds,
+      processIds: ids.processIds,
+      transactionIds: ids.transactionIds,
+    })
+    const targetIds = chargeIds.length ? chargeIds : result.newlyPaidIds
+
+    await persistGrowTransactionIds(admin, {
+      chargeIds: targetIds,
+      transactionId: ids.transactionIds[0] || null,
+      transactionToken: ids.transactionToken,
+    })
+
     if (ids.transactionIds[0] && ids.transactionToken) {
       const approved = await approveGrowTransaction({
         transactionId: ids.transactionIds[0],
@@ -101,10 +112,18 @@ export async function POST(req: Request) {
         transactionTypeId: ids.transactionTypeId || undefined,
         paymentType: ids.paymentType || undefined,
       })
+      await recordGrowApproveResult(admin, {
+        chargeIds: targetIds,
+        ok: approved.ok,
+        error: approved.error,
+        transactionId: ids.transactionIds[0],
+        transactionToken: ids.transactionToken,
+      })
       if (!approved.ok) {
-        logger.info('WEBHOOK', 'Grow approveTransaction did not confirm — charge kept paid for retry', {
+        logger.info('WEBHOOK', 'Grow approveTransaction failed — charge kept paid for retry', {
           transactionId: ids.transactionIds[0],
           matched: result.matched,
+          error: approved.error,
         })
       }
     }

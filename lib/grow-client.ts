@@ -23,6 +23,7 @@ export type GrowPaymentLinkRequest = {
   /** Bino public_token — returned on webhook as cField1 */
   publicToken: string
   vatType?: 1 | 3
+  invoiceNotifyUrl?: string | null
 }
 
 export type GrowPaymentLinkResult =
@@ -40,6 +41,29 @@ export type GrowApproveRequest = {
   transactionTypeId?: string
   paymentType?: string
 }
+
+export type GrowPaymentProcessRequest = {
+  userId: string
+  title: string
+  amount: number
+  fullName: string
+  phone: string
+  email?: string | null
+  successUrl: string
+  cancelUrl: string
+  notifyUrl: string
+  invoiceNotifyUrl?: string | null
+  publicToken: string
+}
+
+export type GrowPaymentProcessResult =
+  | {
+      ok: true
+      authCode: string
+      processId: string
+      processToken: string | null
+    }
+  | { ok: false; error: string }
 
 function toGrowMobilePhone(raw: string): string {
   const normalized = normalizePhone019(raw.trim())
@@ -174,6 +198,9 @@ export async function createGrowPaymentLink(
   if (request.email?.trim()) {
     fields['pageFieldSettings[email][value]'] = request.email.trim()
   }
+  if (request.invoiceNotifyUrl?.trim()) {
+    fields.invoiceNotifyUrl = request.invoiceNotifyUrl.trim()
+  }
 
   const posted = await postGrowForm(platform.env, '/createPaymentLink', fields, platform.xApiKey)
   if (posted.status === 0) {
@@ -198,9 +225,9 @@ export async function createGrowPaymentLink(
 export async function approveGrowTransaction(
   request: GrowApproveRequest,
   platform: GrowPlatformConfig | null = readGrowPlatformConfig()
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   if (!platform || !request.transactionId || !request.transactionToken) {
-    return { ok: false }
+    return { ok: false, error: 'חסרים מזהי עסקה או מפתחות Grow' }
   }
   const fields: Record<string, string> = {
     apiKey: platform.apiKey,
@@ -211,7 +238,102 @@ export async function approveGrowTransaction(
     paymentType: request.paymentType || '2',
   }
   const posted = await postGrowForm(platform.env, '/approveTransaction', fields, platform.xApiKey)
-  if (posted.status === 0) return { ok: false }
+  if (posted.status === 0) return { ok: false, error: 'פסק זמן באישור עסקה ל-Grow' }
   const rec = posted.data && typeof posted.data === 'object' ? (posted.data as { status?: unknown }) : null
-  return { ok: rec?.status === 1 || rec?.status === '1' || posted.status === 200 }
+  const ok = rec?.status === 1 || rec?.status === '1' || posted.status === 200
+  return ok
+    ? { ok: true }
+    : { ok: false, error: growErrorMessage(posted.data, 'ApproveTransaction נכשל') }
+}
+
+function parseGrowPaymentProcessResponse(data: unknown): {
+  authCode: string
+  processId: string
+  processToken: string | null
+} | null {
+  if (!data || typeof data !== 'object') return null
+  const rec = data as Record<string, unknown>
+  if (rec.status !== 1 && rec.status !== '1') return null
+  const inner =
+    rec.data && typeof rec.data === 'object' ? (rec.data as Record<string, unknown>) : rec
+  const authCode = typeof inner.authCode === 'string' ? inner.authCode.trim() : ''
+  if (!authCode) return null
+  const processId = inner.processId == null ? '' : String(inner.processId)
+  const processToken = inner.processToken == null ? null : String(inner.processToken)
+  return { authCode, processId, processToken }
+}
+
+/** Server-side wallet session — call immediately before renderPaymentOptions. */
+export async function createGrowPaymentProcess(
+  request: GrowPaymentProcessRequest,
+  platform: GrowPlatformConfig | null = readGrowPlatformConfig()
+): Promise<GrowPaymentProcessResult> {
+  if (!platform) {
+    return { ok: false, error: 'חסרים מפתחות Grow של Bino בשרת' }
+  }
+
+  const phone = toGrowMobilePhone(request.phone)
+  if (!/^05\d{8}$/.test(phone)) {
+    return { ok: false, error: 'לדייר חסר מספר נייד ישראלי תקין לפתיחת ארנק' }
+  }
+
+  const amount = Number(request.amount)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: 'סכום החיוב אינו תקין' }
+  }
+
+  const sum = Number.isInteger(amount) ? String(amount) : amount.toFixed(2)
+  const fields: Record<string, string> = {
+    apiKey: platform.apiKey,
+    userId: request.userId.trim(),
+    pageCode: platform.walletPageCode,
+    sum,
+    chargeType: '1',
+    description: sanitizeGrowPlainText(request.title, 80) || 'חיוב ועד',
+    successUrl: request.successUrl,
+    cancelUrl: request.cancelUrl,
+    notifyUrl: request.notifyUrl,
+    cField1: request.publicToken,
+    'pageField[fullName]': growFullName(request.fullName),
+    'pageField[phone]': phone,
+    saveCardToken: '0',
+    'productData[0][quantity]': '1',
+    'productData[0][price]': sum,
+    'productData[0][itemDescription]': sanitizeGrowPlainText(request.title, 80) || 'חיוב ועד',
+  }
+  if (request.email?.trim()) {
+    fields['pageField[email]'] = request.email.trim()
+  }
+  if (request.invoiceNotifyUrl?.trim()) {
+    fields.invoiceNotifyUrl = request.invoiceNotifyUrl.trim()
+  }
+
+  // Prefer wallet pageCode; createPaymentProcess was verified against sandbox with this flow.
+  const posted = await postGrowForm(platform.env, '/createPaymentProcess', fields, platform.xApiKey)
+  if (posted.status === 0) {
+    return { ok: false, error: 'פסק זמן בחיבור ל-Grow (ארנק)' }
+  }
+  const parsed = parseGrowPaymentProcessResponse(posted.data)
+  if (!parsed) {
+    console.error('[grow] createPaymentProcess failed', {
+      httpStatus: posted.status,
+      err: growErrorMessage(posted.data, ''),
+    })
+    return { ok: false, error: growErrorMessage(posted.data, 'יצירת תהליך ארנק ב-Grow נכשלה') }
+  }
+  return {
+    ok: true,
+    authCode: parsed.authCode,
+    processId: parsed.processId,
+    processToken: parsed.processToken,
+  }
+}
+
+export function buildGrowInvoiceNotifyUrl(): string | null {
+  const base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+  const secret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
+  if (!base || !secret) return null
+  const url = new URL(`${base}/api/webhook/grow-invoice`)
+  url.searchParams.set('token', secret)
+  return url.toString()
 }

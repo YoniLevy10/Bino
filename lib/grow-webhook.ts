@@ -3,6 +3,8 @@
 export type GrowWebhookIds = {
   publicTokens: string[]
   paymentLinkIds: string[]
+  /** Wallet createPaymentProcess processId values. */
+  processIds: string[]
   transactionIds: string[]
   transactionToken: string | null
   transactionTypeId: string | null
@@ -84,6 +86,7 @@ export function extractGrowWebhookIds(payload: unknown): GrowWebhookIds {
   const rec = flattenGrowPayload(payload)
   const publicTokens: string[] = []
   const paymentLinkIds: string[] = []
+  const processIds: string[] = []
   const transactionIds: string[] = []
 
   pushStr(rec.cField1, publicTokens)
@@ -99,7 +102,9 @@ export function extractGrowWebhookIds(payload: unknown): GrowWebhookIds {
   }
 
   pushStr(rec.paymentLinkProcessId, paymentLinkIds)
+  // processId is used by wallet + often by payment-link callbacks (updateMyUrl).
   pushStr(rec.processId, paymentLinkIds)
+  pushStr(rec.processId, processIds)
   pushStr(rec.transactionId, transactionIds)
 
   const token = rec.transactionToken == null ? null : String(rec.transactionToken)
@@ -110,6 +115,7 @@ export function extractGrowWebhookIds(payload: unknown): GrowWebhookIds {
   return {
     publicTokens: [...new Set(publicTokens)],
     paymentLinkIds: [...new Set(paymentLinkIds)],
+    processIds: [...new Set(processIds)],
     transactionIds: [...new Set(transactionIds)],
     transactionToken: token,
     transactionTypeId,
