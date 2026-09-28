@@ -110,7 +110,21 @@ describe('GET /api/worker/bootstrap', () => {
       c.select = vi.fn(() => c)
       return c
     }
-    const from = vi.fn(() => makeChain())
+    const from = vi.fn((table: string) => {
+      if (table === 'clients') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { name: 'חברת ניהול', logo_url: 'https://cdn.example/logo.png' },
+                error: null,
+              }),
+            }),
+          }),
+        }
+      }
+      return makeChain()
+    })
 
     vi.doMock('@/lib/supabase-admin', () => ({
       getSupabaseAdmin: () => ({ from }),
@@ -137,6 +151,8 @@ describe('GET /api/worker/bootstrap', () => {
     expect(json.worker_id).toBe('w1')
     expect(json.client_id).toBe('c1')
     expect(json.full_name).toBe('דני')
+    expect(json.client_name).toBe('חברת ניהול')
+    expect(json.logo_url).toBe('https://cdn.example/logo.png')
     expect(json.worker_stamp_enabled).toBe(true)
     expect(json.tickets).toHaveLength(1)
     expect(resolveWorkerFromToken).toHaveBeenCalledTimes(1)

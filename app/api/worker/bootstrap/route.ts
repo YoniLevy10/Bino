@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })
     }
 
-    const [ticketsResult, workerStampEnabled] = await Promise.all([
+    const [ticketsResult, workerStampEnabled, clientRow] = await Promise.all([
       admin
         .from('tickets')
         .select(WORKER_OPEN_TICKETS_SELECT)
@@ -45,16 +45,25 @@ export async function GET(req: NextRequest) {
         .neq('status', 'CLOSED')
         .order('created_at', { ascending: false }),
       clientHasPaidAddon(admin, worker.client_id, PAID_ADDON_KEYS.worker_stamp),
+      admin
+        .from('clients')
+        .select('name, logo_url')
+        .eq('id', worker.client_id)
+        .maybeSingle(),
     ])
 
     if (ticketsResult.error) {
       return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
     }
 
+    const client = clientRow.data as { name?: string | null; logo_url?: string | null } | null
+
     return NextResponse.json({
       worker_id: worker.id,
       client_id: worker.client_id,
       full_name: worker.full_name,
+      client_name: client?.name?.trim() || null,
+      logo_url: client?.logo_url?.trim() || null,
       worker_stamp_enabled: workerStampEnabled,
       can_mark_professional_escort: worker.can_mark_professional_escort === true,
       tickets: ticketsResult.data || [],

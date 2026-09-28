@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import type { ReactNode, CSSProperties } from 'react'
 import { Card, Button, theme } from './ui'
+import { PageTransitionLoader } from './PageTransitionLoader'
 import { usePaidAddons } from './PaidAddonsContext'
 import { formatAddonPriceDisplay, type PaidAddonKey } from '@/lib/paid-addons'
 
@@ -16,7 +17,7 @@ export function PaidAddonGate({ addonKey, children }: Props) {
   const { isBootstrapped, hasAddon, getAddon, catalogMissing } = usePaidAddons()
 
   if (!isBootstrapped) {
-    return <div style={styles.loading}>טוען הרשאות...</div>
+    return <PageTransitionLoader compact />
   }
 
   if (catalogMissing) {
@@ -60,7 +61,6 @@ export function PaidAddonGate({ addonKey, children }: Props) {
 }
 
 const styles: Record<string, CSSProperties> = {
-  loading: { padding: 24, textAlign: 'center', color: theme.colors.textMuted },
   upgrade: { display: 'flex', flexDirection: 'column', gap: 12 },
   title: { margin: 0, fontSize: 20, fontWeight: 700, color: theme.colors.textPrimary },
   text: { margin: 0, fontSize: 15, lineHeight: 1.5, color: theme.colors.textSecondary },

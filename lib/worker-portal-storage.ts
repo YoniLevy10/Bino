@@ -60,4 +60,5 @@ export function clearWorkerToken(): void {
     /* ignore */
   }
   clearAllWorkerTicketsCaches()
+  // Keep worker branding cache so the next open still shows the tenant logo while bootstrap runs.
 }

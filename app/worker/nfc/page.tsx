@@ -9,7 +9,8 @@
 
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Button, LoadingSpinner, theme } from '@/app/components/ui'
+import { Button, theme } from '@/app/components/ui'
+import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import { normalizeWorkerToken, readWorkerToken, writeWorkerToken } from '@/lib/worker-portal-storage'
 import { initOfflineAttendanceDB } from '@/lib/offline-attendance-db'
@@ -111,7 +112,7 @@ function NfcScanInner() {
       <div className="lg-glass" style={box}>
         {phase === 'loading' ? (
           <>
-            <LoadingSpinner />
+            <PageTransitionLoader compact />
             <p style={sub}>רושם משמרת…</p>
           </>
         ) : (
@@ -169,7 +170,7 @@ export default function WorkerNfcPage() {
       fallback={
         <div style={shell} dir="rtl" data-worker-theme="light">
           <div className="worker-ambient-wash" aria-hidden />
-          <LoadingSpinner />
+          <PageTransitionLoader compact />
         </div>
       }
     >

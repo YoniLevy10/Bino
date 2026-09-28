@@ -22,6 +22,25 @@ export const DASHBOARD_CACHE_LEGACY_KEY = 'bamakor_dashboard_v2'
 /** Prefixed dashboard SWR: bamakor_dashboard_v3_{uid}_{clientId} */
 export const DASHBOARD_CACHE_PREFIX = 'bamakor_dashboard_v3_' as const
 
+/**
+ * Sync read of the session-bound tenant id for hydrating nav/addons caches
+ * on first paint (avoids empty→full menu flicker while auth resolves).
+ */
+export function tryReadSessionBoundClientId(): string | null {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(TENANT_CID_SESSION_KEY)
+    if (!raw) return null
+    const { cid, uid } = JSON.parse(raw) as { cid?: string; uid?: string }
+    if (!cid || !uid) return null
+    const lastUid = sessionStorage.getItem(LAST_AUTH_UID_KEY)
+    if (!lastUid || lastUid !== uid) return null
+    return cid
+  } catch {
+    return null
+  }
+}
+
 const LOCAL_EXACT_KEYS = [
   DASHBOARD_CACHE_LEGACY_KEY,
   'bamakor_manager_push_enabled',

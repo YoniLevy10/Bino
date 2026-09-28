@@ -22,11 +22,11 @@ import {
   Button,
   Drawer,
   EmptyState,
-  LoadingSpinner,
   SearchInput,
   Select,
   theme,
 } from '@/app/components/ui'
+import { PageTransitionLoader } from '@/app/components/page-skeleton'
 
 type ProjectOption = { id: string; name: string }
 type ResidentOption = {
@@ -140,7 +140,11 @@ export function CollectionsBoard() {
 
   const loadAccountStatus = useCallback(async () => {
     try {
-      const res = await fetchWithTimeout('/api/collections/account-status')
+      const res = await fetchWithTimeout(
+        '/api/collections/account-status',
+        {},
+        MUTATION_FETCH_TIMEOUT_MS
+      )
       const body = (await res.json().catch(() => ({}))) as {
         ready?: boolean
         message?: string
@@ -166,9 +170,10 @@ export function CollectionsBoard() {
             : 'חסר חיבור Grow. פתחו חשבון והדביקו userId בהגדרות.')
       )
     } catch {
-      setAccountReady(false)
+      // Soft-fail: board can still show charges; avoid timeout toast spam.
+      setAccountReady(null)
       setGrowLegalReady(null)
-      setAccountMessage('בדיקת חשבון Grow נכשלה. נסו לרענן.')
+      setAccountMessage('')
     }
   }, [])
 
@@ -181,12 +186,14 @@ export function CollectionsBoard() {
     params.set('page_size', '100')
 
     const [listRes, sumRes] = await Promise.all([
-      fetchWithTimeout(`/api/collections/charges?${params.toString()}`),
+      fetchWithTimeout(`/api/collections/charges?${params.toString()}`, {}, MUTATION_FETCH_TIMEOUT_MS),
       fetchWithTimeout(
         `/api/collections/summary?${new URLSearchParams({
           ...(projectFilter ? { project_id: projectFilter } : {}),
           ...(periodFilter.trim() ? { period_label: periodFilter.trim() } : {}),
-        }).toString()}`
+        }).toString()}`,
+        {},
+        MUTATION_FETCH_TIMEOUT_MS
       ),
     ])
 
@@ -206,14 +213,14 @@ export function CollectionsBoard() {
     if (sumRes.ok && sumJson.money) setMoney(sumJson.money)
   }, [periodFilter, projectFilter, searchTerm, statusFilter])
 
-  // Resolve clientId (via hook) then parallel: account-status + charges + summary
+  // Charges first (paint board); Grow account check in background (don't block / toast on slow Grow).
   useEffect(() => {
     if (!clientId) return
     void (async () => {
       if (!hasBoardDataRef.current) setBoardLoading(true)
       await asyncHandler(
         async () => {
-          await Promise.all([loadAccountStatus(), loadCharges()])
+          await loadCharges()
           hasBoardDataRef.current = true
           setHasBoardData(true)
           return true
@@ -221,6 +228,7 @@ export function CollectionsBoard() {
         { context: 'טעינת גביית ועד', showErrorToast: true }
       )
       setBoardLoading(false)
+      void loadAccountStatus()
     })()
   }, [clientId, loadAccountStatus, loadCharges])
 
@@ -515,11 +523,7 @@ export function CollectionsBoard() {
   )
 
   if (loading) {
-    return (
-      <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-        <LoadingSpinner />
-      </div>
-    )
+    return <PageTransitionLoader />
   }
 
   const statusTabs: { label: string; value: string; count?: number }[] = [

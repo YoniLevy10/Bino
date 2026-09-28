@@ -270,31 +270,102 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
-                  marginTop: 8,
+                  marginTop: 10,
                   borderRadius: 14,
-                  border: 'none',
-                  padding: 8,
-                  fontSize: 13,
-                  background: 'transparent',
+                  border: `1.5px solid ${colors.border}`,
+                  outline: `1px solid ${colors.border}`,
+                  outlineOffset: 0,
+                  padding: '10px 12px',
+                  fontSize: 14,
+                  background: colors.surface || 'rgba(255,255,255,0.55)',
                   color: colors.textPrimary,
                   fontFamily: 'inherit',
                 }}
               />
-              <label style={{ fontSize: 13, color: colors.textSecondary, display: 'block', marginTop: 6 }}>
-                תמונה מהסיור (אופציונלי)
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  style={{ display: 'block', marginTop: 4, width: '100%' }}
-                  onChange={(e) =>
-                    setPhotoByProject((prev) => ({
-                      ...prev,
-                      [p.id]: e.target.files?.[0] || null,
-                    }))
-                  }
-                />
-              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 8,
+                  marginTop: 8,
+                }}
+              >
+                <label
+                  className="lg-glass"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    minHeight: 48,
+                    borderRadius: 14,
+                    border: `1.5px solid ${colors.border}`,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: colors.textPrimary,
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  תמונה
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: 'none' }}
+                    onChange={(e) =>
+                      setPhotoByProject((prev) => ({
+                        ...prev,
+                        [p.id]: e.target.files?.[0] || null,
+                      }))
+                    }
+                  />
+                </label>
+                <label
+                  className="lg-glass"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    minHeight: 48,
+                    borderRadius: 14,
+                    border: `1.5px solid ${colors.border}`,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: colors.textPrimary,
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  קובץ
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf,.pdf,.doc,.docx,.heic"
+                    style={{ display: 'none' }}
+                    onChange={(e) =>
+                      setPhotoByProject((prev) => ({
+                        ...prev,
+                        [p.id]: e.target.files?.[0] || null,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              {photoByProject[p.id] ? (
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    textAlign: 'right',
+                  }}
+                >
+                  נבחר: {photoByProject[p.id]?.name}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

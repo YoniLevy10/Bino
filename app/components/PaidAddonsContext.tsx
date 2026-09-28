@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { PAID_ADDON_KEYS, type AddonEntitlement, type PaidAddonKey } from '@/lib/paid-addons'
-import { ADDONS_CACHE_PREFIX } from '@/lib/tenant-browser-cache'
+import { ADDONS_CACHE_PREFIX, tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 export type { AddonEntitlement }
@@ -61,6 +61,27 @@ function writeAddonsCache(clientId: string, payload: Omit<AddonsCachePayload, 't
   } catch {}
 }
 
+function readInitialAddonsState(): {
+  addons: AddonEntitlement[]
+  catalogMissing: boolean
+  isBootstrapped: boolean
+  ts: number
+} {
+  if (typeof window === 'undefined') {
+    return { addons: [], catalogMissing: false, isBootstrapped: false, ts: 0 }
+  }
+  const cid = tryReadSessionBoundClientId()
+  if (!cid) return { addons: [], catalogMissing: false, isBootstrapped: false, ts: 0 }
+  const cached = readAddonsCache(cid)
+  if (!cached) return { addons: [], catalogMissing: false, isBootstrapped: false, ts: 0 }
+  return {
+    addons: cached.addons,
+    catalogMissing: cached.catalogMissing,
+    isBootstrapped: true,
+    ts: cached.ts,
+  }
+}
+
 type LoadOptions = {
   forceNetwork?: boolean
   skipCache?: boolean
@@ -69,10 +90,11 @@ type LoadOptions = {
 export function PaidAddonsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isWorker = isWorkerPortalPath(pathname)
-  const [isBootstrapped, setIsBootstrapped] = useState(false)
-  const [catalogMissing, setCatalogMissing] = useState(false)
-  const [addons, setAddons] = useState<AddonEntitlement[]>([])
-  const lastNetworkFetchRef = useRef(0)
+  const initial = useRef(readInitialAddonsState()).current
+  const [isBootstrapped, setIsBootstrapped] = useState(initial.isBootstrapped)
+  const [catalogMissing, setCatalogMissing] = useState(initial.catalogMissing)
+  const [addons, setAddons] = useState<AddonEntitlement[]>(initial.addons)
+  const lastNetworkFetchRef = useRef(initial.ts)
 
   const load = useCallback(async (opts?: LoadOptions) => {
     try {
@@ -96,7 +118,7 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
         error?: string
       }
       if (!res.ok) {
-        setAddons([])
+        // Keep last known entitlements — empty flash would hide paid nav items.
         setCatalogMissing(true)
         return
       }
@@ -107,7 +129,7 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
       writeAddonsCache(clientId, { addons: nextAddons, catalogMissing: nextMissing })
       lastNetworkFetchRef.current = Date.now()
     } catch {
-      setAddons([])
+      // Keep previous addons on network failure (stable menu).
     } finally {
       setIsBootstrapped(true)
     }
@@ -115,8 +137,7 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isWorker) {
-      setAddons([])
-      setCatalogMissing(false)
+      // Do not wipe entitlements — returning to the tenant shell must keep cached nav.
       setIsBootstrapped(true)
       return
     }
