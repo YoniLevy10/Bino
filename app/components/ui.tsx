@@ -31,6 +31,7 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PullToRefresh } from './PullToRefresh'
 import { ManagerPushOnboarding, ManagerPushSync } from './ManagerPushOnboarding'
 import { PageViewTracker } from './PageViewTracker'
+import { PageTransitionLoader } from './PageTransitionLoader'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 
@@ -2196,7 +2197,19 @@ const emptyStateStyles: Record<string, CSSProperties> = {
 // LOADING SPINNER
 // ============================================================================
 
-export function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+export function LoadingSpinner({
+  size = 'md',
+  /** Full-page / section loads show tenant logo (same as route transitions). Inline `sm` stays a spinner. */
+  withLogo,
+}: {
+  size?: 'sm' | 'md' | 'lg'
+  withLogo?: boolean
+}) {
+  const branded = withLogo ?? size !== 'sm'
+  if (branded) {
+    return <PageTransitionLoader compact={size !== 'lg'} />
+  }
+
   const sizes = { sm: '20px', md: '32px', lg: '48px' }
 
   return (

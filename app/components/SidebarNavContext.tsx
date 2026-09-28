@@ -35,7 +35,7 @@ import {
   type SidebarNavItemId,
   type SidebarNavLabels,
 } from '@/lib/sidebar-nav'
-import { NAV_CACHE_PREFIX } from '@/lib/tenant-browser-cache'
+import { NAV_CACHE_PREFIX, tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import { usePaidAddons } from './PaidAddonsContext'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
@@ -105,6 +105,51 @@ function writeNavCache(clientId: string, payload: NavCachePayload) {
   } catch {}
 }
 
+function readInitialNavState(): {
+  orderIds: SidebarNavItemId[]
+  enabledFeatures: SidebarNavItemId[] | null
+  navLabels: SidebarNavLabels
+  isBootstrapped: boolean
+  ts: number
+} {
+  if (typeof window === 'undefined') {
+    return {
+      orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
+      enabledFeatures: null,
+      navLabels: {},
+      isBootstrapped: false,
+      ts: 0,
+    }
+  }
+  const cid = tryReadSessionBoundClientId()
+  if (!cid) {
+    return {
+      orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
+      enabledFeatures: null,
+      navLabels: {},
+      isBootstrapped: false,
+      ts: 0,
+    }
+  }
+  const cached = readNavCache(cid)
+  if (!cached) {
+    return {
+      orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
+      enabledFeatures: null,
+      navLabels: {},
+      isBootstrapped: false,
+      ts: 0,
+    }
+  }
+  return {
+    orderIds: cached.orderIds,
+    enabledFeatures: cached.enabledFeatures,
+    navLabels: cached.navLabels,
+    isBootstrapped: true,
+    ts: cached.ts,
+  }
+}
+
 function buildNavItems(
   orderIds: SidebarNavItemId[],
   enabledFeatures: SidebarNavItemId[] | null,
@@ -127,16 +172,31 @@ type LoadNavOptions = {
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isWorker = isWorkerPortalPath(pathname)
-  const { addons } = usePaidAddons()
-  const enabledAddonKeys = useMemo(() => enabledAddonKeysFromEntitlements(addons), [addons])
+  const { addons, isBootstrapped: addonsReady } = usePaidAddons()
 
-  const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
-  const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(null)
-  const [navLabels, setNavLabels] = useState<SidebarNavLabels>({})
-  const [isBootstrapped, setIsBootstrapped] = useState(false)
+  const initial = useRef(readInitialNavState()).current
+  const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>(initial.orderIds)
+  const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(
+    initial.enabledFeatures
+  )
+  const [navLabels, setNavLabels] = useState<SidebarNavLabels>(initial.navLabels)
+  const [isBootstrapped, setIsBootstrapped] = useState(initial.isBootstrapped)
 
   const loadGenerationRef = useRef(0)
-  const lastSuccessfulFetchRef = useRef(0)
+  const lastSuccessfulFetchRef = useRef(initial.ts)
+  /** Last known enabled addon keys — never flash to [] while entitlements reload. */
+  const stableAddonKeysRef = useRef<string[]>(enabledAddonKeysFromEntitlements(addons))
+
+  const enabledAddonKeys = useMemo(() => {
+    const next = enabledAddonKeysFromEntitlements(addons)
+    if (addonsReady) {
+      stableAddonKeysRef.current = next
+      return next
+    }
+    // Entitlements still loading: keep previous keys so auto-addons don't vanish/reappear.
+    if (stableAddonKeysRef.current.length > 0) return stableAddonKeysRef.current
+    return next
+  }, [addons, addonsReady])
 
   const applyNavState = useCallback(
     (ids: SidebarNavItemId[], enabled: SidebarNavItemId[] | null, labels: SidebarNavLabels) => {
