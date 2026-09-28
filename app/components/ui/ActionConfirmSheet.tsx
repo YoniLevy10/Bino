@@ -5,6 +5,8 @@ import { Button, theme, useMobileMenuOptional } from '../ui'
 
 const MOBILE_BOTTOM_NAV_CLEARANCE =
   'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
+const WORKER_TABBAR_CLEARANCE =
+  'calc(var(--worker-tabbar-height, 78px) + env(safe-area-inset-bottom, 0px))'
 
 export type ActionConfirmSheetProps = {
   open: boolean
@@ -17,6 +19,8 @@ export type ActionConfirmSheetProps = {
   confirmDisabled?: boolean
   confirmVariant?: 'primary' | 'danger'
   isMobile?: boolean
+  /** When true, clear floating worker tab dock instead of manager bottom nav. */
+  workerPortal?: boolean
   panelStyle?: CSSProperties
   onConfirm: () => void
   onCancel: () => void
@@ -34,13 +38,14 @@ export function ActionConfirmSheet({
   confirmDisabled,
   confirmVariant = 'primary',
   isMobile,
+  workerPortal,
   panelStyle,
   onConfirm,
   onCancel,
 }: ActionConfirmSheetProps) {
   const mobile = !!isMobile
   const mobileMenu = useMobileMenuOptional()
-  const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible
+  const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible && !workerPortal
 
   if (!open) return null
 
@@ -48,6 +53,7 @@ export function ActionConfirmSheet({
     <>
       <div style={styles.overlay} onClick={loading ? undefined : onCancel} aria-hidden />
       <div
+        className="lg-glass"
         style={{
           ...styles.panel,
           ...(mobile ? styles.panelMobile : styles.panelDesktop),
@@ -55,6 +61,12 @@ export function ActionConfirmSheet({
             ? {
                 bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                 paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+              }
+            : {}),
+          ...(mobile && workerPortal
+            ? {
+                bottom: WORKER_TABBAR_CLEARANCE,
+                paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
               }
             : {}),
           ...panelStyle,
@@ -98,9 +110,7 @@ const styles: Record<string, CSSProperties> = {
   panel: {
     position: 'fixed',
     zIndex: 411,
-    background: theme.colors.surface,
     padding: '24px 20px',
-    boxShadow: theme.shadows.xl,
     direction: 'rtl',
     textAlign: 'right',
   },
@@ -108,8 +118,8 @@ const styles: Record<string, CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: theme.radius.lg,
-    borderTopRightRadius: theme.radius.lg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
   },
   panelDesktop: {
@@ -117,19 +127,19 @@ const styles: Record<string, CSSProperties> = {
     left: '50%',
     transform: 'translate(-50%, -50%)',
     width: 'min(440px, calc(100vw - 32px))',
-    borderRadius: theme.radius.lg,
+    borderRadius: 20,
   },
   title: {
     margin: '0 0 12px',
     fontSize: '18px',
     fontWeight: 700,
-    color: theme.colors.textPrimary,
+    letterSpacing: '-0.02em',
   },
   body: {
     margin: '0 0 16px',
     fontSize: '14px',
     lineHeight: 1.5,
-    color: theme.colors.textSecondary,
+    opacity: 0.85,
   },
   actions: {
     display: 'flex',

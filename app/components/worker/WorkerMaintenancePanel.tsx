@@ -135,7 +135,7 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
 
   if (tasks.length === 0) {
     return (
-      <div style={emptyStyles(colors).box}>
+      <div style={emptyStyles(colors).box} className="lg-glass">
         <p style={emptyStyles(colors).title}>אין משימות אחזקה להיום</p>
         <p style={emptyStyles(colors).sub}>כשהמנהלת תשייך משימה — היא תופיע כאן</p>
       </div>
@@ -149,7 +149,7 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
         const statusLabel =
           t.status === 'IN_PROGRESS' ? 'בביצוע' : t.status === 'DONE' ? 'הושלמה' : 'ממתינה'
         return (
-          <div key={t.id} style={cardStyles(colors).card}>
+          <div key={t.id} className="lg-glass" style={cardStyles(colors).card}>
             <div style={cardStyles(colors).head}>
               <div style={cardStyles(colors).title}>{t.title}</div>
               <span style={cardStyles(colors).badge}>{statusLabel}</span>
@@ -164,6 +164,7 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
             <label style={cardStyles(colors).field}>
               <span style={cardStyles(colors).fieldLabel}>הערה שלך</span>
               <textarea
+                className="lg-field"
                 value={noteById[t.id] ?? t.notes ?? ''}
                 onChange={(e) => setNoteById((prev) => ({ ...prev, [t.id]: e.target.value }))}
                 placeholder="מה בוצע / מה חשוב לדעת"
@@ -235,8 +236,8 @@ function emptyStyles(colors: typeof theme.colors): Record<string, CSSProperties>
       padding: '28px 16px',
       textAlign: 'center',
       borderRadius: 16,
-      border: `1px dashed ${colors.border}`,
-      background: colors.surface,
+      border: 'none',
+      background: 'transparent',
     },
     title: { margin: 0, fontWeight: 800, color: colors.textPrimary },
     sub: { margin: '8px 0 0', fontSize: 13, color: colors.textSecondary },
@@ -246,11 +247,10 @@ function emptyStyles(colors: typeof theme.colors): Record<string, CSSProperties>
 function cardStyles(colors: typeof theme.colors): Record<string, CSSProperties> {
   return {
     card: {
-      border: `1px solid ${colors.border}`,
+      border: 'none',
       borderRadius: 16,
       padding: 16,
-      background: colors.surface,
-      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+      background: 'transparent',
     },
     head: {
       display: 'flex',
@@ -282,13 +282,14 @@ function cardStyles(colors: typeof theme.colors): Record<string, CSSProperties> 
     textarea: {
       width: '100%',
       boxSizing: 'border-box',
-      borderRadius: 12,
-      border: `1px solid ${colors.border}`,
+      borderRadius: 14,
+      border: 'none',
       padding: 12,
       fontSize: 16,
       fontFamily: 'inherit',
       resize: 'vertical',
-      background: colors.background || '#f8fafc',
+      background: 'transparent',
+      color: colors.textPrimary,
     },
     attachBox: {
       display: 'flex',
@@ -296,8 +297,8 @@ function cardStyles(colors: typeof theme.colors): Record<string, CSSProperties> 
       gap: 12,
       padding: 12,
       borderRadius: 14,
-      border: `1px dashed ${colors.border}`,
-      background: colors.background || '#f8fafc',
+      border: `0.5px dashed ${colors.border}`,
+      background: 'transparent',
       marginBottom: 12,
     },
     attachText: { flex: 1, minWidth: 0 },

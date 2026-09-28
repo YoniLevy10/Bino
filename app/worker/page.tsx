@@ -62,7 +62,12 @@ import {
 } from '@/lib/worker-portal-storage'
 import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker-offline-cache'
 import { isTicketInTreatment, WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
-import { readWorkerDarkMode, workerDarkColors, writeWorkerDarkMode } from '@/lib/worker-theme'
+import {
+  applyWorkerThemeColor,
+  readWorkerDarkMode,
+  workerDarkColors,
+  writeWorkerDarkMode,
+} from '@/lib/worker-theme'
 
 type Worker = { id: string; full_name: string }
 type Ticket = {
@@ -171,6 +176,10 @@ function WorkerPageInner() {
   useEffect(() => {
     setDarkMode(readWorkerDarkMode())
   }, [])
+
+  useEffect(() => {
+    applyWorkerThemeColor(darkMode)
+  }, [darkMode])
 
   useEffect(() => {
     if (!tokenSession) {
@@ -445,6 +454,7 @@ function WorkerPageInner() {
     const next = !darkMode
     setDarkMode(next)
     writeWorkerDarkMode(next)
+    applyWorkerThemeColor(next)
   }
 
   function activateTicket(ticketId: string) {
@@ -799,7 +809,13 @@ function WorkerPageInner() {
   // Standalone worker view (accessed via token link or email login — no sidebar)
   if (!tokenChecked || !sessionResolved) {
     return (
-      <div style={standaloneShell} dir="rtl">
+      <div
+        className="worker-shell"
+        data-worker-theme={darkMode ? 'dark' : 'light'}
+        style={{ ...standaloneShell, background: 'transparent' }}
+        dir="rtl"
+      >
+        <div className="worker-ambient-wash" aria-hidden />
         <div style={styles.center}><LoadingSpinner /></div>
       </div>
     )
@@ -808,21 +824,33 @@ function WorkerPageInner() {
   // No token and no admin session → explain personal link (email login disabled)
   if (!tokenSession && !clientId) {
     return (
-      <div style={standaloneShell} dir="rtl">
-        <div style={styles.standaloneHeader}>
-          <h1 style={styles.standaloneTitle}>עובדי שטח (קישור)</h1>
-          <p style={styles.standaloneSub}>
+      <div
+        className="worker-shell"
+        data-worker-theme={darkMode ? 'dark' : 'light'}
+        style={{ ...standaloneShell, background: 'transparent' }}
+        dir="rtl"
+      >
+        <div className="worker-ambient-wash" aria-hidden />
+        <header className="lg-chrome" style={styles.glassHeader}>
+          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>עובדי שטח (קישור)</h1>
+          <p style={{ ...styles.standaloneSub, color: palette.textMuted }}>
             שולחים לכם SMS עם קישור אישי — פתחו אותו מההודעה. אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; ב«העובדים שלי».
           </p>
-        </div>
+        </header>
       </div>
     )
   }
 
   if (tokenSession) {
     return (
-      <div style={{ ...standaloneShell, background: palette.background }} dir="rtl">
-        <header style={{ ...styles.standaloneHeader, background: palette.surface, borderColor: palette.border }}>
+      <div
+        className="worker-shell"
+        data-worker-theme={darkMode ? 'dark' : 'light'}
+        style={{ ...standaloneShell, background: 'transparent' }}
+        dir="rtl"
+      >
+        <div className="worker-ambient-wash" aria-hidden />
+        <header className="lg-chrome" style={styles.glassHeader}>
           <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>
             שלום {selectedName || 'עובד'}
           </h1>
@@ -863,9 +891,12 @@ function WorkerPageInner() {
           showAttendanceTab={tokenSession.workerStampEnabled}
         />
 
-        <div style={styles.scrollArea}>
+        <div className="worker-shell-scroll" style={styles.scrollAreaGlass}>
           {visitedTabs.ATTENDANCE ? (
-            <div style={{ display: portalTab === 'ATTENDANCE' ? 'block' : 'none' }}>
+            <div
+              className="worker-tab-fade"
+              style={{ display: portalTab === 'ATTENDANCE' ? 'block' : 'none' }}
+            >
               <WorkerAttendancePanel
                 token={tokenSession.token}
                 workerId={tokenSession.workerId}
@@ -877,7 +908,10 @@ function WorkerPageInner() {
             </div>
           ) : null}
           {visitedTabs.TOURS ? (
-            <div style={{ display: portalTab === 'TOURS' ? 'block' : 'none' }}>
+            <div
+              className="worker-tab-fade"
+              style={{ display: portalTab === 'TOURS' ? 'block' : 'none' }}
+            >
               <WorkerToursPanel
                 token={tokenSession.token}
                 colors={palette}
@@ -886,15 +920,21 @@ function WorkerPageInner() {
             </div>
           ) : null}
           {visitedTabs.MAINTENANCE ? (
-            <div style={{ display: portalTab === 'MAINTENANCE' ? 'block' : 'none' }}>
+            <div
+              className="worker-tab-fade"
+              style={{ display: portalTab === 'MAINTENANCE' ? 'block' : 'none' }}
+            >
               <WorkerMaintenancePanel token={tokenSession.token} colors={palette} />
             </div>
           ) : null}
-          <div style={{ display: portalTab === 'TICKETS' ? 'block' : 'none' }}>
+          <div
+            className="worker-tab-fade"
+            style={{ display: portalTab === 'TICKETS' ? 'block' : 'none' }}
+          >
           {loadingTickets ? (
             <div style={styles.center}><LoadingSpinner /></div>
           ) : filteredTickets.length === 0 ? (
-            <div style={styles.emptyState}>
+            <div className="lg-glass" style={styles.emptyStateGlass}>
               <div style={{ ...styles.emptyIcon, background: palette.successMuted, color: palette.success }}>✓</div>
               <p style={{ ...styles.emptyText, color: palette.textMuted }}>
                 {openTickets.length === 0 ? 'הכל מטופל' : 'אין תקלות בסינון זה'}
@@ -939,7 +979,7 @@ function WorkerPageInner() {
                   chatSlot={
                     expandedChatId === t.id ? (
                       <div style={styles.officeChatWrap}>
-                        <p style={{ ...styles.officeChatBanner, color: palette.textMuted, background: palette.surface }}>
+                        <p style={{ ...styles.officeChatBanner, color: palette.textMuted }} className="lg-glass">
                           הודעה למשרד בלבד — הדייר לא רואה את זה
                         </p>
                         {chatLoading ? (
@@ -951,10 +991,11 @@ function WorkerPageInner() {
                             {chatMessages.map((m) => (
                               <div
                                 key={m.id}
+                                className="lg-glass"
                                 style={
                                   m.sender_name === tokenSession.fullName
                                     ? { ...styles.chatMine, background: palette.primaryMuted }
-                                    : { ...styles.chatOther, background: palette.surface }
+                                    : styles.chatOther
                                 }
                               >
                                 <div style={{ ...styles.chatSender, color: palette.textMuted }}>{m.sender_name}</div>
@@ -971,13 +1012,14 @@ function WorkerPageInner() {
                         )}
                         <div style={styles.chatInput}>
                           <textarea
+                            className="lg-field"
                             value={chatBody}
                             onChange={(e) => setChatBody(e.target.value)}
                             placeholder="כתבו הודעה למשרד…"
                             style={{
                               ...styles.chatTextarea,
-                              borderColor: palette.border,
-                              background: palette.surface,
+                              borderColor: 'transparent',
+                              background: 'transparent',
                               color: palette.textPrimary,
                             }}
                             rows={3}
@@ -1018,7 +1060,8 @@ function WorkerPageInner() {
             confirmDisabled={false}
             confirmVariant="primary"
             isMobile={isMobile}
-            panelStyle={{ background: palette.surface }}
+            workerPortal
+            panelStyle={{ background: 'transparent' }}
             onCancel={() => {
               setConfirmCloseId(null)
               clearClosePhoto()
@@ -1162,6 +1205,12 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
   },
+  glassHeader: {
+    flexShrink: 0,
+    padding: '14px 16px 12px',
+    position: 'relative',
+    zIndex: 30,
+  },
   scrollArea: {
     flex: 1,
     minHeight: 0,
@@ -1169,13 +1218,29 @@ const styles: Record<string, CSSProperties> = {
     WebkitOverflowScrolling: 'touch',
     padding: '10px 12px calc(88px + env(safe-area-inset-bottom, 0px))',
   },
+  scrollAreaGlass: {
+    position: 'relative',
+    zIndex: 1,
+    padding: '10px 12px 0',
+  },
+  emptyStateGlass: {
+    margin: '24px 4px',
+    padding: '36px 20px',
+    borderRadius: 20,
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+  },
   standaloneTitle: {
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: 700,
     margin: '0 0 2px',
     color: theme.colors.textPrimary,
+    letterSpacing: '-0.02em',
   },
-  standaloneSub: { fontSize: '12px', color: theme.colors.textMuted, margin: 0 },
+  standaloneSub: { fontSize: '13px', color: theme.colors.textMuted, margin: 0, lineHeight: 1.45 },
   center: { padding: '40px', display: 'flex', justifyContent: 'center' },
   pad: { padding: '16px' },
   select: {

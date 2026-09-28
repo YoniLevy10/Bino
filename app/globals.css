@@ -548,3 +548,150 @@ select {
     backdrop-filter: none;
   }
 }
+
+/* Worker portal — outdoor dark liquid glass (higher opacity for sun readability) */
+[data-worker-theme='dark'] {
+  --worker-bg: #1c1c1e;
+  color-scheme: dark;
+}
+
+[data-worker-theme='dark'] .lg-glass,
+[data-worker-theme='dark'] .lg-chrome,
+[data-worker-theme='dark'] .lg-sidebar,
+[data-worker-theme='dark'] .lg-tabbar {
+  background: rgba(44, 44, 46, 0.78);
+  -webkit-backdrop-filter: blur(32px) saturate(1.55);
+  backdrop-filter: blur(32px) saturate(1.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
+
+[data-worker-theme='dark'] .lg-chrome {
+  background: rgba(28, 28, 30, 0.88);
+  -webkit-backdrop-filter: blur(40px) saturate(1.45);
+  backdrop-filter: blur(40px) saturate(1.45);
+}
+
+[data-worker-theme='dark'] .lg-tabbar {
+  background: rgba(44, 44, 46, 0.82);
+  -webkit-backdrop-filter: blur(36px) saturate(1.6);
+  backdrop-filter: blur(36px) saturate(1.6);
+}
+
+[data-worker-theme='dark'] .lg-nav-active {
+  background: rgba(10, 132, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 0.5px rgba(10, 132, 255, 0.4);
+}
+
+[data-worker-theme='dark'] .lg-btn-primary {
+  background: linear-gradient(180deg, #409cff 0%, #0a84ff 46%, #0071eb 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 0.5px rgba(0, 40, 100, 0.35);
+}
+
+[data-worker-theme='dark'] .lg-field {
+  background: rgba(58, 58, 60, 0.72);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #f5f5f7;
+}
+
+[data-worker-theme='dark'] .lg-field:focus {
+  border-color: rgba(10, 132, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 4px rgba(10, 132, 255, 0.28);
+}
+
+[data-worker-theme='dark'] .lg-chip {
+  background: rgba(58, 58, 60, 0.7);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  color: rgba(235, 235, 245, 0.85);
+}
+
+[data-worker-theme='dark'] .lg-chip-active {
+  background: rgba(10, 132, 255, 0.28);
+  border: 0.5px solid rgba(10, 132, 255, 0.45);
+  color: #0a84ff;
+}
+
+.lg-chip {
+  background: rgba(255, 255, 255, 0.55);
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  color: #3c3c43;
+}
+
+.lg-chip-active {
+  background: rgba(0, 122, 255, 0.14);
+  border: 0.5px solid rgba(0, 122, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  color: #007aff;
+}
+
+.worker-ambient-wash {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 640px at 88% -12%, rgba(0, 122, 255, 0.28), transparent 56%),
+    radial-gradient(900px 580px at -6% 112%, rgba(90, 200, 250, 0.26), transparent 52%),
+    radial-gradient(720px 480px at 42% 18%, rgba(255, 255, 255, 0.5), transparent 62%),
+    #dfe7f2;
+}
+
+[data-worker-theme='dark'] .worker-ambient-wash {
+  background:
+    radial-gradient(900px 560px at 90% -10%, rgba(10, 132, 255, 0.22), transparent 55%),
+    radial-gradient(800px 520px at -8% 110%, rgba(48, 209, 88, 0.08), transparent 50%),
+    radial-gradient(640px 420px at 40% 20%, rgba(255, 255, 255, 0.04), transparent 60%),
+    #1c1c1e;
+}
+
+.worker-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  --worker-tabbar-height: 78px;
+}
+
+.worker-shell-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--worker-tabbar-height) + env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-worker-theme='dark'] .lg-glass,
+  [data-worker-theme='dark'] .lg-chrome,
+  [data-worker-theme='dark'] .lg-tabbar,
+  [data-worker-theme='dark'] .lg-field {
+    background: rgba(44, 44, 46, 0.96);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker-tab-fade,
+  .worker-card-expand {
+    transition: none !important;
+  }
+}
+
+.worker-tab-fade {
+  transition: opacity 0.18s ease;
+}
+
+.worker-card-expand {
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}

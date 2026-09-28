@@ -135,7 +135,13 @@ export function WorkerTicketCard({
 
   if (!isActive && !expandedWa && !expandedChat) {
     return (
-      <button type="button" style={styles.compact(colors, priority)} onClick={onActivate} aria-expanded={false}>
+      <button
+        type="button"
+        className="lg-glass worker-card-expand"
+        style={styles.compact(colors, priority)}
+        onClick={onActivate}
+        aria-expanded={false}
+      >
         <div style={styles.compactRow}>
           <PriorityDot priority={priority} />
           <span style={styles.num(colors)}>#{ticket.ticket_number}</span>
@@ -149,7 +155,7 @@ export function WorkerTicketCard({
   }
 
   return (
-    <article style={styles.card(colors, priority)}>
+    <article className="lg-glass worker-card-expand" style={styles.card(colors, priority)}>
       <button
         type="button"
         style={styles.collapseHeader(colors)}
@@ -210,8 +216,12 @@ export function WorkerTicketCard({
               }
             >
               {tel ? (
-                <a href={tel} style={styles.quickBtn(colors, 'call')}>
-                  <span style={styles.quickBtnIcon}>📞</span>
+                <a href={tel} className="lg-glass" style={styles.quickBtn(colors, 'call')}>
+                  <span style={styles.quickBtnIcon} aria-hidden>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.74.34 1.53.57 2.34.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                  </span>
                   <span>התקשר לדייר</span>
                 </a>
               ) : null}
@@ -220,9 +230,15 @@ export function WorkerTicketCard({
                   href={waze}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="lg-glass"
                   style={styles.quickBtn(colors, 'waze')}
                 >
-                  <span style={styles.quickBtnIcon}>🗺️</span>
+                  <span style={styles.quickBtnIcon} aria-hidden>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a8 8 0 0 0-8 8c0 5.4 8 12 8 12s8-6.6 8-12a8 8 0 0 0-8-8Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                  </span>
                   <span>ניווט Waze</span>
                 </a>
               ) : null}
@@ -230,9 +246,14 @@ export function WorkerTicketCard({
                 <button
                   type="button"
                   onClick={onToggleWa}
+                  className="lg-glass"
                   style={styles.quickBtn(colors, 'whatsapp', expandedWa)}
                 >
-                  <span style={styles.quickBtnIcon}>💬</span>
+                  <span style={styles.quickBtnIcon} aria-hidden>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </span>
                   <span>WhatsApp לדייר</span>
                 </button>
               ) : null}
@@ -253,6 +274,7 @@ export function WorkerTicketCard({
                   type="button"
                   disabled={statusBusy}
                   onClick={() => onStatusChange(opt.value)}
+                  className={opt.tone === 'primary' && !active ? 'lg-btn-primary' : active ? 'lg-nav-active' : 'lg-glass'}
                   style={styles.statusBtn(colors, opt.tone, active)}
                 >
                   {opt.label}
@@ -369,7 +391,7 @@ export function WorkerTicketCard({
 
         {expandedChat && chatSlot ? <div style={styles.threadWrap(colors)}>{chatSlot}</div> : null}
 
-        <div style={styles.attachSection(colors)}>
+        <div style={styles.attachSection}>
           <div style={styles.attachHead(colors)}>תמונה לדייר (לא חובה)</div>
           {attachmentsLoading ? (
             <p style={styles.attachMuted(colors)}>טוען…</p>
@@ -466,12 +488,10 @@ const styles = {
     width: '100%',
     textAlign: 'right',
     padding: '12px 14px',
-    borderRadius: '14px',
-    border: `1px solid ${c.border}`,
+    borderRadius: 16,
+    border: 'none',
     borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
-    background: c.surface,
     cursor: 'pointer',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   }),
   compactRow: {
     display: 'flex',
@@ -506,11 +526,9 @@ const styles = {
   }),
   card: (c: typeof theme.colors, priority: string): CSSProperties => ({
     padding: 0,
-    borderRadius: '14px',
-    border: `1px solid ${c.border}`,
+    borderRadius: 16,
+    border: 'none',
     borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
-    background: c.surface,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
     overflow: 'hidden',
   }),
   collapseHeader: (c: typeof theme.colors): CSSProperties => ({
@@ -519,8 +537,8 @@ const styles = {
     textAlign: 'right',
     padding: '12px 14px',
     border: 'none',
-    borderBottom: `1px solid ${c.border}`,
-    background: c.muted,
+    borderBottom: `0.5px solid ${c.border}`,
+    background: 'transparent',
     cursor: 'pointer',
   }),
   collapseHint: (c: typeof theme.colors): CSSProperties => ({
@@ -642,10 +660,10 @@ const styles = {
           : { bg: c.muted, border: c.border, text: c.textSecondary }
     return {
       padding: '12px 8px',
-      borderRadius: '12px',
-      border: `2px solid ${active ? palette.border : c.border}`,
-      background: active ? palette.bg : c.surface,
-      color: active ? palette.text : c.textPrimary,
+      borderRadius: 14,
+      border: active ? `1.5px solid ${palette.border}` : 'none',
+      background: active ? palette.bg : 'transparent',
+      color: active ? palette.text : tone === 'primary' ? '#fff' : c.textPrimary,
       fontSize: '13px',
       fontWeight: 700,
       cursor: 'pointer',
@@ -715,9 +733,9 @@ const styles = {
       gap: '6px',
       minHeight: '76px',
       padding: '10px 6px',
-      borderRadius: '14px',
-      border: `2px solid ${active ? palette.border : palette.border}`,
-      background: palette.bg,
+      borderRadius: 14,
+      border: active ? `1.5px solid ${palette.border}` : 'none',
+      background: 'transparent',
       color: palette.text,
       fontSize: '13px',
       fontWeight: 800,
@@ -725,11 +743,12 @@ const styles = {
       textAlign: 'center',
       lineHeight: 1.25,
       cursor: 'pointer',
-      boxShadow: active ? `0 0 0 2px ${palette.border}33` : 'none',
     }
   },
   quickBtnIcon: {
-    fontSize: '26px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     lineHeight: 1,
   } as CSSProperties,
   officeRow: {
@@ -754,10 +773,10 @@ const styles = {
     background: c.muted,
     border: `1px solid ${c.border}`,
   }),
-  attachSection: (c: typeof theme.colors): CSSProperties => ({
+  attachSection: {
     marginBottom: '8px',
     paddingTop: '4px',
-  }),
+  } as CSSProperties,
   attachHead: (c: typeof theme.colors): CSSProperties => ({
     fontSize: '13px',
     fontWeight: 700,

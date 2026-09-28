@@ -71,12 +71,13 @@ export function WorkerPushOnboarding({
 
   return (
     <div
+      className="lg-glass"
       style={{
         margin: '0 12px 10px',
         padding: '14px',
-        borderRadius: '14px',
-        background: colors.primaryMuted,
-        border: `2px solid ${colors.primary}`,
+        borderRadius: 16,
+        background: 'transparent',
+        border: 'none',
         direction: 'rtl',
       }}
     >
@@ -93,18 +94,18 @@ export function WorkerPushOnboarding({
       {!unsupported && !denied ? (
         <button
           type="button"
+          className="lg-btn-primary"
           onClick={() => void enable()}
           disabled={loading}
           style={{
             width: '100%',
             padding: '12px 16px',
-            borderRadius: '10px',
+            borderRadius: 14,
             border: 'none',
-            background: colors.primary,
-            color: colors.textInverse,
             fontWeight: 800,
             fontSize: '15px',
             cursor: loading ? 'wait' : 'pointer',
+            minHeight: 48,
           }}
         >
           {loading ? 'מפעיל…' : 'הפעל התראות'}

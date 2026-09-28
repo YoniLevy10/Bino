@@ -197,19 +197,20 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
 
       <input
         type="search"
+        className="lg-field"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="חיפוש פרויקט…"
         style={{
           ...styles.search,
-          borderColor: colors.border,
-          background: colors.surface,
+          borderColor: 'transparent',
+          background: 'transparent',
           color: colors.textPrimary,
         }}
       />
 
       {filteredProjects.length === 0 ? (
-        <div style={styles.empty}>
+        <div className="lg-glass" style={styles.empty}>
           <p style={{ ...styles.emptyText, color: colors.textMuted }}>
             {projects.length === 0 ? 'אין פרויקטים פעילים' : 'לא נמצאו פרויקטים בחיפוש'}
           </p>
@@ -219,10 +220,11 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
           {filteredProjects.map((p) => (
             <div
               key={p.id}
+              className="lg-glass"
               style={{
                 ...styles.projectCard,
-                borderColor: colors.border,
-                background: colors.surface,
+                borderColor: 'transparent',
+                background: 'transparent',
               }}
             >
               <div style={styles.projectHead}>
@@ -245,7 +247,7 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                     style={{
                       ...styles.timeInput,
                       borderColor: colors.border,
-                      background: colors.muted,
+                      background: 'transparent',
                       color: colors.textPrimary,
                     }}
                   />
@@ -260,6 +262,7 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                 </Button>
               </div>
               <textarea
+                className="lg-field"
                 value={notesByProject[p.id] || ''}
                 onChange={(e) => setNotesByProject((prev) => ({ ...prev, [p.id]: e.target.value }))}
                 placeholder="הערות מהסיור (אופציונלי)"
@@ -268,12 +271,13 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                   width: '100%',
                   boxSizing: 'border-box',
                   marginTop: 8,
-                  borderRadius: 10,
-                  border: `1px solid ${colors.border}`,
+                  borderRadius: 14,
+                  border: 'none',
                   padding: 8,
                   fontSize: 13,
-                  background: colors.muted,
+                  background: 'transparent',
                   color: colors.textPrimary,
+                  fontFamily: 'inherit',
                 }}
               />
               <label style={{ fontSize: 13, color: colors.textSecondary, display: 'block', marginTop: 6 }}>
@@ -303,10 +307,11 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
             {tours.map((t) => (
               <div
                 key={t.id}
+                className="lg-glass"
                 style={{
                   ...styles.tourRow,
-                  borderColor: colors.borderSubtle,
-                  background: colors.muted,
+                  borderColor: 'transparent',
+                  background: 'transparent',
                   flexDirection: 'column',
                   alignItems: 'stretch',
                   gap: 6,
