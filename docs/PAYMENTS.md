@@ -62,4 +62,4 @@ Grow שולח לרוב `application/x-www-form-urlencoded` עם מפתחות `da
 
 ## Apple Pay
 
-קובץ אימות דומיין: `public/.well-known/apple-developer-merchantid-domain-association` (תואם קובץ production מליאל; חי ב־`bamakor.vercel.app`). רישום הדומיין בדשבורד Grow/Apple — פעולה חיצונית אצלם.
+קובץ אימות דומיין: `public/.well-known/apple-developer-merchantid-domain-association` (תואם קובץ production מליאל; חי ב־`bino.casa`, וגם ב־alias `bamakor.vercel.app`). רישום הדומיין החדש בדשבורד Grow/Apple — פעולה חיצונית אצלם. ראו גם `docs/DOMAIN.md`.

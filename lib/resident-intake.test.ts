@@ -20,18 +20,18 @@ describe('resident intake helpers', () => {
       buildResidentIntakeUrl({
         projectCode: 'A1',
         clientId: 'c1',
-        baseUrl: 'https://bamakor.vercel.app/',
+        baseUrl: 'https://bino.casa/',
       })
-    ).toBe('https://bamakor.vercel.app/intake?project=A1&client=c1')
+    ).toBe('https://bino.casa/intake?project=A1&client=c1')
   })
 
   it('share message is plain Hebrew without emoji and includes url', () => {
     const msg = buildResidentIntakeShareMessage({
       projectName: 'הרצל 12',
-      intakeUrl: 'https://bamakor.vercel.app/intake?project=H12&client=c1',
+      intakeUrl: 'https://bino.casa/intake?project=H12&client=c1',
     })
     expect(msg).toContain('הרצל 12')
-    expect(msg).toContain('https://bamakor.vercel.app/intake?project=H12&client=c1')
+    expect(msg).toContain('https://bino.casa/intake?project=H12&client=c1')
     expect(msg).not.toMatch(/\p{Extended_Pictographic}/u)
   })
 
