@@ -1,6 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
@@ -18,6 +26,7 @@ import {
   type CollectionChargeListItem,
   type CollectionChargeStatus,
 } from '@/lib/collection-charges'
+import { residentMatchesQuery } from '@/lib/collection-resident-search'
 import {
   Button,
   Drawer,
@@ -35,6 +44,7 @@ type ResidentOption = {
   apartment_number: string | null
   phone: string | null
   normalized_phone: string | null
+  project_id?: string | null
 }
 
 type SummaryChips = {
@@ -122,6 +132,9 @@ export function CollectionsBoard() {
   const [cProjectId, setCProjectId] = useState('')
   const [cResidents, setCResidents] = useState<ResidentOption[]>([])
   const [cResidentId, setCResidentId] = useState('')
+  const [cResidentQuery, setCResidentQuery] = useState('')
+  const deferredResidentQuery = useDeferredValue(cResidentQuery)
+  const [cResidentsLoading, setCResidentsLoading] = useState(false)
   const [cTitle, setCTitle] = useState('ועד בית')
   const [cAmount, setCAmount] = useState('')
   const [cDescription, setCDescription] = useState('')
@@ -250,13 +263,58 @@ export function CollectionsBoard() {
     const { data, error } = await withClientId(
       supabase
         .from('residents')
-        .select('id, full_name, apartment_number, phone, normalized_phone')
+        .select('id, full_name, apartment_number, phone, normalized_phone, project_id')
         .eq('project_id', projectId)
         .is('deleted_at', null),
       clientId
     ).order('apartment_number', { ascending: true })
     if (error) throw error
     return (data as ResidentOption[]) || []
+  }
+
+  async function loadResidentsForClient(): Promise<ResidentOption[]> {
+    if (!clientId) return []
+    const { data, error } = await withClientId(
+      supabase
+        .from('residents')
+        .select('id, full_name, apartment_number, phone, normalized_phone, project_id')
+        .is('deleted_at', null),
+      clientId
+    )
+      .order('full_name', { ascending: true })
+      .limit(1000)
+    if (error) throw error
+    return (data as ResidentOption[]) || []
+  }
+
+  const projectNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of projects) map.set(p.id, p.name)
+    return map
+  }, [projects])
+
+  const cSelectedResident = useMemo(
+    () => cResidents.find((r) => r.id === cResidentId) || null,
+    [cResidents, cResidentId]
+  )
+
+  const cResidentMatches = useMemo(() => {
+    if (cResidentId) return []
+    const q = deferredResidentQuery.trim()
+    if (q.length < 2) return []
+    return cResidents.filter((r) => residentMatchesQuery(r, q)).slice(0, 25)
+  }, [cResidents, cResidentId, deferredResidentQuery])
+
+  function selectCreateResident(r: ResidentOption) {
+    setCResidentId(r.id)
+    setCProjectId(r.project_id || '')
+    setCResidentQuery('')
+  }
+
+  function clearCreateResident() {
+    setCResidentId('')
+    setCProjectId('')
+    setCResidentQuery('')
   }
 
   async function openBulk() {
@@ -404,35 +462,24 @@ export function CollectionsBoard() {
     }
     setBulkOpen(false)
     setCreateOpen(true)
-    const pid = cProjectId || projectFilter || projects[0]?.id || ''
-    setCProjectId(pid)
-    if (pid) {
-      await asyncHandler(
-        async () => {
-          setCResidents(await loadResidentsForProject(pid))
-          return true
-        },
-        { context: 'טעינת דיירים', showErrorToast: true }
-      )
-    }
-  }
-
-  async function onCreateProjectChange(pid: string) {
-    setCProjectId(pid)
     setCResidentId('')
+    setCProjectId('')
+    setCResidentQuery('')
+    setCResidentsLoading(true)
     await asyncHandler(
       async () => {
-        setCResidents(await loadResidentsForProject(pid))
+        setCResidents(await loadResidentsForClient())
         return true
       },
       { context: 'טעינת דיירים', showErrorToast: true }
     )
+    setCResidentsLoading(false)
   }
 
   async function submitCreate(send: boolean) {
     const amount = Number(cAmount)
     if (!cProjectId || !cResidentId || !cTitle.trim() || !Number.isFinite(amount) || amount <= 0) {
-      toast.error('מלאו פרויקט, דייר, כותרת וסכום')
+      toast.error('בחרו דייר, מלאו כותרת וסכום')
       return
     }
     setCSaving(true)
@@ -959,25 +1006,68 @@ export function CollectionsBoard() {
         }
       >
         <div style={styles.form}>
-          <label style={styles.label}>בניין</label>
-          <Select
-            value={cProjectId}
-            onChange={(v) => void onCreateProjectChange(v)}
-            options={projects.map((p) => ({ label: p.name, value: p.id }))}
-            placeholder="בחרו בניין"
-            style={{ width: '100%' }}
-          />
-          <label style={styles.label}>דייר</label>
-          <Select
-            value={cResidentId}
-            onChange={setCResidentId}
-            options={cResidents.map((r) => ({
-              label: `${r.full_name}${r.apartment_number ? ` · ${r.apartment_number}` : ''}`,
-              value: r.id,
-            }))}
-            placeholder="בחרו דייר"
-            style={{ width: '100%' }}
-          />
+          <label style={styles.label}>חיפוש דייר</label>
+          {cSelectedResident ? (
+            <div style={styles.selectedResident}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={styles.selectedResidentName}>{cSelectedResident.full_name}</div>
+                <div style={styles.selectedResidentMeta}>
+                  {[
+                    cSelectedResident.project_id
+                      ? projectNameById.get(cSelectedResident.project_id) || null
+                      : null,
+                    cSelectedResident.apartment_number
+                      ? `דירה ${cSelectedResident.apartment_number}`
+                      : null,
+                    residentPhone(cSelectedResident) || null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              </div>
+              <button type="button" style={styles.clearResidentBtn} onClick={clearCreateResident}>
+                החלף
+              </button>
+            </div>
+          ) : (
+            <>
+              <SearchInput
+                value={cResidentQuery}
+                onChange={setCResidentQuery}
+                placeholder="שם דייר או מספר טלפון"
+                style={{ maxWidth: '100%' }}
+              />
+              {cResidentsLoading ? (
+                <p style={styles.hint}>טוען דיירים…</p>
+              ) : cResidentQuery.trim().length > 0 && cResidentQuery.trim().length < 2 ? (
+                <p style={styles.hint}>הקלידו לפחות 2 תווים</p>
+              ) : cResidentQuery.trim().length >= 2 && cResidentMatches.length === 0 ? (
+                <p style={styles.hint}>לא נמצאו דיירים מתאימים</p>
+              ) : (
+                <div style={styles.residentResults}>
+                  {cResidentMatches.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      style={styles.residentResultBtn}
+                      onClick={() => selectCreateResident(r)}
+                    >
+                      <span style={styles.selectedResidentName}>{r.full_name}</span>
+                      <span style={styles.selectedResidentMeta}>
+                        {[
+                          r.project_id ? projectNameById.get(r.project_id) || null : null,
+                          r.apartment_number ? `דירה ${r.apartment_number}` : null,
+                          residentPhone(r) || null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
           <label style={styles.label}>כותרת</label>
           <input value={cTitle} onChange={(e) => setCTitle(e.target.value)} style={styles.textInput} />
           <label style={styles.label}>סכום (₪)</label>
@@ -1282,5 +1372,60 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     fontWeight: 600,
     fontSize: 14,
+  },
+  hint: {
+    margin: 0,
+    fontSize: 13,
+    color: theme.colors.textMuted,
+  },
+  residentResults: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    maxHeight: 240,
+    overflowY: 'auto',
+  },
+  residentResultBtn: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
+    width: '100%',
+    textAlign: 'right',
+    padding: '10px 12px',
+    borderRadius: 12,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    cursor: 'pointer',
+  },
+  selectedResident: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '12px 14px',
+    borderRadius: 12,
+    border: `1px solid ${theme.colors.border}`,
+    background: '#f8fafc',
+  },
+  selectedResidentName: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+  },
+  selectedResidentMeta: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    lineHeight: 1.4,
+    marginTop: 2,
+  },
+  clearResidentBtn: {
+    flexShrink: 0,
+    border: 'none',
+    background: 'transparent',
+    color: theme.colors.primary,
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    padding: '4px 6px',
   },
 }
