@@ -735,6 +735,40 @@ export function CollectionsBoard() {
                         סמן כשולם
                       </Button>
                     )}
+                    {status === 'paid' && row.grow_approve_status === 'failed' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          void postChargeAction(
+                            '/api/collections/charges/retry-approve',
+                            row.id,
+                            'אישור העסקה ב-Grow הצליח'
+                          )
+                        }
+                      >
+                        נסה לאשר עסקה שוב
+                      </Button>
+                    )}
+                    {status === 'paid' && row.grow_approve_status === 'failed' && row.grow_approve_last_error ? (
+                      <span style={{ ...styles.docId, color: '#c2410c' }}>
+                        Approve: {row.grow_approve_last_error.slice(0, 60)}
+                      </span>
+                    ) : null}
+                    {status === 'paid' && row.grow_approve_status === 'ok' ? (
+                      <span style={styles.docId}>Approve: אושר</span>
+                    ) : null}
+                    {row.grow_invoice_url ? (
+                      <a
+                        href={row.grow_invoice_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.docId}
+                      >
+                        חשבונית Grow
+                      </a>
+                    ) : null}
                     {(row.grow_payment_link_id || row.greeninvoice_document_id) && (
                       <span style={styles.docId}>
                         {row.grow_payment_link_id

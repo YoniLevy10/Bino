@@ -13,21 +13,21 @@ Operational guides for platform and tenant features.
 
 ### לפני שליחה לדיירים
 
-1. `GROW_API_KEY` + `GROW_PAGE_CODE` + `GROW_WEBHOOK_SECRET` מוגדרים ב-Vercel.
-2. הלקוח פתח חשבון Grow, הדביק `userId` בהגדרות → Grow והפעיל חיבור.
-3. הלקוח מילא שם/טלפון/כתובת **של העסק שקולט את הכסף**.
+1. `GROW_API_KEY` + `GROW_X_API_KEY` + `GROW_PAGE_CODE` + `GROW_WEBHOOK_SECRET` ב-Vercel.
+2. להצטרפות אוטומטית: `GROW_REGISTER_X_API_KEY` + `GROW_MARKETER` + `GROW_PRICE_QUOTE` (+ webhook הרשמה אצל Grow ל־`/api/webhook/grow-register?token=`).
+3. הלקוח: GetLink בהגדרות → Grow **או** הדבקת `userId` ידנית + הפעלת חיבור + פרטי עסק.
 4. תוסף גבייה מופעל ללקוח.
-5. **תשלום ניסיון אחד** — ודאו שסטטוס עובר ל«שולם» ב־`/collections`. לבדיקה בלי כסף אמיתי: `GROW_ENV=sandbox` + מפתחות בדיקה מ-Grow.
+5. **תשלום ניסיון אחד עם callback מקורי** — «שולם» ב־`/collections` + `grow_approve_status=ok`. תשלום ב-Grow בלי callback ל-BINO ≠ סגירת שרשרת. Bit/Apple עלולים להיות כסף אמת גם ב-sandbox.
 
 ### התנהגות מערכת
 
 - שליחת חיוב נחסמת אם חסר סוד webhook בשרת.
 - מסך גבייה חוסם שליחה עד ש-`userId` מוגדר ומופעל.
 - `userId` לא יכול להיות משויך לשני לקוחות Bino.
-- בדף `/pay` הדייר מזין מייל (מומלץ) / טלפון ומאשר **תקנון** לפני מעבר לדרישת התשלום ב-Grow; אחרי תשלום נשלח אישור במייל (Resend).
-- עמוד העסק של הלקוח: `/vaad-pay/{clientId}` (פרטי העסק מההגדרות). `/vaad-pay` הכללי הוא עמוד פלטפורמה בלבד.
-- עמודי תקנון/פרטיות משותפים: `/terms`, `/privacy`.
-- ביטול חיוב מבטל את קישור `/pay/...` של Bino (קישור Grow הישן עלול עדיין להיות פתוח אצלם).
+- `/pay`: קישור תשלום **ו/או** ארנק SDK; «שולם» רק מ-S2S, לא מ-`onSuccess` בדפדפן.
+- כשל Approve: החיוב נשאר שולם; כפתור «נסה לאשר עסקה שוב» (דורש token מה-callback).
+- עמוד העסק: `/vaad-pay/{clientId}`. תקנון/פרטיות: `/terms`, `/privacy`.
+- ביטול חיוב מבטל `/pay/...` של Bino.
 - «סמן כשולם» — גיבוי ידני אם ה-webhook פספס.
 
 ---

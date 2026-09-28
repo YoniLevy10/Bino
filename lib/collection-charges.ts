@@ -42,6 +42,12 @@ export type CollectionChargeRow = {
   grow_payment_url?: string | null
   grow_payment_link_id?: string | null
   grow_transaction_id?: string | null
+  grow_transaction_token?: string | null
+  grow_process_id?: string | null
+  grow_approve_status?: string | null
+  grow_approve_last_error?: string | null
+  grow_invoice_id?: string | null
+  grow_invoice_url?: string | null
   greeninvoice_client_id: string | null
   greeninvoice_document_id: string | null
   greeninvoice_document_number: number | null
@@ -69,7 +75,9 @@ export function chargePaymentUrl(row: {
 export const COLLECTION_CHARGE_ROW_SELECT = `
   id, client_id, project_id, resident_id, title, description, amount, currency, status,
   public_token, batch_id, period_label,
-  grow_payment_url, grow_payment_link_id, grow_transaction_id,
+  grow_payment_url, grow_payment_link_id, grow_transaction_id, grow_transaction_token,
+  grow_process_id, grow_approve_status, grow_approve_last_error,
+  grow_invoice_id, grow_invoice_url,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, receipt_email, receipt_phone, receipt_email_sent_at,
@@ -80,6 +88,8 @@ export const COLLECTION_CHARGE_LIST_SELECT = `
   id, client_id, project_id, resident_id, title, description, amount, currency, status,
   public_token, batch_id, period_label,
   grow_payment_url, grow_payment_link_id, grow_transaction_id,
+  grow_process_id, grow_approve_status, grow_approve_last_error,
+  grow_invoice_id, grow_invoice_url,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, created_by, created_at, updated_at,

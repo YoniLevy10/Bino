@@ -69,12 +69,14 @@ describe('collection charge ops URL helpers', () => {
   const prevApp = process.env.NEXT_PUBLIC_APP_URL
   const prevGrowSecret = process.env.GROW_WEBHOOK_SECRET
   const prevGrowKey = process.env.GROW_API_KEY
+  const prevGrowXKey = process.env.GROW_X_API_KEY
   const prevGrowPage = process.env.GROW_PAGE_CODE
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_APP_URL = 'https://bamakor.vercel.app'
     process.env.GROW_WEBHOOK_SECRET = 'hook-secret'
     process.env.GROW_API_KEY = 'api-key'
+    process.env.GROW_X_API_KEY = 'x-api-key'
     process.env.GROW_PAGE_CODE = 'page-code'
   })
 
@@ -82,6 +84,7 @@ describe('collection charge ops URL helpers', () => {
     process.env.NEXT_PUBLIC_APP_URL = prevApp
     process.env.GROW_WEBHOOK_SECRET = prevGrowSecret
     process.env.GROW_API_KEY = prevGrowKey
+    process.env.GROW_X_API_KEY = prevGrowXKey
     process.env.GROW_PAGE_CODE = prevGrowPage
   })
 
@@ -208,27 +211,35 @@ describe('markChargePaidByGrowIds', () => {
     const { markChargePaidByGrowIds } = await import('@/lib/collection-charge-ops')
 
     const calls: Array<{ table: string; op: string }> = []
-    const makeChain = () => {
+    const makeChain = (mode: 'selectCandidates' | 'updatePaid') => {
       const c: Record<string, unknown> = {}
+      const terminal = () => {
+        if (mode === 'selectCandidates') {
+          return Promise.resolve({
+            data: [{ id: '1', amount: 1, status: 'sent' }],
+            error: null,
+          })
+        }
+        return Promise.resolve({ data: [{ id: '1' }], error: null })
+      }
       c.update = () => {
         calls.push({ table: 'collection_charges', op: 'update' })
-        return c
+        return makeChain('updatePaid')
       }
+      c.select = () => c
       c.in = () => c
       c.neq = () => c
       c.eq = () => c
       c.is = () => c
       c.maybeSingle = async () => ({ data: null, error: null })
-      c.select = () => {
-        const terminal = Promise.resolve({ data: [{ id: '1' }], error: null })
-        return Object.assign(terminal, c)
-      }
+      c.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        terminal().then(resolve, reject)
       return c
     }
     const admin = {
       from: (table: string) => {
         calls.push({ table, op: 'from' })
-        return makeChain()
+        return makeChain('selectCandidates')
       },
     }
 
@@ -243,8 +254,10 @@ describe('markChargePaidByGrowIds', () => {
       publicTokens: ['11111111-1111-4111-8111-111111111111'],
       paymentLinkIds: [],
       transactionIds: ['tx-1'],
+      sum: '1',
     })
     expect(matched.matched).toBe(1)
+    expect(matched.sumRejected).toBe(0)
     expect(calls.some((c) => c.op === 'update')).toBe(true)
   })
 })

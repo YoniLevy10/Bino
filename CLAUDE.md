@@ -196,10 +196,17 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
-| `GROW_API_KEY` | Grow platform apiKey from Lial — **required for collections** |
-| `GROW_PAGE_CODE` | Grow platform pageCode — **required for collections** |
-| `GROW_WEBHOOK_SECRET` | Random secret; Grow notify URL uses `?token=` — **required for collections** |
+| `GROW_API_KEY` | Grow body `apiKey` from Lial — **required for collections** |
+| `GROW_X_API_KEY` | Grow header `x-api-key` from Lial (separate from body key) — **required for collections** |
+| `GROW_PAGE_CODE` | Grow payment-link pageCode — **required for collections** |
+| `GROW_WALLET_PAGE_CODE` | Optional SDK wallet pageCode; defaults to `GROW_PAGE_CODE` |
+| `GROW_WEBHOOK_SECRET` | Random secret; Grow notify / register / invoice URLs use `?token=` — **required for collections** |
 | `GROW_ENV` | `sandbox` for test keys, omit or `production` for live |
+| `GROW_REGISTER_X_API_KEY` | GetLink register API `x-api-key` (sandbox from Lial Postman) |
+| `GROW_MARKETER` | GetLink marketer id |
+| `GROW_PRICE_QUOTE` | GetLink `price_quote` (not `quote_price`) |
+| `GROW_REGISTER_IS_DIRECT_DEBIT` | `1` sandbox / usually `0` live unless Grow says otherwise |
+| `GROW_REGISTER_BASE_URL` | Optional; defaults to devregister / registerapi by `GROW_ENV` |
 | `LEGAL_BUSINESS_NAME` | Platform-only display name on `/vaad-pay` + `/contact` (not used for a tenant's Grow page) |
 | `LEGAL_PHONE` | Platform-only contact phone on public legal pages |
 | `LEGAL_ADDRESS` | Platform-only address on public legal pages |

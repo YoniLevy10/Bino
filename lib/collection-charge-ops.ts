@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createGrowPaymentLink } from '@/lib/grow-client'
+import { buildGrowInvoiceNotifyUrl, createGrowPaymentLink } from '@/lib/grow-client'
 import {
   CLIENT_GROW_PAYMENTS_SELECT,
   isGrowCollectionsConfigured,
   type ClientGrowPaymentsRow,
 } from '@/lib/grow-credentials'
 import { isGrowPlatformConfigured } from '@/lib/grow-config'
+import { growCallbackSumMatchesCharge } from '@/lib/grow-webhook'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { getPublicAppUrl } from '@/lib/public-app-url'
 import {
@@ -216,6 +217,7 @@ export async function sendCollectionCharge(
       cancelUrl: failureUrl,
       notifyUrl,
       publicToken: charge.public_token,
+      invoiceNotifyUrl: buildGrowInvoiceNotifyUrl(),
     })
 
     if (!form.ok) {
@@ -412,22 +414,60 @@ export async function markCollectionChargePaidManual(
 
 export async function markChargePaidByGrowIds(
   admin: SupabaseClient,
-  ids: { publicTokens: string[]; paymentLinkIds: string[]; transactionIds: string[] }
-): Promise<{ matched: number; newlyPaidIds: string[] }> {
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    processIds?: string[]
+    transactionIds: string[]
+    transactionToken?: string | null
+    sum?: string | null
+  }
+): Promise<{ matched: number; newlyPaidIds: string[]; sumRejected: number }> {
   const tokens = [...new Set(ids.publicTokens.filter(Boolean))]
   const linkIds = [...new Set(ids.paymentLinkIds.filter(Boolean))]
+  const processIds = [...new Set((ids.processIds || []).filter(Boolean))]
   const txIds = [...new Set(ids.transactionIds.filter(Boolean))]
-  if (tokens.length === 0 && linkIds.length === 0 && txIds.length === 0) {
-    return { matched: 0, newlyPaidIds: [] }
+  if (
+    tokens.length === 0 &&
+    linkIds.length === 0 &&
+    processIds.length === 0 &&
+    txIds.length === 0
+  ) {
+    return { matched: 0, newlyPaidIds: [], sumRejected: 0 }
   }
 
   let matched = 0
+  let sumRejected = 0
   const paidAt = nowIso()
   const newlyPaidIds: string[] = []
-  const txPatch =
-    txIds.length === 1 ? { grow_transaction_id: txIds[0] } : {}
+  const txPatch: Record<string, string> = {}
+  if (txIds.length === 1) txPatch.grow_transaction_id = txIds[0]
+  if (ids.transactionToken?.trim()) {
+    txPatch.grow_transaction_token = ids.transactionToken.trim()
+  }
 
   const applyPaid = async (filter: { column: string; values: string[] }) => {
+    const { data: candidates } = await admin
+      .from('collection_charges')
+      .select('id, amount, status')
+      .in(filter.column, filter.values)
+      .neq('status', 'paid')
+
+    const allowedIds: string[] = []
+    for (const row of candidates ?? []) {
+      if (!growCallbackSumMatchesCharge(ids.sum, row.amount)) {
+        sumRejected += 1
+        console.error('[grow-webhook] sum mismatch — refusing to mark paid', {
+          chargeId: row.id,
+          callbackSum: ids.sum,
+          chargeAmount: row.amount,
+        })
+        continue
+      }
+      allowedIds.push(row.id)
+    }
+    if (allowedIds.length === 0) return
+
     const { data } = await admin
       .from('collection_charges')
       .update({
@@ -436,7 +476,7 @@ export async function markChargePaidByGrowIds(
         updated_at: paidAt,
         ...txPatch,
       })
-      .in(filter.column, filter.values)
+      .in('id', allowedIds)
       .neq('status', 'paid')
       .select('id')
     matched += data?.length ?? 0
@@ -447,10 +487,81 @@ export async function markChargePaidByGrowIds(
 
   if (tokens.length > 0) await applyPaid({ column: 'public_token', values: tokens })
   if (linkIds.length > 0) await applyPaid({ column: 'grow_payment_link_id', values: linkIds })
+  if (processIds.length > 0) await applyPaid({ column: 'grow_process_id', values: processIds })
 
   for (const id of newlyPaidIds) {
     void sendCollectionReceiptEmailIfNeeded(admin, id).catch(() => {})
   }
 
-  return { matched, newlyPaidIds }
+  return { matched, newlyPaidIds, sumRejected }
+}
+
+export async function recordGrowApproveResult(
+  admin: SupabaseClient,
+  opts: {
+    chargeIds: string[]
+    ok: boolean
+    error?: string | null
+    transactionId?: string | null
+    transactionToken?: string | null
+  }
+): Promise<void> {
+  if (opts.chargeIds.length === 0) return
+  const now = nowIso()
+  await admin
+    .from('collection_charges')
+    .update({
+      grow_approve_status: opts.ok ? 'ok' : 'failed',
+      grow_approve_last_error: opts.ok ? null : (opts.error || 'ApproveTransaction failed').slice(0, 500),
+      grow_approve_at: now,
+      ...(opts.transactionId ? { grow_transaction_id: opts.transactionId } : {}),
+      ...(opts.transactionToken ? { grow_transaction_token: opts.transactionToken } : {}),
+      updated_at: now,
+    })
+    .in('id', opts.chargeIds)
+}
+
+/** Persist transaction identifiers from S2S even when charge was already paid (idempotent webhook). */
+export async function persistGrowTransactionIds(
+  admin: SupabaseClient,
+  opts: {
+    chargeIds: string[]
+    transactionId?: string | null
+    transactionToken?: string | null
+  }
+): Promise<void> {
+  if (opts.chargeIds.length === 0) return
+  if (!opts.transactionId && !opts.transactionToken) return
+  const now = nowIso()
+  await admin
+    .from('collection_charges')
+    .update({
+      ...(opts.transactionId ? { grow_transaction_id: opts.transactionId } : {}),
+      ...(opts.transactionToken ? { grow_transaction_token: opts.transactionToken } : {}),
+      updated_at: now,
+    })
+    .in('id', opts.chargeIds)
+}
+
+/** Resolve charge ids for approve / invoice updates (paid or matching identifiers). */
+export async function findChargeIdsByGrowIds(
+  admin: SupabaseClient,
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    processIds?: string[]
+    transactionIds?: string[]
+  }
+): Promise<string[]> {
+  const found = new Set<string>()
+  const run = async (column: string, values: string[]) => {
+    if (values.length === 0) return
+    const { data } = await admin.from('collection_charges').select('id').in(column, values)
+    for (const row of data ?? []) found.add(row.id)
+  }
+  await run('public_token', [...new Set(ids.publicTokens.filter(Boolean))])
+  await run('grow_payment_link_id', [...new Set(ids.paymentLinkIds.filter(Boolean))])
+  await run('grow_process_id', [...new Set((ids.processIds || []).filter(Boolean))])
+  await run('grow_transaction_id', [...new Set((ids.transactionIds || []).filter(Boolean))])
+  return [...found]
 }
