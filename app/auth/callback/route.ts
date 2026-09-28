@@ -27,7 +27,7 @@ function wantsGoogleCalendarConnect(nextPath: string): boolean {
 /**
  * OAuth PKCE: Google מחזיר לכאן עם ?code= — מחליפים לסשן ומפנים ליעד הבטוח.
  * יש להוסיף ב-Supabase Dashboard → Authentication → URL configuration:
- * Redirect URLs: https://<your-domain>/auth/callback
+ * Redirect URLs: https://bino.casa/auth/callback (ראה docs/DOMAIN.md)
  *
  * When next includes ?gcal=1, persist Google Calendar provider tokens for the tenant.
  */

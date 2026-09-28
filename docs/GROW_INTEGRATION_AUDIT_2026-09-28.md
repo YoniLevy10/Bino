@@ -13,13 +13,13 @@
 | מה | קישור |
 |----|--------|
 | PR #158 | https://github.com/YoniLevy10/Bino/pull/158 |
-| אפליקציה | https://bamakor.vercel.app |
-| גבייה | https://bamakor.vercel.app/collections |
-| הגדרות Grow | https://bamakor.vercel.app/settings?tab=grow |
-| Webhook תשלום | https://bamakor.vercel.app/api/webhook/grow |
-| Webhook הרשמה | https://bamakor.vercel.app/api/webhook/grow-register |
-| Webhook חשבונית | https://bamakor.vercel.app/api/webhook/grow-invoice |
-| Apple Pay file | https://bamakor.vercel.app/.well-known/apple-developer-merchantid-domain-association |
+| אפליקציה | https://bino.casa |
+| גבייה | https://bino.casa/collections |
+| הגדרות Grow | https://bino.casa/settings?tab=grow |
+| Webhook תשלום | https://bino.casa/api/webhook/grow |
+| Webhook הרשמה | https://bino.casa/api/webhook/grow-register |
+| Webhook חשבונית | https://bino.casa/api/webhook/grow-invoice |
+| Apple Pay file | https://bino.casa/.well-known/apple-developer-merchantid-domain-association |
 | SDK | https://cdn.meshulam.co.il/sdk/gs.min.js |
 | GetLink test | https://devregisterapi.meshulam.co.il/GetLink |
 

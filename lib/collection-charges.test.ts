@@ -33,11 +33,11 @@ describe('collection charge helpers', () => {
       residentName: 'ישראל',
       title: 'ועד בית',
       amount: 200,
-      payUrl: 'https://bamakor.vercel.app/pay/abc',
+      payUrl: 'https://bino.casa/pay/abc',
     })
     expect(body).toContain('ישראל')
     expect(body).toContain('ועד בית')
-    expect(body).toContain('https://bamakor.vercel.app/pay/abc')
+    expect(body).toContain('https://bino.casa/pay/abc')
     expect(body).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u)
     expect(body).not.toContain('✅')
     expect(body).not.toContain('💳')
@@ -73,7 +73,7 @@ describe('collection charge ops URL helpers', () => {
   const prevGrowPage = process.env.GROW_PAGE_CODE
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_APP_URL = 'https://bamakor.vercel.app'
+    process.env.NEXT_PUBLIC_APP_URL = 'https://bino.casa'
     process.env.GROW_WEBHOOK_SECRET = 'hook-secret'
     process.env.GROW_API_KEY = 'api-key'
     process.env.GROW_X_API_KEY = 'x-api-key'
@@ -90,10 +90,10 @@ describe('collection charge ops URL helpers', () => {
 
   it('builds public pay and Grow notify URLs', () => {
     expect(buildPublicPayUrl('11111111-1111-1111-1111-111111111111')).toBe(
-      'https://bamakor.vercel.app/pay/11111111-1111-1111-1111-111111111111'
+      'https://bino.casa/pay/11111111-1111-1111-1111-111111111111'
     )
     expect(buildGrowWebhookNotifyUrl()).toBe(
-      'https://bamakor.vercel.app/api/webhook/grow?token=hook-secret'
+      'https://bino.casa/api/webhook/grow?token=hook-secret'
     )
   })
 
@@ -108,17 +108,17 @@ describe('collection charge ops URL helpers', () => {
       { publicToken: '11111111-1111-1111-1111-111111111111' }
     )
     expect(urls.successUrl).toBe(
-      'https://bamakor.vercel.app/pay/success?t=11111111-1111-1111-1111-111111111111'
+      'https://bino.casa/pay/success?t=11111111-1111-1111-1111-111111111111'
     )
     expect(urls.failureUrl).toBe(
-      'https://bamakor.vercel.app/pay/failure?t=11111111-1111-1111-1111-111111111111'
+      'https://bino.casa/pay/failure?t=11111111-1111-1111-1111-111111111111'
     )
   })
 
   it('defaults success/failure without token when omitted', () => {
     const urls = defaultSuccessFailureUrls({})
-    expect(urls.successUrl).toBe('https://bamakor.vercel.app/pay/success')
-    expect(urls.failureUrl).toBe('https://bamakor.vercel.app/pay/failure')
+    expect(urls.successUrl).toBe('https://bino.casa/pay/success')
+    expect(urls.failureUrl).toBe('https://bino.casa/pay/failure')
   })
 
   it('requires Grow platform keys + tenant userId', () => {

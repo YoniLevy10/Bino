@@ -1,11 +1,19 @@
 /**
  * Canonical site URL for redirects / absolute links (prefer env in prod).
+ * Production origin: https://bino.casa (NEXT_PUBLIC_APP_URL on Vercel).
  */
 
 type HeaderLike = { get(name: string): string | null }
 
+function envSiteOrigin(): string {
+  if (typeof process === 'undefined') return ''
+  const fromSite = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/$/, '')
+  if (fromSite) return fromSite
+  return (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+}
+
 export function getPublicSiteUrlFromHeaders(headers?: HeaderLike): string {
-  const env = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') : ''
+  const env = envSiteOrigin()
   if (env) return env
 
   if (!headers) return ''
