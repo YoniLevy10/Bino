@@ -126,7 +126,7 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
 
   return (
     <div style={styles.wrap}>
-      <div style={styles.hero(colors, inShift)}>
+      <div className="lg-glass" style={styles.hero(colors, inShift)}>
         <div style={styles.heroTitle(colors)}>
           {inShift ? 'את/ה בעבודה עכשיו' : 'לא רשום/ה בעבודה'}
         </div>
@@ -137,7 +137,7 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
         </p>
       </div>
 
-      <div style={styles.card(colors)}>
+      <div className="lg-glass" style={styles.card()}>
         <div style={styles.instructionTitle(colors)}>מה עושים?</div>
         <ol style={styles.steps(colors)}>
           <li>מצמידים את הטלפון למדבקה בכניסה למשרד או לבניין</li>
@@ -157,18 +157,18 @@ export function WorkerAttendancePanel({ token, workerId, colors }: Props) {
         ) : null}
       </div>
 
-      <div style={styles.statsRow(colors)}>
-        <div style={styles.statBox(colors)}>
+      <div style={styles.statsRow}>
+        <div className="lg-glass" style={styles.statBox}>
           <div style={styles.statLabel(colors)}>היום</div>
           <div style={styles.statValue(colors)}>{formatShiftMinutes(todayMinutes)}</div>
         </div>
-        <div style={styles.statBox(colors)}>
+        <div className="lg-glass" style={styles.statBox}>
           <div style={styles.statLabel(colors)}>7 ימים</div>
           <div style={styles.statValue(colors)}>{formatShiftMinutes(weekMinutes)}</div>
         </div>
       </div>
 
-      <div style={styles.card(colors)}>
+      <div className="lg-glass" style={styles.card()}>
         <div style={styles.sectionHead}>
           <div style={styles.sectionTitle(colors)}>המשמרות שלי</div>
           {online ? (
@@ -212,9 +212,9 @@ const styles = {
   hero: (c: typeof theme.colors, active: boolean | undefined): CSSProperties => ({
     margin: '12px 16px',
     padding: '20px 18px',
-    borderRadius: 14,
-    background: active ? c.successMuted : c.surface,
-    border: `2px solid ${active ? c.success : c.border}`,
+    borderRadius: 16,
+    background: active ? c.successMuted : 'transparent',
+    border: active ? `1.5px solid ${c.success}` : 'none',
     textAlign: 'center',
   }),
   heroTitle: (c: typeof theme.colors): CSSProperties => ({
@@ -229,12 +229,12 @@ const styles = {
     lineHeight: 1.45,
     color: c.textPrimary,
   }),
-  card: (c: typeof theme.colors): CSSProperties => ({
+  card: (): CSSProperties => ({
     margin: '12px 16px',
     padding: 16,
-    borderRadius: 12,
-    border: `1px solid ${c.border}`,
-    background: c.surface,
+    borderRadius: 16,
+    border: 'none',
+    background: 'transparent',
   }),
   instructionTitle: (c: typeof theme.colors): CSSProperties => ({
     fontWeight: 700,
@@ -293,19 +293,19 @@ const styles = {
     fontSize: 13,
     color: c.textMuted,
   }),
-  statsRow: (c: typeof theme.colors): CSSProperties => ({
+  statsRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: 10,
     margin: '12px 16px',
-  }),
-  statBox: (c: typeof theme.colors): CSSProperties => ({
+  } as CSSProperties,
+  statBox: {
     padding: 14,
-    borderRadius: 12,
-    border: `1px solid ${c.border}`,
-    background: c.surface,
+    borderRadius: 16,
+    border: 'none',
+    background: 'transparent',
     textAlign: 'center',
-  }),
+  } as CSSProperties,
   statLabel: (c: typeof theme.colors): CSSProperties => ({
     fontSize: 13,
     color: c.textMuted,

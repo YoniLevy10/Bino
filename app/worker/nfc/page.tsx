@@ -106,8 +106,9 @@ function NfcScanInner() {
   const icon = phase === 'error' || phase === 'need_bind' ? '✕' : isSuccess ? '✓' : null
 
   return (
-    <div style={shell} dir="rtl">
-      <div style={box}>
+    <div style={shell} dir="rtl" data-worker-theme="light">
+      <div className="worker-ambient-wash" aria-hidden />
+      <div className="lg-glass" style={box}>
         {phase === 'loading' ? (
           <>
             <LoadingSpinner />
@@ -166,7 +167,8 @@ export default function WorkerNfcPage() {
   return (
     <Suspense
       fallback={
-        <div style={shell} dir="rtl">
+        <div style={shell} dir="rtl" data-worker-theme="light">
+          <div className="worker-ambient-wash" aria-hidden />
           <LoadingSpinner />
         </div>
       }
@@ -177,15 +179,19 @@ export default function WorkerNfcPage() {
 }
 
 const shell: CSSProperties = {
+  position: 'relative',
   minHeight: '100dvh',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: theme.colors.background,
+  background: 'transparent',
   padding: 24,
+  zIndex: 1,
 }
 
 const box: CSSProperties = {
+  position: 'relative',
+  zIndex: 1,
   maxWidth: 400,
   width: '100%',
   textAlign: 'center',
@@ -193,6 +199,8 @@ const box: CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   gap: 14,
+  padding: '28px 22px',
+  borderRadius: 24,
 }
 
 const bigIcon: CSSProperties = {
