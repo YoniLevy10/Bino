@@ -7,7 +7,7 @@
  * רשימת תקלות אחרונות, ומאפשר לפתוח תקלה חדשה ולעבור לפרטי תקלה ב-Drawer.
  *
  * ניווט:
- *  - "תקלה חדשה" → פותח AddTicketModal
+ *  - "תקלה חדשה" → פותח AddTicketModal (בדסקטופ כפתור בהירו; במובייל FAB צף שניתן לגרור)
  *  - לחיצה על שורת תקלה → פותח TicketDetailDrawer
  *  - ניווט בסרגל → /tickets, /projects, /workers, /residents, /qr, /summary, /settings
  */
@@ -65,6 +65,7 @@ import { useIsMobile } from '@/lib/use-is-mobile'
 import { removeTicketFromListState } from '@/lib/open-tickets'
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
 import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
+import { DraggableFab } from '../components/DraggableFab'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import {
   readTenantDashboardCache,
@@ -1168,14 +1169,11 @@ export default function DashboardPage() {
       />
 
       {isMobile && (
-        <button
-          type="button"
+        <DraggableFab
+          storageKey="bino.dashboard.addTicketFab"
+          ariaLabel="תקלה חדשה"
           onClick={() => setShowAddTicketModal(true)}
-          style={styles.fab}
-          aria-label="תקלה חדשה"
-        >
-          +
-        </button>
+        />
       )}
 
       <CloseTicketConfirmSheet
@@ -1241,23 +1239,6 @@ const styles: Record<string, CSSProperties> = {
   viewAllLink: { fontSize: '14px', fontWeight: 500, color: theme.colors.primary, textDecoration: 'none' },
   tableContainer: { overflowX: 'auto' },
   mobileCardList: { display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px 16px 20px' },
-  fab: {
-    position: 'fixed',
-    left: '20px',
-    bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
-    zIndex: 90,
-    width: '56px',
-    height: '56px',
-    borderRadius: '50%',
-    border: 'none',
-    background: theme.colors.primary,
-    color: '#fff',
-    fontSize: '28px',
-    fontWeight: 300,
-    lineHeight: 1,
-    cursor: 'pointer',
-    boxShadow: theme.shadows.lg,
-  },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'start', padding: '14px 20px', fontSize: '12px', fontWeight: 600, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${theme.colors.border}`, background: theme.colors.muted },
   tr: { cursor: 'pointer', transition: 'background 0.15s ease' },
