@@ -4,19 +4,32 @@ import { getLogger } from '@/lib/logging'
 import { markChargePaidByGrowIds } from '@/lib/collection-charge-ops'
 import { approveGrowTransaction } from '@/lib/grow-client'
 import { readGrowPlatformConfig } from '@/lib/grow-config'
-import { authorizeGrowWebhook, extractGrowWebhookIds } from '@/lib/grow-webhook'
+import {
+  authorizeGrowWebhook,
+  expandBracketFormKeys,
+  extractGrowWebhookIds,
+} from '@/lib/grow-webhook'
 
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()
   const rawBody = await req.text()
   if (!rawBody) return null
 
-  if (contentType.includes('application/x-www-form-urlencoded')) {
+  // Grow S2S: application/x-www-form-urlencoded with data[field] keys (verified via updateMyUrl).
+  if (
+    contentType.includes('application/x-www-form-urlencoded') ||
+    (!contentType.includes('application/json') &&
+      !contentType.includes('multipart/') &&
+      rawBody.includes('=') &&
+      !rawBody.trimStart().startsWith('{'))
+  ) {
     const params = new URLSearchParams(rawBody)
     const asObj: Record<string, string> = {}
     params.forEach((value, key) => {
       asObj[key] = value
     })
+    // Prefer expanded bracket tree; also keep JSON blobs if a single field holds JSON.
+    const expanded = expandBracketFormKeys(asObj)
     for (const value of Object.values(asObj)) {
       if (value.trim().startsWith('{')) {
         try {
@@ -26,7 +39,12 @@ async function parsePayload(req: Request): Promise<unknown> {
         }
       }
     }
-    return asObj
+    return expanded
+  }
+
+  if (contentType.includes('multipart/form-data')) {
+    // Rare; reconstruct from raw is hard — callers should use urlencoded.
+    // Fall through: try JSON, else return raw marker for logs.
   }
 
   try {
@@ -64,6 +82,7 @@ export async function POST(req: Request) {
       paid: ids.paid,
       paymentLinkIds: ids.paymentLinkIds.slice(0, 5),
       transactionIds: ids.transactionIds.slice(0, 5),
+      hasSum: Boolean(ids.sum),
     })
 
     if (!ids.paid) {
@@ -73,6 +92,8 @@ export async function POST(req: Request) {
     const admin = getSupabaseAdmin()
     const result = await markChargePaidByGrowIds(admin, ids)
 
+    // Always attempt approve when Grow sent transaction ids — also covers Grow retries
+    // after a prior mark-paid where approve previously failed.
     if (ids.transactionIds[0] && ids.transactionToken) {
       const approved = await approveGrowTransaction({
         transactionId: ids.transactionIds[0],
@@ -81,13 +102,18 @@ export async function POST(req: Request) {
         paymentType: ids.paymentType || undefined,
       })
       if (!approved.ok) {
-        logger.info('WEBHOOK', 'Grow approveTransaction did not confirm', {
+        logger.info('WEBHOOK', 'Grow approveTransaction did not confirm — charge kept paid for retry', {
           transactionId: ids.transactionIds[0],
+          matched: result.matched,
         })
       }
     }
 
-    return NextResponse.json({ ok: true, matched: result.matched })
+    return NextResponse.json({
+      ok: true,
+      matched: result.matched,
+      sumRejected: result.sumRejected,
+    })
   } catch (e) {
     logger.error('WEBHOOK', 'Grow webhook failed', e instanceof Error ? e : undefined)
     return NextResponse.json({ error: 'internal' }, { status: 500 })

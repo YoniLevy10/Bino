@@ -89,6 +89,13 @@ async function postGrowForm(
 function growErrorMessage(data: unknown, fallback: string): string {
   if (!data || typeof data !== 'object') return fallback
   const rec = data as Record<string, unknown>
+  // Grow often returns err as { id, message } (GetLink / createPaymentLink).
+  if (rec.err && typeof rec.err === 'object') {
+    const errObj = rec.err as { message?: unknown; id?: unknown }
+    if (typeof errObj.message === 'string' && errObj.message.trim()) {
+      return errObj.message.trim()
+    }
+  }
   if (typeof rec.err === 'string' && rec.err.trim()) return rec.err.trim()
   if (typeof rec.error === 'string' && rec.error.trim()) return rec.error.trim()
   if (typeof rec.message === 'string' && rec.message.trim()) return rec.message.trim()

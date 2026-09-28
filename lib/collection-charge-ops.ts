@@ -6,6 +6,7 @@ import {
   type ClientGrowPaymentsRow,
 } from '@/lib/grow-credentials'
 import { isGrowPlatformConfigured } from '@/lib/grow-config'
+import { growCallbackSumMatchesCharge } from '@/lib/grow-webhook'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { getPublicAppUrl } from '@/lib/public-app-url'
 import {
@@ -412,22 +413,49 @@ export async function markCollectionChargePaidManual(
 
 export async function markChargePaidByGrowIds(
   admin: SupabaseClient,
-  ids: { publicTokens: string[]; paymentLinkIds: string[]; transactionIds: string[] }
-): Promise<{ matched: number; newlyPaidIds: string[] }> {
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    transactionIds: string[]
+    sum?: string | null
+  }
+): Promise<{ matched: number; newlyPaidIds: string[]; sumRejected: number }> {
   const tokens = [...new Set(ids.publicTokens.filter(Boolean))]
   const linkIds = [...new Set(ids.paymentLinkIds.filter(Boolean))]
   const txIds = [...new Set(ids.transactionIds.filter(Boolean))]
   if (tokens.length === 0 && linkIds.length === 0 && txIds.length === 0) {
-    return { matched: 0, newlyPaidIds: [] }
+    return { matched: 0, newlyPaidIds: [], sumRejected: 0 }
   }
 
   let matched = 0
+  let sumRejected = 0
   const paidAt = nowIso()
   const newlyPaidIds: string[] = []
   const txPatch =
     txIds.length === 1 ? { grow_transaction_id: txIds[0] } : {}
 
   const applyPaid = async (filter: { column: string; values: string[] }) => {
+    const { data: candidates } = await admin
+      .from('collection_charges')
+      .select('id, amount, status')
+      .in(filter.column, filter.values)
+      .neq('status', 'paid')
+
+    const allowedIds: string[] = []
+    for (const row of candidates ?? []) {
+      if (!growCallbackSumMatchesCharge(ids.sum, row.amount)) {
+        sumRejected += 1
+        console.error('[grow-webhook] sum mismatch — refusing to mark paid', {
+          chargeId: row.id,
+          callbackSum: ids.sum,
+          chargeAmount: row.amount,
+        })
+        continue
+      }
+      allowedIds.push(row.id)
+    }
+    if (allowedIds.length === 0) return
+
     const { data } = await admin
       .from('collection_charges')
       .update({
@@ -436,7 +464,7 @@ export async function markChargePaidByGrowIds(
         updated_at: paidAt,
         ...txPatch,
       })
-      .in(filter.column, filter.values)
+      .in('id', allowedIds)
       .neq('status', 'paid')
       .select('id')
     matched += data?.length ?? 0
@@ -452,5 +480,5 @@ export async function markChargePaidByGrowIds(
     void sendCollectionReceiptEmailIfNeeded(admin, id).catch(() => {})
   }
 
-  return { matched, newlyPaidIds }
+  return { matched, newlyPaidIds, sumRejected }
 }
