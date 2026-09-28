@@ -9,9 +9,9 @@ function CollectionsPageInner() {
   return (
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.collections}
-      title="גביית ועד"
-      mobileSubtitle="מי שילם / מי לא — ושליחה מרוכזת"
-      desktopSubtitle="מעקב תשלומים, שליחה מרוכזת וקישורי תשלום דרך Grow"
+      title="גבייה"
+      mobileSubtitle="כסף שנכנס · ממתינים · שליחה"
+      desktopSubtitle="דשבורד גבייה — כמה נגבה, מה פתוח, ושליחה לדיירים"
     >
       <CollectionsBoard />
     </AddonFeaturePageShell>

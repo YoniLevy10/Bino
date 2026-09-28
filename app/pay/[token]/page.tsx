@@ -4,6 +4,10 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import {
+  residentSafeDescription,
+  residentSafeTitle,
+} from '@/lib/resident-safe-description'
 
 type PayPayload = {
   title: string
@@ -25,14 +29,6 @@ type PayPayload = {
   resident_name: string | null
   apartment_number: string | null
   project_name: string | null
-}
-
-const STATUS_HE: Record<string, string> = {
-  draft: 'ממתין לשליחה',
-  sent: 'ממתין לתשלום',
-  paid: 'שולם',
-  failed: 'נכשל',
-  cancelled: 'בוטל',
 }
 
 declare global {
@@ -63,14 +59,16 @@ function loadGrowSdk(): Promise<void> {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${GROW_SDK_SRC}"]`)
     if (existing) {
       existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error('טעינת SDK נכשלה')), { once: true })
+      existing.addEventListener('error', () => reject(new Error('טעינת תשלום נכשלה')), {
+        once: true,
+      })
       return
     }
     const s = document.createElement('script')
     s.src = GROW_SDK_SRC
     s.async = true
     s.onload = () => resolve()
-    s.onerror = () => reject(new Error('טעינת SDK נכשלה'))
+    s.onerror = () => reject(new Error('טעינת תשלום נכשלה'))
     document.head.appendChild(s)
   })
 }
@@ -145,13 +143,12 @@ export default function PublicPayPage() {
       void refreshStatus().then((row) => {
         if (row?.status === 'paid') {
           if (pollRef.current) clearInterval(pollRef.current)
-          setWalletHint('התשלום אושר בשרת.')
           router.push(`/pay/success?t=${encodeURIComponent(token)}`)
         }
       })
       if (ticks >= 40 && pollRef.current) {
         clearInterval(pollRef.current)
-        setWalletHint('ממתינים לאישור מהשרת… אם שילמתם — רעננו בעוד רגע.')
+        setWalletHint('אם שילמתם — אפשר לרענן בעוד רגע.')
       }
     }, 3000)
   }
@@ -196,6 +193,7 @@ export default function PublicPayPage() {
     e.preventDefault()
     if (!data?.payment_url || !token) return
     setFormError(null)
+    setWalletHint(null)
 
     if (!acceptedTerms) {
       setFormError('יש לאשר את התקנון לפני המשך לתשלום')
@@ -218,7 +216,7 @@ export default function PublicPayPage() {
       return
     }
     if (!phone.trim()) {
-      setFormError('נדרש מספר טלפון לפתיחת הארנק')
+      setFormError('נדרש מספר טלפון לתשלום')
       return
     }
 
@@ -245,16 +243,15 @@ export default function PublicPayPage() {
         error?: string
         authCode?: string
         sdkEnvironment?: 'DEV' | 'PRODUCTION'
-        doNotMarkPaidClientSide?: boolean
       }
       if (!res.ok || !json.authCode) {
-        setFormError(json.error || 'פתיחת הארנק נכשלה')
+        setFormError(json.error || 'פתיחת התשלום נכשלה')
         setWalletBusy(false)
         return
       }
 
       if (!window.growPayment) {
-        setFormError('SDK של Grow לא נטען')
+        setFormError('לא ניתן לפתוח תשלום כרגע')
         setWalletBusy(false)
         return
       }
@@ -265,8 +262,7 @@ export default function PublicPayPage() {
           version: '1',
           events: {
             onSuccess: () => {
-              // Never mark paid client-side — only S2S webhook does.
-              setWalletHint('התשלום התקבל ב-Grow. ממתינים לאישור בשרת…')
+              setWalletHint('התשלום התקבל. מעדכנים…')
               startPaidPoll()
             },
             onFailure: () => {
@@ -274,11 +270,11 @@ export default function PublicPayPage() {
               setWalletBusy(false)
             },
             onError: () => {
-              setWalletHint('שגיאה בארנק התשלום.')
+              setWalletHint('אירעה שגיאה בתשלום.')
               setWalletBusy(false)
             },
             onTimeout: () => {
-              setWalletHint('פג הזמן בארנק. אפשר לנסות שוב.')
+              setWalletHint('פג הזמן. אפשר לנסות שוב.')
               setWalletBusy(false)
             },
             onWalletChange: () => {},
@@ -288,9 +284,9 @@ export default function PublicPayPage() {
       }
 
       window.growPayment.renderPaymentOptions(json.authCode)
-      setWalletHint('בחרו אמצעי תשלום בחלון Grow. הסטטוס «שולם» יתעדכן רק אחרי אישור השרת.')
+      setWalletHint(null)
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'פתיחת ארנק נכשלה')
+      setFormError(e instanceof Error ? e.message : 'פתיחת תשלום נכשלה')
     } finally {
       setWalletBusy(false)
     }
@@ -299,7 +295,7 @@ export default function PublicPayPage() {
   if (loading) {
     return (
       <main dir="rtl" style={styles.shell}>
-        <p style={{ color: '#64748b' }}>טוען...</p>
+        <p style={{ color: '#94a3b8' }}>טוען…</p>
       </main>
     )
   }
@@ -307,8 +303,8 @@ export default function PublicPayPage() {
   if (error || !data) {
     return (
       <main dir="rtl" style={styles.shell}>
-        <div style={styles.panel}>
-          <p style={styles.brand}>Bino</p>
+        <div style={styles.card}>
+          <p style={styles.brandMark}>Bino</p>
           <h1 style={styles.title}>לא ניתן להציג את החיוב</h1>
           <p style={styles.sub}>{error || 'שגיאה'}</p>
         </div>
@@ -317,131 +313,146 @@ export default function PublicPayPage() {
   }
 
   const showPayForm = data.can_pay || data.can_wallet_pay
+  const description = residentSafeDescription(data.description)
+  const title = residentSafeTitle(data.title)
+  const clientName = data.client.name || 'ועד הבית'
+  const locationLine = [data.project_name, data.apartment_number ? `דירה ${data.apartment_number}` : null]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <main dir="rtl" style={styles.shell}>
-      <div style={styles.panel}>
-        {data.client.logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.client.logo_url} alt="" style={styles.logo} />
-        ) : null}
-        <p style={styles.brand}>{data.client.name || 'Bino'}</p>
-        <h1 style={styles.title}>{data.title}</h1>
-        <p style={styles.amount}>{data.amount_label}</p>
-        {(data.resident_name || data.apartment_number || data.project_name) && (
-          <p style={styles.meta}>
-            {[
-              data.resident_name,
-              data.apartment_number ? `דירה ${data.apartment_number}` : null,
-              data.project_name,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        )}
-        {data.description ? <p style={styles.sub}>{data.description}</p> : null}
-        <p style={styles.status}>סטטוס: {STATUS_HE[data.status] || data.status}</p>
+      <div style={styles.card}>
+        <div style={styles.heroBand}>
+          {data.client.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.client.logo_url} alt="" style={styles.logo} />
+          ) : (
+            <div style={styles.logoFallback}>{clientName.slice(0, 1)}</div>
+          )}
+          <p style={styles.brand}>{clientName}</p>
+          <h1 style={styles.heroTitle}>{title}</h1>
+          <p style={styles.amount}>{data.amount_label}</p>
+          {(data.resident_name || locationLine) && (
+            <p style={styles.meta}>
+              {[data.resident_name, locationLine].filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </div>
 
-        {showPayForm ? (
-          <form onSubmit={(e) => void continueToPay(e)} style={styles.form}>
-            <p style={styles.formLead}>
-              אישור התשלום יישלח <strong>במייל</strong> (בלי SMS) — חסכוני ונוח.
-            </p>
-            <label style={styles.checkLabel}>
-              <input
-                type="checkbox"
-                checked={wantReceipt}
-                onChange={(ev) => setWantReceipt(ev.target.checked)}
-              />
-              שלחו לי אישור תשלום במייל
-            </label>
-            <label style={styles.fieldLabel}>
-              מייל לקבלה
-              <input
-                type="email"
-                value={email}
-                onChange={(ev) => setEmail(ev.target.value)}
-                style={styles.input}
-                placeholder="name@example.com"
-                dir="ltr"
-                autoComplete="email"
-              />
-            </label>
-            <label style={styles.fieldLabel}>
-              טלפון (נדרש לארנק)
-              <input
-                type="tel"
-                value={phone}
-                onChange={(ev) => setPhone(ev.target.value)}
-                style={styles.input}
-                placeholder="05xxxxxxxx"
-                dir="ltr"
-                autoComplete="tel"
-              />
-            </label>
-            <label style={styles.checkLabel}>
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(ev) => setAcceptedTerms(ev.target.checked)}
-                required
-              />
-              <span>
-                קראתי ואני מאשר/ת את{' '}
-                <Link href="/terms" target="_blank" rel="noopener noreferrer" style={styles.inlineLink}>
-                  התקנון
-                </Link>{' '}
-                ואת{' '}
-                <Link href="/privacy" target="_blank" rel="noopener noreferrer" style={styles.inlineLink}>
-                  מדיניות הפרטיות
+        <div style={styles.body}>
+          {description ? <p style={styles.sub}>{description}</p> : null}
+
+          {data.status === 'paid' ? (
+            <div style={styles.paidBox}>
+              <p style={styles.paidTitle}>התשלום התקבל. תודה!</p>
+              {data.receipt_email_sent ? (
+                <p style={styles.metaDark}>אישור נשלח למייל.</p>
+              ) : data.receipt_email ? (
+                <p style={styles.metaDark}>אישור במייל בדרך אליכם.</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showPayForm ? (
+            <form onSubmit={(e) => void continueToPay(e)} style={styles.form}>
+              <label style={styles.checkLabel}>
+                <input
+                  type="checkbox"
+                  checked={wantReceipt}
+                  onChange={(ev) => setWantReceipt(ev.target.checked)}
+                />
+                שלחו לי אישור תשלום במייל
+              </label>
+              {wantReceipt ? (
+                <label style={styles.fieldLabel}>
+                  מייל
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(ev) => setEmail(ev.target.value)}
+                    style={styles.input}
+                    placeholder="name@example.com"
+                    dir="ltr"
+                    autoComplete="email"
+                  />
+                </label>
+              ) : null}
+              <label style={styles.fieldLabel}>
+                טלפון
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(ev) => setPhone(ev.target.value)}
+                  style={styles.input}
+                  placeholder="05xxxxxxxx"
+                  dir="ltr"
+                  autoComplete="tel"
+                />
+              </label>
+              <label style={styles.checkLabel}>
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(ev) => setAcceptedTerms(ev.target.checked)}
+                  required
+                />
+                <span>
+                  קראתי ואני מאשר/ת את{' '}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.inlineLink}
+                  >
+                    התקנון
+                  </Link>{' '}
+                  ואת{' '}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.inlineLink}
+                  >
+                    מדיניות הפרטיות
+                  </Link>
+                </span>
+              </label>
+
+              {formError ? <p style={styles.formErr}>{formError}</p> : null}
+              {walletHint ? <p style={styles.walletHint}>{walletHint}</p> : null}
+
+              {data.can_pay && data.payment_url ? (
+                <button
+                  type="submit"
+                  style={styles.ctaBtn}
+                  disabled={saving || walletBusy || !acceptedTerms}
+                >
+                  {saving ? 'שומר…' : 'לתשלום מאובטח'}
+                </button>
+              ) : null}
+
+              {data.can_wallet_pay ? (
+                <button
+                  type="button"
+                  style={data.can_pay && data.payment_url ? styles.secondaryBtn : styles.ctaBtn}
+                  disabled={saving || walletBusy || !acceptedTerms}
+                  onClick={() => void openWallet()}
+                >
+                  {walletBusy ? 'פותח…' : 'תשלום מהיר'}
+                </button>
+              ) : null}
+
+              <p style={styles.legalLinks}>
+                <Link href="/contact" style={styles.inlineLink}>
+                  יצירת קשר
                 </Link>
-              </span>
-            </label>
-            <p style={styles.legalLinks}>
-              <Link href="/contact" style={styles.inlineLink}>
-                יצירת קשר
-              </Link>
-              {' · '}
-              <Link href="/vaad-pay" style={styles.inlineLink}>
-                על השירות
-              </Link>
-            </p>
-            {formError ? <p style={styles.formErr}>{formError}</p> : null}
-            {walletHint ? <p style={styles.walletHint}>{walletHint}</p> : null}
-            {data.can_wallet_pay ? (
-              <button
-                type="button"
-                style={styles.ctaBtn}
-                disabled={saving || walletBusy || !acceptedTerms}
-                onClick={() => void openWallet()}
-              >
-                {walletBusy ? 'פותח ארנק…' : 'תשלום בארנק (כרטיס / ביט / Apple Pay)'}
-              </button>
-            ) : null}
-            {data.can_pay && data.payment_url ? (
-              <button
-                type="submit"
-                style={data.can_wallet_pay ? styles.secondaryBtn : styles.ctaBtn}
-                disabled={saving || walletBusy || !acceptedTerms}
-              >
-                {saving ? 'שומר…' : 'המשך לקישור תשלום מאובטח'}
-              </button>
-            ) : null}
-          </form>
-        ) : data.status === 'paid' ? (
-          <div>
-            <p style={{ ...styles.sub, color: '#15803d', fontWeight: 600 }}>
-              התשלום כבר התקבל. תודה!
-            </p>
-            {data.receipt_email_sent ? (
-              <p style={styles.meta}>אישור נשלח למייל.</p>
-            ) : data.receipt_email ? (
-              <p style={styles.meta}>אישור במייל בדרך אליכם.</p>
-            ) : null}
-          </div>
-        ) : (
-          <p style={styles.sub}>אין אפשרות תשלום פעילה לחיוב זה.</p>
-        )}
+              </p>
+            </form>
+          ) : data.status !== 'paid' ? (
+            <p style={styles.sub}>אין אפשרות תשלום פעילה לחיוב זה.</p>
+          ) : null}
+        </div>
       </div>
     </main>
   )
@@ -453,56 +464,107 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    background: 'linear-gradient(165deg, #eff6ff 0%, #f8fafc 45%, #e2e8f0 100%)',
-    fontFamily: 'Heebo, Arial, sans-serif',
+    padding: 20,
+    background:
+      'radial-gradient(1200px 500px at 80% -10%, rgba(56,189,248,0.18), transparent 55%), linear-gradient(165deg, #0f2744 0%, #1e3a5f 42%, #e8eef5 42%, #f8fafc 100%)',
+    fontFamily: 'var(--font-heebo), Heebo, Arial, sans-serif',
   },
-  panel: {
+  card: {
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 420,
+    borderRadius: 22,
+    overflow: 'hidden',
+    background: '#fff',
+    boxShadow: '0 18px 50px rgba(15, 39, 68, 0.22)',
+  },
+  heroBand: {
+    padding: '28px 24px 22px',
     textAlign: 'center',
+    background: 'linear-gradient(150deg, #0f2744 0%, #1e3a5f 100%)',
+    color: '#f8fafc',
+  },
+  body: {
+    padding: '20px 22px 24px',
   },
   logo: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     objectFit: 'contain',
     marginBottom: 12,
-    borderRadius: 12,
+    borderRadius: 14,
+    background: '#fff',
+  },
+  logoFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    margin: '0 auto 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(255,255,255,0.12)',
+    color: '#fff',
+    fontWeight: 800,
+    fontSize: 22,
+  },
+  brandMark: {
+    margin: '0 0 8px',
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#1e3a5f',
+    textAlign: 'center',
   },
   brand: {
     margin: '0 0 8px',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 700,
-    color: '#1e3a5f',
     letterSpacing: '0.02em',
+    opacity: 0.9,
+  },
+  heroTitle: {
+    margin: '0 0 10px',
+    fontSize: 24,
+    fontWeight: 700,
+    lineHeight: 1.3,
   },
   title: {
     margin: '0 0 12px',
-    fontSize: 26,
+    fontSize: 24,
     color: '#0f172a',
-    lineHeight: 1.35,
+    textAlign: 'center',
   },
   amount: {
-    margin: '0 0 12px',
-    fontSize: 36,
+    margin: '0 0 8px',
+    fontSize: 40,
     fontWeight: 800,
-    color: '#0f172a',
+    letterSpacing: '-0.02em',
   },
   meta: {
-    margin: '0 0 8px',
+    margin: 0,
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  metaDark: {
+    margin: '6px 0 0',
     fontSize: 14,
     color: '#475569',
   },
   sub: {
-    margin: '0 0 16px',
+    margin: '0 0 14px',
     fontSize: 15,
     color: '#64748b',
-    lineHeight: 1.6,
+    lineHeight: 1.55,
+    textAlign: 'center',
   },
-  status: {
-    margin: '0 0 24px',
-    fontSize: 13,
-    color: '#64748b',
+  paidBox: {
+    textAlign: 'center',
+    padding: '8px 0 4px',
+  },
+  paidTitle: {
+    margin: 0,
+    color: '#15803d',
+    fontWeight: 700,
+    fontSize: 17,
   },
   form: {
     textAlign: 'right',
@@ -510,20 +572,14 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 12,
   },
-  formLead: {
-    margin: 0,
-    fontSize: 14,
-    color: '#334155',
-    lineHeight: 1.5,
-    textAlign: 'center',
-  },
   checkLabel: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
     fontSize: 14,
     color: '#0f172a',
     fontWeight: 600,
+    lineHeight: 1.4,
   },
   fieldLabel: {
     display: 'flex',
@@ -535,10 +591,11 @@ const styles: Record<string, CSSProperties> = {
   },
   input: {
     padding: '12px 14px',
-    borderRadius: 10,
+    borderRadius: 12,
     border: '1px solid #cbd5e1',
     fontSize: 16,
     fontFamily: 'inherit',
+    background: '#f8fafc',
   },
   formErr: {
     margin: 0,
@@ -559,7 +616,7 @@ const styles: Record<string, CSSProperties> = {
     textDecoration: 'underline',
   },
   legalLinks: {
-    margin: 0,
+    margin: '4px 0 0',
     fontSize: 13,
     textAlign: 'center',
     color: '#64748b',
@@ -567,12 +624,12 @@ const styles: Record<string, CSSProperties> = {
   ctaBtn: {
     display: 'block',
     width: '100%',
-    padding: '14px 28px',
+    padding: '15px 28px',
     background: '#1e40af',
     color: '#fff',
-    borderRadius: 12,
+    borderRadius: 14,
     fontWeight: 700,
-    fontSize: 16,
+    fontSize: 17,
     border: 'none',
     cursor: 'pointer',
     marginTop: 4,
@@ -583,11 +640,10 @@ const styles: Record<string, CSSProperties> = {
     padding: '12px 28px',
     background: 'transparent',
     color: '#1e40af',
-    borderRadius: 12,
+    borderRadius: 14,
     fontWeight: 700,
     fontSize: 15,
     border: '1px solid #93c5fd',
     cursor: 'pointer',
-    marginTop: 4,
   },
 }
