@@ -20,7 +20,6 @@ import {
 } from '@/lib/collection-charges'
 import {
   Button,
-  Card,
   Drawer,
   EmptyState,
   LoadingSpinner,
@@ -43,6 +42,15 @@ type SummaryChips = {
   paid: number
   pending: number
   failed: number
+}
+
+type MoneySummary = {
+  collected: number
+  outstanding: number
+  billed: number
+  collection_rate: number
+  open_count: number
+  paid_count: number
 }
 
 type BulkPreviewRow = ResidentOption & { amount: string; selected: boolean }
@@ -81,6 +89,14 @@ export function CollectionsBoard() {
   )
   const [items, setItems] = useState<CollectionChargeListItem[]>([])
   const [chips, setChips] = useState<SummaryChips>({ sent: 0, paid: 0, pending: 0, failed: 0 })
+  const [money, setMoney] = useState<MoneySummary>({
+    collected: 0,
+    outstanding: 0,
+    billed: 0,
+    collection_rate: 0,
+    open_count: 0,
+    paid_count: 0,
+  })
 
   const [projectFilter, setProjectFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -183,9 +199,11 @@ export function CollectionsBoard() {
 
     const sumJson = (await sumRes.json().catch(() => ({}))) as {
       chips?: SummaryChips
+      money?: MoneySummary
       error?: string
     }
     if (sumRes.ok && sumJson.chips) setChips(sumJson.chips)
+    if (sumRes.ok && sumJson.money) setMoney(sumJson.money)
   }, [periodFilter, projectFilter, searchTerm, statusFilter])
 
   // Resolve clientId (via hook) then parallel: account-status + charges + summary
@@ -488,18 +506,6 @@ export function CollectionsBoard() {
     }
   }
 
-  const statusOptions = useMemo(
-    () => [
-      { label: 'הכל', value: 'all' },
-      { label: 'טיוטה', value: 'draft' },
-      { label: 'נשלח', value: 'sent' },
-      { label: 'שולם', value: 'paid' },
-      { label: 'נכשל', value: 'failed' },
-      { label: 'בוטל', value: 'cancelled' },
-    ],
-    []
-  )
-
   const projectOptions = useMemo(
     () => [
       { label: 'כל הבניינים', value: '' },
@@ -516,74 +522,109 @@ export function CollectionsBoard() {
     )
   }
 
+  const statusTabs: { label: string; value: string; count?: number }[] = [
+    { label: 'הכל', value: 'all' },
+    { label: 'ממתינים', value: 'sent', count: chips.pending },
+    { label: 'שולם', value: 'paid', count: chips.paid },
+    { label: 'טיוטה', value: 'draft' },
+    { label: 'נכשל', value: 'failed', count: chips.failed },
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={styles.page}>
       {accountReady === false ? (
-        <Card>
-          <div style={{ padding: 4 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>חסר חשבון Grow</div>
-            <p style={{ margin: '0 0 12px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
-              {accountMessage ||
-                'פתחו חשבון ב-Grow, הדביקו את ה-userId בהגדרות והפעילו חיבור. הכסף נכנס לחשבון שלכם.'}
-            </p>
-            <Link href="/settings?tab=grow">
-              <Button>להגדרת החשבון שלי</Button>
-            </Link>
-          </div>
-        </Card>
+        <div style={styles.alertBox}>
+          <div style={styles.alertTitle}>חסר חשבון Grow</div>
+          <p style={styles.alertText}>
+            {accountMessage ||
+              'פתחו חשבון ב-Grow, הדביקו את ה-userId בהגדרות והפעילו חיבור. הכסף נכנס לחשבון שלכם.'}
+          </p>
+          <Link href="/settings?tab=grow">
+            <Button>להגדרת החשבון</Button>
+          </Link>
+        </div>
       ) : null}
 
       {accountReady === true && growLegalReady === false ? (
-        <Card>
-          <div style={{ padding: 4 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>פרטי עסק ל־Grow עדיין חסרים</div>
-            <p style={{ margin: '0 0 12px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
-              אפשר ליצור חיובים. מלאו שם, טלפון וכתובת בהגדרות כדי שעמוד העסק הציבורי יהיה מלא.
-              הכסף נשאר בחשבון Grow שלכם.
-            </p>
-            <Link href="/settings?tab=grow">
-              <Button variant="secondary">לפרטי העסק</Button>
-            </Link>
-          </div>
-        </Card>
+        <div style={styles.alertSoft}>
+          <span style={{ flex: 1, fontSize: 13, lineHeight: 1.45 }}>
+            פרטי עסק חלקיים — מלאו שם/טלפון/כתובת בהגדרות.
+          </span>
+          <Link href="/settings?tab=grow" style={styles.settingsLink}>
+            להשלמה
+          </Link>
+        </div>
       ) : null}
 
-      <div
-        style={{
-          ...styles.toolbar,
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'stretch' : 'center',
-        }}
-      >
-        <Button onClick={() => void openBulk()} disabled={accountReady === false}>
-          שליחה מרוכזת לבניין
+      <section style={styles.hero}>
+        <div style={styles.heroTop}>
+          <div>
+            <div style={styles.heroEyebrow}>נגבה עד כה</div>
+            <div style={styles.heroAmount}>{formatChargeAmountIls(money.collected)}</div>
+            <div style={styles.heroSub}>
+              מתוך {formatChargeAmountIls(money.billed)} · {money.collection_rate}% גבייה
+            </div>
+          </div>
+          <button type="button" style={styles.refreshBtn} onClick={() => void refresh()}>
+            רענון
+          </button>
+        </div>
+        <div style={styles.kpiRow}>
+          <div style={styles.kpi}>
+            <div style={styles.kpiLabel}>ממתין לתשלום</div>
+            <div style={{ ...styles.kpiValue, color: '#b45309' }}>
+              {formatChargeAmountIls(money.outstanding)}
+            </div>
+            <div style={styles.kpiHint}>{money.open_count} חיובים פתוחים</div>
+          </div>
+          <div style={styles.kpi}>
+            <div style={styles.kpiLabel}>שולמו</div>
+            <div style={{ ...styles.kpiValue, color: '#15803d' }}>{money.paid_count}</div>
+            <div style={styles.kpiHint}>אישורי תשלום</div>
+          </div>
+        </div>
+      </section>
+
+      <div style={styles.primaryActions}>
+        <Button
+          onClick={() => void openBulk()}
+          disabled={accountReady === false}
+          style={{ flex: 1, minHeight: 48 }}
+        >
+          שליחה לבניין
         </Button>
         <Button
           variant="secondary"
           onClick={() => void openCreate()}
           disabled={accountReady === false}
+          style={{ flex: 1, minHeight: 48 }}
         >
           חיוב בודד
         </Button>
-        <Button variant="secondary" onClick={() => void refresh()}>
-          רענון
-        </Button>
-        <Link
-          href="/settings?tab=grow"
-          style={{
-            ...styles.settingsLink,
-            marginInlineStart: isMobile ? 0 : 'auto',
-          }}
-        >
-          הגדרות Grow
-        </Link>
       </div>
 
-      <div style={{ ...styles.chips, flexDirection: isMobile ? 'column' : 'row' }}>
-        <Chip label="נשלחו" value={chips.sent} color="#2563eb" />
-        <Chip label="שולמו" value={chips.paid} color="#16a34a" />
-        <Chip label="ממתינים" value={chips.pending} color="#ca8a04" />
-        <Chip label="נכשלו" value={chips.failed} color="#dc2626" />
+      <div style={styles.statusTabs} role="tablist" aria-label="סינון סטטוס">
+        {statusTabs.map((tab) => {
+          const active = statusFilter === tab.value
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setStatusFilter(tab.value)}
+              style={{
+                ...styles.statusTab,
+                ...(active ? styles.statusTabActive : null),
+              }}
+            >
+              {tab.label}
+              {typeof tab.count === 'number' ? (
+                <span style={styles.statusCount}>{tab.count}</span>
+              ) : null}
+            </button>
+          )
+        })}
       </div>
 
       <div style={{ ...styles.filters, flexDirection: isMobile ? 'column' : 'row' }}>
@@ -593,30 +634,24 @@ export function CollectionsBoard() {
           options={projectOptions}
           style={{ minWidth: isMobile ? '100%' : 180 }}
         />
-        <Select
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={statusOptions}
-          style={{ minWidth: isMobile ? '100%' : 140 }}
-        />
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
           placeholder="חיפוש שם / דירה / טלפון"
-          style={{ flex: 1, maxWidth: isMobile ? '100%' : 320 }}
+          style={{ flex: 1, width: '100%' }}
         />
         <input
           value={periodFilter}
           onChange={(e) => setPeriodFilter(e.target.value)}
           placeholder="תקופה (למשל 2026-07)"
-          style={styles.textInput}
+          style={{ ...styles.textInput, maxWidth: isMobile ? '100%' : 180 }}
         />
       </div>
 
       {items.length === 0 ? (
         <EmptyState
           title="אין חיובים להצגה"
-          description="התחילו בשליחה מרוכזת לבניין — או צרו חיוב בודד."
+          description="התחילו בשליחה לבניין — או צרו חיוב בודד."
         />
       ) : (
         <div style={styles.list}>
@@ -624,165 +659,172 @@ export function CollectionsBoard() {
             const status = row.status as CollectionChargeStatus
             const color = COLLECTION_CHARGE_STATUS_COLORS[status] || '#64748b'
             const busy = busyId === row.id
+            const primarySend = status === 'draft' || status === 'failed'
+            const canResend = status === 'sent' || status === 'draft'
             return (
-              <Card key={row.id} noPadding>
-                <div style={styles.cardInner}>
-                  <div style={styles.cardTop}>
-                    <div>
-                      <div style={styles.cardName}>
-                        {row.residents?.full_name || 'דייר'}
-                        {row.residents?.apartment_number
-                          ? ` · דירה ${row.residents.apartment_number}`
-                          : ''}
-                      </div>
-                      <div style={styles.cardMeta}>
-                        {row.projects?.name || '—'} · {row.title}
-                        {row.period_label ? ` · ${row.period_label}` : ''}
-                      </div>
+              <article key={row.id} style={styles.row}>
+                <div style={styles.rowMain}>
+                  <div style={styles.rowText}>
+                    <div style={styles.cardName}>
+                      {row.residents?.full_name || 'דייר'}
+                      {row.residents?.apartment_number
+                        ? ` · דירה ${row.residents.apartment_number}`
+                        : ''}
                     </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={styles.amount}>{formatChargeAmountIls(Number(row.amount))}</div>
-                      <span
-                        style={{
-                          ...styles.badge,
-                          background: `${color}22`,
-                          color,
-                        }}
-                      >
-                        {COLLECTION_CHARGE_STATUS_LABELS[status] || status}
-                      </span>
+                    <div style={styles.cardMeta}>
+                      {row.projects?.name || '—'}
+                      {row.period_label ? ` · ${row.period_label}` : ''}
+                      {' · '}
+                      {row.title}
+                    </div>
+                    <div style={styles.cardDates}>
+                      {status === 'paid'
+                        ? `שולם ${formatDateHe(row.paid_at)}`
+                        : `נשלח ${formatDateHe(row.sent_at)}`}
+                      {status === 'paid' && row.grow_approve_status === 'ok'
+                        ? ' · אושר ב-Grow'
+                        : ''}
+                      {status === 'paid' && row.grow_approve_status === 'failed'
+                        ? ' · ממתין לאישור Grow'
+                        : ''}
                     </div>
                   </div>
-                  <div style={styles.cardDates}>
-                    נשלח: {formatDateHe(row.sent_at)} · שולם: {formatDateHe(row.paid_at)}
+                  <div style={styles.rowMoney}>
+                    <div style={styles.amount}>{formatChargeAmountIls(Number(row.amount))}</div>
+                    <span style={{ ...styles.badge, background: `${color}18`, color }}>
+                      {COLLECTION_CHARGE_STATUS_LABELS[status] || status}
+                    </span>
                   </div>
-                  <div style={{ ...styles.actions, flexWrap: 'wrap' }}>
+                </div>
+
+                <div style={styles.actions}>
+                  {primarySend ? (
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() =>
+                        void postChargeAction(
+                          '/api/collections/charges/send',
+                          row.id,
+                          'נשלח לתשלום'
+                        )
+                      }
+                    >
+                      שלח לתשלום
+                    </Button>
+                  ) : null}
+                  {status === 'sent' ? (
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void copyPayLink(row)}
+                    >
+                      העתק קישור
+                    </Button>
+                  ) : (
                     <Button
                       size="sm"
                       variant="secondary"
                       disabled={busy}
                       onClick={() => void copyPayLink(row)}
                     >
-                      העתק קישור
+                      קישור
                     </Button>
-                    {(status === 'draft' || status === 'failed') && (
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() =>
-                          void postChargeAction(
-                            '/api/collections/charges/send',
-                            row.id,
-                            'נשלח לתשלום'
+                  )}
+                  {canResend && status === 'sent' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        void postChargeAction(
+                          '/api/collections/charges/resend',
+                          row.id,
+                          'SMS נשלח מחדש'
+                        )
+                      }
+                    >
+                      SMS
+                    </Button>
+                  ) : null}
+                  {status === 'paid' && row.grow_approve_status === 'failed' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        void postChargeAction(
+                          '/api/collections/charges/retry-approve',
+                          row.id,
+                          'אישור העסקה ב-Grow הצליח'
+                        )
+                      }
+                    >
+                      אשר שוב
+                    </Button>
+                  ) : null}
+                  {status !== 'paid' && status !== 'cancelled' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        void postChargeAction(
+                          '/api/collections/charges/cancel',
+                          row.id,
+                          'החיוב בוטל וקישור Bino בוטל'
+                        )
+                      }
+                    >
+                      בטל
+                    </Button>
+                  ) : null}
+                  {status !== 'paid' && status !== 'cancelled' && status !== 'draft' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            'לסמן כשולם ידנית? רק אם הדייר שילם והסטטוס לא התעדכן.'
                           )
+                        ) {
+                          return
                         }
-                      >
-                        שלח
-                      </Button>
-                    )}
-                    {(status === 'sent' || status === 'draft') && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={busy}
-                        onClick={() =>
-                          void postChargeAction(
-                            '/api/collections/charges/resend',
-                            row.id,
-                            'SMS נשלח מחדש'
-                          )
-                        }
-                      >
-                        שלח SMS שוב
-                      </Button>
-                    )}
-                    {status !== 'paid' && status !== 'cancelled' && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={busy}
-                        onClick={() =>
-                          void postChargeAction(
-                            '/api/collections/charges/cancel',
-                            row.id,
-                            'החיוב בוטל וקישור Bino בוטל'
-                          )
-                        }
-                      >
-                        בטל
-                      </Button>
-                    )}
-                    {status !== 'paid' && status !== 'cancelled' && status !== 'draft' && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={busy}
-                        onClick={() => {
-                          if (
-                            !window.confirm(
-                              'לסמן את החיוב כשולם ידנית? השתמשו רק אם הדייר שילם והסטטוס לא התעדכן אוטומטית.'
-                            )
-                          ) {
-                            return
-                          }
-                          void postChargeAction(
-                            '/api/collections/charges/mark-paid',
-                            row.id,
-                            'סומן כשולם'
-                          )
-                        }}
-                      >
-                        סמן כשולם
-                      </Button>
-                    )}
-                    {status === 'paid' && row.grow_approve_status === 'failed' && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={busy}
-                        onClick={() =>
-                          void postChargeAction(
-                            '/api/collections/charges/retry-approve',
-                            row.id,
-                            'אישור העסקה ב-Grow הצליח'
-                          )
-                        }
-                      >
-                        נסה לאשר עסקה שוב
-                      </Button>
-                    )}
-                    {status === 'paid' && row.grow_approve_status === 'failed' && row.grow_approve_last_error ? (
-                      <span style={{ ...styles.docId, color: '#c2410c' }}>
-                        Approve: {row.grow_approve_last_error.slice(0, 60)}
-                      </span>
-                    ) : null}
-                    {status === 'paid' && row.grow_approve_status === 'ok' ? (
-                      <span style={styles.docId}>Approve: אושר</span>
-                    ) : null}
-                    {row.grow_invoice_url ? (
-                      <a
-                        href={row.grow_invoice_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={styles.docId}
-                      >
-                        חשבונית Grow
-                      </a>
-                    ) : null}
-                    {(row.grow_payment_link_id || row.greeninvoice_document_id) && (
-                      <span style={styles.docId}>
-                        {row.grow_payment_link_id
-                          ? `Grow: ${row.grow_payment_link_id.slice(0, 8)}…`
-                          : `מסמך: ${row.greeninvoice_document_id!.slice(0, 8)}…`}
-                      </span>
-                    )}
-                  </div>
+                        void postChargeAction(
+                          '/api/collections/charges/mark-paid',
+                          row.id,
+                          'סומן כשולם'
+                        )
+                      }}
+                    >
+                      ידני
+                    </Button>
+                  ) : null}
+                  {row.grow_invoice_url ? (
+                    <a
+                      href={row.grow_invoice_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.docId}
+                    >
+                      חשבונית
+                    </a>
+                  ) : null}
                 </div>
-              </Card>
+              </article>
             )
           })}
         </div>
       )}
+
+      <p style={styles.footerNote}>
+        הכסף נכנס לחשבון Grow שלכם.{' '}
+        <Link href="/settings?tab=grow" style={styles.settingsLink}>
+          הגדרות Grow
+        </Link>
+      </p>
 
       <Drawer
         open={bulkOpen}
@@ -961,47 +1003,144 @@ export function CollectionsBoard() {
   )
 }
 
-function Chip({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div style={{ ...styles.chip, borderColor: `${color}55` }}>
-      <span style={{ ...styles.chipValue, color }}>{value}</span>
-      <span style={styles.chipLabel}>{label}</span>
-    </div>
-  )
-}
-
 const styles: Record<string, CSSProperties> = {
-  toolbar: {
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    paddingBottom: 28,
+  },
+  hero: {
+    borderRadius: 18,
+    padding: '18px 18px 16px',
+    background: 'linear-gradient(145deg, #0f2744 0%, #1e3a5f 48%, #243b55 100%)',
+    color: '#f8fafc',
+    boxShadow: '0 10px 28px rgba(15, 39, 68, 0.22)',
+  },
+  heroTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
+  },
+  heroEyebrow: {
+    fontSize: 12,
+    fontWeight: 600,
+    opacity: 0.78,
+    marginBottom: 4,
+  },
+  heroAmount: {
+    fontSize: 34,
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    lineHeight: 1.1,
+  },
+  heroSub: {
+    marginTop: 6,
+    fontSize: 13,
+    opacity: 0.8,
+  },
+  refreshBtn: {
+    border: '1px solid rgba(255,255,255,0.28)',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#fff',
+    borderRadius: 10,
+    padding: '8px 12px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  kpiRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 10,
+  },
+  kpi: {
+    background: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    padding: '12px 12px 10px',
+  },
+  kpiLabel: {
+    fontSize: 12,
+    opacity: 0.75,
+    marginBottom: 4,
+  },
+  kpiValue: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: '#fff',
+  },
+  kpiHint: {
+    marginTop: 4,
+    fontSize: 11,
+    opacity: 0.7,
+  },
+  primaryActions: {
     display: 'flex',
     gap: 10,
+  },
+  statusTabs: {
+    display: 'flex',
+    gap: 6,
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    paddingBottom: 2,
+  },
+  statusTab: {
+    flex: '0 0 auto',
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    color: theme.colors.textSecondary,
+    borderRadius: 999,
+    padding: '8px 12px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: 6,
+  },
+  statusTabActive: {
+    background: '#1e3a5f',
+    borderColor: '#1e3a5f',
+    color: '#fff',
+  },
+  statusCount: {
+    fontSize: 11,
+    fontWeight: 700,
+    opacity: 0.85,
   },
   settingsLink: {
     color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: 600,
+    fontSize: 13,
+    fontWeight: 700,
+    textDecoration: 'none',
   },
-  chips: {
+  alertBox: {
+    padding: 14,
+    borderRadius: 14,
+    border: '1px solid #fdba74',
+    background: '#fff7ed',
+  },
+  alertTitle: {
+    fontWeight: 700,
+    marginBottom: 6,
+    color: '#9a3412',
+  },
+  alertText: {
+    margin: '0 0 12px',
+    fontSize: 14,
+    color: '#9a3412',
+    lineHeight: 1.55,
+  },
+  alertSoft: {
     display: 'flex',
     gap: 10,
-  },
-  chip: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  chipValue: {
-    fontSize: 22,
-    fontWeight: 800,
-  },
-  chipLabel: {
-    fontSize: 13,
+    alignItems: 'center',
+    padding: '10px 12px',
+    borderRadius: 12,
+    background: '#f1f5f9',
     color: theme.colors.textSecondary,
   },
   filters: {
@@ -1011,7 +1150,7 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: 'wrap',
   },
   textInput: {
-    padding: '10px 14px',
+    padding: '12px 14px',
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
@@ -1025,16 +1164,27 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 10,
   },
-  cardInner: {
-    padding: 16,
+  row: {
+    padding: '14px 14px 12px',
+    borderRadius: 16,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 12,
   },
-  cardTop: {
+  rowMain: {
     display: 'flex',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  rowText: {
+    minWidth: 0,
+    flex: 1,
+  },
+  rowMoney: {
+    textAlign: 'left',
+    flexShrink: 0,
   },
   cardName: {
     fontSize: 16,
@@ -1045,6 +1195,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     color: theme.colors.textSecondary,
     marginTop: 4,
+    lineHeight: 1.4,
   },
   amount: {
     fontSize: 18,
@@ -1054,7 +1205,7 @@ const styles: Record<string, CSSProperties> = {
   badge: {
     display: 'inline-block',
     marginTop: 6,
-    padding: '2px 8px',
+    padding: '3px 8px',
     borderRadius: 8,
     fontSize: 12,
     fontWeight: 700,
@@ -1062,15 +1213,24 @@ const styles: Record<string, CSSProperties> = {
   cardDates: {
     fontSize: 12,
     color: theme.colors.textMuted,
+    marginTop: 6,
   },
   actions: {
     display: 'flex',
     gap: 8,
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   docId: {
-    fontSize: 11,
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: 600,
+  },
+  footerNote: {
+    margin: '4px 0 0',
+    fontSize: 12,
     color: theme.colors.textMuted,
+    textAlign: 'center',
   },
   form: {
     display: 'flex',

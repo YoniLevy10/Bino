@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
   let query = admin
     .from('collection_charges')
-    .select('status')
+    .select('status, amount')
     .eq('client_id', auth.ctx.clientId)
 
   if (projectId) query = query.eq('project_id', projectId)
@@ -44,15 +44,28 @@ export async function GET(req: Request) {
     failed: 0,
     cancelled: 0,
   }
+  let collectedAmount = 0
+  let outstandingAmount = 0
+  let billedAmount = 0
 
   for (const row of data || []) {
     const status = (row as { status: string }).status
-    if ((COLLECTION_CHARGE_STATUSES as readonly string[]).includes(status)) {
-      counts[status as CollectionChargeStatus] += 1
+    const amount = Number((row as { amount: number | string }).amount) || 0
+    if (!(COLLECTION_CHARGE_STATUSES as readonly string[]).includes(status)) continue
+    counts[status as CollectionChargeStatus] += 1
+    if (status === 'cancelled') continue
+    billedAmount += amount
+    if (status === 'paid') collectedAmount += amount
+    else if (status === 'sent' || status === 'draft' || status === 'failed') {
+      outstandingAmount += amount
     }
   }
 
   const pending = counts.draft + counts.sent
+  const openCount = pending + counts.failed
+  const collectionRate =
+    billedAmount > 0 ? Math.round((collectedAmount / billedAmount) * 100) : 0
+
   return NextResponse.json({
     counts,
     chips: {
@@ -60,6 +73,14 @@ export async function GET(req: Request) {
       paid: counts.paid,
       pending,
       failed: counts.failed,
+    },
+    money: {
+      collected: collectedAmount,
+      outstanding: outstandingAmount,
+      billed: billedAmount,
+      collection_rate: collectionRate,
+      open_count: openCount,
+      paid_count: counts.paid,
     },
   })
 }
