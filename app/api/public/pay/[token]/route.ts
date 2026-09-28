@@ -7,6 +7,10 @@ import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { normalizeReceiptEmail } from '@/lib/collection-receipt-email'
 import { normalizePhone019 } from '@/lib/sms-019-core'
 import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collection-receipt-email'
+import {
+  residentSafeDescription,
+  residentSafeTitle,
+} from '@/lib/resident-safe-description'
 
 type RouteContext = { params: Promise<{ token: string }> }
 
@@ -103,8 +107,8 @@ export async function GET(_req: Request, context: RouteContext) {
     raw.receipt_phone || resident?.normalized_phone || resident?.phone || null
 
   return NextResponse.json({
-    title: raw.title,
-    description: raw.description,
+    title: residentSafeTitle(raw.title),
+    description: residentSafeDescription(raw.description),
     amount: raw.amount,
     amount_label: formatChargeAmountIls(Number(raw.amount)),
     currency: raw.currency,

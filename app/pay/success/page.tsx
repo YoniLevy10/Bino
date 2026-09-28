@@ -76,14 +76,11 @@ function PaySuccessInner() {
         {payload?.amount_label ? <p style={styles.amount}>{payload.amount_label}</p> : null}
         <p style={styles.sub}>
           {paid
-            ? 'תודה. הסטטוס עודכן במערכת. אם הזנתם מייל בדף התשלום — אישור נשלח אליכם במייל (בלי SMS). אפשר לסגור את החלון.'
+            ? 'תודה. אם הזנתם מייל בדף התשלום — אישור יישלח אליכם. אפשר לסגור את החלון.'
             : pending
-              ? 'אם שילמתם עכשיו — האישור יופיע תוך רגעים. אפשר לסגור ולחזור לקישור מה-SMS.'
-              : 'תודה. אם הסטטוס לא מתעדכן אצל הוועד תוך דקות — פנו אליהם עם צילום מסך מהסליקה.'}
+              ? 'אם שילמתם עכשיו — האישור יופיע תוך רגעים. אפשר לסגור ולחזור לקישור מההודעה.'
+              : 'תודה. אם האישור לא מתעדכן אצל הוועד תוך דקות — פנו אליהם עם צילום מסך מהתשלום.'}
         </p>
-        {token && payload?.status && payload.status !== 'paid' ? (
-          <p style={styles.meta}>סטטוס נוכחי במערכת: {payload.status}</p>
-        ) : null}
         <Link href={token ? `/pay/${encodeURIComponent(token)}` : '/'} style={styles.link}>
           {token ? 'חזרה לפרטי החיוב' : 'חזרה'}
         </Link>
