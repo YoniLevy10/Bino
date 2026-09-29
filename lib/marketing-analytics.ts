@@ -7,6 +7,13 @@ export type MarketingPagePath =
   | '/guides'
   | `/guides/${string}`
 
+declare global {
+  interface Window {
+    dataLayer: unknown[]
+    gtag?: (...args: unknown[]) => void
+  }
+}
+
 export function getMarketingGaMeasurementId(): string | undefined {
   return process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 }
