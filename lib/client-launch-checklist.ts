@@ -1,17 +1,20 @@
 /**
- * Superadmin client-launch readiness — one Meta App (platform), many WA numbers (per client).
- * Vercel env is shared; everything below is per-tenant state.
+ * Superadmin client-launch playbook — ordered for real-time onboarding.
+ * Model: one Vercel + one Meta App; one 019 number = SMS sender + WhatsApp.
  */
 
 export type LaunchCheckId =
+  | 'create_client'
+  | 'buy_019_number'
+  | 'connect_meta'
+  | 'paste_sms_sender'
+  | 'paste_wa_id'
+  | 'paste_wa_token'
   | 'admin_user'
-  | 'whatsapp_phone'
-  | 'whatsapp_token'
-  | 'sms_sender'
   | 'manager_phone'
-  | 'grow_user'
-  | 'grow_legal'
   | 'collections_addon'
+  | 'grow_getlink'
+  | 'grow_legal'
   | 'email_from'
   | 'buildings'
   | 'workers'
@@ -21,10 +24,10 @@ export type LaunchCheckStatus = 'ok' | 'todo' | 'external'
 
 export type LaunchCheckItem = {
   id: LaunchCheckId
+  step: number
   title: string
   detail: string
   status: LaunchCheckStatus
-  /** Where to complete: superadmin task hash, tenant settings path, or external */
   where: 'superadmin' | 'settings' | 'setup' | 'external' | 'meta' | '019' | 'grow'
   hrefHint?: string
 }
@@ -52,6 +55,40 @@ function hasPhoneSender(raw: string | null | undefined): boolean {
   return v.length >= 10
 }
 
+/** Fixed order shown at top of the superadmin panel — do not reorder casually. */
+export const LAUNCH_PLAYBOOK_HEADER: { step: number; title: string; detail: string }[] = [
+  {
+    step: 1,
+    title: 'צרו לקוח ב-BINO',
+    detail: 'סופר-אדמין → אשף הקמה (/superadmin/setup) — שם, אדמין, בניין, עובד',
+  },
+  {
+    step: 2,
+    title: 'קנו מספר ב-019',
+    detail: 'מספר אחד בלבד — ישמש גם כשולח SMS וגם כ-WhatsApp',
+  },
+  {
+    step: 3,
+    title: 'חברו את אותו מספר ב-Meta App של BINO',
+    detail: 'Add phone number באפליקציית Meta → קבלו Phone Number ID + Access Token',
+  },
+  {
+    step: 4,
+    title: 'הדביקו ב-BINO את המספר והטוקנים',
+    detail: 'sms_sender = 972… · WA Phone Number ID · WA Access Token (בהגדרות הלקוח)',
+  },
+  {
+    step: 5,
+    title: 'Grow — שלחו ללקוח קישור רישום (GetLink)',
+    detail: 'הפעילו תוסף גבייה → שלחו GetLink / הדביקו userId → מלאו פרטי עסק ל-/vaad-pay',
+  },
+  {
+    step: 6,
+    title: 'מייל Resend + סיום תפעולי',
+    detail: 'הגדירו slug@bino.casa, לוגו, וודאו בניין/עובד/מנהל — ואז בדיקות',
+  },
+]
+
 export function buildClientLaunchChecklist(s: ClientLaunchSnapshot): {
   items: LaunchCheckItem[]
   doneCount: number
@@ -60,110 +97,150 @@ export function buildClientLaunchChecklist(s: ClientLaunchSnapshot): {
 } {
   const items: LaunchCheckItem[] = [
     {
-      id: 'admin_user',
-      title: 'משתמש אדמין',
-      detail: s.adminEmail
-        ? `מוזמן: ${s.adminEmail}`
-        : 'הזמינו אדמין (אימייל) דרך הסופר-אדמין או אשף ההקמה',
-      status: s.adminEmail ? 'ok' : 'todo',
-      where: 'superadmin',
-      hrefHint: 'invite',
+      id: 'create_client',
+      step: 1,
+      title: '1. לקוח נוצר ב-BINO',
+      detail: `לקוח: ${s.clientName}`,
+      status: 'ok',
+      where: 'setup',
     },
     {
-      id: 'whatsapp_phone',
-      title: 'WhatsApp — מספר ב-Meta',
-      detail: s.whatsappPhoneNumberId
-        ? `Phone Number ID: ${s.whatsappPhoneNumberId}`
-        : 'באפליקציית Meta של BINO — הוסיפו מספר → העתיקו Phone Number ID לכאן',
-      status: s.whatsappPhoneNumberId ? 'ok' : 'external',
-      where: 'meta',
-      hrefHint: 'plan',
-    },
-    {
-      id: 'whatsapp_token',
-      title: 'WhatsApp — Access Token',
-      detail: s.whatsappAccessTokenSet
-        ? 'טוקן שמור אצל הלקוח'
-        : 'הדביקו Access Token בהגדרות הלקוח → WhatsApp (לא ב-Vercel)',
-      status: s.whatsappAccessTokenSet ? 'ok' : 'todo',
-      where: 'settings',
-    },
-    {
-      id: 'sms_sender',
-      title: '019SMS — מספר שולח',
+      id: 'buy_019_number',
+      step: 2,
+      title: '2. קניית מספר ב-019',
       detail: hasPhoneSender(s.smsSenderName)
-        ? `שולח: ${s.smsSenderName}`
-        : 'רשמו מספר ב-019SMS והדביקו כ-972… בשדה שולח SMS (לא שם מותג)',
+        ? `מספר נשמר כשולח: ${s.smsSenderName} (אותו מספר ל-WhatsApp)`
+        : 'קנו/רשמו מספר ב-019 — אותו מספר ישמש גם ל-WhatsApp. עדיין לא הודבק ב-BINO',
       status: hasPhoneSender(s.smsSenderName) ? 'ok' : 'external',
       where: '019',
       hrefHint: 'plan',
     },
     {
-      id: 'manager_phone',
-      title: 'טלפון מנהל',
-      detail: s.managerPhone ? s.managerPhone : 'נדרש להתראות ולזרימות תפעול',
-      status: s.managerPhone ? 'ok' : 'todo',
+      id: 'connect_meta',
+      step: 3,
+      title: '3. חיבור המספר ב-Meta App של BINO',
+      detail: s.whatsappPhoneNumberId
+        ? `מחובר — Phone Number ID: ${s.whatsappPhoneNumberId}`
+        : 'באפליקציית Meta של BINO הוסיפו את מספר ה-019 → העתיקו Phone Number ID',
+      status: s.whatsappPhoneNumberId ? 'ok' : 'external',
+      where: 'meta',
+      hrefHint: 'plan',
+    },
+    {
+      id: 'paste_sms_sender',
+      step: 4,
+      title: '4א. הדבקת מספר שולח 019 ב-BINO',
+      detail: hasPhoneSender(s.smsSenderName)
+        ? `sms_sender_name = ${s.smsSenderName}`
+        : 'סופר-אדמין → מנוי ומכסות → מספר שולח 019SMS כ-972… (לא שם מותג)',
+      status: hasPhoneSender(s.smsSenderName) ? 'ok' : 'todo',
       where: 'superadmin',
       hrefHint: 'plan',
     },
     {
-      id: 'grow_user',
-      title: 'Grow — userId סליקה',
-      detail: s.growUserId
-        ? `userId מוגדר${s.growEnabled ? '' : ' (grow_enabled כבוי)'}`
-        : 'GetLink או הדבקת userId בהגדרות → Grow',
-      status: s.growUserId && s.growEnabled ? 'ok' : s.growUserId ? 'todo' : 'external',
-      where: 'grow',
+      id: 'paste_wa_id',
+      step: 4,
+      title: '4ב. הדבקת WA Phone Number ID',
+      detail: s.whatsappPhoneNumberId
+        ? s.whatsappPhoneNumberId
+        : 'סופר-אדמין → מנוי ומכסות → WA Phone Number ID',
+      status: s.whatsappPhoneNumberId ? 'ok' : 'todo',
+      where: 'superadmin',
+      hrefHint: 'plan',
     },
     {
-      id: 'grow_legal',
-      title: 'Grow — פרטי עסק (/vaad-pay)',
-      detail: s.growLegalReady
-        ? 'שם / טלפון / כתובת לעמוד העסק'
-        : 'מלאו פרטי עסק משפטיים בהגדרות Grow',
-      status: s.growLegalReady ? 'ok' : 'todo',
+      id: 'paste_wa_token',
+      step: 4,
+      title: '4ג. הדבקת WA Access Token',
+      detail: s.whatsappAccessTokenSet
+        ? 'טוקן שמור'
+        : 'כניסה כלקוח → הגדרות → WhatsApp → Access Token (לא ב-Vercel)',
+      status: s.whatsappAccessTokenSet ? 'ok' : 'todo',
       where: 'settings',
     },
     {
       id: 'collections_addon',
-      title: 'תוסף גבייה',
+      step: 5,
+      title: '5א. תוסף גבייה',
       detail: s.collectionsAddonEnabled
         ? 'תוסף collections פעיל'
-        : 'הפעילו תוסף גבייה בסופר-אדמין אם הלקוח גובה דיירים',
+        : 'הפעילו תוסף גבייה אם הלקוח גובה דיירים',
       status: s.collectionsAddonEnabled ? 'ok' : 'todo',
       where: 'superadmin',
       hrefHint: 'addons',
     },
     {
+      id: 'grow_getlink',
+      step: 5,
+      title: '5ב. Grow — קישור רישום ללקוח (GetLink)',
+      detail: s.growUserId
+        ? `userId שמור${s.growEnabled ? '' : ' — הפעילו grow_enabled'}`
+        : 'שלחו ללקוח קישור GetLink מהגדרות Grow, או הדביקו userId אחרי ההרשמה',
+      status: s.growUserId && s.growEnabled ? 'ok' : s.growUserId ? 'todo' : 'external',
+      where: 'grow',
+    },
+    {
+      id: 'grow_legal',
+      step: 5,
+      title: '5ג. Grow — פרטי עסק ל-/vaad-pay',
+      detail: s.growLegalReady
+        ? 'שם / טלפון / כתובת מוכנים'
+        : 'הגדרות לקוח → Grow → פרטי עסק (שם, טלפון, כתובת)',
+      status: s.growLegalReady ? 'ok' : 'todo',
+      where: 'settings',
+    },
+    {
       id: 'email_from',
-      title: 'מייל Resend לפי לקוח',
-      detail: `נשלח מ: ${s.emailFrom}${s.emailSlug ? '' : ' (מומלץ להגדיר slug באנגלית)'}`,
+      step: 6,
+      title: '6א. מייל Resend (slug@bino.casa)',
+      detail: `נשלח מ: ${s.emailFrom}`,
       status: s.emailSlug || /@bino\.casa>/.test(s.emailFrom) ? 'ok' : 'todo',
       where: 'superadmin',
       hrefHint: 'launch',
     },
     {
+      id: 'admin_user',
+      step: 6,
+      title: '6ב. אדמין מוזמן',
+      detail: s.adminEmail ? s.adminEmail : 'הזמינו משתמש אדמין ללקוח',
+      status: s.adminEmail ? 'ok' : 'todo',
+      where: 'superadmin',
+      hrefHint: 'invite',
+    },
+    {
+      id: 'manager_phone',
+      step: 6,
+      title: '6ג. טלפון מנהל',
+      detail: s.managerPhone || 'נדרש להתראות',
+      status: s.managerPhone ? 'ok' : 'todo',
+      where: 'superadmin',
+      hrefHint: 'plan',
+    },
+    {
       id: 'buildings',
-      title: 'בניין אחד לפחות',
-      detail: s.buildingsCount > 0 ? `${s.buildingsCount} בניינים` : 'צרו בניין באשף או בסופר-אדמין',
+      step: 6,
+      title: '6ד. בניין אחד לפחות',
+      detail: s.buildingsCount > 0 ? `${s.buildingsCount} בניינים` : 'צרו בניין',
       status: s.buildingsCount > 0 ? 'ok' : 'todo',
       where: 'superadmin',
       hrefHint: 'buildings',
     },
     {
       id: 'workers',
-      title: 'עובד פעיל',
+      step: 6,
+      title: '6ה. עובד פעיל',
       detail:
         s.workersActiveCount > 0
           ? `${s.workersActiveCount} עובדים פעילים`
-          : 'הוסיפו עובד לשיבוץ תקלות',
+          : 'הוסיפו עובד לשיבוץ',
       status: s.workersActiveCount > 0 ? 'ok' : 'todo',
       where: 'setup',
     },
     {
       id: 'logo',
-      title: 'לוגו',
-      detail: s.logoUrl ? 'לוגו הועלה' : 'אופציונלי — מוצג בדף תשלום וביישומון',
+      step: 6,
+      title: '6ו. לוגו (מומלץ)',
+      detail: s.logoUrl ? 'לוגו הועלה' : 'אופציונלי — מוצג בדף תשלום',
       status: s.logoUrl ? 'ok' : 'todo',
       where: 'superadmin',
       hrefHint: 'logo',
@@ -171,10 +248,10 @@ export function buildClientLaunchChecklist(s: ClientLaunchSnapshot): {
   ]
 
   const required: LaunchCheckId[] = [
+    'paste_sms_sender',
+    'paste_wa_id',
+    'paste_wa_token',
     'admin_user',
-    'whatsapp_phone',
-    'whatsapp_token',
-    'sms_sender',
     'manager_phone',
     'buildings',
     'workers',
@@ -187,31 +264,28 @@ export function buildClientLaunchChecklist(s: ClientLaunchSnapshot): {
   return { items, doneCount, totalCount: items.length, readyForSoftLaunch }
 }
 
-/** Shared platform items — not per-client; shown once in the guide. */
 export const PLATFORM_LAUNCH_NOTES: { title: string; detail: string }[] = [
   {
-    title: 'Vercel אחד לכולם',
+    title: 'מה לא לפספס בין 019 / Meta / Grow',
     detail:
-      'פרויקט Bino אחד. אין env פר-לקוח. מפתחות פלטפורמה: GROW_*, SMS_019_*, RESEND_*, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET.',
+      'לפני 019: צרו לקוח. אחרי Meta: הדביקו ב-BINO (972… + Phone Number ID + Token). אחרי GetLink: פרטי עסק ל-/vaad-pay + slug למייל + בדיקות WA/SMS/תשלום.',
+  },
+  {
+    title: 'מספר אחד = 019 + WhatsApp',
+    detail:
+      'קונים ב-019, מחברים את אותו מספר ב-Meta App של BINO, ומדביקים ב-BINO גם כשולח SMS (972…) וגם כ-WhatsApp.',
+  },
+  {
+    title: 'Vercel אחד לכולם',
+    detail: 'אין env פר-לקוח. GROW_*, SMS_019_*, RESEND_*, WHATSAPP_VERIFY_TOKEN / APP_SECRET — משותפים.',
   },
   {
     title: 'Meta App אחת',
-    detail:
-      'אפליקציית Meta של BINO. לכל לקוח מוסיפים מספר WhatsApp ומדביקים phone_number_id + access_token ב-DB של הלקוח. ה-webhook וה-verify token משותפים.',
+    detail: 'Webhook + verify token משותפים. לכל לקוח רק phone_number_id + access_token ב-DB.',
   },
   {
-    title: 'Resend + דומיין bino.casa',
+    title: 'Grow',
     detail:
-      'דומיין מאומת ב-Resend. כל לקוח שולח מ-slug@bino.casa (למשל bamakor@bino.casa) בלי כתובת חדשה ב-Vercel.',
-  },
-  {
-    title: '019SMS',
-    detail:
-      'חשבון API אחד (username/password ב-Vercel). לכל לקוח מספר שולח רשום אצל 019 — נשמר ב-sms_sender_name כ-972…',
-  },
-  {
-    title: 'Grow פלטפורמה',
-    detail:
-      'apiKey / x-api-key / pageCode / webhook secret ב-Vercel. לכל לקוח grow_user_id (GetLink) + פרטי עסק ל-/vaad-pay/{clientId}.',
+      'מפתחות פלטפורמה ב-Vercel. ללקוח: GetLink → userId + פרטי עסק. חשבונית אוטומטית — הגדרה ראשונה באתר העסקי של Grow.',
   },
 ]

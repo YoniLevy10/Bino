@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildClientLaunchChecklist, type ClientLaunchSnapshot } from '@/lib/client-launch-checklist'
+import {
+  LAUNCH_PLAYBOOK_HEADER,
+  buildClientLaunchChecklist,
+  type ClientLaunchSnapshot,
+} from '@/lib/client-launch-checklist'
 
 const base: ClientLaunchSnapshot = {
   clientName: 'Bamakor',
@@ -19,6 +23,15 @@ const base: ClientLaunchSnapshot = {
   logoUrl: 'https://x/logo.png',
 }
 
+describe('LAUNCH_PLAYBOOK_HEADER', () => {
+  it('lists 6 ordered live steps starting with create client then 019', () => {
+    expect(LAUNCH_PLAYBOOK_HEADER.map((s) => s.step)).toEqual([1, 2, 3, 4, 5, 6])
+    expect(LAUNCH_PLAYBOOK_HEADER[1]?.title).toMatch(/019/)
+    expect(LAUNCH_PLAYBOOK_HEADER[2]?.title).toMatch(/Meta/)
+    expect(LAUNCH_PLAYBOOK_HEADER[4]?.title).toMatch(/Grow|GetLink/i)
+  })
+})
+
 describe('buildClientLaunchChecklist', () => {
   it('marks soft launch ready when core items ok', () => {
     const r = buildClientLaunchChecklist(base)
@@ -26,13 +39,34 @@ describe('buildClientLaunchChecklist', () => {
     expect(r.doneCount).toBe(r.totalCount)
   })
 
-  it('blocks soft launch without WhatsApp', () => {
+  it('blocks soft launch without WhatsApp paste and marks Meta external', () => {
     const r = buildClientLaunchChecklist({
       ...base,
       whatsappPhoneNumberId: null,
       whatsappAccessTokenSet: false,
     })
     expect(r.readyForSoftLaunch).toBe(false)
-    expect(r.items.find((i) => i.id === 'whatsapp_phone')?.status).toBe('external')
+    expect(r.items.find((i) => i.id === 'connect_meta')?.status).toBe('external')
+    expect(r.items.find((i) => i.id === 'paste_wa_id')?.status).toBe('todo')
+    expect(r.items.find((i) => i.id === 'paste_wa_token')?.status).toBe('todo')
+  })
+
+  it('marks 019 buy as external until sender phone is pasted', () => {
+    const r = buildClientLaunchChecklist({
+      ...base,
+      smsSenderName: null,
+    })
+    expect(r.items.find((i) => i.id === 'buy_019_number')?.status).toBe('external')
+    expect(r.items.find((i) => i.id === 'paste_sms_sender')?.status).toBe('todo')
+    expect(r.readyForSoftLaunch).toBe(false)
+  })
+
+  it('marks Grow GetLink external until userId exists', () => {
+    const r = buildClientLaunchChecklist({
+      ...base,
+      growUserId: null,
+      growEnabled: false,
+    })
+    expect(r.items.find((i) => i.id === 'grow_getlink')?.status).toBe('external')
   })
 })

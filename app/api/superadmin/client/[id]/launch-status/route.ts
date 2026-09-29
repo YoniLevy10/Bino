@@ -4,6 +4,7 @@ import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/super
 import { buildClientResendFrom, resolveClientEmailSlug } from '@/lib/client-email-from'
 import {
   buildClientLaunchChecklist,
+  LAUNCH_PLAYBOOK_HEADER,
   PLATFORM_LAUNCH_NOTES,
 } from '@/lib/client-launch-checklist'
 import { growLegalFromClientRow } from '@/lib/client-grow-legal'
@@ -116,6 +117,7 @@ export async function GET(req: Request, context: RouteContext) {
     email_slug: c.email_slug,
     resolved_email_slug: emailSlug,
     email_from: emailFrom,
+    playbook: LAUNCH_PLAYBOOK_HEADER,
     platform_notes: PLATFORM_LAUNCH_NOTES,
     ...checklist,
     snapshot,
