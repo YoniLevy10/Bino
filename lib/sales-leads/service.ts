@@ -1,1 +1,1 @@
-file:///tmp/repos/Bino/lib/sales-leads/service.ts
+$file:/tmp/bino-content-for-mcp.txt
