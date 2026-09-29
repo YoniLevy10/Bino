@@ -860,7 +860,7 @@ export function CollectionsBoard() {
                       rel="noopener noreferrer"
                       style={styles.docId}
                     >
-                      חשבונית
+                      {row.grow_invoice_email_sent_at ? 'חשבונית נשלחה' : 'חשבונית'}
                     </a>
                   ) : null}
                 </div>

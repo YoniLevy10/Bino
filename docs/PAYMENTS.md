@@ -54,7 +54,7 @@ Grow מחברים את Bino כפלטפורמה:
 |------|--------|
 | `/api/webhook/grow?token=` | תשלום S2S — סימון שולם + ApproveTransaction |
 | `/api/webhook/grow-register?token=` | סיום GetLink — שמירת `userId` לפי `tracking_code` |
-| `/api/webhook/grow-invoice?token=` | חשבונית מ-Grow (`invoiceNotifyUrl`) |
+| `/api/webhook/grow-invoice?token=` | חשבונית מ-Grow (`invoiceNotifyUrl`) → שמירה + מייל Resend לדייר |
 
 Grow שולח לרוב `application/x-www-form-urlencoded` עם מפתחות `data[...]` — Bino מפרקת עם `expandBracketFormKeys`.
 

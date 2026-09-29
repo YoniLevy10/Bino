@@ -16,6 +16,7 @@ import { ClientAttendanceTagsPanel } from '../ClientAttendanceTagsPanel'
 import { ClientLogoUpload } from '../ClientLogoUpload'
 import { ClientInvitePanel } from '../ClientInvitePanel'
 import { ClientRecoverTicketMediaPanel } from '../ClientRecoverTicketMediaPanel'
+import { ClientLaunchChecklistPanel } from '../ClientLaunchChecklistPanel'
 import { formatEffectiveLimit, previewClientLimits } from '../helpers'
 import type { ClientRow, ClientTask, EditState, PlanCatalogRow } from '../types'
 
@@ -60,9 +61,26 @@ export type ClientTaskViewProps = {
   onDelete: () => void
   onUploadedLogo: (url: string) => void
   onBack: () => void
+  onOpenTask: (task: ClientTask) => void
 }
 
 export function ClientTaskView(p: ClientTaskViewProps) {
+  if (p.task === 'launch') {
+    return (
+      <TaskShell title="צ׳קליסט הקמת לקוח" onBack={p.onBack}>
+        <p className="sa-hint">
+          Vercel אחד לכולם · Meta App אחת · לכל לקוח מספר WhatsApp, שולח 019, Grow userId ומייל
+          @bino.casa
+        </p>
+        <ClientLaunchChecklistPanel
+          clientId={p.client.id}
+          secret={p.secret}
+          onOpenTask={p.onOpenTask}
+        />
+      </TaskShell>
+    )
+  }
+
   if (p.task === 'plan') {
     const preview = previewClientLimits(p.editState, p.catalog)
     return (
@@ -96,13 +114,15 @@ export function ClientTaskView(p: ClientTaskViewProps) {
             />
           </label>
           <label className="sa-field">
-            <span>שם שולח SMS</span>
+            <span>מספר שולח 019SMS</span>
             <input
               className="sa-input"
               value={p.editState.sms_sender_name}
-              placeholder="Bino"
+              placeholder="9725xxxxxxxx"
+              dir="ltr"
               onChange={(e) => p.setEditState((s) => ({ ...s, sms_sender_name: e.target.value }))}
             />
+            <small>חייבים מספר רשום ב-019 — לא שם מותג</small>
           </label>
           <label className="sa-field">
             <span>תוכנית</span>
