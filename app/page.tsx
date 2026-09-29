@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { MarketingLanding } from './components/marketing/MarketingLanding'
 import { MarketingAnalytics } from './components/marketing/MarketingAnalytics'
 import { buildMarketingJsonLd } from '@/lib/marketing-jsonld'
+import { getLegalSiteConfig, legalTelHref } from '@/lib/legal-site-config'
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
@@ -66,6 +67,14 @@ export const metadata: Metadata = {
 
 export default function MarketingHomePage() {
   const jsonLd = buildMarketingJsonLd('he')
+  const legal = getLegalSiteConfig()
+  const nap = legal.readyForGrowAudit
+    ? {
+        phoneDisplay: legal.phoneDisplay,
+        phoneHref: legalTelHref(legal.phone),
+        address: legal.address,
+      }
+    : null
 
   return (
     <>
@@ -74,7 +83,7 @@ export default function MarketingHomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <MarketingLanding initialLocale="he" />
+      <MarketingLanding initialLocale="he" nap={nap} />
     </>
   )
 }

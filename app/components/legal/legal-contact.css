@@ -1,0 +1,62 @@
+.legal-contact__h1 {
+  margin: 0 0 12px;
+  font-size: 28px;
+}
+
+.legal-contact__intro {
+  margin: 0 0 24px;
+  color: #475569;
+  font-size: 15px;
+}
+
+.legal-contact__warn {
+  padding: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #9a3412;
+  margin-bottom: 20px;
+}
+
+.legal-contact__dl {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.legal-contact__dt {
+  font-weight: 700;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.legal-contact__dd {
+  margin: 0 0 16px;
+}
+
+.legal-contact__link {
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.legal-contact__link--email {
+  font-weight: 600;
+}
+
+.legal-contact__muted {
+  color: #94a3b8;
+}
+
+.legal-contact__links {
+  margin-top: 28px;
+  font-size: 14px;
+}
+
+.legal-contact__links a {
+  color: #1e40af;
+}
+
+.legal-contact__links a + a {
+  margin-inline-start: 12px;
+}

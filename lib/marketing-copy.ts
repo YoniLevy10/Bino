@@ -36,6 +36,9 @@ export type MarketingCopy = {
   langSwitchAria: string
   langHe: string
   langEn: string
+  audienceTitle: string
+  audienceLead: string
+  audienceBody: readonly string[]
   showcaseTitle: string
   showcaseLead: string
   shots: readonly ShotCopy[]
@@ -71,28 +74,36 @@ const HE: MarketingCopy = {
   langSwitchAria: 'בחירת שפה',
   langHe: 'עברית',
   langEn: 'English',
-  showcaseTitle: 'כך נראה המודיעין התפעולי',
+  audienceTitle: 'למי מיועדת מערכת ניהול הפרויקטים של BINO',
+  audienceLead:
+    'לחברות ניהול שמתפעלות פורטפוליו של בניינים, מתחמים ושטחים משותפים — ורוצות מודיעין תפעולי, לא עוד יומן תקלות.',
+  audienceBody: [
+    'BINO בונה זיכרון תפעולי לכל פרויקט ואתר: היסטוריית תקלות, ציוד, ספקים, עלויות וזמני טיפול. מהזיכרון הזה נגזרות המלצות לעובד או ספק, זיהוי תקלות חוזרות, והתראות לפני חריגת SLA — כדי לקצר זמן עד שיוך וזמן עד פתרון.',
+    'זו לא תוכנת ועד בית בלבד וגם לא לוח משימות גנרי. הבידול הוא החלטות על תחזוקה ונכסים: פחות התערבות מנהל בכל קריאה, פחות כשלים שחוזרים, והוכחה כמה זמן וכסף נחסכו על הבניינים והשטחים שבאחריותכם.',
+  ],
+  showcaseTitle: 'מערכת ניהול פרויקטים עם מודיעין תפעולי',
   showcaseLead:
-    'לא רשימת תקלות לוועד — זיכרון לכל פרויקט ושטח שממליץ, מתריע ומוכיח כמה זמן וכסף נחסכו.',
+    'לא רשימת תקלות לוועד — זיכרון לכל פרויקט, בניין ושטח שממליץ, מתריע ומוכיח כמה זמן וכסף נחסכו.',
   shots: [
     {
-      src: '/marketing/ops-memory.png',
+      src: '/marketing/ops-memory.webp',
       alt: 'מסך זיכרון תפעולי של BINO: היסטוריית תקלות, ציוד ותובנות לפרויקט ובניין',
       caption: 'זיכרון תפעולי לכל פרויקט ושטח',
     },
     {
-      src: '/marketing/smart-assign.png',
+      src: '/marketing/smart-assign.webp',
       alt: 'מסך שיוך חכם ב־BINO: המלצה על העובד המתאים לפי היסטוריית האתר',
       caption: 'המלצה אוטומטית לעובד או ספק',
     },
     {
-      src: '/marketing/savings-proof.png',
+      src: '/marketing/savings-proof.webp',
       alt: 'דוח חיסכון של BINO עם מדדי כוכב צפוני לפני ואחרי — נתוני דוגמה',
       caption: 'הוכחת חיסכון לחברת הניהול',
     },
   ],
   metricsTitle: 'המדדים שמנחים את המוצר',
-  metricsLead: 'כל פיצ׳ר ב־BINO נמדד לפי מה שחשוב לתפעול פרויקטים, בניינים ושטחים — לא לפי כמה תקלות נפתחו.',
+  metricsLead:
+    'כל פיצ׳ר ב־BINO נמדד לפי מה שחשוב לתפעול פרויקטים, בניינים ושטחים — לא לפי כמה תקלות נפתחו.',
   sampleNote: 'מספרי דוגמה להמחשה — לא נתוני לקוח אמיתי.',
   metrics: [
     { label: 'זמן עד שיוך', before: '48 דק׳', after: '12 דק׳', note: 'ירידה של ~75%' },
@@ -112,7 +123,7 @@ const HE: MarketingCopy = {
     },
   ],
   metricsMore: 'צפו בדוח החיסכון לדוגמה',
-  howTitle: 'איך זה עובד',
+  howTitle: 'איך עובדת מערכת ניהול בניינים ושטחים חכמה',
   howLead:
     'שלושה שלבים ממערכת תקלות או ועד — למערכת ניהול פרויקטים ובניינים שמקבלת החלטות.',
   steps: [
@@ -175,27 +186,36 @@ const EN: MarketingCopy = {
   langSwitchAria: 'Language',
   langHe: 'עברית',
   langEn: 'English',
-  showcaseTitle: 'Operational intelligence, visible',
-  showcaseLead: 'Not a fault list — memory that recommends, alerts, and proves time and money saved.',
+  audienceTitle: 'Who BINO’s project management system is for',
+  audienceLead:
+    'Management companies running portfolios of buildings, campuses, and shared spaces — who need operational intelligence, not another fault log.',
+  audienceBody: [
+    'BINO builds operational memory per project and site: ticket history, equipment, vendors, costs, and resolution times. From that memory it recommends the right worker or vendor, spots recurring failures, and alerts before SLA risk — shortening time to assignment and time to resolution.',
+    'It is not committee-only software and not a generic task board. The differentiation is maintenance and asset decisions: less manager intervention on every ticket, fewer repeat failures, and proof of how much time and money were saved across your buildings and spaces.',
+  ],
+  showcaseTitle: 'A project management system with operational intelligence',
+  showcaseLead:
+    'Not a committee fault list — memory for every project, building, and space that recommends, alerts, and proves savings.',
   shots: [
     {
-      src: '/marketing/ops-memory.png',
+      src: '/marketing/ops-memory.webp',
       alt: 'BINO operational memory screen: ticket history, equipment, and building insights',
-      caption: 'Operational memory per building',
+      caption: 'Operational memory per project and space',
     },
     {
-      src: '/marketing/smart-assign.png',
-      alt: 'BINO smart assignment screen recommending the right worker from building history',
+      src: '/marketing/smart-assign.webp',
+      alt: 'BINO smart assignment screen recommending the right worker from site history',
       caption: 'Auto-recommend worker or vendor',
     },
     {
-      src: '/marketing/savings-proof.png',
+      src: '/marketing/savings-proof.webp',
       alt: 'BINO savings report with north-star metrics before and after — sample data',
       caption: 'Proof of savings for management',
     },
   ],
   metricsTitle: 'The metrics that steer the product',
-  metricsLead: 'Every BINO feature is judged by what matters for building ops — not by how many tickets were opened.',
+  metricsLead:
+    'Every BINO feature is judged by what matters for project, building, and space ops — not by how many tickets were opened.',
   sampleNote: 'Sample figures for illustration — not a real customer dataset.',
   metrics: [
     { label: 'Time to assignment', before: '48 min', after: '12 min', note: '~75% faster' },
@@ -215,12 +235,13 @@ const EN: MarketingCopy = {
     },
   ],
   metricsMore: 'See the sample savings report',
-  howTitle: 'How it works',
-  howLead: 'Three steps from a system that records work — to one that makes decisions.',
+  howTitle: 'How a smart building and space management system works',
+  howLead:
+    'Three steps from ticketing or committee software — to a project and building system that decides.',
   steps: [
     {
-      title: 'Learn the building',
-      body: 'BINO builds operational memory from tickets, equipment, vendors, costs, and resolution times — per building.',
+      title: 'Learn the site',
+      body: 'BINO builds operational memory from tickets, equipment, vendors, costs, and resolution times — per project, building, or space.',
     },
     {
       title: 'Recommend and decide faster',
@@ -228,7 +249,7 @@ const EN: MarketingCopy = {
     },
     {
       title: 'Prove the savings',
-      body: 'The management company sees how much time and money were saved — metrics that drive decisions, not just a log.',
+      body: 'The management company sees how much time and money were saved across the portfolio — metrics that drive decisions, not just a log.',
     },
   ],
   faqTitle: 'FAQ',
