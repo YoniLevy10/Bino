@@ -1,0 +1,35 @@
+name: assemble-opsbrain-bino
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.opsbrain-restore/bino-service.z64'
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cursor/opsbrain-lead-webhook-369c
+      - name: Decompress and commit service.ts
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, zlib, hashlib, pathlib
+          z = pathlib.Path('.opsbrain-restore/bino-service.z64').read_text().strip()
+          data = zlib.decompress(base64.b64decode(z))
+          expect = '303c432206120af40989106115dce3c4be9541b7589a38fd7454da76fb4e9a3c'
+          assert hashlib.sha256(data).hexdigest() == expect, hashlib.sha256(data).hexdigest()
+          pathlib.Path('lib/sales-leads/service.ts').write_bytes(data)
+          print('wrote', len(data))
+          PY
+          rm -rf .opsbrain-restore
+          rm -f .github/workflows/assemble-opsbrain-bino.yml
+          git config user.name "Yoni Levy"
+          git config user.email "levyyoni5@gmail.com"
+          git add -A
+          git status
+          git commit -m "feat(leads): wire OpsBrain notify after sales lead create"
+          git push origin HEAD:cursor/opsbrain-lead-webhook-369c
