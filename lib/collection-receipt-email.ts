@@ -1,5 +1,6 @@
 import { sendResendEmail } from '@/lib/email-resend'
 import { formatChargeAmountIls } from '@/lib/collection-charges'
+import { buildClientResendFrom } from '@/lib/client-email-from'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type ReceiptChargeContext = {
@@ -67,7 +68,7 @@ export async function sendCollectionReceiptEmailIfNeeded(
       `
       id, title, amount, currency, paid_at, status,
       receipt_email, receipt_email_sent_at,
-      clients ( name ),
+      clients ( name, email_slug ),
       residents ( full_name, apartment_number ),
       projects ( name )
     `
@@ -88,7 +89,10 @@ export async function sendCollectionReceiptEmailIfNeeded(
     status: string
     receipt_email: string | null
     receipt_email_sent_at: string | null
-    clients: { name: string } | { name: string }[] | null
+    clients:
+      | { name: string; email_slug?: string | null }
+      | { name: string; email_slug?: string | null }[]
+      | null
     residents: { full_name: string; apartment_number: string | null } | { full_name: string; apartment_number: string | null }[] | null
     projects: { name: string } | { name: string }[] | null
   }
@@ -123,7 +127,15 @@ export async function sendCollectionReceiptEmailIfNeeded(
     project_name: project?.name,
   })
 
-  const result = await sendResendEmail({ to: email, subject, body })
+  const result = await sendResendEmail({
+    to: email,
+    subject,
+    body,
+    from: buildClientResendFrom({
+      clientName: client?.name,
+      emailSlug: client?.email_slug,
+    }),
+  })
   if (!result.ok) {
     console.error('[receipt-email]', chargeId, result.error)
     return { sent: false, error: result.error }

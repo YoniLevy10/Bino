@@ -9,6 +9,7 @@ import { PLAN_COLORS, PLAN_LABELS } from '../types'
 import { CopyButton } from './CopyButton'
 
 const ACTIONS: { task: Exclude<ClientTask, 'hub'>; label: string; danger?: boolean }[] = [
+  { task: 'launch', label: 'צ׳קליסט הקמה' },
   { task: 'plan', label: 'מנוי ומכסות' },
   { task: 'nav', label: 'תפריט ניווט' },
   { task: 'addons', label: 'תוספים בתשלום' },
