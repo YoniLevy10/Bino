@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { MarketingLanding } from './components/marketing/MarketingLanding'
 import { MarketingAnalytics } from './components/marketing/MarketingAnalytics'
+import { buildMarketingJsonLd } from '@/lib/marketing-jsonld'
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
@@ -13,82 +14,64 @@ const origin = getMarketingSiteOrigin()
 export const metadata: Metadata = {
   title: BINO_MARKETING_TITLE,
   description: BINO_MARKETING_DESCRIPTION,
+  keywords: [
+    'BINO',
+    'מערכת ניהול בניינים',
+    'חברת ניהול בישראל',
+    'זיכרון תפעולי',
+    'ניהול בניינים',
+    'תחזוקת בניינים',
+    'תקלות חוזרות',
+    'דיווח תקלות וואטסאפ',
+    'SLA תחזוקה',
+    'תוכנה לחברת ניהול',
+  ],
   alternates: {
     canonical: `${origin}/`,
-    languages: { he: `${origin}/` },
+    languages: {
+      he: `${origin}/`,
+      en: `${origin}/en`,
+      'x-default': `${origin}/`,
+    },
   },
   openGraph: {
     title: BINO_MARKETING_TITLE,
     description: BINO_MARKETING_OG_DESCRIPTION,
     locale: 'he_IL',
+    alternateLocale: ['en_US'],
     url: `${origin}/`,
     type: 'website',
+    siteName: 'BINO',
   },
   twitter: {
     card: 'summary_large_image',
     title: BINO_MARKETING_TITLE,
     description: BINO_MARKETING_OG_DESCRIPTION,
   },
-}
-
-function buildJsonLd() {
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Organization',
-        '@id': `${origin}/#organization`,
-        name: 'BINO',
-        url: `${origin}/`,
-        logo: `${origin}/apple-icon.png`,
-        description: BINO_MARKETING_DESCRIPTION,
-        foundingDate: '2024',
-        areaServed: {
-          '@type': 'Country',
-          name: 'Israel',
-        },
-      },
-      {
-        '@type': 'WebSite',
-        '@id': `${origin}/#website`,
-        url: `${origin}/`,
-        name: 'BINO',
-        description: BINO_MARKETING_DESCRIPTION,
-        inLanguage: 'he',
-        publisher: { '@id': `${origin}/#organization` },
-      },
-      {
-        '@type': 'SoftwareApplication',
-        '@id': `${origin}/#software`,
-        name: 'BINO',
-        applicationCategory: 'BusinessApplication',
-        operatingSystem: 'Web',
-        url: `${origin}/`,
-        description: BINO_MARKETING_DESCRIPTION,
-        inLanguage: 'he',
-        offers: {
-          '@type': 'Offer',
-          price: '0',
-          priceCurrency: 'ILS',
-          description: 'תיאום הדגמה',
-        },
-        publisher: { '@id': `${origin}/#organization` },
-      },
-    ],
-  }
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
 }
 
 export default function MarketingHomePage() {
-  const jsonLd = buildJsonLd()
+  const jsonLd = buildMarketingJsonLd('he')
 
   return (
     <>
-      <MarketingAnalytics />
+      <MarketingAnalytics pagePath="/" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <MarketingLanding />
+      <MarketingLanding initialLocale="he" />
     </>
   )
 }

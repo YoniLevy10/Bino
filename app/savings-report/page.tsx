@@ -1,11 +1,17 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
+import { MarketingLeadLink } from '@/app/components/marketing/MarketingLeadLink'
+import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+
+const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'דוח חיסכון תפעולי — BINO',
   description:
     'דוח חיסכון לדוגמה: מדדי הכוכב הצפוני של BINO מול לפני המערכת. מספרים לדוגמה בלבד.',
-  robots: { index: false, follow: false },
+  alternates: { canonical: `${origin}/savings-report` },
+  robots: { index: true, follow: true },
 }
 
 const WA_URL =
@@ -56,6 +62,7 @@ const SAMPLE_METRICS: MetricRow[] = [
 export default function SavingsReportPage() {
   return (
     <div className="savings-report" lang="he" dir="rtl">
+      <MarketingAnalytics pagePath="/savings-report" />
       <style>{`
         .savings-report {
           --ink: #0f172a;
@@ -228,9 +235,16 @@ export default function SavingsReportPage() {
         </p>
 
         <div className="footer-cta">
-          <a className="btn-wa" href={WA_URL} target="_blank" rel="noopener noreferrer">
+          <MarketingLeadLink
+            className="btn-wa"
+            href={WA_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            method="whatsapp_savings"
+            placement="savings-report"
+          >
             לתיאום שיחה בוואטסאפ · 054-810-2688
-          </a>
+          </MarketingLeadLink>
           <Link className="btn-home no-print" href="/">
             ← חזרה לדף הבית
           </Link>

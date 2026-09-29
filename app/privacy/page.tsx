@@ -9,8 +9,15 @@ const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'מדיניות פרטיות',
-  description: 'מדיניות פרטיות — BINO',
+  description: 'מדיניות הפרטיות של BINO — איך אנחנו אוספים, משתמשים ושומרים על מידע.',
   alternates: { canonical: `${origin}/privacy` },
+  openGraph: {
+    title: 'מדיניות פרטיות | BINO',
+    description: 'מדיניות הפרטיות של BINO',
+    url: `${origin}/privacy`,
+    locale: 'he_IL',
+  },
+  robots: { index: true, follow: true },
 }
 
 /** Renders repo root `PRIVACY_POLICY_TEMPLATE.md` — public for Grow / residents. */

@@ -1,0 +1,220 @@
+/* Israel-first SEO guide articles — shares marketing tokens, article-first layout */
+
+.bino-guide {
+  --bino-blue: #0a84ff;
+  --bino-ink: #0c111d;
+  --bino-ink-soft: #2c3548;
+  --bino-muted: #667085;
+  --bino-surface: #eef2f7;
+  --bino-line: rgba(12, 17, 29, 0.1);
+  color: var(--bino-ink);
+  background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(10, 132, 255, 0.12), transparent 55%),
+    radial-gradient(900px 500px at -10% 20%, rgba(0, 86, 199, 0.08), transparent 50%),
+    var(--bino-surface);
+  min-height: 100dvh;
+  font-family: var(--font-heebo), 'Heebo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bino-guide a {
+  color: inherit;
+}
+
+.bino-guide__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.bino-guide__brand {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-size: 1.15rem;
+  text-decoration: none;
+}
+
+.bino-guide__back {
+  font-size: 0.92rem;
+  color: var(--bino-muted);
+  text-decoration: none;
+}
+
+.bino-guide__back:hover {
+  color: var(--bino-blue);
+}
+
+.bino-guide__article {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 22px 72px;
+}
+
+.bino-guide__kicker {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bino-blue);
+}
+
+.bino-guide__h1 {
+  margin: 0 0 14px;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.bino-guide__intro {
+  margin: 0 0 28px;
+  font-size: 1.08rem;
+  line-height: 1.65;
+  color: var(--bino-ink-soft);
+}
+
+.bino-guide__section {
+  margin: 0 0 28px;
+}
+
+.bino-guide__h2 {
+  margin: 0 0 10px;
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.bino-guide__p {
+  margin: 0 0 12px;
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: var(--bino-ink-soft);
+}
+
+.bino-guide__ul {
+  margin: 8px 0 0;
+  padding: 0 1.2em 0 0;
+  color: var(--bino-ink-soft);
+  line-height: 1.65;
+}
+
+.bino-guide__ul li {
+  margin-bottom: 6px;
+}
+
+.bino-guide__faq {
+  margin: 36px 0 28px;
+}
+
+.bino-guide__faq details {
+  border-top: 1px solid var(--bino-line);
+  padding: 14px 0;
+}
+
+.bino-guide__faq summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.02rem;
+}
+
+.bino-guide__faq p {
+  margin: 10px 0 0;
+  color: var(--bino-ink-soft);
+  line-height: 1.65;
+}
+
+.bino-guide__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.bino-guide__cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--bino-blue);
+  color: #fff !important;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.bino-guide__cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--bino-line);
+  background: rgba(255, 255, 255, 0.65);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bino-guide__related {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--bino-line);
+}
+
+.bino-guide__related h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.bino-guide__related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bino-guide__related a {
+  display: block;
+  padding: 8px 0;
+  color: var(--bino-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bino-guide__related a:hover {
+  text-decoration: underline;
+}
+
+.bino-guide-index__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bino-guide-index__item {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--bino-line);
+}
+
+.bino-guide-index__item a {
+  text-decoration: none;
+}
+
+.bino-guide-index__title {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.bino-guide-index__desc {
+  display: block;
+  color: var(--bino-muted);
+  line-height: 1.55;
+  font-size: 0.98rem;
+}

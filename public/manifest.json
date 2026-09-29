@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Bino",
-  "short_name": "Bino",
+  "name": "BINO",
+  "short_name": "BINO",
   "description": "BINO — זיכרון תפעולי חכם לבניינים",
   "start_url": "/dashboard",
   "scope": "/",

@@ -21,7 +21,7 @@
 
 כללי פיתוח (API, SMS, Supabase): `CLAUDE.md`.
 
-**פריסה / דומיין:** ייצור ב־`https://bino.casa` (`NEXT_PUBLIC_APP_URL` ב־Vercel). פרטי חיבור ו-cutover: `docs/DOMAIN.md`. אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
+**פריסה / דומיין:** ייצור ב־`https://bino.casa` (`NEXT_PUBLIC_APP_URL` ב־Vercel). פרטי חיבור ו-cutover: `docs/DOMAIN.md`. SEO / Analytics: `docs/SEO.md`. אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
 
 ---
 

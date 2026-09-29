@@ -14,10 +14,10 @@ export function getMarketingSiteOrigin(): string {
   return 'http://localhost:3000'
 }
 
-export const BINO_MARKETING_TITLE = 'BINO — זיכרון תפעולי חכם לבניינים'
+export const BINO_MARKETING_TITLE = 'BINO — זיכרון תפעולי חכם לבניינים בישראל'
 
 export const BINO_MARKETING_DESCRIPTION =
-  'BINO בונה זיכרון תפעולי לכל בניין: לומדת מהיסטוריית תקלות, ממליצה על עובדים וספקים, מזהה תקלות חוזרות ומוכיחה חיסכון לחברת הניהול.'
+  'BINO — מערכת לחברות ניהול בניינים בישראל: בונה זיכרון תפעולי לכל בניין, לומדת מהיסטוריית תקלות, ממליצה על עובדים וספקים, מזהה תקלות חוזרות ומוכיחה חיסכון.'
 
 export const BINO_MARKETING_OG_DESCRIPTION =
-  'לא עוד מערכת תקלות. BINO לומדת, מחליטה ומוכיחה כמה זמן וכסף נחסכו.'
+  'לחברות ניהול בישראל: לא עוד מערכת תקלות. BINO לומדת, מחליטה ומוכיחה כמה זמן וכסף נחסכו.'

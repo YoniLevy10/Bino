@@ -9,8 +9,15 @@ const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'תקנון',
-  description: 'תקנון שימוש ושירות לתשלומי ועד וגבייה דיגיטלית — BINO',
+  description: 'תקנון שימוש בשירותי BINO — זיכרון תפעולי, גבייה דיגיטלית ותשלומי ועד.',
   alternates: { canonical: `${origin}/terms` },
+  openGraph: {
+    title: 'תקנון | BINO',
+    description: 'תקנון שימוש בשירותי BINO',
+    url: `${origin}/terms`,
+    locale: 'he_IL',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default async function TermsPage() {

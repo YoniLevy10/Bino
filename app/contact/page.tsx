@@ -2,77 +2,101 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLegalSiteConfig, legalTelHref } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
+import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
+import { MarketingLeadLink } from '@/app/components/marketing/MarketingLeadLink'
 import { getMarketingSiteOrigin } from '@/lib/marketing-site'
 
 const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'יצירת קשר',
-  description: 'טלפון, כתובת ומייל ליצירת קשר — BINO',
+  description: 'טלפון, כתובת ומייל ליצירת קשר עם BINO — זיכרון תפעולי לחברות ניהול בניינים.',
   alternates: { canonical: `${origin}/contact` },
+  openGraph: {
+    title: 'יצירת קשר | BINO',
+    description: 'פרטי קשר לתיאום הדגמה ותמיכה — BINO',
+    url: `${origin}/contact`,
+    locale: 'he_IL',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function ContactPage() {
   const cfg = getLegalSiteConfig()
 
   return (
-    <LegalPublicShell backHref="/vaad-pay" backLabel="← חזרה לעמוד השירות">
-      <h1 style={{ margin: '0 0 12px', fontSize: 28 }}>יצירת קשר</h1>
-      <p style={{ margin: '0 0 24px', color: '#475569', fontSize: 15 }}>
-        פרטי בית העסק לצורך שירות תשלומים ותמיכה. פרטים אלה נדרשים גם לאישור ספקי סליקה.
-      </p>
-
-      {!cfg.readyForGrowAudit ? (
-        <p
-          style={{
-            padding: 12,
-            background: '#fff7ed',
-            border: '1px solid #fed7aa',
-            borderRadius: 10,
-            fontSize: 14,
-            color: '#9a3412',
-            marginBottom: 20,
-          }}
-        >
-          חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). יש להשלים ב־Vercel לפני
-          הגשה ל־Grow.
+    <>
+      <MarketingAnalytics pagePath="/contact" />
+      <LegalPublicShell backHref="/" backLabel="← חזרה לדף הבית">
+        <h1 style={{ margin: '0 0 12px', fontSize: 28 }}>יצירת קשר</h1>
+        <p style={{ margin: '0 0 24px', color: '#475569', fontSize: 15 }}>
+          פרטי בית העסק לצורך שירות תשלומים ותמיכה. לתיאום הדגמה לחברות ניהול — השאירו פרטים בטלפון או
+          במייל.
         </p>
-      ) : null}
 
-      <dl style={{ margin: 0, fontSize: 16, lineHeight: 1.8 }}>
-        <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>שם העסק</dt>
-        <dd style={{ margin: '0 0 16px' }}>{cfg.businessName}</dd>
+        {!cfg.readyForGrowAudit ? (
+          <p
+            style={{
+              padding: 12,
+              background: '#fff7ed',
+              border: '1px solid #fed7aa',
+              borderRadius: 10,
+              fontSize: 14,
+              color: '#9a3412',
+              marginBottom: 20,
+            }}
+          >
+            חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). יש להשלים ב־Vercel לפני
+            הגשה ל־Grow.
+          </p>
+        ) : null}
 
-        <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>טלפון</dt>
-        <dd style={{ margin: '0 0 16px' }}>
-          <a href={legalTelHref(cfg.phone)} style={{ color: '#1e40af', fontWeight: 700 }}>
-            {cfg.phoneDisplay}
-          </a>
-        </dd>
+        <dl style={{ margin: 0, fontSize: 16, lineHeight: 1.8 }}>
+          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>שם העסק</dt>
+          <dd style={{ margin: '0 0 16px' }}>{cfg.businessName}</dd>
 
-        <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>כתובת בית העסק</dt>
-        <dd style={{ margin: '0 0 16px' }}>{cfg.address}</dd>
+          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>טלפון</dt>
+          <dd style={{ margin: '0 0 16px' }}>
+            <MarketingLeadLink
+              href={legalTelHref(cfg.phone)}
+              method="contact_phone"
+              placement="contact"
+              style={{ color: '#1e40af', fontWeight: 700 }}
+            >
+              {cfg.phoneDisplay}
+            </MarketingLeadLink>
+          </dd>
 
-        <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>מייל</dt>
-        <dd style={{ margin: '0 0 16px' }}>
-          {cfg.email ? (
-            <a href={`mailto:${cfg.email}`} style={{ color: '#1e40af', fontWeight: 600 }} dir="ltr">
-              {cfg.email}
-            </a>
-          ) : (
-            <span style={{ color: '#94a3b8' }}>יש להגדיר LEGAL_EMAIL</span>
-          )}
-        </dd>
-      </dl>
+          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>כתובת בית העסק</dt>
+          <dd style={{ margin: '0 0 16px' }}>{cfg.address}</dd>
 
-      <p style={{ marginTop: 28, fontSize: 14 }}>
-        <Link href="/terms" style={{ color: '#1e40af', marginLeft: 12 }}>
-          תקנון
-        </Link>
-        <Link href="/privacy" style={{ color: '#1e40af' }}>
-          מדיניות פרטיות
-        </Link>
-      </p>
-    </LegalPublicShell>
+          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>מייל</dt>
+          <dd style={{ margin: '0 0 16px' }}>
+            {cfg.email ? (
+              <MarketingLeadLink
+                href={`mailto:${cfg.email}`}
+                method="contact_email"
+                placement="contact"
+                style={{ color: '#1e40af', fontWeight: 600 }}
+                dir="ltr"
+              >
+                {cfg.email}
+              </MarketingLeadLink>
+            ) : (
+              <span style={{ color: '#94a3b8' }}>יש להגדיר LEGAL_EMAIL</span>
+            )}
+          </dd>
+        </dl>
+
+        <p style={{ marginTop: 28, fontSize: 14 }}>
+          <Link href="/terms" style={{ color: '#1e40af', marginLeft: 12 }}>
+            תקנון
+          </Link>
+          <Link href="/privacy" style={{ color: '#1e40af' }}>
+            מדיניות פרטיות
+          </Link>
+        </p>
+      </LegalPublicShell>
+    </>
   )
 }

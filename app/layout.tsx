@@ -54,20 +54,23 @@ export const metadata: Metadata = {
   applicationName: "BINO",
   keywords: [
     "BINO",
-    "Building Intelligence",
+    "מערכת ניהול בניינים",
+    "חברת ניהול בישראל",
     "זיכרון תפעולי",
     "ניהול בניינים",
     "תחזוקה",
-    "חברת ניהול",
     "תקלות חוזרות",
+    "וואטסאפ דיירים",
     "SLA",
   ],
   authors: [{ name: "Yoni Levy" }],
   creator: "Yoni Levy",
-  // Search Console: DNS TXT is not available on *.vercel.app (Vercel owns DNS).
-  // Use HTML-tag verification after deploy.
+  // Search Console for property bino / https://bino.casa — prefer DNS TXT on the domain;
+  // HTML tag via NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION (fallback: legacy token).
   verification: {
-    google: "KWe0L5esKCrG5HbUBOUB-EJlZcIylSsilC8XkNurxjg",
+    google:
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ||
+      "KWe0L5esKCrG5HbUBOUB-EJlZcIylSsilC8XkNurxjg",
   },
   appleWebApp: {
     capable: true,
@@ -89,6 +92,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "he_IL",
+    alternateLocale: ["en_US"],
     url: siteOrigin,
     siteName: "BINO",
     title: BINO_MARKETING_TITLE,
@@ -98,6 +102,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: BINO_MARKETING_TITLE,
     description: BINO_MARKETING_OG_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   category: "productivity",
   other: {
