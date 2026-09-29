@@ -14,7 +14,11 @@ export const metadata: Metadata = {
   description: BINO_MARKETING_DESCRIPTION,
   alternates: {
     canonical: `${origin}/`,
-    languages: { he: `${origin}/` },
+    languages: {
+      he: `${origin}/`,
+      en: `${origin}/`,
+      'x-default': `${origin}/`,
+    },
   },
   openGraph: {
     title: BINO_MARKETING_TITLE,
