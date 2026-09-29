@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
 import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/grow-webhook'
 import { findChargeIdsByGrowIds } from '@/lib/collection-charge-ops'
+import { sendCollectionInvoiceEmailIfNeeded } from '@/lib/collection-invoice-email'
 
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()
@@ -77,15 +78,27 @@ export async function POST(req: Request) {
 
     const publicToken = pickStr(data, ['cField1', 'CField1'])
     const processId = pickStr(data, ['processId', 'paymentLinkProcessId'])
-    const transactionId = pickStr(data, ['transactionId'])
+    const transactionId = pickStr(data, [
+      'transactionId',
+      'transactionCode',
+      'transaction_id',
+      'transaction_code',
+    ])
     const invoiceId = pickStr(data, [
+      'invoiceNumber',
       'invoiceId',
       'documentId',
       'invoice_id',
       'document_id',
       'asmachta',
     ])
-    const invoiceUrl = pickStr(data, ['invoiceUrl', 'invoice_url', 'documentUrl', 'url'])
+    const invoiceUrl = pickStr(data, [
+      'invoiceUrl',
+      'invoice_url',
+      'documentUrl',
+      'document_url',
+      'url',
+    ])
 
     const admin = getSupabaseAdmin()
     const chargeIds = await findChargeIdsByGrowIds(admin, {
@@ -98,6 +111,7 @@ export async function POST(req: Request) {
     logger.info('WEBHOOK', 'Grow invoice webhook', {
       matched: chargeIds.length,
       hasInvoiceId: Boolean(invoiceId),
+      hasInvoiceUrl: Boolean(invoiceUrl),
     })
 
     if (chargeIds.length === 0) {
@@ -105,17 +119,28 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString()
-    await admin
-      .from('collection_charges')
-      .update({
-        grow_invoice_id: invoiceId,
-        grow_invoice_url: invoiceUrl,
-        grow_invoice_received_at: now,
-        updated_at: now,
-      })
-      .in('id', chargeIds)
+    const patch: Record<string, string | null> = {
+      grow_invoice_received_at: now,
+      updated_at: now,
+    }
+    if (invoiceId) patch.grow_invoice_id = invoiceId
+    if (invoiceUrl) patch.grow_invoice_url = invoiceUrl
 
-    return NextResponse.json({ ok: true, matched: chargeIds.length })
+    await admin.from('collection_charges').update(patch).in('id', chargeIds)
+
+    // Email invoice link to residents (BINO Resend) — Grow may also email separately.
+    const emailResults: Array<{ chargeId: string; sent: boolean; skipped?: string; error?: string }> =
+      []
+    for (const chargeId of chargeIds) {
+      const result = await sendCollectionInvoiceEmailIfNeeded(admin, chargeId)
+      emailResults.push({ chargeId, ...result })
+    }
+
+    return NextResponse.json({
+      ok: true,
+      matched: chargeIds.length,
+      emails: emailResults,
+    })
   } catch (e) {
     logger.error('WEBHOOK', 'Grow invoice webhook failed', e instanceof Error ? e : undefined)
     return NextResponse.json({ error: 'internal' }, { status: 500 })
