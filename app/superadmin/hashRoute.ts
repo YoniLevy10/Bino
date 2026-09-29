@@ -6,6 +6,7 @@ export type SuperadminRoute =
 
 const TASKS: readonly ClientTask[] = [
   'hub',
+  'launch',
   'plan',
   'nav',
   'addons',

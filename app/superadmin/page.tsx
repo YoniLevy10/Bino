@@ -588,6 +588,7 @@ export default function SuperAdminPage() {
               setClients((prev) => prev.map((c) => (c.id === selectedClient.id ? { ...c, logo_url: url } : c)))
             }}
             onBack={backToHub}
+            onOpenTask={(task) => openClient(selectedClient.id, task)}
           />
         ) : null}
 
