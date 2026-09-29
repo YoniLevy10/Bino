@@ -63,9 +63,9 @@ const HE: MarketingCopy = {
   dir: 'rtl',
   lang: 'he',
   brand: 'BINO',
-  headline: 'זיכרון תפעולי חכם לכל בניין',
+  headline: 'זיכרון תפעולי לכל פרויקט, בניין ושטח',
   support:
-    'לחברות ניהול בישראל: לא עוד מערכת תקלות. BINO לומדת מההיסטוריה, מחליטה מי מטפל, מונעת כשלים חוזרים ומוכיחה חיסכון.',
+    'לחברות ניהול בישראל: לא תוכנת ועד בלבד ולא עוד מערכת תקלות. BINO לומדת את האתר, מחליטה מי מטפל, מונעת כשלים חוזרים ומוכיחה חיסכון.',
   ctaDemo: 'לתיאום הדגמה בוואטסאפ',
   ctaLogin: 'כניסה למערכת',
   langSwitchAria: 'בחירת שפה',
@@ -91,7 +91,7 @@ const HE: MarketingCopy = {
     },
   ],
   metricsTitle: 'המדדים שמנחים את המוצר',
-  metricsLead: 'כל פיצ׳ר ב־BINO נמדד לפי מה שחשוב לתפעול בניינים — לא לפי כמה תקלות נפתחו.',
+  metricsLead: 'כל פיצ׳ר ב־BINO נמדד לפי מה שחשוב לתפעול פרויקטים, בניינים ושטחים — לא לפי כמה תקלות נפתחו.',
   sampleNote: 'מספרי דוגמה להמחשה — לא נתוני לקוח אמיתי.',
   metrics: [
     { label: 'זמן עד שיוך', before: '48 דק׳', after: '12 דק׳', note: 'ירידה של ~75%' },
@@ -115,8 +115,8 @@ const HE: MarketingCopy = {
   howLead: 'שלושה שלבים ממערכת שמתעדת עבודה — למערכת שמקבלת החלטות.',
   steps: [
     {
-      title: 'לומדים את הבניין',
-      body: 'BINO בונה זיכרון תפעולי מהיסטוריית תקלות, ציוד, ספקים, עלויות וזמני טיפול — לכל בניין בנפרד.',
+      title: 'לומדים את האתר',
+      body: 'BINO בונה זיכרון תפעולי מהיסטוריית תקלות, ציוד, ספקים, עלויות וזמני טיפול — לכל פרויקט, בניין או שטח בנפרד.',
     },
     {
       title: 'ממליצים ומקצרים החלטות',
@@ -128,11 +128,15 @@ const HE: MarketingCopy = {
     },
   ],
   faqTitle: 'שאלות נפוצות',
-  faqLead: 'מה מבדיל את BINO ממערכת תקלות רגילה — ולמה זה חשוב לחברת ניהול.',
+  faqLead: 'מה מבדיל את BINO ממערכת תקלות או תוכנת ועד — ולמה זה חשוב לחברת ניהול.',
   faq: [
     {
       q: 'במה BINO שונה ממערכת פתיחת תקלות?',
-      a: 'BINO בונה זיכרון תפעולי לכל בניין: לומדת מהיסטוריה, ממליצה על עובד או ספק, מזהה תקלות חוזרות ומוכיחה חיסכון בזמן וכסף — לא רק מתעדת עבודה.',
+      a: 'BINO בונה זיכרון תפעולי לכל פרויקט ובניין: לומדת מהיסטוריה, ממליצה על עובד או ספק, מזהה תקלות חוזרות ומוכיחה חיסכון בזמן וכסף — לא רק מתעדת עבודה.',
+    },
+    {
+      q: 'האם BINO מיועדת רק לוועד בית?',
+      a: 'לא. BINO מיועדת לחברות ניהול שמתפעלות פרויקטים, בניינים ושטחים — מגורים, מתחמים ושטחים משותפים. גבייה היא יכולת נלווית; הבידול הוא מודיעין תפעולי וחיסכון מוכח.',
     },
     {
       q: 'אילו מדדים BINO מציגה להנהלה?',
@@ -147,22 +151,23 @@ const HE: MarketingCopy = {
       a: 'כן — תיאמו הדגמה בוואטסאפ ונראה את BINO על בניין לדוגמה עם זיכרון תפעולי ומדדי חיסכון.',
     },
   ],
-  closingTitle: 'מוכנים לראות BINO על הבניינים שלכם?',
+  closingTitle: 'מוכנים לראות BINO על הפרויקטים והשטחים שלכם?',
   footerTagline: 'BINO — Building Intelligence & Operations',
   privacy: 'פרטיות',
   terms: 'תקנון',
   contact: 'יצירת קשר',
   guides: 'מדריכים',
-  waDemoText: 'שלום, אני מעוניין/ת בהדגמה של BINO — מערכת הזיכרון התפעולי לבניינים',
+  waDemoText:
+    'שלום, אני מעוניין/ת בהדגמה של BINO — זיכרון תפעולי לפרויקטים, בניינים ושטחים',
 }
 
 const EN: MarketingCopy = {
   dir: 'ltr',
   lang: 'en',
   brand: 'BINO',
-  headline: 'Smart operational memory for every building',
+  headline: 'Operational memory for every project, building, and space',
   support:
-    'Not another ticketing system. BINO learns from history, decides who handles it, prevents recurring failures, and proves savings for the management company.',
+    'Not a committee-only app and not another ticketing system. BINO learns each site, decides who handles it, prevents recurring failures, and proves savings for the management company.',
   ctaDemo: 'Book a WhatsApp demo',
   ctaLogin: 'Sign in',
   langSwitchAria: 'Language',
@@ -225,11 +230,15 @@ const EN: MarketingCopy = {
     },
   ],
   faqTitle: 'FAQ',
-  faqLead: 'What makes BINO different from a regular ticketing system — and why management companies care.',
+  faqLead: 'What makes BINO different from ticketing or committee-only software — and why management companies care.',
   faq: [
     {
       q: 'How is BINO different from a ticketing system?',
-      a: 'BINO builds operational memory per building: it learns from history, recommends the right worker or vendor, detects recurring failures, and proves time and money saved — it does not just log work.',
+      a: 'BINO builds operational memory per project and building: it learns from history, recommends the right worker or vendor, detects recurring failures, and proves time and money saved — it does not just log work.',
+    },
+    {
+      q: 'Is BINO only for building committees?',
+      a: 'No. BINO is for management companies running projects, buildings, and shared spaces. Collections can be part of the stack; the differentiation is operational intelligence and proven savings.',
     },
     {
       q: 'Which metrics does BINO show leadership?',
@@ -244,13 +253,14 @@ const EN: MarketingCopy = {
       a: 'Yes — book a WhatsApp demo and we will walk through BINO on a sample building with operational memory and savings metrics.',
     },
   ],
-  closingTitle: 'Ready to see BINO on your buildings?',
+  closingTitle: 'Ready to see BINO on your projects and spaces?',
   footerTagline: 'BINO — Building Intelligence & Operations',
   privacy: 'Privacy',
   terms: 'Terms',
   contact: 'Contact',
   guides: 'Guides',
-  waDemoText: 'Hi — I would like a demo of BINO, the operational memory system for buildings',
+  waDemoText:
+    'Hi — I would like a demo of BINO, operational memory for projects, buildings, and spaces',
 }
 
 export const MARKETING_COPY: Record<MarketingLocale, MarketingCopy> = {

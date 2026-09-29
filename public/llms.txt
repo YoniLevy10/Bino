@@ -1,8 +1,8 @@
 # BINO
 
-> Building Intelligence & Operations — זיכרון תפעולי חכם לבניינים בישראל.
+> Building Intelligence & Operations — זיכרון תפעולי לפרויקטים, בניינים ושטחים בישראל.
 
-BINO is not a generic ticketing system. It learns from ticket history, equipment, vendors, costs, and resolution times; recommends the right worker or vendor; detects recurring failures; alerts on SLA risk; and proves time and money saved for Israeli management companies (חברות ניהול).
+BINO is not a generic ticketing system and not committee-only (ועד בית) software. It learns from ticket history, equipment, vendors, costs, and resolution times per project/site; recommends the right worker or vendor; detects recurring failures; alerts on SLA risk; and proves time and money saved for Israeli management companies (חברות ניהול) running buildings, spaces, and portfolios.
 
 Primary market: Israel. Primary language: Hebrew.
 
@@ -10,8 +10,10 @@ Primary market: Israel. Primary language: Hebrew.
 
 - https://bino.casa/ — Hebrew marketing site
 - https://bino.casa/en — English marketing site
-- https://bino.casa/guides — Hebrew guides for management companies (organic SEO)
+- https://bino.casa/guides — Hebrew guides (organic SEO)
 - https://bino.casa/guides/maarechet-nihul-binyanim — מערכת ניהול בניינים
+- https://bino.casa/guides/maarechet-nihul-proyektim — מערכת ניהול פרויקטים
+- https://bino.casa/guides/nihul-shtachim-ve-nechasim — ניהול שטחים ונכסים
 - https://bino.casa/guides/zikaron-tifuli — זיכרון תפעולי
 - https://bino.casa/guides/takalot-hozrot — תקלות חוזרות בבניין
 - https://bino.casa/guides/whatsapp-dayarim — דיווח תקלות וואטסאפ דיירים

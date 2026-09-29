@@ -13,19 +13,23 @@ Ranking #1 is not a toggle — Google rewards useful Hebrew pages that match sea
 | Asset | Role |
 |-------|------|
 | `/` + `/en` | Brand + differentiation (זיכרון תפעולי) |
-| `/guides` + 5 Hebrew guides | Long-tail Israel keywords → demos |
+| `/guides` + Hebrew guides | Long-tail Israel keywords → demos (projects / buildings / spaces — not ועד-only) |
 | `/savings-report` | Lead magnet (sample savings) |
 | Sitemap + JSON-LD Article/FAQ/Breadcrumb | Crawl + rich results |
 | GA4 `generate_lead` | Measure which pages convert |
 
 ### Target keywords (Israel / HE)
 
-1. מערכת ניהול בניינים
-2. זיכרון תפעולי
-3. תקלות חוזרות בבניין
-4. דיווח תקלות וואטסאפ דיירים
-5. SLA תחזוקת בניינים
-6. תוכנה לחברת ניהול
+1. מערכת ניהול פרויקטים
+2. מערכת ניהול בניינים
+3. ניהול שטחים / ניהול נכסים
+4. זיכרון תפעולי
+5. תקלות חוזרות בבניין
+6. דיווח תקלות וואטסאפ דיירים
+7. SLA תחזוקת בניינים
+8. תוכנה לחברת ניהול
+
+Positioning note: rank for project / building / space ops — **not** as “תוכנת ועד בית בלבד” and **not** as generic Monday-style PM.
 
 ### Your free weekly loop (outside the repo)
 
