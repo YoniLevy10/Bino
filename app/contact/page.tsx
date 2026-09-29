@@ -10,7 +10,8 @@ const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'יצירת קשר',
-  description: 'טלפון, כתובת ומייל ליצירת קשר עם BINO — זיכרון תפעולי לחברות ניהול בניינים.',
+  description:
+    'טלפון, כתובת ומייל ליצירת קשר עם BINO — זיכרון תפעולי לניהול פרויקטים, בניינים ושטחים.',
   alternates: { canonical: `${origin}/contact` },
   openGraph: {
     title: 'יצירת קשר | BINO',

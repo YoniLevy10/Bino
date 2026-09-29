@@ -16,7 +16,10 @@ export const metadata: Metadata = {
   description: BINO_MARKETING_DESCRIPTION,
   keywords: [
     'BINO',
+    'מערכת ניהול פרויקטים',
     'מערכת ניהול בניינים',
+    'ניהול שטחים',
+    'ניהול נכסים',
     'חברת ניהול בישראל',
     'זיכרון תפעולי',
     'ניהול בניינים',

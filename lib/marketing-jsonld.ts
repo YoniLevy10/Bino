@@ -75,8 +75,14 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
         '@type': 'SoftwareApplication',
         '@id': `${origin}/#software`,
         name: 'BINO',
+        alternateName: [
+          'מערכת ניהול פרויקטים',
+          'מערכת ניהול בניינים',
+          'ניהול שטחים',
+          'Building Intelligence & Operations',
+        ],
         applicationCategory: 'BusinessApplication',
-        applicationSubCategory: 'Property management / facilities operations',
+        applicationSubCategory: 'Property / facilities / multi-site operations',
         operatingSystem: 'Web',
         url: `${origin}/`,
         description: BINO_MARKETING_DESCRIPTION,
@@ -87,7 +93,12 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
           priceCurrency: 'ILS',
           description: locale === 'en' ? 'Book a demo' : 'תיאום הדגמה',
         },
-        featureList: copy.steps.map((s) => s.title),
+        featureList: [
+          ...copy.steps.map((s) => s.title),
+          locale === 'en'
+            ? 'Operational memory for projects, buildings, and spaces'
+            : 'זיכרון תפעולי לפרויקטים, בניינים ושטחים',
+        ],
         publisher: { '@id': `${origin}/#organization` },
       },
       {

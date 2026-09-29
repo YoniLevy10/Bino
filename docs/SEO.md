@@ -12,29 +12,28 @@ Ranking #1 is not a toggle — Google rewards useful Hebrew pages that match sea
 
 | Asset | Role |
 |-------|------|
-| `/` + `/en` | Brand + differentiation (זיכרון תפעולי) |
-| `/guides` + 5 Hebrew guides | Long-tail Israel keywords → demos |
+| `/` + `/en` | **Primary** — title/H1/support/FAQ/JSON-LD position BINO as מערכת ניהול פרויקטים / בניינים / שטחים (not ועד-only) |
 | `/savings-report` | Lead magnet (sample savings) |
-| Sitemap + JSON-LD Article/FAQ/Breadcrumb | Crawl + rich results |
-| GA4 `generate_lead` | Measure which pages convert |
+| Sitemap + JSON-LD FAQ/SoftwareApplication | Crawl + rich results on the homepage |
+| GA4 `generate_lead` | Measure which CTAs convert |
 
-### Target keywords (Israel / HE)
+### Target keywords (Israel / HE) — on the live homepage
 
-1. מערכת ניהול בניינים
-2. זיכרון תפעולי
-3. תקלות חוזרות בבניין
-4. דיווח תקלות וואטסאפ דיירים
-5. SLA תחזוקת בניינים
-6. תוכנה לחברת ניהול
+1. מערכת ניהול פרויקטים
+2. מערכת ניהול בניינים
+3. ניהול שטחים / ניהול נכסים
+4. זיכרון תפעולי
+5. תוכנה לחברת ניהול
+
+Positioning: project / building / space ops — **not** “תוכנת ועד בית בלבד” and **not** generic Monday-style PM. Implementation is on `/` metadata + copy + JSON-LD, not blog/guides.
 
 ### Your free weekly loop (outside the repo)
 
 1. Search Console → submit / re-submit `https://bino.casa/sitemap.xml`
-2. Request indexing for `/guides` and each new guide URL
-3. Publish **one** new Hebrew guide/month (same folder pattern in `lib/seo-guides-he.ts`)
-4. Share each guide once in relevant Facebook/LinkedIn groups for חברות ניהול (manual — not spam)
-5. Ask happy customers for a short Hebrew case blurb + link to bino.casa (best free backlink)
-6. In GA4: mark `generate_lead` as a key event; watch which guide converts
+2. Request indexing for `https://bino.casa/` and `/en`
+3. Share the homepage once in relevant Facebook/LinkedIn groups for חברות ניהול (manual — not spam)
+4. Ask happy customers for a short Hebrew case blurb + link to bino.casa (best free backlink)
+5. In GA4: mark `generate_lead` as a key event; watch Realtime + conversions from `/`
 
 ### What will **not** get you to #1 overnight
 
