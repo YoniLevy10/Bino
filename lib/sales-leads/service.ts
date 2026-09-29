@@ -1,1 +1,1 @@
-$file:/tmp/bino-content-for-mcp.txt
+$file:/workspace/.opsbrain-bino-service.ts
