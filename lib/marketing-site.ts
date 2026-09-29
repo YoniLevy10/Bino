@@ -14,10 +14,21 @@ export function getMarketingSiteOrigin(): string {
   return 'http://localhost:3000'
 }
 
-export const BINO_MARKETING_TITLE = 'BINO — זיכרון תפעולי לפרויקטים, בניינים ושטחים'
+/** ~50–60 chars for SEOptimer / SERP title length. */
+export const BINO_MARKETING_TITLE = 'BINO — מערכת ניהול פרויקטים, בניינים ושטחים בישראל'
 
+/** ~120–160 chars for meta description. */
 export const BINO_MARKETING_DESCRIPTION =
-  'BINO — מערכת ניהול פרויקטים, בניינים ושטחים לחברות ניהול בישראל: זיכרון תפעולי לכל אתר, שיוך חכם, מניעת תקלות חוזרות והוכחת חיסכון — לא רק ועד בית ולא רק מערכת תקלות.'
+  'BINO — מערכת ניהול פרויקטים, בניינים ושטחים לחברות ניהול בישראל. זיכרון תפעולי לכל אתר, שיוך חכם והוכחת חיסכון — לא רק ועד בית.'
 
 export const BINO_MARKETING_OG_DESCRIPTION =
-  'לחברות ניהול בישראל: פרויקטים, בניינים ושטחים — לא עוד מערכת תקלות או תוכנת ועד בלבד. BINO לומדת, מחליטה ומוכיחה חיסכון.'
+  'BINO — מערכת ניהול פרויקטים, בניינים ושטחים בישראל. זיכרון תפעולי והוכחת חיסכון — לא רק ועד בית.'
+
+export const BINO_MARKETING_TITLE_EN =
+  'BINO — Project, building & space management (Israel)'
+
+export const BINO_MARKETING_DESCRIPTION_EN =
+  'BINO — management system for projects, buildings, and spaces in Israel. Operational memory, smart assignment, and proven savings — not committee-only software.'
+
+export const BINO_MARKETING_OG_DESCRIPTION_EN =
+  'BINO — projects, buildings, and spaces for Israeli management companies. Operational memory and proven savings — not committee-only software.'

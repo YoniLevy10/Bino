@@ -13,6 +13,12 @@ import {
 import { trackMarketingEvent } from '@/lib/marketing-analytics'
 import { MarketingLeadLink } from './MarketingLeadLink'
 
+export type MarketingNap = {
+  phoneDisplay: string
+  phoneHref: string
+  address: string
+}
+
 function CtaPair({
   locale,
   variant = 'hero',
@@ -85,7 +91,13 @@ function LangSwitch({
   )
 }
 
-export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: MarketingLocale }) {
+export function MarketingLanding({
+  initialLocale = 'he',
+  nap = null,
+}: {
+  initialLocale?: MarketingLocale
+  nap?: MarketingNap | null
+}) {
   const router = useRouter()
   const [locale, setLocale] = useState<MarketingLocale>(initialLocale)
 
@@ -113,8 +125,10 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
         </div>
         <div className="bino-hero__stage">
           <div className="bino-hero__copy">
-            <h1 className="bino-brand">{copy.brand}</h1>
-            <p className="bino-headline">{copy.headline}</p>
+            <h1 className="bino-hero__title">
+              <span className="bino-brand">{copy.brand}</span>
+              <span className="bino-headline">{copy.headline}</span>
+            </h1>
             <p className="bino-support">{copy.support}</p>
             <CtaPair locale={locale} />
           </div>
@@ -124,7 +138,6 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
                 <span className="bino-device__dot" />
                 <span className="bino-device__url">bino.casa</span>
               </div>
-              {/* Local product mock — next/image optimization not required for marketing statics */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={heroShot.src}
@@ -141,6 +154,18 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
       </header>
 
       <main>
+        <section className="bino-section bino-audience" aria-labelledby="bino-audience-heading">
+          <h2 id="bino-audience-heading" className="bino-section__title">
+            {copy.audienceTitle}
+          </h2>
+          <p className="bino-section__lead">{copy.audienceLead}</p>
+          {copy.audienceBody.map((para) => (
+            <p key={para.slice(0, 48)} className="bino-audience__p">
+              {para}
+            </p>
+          ))}
+        </section>
+
         <section className="bino-showcase" aria-labelledby="bino-showcase-heading">
           <div className="bino-section bino-section--wide">
             <h2 id="bino-showcase-heading" className="bino-section__title">
@@ -244,17 +269,30 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
       </main>
 
       <footer className="bino-footer">
-        <span>{copy.footerTagline}</span>
-        {' · '}
-        <Link href="/guides">{copy.guides}</Link>
-        {' · '}
-        <Link href="/privacy">{copy.privacy}</Link>
-        {' · '}
-        <Link href="/terms">{copy.terms}</Link>
-        {' · '}
-        <MarketingLeadLink href="/contact" method="contact_nav" locale={locale} placement="footer">
-          {copy.contact}
-        </MarketingLeadLink>
+        <div className="bino-footer__row">
+          <span>{copy.footerTagline}</span>
+          {' · '}
+          <Link href="/guides">{copy.guides}</Link>
+          {' · '}
+          <Link href="/privacy">{copy.privacy}</Link>
+          {' · '}
+          <Link href="/terms">{copy.terms}</Link>
+          {' · '}
+          <MarketingLeadLink href="/contact" method="contact_nav" locale={locale} placement="footer">
+            {copy.contact}
+          </MarketingLeadLink>
+        </div>
+        {nap ? (
+          <div className="bino-footer__nap">
+            <MarketingLeadLink href={nap.phoneHref} method="contact_phone" placement="footer">
+              {nap.phoneDisplay}
+            </MarketingLeadLink>
+            <span className="bino-footer__nap-sep" aria-hidden="true">
+              ·
+            </span>
+            <span>{nap.address}</span>
+          </div>
+        ) : null}
       </footer>
     </div>
   )

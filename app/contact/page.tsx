@@ -5,6 +5,7 @@ import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { MarketingLeadLink } from '@/app/components/marketing/MarketingLeadLink'
 import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import '@/app/components/legal/legal-contact.css'
 
 const origin = getMarketingSiteOrigin()
 
@@ -29,73 +30,59 @@ export default function ContactPage() {
     <>
       <MarketingAnalytics pagePath="/contact" />
       <LegalPublicShell backHref="/" backLabel="← חזרה לדף הבית">
-        <h1 style={{ margin: '0 0 12px', fontSize: 28 }}>יצירת קשר</h1>
-        <p style={{ margin: '0 0 24px', color: '#475569', fontSize: 15 }}>
+        <h1 className="legal-contact__h1">יצירת קשר</h1>
+        <p className="legal-contact__intro">
           פרטי בית העסק לצורך שירות תשלומים ותמיכה. לתיאום הדגמה לחברות ניהול — השאירו פרטים בטלפון או
           במייל.
         </p>
 
         {!cfg.readyForGrowAudit ? (
-          <p
-            style={{
-              padding: 12,
-              background: '#fff7ed',
-              border: '1px solid #fed7aa',
-              borderRadius: 10,
-              fontSize: 14,
-              color: '#9a3412',
-              marginBottom: 20,
-            }}
-          >
+          <p className="legal-contact__warn">
             חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). יש להשלים ב־Vercel לפני
             הגשה ל־Grow.
           </p>
         ) : null}
 
-        <dl style={{ margin: 0, fontSize: 16, lineHeight: 1.8 }}>
-          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>שם העסק</dt>
-          <dd style={{ margin: '0 0 16px' }}>{cfg.businessName}</dd>
+        <dl className="legal-contact__dl">
+          <dt className="legal-contact__dt">שם העסק</dt>
+          <dd className="legal-contact__dd">{cfg.businessName}</dd>
 
-          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>טלפון</dt>
-          <dd style={{ margin: '0 0 16px' }}>
+          <dt className="legal-contact__dt">טלפון</dt>
+          <dd className="legal-contact__dd">
             <MarketingLeadLink
               href={legalTelHref(cfg.phone)}
               method="contact_phone"
               placement="contact"
-              style={{ color: '#1e40af', fontWeight: 700 }}
+              className="legal-contact__link"
             >
               {cfg.phoneDisplay}
             </MarketingLeadLink>
           </dd>
 
-          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>כתובת בית העסק</dt>
-          <dd style={{ margin: '0 0 16px' }}>{cfg.address}</dd>
+          <dt className="legal-contact__dt">כתובת בית העסק</dt>
+          <dd className="legal-contact__dd">{cfg.address}</dd>
 
-          <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>מייל</dt>
-          <dd style={{ margin: '0 0 16px' }}>
+          <dt className="legal-contact__dt">מייל</dt>
+          <dd className="legal-contact__dd">
             {cfg.email ? (
               <MarketingLeadLink
                 href={`mailto:${cfg.email}`}
                 method="contact_email"
                 placement="contact"
-                style={{ color: '#1e40af', fontWeight: 600 }}
+                className="legal-contact__link legal-contact__link--email"
                 dir="ltr"
               >
                 {cfg.email}
               </MarketingLeadLink>
             ) : (
-              <span style={{ color: '#94a3b8' }}>יש להגדיר LEGAL_EMAIL</span>
+              <span className="legal-contact__muted">יש להגדיר LEGAL_EMAIL</span>
             )}
           </dd>
         </dl>
 
-        <p style={{ marginTop: 28, fontSize: 14 }}>
-          <Link href="/terms" style={{ color: '#1e40af', marginLeft: 12 }}>
-            תקנון
-          </Link>
-          <Link href="/privacy" style={{ color: '#1e40af' }}>
-            מדיניות פרטיות
-          </Link>
+        <p className="legal-contact__links">
+          <Link href="/terms">תקנון</Link>
+          <Link href="/privacy">מדיניות פרטיות</Link>
         </p>
       </LegalPublicShell>
     </>

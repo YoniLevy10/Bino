@@ -169,6 +169,9 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `NEXT_PUBLIC_APP_URL` | Public app URL (`https://bino.casa`) — see `docs/DOMAIN.md` |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 Measurement ID from property **bino** (`G-…`) — marketing pages + lead events; see `docs/SEO.md` |
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | Optional Search Console HTML verification token (overrides layout fallback) |
+| `NEXT_PUBLIC_SOCIAL_LINKEDIN` | Optional live LinkedIn company URL → Organization `sameAs` |
+| `NEXT_PUBLIC_SOCIAL_FACEBOOK` | Optional live Facebook page URL → Organization `sameAs` |
+| `NEXT_PUBLIC_SOCIAL_INSTAGRAM` | Optional live Instagram profile URL → Organization `sameAs` |
 | `SMS_019_USERNAME` | 019SMS API username |
 | `SMS_019_PASSWORD` | 019SMS API password |
 | `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |
