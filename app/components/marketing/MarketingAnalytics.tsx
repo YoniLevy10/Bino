@@ -1,19 +1,8 @@
-'use client'
-
-import { useEffect, useRef } from 'react'
-import Script from 'next/script'
 import {
   getMarketingGaMeasurementId,
   isValidGaMeasurementId,
   type MarketingPagePath,
 } from '@/lib/marketing-analytics'
-
-declare global {
-  interface Window {
-    dataLayer: unknown[]
-    gtag?: (...args: unknown[]) => void
-  }
-}
 
 type MarketingAnalyticsProps = {
   /** Public marketing path only — never private/app routes. */
@@ -22,48 +11,24 @@ type MarketingAnalyticsProps = {
 
 /**
  * Official Google tag (gtag.js) on public marketing pages only.
- * Inline `gtag('config', …)` matches GA Admin / Tag Assistant install checks
- * (see https://support.google.com/analytics/answer/9304153).
+ * Server-rendered inline `gtag('config', …)` so GA Admin / Tag Assistant
+ * can detect the install from HTML (https://support.google.com/analytics/answer/9304153).
  * Private app routes and tokenized URLs stay out of GA4.
  */
-export function MarketingAnalytics({ pagePath = '/' }: MarketingAnalyticsProps) {
+export function MarketingAnalytics({ pagePath: _pagePath = '/' }: MarketingAnalyticsProps) {
   const measurementId = getMarketingGaMeasurementId()
-  const enabled = isValidGaMeasurementId(measurementId)
-  const lastPathRef = useRef<string | null>(null)
+  if (!isValidGaMeasurementId(measurementId)) return null
 
-  // SPA navigations between marketing pages — first hit comes from gtag('config').
-  useEffect(() => {
-    if (!enabled) return
-    if (typeof window.gtag !== 'function') return
-    if (lastPathRef.current === null) {
-      lastPathRef.current = pagePath
-      return
-    }
-    if (lastPathRef.current === pagePath) return
-    lastPathRef.current = pagePath
-    window.gtag('event', 'page_view', {
-      page_title: document.title,
-      page_location: window.location.origin + pagePath,
-      page_path: pagePath,
-    })
-  }, [enabled, pagePath])
-
-  if (!enabled) return null
-
+  // Official Google tag snippet — must appear in document HTML for GA Admin "connected" checks.
   return (
     <>
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
-        strategy="afterInteractive"
+      <script async src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} />
+      <script
+        id="google-analytics-gtag"
+        dangerouslySetInnerHTML={{
+          __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${measurementId}');`,
+        }}
       />
-      <Script id="google-analytics-gtag" strategy="afterInteractive">
-        {`
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${measurementId}');
-`}
-      </Script>
     </>
   )
 }
