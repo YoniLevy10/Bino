@@ -9,7 +9,7 @@ Google property name: **bino** (GA4 + Search Console for this domain)
 |------|--------|
 | **Vercel Analytics** | Connected (root layout, production only) |
 | **Vercel Speed Insights** | Connected (root layout, production only) |
-| **Google Analytics 4** | Wired on public marketing pages via `MarketingAnalytics` — set `NEXT_PUBLIC_GA_MEASUREMENT_ID` from property **bino** |
+| **Google Analytics 4** | Connected — property **bino**, Measurement ID in Vercel `NEXT_PUBLIC_GA_MEASUREMENT_ID` (`G-ZDW0GCWR7N`) |
 | **Google Search Console** | HTML verification in `app/layout.tsx` (override with `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`) |
 
 **Scope:** GA4 is limited to public marketing paths (`/`, `/en`, `/contact`, `/savings-report`). Private app routes and tokenized URLs are not tracked. Vercel Analytics remains sitewide for performance.
