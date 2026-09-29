@@ -1,8 +1,24 @@
 # הקמת לקוח חדש ב-BINO
 
-**מודל:** פרויקט Vercel אחד · Meta App אחת · נתונים פר-לקוח ב-Supabase.
+**מודל:** פרויקט Vercel אחד · Meta App אחת · מספר 019 אחד = SMS + WhatsApp · נתונים פר-לקוח ב-Supabase.
 
-הסופר-אדמין → לקוח → **צ׳קליסט הקמה** מציג סטטוס חי. מסמך זה הוא המדריך התפעולי.
+בסופר-אדמין → לקוח → **צ׳קליסט הקמה** מופיע סדר הפעולה בזמן אמת + סטטוס חי.
+
+---
+
+## סדר פעולה בזמן אמת (אל תערבבו)
+
+| # | פעולה | איפה |
+|---|--------|------|
+| 1 | צרו לקוח ב-BINO | סופר-אדמין → `/superadmin/setup` |
+| 2 | קנו מספר ב-019 | 019 — מספר אחד בלבד |
+| 3 | חברו את **אותו** מספר ב-Meta App של BINO | Meta → Add phone number → Phone Number ID + Token |
+| 4 | הדביקו ב-BINO | `sms_sender` 972… + WA Phone Number ID + WA Access Token |
+| 5 | Grow — שלחו ללקוח קישור רישום (GetLink) | תוסף גבייה → GetLink / userId → פרטי עסק ל-`/vaad-pay` |
+| 6 | מייל Resend + סיום תפעולי | slug@bino.casa, לוגו, בניין/עובד/מנהל → בדיקות |
+
+שלושת השלבים החיצוניים שחוזרים על עצמם: **019 → Meta → Grow GetLink**.  
+מה שקל לפספס ביניהם: יצירת לקוח (1), הדבקה ב-BINO (4), פרטי עסק + slug + בדיקות (5–6).
 
 ---
 
@@ -12,56 +28,50 @@
 |------|------|------|
 | אפליקציה | Vercel project `bino` | אין פרויקט פר-לקוח |
 | Meta App | Meta Developer | Verify token + App secret משותפים |
-| Webhook WhatsApp | `/api/webhook/whatsapp` | Meta מפנה לכתובת אחת; BINO מזהה לקוח לפי `phone_number_id` |
+| Webhook WhatsApp | `/api/webhook/whatsapp` | כתובת אחת; זיהוי לקוח לפי `phone_number_id` |
 | 019SMS API | `SMS_019_USERNAME` / `PASSWORD` | חשבון API אחד |
-| Grow platform | `GROW_API_KEY`, `GROW_X_API_KEY`, `GROW_PAGE_CODE`, `GROW_WEBHOOK_SECRET` | סליקה כפלטפורמה |
-| Resend | `RESEND_API_KEY` + דומיין מאומת `bino.casa` | From פר-לקוח: `{slug}@bino.casa` |
+| Grow platform | `GROW_*` (+ GetLink: `GROW_REGISTER_*`) | סליקה כפלטפורמה |
+| Resend | `RESEND_API_KEY` + דומיין `bino.casa` | From פר-לקוח: `{slug}@bino.casa` |
 | Push | `VAPID_*` | משותף |
 
-אין צורך ב-environment variables חדשים ב-Vercel לכל לקוח.
+אין environment variables חדשים ב-Vercel לכל לקוח.
 
 ---
 
-## מה פר-לקוח (חוזר בכל השקה)
+## פירוט פר-לקוח
 
 ### 1. יצירת לקוח
-- סופר-אדמין → אשף `/superadmin/setup` (או יצירה קיימת)
-- מקבלים: `client_id`, הזמנת אדמין, בניינים/עובדים בסיסיים
+- סופר-אדמין → אשף `/superadmin/setup`
+- מקבלים: `client_id`, הזמנת אדמין, בניין/עובד בסיסיים
 
-### 2. WhatsApp (Meta App אחת)
-1. ב-Meta Business של BINO — **Add phone number** למספר החדש של הלקוח
-2. העתיקו **Phone Number ID** → סופר-אדמין → מנוי ומכסות / הגדרות לקוח
-3. העתיקו **Access Token** → כניסה כלקוח → הגדרות → WhatsApp  
-   (לא שמים את הטוקן ב-Vercel)
+### 2. קניית מספר ב-019
+- מספר **אחד** — ישמש גם כשולח SMS וגם כ-WhatsApp
+- עדיין לא מדביקים ב-BINO עד אחרי Meta (או מיד אחרי שיש מספר)
 
-### 3. 019SMS — מספר שולח
-1. רשמו אצל 019 מספר שולח ללקוח (`9725…`)
-2. הדביקו בסופר-אדמין בשדה **מספר שולח 019SMS** (`sms_sender_name`)  
-   **לא** שם כמו "Bino" — 019 דוחה אלפאנומרי
+### 3. חיבור ב-Meta App של BINO
+1. Meta Business של BINO — **Add phone number** (המספר מ-019)
+2. העתיקו **Phone Number ID**
+3. העתיקו **Access Token**
 
-### 4. Grow — כסף של הלקוח
-1. הפעילו תוסף **גבייה** (collections) אם רלוונטי
-2. הגדרות לקוח → Grow: GetLink או הדבקת `userId`
+### 4. הדבקה ב-BINO
+1. סופר-אדמין → מנוי ומכסות → **מספר שולח 019SMS** כ-`9725…` (לא שם מותג)
+2. שם → **WA Phone Number ID**
+3. כניסה כלקוח → הגדרות → WhatsApp → **Access Token** (לא ב-Vercel)
+
+### 5. Grow
+1. הפעילו תוסף **גבייה** אם הלקוח גובה דיירים
+2. הגדרות לקוח → Grow: צרו/שלחו **GetLink**, או הדביקו `userId` אחרי הרשמה
 3. מלאו פרטי עסק ל-`/vaad-pay/{clientId}` (שם, טלפון, כתובת)
-4. הגדרת חשבוניות אוטומטיות — באתר העסקי של Grow (פעם ראשונה לחשבון)
+4. חשבוניות אוטומטיות — הגדרה ראשונה באתר העסקי של Grow
 
-### 5. מייל Resend ממותג
-- סופר-אדמין → צ׳קליסט הקמה → **slug**  
-  דוגמה: `Bamakor` → `Bamakor <bamakor@bino.casa>`  
-  `סביון` → הגדירו ידנית `savion`
-- אין צורך בכתובת חדשה ב-Vercel; הדומיין `bino.casa` כבר מאומת ב-Resend
-
-### 6. תפעול בסיסי
-- בניין אחד לפחות + דיירים
-- עובד פעיל
-- לוגו (מומלץ לדף תשלום)
-- טלפון מנהל
-
-### 7. בדיקות לפני השקה
-- [ ] הודעת WhatsApp נכנסת ונוצרת תקלה תחת הלקוח הנכון
-- [ ] SMS יוצא עם מספר השולח של הלקוח
-- [ ] חיוב גבייה ₪1 → webhook → «שולם» (+ חשבונית אם הופעלה ב-Grow)
-- [ ] מייל אישור מגיע מ-`{slug}@bino.casa`
+### 6. מייל + תפעול + בדיקות
+- סופר-אדמין → צ׳קליסט → **slug** (`Bamakor` → `bamakor@bino.casa`)
+- בניין + עובד פעיל + טלפון מנהל + לוגו (מומלץ)
+- לפני השקה:
+  - [ ] WhatsApp נכנס → תקלה תחת הלקוח הנכון
+  - [ ] SMS יוצא עם מספר השולח של הלקוח
+  - [ ] חיוב גבייה ₪1 → webhook → «שולם»
+  - [ ] מייל מ-`{slug}@bino.casa`
 
 ---
 
@@ -85,9 +95,10 @@ flowchart LR
     EmailSlug[email_slug]
   end
 
-  MetaApp -->|new_phone_number| WaId
+  Sms019 -->|buy_number| MetaApp
+  MetaApp -->|same_number| WaId
   MetaApp --> WaTok
-  Sms019 -->|registered_sender| SmsSender
+  Sms019 -->|same_number_as_sender| SmsSender
   GrowKeys -->|GetLink| GrowUid
   Resend -->|From_slug| EmailSlug
   Vercel --> MetaApp
@@ -98,15 +109,14 @@ flowchart LR
 
 ---
 
-## סיכום מהיר לסופר-אדמין
+## סיכום מהיר
 
 | שלב | פעולה |
 |-----|--------|
-| יצירה | אשף setup |
+| 1 | אשף setup |
+| 2 | קניית מספר 019 |
+| 3 | Meta App BINO — אותו מספר |
+| 4 | הדבקת 972… + WA ID + token |
+| 5 | GetLink + userId + פרטי עסק |
+| 6 | slug + תפעול + בדיקות |
 | צ׳קליסט | `#client/{id}/launch` |
-| WA ID | מנוי ומכסות |
-| WA token | הגדרות לקוח |
-| SMS | מנוי ומכסות → 972… |
-| Grow + legal | הגדרות לקוח → Grow |
-| גבייה | תוספים בתשלום |
-| מייל | צ׳קליסט → slug |

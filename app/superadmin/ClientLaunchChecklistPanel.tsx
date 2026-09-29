@@ -6,6 +6,8 @@ import { LoadingButton } from '@/app/components/LoadingButton'
 import type { LaunchCheckItem } from '@/lib/client-launch-checklist'
 import type { ClientTask } from './types'
 
+type PlaybookStep = { step: number; title: string; detail: string }
+
 type LaunchPayload = {
   items: LaunchCheckItem[]
   doneCount: number
@@ -14,8 +16,15 @@ type LaunchPayload = {
   email_slug: string | null
   resolved_email_slug: string | null
   email_from: string
+  playbook?: PlaybookStep[]
   platform_notes: { title: string; detail: string }[]
   error?: string
+}
+
+function stepDone(items: LaunchCheckItem[], step: number): boolean {
+  const inStep = items.filter((i) => i.step === step)
+  if (inStep.length === 0) return false
+  return inStep.every((i) => i.status === 'ok')
 }
 
 export function ClientLaunchChecklistPanel({
@@ -83,6 +92,8 @@ export function ClientLaunchChecklistPanel({
     return <p className="sa-hint">טוען צ׳קליסט הקמה…</p>
   }
 
+  const playbook = data?.playbook ?? []
+
   return (
     <div style={styles.wrap}>
       {error ? <p style={styles.err}>{error}</p> : null}
@@ -95,7 +106,7 @@ export function ClientLaunchChecklistPanel({
                 {data.readyForSoftLaunch ? 'מוכן להשקה רכה' : 'חסרים פריטי ליבה'}
               </div>
               <div style={styles.summaryMeta}>
-                {data.doneCount}/{data.totalCount} הושלמו
+                {data.doneCount}/{data.totalCount} הושלמו · עקבו לפי הסדר למטה
               </div>
             </div>
             <button type="button" className="sa-quick-btn" onClick={() => void load()}>
@@ -103,9 +114,43 @@ export function ClientLaunchChecklistPanel({
             </button>
           </div>
 
+          {playbook.length > 0 ? (
+            <div style={styles.playbook}>
+              <div style={styles.playbookIntro}>
+                סדר פעולה בזמן אמת (אל תדלגו / אל תערבבו)
+              </div>
+              <ol style={styles.playbookList}>
+                {playbook.map((p) => {
+                  const done = stepDone(data.items, p.step)
+                  return (
+                    <li key={p.step} style={styles.playbookItem}>
+                      <span
+                        style={{
+                          ...styles.stepBadge,
+                          background: done ? '#16a34a' : '#1e293b',
+                        }}
+                      >
+                        {p.step}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={styles.playbookTitle}>
+                          {p.title}
+                          {done ? (
+                            <span style={styles.doneTag}> ✓</span>
+                          ) : null}
+                        </div>
+                        <div style={styles.playbookDetail}>{p.detail}</div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          ) : null}
+
           <div style={styles.emailBox}>
             <label className="sa-field">
-              <span>Slug למייל Resend (@bino.casa)</span>
+              <span>Slug למייל Resend (@bino.casa) — שלב 6</span>
               <div style={styles.slugRow}>
                 <input
                   className="sa-input"
@@ -131,6 +176,7 @@ export function ClientLaunchChecklistPanel({
             </LoadingButton>
           </div>
 
+          <div style={styles.sectionLabel}>פירוט סטטוס לפי שלב</div>
           <ul style={styles.list}>
             {data.items.map((item) => (
               <li key={item.id} style={styles.item}>
@@ -206,6 +252,50 @@ const styles: Record<string, CSSProperties> = {
   },
   summaryTitle: { fontWeight: 800, fontSize: 16, color: theme.colors.textPrimary },
   summaryMeta: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 2 },
+  playbook: {
+    margin: 0,
+    padding: 14,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    borderRadius: 12,
+    background: '#0f172a',
+    color: '#f8fafc',
+  },
+  playbookList: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  playbookIntro: {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+    color: '#94a3b8',
+  },
+  playbookItem: {
+    display: 'flex',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 800,
+    fontSize: 13,
+    color: '#fff',
+    flexShrink: 0,
+  },
+  doneTag: { color: '#4ade80', fontWeight: 800 },
+  playbookTitle: { fontWeight: 700, fontSize: 14, color: '#f8fafc' },
+  playbookDetail: { fontSize: 12, color: '#cbd5e1', lineHeight: 1.45, marginTop: 2 },
   emailBox: {
     padding: 12,
     borderRadius: 12,
@@ -213,6 +303,12 @@ const styles: Record<string, CSSProperties> = {
   },
   slugRow: { display: 'flex', alignItems: 'center', gap: 8 },
   atDomain: { fontSize: 13, color: theme.colors.textMuted, fontFamily: 'monospace' },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
   list: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 },
   item: {
     display: 'flex',
