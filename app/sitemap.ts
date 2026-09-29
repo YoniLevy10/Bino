@@ -34,7 +34,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${origin}/contact`,
       lastModified,
       changeFrequency: 'monthly',
-      priority: 0.7,
+      priority: 0.8,
+    },
+    {
+      url: `${origin}/savings-report`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.75,
     },
     {
       url: `${origin}/vaad-pay`,

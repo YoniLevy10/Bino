@@ -11,6 +11,8 @@ import {
   storeMarketingLocale,
   waDemoUrl,
 } from '@/lib/marketing-copy'
+import { trackMarketingEvent } from '@/lib/marketing-analytics'
+import { MarketingLeadLink } from './MarketingLeadLink'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -29,19 +31,28 @@ function CtaPair({
   const copy = MARKETING_COPY[locale]
   return (
     <div className="bino-cta">
-      <a
+      <MarketingLeadLink
         className="bino-cta__primary"
         href={waDemoUrl(locale)}
         target="_blank"
         rel="noopener noreferrer"
+        method="whatsapp_demo"
+        locale={locale}
+        placement={variant}
       >
         {copy.ctaDemo}
-      </a>
+      </MarketingLeadLink>
       <Link
         className={
           variant === 'closing' ? 'bino-cta__secondary bino-cta__secondary--dark' : 'bino-cta__secondary'
         }
         href="/login"
+        onClick={() =>
+          trackMarketingEvent('login_click', {
+            locale,
+            placement: variant,
+          })
+        }
       >
         {copy.ctaLogin}
       </Link>
@@ -247,7 +258,9 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
         {' · '}
         <Link href="/terms">{copy.terms}</Link>
         {' · '}
-        <Link href="/contact">{copy.contact}</Link>
+        <MarketingLeadLink href="/contact" method="contact_nav" locale={locale} placement="footer">
+          {copy.contact}
+        </MarketingLeadLink>
       </footer>
     </div>
   )

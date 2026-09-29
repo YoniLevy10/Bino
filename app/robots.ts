@@ -29,7 +29,6 @@ const DISALLOW = [
   '/intake',
   '/report',
   '/pilot-sms',
-  '/savings-report',
   '/tasks',
   '/site-tours',
   '/onboarding',
@@ -44,12 +43,12 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/en', '/contact', '/privacy', '/terms', '/vaad-pay'],
+        allow: ['/', '/en', '/contact', '/savings-report', '/privacy', '/terms', '/vaad-pay'],
         disallow: [...DISALLOW],
       },
       {
         userAgent: 'GPTBot',
-        allow: ['/', '/en', '/contact', '/privacy', '/terms'],
+        allow: ['/', '/en', '/contact', '/savings-report', '/privacy', '/terms'],
         disallow: [...DISALLOW],
       },
     ],

@@ -2,8 +2,11 @@
 
 import { useEffect } from 'react'
 import Script from 'next/script'
-
-const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+import {
+  getMarketingGaMeasurementId,
+  isValidGaMeasurementId,
+  type MarketingPagePath,
+} from '@/lib/marketing-analytics'
 
 declare global {
   interface Window {
@@ -14,17 +17,20 @@ declare global {
 }
 
 type MarketingAnalyticsProps = {
-  /** Public marketing path only, e.g. `/` or `/en`. */
-  pagePath?: '/' | '/en'
+  /** Public marketing path only — never private/app routes. */
+  pagePath?: MarketingPagePath
 }
 
 /**
- * Measure public marketing pages only.
- * Private app routes and tokenized URLs stay out of GA4 (intentional — from main #167).
+ * Measure public marketing pages only (property: bino / bino.casa).
+ * Private app routes and tokenized URLs stay out of GA4.
  */
 export function MarketingAnalytics({ pagePath = '/' }: MarketingAnalyticsProps) {
+  const measurementId = getMarketingGaMeasurementId()
+  const enabled = isValidGaMeasurementId(measurementId)
+
   useEffect(() => {
-    if (!measurementId || !/^G-[A-Z0-9]+$/.test(measurementId)) return
+    if (!enabled) return
 
     window.dataLayer = window.dataLayer || []
     window.gtag =
@@ -47,9 +53,9 @@ export function MarketingAnalytics({ pagePath = '/' }: MarketingAnalyticsProps) 
       page_location: window.location.origin + pagePath,
       page_path: pagePath,
     })
-  }, [pagePath])
+  }, [enabled, measurementId, pagePath])
 
-  if (!measurementId || !/^G-[A-Z0-9]+$/.test(measurementId)) return null
+  if (!enabled) return null
 
   return (
     <Script
