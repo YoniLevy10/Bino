@@ -1,4 +1,4 @@
-/* BINO marketing — Apple-inspired liquid glass atmosphere (Outfit + Heebo) */
+/* BINO marketing — Apple-inspired liquid glass atmosphere (Heebo; Israel-first) */
 
 @keyframes bino-fade-up {
   from {
@@ -63,7 +63,7 @@
   --bino-glass: rgba(255, 255, 255, 0.14);
   --bino-glass-strong: rgba(255, 255, 255, 0.72);
   --bino-line: rgba(12, 17, 29, 0.1);
-  --bino-display: var(--font-bino-display), var(--font-heebo), 'Heebo', sans-serif;
+  --bino-display: var(--font-heebo), 'Heebo', sans-serif;
   color: var(--bino-ink);
   background: var(--bino-surface);
   min-height: 100dvh;

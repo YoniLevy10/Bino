@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Outfit } from 'next/font/google'
 import { useEffect, useState } from 'react'
 import './marketing.css'
 import {
@@ -13,13 +12,6 @@ import {
 } from '@/lib/marketing-copy'
 import { trackMarketingEvent } from '@/lib/marketing-analytics'
 import { MarketingLeadLink } from './MarketingLeadLink'
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-bino-display',
-  weight: ['500', '600', '700', '800'],
-})
 
 function CtaPair({
   locale,
@@ -112,7 +104,7 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
   const heroShot = copy.shots[0]
 
   return (
-    <div className={`bino-marketing ${outfit.variable}`} lang={copy.lang} dir={copy.dir}>
+    <div className="bino-marketing" lang={copy.lang} dir={copy.dir}>
       <header className="bino-hero">
         <div className="bino-hero__plane" aria-hidden="true" />
         <div className="bino-hero__glow" aria-hidden="true" />
