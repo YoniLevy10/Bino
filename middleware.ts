@@ -96,6 +96,8 @@ export async function middleware(req: NextRequest) {
     pathname === '/terms' ||
     pathname === '/contact' ||
     pathname === '/en' ||
+    pathname === '/guides' ||
+    pathname.startsWith('/guides/') ||
     pathname === '/vaad-pay' ||
     pathname.startsWith('/vaad-pay/') ||
     pathname.startsWith('/admin/') ||
