@@ -14,6 +14,7 @@ import type {
   SalesLeadSourceRecord,
 } from '@/lib/sales-leads/types'
 import { LEAD_STATUSES } from '@/lib/sales-leads/types'
+import { notifyOpsBrainNewLead } from '@/lib/sales-leads/opsbrain-notify'
 
 export type IngestResult = {
   found: number
@@ -269,6 +270,16 @@ export async function ingestFromAdapter(
       action: 'discovered',
       to_status: 'discovered',
       payload: { source: record.sourceName, segment: record.segmentSlug },
+    })
+
+    void notifyOpsBrainNewLead({
+      id: String(created.id),
+      name: record.name.trim(),
+      phone: record.phone ?? record.whatsappPhone ?? null,
+      email: record.email ?? null,
+      businessName: record.businessName ?? record.name,
+      notes: record.notes ?? null,
+      city: record.city,
     })
   }
 
