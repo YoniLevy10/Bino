@@ -28,15 +28,19 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
         },
         description: BINO_MARKETING_DESCRIPTION,
         foundingDate: '2024',
-        areaServed: {
-          '@type': 'Country',
-          name: 'Israel',
-        },
+        areaServed: [
+          {
+            '@type': 'Country',
+            name: 'Israel',
+          },
+        ],
+        knowsLanguage: ['he', 'en'],
         contactPoint: [
           {
             '@type': 'ContactPoint',
             contactType: 'sales',
             availableLanguage: ['Hebrew', 'English'],
+            areaServed: 'IL',
             url: `${origin}/contact`,
             telephone: '+972-54-810-2688',
           },

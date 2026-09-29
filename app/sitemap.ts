@@ -1,9 +1,25 @@
 import type { MetadataRoute } from 'next'
+import { SEO_GUIDES_HE } from '@/lib/seo-guides-he'
 import { getMarketingSiteOrigin } from '@/lib/marketing-site'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const origin = getMarketingSiteOrigin()
   const lastModified = new Date()
+
+  const guides: MetadataRoute.Sitemap = [
+    {
+      url: `${origin}/guides`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
+    ...SEO_GUIDES_HE.map((guide) => ({
+      url: `${origin}/guides/${guide.slug}`,
+      lastModified,
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    })),
+  ]
 
   return [
     {
@@ -30,6 +46,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         },
       },
     },
+    ...guides,
     {
       url: `${origin}/contact`,
       lastModified,

@@ -43,12 +43,22 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/en', '/contact', '/savings-report', '/privacy', '/terms', '/vaad-pay'],
+        allow: [
+          '/',
+          '/en',
+          '/contact',
+          '/savings-report',
+          '/guides',
+          '/guides/',
+          '/privacy',
+          '/terms',
+          '/vaad-pay',
+        ],
         disallow: [...DISALLOW],
       },
       {
         userAgent: 'GPTBot',
-        allow: ['/', '/en', '/contact', '/savings-report', '/privacy', '/terms'],
+        allow: ['/', '/en', '/contact', '/savings-report', '/guides', '/guides/', '/privacy', '/terms'],
         disallow: [...DISALLOW],
       },
     ],

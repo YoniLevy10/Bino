@@ -254,6 +254,8 @@ export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: Mar
       <footer className="bino-footer">
         <span>{copy.footerTagline}</span>
         {' · '}
+        <Link href="/guides">{copy.guides}</Link>
+        {' · '}
         <Link href="/privacy">{copy.privacy}</Link>
         {' · '}
         <Link href="/terms">{copy.terms}</Link>

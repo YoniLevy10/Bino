@@ -1,5 +1,11 @@
 /** Public marketing paths allowed to load GA4 (not private/app routes). */
-export type MarketingPagePath = '/' | '/en' | '/contact' | '/savings-report'
+export type MarketingPagePath =
+  | '/'
+  | '/en'
+  | '/contact'
+  | '/savings-report'
+  | '/guides'
+  | `/guides/${string}`
 
 export function getMarketingGaMeasurementId(): string | undefined {
   return process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
