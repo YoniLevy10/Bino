@@ -65,23 +65,24 @@ const HE: MarketingCopy = {
   brand: 'BINO',
   headline: 'זיכרון תפעולי לכל פרויקט, בניין ושטח',
   support:
-    'לחברות ניהול בישראל: לא תוכנת ועד בלבד ולא עוד מערכת תקלות. BINO לומדת את האתר, מחליטה מי מטפל, מונעת כשלים חוזרים ומוכיחה חיסכון.',
+    'מערכת ניהול פרויקטים, בניינים ושטחים לחברות ניהול בישראל — לא תוכנת ועד בלבד ולא עוד מערכת תקלות. BINO לומדת את האתר, מחליטה מי מטפל, מונעת כשלים חוזרים ומוכיחה חיסכון.',
   ctaDemo: 'לתיאום הדגמה בוואטסאפ',
   ctaLogin: 'כניסה למערכת',
   langSwitchAria: 'בחירת שפה',
   langHe: 'עברית',
   langEn: 'English',
   showcaseTitle: 'כך נראה המודיעין התפעולי',
-  showcaseLead: 'לא רשימת תקלות — זיכרון שממליץ, מתריע ומוכיח כמה זמן וכסף נחסכו.',
+  showcaseLead:
+    'לא רשימת תקלות לוועד — זיכרון לכל פרויקט ושטח שממליץ, מתריע ומוכיח כמה זמן וכסף נחסכו.',
   shots: [
     {
       src: '/marketing/ops-memory.png',
-      alt: 'מסך זיכרון תפעולי של BINO: היסטוריית תקלות, ציוד ותובנות לבניין',
-      caption: 'זיכרון תפעולי לכל בניין',
+      alt: 'מסך זיכרון תפעולי של BINO: היסטוריית תקלות, ציוד ותובנות לפרויקט ובניין',
+      caption: 'זיכרון תפעולי לכל פרויקט ושטח',
     },
     {
       src: '/marketing/smart-assign.png',
-      alt: 'מסך שיוך חכם ב־BINO: המלצה על העובד המתאים לפי היסטוריית הבניין',
+      alt: 'מסך שיוך חכם ב־BINO: המלצה על העובד המתאים לפי היסטוריית האתר',
       caption: 'המלצה אוטומטית לעובד או ספק',
     },
     {
@@ -112,7 +113,8 @@ const HE: MarketingCopy = {
   ],
   metricsMore: 'צפו בדוח החיסכון לדוגמה',
   howTitle: 'איך זה עובד',
-  howLead: 'שלושה שלבים ממערכת שמתעדת עבודה — למערכת שמקבלת החלטות.',
+  howLead:
+    'שלושה שלבים ממערכת תקלות או ועד — למערכת ניהול פרויקטים ובניינים שמקבלת החלטות.',
   steps: [
     {
       title: 'לומדים את האתר',
@@ -124,7 +126,7 @@ const HE: MarketingCopy = {
     },
     {
       title: 'מוכיחים חיסכון',
-      body: 'חברת הניהול רואה כמה זמן וכסף נחסכו — לא רק רשימת תקלות, אלא מדדים שמניעים החלטות.',
+      body: 'חברת הניהול רואה כמה זמן וכסף נחסכו על הפורטפוליו — לא רק רשימת תקלות, אלא מדדים שמניעים החלטות.',
     },
   ],
   faqTitle: 'שאלות נפוצות',
@@ -167,7 +169,7 @@ const EN: MarketingCopy = {
   brand: 'BINO',
   headline: 'Operational memory for every project, building, and space',
   support:
-    'Not a committee-only app and not another ticketing system. BINO learns each site, decides who handles it, prevents recurring failures, and proves savings for the management company.',
+    'A management system for projects, buildings, and spaces in Israel — not a committee-only app and not another ticketing tool. BINO learns each site, decides who handles it, prevents recurring failures, and proves savings.',
   ctaDemo: 'Book a WhatsApp demo',
   ctaLogin: 'Sign in',
   langSwitchAria: 'Language',
