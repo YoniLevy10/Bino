@@ -8,10 +8,12 @@ Production origin: **https://bino.casa**
 |------|--------|
 | **Vercel Analytics** | Connected (root layout, production only) |
 | **Vercel Speed Insights** | Connected (root layout, production only) |
-| **Google Analytics 4** | Wired in code — needs `NEXT_PUBLIC_GA_MEASUREMENT_ID` |
+| **Google Analytics 4** | Wired on **marketing pages only** (`/` + `/en`) via `MarketingAnalytics` — needs `NEXT_PUBLIC_GA_MEASUREMENT_ID` |
 | **Google Search Console** | HTML verification tag already in `app/layout.tsx` |
 
 Google Analytics is **not** collecting until you create a GA4 property and set the env var.
+
+**Scope note:** GA4 is intentionally limited to the public landing (`MarketingAnalytics`). Private app routes and tokenized URLs are not tracked. Vercel Analytics remains sitewide for performance.
 
 ### Connect GA4 (required once)
 

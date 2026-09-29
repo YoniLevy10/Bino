@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { MarketingLanding } from '@/app/components/marketing/MarketingLanding'
+import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { buildMarketingJsonLd } from '@/lib/marketing-jsonld'
 import { getMarketingSiteOrigin } from '@/lib/marketing-site'
 
@@ -43,6 +44,7 @@ export default function EnglishMarketingPage() {
 
   return (
     <>
+      <MarketingAnalytics pagePath="/en" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { MarketingLanding } from './components/marketing/MarketingLanding'
+import { MarketingAnalytics } from './components/marketing/MarketingAnalytics'
 import { buildMarketingJsonLd } from '@/lib/marketing-jsonld'
 import {
   BINO_MARKETING_DESCRIPTION,
@@ -65,6 +66,7 @@ export default function MarketingHomePage() {
 
   return (
     <>
+      <MarketingAnalytics pagePath="/" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

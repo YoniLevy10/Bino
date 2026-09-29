@@ -167,7 +167,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key (server only) |
 | `NEXT_PUBLIC_APP_URL` | Public app URL (`https://bino.casa`) — see `docs/DOMAIN.md` |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Optional GA4 id (`G-…`) — see `docs/SEO.md` |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Optional GA4 id (`G-…`) for marketing pages only — see `docs/SEO.md` |
 | `SMS_019_USERNAME` | 019SMS API username |
 | `SMS_019_PASSWORD` | 019SMS API password |
 | `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |

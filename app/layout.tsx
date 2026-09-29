@@ -12,7 +12,6 @@ import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
@@ -137,7 +136,6 @@ export default function RootLayout({
         </AppProviders>
         <WorkTimer />
         <ToastContainer />
-        <GoogleAnalytics />
         {process.env.NODE_ENV === 'production' ? <SpeedInsights /> : null}
         {process.env.NODE_ENV === 'production' ? <Analytics /> : null}
       </body>
