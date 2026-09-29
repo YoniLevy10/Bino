@@ -8,6 +8,8 @@ describe('marketing-copy', () => {
     expect(MARKETING_COPY.he.metrics).toHaveLength(MARKETING_COPY.en.metrics.length)
     expect(MARKETING_COPY.he.shots).toHaveLength(3)
     expect(MARKETING_COPY.en.shots).toHaveLength(3)
+    expect(MARKETING_COPY.he.faq.length).toBe(MARKETING_COPY.en.faq.length)
+    expect(MARKETING_COPY.he.faq.length).toBeGreaterThanOrEqual(3)
   })
 
   it('builds WhatsApp demo links with locale-specific text', () => {

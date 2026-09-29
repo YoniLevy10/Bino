@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Outfit } from 'next/font/google'
 import { useEffect, useState } from 'react'
 import './marketing.css'
 import {
   MARKETING_COPY,
   type MarketingLocale,
-  readStoredMarketingLocale,
   storeMarketingLocale,
   waDemoUrl,
 } from '@/lib/marketing-copy'
@@ -82,16 +82,19 @@ function LangSwitch({
   )
 }
 
-export function MarketingLanding() {
-  const [locale, setLocale] = useState<MarketingLocale>('he')
+export function MarketingLanding({ initialLocale = 'he' }: { initialLocale?: MarketingLocale }) {
+  const router = useRouter()
+  const [locale, setLocale] = useState<MarketingLocale>(initialLocale)
 
   useEffect(() => {
-    setLocale(readStoredMarketingLocale())
-  }, [])
+    setLocale(initialLocale)
+    storeMarketingLocale(initialLocale)
+  }, [initialLocale])
 
   function changeLocale(next: MarketingLocale) {
-    setLocale(next)
     storeMarketingLocale(next)
+    setLocale(next)
+    router.push(next === 'en' ? '/en' : '/')
   }
 
   const copy = MARKETING_COPY[locale]
@@ -113,12 +116,12 @@ export function MarketingLanding() {
             <CtaPair locale={locale} />
           </div>
           <div className="bino-hero__visual">
-            <div className="bino-device" aria-hidden="false">
+            <div className="bino-device">
               <div className="bino-device__chrome">
                 <span className="bino-device__dot" />
                 <span className="bino-device__url">bino.casa</span>
               </div>
-              {/* Local product mock — next/image SVG/PNG optimization not required for marketing statics */}
+              {/* Local product mock — next/image optimization not required for marketing statics */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={heroShot.src}
@@ -212,6 +215,21 @@ export function MarketingLanding() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section className="bino-section bino-faq" aria-labelledby="bino-faq-heading">
+          <h2 id="bino-faq-heading" className="bino-section__title">
+            {copy.faqTitle}
+          </h2>
+          <p className="bino-section__lead">{copy.faqLead}</p>
+          <div className="bino-faq__list">
+            {copy.faq.map((item) => (
+              <details key={item.q} className="bino-faq__item">
+                <summary className="bino-faq__q">{item.q}</summary>
+                <p className="bino-faq__a">{item.a}</p>
+              </details>
+            ))}
+          </div>
         </section>
 
         <section className="bino-closing" aria-labelledby="bino-closing-heading">

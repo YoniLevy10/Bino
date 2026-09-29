@@ -20,6 +20,11 @@ type StepCopy = {
   body: string
 }
 
+type FaqCopy = {
+  q: string
+  a: string
+}
+
 export type MarketingCopy = {
   dir: 'rtl' | 'ltr'
   lang: MarketingLocale
@@ -42,6 +47,9 @@ export type MarketingCopy = {
   howTitle: string
   howLead: string
   steps: readonly StepCopy[]
+  faqTitle: string
+  faqLead: string
+  faq: readonly FaqCopy[]
   closingTitle: string
   footerTagline: string
   privacy: string
@@ -118,6 +126,26 @@ const HE: MarketingCopy = {
       body: 'חברת הניהול רואה כמה זמן וכסף נחסכו — לא רק רשימת תקלות, אלא מדדים שמניעים החלטות.',
     },
   ],
+  faqTitle: 'שאלות נפוצות',
+  faqLead: 'מה מבדיל את BINO ממערכת תקלות רגילה — ולמה זה חשוב לחברת ניהול.',
+  faq: [
+    {
+      q: 'במה BINO שונה ממערכת פתיחת תקלות?',
+      a: 'BINO בונה זיכרון תפעולי לכל בניין: לומדת מהיסטוריה, ממליצה על עובד או ספק, מזהה תקלות חוזרות ומוכיחה חיסכון בזמן וכסף — לא רק מתעדת עבודה.',
+    },
+    {
+      q: 'אילו מדדים BINO מציגה להנהלה?',
+      a: 'זמן עד שיוך, זמן עד פתרון, שיעור תקלות חוזרות, עלות תחזוקה לבניין, ואחוז התקלות שטופלו ללא התערבות מנהל.',
+    },
+    {
+      q: 'איך דיירים מדווחים?',
+      a: 'דרך WhatsApp או טופס ווב אחרי סריקת QR לפרויקט. המנהל מקבל את התקלה עם הקשר תפעולי של הבניין.',
+    },
+    {
+      q: 'האם אפשר להתחיל בהדגמה?',
+      a: 'כן — תיאמו הדגמה בוואטסאפ ונראה את BINO על בניין לדוגמה עם זיכרון תפעולי ומדדי חיסכון.',
+    },
+  ],
   closingTitle: 'מוכנים לראות BINO על הבניינים שלכם?',
   footerTagline: 'BINO — Building Intelligence & Operations',
   privacy: 'פרטיות',
@@ -192,6 +220,26 @@ const EN: MarketingCopy = {
     {
       title: 'Prove the savings',
       body: 'The management company sees how much time and money were saved — metrics that drive decisions, not just a log.',
+    },
+  ],
+  faqTitle: 'FAQ',
+  faqLead: 'What makes BINO different from a regular ticketing system — and why management companies care.',
+  faq: [
+    {
+      q: 'How is BINO different from a ticketing system?',
+      a: 'BINO builds operational memory per building: it learns from history, recommends the right worker or vendor, detects recurring failures, and proves time and money saved — it does not just log work.',
+    },
+    {
+      q: 'Which metrics does BINO show leadership?',
+      a: 'Time to assignment, time to resolution, recurring-failure rate, maintenance cost per building, and % of tickets handled without manager intervention.',
+    },
+    {
+      q: 'How do residents report issues?',
+      a: 'Via WhatsApp or a web form after scanning a building QR. Managers get the ticket with that building’s operational context.',
+    },
+    {
+      q: 'Can we start with a demo?',
+      a: 'Yes — book a WhatsApp demo and we will walk through BINO on a sample building with operational memory and savings metrics.',
     },
   ],
   closingTitle: 'Ready to see BINO on your buildings?',

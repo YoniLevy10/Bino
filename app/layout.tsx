@@ -12,6 +12,7 @@ import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
@@ -89,6 +90,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "he_IL",
+    alternateLocale: ["en_US"],
     url: siteOrigin,
     siteName: "BINO",
     title: BINO_MARKETING_TITLE,
@@ -98,6 +100,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: BINO_MARKETING_TITLE,
     description: BINO_MARKETING_OG_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   category: "productivity",
   other: {
@@ -131,6 +137,7 @@ export default function RootLayout({
         </AppProviders>
         <WorkTimer />
         <ToastContainer />
+        <GoogleAnalytics />
         {process.env.NODE_ENV === 'production' ? <SpeedInsights /> : null}
         {process.env.NODE_ENV === 'production' ? <Analytics /> : null}
       </body>

@@ -8,8 +8,15 @@ const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'תשלום דמי ועד',
-  description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים — BINO',
+  description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים דרך BINO ו־Grow.',
   alternates: { canonical: `${origin}/vaad-pay` },
+  openGraph: {
+    title: 'תשלום דמי ועד | BINO',
+    description: 'תשלום מאובטח של דמי ועד וחיובים דיגיטליים',
+    url: `${origin}/vaad-pay`,
+    locale: 'he_IL',
+  },
+  robots: { index: true, follow: true },
 }
 
 /**

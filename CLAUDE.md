@@ -167,6 +167,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key (server only) |
 | `NEXT_PUBLIC_APP_URL` | Public app URL (`https://bino.casa`) — see `docs/DOMAIN.md` |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Optional GA4 id (`G-…`) — see `docs/SEO.md` |
 | `SMS_019_USERNAME` | 019SMS API username |
 | `SMS_019_PASSWORD` | 019SMS API password |
 | `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |
@@ -189,6 +190,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 
 | Variable | How to get |
 |----------|-----------|
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 Admin → Web stream → Measurement ID (`G-XXXXXXXX`) — **required for Google Analytics** |
 | `GOOGLE_PLACES_API_KEY` | Google Cloud → enable **Places API (New)** + billing → create API key — **required for sales-lead discovery** |
 | `GOOGLE_CLIENT_ID` | Same Google OAuth client ID as Supabase Auth → Providers → Google (needed to refresh Calendar tokens) |
 | `GOOGLE_CLIENT_SECRET` | Matching Google OAuth client secret (server only) |

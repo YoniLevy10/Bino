@@ -8,8 +8,15 @@ const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
   title: 'יצירת קשר',
-  description: 'טלפון, כתובת ומייל ליצירת קשר — BINO',
+  description: 'טלפון, כתובת ומייל ליצירת קשר עם BINO — זיכרון תפעולי לחברות ניהול בניינים.',
   alternates: { canonical: `${origin}/contact` },
+  openGraph: {
+    title: 'יצירת קשר | BINO',
+    description: 'פרטי קשר לתיאום הדגמה ותמיכה — BINO',
+    url: `${origin}/contact`,
+    locale: 'he_IL',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function ContactPage() {

@@ -95,6 +95,7 @@ export async function middleware(req: NextRequest) {
     pathname === '/privacy' ||
     pathname === '/terms' ||
     pathname === '/contact' ||
+    pathname === '/en' ||
     pathname === '/vaad-pay' ||
     pathname.startsWith('/vaad-pay/') ||
     pathname.startsWith('/admin/') ||
@@ -124,7 +125,10 @@ export async function middleware(req: NextRequest) {
     pathname === '/sitemap.xml' ||
     pathname.startsWith('/marketing/') ||
     pathname === '/opengraph-image' ||
-    pathname.startsWith('/opengraph-image')
+    pathname.startsWith('/opengraph-image') ||
+    pathname === '/twitter-image' ||
+    pathname.startsWith('/twitter-image') ||
+    pathname === '/llms.txt'
   ) {
     return NextResponse.next()
   }

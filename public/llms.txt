@@ -1,0 +1,26 @@
+# BINO
+
+> Building Intelligence & Operations — smart operational memory for every building.
+
+BINO is not a generic ticketing system. It learns from ticket history, equipment, vendors, costs, and resolution times; recommends the right worker or vendor; detects recurring failures; alerts on SLA risk; and proves time and money saved for the management company.
+
+## Primary URLs
+
+- https://bino.casa/ — Hebrew marketing site
+- https://bino.casa/en — English marketing site
+- https://bino.casa/contact — Contact
+- https://bino.casa/privacy — Privacy policy
+- https://bino.casa/terms — Terms of service
+
+## North-star product metrics
+
+1. Time to assignment
+2. Time to resolution
+3. Recurring-failure rate
+4. Maintenance cost per building
+5. % of tickets handled without manager intervention
+
+## Contact
+
+- WhatsApp demo: https://wa.me/972548102688
+- Web: https://bino.casa/contact
