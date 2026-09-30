@@ -1,10 +1,13 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { queryKeys } from '@/lib/query-keys'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
+
+/** Shared open-tickets fetch size — one RQ key for dashboard + tickets page. */
+export const OPEN_TICKETS_SHARED_LIMIT = 200
 
 export const OPEN_TICKETS_LIST_SELECT = `
   id, ticket_number, client_id, project_id, reporter_phone, reporter_name, description,
@@ -47,30 +50,31 @@ export async function fetchOpenTickets(clientId: string, limit = 200): Promise<O
 }
 
 export function useTenantOpenTickets(options?: { enabled?: boolean; limit?: number }) {
-  const clientIdQuery = useQuery({
-    queryKey: ['tenant-client-id'],
-    queryFn: () => resolveBinoClientIdForBrowser(),
-    staleTime: 5 * 60_000,
-    enabled: options?.enabled !== false,
-  })
-
+  const clientIdQuery = useTenantClientId({ enabled: options?.enabled !== false })
   const clientId = clientIdQuery.data
 
-  const limit = options?.limit ?? 200
+  // Always cache under the shared limit so dashboard ↔ tickets warm-nav hits the same key.
+  const limit = OPEN_TICKETS_SHARED_LIMIT
+  const displayLimit = options?.limit ?? OPEN_TICKETS_SHARED_LIMIT
   const ticketsQuery = useQuery({
-    queryKey: clientId ? queryKeys.ticketsOpen(clientId, limit) : ['tickets-open', 'pending', limit],
+    queryKey: clientId
+      ? queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT)
+      : ['tickets-open', 'pending', OPEN_TICKETS_SHARED_LIMIT],
     queryFn: () => fetchOpenTickets(clientId!, limit),
     enabled: Boolean(clientId) && options?.enabled !== false,
     staleTime: 30_000,
   })
 
+  const rows = ticketsQuery.data ?? []
+  const tickets = displayLimit < rows.length ? rows.slice(0, displayLimit) : rows
+
   return {
     clientId: clientId ?? null,
-    tickets: ticketsQuery.data ?? [],
+    tickets,
     isLoading: clientIdQuery.isLoading || ticketsQuery.isLoading,
     isFetching: ticketsQuery.isFetching,
     error: clientIdQuery.error || ticketsQuery.error,
     refetch: ticketsQuery.refetch,
-    hasData: (ticketsQuery.data?.length ?? 0) > 0 || ticketsQuery.isSuccess,
+    hasData: rows.length > 0 || ticketsQuery.isSuccess,
   }
 }

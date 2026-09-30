@@ -1,9 +1,9 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { queryKeys } from '@/lib/query-keys'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 export type AttendanceDashboardPayload = {
   events?: unknown[]
@@ -43,12 +43,7 @@ export function useAttendanceDashboard(opts: {
   syncFilter?: string
   enabled?: boolean
 }) {
-  const clientIdQuery = useQuery({
-    queryKey: ['tenant-client-id'],
-    queryFn: () => resolveBinoClientIdForBrowser(),
-    staleTime: 5 * 60_000,
-    enabled: opts.enabled !== false,
-  })
+  const clientIdQuery = useTenantClientId({ enabled: opts.enabled !== false })
   const clientId = clientIdQuery.data
   const sync = opts.syncFilter || ''
 

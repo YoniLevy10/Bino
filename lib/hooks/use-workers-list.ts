@@ -1,10 +1,10 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { queryKeys } from '@/lib/query-keys'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 export type WorkerListRow = {
   id: string
@@ -42,13 +42,7 @@ export async function fetchWorkersList(
 }
 
 export function useTenantWorkersList(options?: { enabled?: boolean; activeOnly?: boolean }) {
-  const clientIdQuery = useQuery({
-    queryKey: ['tenant-client-id'],
-    queryFn: () => resolveBinoClientIdForBrowser(),
-    staleTime: 5 * 60_000,
-    enabled: options?.enabled !== false,
-  })
-
+  const clientIdQuery = useTenantClientId({ enabled: options?.enabled !== false })
   const clientId = clientIdQuery.data
   const key = clientId
     ? options?.activeOnly

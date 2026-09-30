@@ -8,6 +8,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -67,6 +68,8 @@ const SidebarNavContext = createContext<SidebarNavContextValue>({
 })
 
 const NAV_CACHE_TTL = 5 * 60 * 1000
+/** Keep expired cache for first paint; refetch in background (SWR). */
+const NAV_CACHE_STALE_MAX_MS = 24 * 60 * 60 * 1000
 /** Min interval between background refetches (tab focus / auth). */
 const NAV_REFETCH_MIN_INTERVAL_MS = 60 * 1000
 
@@ -76,7 +79,10 @@ type NavCachePayload = {
   navLabels: SidebarNavLabels
 }
 
-function readNavCache(clientId: string): (NavCachePayload & { ts: number }) | null {
+function readNavCache(
+  clientId: string,
+  opts?: { allowStale?: boolean }
+): (NavCachePayload & { ts: number; stale: boolean }) | null {
   try {
     const raw = localStorage.getItem(`${NAV_CACHE_PREFIX}${clientId}`)
     if (!raw) return null
@@ -86,7 +92,11 @@ function readNavCache(clientId: string): (NavCachePayload & { ts: number }) | nu
       navLabels?: unknown
       ts: number
     }
-    if (Date.now() - parsed.ts >= NAV_CACHE_TTL) return null
+    if (typeof parsed.ts !== 'number') return null
+    const age = Date.now() - parsed.ts
+    const stale = age >= NAV_CACHE_TTL
+    if (stale && !opts?.allowStale) return null
+    if (stale && age >= NAV_CACHE_STALE_MAX_MS) return null
     const orderIds = parseSidebarNavOrderFromDb(parsed.orderIds)
     if (!orderIds) return null
     return {
@@ -94,6 +104,7 @@ function readNavCache(clientId: string): (NavCachePayload & { ts: number }) | nu
       enabledFeatures: parseEnabledNavFeaturesFromDb(parsed.enabledFeatures ?? null),
       navLabels: parseSidebarNavLabelsFromDb(parsed.navLabels ?? null),
       ts: parsed.ts,
+      stale,
     }
   } catch {}
   return null
@@ -131,7 +142,7 @@ function readInitialNavState(): {
       ts: 0,
     }
   }
-  const cached = readNavCache(cid)
+  const cached = readNavCache(cid, { allowStale: true })
   if (!cached) {
     return {
       orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
@@ -217,13 +228,14 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         if (generation !== loadGenerationRef.current) return
 
         if (!options?.skipCache) {
-          const cached = readNavCache(clientId)
+          const cached = readNavCache(clientId, { allowStale: true })
           if (cached) {
             hadCachedState = true
             applyNavState(cached.orderIds, cached.enabledFeatures, cached.navLabels)
             setIsBootstrapped(true)
             lastSuccessfulFetchRef.current = cached.ts
-            if (!options?.forceNetwork) return
+            // Fresh cache: skip network. Stale: paint immediately, refresh below.
+            if (!cached.stale && !options?.forceNetwork) return
           }
         }
 
@@ -279,6 +291,16 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     },
     [loadNav]
   )
+
+  // SSR leaves DEFAULT order in useState; re-seed from localStorage before paint.
+  useLayoutEffect(() => {
+    if (isWorker) return
+    const hydrated = readInitialNavState()
+    if (!hydrated.isBootstrapped) return
+    applyNavState(hydrated.orderIds, hydrated.enabledFeatures, hydrated.navLabels)
+    setIsBootstrapped(true)
+    lastSuccessfulFetchRef.current = hydrated.ts
+  }, [isWorker, applyNavState])
 
   useEffect(() => {
     if (isWorker) {

@@ -1,9 +1,9 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { whatsappUiFetch } from '@/lib/whatsapp-ui-fetch'
 import { queryKeys } from '@/lib/query-keys'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 export type WhatsAppConversationRow = {
   id: string
@@ -42,12 +42,7 @@ export async function fetchWhatsAppMessages(conversationId: string): Promise<Wha
 
 export function useWhatsAppConversations(options?: { enabled?: boolean }) {
   const queryClient = useQueryClient()
-  const clientIdQuery = useQuery({
-    queryKey: ['tenant-client-id'],
-    queryFn: () => resolveBinoClientIdForBrowser(),
-    staleTime: 5 * 60_000,
-    enabled: options?.enabled !== false,
-  })
+  const clientIdQuery = useTenantClientId({ enabled: options?.enabled !== false })
   const clientId = clientIdQuery.data
 
   const conversationsQuery = useQuery({

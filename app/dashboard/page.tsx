@@ -29,10 +29,12 @@ import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import {
+  OPEN_TICKETS_SHARED_LIMIT,
   useTenantOpenTickets,
   type OpenTicketRow,
 } from '@/lib/hooks/use-open-tickets'
 import { queryKeys } from '@/lib/query-keys'
+import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
@@ -268,11 +270,14 @@ export default function DashboardPage() {
     recentActivity: [] as ActivityItem[],
   })
 
-  const loading = !cachePainted && !kpiReady
+  // Don't block on KPI RPC when tickets/projects already painted from RQ/cache.
+  const loading = !cachePainted && !kpiReady && !ticketsHasData && !projectsHasData
 
   const invalidateOpenTickets = useCallback(async () => {
     const clientId = rqClientId || (await resolveBinoClientIdForBrowser())
-    await queryClient.invalidateQueries({ queryKey: queryKeys.ticketsOpen(clientId) })
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT),
+    })
   }, [queryClient, rqClientId])
 
   const loadProfessionals = useCallback(async () => {
@@ -472,6 +477,7 @@ export default function DashboardPage() {
     if (!ticketsHasData) return
     setTickets(formatOpenTicketsForDashboard(rqTickets))
     hasPaintedDataRef.current = true
+    setCachePainted(true)
   }, [rqTickets, ticketsHasData])
 
   useEffect(() => {
@@ -483,6 +489,7 @@ export default function DashboardPage() {
         project_code: p.project_code || '',
       }))
     )
+    setCachePainted(true)
   }, [rqProjects, projectsHasData])
 
   useEffect(() => {
@@ -499,11 +506,24 @@ export default function DashboardPage() {
     let cancelled = false
     async function bootFromTenantCache() {
       try {
+        // Sync path: paint from RQ before awaiting auth/org resolve.
+        const syncCid = tryReadSessionBoundClientId()
+        if (syncCid && !cancelled) {
+          const syncRq = queryClient.getQueryData(
+            queryKeys.ticketsOpen(syncCid, OPEN_TICKETS_SHARED_LIMIT)
+          ) as OpenTicketRow[] | undefined
+          if (syncRq?.length) {
+            setTickets(formatOpenTicketsForDashboard(syncRq))
+            hasPaintedDataRef.current = true
+            setCachePainted(true)
+          }
+        }
+
         const { uid, clientId } = await resolveDashboardTenantScope()
         if (cancelled) return
-        const rqCachedTickets = queryClient.getQueryData(queryKeys.ticketsOpen(clientId)) as
-          | OpenTicketRow[]
-          | undefined
+        const rqCachedTickets = queryClient.getQueryData(
+          queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT)
+        ) as OpenTicketRow[] | undefined
         const cached = shouldSkipStalePageCache()
           ? null
           : readTenantDashboardCache<DashboardCachePayload>(uid, clientId)
@@ -526,7 +546,7 @@ export default function DashboardPage() {
           setCachePainted(true)
           if (!rqCachedTickets) {
             queryClient.setQueryData(
-              queryKeys.ticketsOpen(clientId),
+              queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT),
               cached.tickets.map((t) => ({
                 id: t.id,
                 ticket_number: t.ticket_number,
@@ -776,7 +796,7 @@ export default function DashboardPage() {
     setTickets((prev) => removeTicketFromListState(prev, ticketId))
     if (rqClientId) {
       queryClient.setQueryData(
-        queryKeys.ticketsOpen(rqClientId),
+        queryKeys.ticketsOpen(rqClientId, OPEN_TICKETS_SHARED_LIMIT),
         (old: OpenTicketRow[] | undefined) =>
           old ? old.filter((t) => t.id !== ticketId) : old
       )

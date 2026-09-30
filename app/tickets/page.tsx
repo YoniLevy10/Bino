@@ -37,10 +37,12 @@ import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import {
+  OPEN_TICKETS_SHARED_LIMIT,
   useTenantOpenTickets,
   type OpenTicketRow,
 } from '@/lib/hooks/use-open-tickets'
 import { queryKeys } from '@/lib/query-keys'
+import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { shouldShowPageLoadError } from '@/lib/page-load-error'
@@ -375,7 +377,9 @@ export default function TicketsPage() {
 
   const invalidateOpenTickets = useCallback(async () => {
     const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
-    await queryClient.invalidateQueries({ queryKey: queryKeys.ticketsOpen(clientId) })
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT),
+    })
   }, [queryClient, tenantClientId])
 
   const fetchData = useCallback(
@@ -428,9 +432,21 @@ export default function TicketsPage() {
     let cancelled = false
     void (async () => {
       try {
+        const syncCid = tryReadSessionBoundClientId()
+        if (syncCid && !cancelled) {
+          const syncRq = queryClient.getQueryData(
+            queryKeys.ticketsOpen(syncCid, OPEN_TICKETS_SHARED_LIMIT)
+          )
+          if (syncRq) {
+            hasPaintedDataRef.current = true
+            setCachePainted(true)
+          }
+        }
         const clientId = await resolveBinoClientIdForBrowser()
         if (cancelled) return
-        const existingRq = queryClient.getQueryData(queryKeys.ticketsOpen(clientId))
+        const existingRq = queryClient.getQueryData(
+          queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT)
+        )
         if (existingRq) {
           hasPaintedDataRef.current = true
           setCachePainted(true)
@@ -444,9 +460,13 @@ export default function TicketsPage() {
         setTicketsTruncated(cached.ticketsTruncated)
         hasPaintedDataRef.current = true
         setCachePainted(true)
-        if (!queryClient.getQueryData(queryKeys.ticketsOpen(clientId))) {
+        if (
+          !queryClient.getQueryData(
+            queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT)
+          )
+        ) {
           queryClient.setQueryData(
-            queryKeys.ticketsOpen(clientId),
+            queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT),
             ticketRowsToOpenRows(cached.tickets.filter((t) => t.status !== 'CLOSED'))
           )
         }
@@ -950,7 +970,7 @@ export default function TicketsPage() {
           ticketsTruncated,
         })
         queryClient.setQueryData(
-          queryKeys.ticketsOpen(tenantClientId),
+          queryKeys.ticketsOpen(tenantClientId, OPEN_TICKETS_SHARED_LIMIT),
           ticketRowsToOpenRows(next)
         )
       }
