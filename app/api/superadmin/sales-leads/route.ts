@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
     const admin = getSupabaseAdmin()
     await recoverStaleDiscoveryRuns(admin)
 
-    let operators = await syncOperatorsFromEnv(admin).catch(async () => listActiveOperators(admin))
+    const operators = await syncOperatorsFromEnv(admin).catch(async () => listActiveOperators(admin))
 
     const listFilters = {
       q,
