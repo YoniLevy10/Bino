@@ -8,6 +8,8 @@ import { toast } from '@/lib/error-handler'
 import { formatWhatsAppInboxDisplayLabel } from '@/lib/whatsapp-inbox-display'
 import {
   buildInboxTemplatePreview,
+  inboxTemplateRequiresOpenTicket,
+  listInboxReadyTemplates,
   type InboxMetaTemplate,
 } from '@/lib/whatsapp-inbox-meta-templates'
 import {
@@ -37,6 +39,7 @@ type Message = {
   id: string
   direction: 'in' | 'out'
   body: string | null
+  message_type?: string | null
   created_at: string
   ticket_id: string | null
 }
@@ -49,18 +52,34 @@ type InboxTemplateOption = {
   preview: string
 }
 
-const QUICK_ACTIONS: { templateId: string; title: string; hint: string }[] = [
-  {
-    templateId: 'ticket_closed',
-    title: 'התקלה נסגרה',
-    hint: 'עדכון שהטיפול הסתיים',
-  },
-  {
-    templateId: 'sla_escalation',
-    title: 'עדיין בטיפול',
-    hint: 'עדכון על תקלה פתוחה',
-  },
-]
+function formatInboxMessageBody(m: Message): string {
+  const text = m.body?.trim()
+  if (text) return text
+  switch (m.message_type) {
+    case 'image':
+      return 'תמונה'
+    case 'video':
+      return 'וידאו'
+    case 'audio':
+      return 'הודעה קולית'
+    case 'document':
+      return 'מסמך'
+    case 'interactive':
+      return 'הודעה אינטראקטיבית'
+    case 'template':
+      return 'תבנית Meta'
+    case 'reaction':
+      return 'תגובה'
+    case 'sticker':
+      return 'מדבקה'
+    case 'location':
+      return 'מיקום'
+    case 'unsupported':
+      return 'הודעה לא נתמכת'
+    default:
+      return '—'
+  }
+}
 
 export function WhatsAppInboxPanel() {
   const queryClient = useQueryClient()
@@ -108,6 +127,7 @@ export function WhatsAppInboxPanel() {
   const selectedPhone = selected?.phone ?? null
   const mobilePane = selectedId ? 'thread' : 'list'
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
+  const readyTemplates = listInboxReadyTemplates(templates)
   const loading = conversationsLoading && !conversationsHasData
   const useMobileThreadPortal = isMobile && Boolean(selectedId)
 
@@ -258,13 +278,15 @@ export function WhatsAppInboxPanel() {
   }, [queryClient, selectedId])
 
   function pickQuickAction(templateId: string) {
+    const tpl = templates.find((t) => t.id === templateId)
+    const paramCount = tpl?.params.length ?? 0
     if (!inboxContext) {
       setActiveQuickAction(templateId)
-      setTemplateParams([])
+      setTemplateParams(Array.from({ length: paramCount }, () => ''))
       return
     }
     setActiveQuickAction(templateId)
-    setTemplateParams(inboxTemplateParamsFromContext(templateId, inboxContext))
+    setTemplateParams(inboxTemplateParamsFromContext(templateId, inboxContext, paramCount))
   }
 
   function missingParamIndices(template: InboxTemplateOption, params: string[]): number[] {
@@ -473,7 +495,7 @@ export function WhatsAppInboxPanel() {
                 ...(m.direction === 'out' ? styles.bubbleOut : styles.bubbleIn),
               }}
             >
-              {m.body || '—'}
+              {formatInboxMessageBody(m)}
               <div style={styles.time}>
                 {new Date(m.created_at).toLocaleString('he-IL', {
                   hour: '2-digit',
@@ -530,20 +552,19 @@ export function WhatsAppInboxPanel() {
             הדייר/ה לא כתב/ה לאחרונה — אפשר לשלוח רק הודעה מוכנה מהרשימה:
           </p>
         )}
-        {!inSession && templates.length > 0 && (
+        {!inSession && readyTemplates.length > 0 && (
           <div style={styles.quickActions}>
             <div style={styles.quickActionsTitle}>הודעות מוכנות</div>
             <div style={styles.quickGrid}>
-              {QUICK_ACTIONS.filter((qa) => templates.some((t) => t.id === qa.templateId)).map(
-                (qa) => {
-                  const isActive = activeQuickAction === qa.templateId
+              {readyTemplates.map((tpl) => {
+                  const isActive = activeQuickAction === tpl.id
+                  const needsOpenTicket = inboxTemplateRequiresOpenTicket(tpl.id)
                   const disabled =
-                    qa.templateId === 'sla_escalation' &&
-                    (contextLoading || !inboxContext?.open_ticket)
+                    needsOpenTicket && (contextLoading || !inboxContext?.open_ticket)
 
                   return (
                     <button
-                      key={qa.templateId}
+                      key={tpl.id}
                       type="button"
                       disabled={disabled}
                       style={{
@@ -551,16 +572,15 @@ export function WhatsAppInboxPanel() {
                         ...(isActive ? styles.quickBtnActive : {}),
                         ...(disabled ? styles.quickBtnDisabled : {}),
                       }}
-                      onClick={() => !disabled && pickQuickAction(qa.templateId)}
+                      onClick={() => !disabled && pickQuickAction(tpl.id)}
                     >
-                      <span style={styles.quickBtnTitle}>{qa.title}</span>
+                      <span style={styles.quickBtnTitle}>{tpl.label}</span>
                       <span style={styles.quickBtnHint}>
-                        {disabled ? 'אין תקלה פתוחה לדייר/ה' : qa.hint}
+                        {disabled ? 'אין תקלה פתוחה לדייר/ה' : tpl.description}
                       </span>
                     </button>
                   )
-                }
-              )}
+                })}
             </div>
           </div>
         )}

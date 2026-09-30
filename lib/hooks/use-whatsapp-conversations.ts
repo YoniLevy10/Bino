@@ -20,6 +20,7 @@ export type WhatsAppMessageRow = {
   id: string
   direction: 'in' | 'out'
   body: string | null
+  message_type?: string | null
   created_at: string
   ticket_id: string | null
 }
