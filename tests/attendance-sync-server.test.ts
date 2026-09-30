@@ -30,10 +30,15 @@ describe('attendance-sync-server', () => {
     expect(r.suspicious_reason).toContain('sync_delay_over_6h')
   })
 
-  it('resolveEventTypeForTag toggles clock in/out for office and project', () => {
+  it('resolveEventTypeForTag toggles clock in/out when client omits intent', () => {
     expect(resolveEventTypeForTag('office', false)).toBe('clock_in')
     expect(resolveEventTypeForTag('office', true)).toBe('clock_out')
     expect(resolveEventTypeForTag('project', false)).toBe('clock_in')
     expect(resolveEventTypeForTag('project', true)).toBe('clock_out')
+  })
+
+  it('resolveEventTypeForTag honors client event_type even with open shift', () => {
+    expect(resolveEventTypeForTag('office', true, 'clock_in')).toBe('clock_in')
+    expect(resolveEventTypeForTag('project', true, 'project_visit')).toBe('project_visit')
   })
 })

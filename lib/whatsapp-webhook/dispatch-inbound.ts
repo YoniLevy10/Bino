@@ -2008,5 +2008,7 @@ export async function runWhatsAppInboundBackground(
       requestId,
       stack: e.stack?.slice(0, 2000),
     })
+    // Audit #12: surface failure so the route can return non-2xx and reclaim dedupe.
+    throw e
   }
 }

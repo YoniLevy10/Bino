@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { assertClientNavFeatureEnabled } from '@/lib/client-nav-features'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
-export async function requireSessionClientIdWithNavFeature(featureId: SidebarNavItemId) {
-  const auth = await requireSessionClientId()
+export async function requireSessionClientIdWithNavFeature(
+  featureId: SidebarNavItemId,
+  opts?: { write?: boolean }
+) {
+  const auth = opts?.write
+    ? await requireSessionWriteAccess()
+    : await requireSessionClientId()
   if (!auth.ok) return auth
 
   const blocked = await assertClientNavFeatureEnabled(

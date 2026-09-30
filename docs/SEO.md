@@ -26,7 +26,7 @@ Ranking #1 is not a toggle — Google rewards useful Hebrew pages that match sea
 4. זיכרון תפעולי
 5. תוכנה לחברת ניהול
 
-Positioning: project / building / space ops — **not** “תוכנת ועד בית בלבד” and **not** generic Monday-style PM. Implementation is on `/` metadata + copy + JSON-LD, not blog/guides.
+Positioning: project / building / space ops — **not** “תוכנת ועד בית בלבד” and **not** generic Monday-style PM. Implementation is on `/` metadata + copy + JSON-LD, plus shipped Hebrew guides at `/guides` (`lib/seo-guides-he.ts`).
 
 ### What will **not** get you to #1 overnight
 

@@ -5,6 +5,25 @@ import {
   requireClientIdForUser,
 } from '@/lib/tenant-resolution'
 
+function chainEqIn(resolveValue: unknown) {
+  const terminal = {
+    then: undefined as unknown,
+    eq: () => terminal,
+    in: () => terminal,
+  }
+  // Make awaitable
+  Object.assign(terminal, {
+    then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+      Promise.resolve(resolveValue).then(resolve, reject),
+  })
+  return {
+    select: () => ({
+      eq: () => terminal,
+      in: () => terminal,
+    }),
+  }
+}
+
 describe('tenant resolution security', () => {
   const prevNodeEnv = process.env.NODE_ENV
   const prevBamakorClientId = process.env.BAMAKOR_CLIENT_ID
@@ -25,11 +44,7 @@ describe('tenant resolution security', () => {
 
   it('requireClientIdForUser rejects users without org in production', async () => {
     const admin = {
-      from: () => ({
-        select: () => ({
-          eq: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }),
+      from: () => chainEqIn({ data: [], error: null }),
     } as unknown as Parameters<typeof requireClientIdForUser>[0]
 
     await expect(requireClientIdForUser(admin, 'user-without-org')).rejects.toThrow(
@@ -41,32 +56,22 @@ describe('tenant resolution security', () => {
     const admin = {
       from: (table: string) => {
         if (table === 'organization_users') {
-          return {
-            select: () => ({
-              eq: () =>
-                Promise.resolve({
-                  data: [
-                    { organization_id: 'org-a' },
-                    { organization_id: 'org-b' },
-                  ],
-                  error: null,
-                }),
-            }),
-          }
+          return chainEqIn({
+            data: [{ organization_id: 'org-a' }, { organization_id: 'org-b' }],
+            error: null,
+          })
         }
         if (table === 'organizations') {
-          return {
-            select: () => ({
-              in: () =>
-                Promise.resolve({
-                  data: [
-                    { client_id: 'client-a' },
-                    { client_id: 'client-b' },
-                  ],
-                  error: null,
-                }),
-            }),
-          }
+          return chainEqIn({
+            data: [{ client_id: 'client-a' }, { client_id: 'client-b' }],
+            error: null,
+          })
+        }
+        if (table === 'clients') {
+          return chainEqIn({
+            data: [{ id: 'client-a' }, { id: 'client-b' }],
+            error: null,
+          })
         }
         throw new Error(`unexpected table ${table}`)
       },
@@ -77,11 +82,7 @@ describe('tenant resolution security', () => {
 
   it('resolveClientIdForUserId returns null when user has no organization_users rows', async () => {
     const admin = {
-      from: () => ({
-        select: () => ({
-          eq: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }),
+      from: () => chainEqIn({ data: [], error: null }),
     } as unknown as Parameters<typeof resolveClientIdForUserId>[0]
 
     await expect(resolveClientIdForUserId(admin, 'orphan-user')).resolves.toBeNull()
@@ -89,46 +90,30 @@ describe('tenant resolution security', () => {
 
   it('listClientIdsForUserId throws on organization_users query error (not empty list)', async () => {
     const admin = {
-      from: () => ({
-        select: () => ({
-          eq: () =>
-            Promise.resolve({
-              data: null,
-              error: { message: 'connection reset' },
-            }),
+      from: () =>
+        chainEqIn({
+          data: null,
+          error: { message: 'connection reset' },
         }),
-      }),
     } as unknown as Parameters<typeof listClientIdsForUserId>[0]
 
-    await expect(listClientIdsForUserId(admin, 'u1')).rejects.toThrow(
-      'ORG_USERS_QUERY_FAILED'
-    )
+    await expect(listClientIdsForUserId(admin, 'u1')).rejects.toThrow('ORG_USERS_QUERY_FAILED')
   })
 
   it('listClientIdsForUserId throws on organizations query error', async () => {
     const admin = {
       from: (table: string) => {
         if (table === 'organization_users') {
-          return {
-            select: () => ({
-              eq: () =>
-                Promise.resolve({
-                  data: [{ organization_id: 'org-a' }],
-                  error: null,
-                }),
-            }),
-          }
+          return chainEqIn({
+            data: [{ organization_id: 'org-a' }],
+            error: null,
+          })
         }
         if (table === 'organizations') {
-          return {
-            select: () => ({
-              in: () =>
-                Promise.resolve({
-                  data: null,
-                  error: { message: 'timeout' },
-                }),
-            }),
-          }
+          return chainEqIn({
+            data: null,
+            error: { message: 'timeout' },
+          })
         }
         throw new Error(`unexpected table ${table}`)
       },
@@ -136,17 +121,41 @@ describe('tenant resolution security', () => {
 
     await expect(listClientIdsForUserId(admin, 'u1')).rejects.toThrow('ORGS_QUERY_FAILED')
   })
+
+  it('listClientIdsForUserId excludes inactive clients', async () => {
+    const admin = {
+      from: (table: string) => {
+        if (table === 'organization_users') {
+          return chainEqIn({
+            data: [{ organization_id: 'org-a' }],
+            error: null,
+          })
+        }
+        if (table === 'organizations') {
+          return chainEqIn({
+            data: [{ client_id: 'client-inactive' }],
+            error: null,
+          })
+        }
+        if (table === 'clients') {
+          return chainEqIn({
+            data: [],
+            error: null,
+          })
+        }
+        throw new Error(`unexpected table ${table}`)
+      },
+    } as unknown as Parameters<typeof listClientIdsForUserId>[0]
+
+    await expect(listClientIdsForUserId(admin, 'u1')).resolves.toEqual([])
+  })
 })
 
 describe('userHasTenantAccess', () => {
   it('returns false when resolveClientIdForUserId is null', async () => {
     const { userHasTenantAccess } = await import('@/lib/tenant-access')
     const admin = {
-      from: () => ({
-        select: () => ({
-          eq: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }),
+      from: () => chainEqIn({ data: [], error: null }),
     } as unknown as Parameters<typeof userHasTenantAccess>[0]
 
     await expect(userHasTenantAccess(admin, 'orphan-user')).resolves.toBe(false)

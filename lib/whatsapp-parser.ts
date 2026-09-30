@@ -80,15 +80,7 @@ export function extractWhatsAppPhoneNumberId(body: unknown): string | null {
   return typeof id === 'string' && id.length > 0 ? id : null
 }
 
-export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessage | null {
-  const bodyRecord = body as Record<string, unknown>
-  const entry = (bodyRecord.entry as unknown[])?.[0] as Record<string, unknown>
-  const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown>
-  const value = change?.value as Record<string, unknown>
-  const message = (value?.messages as unknown[])?.[0] as Record<string, unknown>
-
-  if (!message) return null
-
+function parseWhatsAppMessageRecord(message: Record<string, unknown>): ParsedWhatsAppMessage {
   const mid = message?.id
   const result: ParsedWhatsAppMessage = {
     from: String(message?.from || ''),
@@ -156,4 +148,36 @@ export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessa
   }
 
   return result
+}
+
+/** First message only — kept for callers/tests; prefer parseAllIncomingWhatsAppMessages. */
+export function parseIncomingWhatsAppMessage(body: unknown): ParsedWhatsAppMessage | null {
+  const all = parseAllIncomingWhatsAppMessages(body)
+  return all[0] ?? null
+}
+
+/**
+ * Audit #14: Meta may batch multiple entries/changes/messages in one POST.
+ * Returns every inbound message in webhook order.
+ */
+export function parseAllIncomingWhatsAppMessages(body: unknown): ParsedWhatsAppMessage[] {
+  const bodyRecord = body as Record<string, unknown>
+  const entries = Array.isArray(bodyRecord.entry) ? (bodyRecord.entry as unknown[]) : []
+  const out: ParsedWhatsAppMessage[] = []
+
+  for (const entryUnknown of entries) {
+    const entry = entryUnknown as Record<string, unknown>
+    const changes = Array.isArray(entry?.changes) ? (entry.changes as unknown[]) : []
+    for (const changeUnknown of changes) {
+      const change = changeUnknown as Record<string, unknown>
+      const value = change?.value as Record<string, unknown>
+      const messages = Array.isArray(value?.messages) ? (value.messages as unknown[]) : []
+      for (const msgUnknown of messages) {
+        if (!msgUnknown || typeof msgUnknown !== 'object') continue
+        out.push(parseWhatsAppMessageRecord(msgUnknown as Record<string, unknown>))
+      }
+    }
+  }
+
+  return out
 }

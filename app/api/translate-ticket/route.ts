@@ -3,14 +3,14 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { translateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { translateToHebrew } from '@/lib/google-translate'
 
 export async function POST(req: Request) {
   const logger = getLogger()
   const requestId = `translate-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     let supabaseAdmin

@@ -105,16 +105,24 @@ export async function middleware(req: NextRequest) {
 
   // Public routes: do not block WhatsApp webhook or login screen
   // Also: /api/superadmin/* and /api/admin/* use x-admin-secret auth, not Supabase cookies
+  // Audit 01–03: public ticket create + provider webhooks must bypass session gate;
+  // handlers still enforce their own auth (client_id / webhook secret / Bearer).
   if (
     pathname === '/savings-report' ||
     pathname.startsWith('/savings-report/') ||
     pathname.startsWith('/api/webhook/whatsapp') ||
     pathname.startsWith('/api/webhook/grow') ||
+    pathname.startsWith('/api/webhook/fixly') ||
+    pathname.startsWith('/api/webhook/document-sign') ||
+    pathname === '/api/create-ticket' ||
+    pathname.startsWith('/api/create-ticket/') ||
     pathname.startsWith('/api/public/') ||
     pathname.startsWith('/api/worker-auth') ||
     pathname.startsWith('/api/worker/') ||
     pathname.startsWith('/api/superadmin/') ||
     pathname.startsWith('/api/admin/') ||
+    pathname === '/api/resident/auth/request-otp' ||
+    pathname.startsWith('/api/resident/auth/request-otp/') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||

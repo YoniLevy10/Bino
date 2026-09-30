@@ -12,16 +12,13 @@
 
 ---
 
-## סביבות עבודה (שני ריפוז)
+## סביבת עבודה
 
-| תיקייה | ענף | שימוש |
-|--------|-----|--------|
-| `bino-dashboard-dev` | `develop` | **פיתוח יומי** — יומן, שעון, CI, שיפורי מנהל |
-| `bino-dashboard` | `main` | **פרודקשן** — merge ממוקד / hotfix בלבד |
+ריפו יחיד: **YoniLevy10/Bino** · ענף ברירת מחדל `main` (ייצור ב־Vercel).
 
 כללי פיתוח (API, SMS, Supabase): `CLAUDE.md`.
 
-**פריסה / דומיין:** ייצור ב־`https://bino.casa` (`NEXT_PUBLIC_APP_URL` ב־Vercel). פרטי חיבור ו-cutover: `docs/DOMAIN.md`. SEO / Analytics: `docs/SEO.md`. אל תמזגו את כל `develop` ל-`main` לפני בדיקת Preview.
+**פריסה / דומיין:** ייצור ב־`https://bino.casa` (`NEXT_PUBLIC_APP_URL` ב־Vercel). פרטי חיבור: `docs/DOMAIN.md`. SEO / Analytics: `docs/SEO.md`. מדריכי תוכן: `/guides`.
 
 ---
 
@@ -43,6 +40,10 @@
 | `/settings` | הגדרות — WhatsApp, SMS, push, סדר תפריט, לוגו | מחובר |
 | `/settings/whatsapp-templates` | עריכת תבניות הודעות Meta | מחובר |
 | `/billing` | תוכנית, מכסות, צריכה חודשית | מחובר |
+| `/collections` | גביית ועד (Grow) | מחובר + addon |
+| `/guides` | מדריכי SEO | ציבורי |
+| `/vaad-pay` | דף תשלום ציבורי | ציבורי |
+| `/resident` | פורטל דיירים | Auth דייר |
 | `/privacy` | מדיניות פרטיות | ציבורי / מחובר |
 
 **ניווט:** סדר פריטי התפריט נשמר ב-`clients.sidebar_nav_order` (מיגרציה `048`). במובייל — 4 פריטים קבועים בתחתית (בית, תקלות, פרויקטים, עובדים); כפתור «עוד» או תפריט ההמבורגר פותחים את התפריט המלא.
@@ -79,7 +80,7 @@
 ### דרישות
 
 - Node.js 20+ (מומלץ; CI רץ על 20)
-- פרויקט Supabase עם **כל המיגרציות** בתיקייה `supabase/migrations/` (עד `049` ומעלה)
+- פרויקט Supabase עם **כל המיגרציות** בתיקייה `supabase/migrations/` (עד `113` (כולל פורטל דיירים + תיקוני ביקורת) ומעלה)
 
 ### התקנה
 
@@ -216,4 +217,4 @@ npm run test:e2e
 
 > **Hydration / SW ישן ב-dev:** DevTools → Application → Service Workers → Unregister, Clear site data.
 
-*עודכן: יוני 2026*
+*עודכן: ספטמבר 2026*

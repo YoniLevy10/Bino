@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { createResidentPortalInvite, revokeResidentPortalMembership } from '@/lib/resident-portal/invites'
 import { getPublicSiteUrlFromHeaders } from '@/lib/site-url'
 import { headers } from 'next/headers'
@@ -7,7 +7,7 @@ import { sanitizeId } from '@/lib/api-validation'
 import type { ResidentPortalRole } from '@/lib/resident-portal/types'
 
 export async function GET(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const url = new URL(req.url)
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   let body: {
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const url = new URL(req.url)

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   MIDDLEWARE_TENANT_COOKIE,
   MIDDLEWARE_TENANT_TTL_SEC,
@@ -15,6 +15,22 @@ function reqWithCookie(value: string | undefined): NextRequest {
 }
 
 describe('middleware-tenant-cache', () => {
+  const prevServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const prevCookieSecret = process.env.MIDDLEWARE_TENANT_COOKIE_SECRET
+
+  beforeEach(() => {
+    // HMAC signing requires a secret; CI unit tests do not inject service role.
+    process.env.MIDDLEWARE_TENANT_COOKIE_SECRET = 'unit-test-middleware-tenant-cookie-secret'
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY
+  })
+
+  afterEach(() => {
+    if (prevServiceRole === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = prevServiceRole
+    if (prevCookieSecret === undefined) delete process.env.MIDDLEWARE_TENANT_COOKIE_SECRET
+    else process.env.MIDDLEWARE_TENANT_COOKIE_SECRET = prevCookieSecret
+  })
+
   it('round-trips clientId + nav features for matching uid', () => {
     const res = NextResponse.next()
     writeMiddlewareTenantCache(res, {

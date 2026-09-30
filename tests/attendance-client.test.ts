@@ -142,6 +142,8 @@ describe('executeNfcStampFlow local-first', () => {
   }
   const pending: PendingAttendanceEvent = {
     client_action_id: 'a1',
+    worker_id: 'w1',
+    client_id: 'c1',
     tag_code: 'DOOR1',
     event_type: 'clock_in',
     client_recorded_at: new Date().toISOString(),

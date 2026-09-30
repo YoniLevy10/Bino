@@ -113,7 +113,7 @@ export async function PATCH(req: NextRequest) {
   const audit = getAuditLogger()
   const requestId = `pending-residents-patch-${Date.now()}`
   try {
-    const auth = await requireSessionClientIdWithNavFeature('pending_residents')
+    const auth = await requireSessionClientIdWithNavFeature('pending_residents', { write: true })
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 

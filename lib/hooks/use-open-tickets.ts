@@ -56,9 +56,10 @@ export function useTenantOpenTickets(options?: { enabled?: boolean; limit?: numb
 
   const clientId = clientIdQuery.data
 
+  const limit = options?.limit ?? 200
   const ticketsQuery = useQuery({
-    queryKey: clientId ? queryKeys.ticketsOpen(clientId) : ['tickets-open', 'pending'],
-    queryFn: () => fetchOpenTickets(clientId!, options?.limit ?? 200),
+    queryKey: clientId ? queryKeys.ticketsOpen(clientId, limit) : ['tickets-open', 'pending', limit],
+    queryFn: () => fetchOpenTickets(clientId!, limit),
     enabled: Boolean(clientId) && options?.enabled !== false,
     staleTime: 30_000,
   })

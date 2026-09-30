@@ -15,7 +15,7 @@ import {
 } from '@/lib/collection-charge-ops'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections, { write: true })
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

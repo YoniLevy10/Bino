@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import {
   createMaintenanceTaskBodySchema,
   updateMaintenanceTaskBodySchema,
 } from '@/lib/api-body-schemas'
 import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
+import { assertProjectOwnedByClient, assertWorkerOwnedByClient } from '@/lib/tenant-owned-refs'
 
 const TASK_SELECT =
   'id, client_id, project_id, assigned_worker_id, title, description, priority, status, due_at, notes, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name)'
@@ -90,7 +91,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
@@ -106,6 +107,19 @@ export async function POST(req: Request) {
   }
 
   const body = parsed.data
+  const projectOk = await assertProjectOwnedByClient(admin, auth.ctx.clientId, body.project_id)
+  if (!projectOk.ok) {
+    return NextResponse.json({ error: projectOk.error }, { status: 400 })
+  }
+  const workerOk = await assertWorkerOwnedByClient(
+    admin,
+    auth.ctx.clientId,
+    body.assigned_worker_id
+  )
+  if (!workerOk.ok) {
+    return NextResponse.json({ error: workerOk.error }, { status: 400 })
+  }
+
   const { data, error } = await admin
     .from('maintenance_tasks')
     .insert({
@@ -131,7 +145,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
@@ -147,6 +161,23 @@ export async function PATCH(req: Request) {
   }
 
   const { task_id, ...rest } = parsed.data
+  if (rest.project_id !== undefined) {
+    const projectOk = await assertProjectOwnedByClient(admin, auth.ctx.clientId, rest.project_id)
+    if (!projectOk.ok) {
+      return NextResponse.json({ error: projectOk.error }, { status: 400 })
+    }
+  }
+  if (rest.assigned_worker_id !== undefined) {
+    const workerOk = await assertWorkerOwnedByClient(
+      admin,
+      auth.ctx.clientId,
+      rest.assigned_worker_id
+    )
+    if (!workerOk.ok) {
+      return NextResponse.json({ error: workerOk.error }, { status: 400 })
+    }
+  }
+
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (rest.title !== undefined) patch.title = rest.title.trim()
   if (rest.description !== undefined) patch.description = rest.description?.trim() || null
@@ -180,7 +211,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

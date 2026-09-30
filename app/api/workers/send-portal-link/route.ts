@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { sendWorkerPortalLinkBodySchema } from '@/lib/api-body-schemas'
 import { sendWorkerSMSAll } from '@/lib/sms-send'
@@ -9,7 +9,7 @@ import { collectWorkerPhones } from '@/lib/worker-phones'
 
 export async function POST(req: Request) {
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
     const clientId = auth.ctx.clientId
 
