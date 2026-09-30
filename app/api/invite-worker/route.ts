@@ -3,12 +3,29 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
+import { inviteUserToClientOrganization } from '@/lib/invite-organization-user'
+import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-user-password'
 import { z } from 'zod'
 
-const inviteWorkerSchema = z.object({
-  email: z.string().email(),
-  role: z.enum(['admin', 'manager', 'viewer']).default('viewer'),
-})
+const inviteWorkerSchema = z
+  .object({
+    email: z.string().email(),
+    role: z.enum(['admin', 'manager', 'viewer']).default('viewer'),
+    mode: z.enum(['invite', 'password']).default('invite'),
+    password: z.string().optional(),
+    fullName: z.string().max(120).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.mode === 'password') {
+      if (!val.password || val.password.length < 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['password'],
+          message: 'הסיסמה חייבת להיות באורך 8 תווים לפחות',
+        })
+      }
+    }
+  })
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -34,58 +51,79 @@ export async function POST(req: Request) {
 
     const parsed = inviteWorkerSchema.safeParse(rawBody)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      const first =
+        parsed.error.issues[0]?.message ||
+        'נתונים לא תקינים'
+      return NextResponse.json({ error: first, details: parsed.error.flatten(), requestId }, { status: 400 })
     }
-    const { email, role } = parsed.data
+    const { email, role, mode, password, fullName } = parsed.data
     const clientId = auth.ctx.clientId
 
-    // מצא את ה-organization של הלקוח
-    const { data: orgRows, error: orgErr } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('client_id', clientId)
-      .limit(1)
-
-    if (orgErr || !orgRows?.length) {
-      return NextResponse.json({ error: 'לא נמצאה ארגון מקושר ללקוח', requestId }, { status: 404 })
+    if (mode === 'password') {
+      const result = await ensureOrganizationUserWithPassword(supabase, {
+        clientId,
+        email,
+        password: password!,
+        role,
+        fullName,
+      })
+      if (!result.ok) {
+        logger.error('invite-worker', 'password user failed', new Error(result.error))
+        return NextResponse.json({ error: result.error, requestId }, { status: 500 })
+      }
+      audit.logAction(
+        'CREATE',
+        'ORGANIZATION_USERS',
+        result.userId,
+        clientId,
+        undefined,
+        undefined,
+        'SUCCESS',
+        `${result.created ? 'created' : 'updated'} password user ${result.email} as ${role}`
+      )
+      return NextResponse.json({
+        ok: true,
+        mode: 'password',
+        email: result.email,
+        role: result.role,
+        user_id: result.userId,
+        created: result.created,
+        requestId,
+      })
     }
-    const orgId = orgRows[0].id
 
-    // שלח invite דרך Supabase Auth
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || ''
-    const { data: inviteData, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${appUrl}/auth/callback`,
-      data: { invited_as_worker: true, client_id: clientId },
+    const result = await inviteUserToClientOrganization(supabase, {
+      clientId,
+      email,
+      role,
+      appUrl,
     })
 
-    if (inviteErr) {
-      // אם משתמש כבר קיים — בכל זאת נוסיף לארגון
-      if (!inviteErr.message?.toLowerCase().includes('already registered')) {
-        logger.error('invite-worker', 'invite failed', new Error(inviteErr.message))
-        return NextResponse.json({ error: `שגיאה בשליחת הזמנה: ${inviteErr.message}`, requestId }, { status: 500 })
-      }
+    if (!result.ok) {
+      logger.error('invite-worker', 'invite failed', new Error(result.error))
+      return NextResponse.json({ error: `שגיאה בשליחת הזמנה: ${result.error}`, requestId }, { status: 500 })
     }
 
-    // מצא את ה-user_id (קיים או חדש)
-    const userId = inviteData?.user?.id ?? null
+    audit.logAction(
+      'CREATE',
+      'ORGANIZATION_USERS',
+      result.userId,
+      clientId,
+      undefined,
+      undefined,
+      'SUCCESS',
+      `invited ${result.email} as ${role}`
+    )
 
-    if (userId) {
-      const { error: ouErr } = await supabase
-        .from('organization_users')
-        .upsert(
-          { organization_id: orgId, user_id: userId, role },
-          { onConflict: 'organization_id,user_id' }
-        )
-
-      if (ouErr) {
-        logger.error('invite-worker', 'organization_users upsert failed', new Error(ouErr.message))
-        return NextResponse.json({ error: `שגיאה בהוספה לארגון: ${ouErr.message}`, requestId }, { status: 500 })
-      }
-    }
-
-    audit.logAction('CREATE', 'ORGANIZATION_USERS', orgId, clientId, undefined, undefined, 'SUCCESS', `invited ${email} as ${role}`)
-
-    return NextResponse.json({ ok: true, email, role, user_id: userId, requestId })
+    return NextResponse.json({
+      ok: true,
+      mode: 'invite',
+      email: result.email,
+      role: result.role,
+      user_id: result.userId,
+      requestId,
+    })
   } catch (err) {
     logger.error('invite-worker', 'unexpected error', err instanceof Error ? err : new Error(String(err)))
     return NextResponse.json({ error: 'שגיאה פנימית', requestId }, { status: 500 })
@@ -122,7 +160,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: ouErr.message, requestId }, { status: 500 })
     }
 
-    // שלוף אימיילים מ-auth.users
     const userIds = (ouRows ?? []).map((r) => r.user_id)
     const emailMap: Record<string, string> = {}
     for (const uid of userIds) {
@@ -139,7 +176,7 @@ export async function GET(req: Request) {
     }))
 
     return NextResponse.json({ users })
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'שגיאה פנימית', requestId }, { status: 500 })
   }
 }
@@ -157,7 +194,6 @@ export async function DELETE(req: Request) {
     const supabase = getSupabaseAdmin()
     const clientId = auth.ctx.clientId
 
-    // וודא שה-organization_user שייך לאותו לקוח
     const { data: orgRows } = await supabase
       .from('organizations')
       .select('id')
@@ -176,7 +212,7 @@ export async function DELETE(req: Request) {
     if (error) return NextResponse.json({ error: error.message, requestId }, { status: 500 })
 
     return NextResponse.json({ ok: true, requestId })
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'שגיאה פנימית', requestId }, { status: 500 })
   }
 }

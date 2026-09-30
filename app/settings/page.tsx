@@ -143,7 +143,10 @@ function SettingsPageInner() {
   // Team tab state
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([])
   const [teamLoading, setTeamLoading] = useState(false)
+  const [teamMode, setTeamMode] = useState<'password' | 'invite'>('password')
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePassword, setInvitePassword] = useState('')
+  const [invitePasswordConfirm, setInvitePasswordConfirm] = useState('')
   const [inviteRole, setInviteRole] = useState<'viewer' | 'manager' | 'admin'>('viewer')
   const [inviting, setInviting] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -589,17 +592,42 @@ function SettingsPageInner() {
   }
 
   async function doInvite() {
-    if (!inviteEmail.trim()) return
+    const email = inviteEmail.trim().toLowerCase()
+    if (!email) return
+    if (teamMode === 'password') {
+      if (invitePassword.length < 8) {
+        toast.error('הסיסמה חייבת להיות באורך 8 תווים לפחות')
+        return
+      }
+      if (invitePassword !== invitePasswordConfirm) {
+        toast.error('הסיסמאות לא תואמות')
+        return
+      }
+    }
     setInviting(true)
     try {
       const res = await fetchWithTimeout('/api/invite-worker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+        body: JSON.stringify(
+          teamMode === 'password'
+            ? { email, role: inviteRole, mode: 'password', password: invitePassword }
+            : { email, role: inviteRole, mode: 'invite' }
+        ),
       })
-      const json = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
-      toast.success(`הזמנה נשלחה ל-${inviteEmail.trim()}`)
+      const json = await res.json() as { error?: string; created?: boolean }
+      if (!res.ok) throw new Error(typeof json.error === 'string' ? json.error : 'שליחה נכשלה')
+      if (teamMode === 'password') {
+        toast.success(
+          json.created === false
+            ? `עודכנה סיסמה ל-${email} — אפשר להתחבר מיד`
+            : `נוצר משתמש ל-${email} — אפשר להתחבר מיד עם הסיסמה`
+        )
+        setInvitePassword('')
+        setInvitePasswordConfirm('')
+      } else {
+        toast.success(`הזמנה נשלחה ל-${email}`)
+      }
       setInviteEmail('')
       await loadTeam()
     } catch (e) {
@@ -1239,7 +1267,42 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={styles.cardInner}>
                   <div style={{ fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
-                    מי נכנס למערכת עם Google — מנהלי משרד, לא עובדי שטח. שולחים הזמנה במייל; הם רואים את כל התקלות של הלקוח.
+                    מנהלי משרד שנכנסים לדשבורד (לא עובדי שטח). מומלץ לפתוח משתמש עם אימייל וסיסמה — הם מתחברים מיד ב־/login בלי קישור מהמייל.
+                  </div>
+
+                  <div
+                    role="tablist"
+                    aria-label="אופן הוספת משתמש"
+                    style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={teamMode === 'password'}
+                      onClick={() => setTeamMode('password')}
+                      style={{
+                        ...styles.teamModeChip,
+                        background: teamMode === 'password' ? theme.colors.primary : theme.colors.surfaceElevated,
+                        color: teamMode === 'password' ? '#fff' : theme.colors.textPrimary,
+                        borderColor: teamMode === 'password' ? theme.colors.primary : theme.colors.border,
+                      }}
+                    >
+                      אימייל וסיסמה
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={teamMode === 'invite'}
+                      onClick={() => setTeamMode('invite')}
+                      style={{
+                        ...styles.teamModeChip,
+                        background: teamMode === 'invite' ? theme.colors.primary : theme.colors.surfaceElevated,
+                        color: teamMode === 'invite' ? '#fff' : theme.colors.textPrimary,
+                        borderColor: teamMode === 'invite' ? theme.colors.primary : theme.colors.border,
+                      }}
+                    >
+                      הזמנה במייל
+                    </button>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1248,8 +1311,9 @@ function SettingsPageInner() {
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="כתובת מייל של משתמש המשרד"
-                        style={{ ...styles.input, flex: 1, minWidth: '200px' }}
+                        placeholder="אימייל להתחברות (שם משתמש)"
+                        autoComplete="off"
+                        style={{ ...styles.input, flex: 1, minWidth: '200px', direction: 'ltr', textAlign: 'left' }}
                         onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
                       />
                       <select
@@ -1262,9 +1326,38 @@ function SettingsPageInner() {
                         <option value="manager">מנהל</option>
                         <option value="admin">מנהל מערכת</option>
                       </select>
+                    </div>
+                    {teamMode === 'password' && (
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <input
+                          type="text"
+                          value={invitePassword}
+                          onChange={(e) => setInvitePassword(e.target.value)}
+                          placeholder="סיסמה (לפחות 8 תווים)"
+                          autoComplete="new-password"
+                          style={{ ...styles.input, flex: 1, minWidth: '180px', direction: 'ltr', textAlign: 'left' }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
+                        />
+                        <input
+                          type="text"
+                          value={invitePasswordConfirm}
+                          onChange={(e) => setInvitePasswordConfirm(e.target.value)}
+                          placeholder="אימות סיסמה"
+                          autoComplete="new-password"
+                          style={{ ...styles.input, flex: 1, minWidth: '180px', direction: 'ltr', textAlign: 'left' }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
+                        />
+                      </div>
+                    )}
+                    <div>
                       <Button variant="primary" onClick={doInvite} loading={inviting} type="button">
-                        שלח הזמנה
+                        {teamMode === 'password' ? 'צור משתמש' : 'שלח הזמנה'}
                       </Button>
+                      {teamMode === 'password' && (
+                        <div style={{ marginTop: '8px', fontSize: '12px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                          אם המשתמש כבר קיים — הסיסמה תתעדכן והמייל יאושר אוטומטית.
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1278,13 +1371,13 @@ function SettingsPageInner() {
                     {teamLoading ? (
                       <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><LoadingSpinner /></div>
                     ) : orgUsers.length === 0 ? (
-                      <div style={{ color: theme.colors.textMuted, fontSize: '13px' }}>עדיין אין משתמשים מוזמנים.</div>
+                      <div style={{ color: theme.colors.textMuted, fontSize: '13px' }}>עדיין אין משתמשי משרד.</div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {orgUsers.map((u) => (
                           <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`, background: theme.colors.surfaceElevated }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <span style={{ fontSize: '14px', fontWeight: 500, color: theme.colors.textPrimary }}>{u.email}</span>
+                              <span style={{ fontSize: '14px', fontWeight: 500, color: theme.colors.textPrimary, direction: 'ltr', textAlign: 'right' }}>{u.email}</span>
                               <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>{u.role === 'admin' ? 'מנהל מערכת' : u.role === 'manager' ? 'מנהל' : 'צופה'}</span>
                             </div>
                             <Button
@@ -1380,6 +1473,14 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+  },
+  teamModeChip: {
+    padding: '8px 14px',
+    borderRadius: theme.radius.md,
+    border: '1px solid',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
   },
   formGroup: {
     display: 'flex',
