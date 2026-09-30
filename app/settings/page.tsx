@@ -147,9 +147,12 @@ function SettingsPageInner() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [invitePassword, setInvitePassword] = useState('')
   const [invitePasswordConfirm, setInvitePasswordConfirm] = useState('')
-  const [inviteRole, setInviteRole] = useState<'viewer' | 'manager' | 'admin'>('viewer')
+  const [inviteRole, setInviteRole] = useState<'viewer' | 'manager' | 'admin'>('admin')
   const [inviting, setInviting] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [canManageTeam, setCanManageTeam] = useState(false)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+  const [teamLoadError, setTeamLoadError] = useState<string | null>(null)
 
   const [origin, setOrigin] = useState('')
 
@@ -580,11 +583,27 @@ function SettingsPageInner() {
 
   async function loadTeam() {
     setTeamLoading(true)
+    setTeamLoadError(null)
     try {
       const res = await fetchWithTimeout('/api/invite-worker', { method: 'GET' })
-      const json = await res.json() as { users?: OrgUser[] }
+      const json = await res.json() as {
+        users?: OrgUser[]
+        can_manage?: boolean
+        my_user_id?: string
+        error?: string
+      }
+      if (!res.ok) {
+        setOrgUsers([])
+        setCanManageTeam(false)
+        setTeamLoadError(typeof json.error === 'string' ? json.error : 'טעינת הצוות נכשלה')
+        toast.error(typeof json.error === 'string' ? json.error : 'טעינת הצוות נכשלה')
+        return
+      }
       setOrgUsers(json.users ?? [])
+      setCanManageTeam(json.can_manage === true)
+      setMyUserId(typeof json.my_user_id === 'string' ? json.my_user_id : null)
     } catch {
+      setTeamLoadError('טעינת הצוות נכשלה')
       toast.error('טעינת הצוות נכשלה')
     } finally {
       setTeamLoading(false)
@@ -1270,96 +1289,106 @@ function SettingsPageInner() {
                     מנהלי משרד שנכנסים לדשבורד (לא עובדי שטח). מומלץ לפתוח משתמש עם אימייל וסיסמה — הם מתחברים מיד ב־/login בלי קישור מהמייל.
                   </div>
 
-                  <div
-                    role="tablist"
-                    aria-label="אופן הוספת משתמש"
-                    style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={teamMode === 'password'}
-                      onClick={() => setTeamMode('password')}
-                      style={{
-                        ...styles.teamModeChip,
-                        background: teamMode === 'password' ? theme.colors.primary : theme.colors.surfaceElevated,
-                        color: teamMode === 'password' ? '#fff' : theme.colors.textPrimary,
-                        borderColor: teamMode === 'password' ? theme.colors.primary : theme.colors.border,
-                      }}
-                    >
-                      אימייל וסיסמה
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={teamMode === 'invite'}
-                      onClick={() => setTeamMode('invite')}
-                      style={{
-                        ...styles.teamModeChip,
-                        background: teamMode === 'invite' ? theme.colors.primary : theme.colors.surfaceElevated,
-                        color: teamMode === 'invite' ? '#fff' : theme.colors.textPrimary,
-                        borderColor: teamMode === 'invite' ? theme.colors.primary : theme.colors.border,
-                      }}
-                    >
-                      הזמנה במייל
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      <input
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="אימייל להתחברות (שם משתמש)"
-                        autoComplete="off"
-                        style={{ ...styles.input, flex: 1, minWidth: '200px', direction: 'ltr', textAlign: 'left' }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
-                      />
-                      <select
-                        className="app-select-input"
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as 'viewer' | 'manager' | 'admin')}
-                        style={{ padding: '12px 14px', borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`, background: theme.colors.surface, fontSize: '14px', color: theme.colors.textPrimary }}
+                  {canManageTeam ? (
+                    <>
+                      <div
+                        role="tablist"
+                        aria-label="אופן הוספת משתמש"
+                        style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
                       >
-                        <option value="viewer">צופה (קריאה בלבד)</option>
-                        <option value="manager">מנהל</option>
-                        <option value="admin">מנהל מערכת</option>
-                      </select>
-                    </div>
-                    {teamMode === 'password' && (
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <input
-                          type="text"
-                          value={invitePassword}
-                          onChange={(e) => setInvitePassword(e.target.value)}
-                          placeholder="סיסמה (לפחות 8 תווים)"
-                          autoComplete="new-password"
-                          style={{ ...styles.input, flex: 1, minWidth: '180px', direction: 'ltr', textAlign: 'left' }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
-                        />
-                        <input
-                          type="text"
-                          value={invitePasswordConfirm}
-                          onChange={(e) => setInvitePasswordConfirm(e.target.value)}
-                          placeholder="אימות סיסמה"
-                          autoComplete="new-password"
-                          style={{ ...styles.input, flex: 1, minWidth: '180px', direction: 'ltr', textAlign: 'left' }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
-                        />
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={teamMode === 'password'}
+                          onClick={() => setTeamMode('password')}
+                          style={{
+                            ...styles.teamModeChip,
+                            background: teamMode === 'password' ? theme.colors.primary : theme.colors.surfaceElevated,
+                            color: teamMode === 'password' ? '#fff' : theme.colors.textPrimary,
+                            borderColor: teamMode === 'password' ? theme.colors.primary : theme.colors.border,
+                          }}
+                        >
+                          אימייל וסיסמה
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={teamMode === 'invite'}
+                          onClick={() => setTeamMode('invite')}
+                          style={{
+                            ...styles.teamModeChip,
+                            background: teamMode === 'invite' ? theme.colors.primary : theme.colors.surfaceElevated,
+                            color: teamMode === 'invite' ? '#fff' : theme.colors.textPrimary,
+                            borderColor: teamMode === 'invite' ? theme.colors.primary : theme.colors.border,
+                          }}
+                        >
+                          הזמנה במייל
+                        </button>
                       </div>
-                    )}
-                    <div>
-                      <Button variant="primary" onClick={doInvite} loading={inviting} type="button">
-                        {teamMode === 'password' ? 'צור משתמש' : 'שלח הזמנה'}
-                      </Button>
-                      {teamMode === 'password' && (
-                        <div style={{ marginTop: '8px', fontSize: '12px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
-                          אם המשתמש כבר קיים — הסיסמה תתעדכן והמייל יאושר אוטומטית.
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          <input
+                            type="email"
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            placeholder="אימייל להתחברות (שם משתמש)"
+                            autoComplete="off"
+                            style={{ ...styles.input, flex: 1, minWidth: '200px', direction: 'ltr', textAlign: 'left' }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
+                          />
+                          <select
+                            className="app-select-input"
+                            value={inviteRole}
+                            onChange={(e) => setInviteRole(e.target.value as 'viewer' | 'manager' | 'admin')}
+                            style={{ padding: '12px 14px', borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`, background: theme.colors.surface, fontSize: '14px', color: theme.colors.textPrimary }}
+                          >
+                            <option value="admin">מנהל מערכת</option>
+                            <option value="manager">מנהל</option>
+                            <option value="viewer">צופה (קריאה בלבד)</option>
+                          </select>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        {teamMode === 'password' && (
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <input
+                              type="text"
+                              value={invitePassword}
+                              onChange={(e) => setInvitePassword(e.target.value)}
+                              placeholder="סיסמה (לפחות 8 תווים)"
+                              autoComplete="new-password"
+                              style={{ ...styles.input, flex: 1, minWidth: '180px', direction: 'ltr', textAlign: 'left' }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
+                            />
+                            <input
+                              type="text"
+                              value={invitePasswordConfirm}
+                              onChange={(e) => setInvitePasswordConfirm(e.target.value)}
+                              placeholder="אימות סיסמה"
+                              autoComplete="new-password"
+                              style={{ ...styles.input, flex: 1, minWidth: '180px', direction: 'ltr', textAlign: 'left' }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') void doInvite() }}
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <Button variant="primary" onClick={doInvite} loading={inviting} type="button">
+                            {teamMode === 'password' ? 'צור משתמש' : 'שלח הזמנה'}
+                          </Button>
+                          {teamMode === 'password' && (
+                            <div style={{ marginTop: '8px', fontSize: '12px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                              אם המשתמש כבר קיים — הסיסמה תתעדכן והמייל יאושר אוטומטית. תפקיד קיים לא יורד בטעות (למשל מנהל מערכת לא יהפוך לצופה).
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    !teamLoading && (
+                      <div style={{ fontSize: '13px', color: theme.colors.textMuted, lineHeight: 1.5 }}>
+                        רק מנהל מערכת או מנהל יכולים להוסיף ולהסיר משתמשי משרד. אפשר לצפות ברשימה למטה.
+                      </div>
+                    )
+                  )}
 
                   <div style={{ marginTop: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -1370,6 +1399,8 @@ function SettingsPageInner() {
                     </div>
                     {teamLoading ? (
                       <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><LoadingSpinner /></div>
+                    ) : teamLoadError ? (
+                      <div style={{ color: theme.colors.warning, fontSize: '13px' }}>{teamLoadError}</div>
                     ) : orgUsers.length === 0 ? (
                       <div style={{ color: theme.colors.textMuted, fontSize: '13px' }}>עדיין אין משתמשי משרד.</div>
                     ) : (
@@ -1380,14 +1411,16 @@ function SettingsPageInner() {
                               <span style={{ fontSize: '14px', fontWeight: 500, color: theme.colors.textPrimary, direction: 'ltr', textAlign: 'right' }}>{u.email}</span>
                               <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>{u.role === 'admin' ? 'מנהל מערכת' : u.role === 'manager' ? 'מנהל' : 'צופה'}</span>
                             </div>
-                            <Button
-                              variant="secondary"
-                              onClick={() => void doRemove(u.id)}
-                              loading={removingId === u.id}
-                              type="button"
-                            >
-                              הסר
-                            </Button>
+                            {canManageTeam && u.user_id !== myUserId ? (
+                              <Button
+                                variant="secondary"
+                                onClick={() => void doRemove(u.id)}
+                                loading={removingId === u.id}
+                                type="button"
+                              >
+                                הסר
+                              </Button>
+                            ) : null}
                           </div>
                         ))}
                       </div>

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OrgUserRole } from '@/lib/invite-organization-user'
+import { higherOrgRole, isOrgUserRole } from '@/lib/org-role'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -94,13 +95,29 @@ export async function ensureOrganizationUserWithPassword(
     }
   }
 
+  // Password reset must not demote an existing admin/manager when the form
+  // still defaults to viewer (common when re-creating login credentials).
+  let roleToPersist: OrgUserRole = opts.role
+  const { data: existingOu } = await admin
+    .from('organization_users')
+    .select('role')
+    .eq('organization_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  const existingRole = existingOu && isOrgUserRole((existingOu as { role?: unknown }).role)
+    ? (existingOu as { role: OrgUserRole }).role
+    : null
+  if (existingRole) {
+    roleToPersist = higherOrgRole(existingRole, opts.role)
+  }
+
   const { error: ouErr } = await admin.from('organization_users').upsert(
-    { organization_id: orgId, user_id: userId, role: opts.role },
+    { organization_id: orgId, user_id: userId, role: roleToPersist },
     { onConflict: 'organization_id,user_id' }
   )
   if (ouErr) {
     return { ok: false, error: ouErr.message }
   }
 
-  return { ok: true, userId, email, role: opts.role, created }
+  return { ok: true, userId, email, role: roleToPersist, created }
 }
