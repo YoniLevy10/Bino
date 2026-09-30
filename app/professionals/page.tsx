@@ -35,6 +35,10 @@ import {
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonGate } from '../components/PaidAddonGate'
+import {
+  MidragSearchPanel,
+  focusMidragSearch,
+} from '../components/professionals/MidragSearchPanel'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 type ProfessionalRow = {
@@ -88,6 +92,7 @@ export default function ProfessionalsPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   const [isMobile, setIsMobile] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [midragDrawerOpen, setMidragDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<ProfessionalRow | null>(null)
   const [form, setForm] = useState<ProfessionalForm>(emptyForm)
 
@@ -343,7 +348,7 @@ export default function ProfessionalsPage() {
         {!isMobile && (
           <PageHeader
             title="אנשי מקצוע"
-            subtitle="קבלנים וספקים חיצוניים — העברת תקלות ב-SMS מדף התקלות"
+            subtitle="פנקס קבלנים + חיפוש במידרג — העברת תקלות ב-SMS מדף התקלות"
             actions={
               <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
                 איש מקצוע חדש
@@ -370,6 +375,14 @@ export default function ProfessionalsPage() {
               <KpiCard label="סה״כ" value={stats.total} accent="primary" />
               <KpiCard label="פעילים" value={stats.active} accent="success" />
               <KpiCard label="לא פעילים" value={stats.inactive} />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <MidragSearchPanel
+                isMobile={isMobile}
+                drawerOpen={midragDrawerOpen}
+                onDrawerOpenChange={setMidragDrawerOpen}
+              />
             </div>
 
             <Card noPadding>
@@ -399,11 +412,24 @@ export default function ProfessionalsPage() {
               {filtered.length === 0 ? (
                 <EmptyState
                   title="לא נמצאו אנשי מקצוע"
-                  description="הוסיפו קשרים חיצוניים לשליחת פרטי תקלות ב-SMS."
+                  description="הוסיפו קשרים חיצוניים, או חפשו קבלן במידרג לפי מקצוע ועיר."
                   action={
-                    <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
-                      הוספה
-                    </Button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                      <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
+                        הוספה
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          focusMidragSearch({
+                            isMobile,
+                            openDrawer: () => setMidragDrawerOpen(true),
+                          })
+                        }
+                      >
+                        חיפוש במידרג
+                      </Button>
+                    </div>
                   }
                 />
               ) : (
