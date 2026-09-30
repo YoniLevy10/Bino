@@ -63,7 +63,9 @@ export async function checkAuthenticatedReadRouteLimit(admin: SupabaseClient, us
   const safeUser = userId.slice(0, 64)
   const safeSlug = routeSlug.slice(0, 80).replace(/[^a-zA-Z0-9:_-]/g, '_')
   const r = await checkRateLimit(admin, `get:user:${safeUser}:${safeSlug}`, 120, 60_000)
-  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true }
+  // Fail-open on dashboard GETs: limiter outage must not blank every screen (429 flood).
+  // POST / public / webhook paths stay fail-closed in their own helpers.
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: false, rpcFailed: true as const }
   return r
 }
 

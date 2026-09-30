@@ -16,6 +16,7 @@ import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import {
   fetchWithTimeout,
+  DEFAULT_FETCH_TIMEOUT_MS,
   MUTATION_FETCH_TIMEOUT_MS,
 } from '@/lib/fetch-with-timeout'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
@@ -32,11 +33,15 @@ import {
   Button,
   Drawer,
   EmptyState,
+  ErrorState,
   SearchInput,
   Select,
   theme,
 } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
+
+/** Board reads — fail faster than mutations so the UI can retry instead of hanging. */
+const BOARD_READ_TIMEOUT_MS = Math.max(DEFAULT_FETCH_TIMEOUT_MS, 15_000)
 
 type ProjectOption = { id: string; name: string }
 type ResidentOption = {
@@ -87,12 +92,12 @@ export function CollectionsBoard() {
   const [isMobile, setIsMobile] = useState(false)
   const [boardLoading, setBoardLoading] = useState(true)
   const [hasBoardData, setHasBoardData] = useState(false)
+  const [boardError, setBoardError] = useState<string | null>(null)
   const hasBoardDataRef = useRef(false)
   const {
     clientId,
     projects: projectRows,
-    isLoading: projectsLoading,
-    hasData: projectsHasData,
+    error: projectsError,
   } = useTenantProjectsList()
   const projects: ProjectOption[] = useMemo(
     () => projectRows.map((p) => ({ id: p.id, name: p.name })),
@@ -209,18 +214,26 @@ export function CollectionsBoard() {
     if (periodFilter.trim()) params.set('period_label', periodFilter.trim())
     params.set('page_size', '100')
 
-    const [listRes, sumRes] = await Promise.all([
-      fetchWithTimeout(`/api/collections/charges?${params.toString()}`, {}, MUTATION_FETCH_TIMEOUT_MS),
+    // Independent fetches — one slow/failed summary must not discard a good charges list.
+    const [listSettled, sumSettled] = await Promise.allSettled([
+      fetchWithTimeout(`/api/collections/charges?${params.toString()}`, {}, BOARD_READ_TIMEOUT_MS),
       fetchWithTimeout(
         `/api/collections/summary?${new URLSearchParams({
           ...(projectFilter ? { project_id: projectFilter } : {}),
           ...(periodFilter.trim() ? { period_label: periodFilter.trim() } : {}),
         }).toString()}`,
         {},
-        MUTATION_FETCH_TIMEOUT_MS
+        BOARD_READ_TIMEOUT_MS
       ),
     ])
 
+    if (listSettled.status === 'rejected') {
+      throw listSettled.reason instanceof Error
+        ? listSettled.reason
+        : new Error('טעינת חיובים נכשלה')
+    }
+
+    const listRes = listSettled.value
     const listJson = (await listRes.json().catch(() => ({}))) as {
       items?: CollectionChargeListItem[]
       error?: string
@@ -228,13 +241,16 @@ export function CollectionsBoard() {
     if (!listRes.ok) throw new Error(listJson.error || 'טעינת חיובים נכשלה')
     setItems(listJson.items || [])
 
-    const sumJson = (await sumRes.json().catch(() => ({}))) as {
-      chips?: SummaryChips
-      money?: MoneySummary
-      error?: string
+    if (sumSettled.status === 'fulfilled') {
+      const sumRes = sumSettled.value
+      const sumJson = (await sumRes.json().catch(() => ({}))) as {
+        chips?: SummaryChips
+        money?: MoneySummary
+        error?: string
+      }
+      if (sumRes.ok && sumJson.chips) setChips(sumJson.chips)
+      if (sumRes.ok && sumJson.money) setMoney(sumJson.money)
     }
-    if (sumRes.ok && sumJson.chips) setChips(sumJson.chips)
-    if (sumRes.ok && sumJson.money) setMoney(sumJson.money)
   }, [periodFilter, projectFilter, searchTerm, statusFilter])
 
   // Charges first (paint board); Grow account check in background (don't block / toast on slow Grow).
@@ -242,27 +258,34 @@ export function CollectionsBoard() {
     if (!clientId) return
     void (async () => {
       if (!hasBoardDataRef.current) setBoardLoading(true)
-      await asyncHandler(
+      setBoardError(null)
+      const ok = await asyncHandler(
         async () => {
           await loadCharges()
           hasBoardDataRef.current = true
           setHasBoardData(true)
           return true
         },
-        { context: 'טעינת גביית ועד', showErrorToast: true }
+        { context: 'טעינת גביית ועד', showErrorToast: !hasBoardDataRef.current }
       )
+      if (!ok && !hasBoardDataRef.current) {
+        setBoardError('לא הצלחנו לטעון את הגבייה. בדקו את החיבור ונסו שוב.')
+      }
       setBoardLoading(false)
       void loadAccountStatus()
     })()
   }, [clientId, loadAccountStatus, loadCharges])
 
-  const loading =
-    (boardLoading && !hasBoardData) || (projectsLoading && !projectsHasData) || !clientId
+  // Paint the board as soon as charges are ready — don't wait on projects list.
+  const loading = (boardLoading && !hasBoardData && !boardError) || (!clientId && !projectsError)
 
   async function refresh() {
+    setBoardError(null)
     await asyncHandler(
       async () => {
         await Promise.all([loadCharges(), loadAccountStatus()])
+        hasBoardDataRef.current = true
+        setHasBoardData(true)
         return true
       },
       { context: 'רענון חיובים', showErrorToast: true }
@@ -582,6 +605,16 @@ export function CollectionsBoard() {
 
   if (loading) {
     return <PageTransitionLoader />
+  }
+
+  if (boardError && !hasBoardData) {
+    return (
+      <ErrorState
+        title="לא הצלחנו לטעון את הגבייה"
+        message={boardError}
+        onRetry={() => void refresh()}
+      />
+    )
   }
 
   const statusTabs: { label: string; value: string; count?: number }[] = [

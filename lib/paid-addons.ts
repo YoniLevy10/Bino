@@ -94,26 +94,27 @@ export async function clientHasPaidAddon(
   addonKey: PaidAddonKey | string
 ): Promise<boolean> {
   // Audit #52: catalog.is_active must disable usage, not only hide purchase.
-  const { data: catalog, error: catalogErr } = await supabase
-    .from('paid_addons_catalog')
-    .select('addon_key')
-    .eq('addon_key', addonKey)
-    .eq('is_active', true)
-    .maybeSingle()
+  // Parallel reads — sequential round-trips were stacking on every collections API.
+  const [catalogRes, entitlementRes] = await Promise.all([
+    supabase
+      .from('paid_addons_catalog')
+      .select('addon_key')
+      .eq('addon_key', addonKey)
+      .eq('is_active', true)
+      .maybeSingle(),
+    supabase
+      .from('client_paid_addons')
+      .select('addon_key')
+      .eq('client_id', clientId)
+      .eq('addon_key', addonKey)
+      .eq('enabled', true)
+      .maybeSingle(),
+  ])
 
-  if (catalogErr) throw catalogErr
-  if (!catalog) return false
-
-  const { data, error } = await supabase
-    .from('client_paid_addons')
-    .select('addon_key')
-    .eq('client_id', clientId)
-    .eq('addon_key', addonKey)
-    .eq('enabled', true)
-    .maybeSingle()
-
-  if (error) throw error
-  return !!data
+  if (catalogRes.error) throw catalogRes.error
+  if (!catalogRes.data) return false
+  if (entitlementRes.error) throw entitlementRes.error
+  return !!entitlementRes.data
 }
 
 export async function getCatalogRowForAddon(
