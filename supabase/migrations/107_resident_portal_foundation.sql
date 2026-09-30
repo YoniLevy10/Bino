@@ -61,6 +61,11 @@ ALTER TABLE public.residents
 CREATE INDEX IF NOT EXISTS idx_residents_unit_id ON public.residents (unit_id)
   WHERE unit_id IS NOT NULL;
 
+-- tickets.building_number is used in app code / prod but was never in the numbered
+-- migration chain — ensure it exists before the multi-building backfill guard.
+ALTER TABLE public.tickets
+  ADD COLUMN IF NOT EXISTS building_number text;
+
 -- Cautious backfill: one unit per distinct apartment_number per project when all non-null.
 -- Does not invent buildings. Ambiguous multi-building cases stay without unit_id.
 INSERT INTO public.project_units (client_id, project_id, unit_number)

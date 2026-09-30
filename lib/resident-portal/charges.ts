@@ -50,7 +50,8 @@ export async function listChargesForMembership(
   membership: ResidentPortalMembershipView,
   opts?: { year?: number | null; month?: number | null }
 ): Promise<{ charges: ResidentChargeView[]; openBalance: number }> {
-  let q = admin
+  // period_label filter is best-effort (YYYY-MM or Hebrew labels) — filter in JS if needed
+  const { data, error } = await admin
     .from('collection_charges')
     .select(RESIDENT_CHARGE_SELECT)
     .eq('client_id', membership.client_id)
@@ -61,9 +62,6 @@ export async function listChargesForMembership(
     .order('due_date', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(100)
-
-  // period_label filter is best-effort (YYYY-MM or Hebrew labels) — filter in JS if needed
-  const { data, error } = await q
   if (error) {
     throw new Error(`charges list failed: ${error.message}`)
   }
