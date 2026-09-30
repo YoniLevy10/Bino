@@ -261,7 +261,7 @@ function ReportPageContent() {
       }
 
       setSuccessMessage(`תקלה #${result.ticketNumber} נשלחה בהצלחה`)
-      toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה ✓`)
+      toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה`)
 
       // Reset form
       setDescription('')

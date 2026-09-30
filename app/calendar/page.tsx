@@ -129,7 +129,7 @@ function CalendarPageInner() {
     const flag = searchParams.get('gcal')
     if (!flag) return
     if (flag === 'connected') {
-      toast.success('Google Calendar חובר ✓ — אירועים חדשים יועתקו אוטומטית')
+      toast.success('Google Calendar חובר — אירועים חדשים יועתקו אוטומטית')
       void loadGcalStatus()
     } else if (flag === 'need_consent') {
       toast.error('נדרשת הרשאה מלאה ליומן. לחצו שוב על «חיבור Google Calendar».')
@@ -315,7 +315,7 @@ function CalendarPageInner() {
           })
       const body = (await res.json()) as { error?: unknown }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(body, TM.genericSaveError))
-      toast.success(editing ? 'האירוע עודכן ✓' : 'האירוע נוסף ✓')
+      toast.success(editing ? 'האירוע עודכן' : 'האירוע נוסף')
       setDrawerOpen(false)
       await load()
     } catch (e) {
@@ -331,7 +331,7 @@ function CalendarPageInner() {
     try {
       const res = await fetchWithTimeout(`/api/calendar/events/${editing.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(TM.genericSaveError)
-      toast.success('האירוע נמחק ✓')
+      toast.success('האירוע נמחק')
       setDrawerOpen(false)
       await load()
     } catch (e) {
