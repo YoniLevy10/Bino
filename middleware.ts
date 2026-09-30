@@ -95,10 +95,12 @@ export async function middleware(req: NextRequest) {
     return pending.response
   }
 
-  // Resident login / UX sandbox are public. Other /resident* need session below.
+  // Resident login / shared join link / UX sandbox are public. Other /resident* need session below.
   if (
     pathname === '/resident/login' ||
     pathname.startsWith('/resident/login/') ||
+    pathname === '/resident/join' ||
+    pathname.startsWith('/resident/join/') ||
     pathname === '/resident/sandbox' ||
     pathname.startsWith('/resident/sandbox/')
   ) {
