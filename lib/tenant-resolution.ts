@@ -52,23 +52,41 @@ export async function listClientIdsForUserId(
 
   if (!orgIds.length) return []
 
+  // Audit #09: inactive orgs / clients must not resolve as usable tenants.
   const { data: orgRows, error: orgErr } = await admin
     .from('organizations')
     .select('client_id')
     .in('id', orgIds)
+    .eq('is_active', true)
 
   if (orgErr) {
     throw new Error(`ORGS_QUERY_FAILED: ${orgErr.message}`)
   }
   if (!orgRows?.length) return []
 
-  const clientIds = new Set<string>()
-  for (const row of orgRows as Array<{ client_id?: string | null }>) {
-    const clientId = typeof row.client_id === 'string' ? row.client_id.trim() : ''
-    if (clientId) clientIds.add(clientId)
-  }
+  const candidateIds = Array.from(
+    new Set(
+      (orgRows as Array<{ client_id?: string | null }>)
+        .map((row) => (typeof row.client_id === 'string' ? row.client_id.trim() : ''))
+        .filter((id) => id.length > 0)
+    )
+  )
+  if (!candidateIds.length) return []
 
-  return Array.from(clientIds)
+  const { data: clientRows, error: clientErr } = await admin
+    .from('clients')
+    .select('id')
+    .in('id', candidateIds)
+    .eq('is_active', true)
+
+  if (clientErr) {
+    throw new Error(`CLIENTS_ACTIVE_QUERY_FAILED: ${clientErr.message}`)
+  }
+  if (!clientRows?.length) return []
+
+  return (clientRows as Array<{ id?: string | null }>)
+    .map((row) => (typeof row.id === 'string' ? row.id.trim() : ''))
+    .filter((id) => id.length > 0)
 }
 
 /**
@@ -145,11 +163,14 @@ export async function resolveClientIdByWhatsAppPhoneNumberId(
     return null
   }
 
+  // Audit #15: ambiguous WhatsApp phone_number_id must not silently pick tenant #1.
   if (rows.length > 1) {
-    console.warn('[tenant-resolution] multiple clients for whatsapp_phone_number_id', {
+    console.error('[tenant-resolution] ambiguous whatsapp_phone_number_id — refusing', {
       phoneNumberId,
       count: rows.length,
+      clientIds: rows.map((r) => (r as { id?: string }).id),
     })
+    return null
   }
 
   const row = rows[0] as Record<string, unknown>
