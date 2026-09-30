@@ -1,0 +1,48 @@
+---
+description: Hard safety rules for login, middleware tenant resolve, and clients GRANTs — prevent production lockouts
+alwaysApply: true
+---
+
+# Auth / middleware / login safety — P0 (all agents)
+
+**Incident (2026-09-30):** Changing middleware tenant resolution to use the session JWT caused production login/nav failure for all managers. Root cause: migration `078` column GRANT on `clients` omitted `is_active`; `.eq('is_active', true)` → `permission denied for table clients` → `CLIENTS_ACTIVE_QUERY_FAILED` → middleware 503 / broken Gmail session. Fixed in #190 + GRANT `116`.
+
+This class of bug **locks every customer out of the product**. Treat it as business-critical.
+
+## Hard rules — no exceptions unless the owner explicitly overrides in writing
+
+1. **Middleware tenant resolution uses `getSupabaseAdmin()` (service role), never the session/anon JWT client**, for `listClientIdsForUserId`, nav features, and any `clients` / `organizations` / `organization_users` chain in `middleware.ts`.
+   - Cookie HMAC / Edge crypto may stay Web Crypto.
+   - Do **not** “simplify” back to session JWT to avoid Node modules — that already took down prod (#188/#189).
+
+2. **Never filter or SELECT a `clients` column under the `authenticated` role unless that column is in the authenticated column GRANT list** (see `078` + later grant migrations, esp. `is_active` in `116`).
+   - Adding `.eq('is_active', true)` / new filters without a matching `GRANT SELECT (…)` is a production outage waiting to happen.
+   - When tightening GRANTs/RLS on `clients`, diff against every query path: middleware, browser reads, `listClientIdsForUserId`.
+
+3. **Do not piggyback auth/middleware/tenant-resolution changes onto unrelated PRs** (perf, UI, nav polish). Those changes need their own PR and an explicit login smoke check.
+
+4. **Log signals = P0, not “transient”:**
+   - `CLIENTS_ACTIVE_QUERY_FAILED`
+   - `[middleware] tenant resolution transient failure` flooding
+   - Authenticated API routes returning **503** right after login (e.g. page-view)
+   - Investigate and fix immediately; do not ship more features on top.
+
+5. **Before merging any change that touches** `middleware.ts`, `lib/tenant-resolution.ts`, `lib/middleware-tenant-cache.ts`, clients RLS/GRANTs, or session→admin client swaps, complete this checklist:
+   - [ ] Still using service role for tenant chain in middleware?
+   - [ ] Any new `clients` column filter covered by authenticated GRANT *or* only used via admin?
+   - [ ] Permission-denied path cannot wipe sessions (`signOut` on DB errors is forbidden)?
+   - [ ] Smoke: Gmail/login → `/dashboard` → navigate tickets/settings without middleware 503?
+   - [ ] Unit coverage for failure modes you care about (e.g. permission-denied fallback)?
+
+6. **Supabase Preview is not a safety net** for this (and must not be created for “safe” testing — see `no-supabase-preview-branches`). Validate with local Supabase and/or careful production GRANT apply + post-deploy login smoke.
+
+## Canonical code pointers
+
+- `middleware.ts` — tenant gate; must call `getSupabaseAdmin()` + `listClientIdsForUserId`
+- `lib/tenant-resolution.ts` — org→client chain; permission-denied soft fallback on `clients.is_active`
+- `supabase/migrations/078_rls_security_hardening.sql` — narrow column GRANT (historical footgun)
+- `supabase/migrations/116_grant_clients_is_active_select.sql` — hot-fix GRANT for `is_active`
+
+## Hebrew (owner intent)
+
+כל שינוי ב־middleware / פתרון tenant / הרשאות על טבלת `clients` עלול לנעול את כל הלקוחות מחוץ למערכת. חובה service role בפתרון tenant, לא JWT של המשתמש; חובה GRANT על כל עמודה שמסננים עליה; לא לערבב עם PR של perf; לוגים מסוג `CLIENTS_ACTIVE_QUERY_FAILED` הם P0.

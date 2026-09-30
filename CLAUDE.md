@@ -67,12 +67,27 @@ Every protected API route MUST follow this order — no exceptions:
 
 ---
 
+## Auth / middleware / login safety — P0 (all agents)
+
+**Incident 2026-09-30:** session-JWT tenant resolve in middleware + missing `clients.is_active` column GRANT → `CLIENTS_ACTIVE_QUERY_FAILED` → all managers locked out. Fixed #190 + migration `116`.
+
+**Hard rules** (always-apply Cursor rule — read before any auth/middleware/RLS work):
+
+1. Middleware tenant chain (`listClientIdsForUserId`, nav features) MUST use `getSupabaseAdmin()` — **never** the session/anon JWT client.
+2. Do not filter/SELECT a `clients` column as `authenticated` unless it is in the column GRANT list (`078` / `116` / later).
+3. Do not mix auth/middleware changes into unrelated perf/UI PRs; smoke-test Gmail → `/dashboard` after merge.
+4. Floods of `CLIENTS_ACTIVE_QUERY_FAILED` or middleware tenant 503 = **P0**, not “transient”.
+
+Canonical: `.cursor/rules/auth-middleware-login-safety.mdc`.
+
+---
+
 ## Supabase Client Rules — CRITICAL
 
 | Client | Location | Use for |
 |--------|----------|---------|
 | `supabase` (browser) | `lib/supabase.ts` | **Reads only** from frontend. RLS blocks writes to `clients`, `organizations`, and admin tables. Writes silently succeed (no error thrown) but the row is never changed. |
-| `getSupabaseAdmin()` | `lib/supabase-admin.ts` | All server-side writes. Bypasses RLS. Use in API routes only. |
+| `getSupabaseAdmin()` | `lib/supabase-admin.ts` | All server-side writes. Bypasses RLS. Use in API routes only. Also required for **middleware tenant resolution** (see auth safety rule above). |
 | route handler client | `lib/supabase-route-handler.ts` | Used inside `requireSessionClientId()` only — do not use elsewhere. |
 
 **Never call `supabase.from('clients').update(...)` from the browser — it will silently no-op.**
