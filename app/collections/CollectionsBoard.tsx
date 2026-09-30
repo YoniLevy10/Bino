@@ -10,6 +10,7 @@ import {
   type CSSProperties,
 } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
@@ -108,10 +109,20 @@ export function CollectionsBoard() {
     paid_count: 0,
   })
 
+  const searchParams = useSearchParams()
   const [projectFilter, setProjectFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [periodFilter, setPeriodFilter] = useState('')
+
+  useEffect(() => {
+    const status = searchParams.get('status')?.trim()
+    const projectId = searchParams.get('project_id')?.trim()
+    if (status && ['draft', 'sent', 'paid', 'failed', 'cancelled', 'all'].includes(status)) {
+      setStatusFilter(status)
+    }
+    if (projectId) setProjectFilter(projectId)
+  }, [searchParams])
 
   const [bulkOpen, setBulkOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)

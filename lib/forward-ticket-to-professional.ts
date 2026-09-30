@@ -106,7 +106,9 @@ export async function forwardTicketToProfessional(
     return { ok: false, sms: null, smsNote, error: smsNote }
   }
 
-  if (setStatusEscort) {
+  const smsSentCount = sms?.sent ?? 0
+  // Only mark escort status when at least one SMS was delivered — failed send ≠ forwarded
+  if (setStatusEscort && smsSentCount > 0) {
     const { error: statusErr } = await supabase
       .from('tickets')
       .update({
@@ -131,9 +133,9 @@ export async function forwardTicketToProfessional(
       professional_id: professionalId,
       professional_name: proName,
       phones,
-      sms_sent: sms?.sent ?? 0,
+      sms_sent: smsSentCount,
       sms_total: sms?.total ?? phones.length,
-      set_status_escort: setStatusEscort,
+      set_status_escort: setStatusEscort && smsSentCount > 0,
     },
   })
 

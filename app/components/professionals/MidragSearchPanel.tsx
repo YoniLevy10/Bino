@@ -3,9 +3,11 @@
 /**
  * Midrag professional search — full Midrag sectors + areas/cities.
  * Deep-links to midrag.co.il in a new tab (BINO Card / Drawer / Select).
+ * Opening Midrag is a search only — not a booking or hire confirmation.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Button, Card, Drawer, Select, theme } from '@/app/components/ui'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import {
   filterSectorsByQuery,
   midragAreaNames,
@@ -24,27 +26,60 @@ import {
 
 export const MIDRAG_SEARCH_PANEL_ID = 'midrag-search-panel'
 
-const DEFAULT_SECTOR_ID = 5 // חשמלאים
+export type MidragTicketContext = {
+  ticketId?: string | null
+  /** Suggested sector — only applied when confidence is high or manager already chose */
+  initialSectorId?: number | null
+  initialAreaName?: string | null
+  initialCityId?: number | null
+  suggestionNote?: string | null
+}
 
-function MidragSearchForm() {
+function MidragSearchForm({ ticketContext }: { ticketContext?: MidragTicketContext | null }) {
   const allSectors = useMemo(() => midragSectorsForSelect(), [])
   const [sectorQuery, setSectorQuery] = useState('')
-  const [sectorId, setSectorId] = useState<number>(DEFAULT_SECTOR_ID)
-  const [areaName, setAreaName] = useState('')
-  const [cityId, setCityId] = useState<number | null>(null)
+  // No electrician default — require explicit choice when unknown
+  const [sectorId, setSectorId] = useState<number | null>(ticketContext?.initialSectorId ?? null)
+  const [areaName, setAreaName] = useState(ticketContext?.initialAreaName ?? '')
+  const [cityId, setCityId] = useState<number | null>(ticketContext?.initialCityId ?? null)
+
+  useEffect(() => {
+    if (ticketContext?.initialSectorId != null) setSectorId(ticketContext.initialSectorId)
+    if (ticketContext?.initialAreaName != null) setAreaName(ticketContext.initialAreaName || '')
+    if (ticketContext?.initialCityId != null) setCityId(ticketContext.initialCityId)
+  }, [ticketContext?.initialSectorId, ticketContext?.initialAreaName, ticketContext?.initialCityId])
+
+  async function logSearchOpened(url: string) {
+    try {
+      await fetchWithTimeout('/api/recommendations/midrag-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticket_id: ticketContext?.ticketId ?? null,
+          sector_id: sectorId,
+          city_id: cityId,
+          url,
+        }),
+      })
+    } catch {
+      // non-blocking analytics
+    }
+  }
 
   const sectorOptions = useMemo(() => {
     const filtered = filterSectorsByQuery(sectorQuery, allSectors)
-    // Keep current selection visible even if filtered out
-    const current = allSectors.find((s) => s.sectorId === sectorId)
+    const current = sectorId != null ? allSectors.find((s) => s.sectorId === sectorId) : null
     const list =
       current && !filtered.some((s) => s.sectorId === current.sectorId)
         ? [current, ...filtered]
         : filtered
-    return list.map((s) => ({
-      value: String(s.sectorId),
-      label: s.label,
-    }))
+    return [
+      { value: '', label: 'בחרו מקצוע…' },
+      ...list.map((s) => ({
+        value: String(s.sectorId),
+        label: s.label,
+      })),
+    ]
   }, [allSectors, sectorQuery, sectorId])
 
   const areaOptions = useMemo(
@@ -75,6 +110,8 @@ function MidragSearchForm() {
     [sectorId, areaName, cityId]
   )
 
+  const canOpenSearch = sectorId != null
+
   const midragUrl = buildMidragSearchUrl(searchInput)
   const midragCityUrl = buildMidragCityPickerUrl(searchInput)
   const googleBackupUrl = buildMidragGoogleBackupUrl(searchInput)
@@ -85,9 +122,16 @@ function MidragSearchForm() {
   return (
     <div style={styles.form}>
       <p style={styles.intro}>
-        כל תחומי מידרג ({allSectors.length}) לפי אזור ועיר — התוצאות נפתחות במידרג בחלון
-        חדש. אחרי שמצאתם קבלן, הוסיפו אותו לפנקס אנשי המקצוע.
+        חיפוש חיצוני במידרג ({allSectors.length} תחומים) לפי אזור ועיר. התוצאות נפתחות
+        בחלון חדש — זו אינה הזמנה בתוך BINO, ואין הבטחת זמינות או עמלה. אחרי שמצאתם איש
+        מקצוע, אפשר להוסיף אותו לפנקס ולהעביר אליו את הקריאה.
       </p>
+      {ticketContext?.suggestionNote ? (
+        <span style={styles.hintWarn}>{ticketContext.suggestionNote}</span>
+      ) : null}
+      {ticketContext?.ticketId ? (
+        <span style={styles.hint}>מחובר לקריאה — אפשר לחזור אליה אחרי החיפוש</span>
+      ) : null}
 
       <label style={styles.label}>סינון מקצוע</label>
       <input
@@ -100,12 +144,14 @@ function MidragSearchForm() {
 
       <label style={styles.label}>מקצוע / תחום במידרג</label>
       <Select
-        value={String(sectorId)}
-        onChange={(v) => setSectorId(Number(v) || DEFAULT_SECTOR_ID)}
+        value={sectorId != null ? String(sectorId) : ''}
+        onChange={(v) => setSectorId(v ? Number(v) : null)}
         options={sectorOptions}
         style={{ width: '100%', maxWidth: '100%' }}
       />
-      {serviceMatch ? (
+      {!canOpenSearch ? (
+        <span style={styles.hintWarn}>נא לבחור מקצוע — אין ברירת מחדל אוטומטית</span>
+      ) : serviceMatch ? (
         <span style={styles.hint}>ייפתח במידרג: {serviceMatch.midragLabel}</span>
       ) : (
         <span style={styles.hintWarn}>אין מיפוי שירות — ייפתח דף התחום במידרג</span>
@@ -142,12 +188,23 @@ function MidragSearchForm() {
 
       <div style={styles.actions}>
         <a
-          href={midragUrl}
+          href={canOpenSearch ? midragUrl : undefined}
           target="_blank"
           rel="noopener noreferrer"
-          style={styles.primaryLink}
+          style={{
+            ...styles.primaryLink,
+            ...(canOpenSearch ? {} : { opacity: 0.5, pointerEvents: 'none' as const }),
+          }}
+          onClick={(e) => {
+            if (!canOpenSearch) {
+              e.preventDefault()
+              return
+            }
+            void logSearchOpened(midragUrl)
+          }}
+          aria-disabled={!canOpenSearch}
         >
-          פתח תוצאות במידרג
+          פתח חיפוש במידרג
           {serviceMatch ? ` · ${serviceMatch.midragLabel}` : ''}
           {cityMatch ? ` · ${cityMatch.label}` : ''}
         </a>
@@ -180,16 +237,19 @@ export function MidragSearchPanel({
   isMobile = false,
   drawerOpen: drawerOpenProp,
   onDrawerOpenChange,
+  ticketContext = null,
 }: {
   isMobile?: boolean
   drawerOpen?: boolean
   onDrawerOpenChange?: (open: boolean) => void
+  /** When opened from a ticket / recommendation — prefill profession & city when known */
+  ticketContext?: MidragTicketContext | null
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const drawerOpen = drawerOpenProp ?? uncontrolledOpen
   const setDrawerOpen = onDrawerOpenChange ?? setUncontrolledOpen
 
-  const form = <MidragSearchForm />
+  const form = <MidragSearchForm ticketContext={ticketContext} />
 
   return (
     <>
