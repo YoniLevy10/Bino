@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { listClientIdsForUserId } from '@/lib/tenant-resolution'
 import {
   fetchClientEnabledNavFeatures,
@@ -69,15 +70,17 @@ export async function middleware(req: NextRequest) {
       } = await supabase.auth.getUser()
       if (user) {
         try {
-          // Session client only — Edge-safe (no Node crypto / service-role admin).
-          const clientIds = await listClientIdsForUserId(supabase, user.id)
+          // Service role for tenant chain — authenticated JWT cannot filter
+          // clients.is_active (078 column grant) and was returning 503 on login.
+          const admin = getSupabaseAdmin()
+          const clientIds = await listClientIdsForUserId(admin, user.id)
           if (clientIds.length === 1) {
             const url = req.nextUrl.clone()
             url.pathname = '/dashboard'
             return redirectWithCookies(pending, url)
           }
           if (clientIds.length === 0) {
-            const hasResident = await userHasActiveResidentMembership(supabase, user.id)
+            const hasResident = await userHasActiveResidentMembership(admin, user.id)
             if (hasResident) {
               const url = req.nextUrl.clone()
               url.pathname = '/resident'
@@ -224,10 +227,11 @@ export async function middleware(req: NextRequest) {
     enabledNavFeatures = cachedTenant.enabledNavFeatures
   } else {
     try {
-      // Use the session client (anon + user JWT) — Edge-safe. RLS already
-      // allows reading own organization_users / organizations / clients.
-      // Never call getSupabaseAdmin() here: it can pull Node-only modules.
-      const clientIds = await listClientIdsForUserId(supabase, user.id)
+      // Service role: full clients/orgs read. Session JWT cannot use clients.is_active
+      // (078 omit) — that caused CLIENTS_ACTIVE_QUERY_FAILED → 503 on every nav.
+      // Cookie HMAC stays Web Crypto (Edge-safe); admin client is supabase-js only.
+      const admin = getSupabaseAdmin()
+      const clientIds = await listClientIdsForUserId(admin, user.id)
       if (clientIds.length === 0) {
         clearMiddlewareTenantCache(pending.response)
         await supabase.auth.signOut()
@@ -260,7 +264,7 @@ export async function middleware(req: NextRequest) {
 
       // Prefetch nav features into the same cookie so gated paths skip a second clients read.
       try {
-        enabledNavFeatures = await fetchClientEnabledNavFeatures(supabase, clientId)
+        enabledNavFeatures = await fetchClientEnabledNavFeatures(admin, clientId)
       } catch {
         enabledNavFeatures = undefined
       }
@@ -316,7 +320,8 @@ export async function middleware(req: NextRequest) {
     try {
       let enabled = enabledNavFeatures
       if (enabled === undefined) {
-        enabled = await fetchClientEnabledNavFeatures(supabase, clientId)
+        const admin = getSupabaseAdmin()
+        enabled = await fetchClientEnabledNavFeatures(admin, clientId)
         await writeMiddlewareTenantCache(pending.response, {
           uid: user.id,
           clientId,
