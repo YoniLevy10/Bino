@@ -22,20 +22,49 @@ export const DASHBOARD_CACHE_LEGACY_KEY = 'bamakor_dashboard_v2'
 /** Prefixed dashboard SWR: bamakor_dashboard_v3_{uid}_{clientId} */
 export const DASHBOARD_CACHE_PREFIX = 'bamakor_dashboard_v3_' as const
 
+const CID_LOCAL_HYDRATION_TTL_MS = 24 * 60 * 60 * 1000
+
+type StoredCidPayload = { cid?: string; uid?: string; ts?: number }
+
+function readStoredCid(raw: string | null): StoredCidPayload | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as StoredCidPayload
+    if (!parsed?.cid || !parsed?.uid) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 /**
- * Sync read of the session-bound tenant id for hydrating nav/addons caches
+ * Sync read of the session/local-bound tenant id for hydrating nav/addons/RQ
  * on first paint (avoids empty→full menu flicker while auth resolves).
+ *
+ * Order: sessionStorage (5m hot path) → localStorage (survives mobile tab kill).
+ * Requires matching LAST_AUTH_UID when that marker exists; if the marker is gone
+ * (new tab / session wipe) still accept a fresh local entry for hydration only.
  */
 export function tryReadSessionBoundClientId(): string | null {
   if (typeof sessionStorage === 'undefined') return null
   try {
-    const raw = sessionStorage.getItem(TENANT_CID_SESSION_KEY)
-    if (!raw) return null
-    const { cid, uid } = JSON.parse(raw) as { cid?: string; uid?: string }
-    if (!cid || !uid) return null
     const lastUid = sessionStorage.getItem(LAST_AUTH_UID_KEY)
-    if (!lastUid || lastUid !== uid) return null
-    return cid
+    const sessionEntry = readStoredCid(sessionStorage.getItem(TENANT_CID_SESSION_KEY))
+    if (sessionEntry?.cid && sessionEntry.uid) {
+      if (!lastUid || lastUid === sessionEntry.uid) return sessionEntry.cid
+    }
+
+    if (typeof localStorage === 'undefined') return null
+    const localEntry = readStoredCid(localStorage.getItem(TENANT_CID_LOCAL_KEY))
+    if (!localEntry?.cid || !localEntry.uid) return null
+    if (lastUid && lastUid !== localEntry.uid) return null
+    if (
+      typeof localEntry.ts === 'number' &&
+      Date.now() - localEntry.ts >= CID_LOCAL_HYDRATION_TTL_MS
+    ) {
+      return null
+    }
+    return localEntry.cid
   } catch {
     return null
   }

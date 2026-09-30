@@ -1,9 +1,9 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { queryKeys } from '@/lib/query-keys'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 export type SiteTourRow = {
   id: string
@@ -25,12 +25,7 @@ export async function fetchSiteTours(): Promise<SiteTourRow[]> {
 
 export function useSiteTours(options?: { enabled?: boolean }) {
   const queryClient = useQueryClient()
-  const clientIdQuery = useQuery({
-    queryKey: ['tenant-client-id'],
-    queryFn: () => resolveBinoClientIdForBrowser(),
-    staleTime: 5 * 60_000,
-    enabled: options?.enabled !== false,
-  })
+  const clientIdQuery = useTenantClientId({ enabled: options?.enabled !== false })
   const clientId = clientIdQuery.data
 
   const toursQuery = useQuery({

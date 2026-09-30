@@ -4,7 +4,16 @@ import { usePathname } from 'next/navigation'
 import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
 import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { PAID_ADDON_KEYS, type AddonEntitlement, type PaidAddonKey } from '@/lib/paid-addons'
@@ -32,22 +41,30 @@ const PaidAddonsContext = createContext<PaidAddonsContextValue>({
 })
 
 const ADDONS_CACHE_TTL = 5 * 60 * 1000
+const ADDONS_CACHE_STALE_MAX_MS = 24 * 60 * 60 * 1000
 const ADDONS_REFETCH_MIN_INTERVAL_MS = 60 * 1000
 
 type AddonsCachePayload = {
   addons: AddonEntitlement[]
   catalogMissing: boolean
   ts: number
+  stale?: boolean
 }
 
-function readAddonsCache(clientId: string): AddonsCachePayload | null {
+function readAddonsCache(
+  clientId: string,
+  opts?: { allowStale?: boolean }
+): AddonsCachePayload | null {
   try {
     const raw = localStorage.getItem(`${ADDONS_CACHE_PREFIX}${clientId}`)
     if (!raw) return null
     const parsed = JSON.parse(raw) as AddonsCachePayload
     if (!Array.isArray(parsed.addons) || typeof parsed.ts !== 'number') return null
-    if (Date.now() - parsed.ts >= ADDONS_CACHE_TTL) return null
-    return parsed
+    const age = Date.now() - parsed.ts
+    const stale = age >= ADDONS_CACHE_TTL
+    if (stale && !opts?.allowStale) return null
+    if (stale && age >= ADDONS_CACHE_STALE_MAX_MS) return null
+    return { ...parsed, stale }
   } catch {
     return null
   }
@@ -73,7 +90,7 @@ function readInitialAddonsState(): {
   }
   const cid = tryReadSessionBoundClientId()
   if (!cid) return { addons: [], catalogMissing: false, isBootstrapped: false, ts: 0 }
-  const cached = readAddonsCache(cid)
+  const cached = readAddonsCache(cid, { allowStale: true })
   if (!cached) return { addons: [], catalogMissing: false, isBootstrapped: false, ts: 0 }
   return {
     addons: cached.addons,
@@ -104,13 +121,13 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
       const clientId = await resolveBinoClientIdForBrowser()
 
       if (!opts?.skipCache) {
-        const cached = readAddonsCache(clientId)
+        const cached = readAddonsCache(clientId, { allowStale: true })
         if (cached) {
           setAddons(cached.addons)
           setCatalogMissing(cached.catalogMissing)
           setIsBootstrapped(true)
           lastNetworkFetchRef.current = cached.ts
-          if (!opts?.forceNetwork) return
+          if (!cached.stale && !opts?.forceNetwork) return
         }
       }
 
@@ -137,6 +154,17 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
       setIsBootstrapped(true)
     }
   }, [])
+
+  // SSR leaves empty addons; re-seed from localStorage before first paint.
+  useLayoutEffect(() => {
+    if (skipManagerAddons) return
+    const hydrated = readInitialAddonsState()
+    if (!hydrated.isBootstrapped) return
+    setAddons(hydrated.addons)
+    setCatalogMissing(hydrated.catalogMissing)
+    setIsBootstrapped(true)
+    lastNetworkFetchRef.current = hydrated.ts
+  }, [skipManagerAddons])
 
   useEffect(() => {
     if (skipManagerAddons) {
