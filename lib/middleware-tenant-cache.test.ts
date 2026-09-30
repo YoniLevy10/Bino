@@ -31,9 +31,9 @@ describe('middleware-tenant-cache', () => {
     else process.env.MIDDLEWARE_TENANT_COOKIE_SECRET = prevCookieSecret
   })
 
-  it('round-trips clientId + nav features for matching uid', () => {
+  it('round-trips clientId + nav features for matching uid', async () => {
     const res = NextResponse.next()
-    writeMiddlewareTenantCache(res, {
+    await writeMiddlewareTenantCache(res, {
       uid: 'user-1',
       clientId: 'client-abc',
       enabledNavFeatures: ['dashboard', 'tickets'],
@@ -41,25 +41,25 @@ describe('middleware-tenant-cache', () => {
     const setCookie = res.cookies.get(MIDDLEWARE_TENANT_COOKIE)?.value
     expect(setCookie).toBeTruthy()
 
-    const hit = readMiddlewareTenantCache(reqWithCookie(setCookie), 'user-1')
+    const hit = await readMiddlewareTenantCache(reqWithCookie(setCookie), 'user-1')
     expect(hit?.clientId).toBe('client-abc')
     expect(hit?.enabledNavFeatures).toEqual(['dashboard', 'tickets'])
   })
 
-  it('misses when uid does not match', () => {
+  it('misses when uid does not match', async () => {
     const res = NextResponse.next()
-    writeMiddlewareTenantCache(res, {
+    await writeMiddlewareTenantCache(res, {
       uid: 'user-1',
       clientId: 'client-abc',
       enabledNavFeatures: null,
     })
     const setCookie = res.cookies.get(MIDDLEWARE_TENANT_COOKIE)?.value
-    expect(readMiddlewareTenantCache(reqWithCookie(setCookie), 'other-user')).toBeNull()
+    expect(await readMiddlewareTenantCache(reqWithCookie(setCookie), 'other-user')).toBeNull()
   })
 
-  it('clear sets maxAge 0', () => {
+  it('clear sets maxAge 0', async () => {
     const res = NextResponse.next()
-    writeMiddlewareTenantCache(res, {
+    await writeMiddlewareTenantCache(res, {
       uid: 'user-1',
       clientId: 'client-abc',
       enabledNavFeatures: null,
@@ -72,5 +72,20 @@ describe('middleware-tenant-cache', () => {
 
   it('exports a 5-minute TTL', () => {
     expect(MIDDLEWARE_TENANT_TTL_SEC).toBe(300)
+  })
+
+  it('rejects unsigned / forged payloads', async () => {
+    const forged = btoa(
+      JSON.stringify({
+        uid: 'user-1',
+        clientId: 'evil-client',
+        enabledNavFeatures: ['collections'],
+        ts: Date.now(),
+      })
+    )
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '')
+    expect(await readMiddlewareTenantCache(reqWithCookie(forged), 'user-1')).toBeNull()
   })
 })
