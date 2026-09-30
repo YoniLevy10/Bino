@@ -5,18 +5,18 @@
 BINO is not a generic ticketing system and not committee-only (ועד בית) software. It learns from ticket history, equipment, vendors, costs, and resolution times per project/site; recommends the right worker or vendor; detects recurring failures; alerts on SLA risk; and proves time and money saved for Israeli management companies running buildings, spaces, and portfolios.
 
 Primary market: Israel. Primary language: Hebrew.
-Primary surface: https://bino.casa/ (Hebrew) and https://bino.casa/en (English).
+Primary surface: https://bino.tech/ (Hebrew) and https://bino.tech/en (English).
 
 ## Primary URLs
 
-- https://bino.casa/ — Hebrew marketing site (main positioning)
-- https://bino.casa/en — English marketing site
-- https://bino.casa/guides — Hebrew operational guides for management companies
-- https://bino.casa/savings-report — Sample savings report (lead magnet)
-- https://bino.casa/vaad-pay — Public Grow payment page (per-tenant)
-- https://bino.casa/contact — Contact (NAP)
-- https://bino.casa/privacy — Privacy policy
-- https://bino.casa/terms — Terms of service
+- https://bino.tech/ — Hebrew marketing site (main positioning)
+- https://bino.tech/en — English marketing site
+- https://bino.tech/guides — Hebrew operational guides for management companies
+- https://bino.tech/savings-report — Sample savings report (lead magnet)
+- https://bino.tech/vaad-pay — Public Grow payment page (per-tenant)
+- https://bino.tech/contact — Contact (NAP)
+- https://bino.tech/privacy — Privacy policy
+- https://bino.tech/terms — Terms of service
 
 ## North-star product metrics
 
@@ -29,4 +29,4 @@ Primary surface: https://bino.casa/ (Hebrew) and https://bino.casa/en (English).
 ## Contact
 
 - WhatsApp demo: https://wa.me/972548102688
-- Web: https://bino.casa/contact
+- Web: https://bino.tech/contact

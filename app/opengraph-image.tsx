@@ -42,7 +42,7 @@ export default async function OpenGraphImage() {
             לומדת · מחליטה · מונעת תקלות חוזרות · מוכיחה חיסכון
           </div>
           <div style={{ marginTop: 12, fontSize: 20, opacity: 0.7, letterSpacing: '0.04em' }}>
-            bino.casa
+            bino.tech
           </div>
         </div>
       </div>

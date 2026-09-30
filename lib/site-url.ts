@@ -1,6 +1,7 @@
 /**
  * Canonical site URL for redirects / absolute links (prefer env in prod).
- * Production origin: https://bino.casa (NEXT_PUBLIC_APP_URL on Vercel).
+ * Production origin: https://bino.tech (NEXT_PUBLIC_APP_URL on Vercel).
+ * Do not use VERCEL_URL / *.vercel.app for customer-facing links.
  */
 
 type HeaderLike = { get(name: string): string | null }

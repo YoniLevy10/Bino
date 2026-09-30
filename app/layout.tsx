@@ -69,7 +69,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Yoni Levy" }],
   creator: "Yoni Levy",
-  // Search Console for property bino / https://bino.casa — prefer DNS TXT on the domain;
+  // Search Console for property bino / https://bino.tech — prefer DNS TXT on the domain;
   // HTML tag via NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION (fallback: legacy token).
   verification: {
     google:
