@@ -4,9 +4,11 @@
  * Still requires auth.getUser() — only skips the DB org chain.
  *
  * Audit #08: payload is HMAC-signed; unsigned / forged cookies are rejected.
+ *
+ * IMPORTANT: This module runs in the Edge middleware runtime. Use only Web APIs
+ * (crypto.subtle / TextEncoder / btoa) — never Node `crypto` or `Buffer`.
  */
 
-import { createHmac, timingSafeEqual } from 'crypto'
 import type { NextRequest, NextResponse } from 'next/server'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
@@ -29,32 +31,65 @@ function signingSecret(): string | null {
   return fallback || null
 }
 
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let bin = ''
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!)
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const pad = '='.repeat((4 - (value.length % 4)) % 4)
+  const b64 = (value + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const bin = atob(b64)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
+}
+
 function encodeBody(payload: MiddlewareTenantCachePayload): string {
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')
+  return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)))
 }
 
-function signBody(body: string, secret: string): string {
-  return createHmac('sha256', secret).update(body).digest('base64url')
+function decodeBody(body: string): string {
+  return new TextDecoder().decode(base64UrlToBytes(body))
 }
 
+async function signBody(body: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
+  return bytesToBase64Url(new Uint8Array(sig))
+}
+
+/** Constant-time string compare (Edge-safe; no Node crypto). */
 function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a)
-  const bb = Buffer.from(b)
-  if (ab.length !== bb.length) return false
-  return timingSafeEqual(ab, bb)
+  if (a.length !== b.length) return false
+  let out = 0
+  for (let i = 0; i < a.length; i++) {
+    out |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return out === 0
 }
 
-function decodePayload(raw: string, secret: string): MiddlewareTenantCachePayload | null {
+async function decodePayload(
+  raw: string,
+  secret: string
+): Promise<MiddlewareTenantCachePayload | null> {
   try {
     const sep = raw.lastIndexOf('.')
     if (sep <= 0) return null
     const body = raw.slice(0, sep)
     const sig = raw.slice(sep + 1)
     if (!body || !sig) return null
-    const expected = signBody(body, secret)
+    const expected = await signBody(body, secret)
     if (!safeEqual(sig, expected)) return null
 
-    const json = Buffer.from(body, 'base64url').toString('utf8')
+    const json = decodeBody(body)
     const parsed = JSON.parse(json) as MiddlewareTenantCachePayload
     if (
       !parsed ||
@@ -73,16 +108,16 @@ function decodePayload(raw: string, secret: string): MiddlewareTenantCachePayloa
   }
 }
 
-export function readMiddlewareTenantCache(
+export async function readMiddlewareTenantCache(
   req: NextRequest,
   userId: string
-): MiddlewareTenantCachePayload | null {
+): Promise<MiddlewareTenantCachePayload | null> {
   const secret = signingSecret()
   if (!secret) return null
 
   const raw = req.cookies.get(MIDDLEWARE_TENANT_COOKIE)?.value
   if (!raw) return null
-  const parsed = decodePayload(raw, secret)
+  const parsed = await decodePayload(raw, secret)
   if (!parsed) return null
   if (parsed.uid !== userId) return null
   // Reject future timestamps (forged far-future ts would never expire).
@@ -92,16 +127,16 @@ export function readMiddlewareTenantCache(
   return parsed
 }
 
-export function writeMiddlewareTenantCache(
+export async function writeMiddlewareTenantCache(
   response: NextResponse,
   payload: Omit<MiddlewareTenantCachePayload, 'ts'>
-): void {
+): Promise<void> {
   const secret = signingSecret()
   if (!secret) return
 
   const full: MiddlewareTenantCachePayload = { ...payload, ts: Date.now() }
   const body = encodeBody(full)
-  const value = `${body}.${signBody(body, secret)}`
+  const value = `${body}.${await signBody(body, secret)}`
   response.cookies.set(MIDDLEWARE_TENANT_COOKIE, value, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

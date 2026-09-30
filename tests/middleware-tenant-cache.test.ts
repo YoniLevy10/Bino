@@ -49,9 +49,9 @@ describe('middleware tenant cache signing (audit #08)', () => {
     else process.env.MIDDLEWARE_TENANT_COOKIE_SECRET = prevDedicated
   })
 
-  it('accepts a cookie written by writeMiddlewareTenantCache', () => {
+  it('accepts a cookie written by writeMiddlewareTenantCache', async () => {
     const res = fakeResponse() as unknown as Parameters<typeof writeMiddlewareTenantCache>[0]
-    writeMiddlewareTenantCache(res, {
+    await writeMiddlewareTenantCache(res, {
       uid: 'user-1',
       clientId: 'client-1',
       enabledNavFeatures: null,
@@ -61,32 +61,33 @@ describe('middleware tenant cache signing (audit #08)', () => {
     expect(value!.includes('.')).toBe(true)
 
     const req = fakeRequest(value!) as unknown as Parameters<typeof readMiddlewareTenantCache>[0]
-    const parsed = readMiddlewareTenantCache(req, 'user-1')
+    const parsed = await readMiddlewareTenantCache(req, 'user-1')
     expect(parsed?.clientId).toBe('client-1')
   })
 
-  it('rejects unsigned / forged payloads', () => {
-    const forged = Buffer.from(
+  it('rejects unsigned / forged payloads', async () => {
+    const forged = btoa(
       JSON.stringify({
         uid: 'user-1',
         clientId: 'evil-client',
         enabledNavFeatures: ['collections'],
         ts: Date.now() + 60 * 60 * 1000,
-      }),
-      'utf8'
-    ).toString('base64url')
+      })
+    )
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '')
     const req = fakeRequest(forged) as unknown as Parameters<typeof readMiddlewareTenantCache>[0]
-    expect(readMiddlewareTenantCache(req, 'user-1')).toBeNull()
+    expect(await readMiddlewareTenantCache(req, 'user-1')).toBeNull()
   })
 
-  it('rejects future timestamps even with valid signature body tampered after write', () => {
+  it('rejects future timestamps even with valid signature body tampered after write', async () => {
     const res = fakeResponse() as unknown as Parameters<typeof writeMiddlewareTenantCache>[0]
-    writeMiddlewareTenantCache(res, {
+    await writeMiddlewareTenantCache(res, {
       uid: 'user-1',
       clientId: 'client-1',
       enabledNavFeatures: null,
     })
-    // clear cookie helper
     clearMiddlewareTenantCache(res)
     expect(res.cookies.get(MIDDLEWARE_TENANT_COOKIE)?.value).toBe('')
   })
