@@ -4,6 +4,7 @@ import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-us
 function mockAdmin(opts: {
   orgId?: string | null
   existingUserId?: string | null
+  existingOrgRole?: string | null
   createError?: string | null
   updateError?: string | null
   upsertError?: string | null
@@ -28,6 +29,10 @@ function mockAdmin(opts: {
   const upsert = vi.fn().mockResolvedValue({
     error: opts.upsertError ? { message: opts.upsertError } : null,
   })
+  const maybeSingle = vi.fn().mockResolvedValue({
+    data: opts.existingOrgRole ? { role: opts.existingOrgRole } : null,
+    error: null,
+  })
 
   const from = vi.fn((table: string) => {
     if (table === 'organizations') {
@@ -43,7 +48,16 @@ function mockAdmin(opts: {
       }
     }
     if (table === 'organization_users') {
-      return { upsert }
+      return {
+        upsert,
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle,
+            }),
+          }),
+        }),
+      }
     }
     throw new Error(`unexpected table ${table}`)
   })
@@ -57,6 +71,7 @@ function mockAdmin(opts: {
     createUser,
     updateUserById,
     upsert,
+    maybeSingle,
   }
 }
 
@@ -123,6 +138,25 @@ describe('ensureOrganizationUserWithPassword', () => {
     expect(updateUserById).toHaveBeenCalledWith(
       'existing-1',
       expect.objectContaining({ password: 'navot0606', email_confirm: true })
+    )
+  })
+
+  it('does not demote an existing admin when form role is viewer', async () => {
+    const { admin, upsert } = mockAdmin({
+      existingUserId: 'existing-1',
+      existingOrgRole: 'admin',
+    })
+    const result = await ensureOrganizationUserWithPassword(admin, {
+      clientId: 'c1',
+      email: 'sarah@bamakor.com',
+      password: 'navot0606',
+      role: 'viewer',
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.role).toBe('admin')
+    expect(upsert).toHaveBeenCalledWith(
+      { organization_id: 'org-1', user_id: 'existing-1', role: 'admin' },
+      { onConflict: 'organization_id,user_id' }
     )
   })
 })

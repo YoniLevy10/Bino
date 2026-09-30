@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { inviteUserToClientOrganization } from '@/lib/invite-organization-user'
 import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-user-password'
+import { canOrgRoleWrite } from '@/lib/org-role'
 import { z } from 'zod'
 
 const inviteWorkerSchema = z
@@ -130,10 +131,12 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const requestId = `list-org-users-${Date.now()}`
   try {
-    const auth = await requireSessionWriteAccess()
+    // Listing is a read — do not require write role (viewers used to get 403,
+    // and the settings UI treated missing `users` as an empty team).
+    const auth = await requireSessionClientId()
     if (!auth.ok) return auth.response
 
     const supabase = getSupabaseAdmin()
@@ -146,7 +149,7 @@ export async function GET(req: Request) {
       .limit(1)
 
     if (orgErr || !orgRows?.length) {
-      return NextResponse.json({ users: [] })
+      return NextResponse.json({ users: [], can_manage: false })
     }
     const orgId = orgRows[0].id
 
@@ -175,7 +178,12 @@ export async function GET(req: Request) {
       created_at: r.created_at,
     }))
 
-    return NextResponse.json({ users })
+    return NextResponse.json({
+      users,
+      can_manage: canOrgRoleWrite(auth.ctx.role),
+      my_user_id: auth.ctx.userId,
+      my_role: auth.ctx.role,
+    })
   } catch {
     return NextResponse.json({ error: 'שגיאה פנימית', requestId }, { status: 500 })
   }
@@ -202,6 +210,38 @@ export async function DELETE(req: Request) {
 
     const orgId = orgRows?.[0]?.id
     if (!orgId) return NextResponse.json({ error: 'ארגון לא נמצא', requestId }, { status: 404 })
+
+    const { data: target, error: targetErr } = await supabase
+      .from('organization_users')
+      .select('id, user_id, role')
+      .eq('id', ouId)
+      .eq('organization_id', orgId)
+      .maybeSingle()
+
+    if (targetErr) return NextResponse.json({ error: targetErr.message, requestId }, { status: 500 })
+    if (!target) return NextResponse.json({ error: 'משתמש לא נמצא', requestId }, { status: 404 })
+
+    if (target.user_id === auth.ctx.userId) {
+      return NextResponse.json(
+        { error: 'לא ניתן להסיר את עצמך מהארגון', requestId },
+        { status: 400 }
+      )
+    }
+
+    if (target.role === 'admin') {
+      const { count, error: countErr } = await supabase
+        .from('organization_users')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('role', 'admin')
+      if (countErr) return NextResponse.json({ error: countErr.message, requestId }, { status: 500 })
+      if ((count ?? 0) <= 1) {
+        return NextResponse.json(
+          { error: 'לא ניתן להסיר את מנהל המערכת האחרון', requestId },
+          { status: 400 }
+        )
+      }
+    }
 
     const { error } = await supabase
       .from('organization_users')

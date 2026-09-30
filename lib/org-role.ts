@@ -13,3 +13,14 @@ export function isOrgUserRole(value: unknown): value is OrgUserRole {
 export function canOrgRoleWrite(role: OrgUserRole | null | undefined): boolean {
   return role != null && ORG_WRITE_ROLES.has(role)
 }
+
+/** Higher number = more privilege. Used to avoid accidental demotion on upsert. */
+export function orgRoleRank(role: OrgUserRole): number {
+  if (role === 'admin') return 3
+  if (role === 'manager') return 2
+  return 1
+}
+
+export function higherOrgRole(a: OrgUserRole, b: OrgUserRole): OrgUserRole {
+  return orgRoleRank(a) >= orgRoleRank(b) ? a : b
+}

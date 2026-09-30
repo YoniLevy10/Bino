@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canOrgRoleWrite, isOrgUserRole } from '@/lib/org-role'
+import { canOrgRoleWrite, higherOrgRole, isOrgUserRole, orgRoleRank } from '@/lib/org-role'
 
 describe('org role write gate (audit #04)', () => {
   it('recognizes roles', () => {
@@ -14,5 +14,12 @@ describe('org role write gate (audit #04)', () => {
     expect(canOrgRoleWrite('admin')).toBe(true)
     expect(canOrgRoleWrite('manager')).toBe(true)
     expect(canOrgRoleWrite(null)).toBe(false)
+  })
+
+  it('ranks and never demotes via higherOrgRole', () => {
+    expect(orgRoleRank('admin')).toBeGreaterThan(orgRoleRank('manager'))
+    expect(orgRoleRank('manager')).toBeGreaterThan(orgRoleRank('viewer'))
+    expect(higherOrgRole('admin', 'viewer')).toBe('admin')
+    expect(higherOrgRole('viewer', 'manager')).toBe('manager')
   })
 })
