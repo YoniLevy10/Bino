@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { matchTicketTopic } from '../topic-keywords'
 import { buildDedupeKey } from '../dedupe'
+import { ticketsHrefForProject } from '../tickets-href'
 import type { RecommendationDraft } from '../types'
 
 const WINDOW_DAYS = 30
@@ -49,9 +50,7 @@ export async function detectBuildingVolumeAndTopics(
   for (const [projectId, list] of byProject) {
     const projectName = nameMap.get(projectId) || 'בניין'
     const projectCode = codeMap.get(projectId) || ''
-    const ticketsHref = projectCode
-      ? `/tickets?project=${encodeURIComponent(projectCode)}`
-      : `/tickets?project_id=${projectId}`
+    const ticketsHref = ticketsHrefForProject(projectId, projectCode)
     const ticketIds = list.map((t) => t.id as string)
 
     if (list.length >= VOLUME_THRESHOLD) {
