@@ -6,7 +6,7 @@ import type {
 } from '@/lib/attendance-types'
 
 const DB_NAME = 'bamakor_offline_attendance'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 const STORES = {
   profile: 'worker_profile',
@@ -28,7 +28,7 @@ function openDb(): Promise<IDBDatabase> {
       const req = indexedDB.open(DB_NAME, DB_VERSION)
       req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'))
       req.onsuccess = () => resolve(req.result)
-      req.onupgradeneeded = () => {
+      req.onupgradeneeded = (ev) => {
         const db = req.result
         if (!db.objectStoreNames.contains(STORES.profile)) {
           db.createObjectStore(STORES.profile, { keyPath: 'access_token' })
@@ -39,6 +39,13 @@ function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(STORES.pending)) {
           const s = db.createObjectStore(STORES.pending, { keyPath: 'client_action_id' })
           s.createIndex('sync_state', 'sync_state', { unique: false })
+          s.createIndex('worker_id', 'worker_id', { unique: false })
+        } else if (ev.oldVersion < 2) {
+          const tx = (ev.target as IDBOpenDBRequest).transaction
+          const s = tx?.objectStore(STORES.pending)
+          if (s && !s.indexNames.contains('worker_id')) {
+            s.createIndex('worker_id', 'worker_id', { unique: false })
+          }
         }
         if (!db.objectStoreNames.contains(STORES.state)) {
           db.createObjectStore(STORES.state, { keyPath: 'worker_id' })
@@ -89,7 +96,9 @@ export async function getWorkerOfflineProfile(
 }
 
 export async function saveOfflineNfcTags(clientId: string, tags: NfcTagRow[]): Promise<void> {
-  await txStore(STORES.tags, 'readwrite', (s) => s.put({ client_id: clientId, tags, saved_at: new Date().toISOString() }))
+  await txStore(STORES.tags, 'readwrite', (s) =>
+    s.put({ client_id: clientId, tags, saved_at: new Date().toISOString() })
+  )
 }
 
 export async function getOfflineNfcTags(clientId: string): Promise<NfcTagRow[]> {
@@ -103,16 +112,45 @@ export async function addPendingAttendanceEvent(event: PendingAttendanceEvent): 
   await txStore(STORES.pending, 'readwrite', (s) => s.put(event))
 }
 
-export async function getPendingAttendanceEvents(): Promise<PendingAttendanceEvent[]> {
+/** Audit #34: only return pending events for the active worker. */
+export async function getPendingAttendanceEvents(
+  workerId?: string
+): Promise<PendingAttendanceEvent[]> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORES.pending, 'readonly')
     const req = tx.objectStore(STORES.pending).getAll()
     req.onsuccess = () => {
       const all = (req.result as PendingAttendanceEvent[]) ?? []
-      resolve(all.filter((e) => e.sync_state === 'pending' || e.sync_state === 'failed'))
+      resolve(
+        all.filter(
+          (e) =>
+            (e.sync_state === 'pending' || e.sync_state === 'failed') &&
+            (!workerId || e.worker_id === workerId || (!e.worker_id && !workerId))
+        )
+      )
     }
     req.onerror = () => reject(req.error)
+  })
+}
+
+export async function clearPendingAttendanceEventsForWorker(workerId: string): Promise<void> {
+  if (!workerId) return
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORES.pending, 'readwrite')
+    const os = tx.objectStore(STORES.pending)
+    const req = os.getAll()
+    req.onsuccess = () => {
+      const all = (req.result as PendingAttendanceEvent[]) ?? []
+      for (const e of all) {
+        if (e.worker_id === workerId || !e.worker_id) {
+          os.delete(e.client_action_id)
+        }
+      }
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
   })
 }
 
@@ -155,7 +193,9 @@ export async function getLocalAttendanceState(workerId: string): Promise<LocalAt
   return row ?? null
 }
 
-export async function updateLocalAttendanceState(state: LocalAttendanceState & { worker_id: string }): Promise<void> {
+export async function updateLocalAttendanceState(
+  state: LocalAttendanceState & { worker_id: string }
+): Promise<void> {
   await txStore(STORES.state, 'readwrite', (s) => s.put(state))
 }
 

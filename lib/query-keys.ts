@@ -4,7 +4,7 @@ export const queryKeys = {
   projects: (clientId: string) => ['projects', clientId] as const,
   workers: (clientId: string) => ['workers', clientId] as const,
   workersActive: (clientId: string) => ['workers', clientId, 'active'] as const,
-  ticketsOpen: (clientId: string) => ['tickets-open', clientId] as const,
+  ticketsOpen: (clientId: string, limit = 200) => ['tickets-open', clientId, limit] as const,
   entitlements: (clientId: string) => ['entitlements', clientId] as const,
   navConfig: (clientId: string) => ['nav-config', clientId] as const,
   branding: (clientId: string) => ['branding', clientId] as const,
