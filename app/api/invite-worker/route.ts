@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || ''
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
     const result = await inviteUserToClientOrganization(supabase, {
       clientId,
       email,

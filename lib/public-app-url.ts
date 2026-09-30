@@ -1,6 +1,7 @@
 /**
  * Public app URL for SMS / deep links. Set NEXT_PUBLIC_APP_URL in .env.local and Vercel
  * (production: https://bino.casa). Trimmed; trailing slash stripped before appending paths.
+ * Never fall back to *.vercel.app for user-facing links.
  */
 function getPublicAppBaseUrl(): string {
   const base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')

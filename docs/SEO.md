@@ -1,6 +1,6 @@
 # SEO & Analytics — BINO
 
-Production origin: **https://bino.casa**  
+Production origin: **https://bino.casa** (not `*.vercel.app`)  
 Google property name: **bino** (GA4 + Search Console for this domain)  
 Primary market: **Israel** · Primary language: **Hebrew**
 
@@ -42,7 +42,7 @@ Positioning: project / building / space ops — **not** “תוכנת ועד ב�
 
 Code alone cannot raise **Links F**. Complete these manually:
 
-1. [Search Console](https://search.google.com/search-console) → verify Domain `bino.casa` (DNS TXT already published) or URL-prefix `https://bino.casa`
+1. [Search Console](https://search.google.com/search-console) → verify Domain `bino.casa` (or URL-prefix `https://bino.casa`)
 2. Submit sitemap: `https://bino.casa/sitemap.xml`
 3. Request indexing for `https://bino.casa/` and `https://bino.casa/en`
 4. Create / verify **Google Business Profile** with website `https://bino.casa`
@@ -57,16 +57,18 @@ Code alone cannot raise **Links F**. Complete these manually:
 
 ## Wave 3 — DNS + social (low priority)
 
-### SPF + DMARC (Vercel DNS for `bino.casa`)
+### SPF + DMARC (Vercel DNS)
 
-On [Vercel Domains → bino.casa → DNS](https://vercel.com/yonilevy10s-projects/~/domains/bino.casa), add records required by the outbound mail provider (Resend):
+Mail From עדיין על `bino.casa` (Resend) עד מיגרציית מייל נפרדת. לקישורי האתר — `bino.casa`.
+
+On Vercel Domains DNS for the relevant zone, add records required by Resend:
 
 | Type | Name | Value (example — use Resend’s current values) |
 |------|------|-----------------------------------------------|
 | TXT | `@` or mail subdomain | SPF include from Resend |
 | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:…` |
 
-Verify with `dig TXT bino.casa` / `dig TXT _dmarc.bino.casa`.
+Verify with `dig TXT`.
 
 ### Social `sameAs` (optional env)
 

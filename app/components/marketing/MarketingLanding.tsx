@@ -11,6 +11,7 @@ import {
   waDemoUrl,
 } from '@/lib/marketing-copy'
 import { trackMarketingEvent } from '@/lib/marketing-analytics'
+import { BINO_PUBLIC_HOST } from '@/lib/marketing-site'
 import { MarketingLeadLink } from './MarketingLeadLink'
 
 export type MarketingNap = {
@@ -136,7 +137,7 @@ export function MarketingLanding({
             <div className="bino-device">
               <div className="bino-device__chrome">
                 <span className="bino-device__dot" />
-                <span className="bino-device__url">bino.casa</span>
+                <span className="bino-device__url">{BINO_PUBLIC_HOST}</span>
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
