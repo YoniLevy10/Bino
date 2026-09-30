@@ -15,8 +15,6 @@ type DocRow = {
   notes: string | null
   created_at: string
   download_url: string | null
-  visibility?: string | null
-  published_at?: string | null
 }
 
 type Props = {
@@ -112,23 +110,6 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
     }
   }
 
-  async function onTogglePortalPublish(doc: DocRow) {
-    const publish = doc.visibility !== 'residents'
-    try {
-      const res = await fetchWithTimeout('/api/projects/resident-portal/documents/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_id: doc.id, publish }),
-      })
-      const json = (await res.json()) as { error?: string }
-      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
-      toast.success(publish ? 'פורסם לפורטל דיירים' : 'הוסר מפורטל דיירים')
-      await load()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'עדכון פרסום נכשל')
-    }
-  }
-
   async function onSendForSign() {
     if (!signDoc) return
     if (!signUrl.trim()) {
@@ -198,7 +179,6 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
                 <span style={styles.meta}>
                   {formatBytes(doc.file_size)} ·{' '}
                   {new Date(doc.created_at).toLocaleDateString('he-IL')}
-                  {doc.visibility === 'residents' ? ' · פורסם לדיירים' : ' · פנימי'}
                 </span>
               </div>
               <div style={styles.itemActions}>
@@ -207,13 +187,6 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
                     הורדה
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() => void onTogglePortalPublish(doc)}
-                  style={styles.signBtn}
-                >
-                  {doc.visibility === 'residents' ? 'הסרה מפורטל' : 'פרסום לפורטל'}
-                </button>
                 <button
                   type="button"
                   onClick={() => {
