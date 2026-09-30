@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkRateLimitMemoryOnly } from '@/lib/rate-limit'
 import { pageViewBodySchema } from '@/lib/api-body-schemas'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
 
@@ -8,7 +8,13 @@ export async function POST(req: Request) {
   const auth = await requireSessionClientId()
   if (!auth.ok) return auth.response
 
-  const limited = await checkAuthenticatedPostRouteLimit(auth.ctx.admin, auth.ctx.userId, 'analytics-page-view')
+  // Telemetry beacon: memory-only limit — avoid api_rate_limits UPSERT on every nav
+  // (was a top WAL writer alongside feature_page_views inserts).
+  const limited = checkRateLimitMemoryOnly(
+    `post:user:${auth.ctx.userId.slice(0, 64)}:analytics-page-view`,
+    60,
+    60_000
+  )
   if (limited.isLimited) {
     return NextResponse.json({ error: 'יותר מדי בקשות' }, { status: 429 })
   }

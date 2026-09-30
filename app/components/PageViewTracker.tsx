@@ -5,9 +5,12 @@ import { usePathname } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
 
+/** Same-path dedupe window — reduces feature_page_views write churn. */
+const PAGE_VIEW_DEDUP_MS = 5 * 60_000
+
 /**
  * Fires a lightweight page-view beacon on tenant dashboard navigations.
- * Dedupes same path within 60s in-session to avoid spam on remounts.
+ * Dedupes same path within 5 minutes in-session to avoid spam on remounts/nav.
  */
 export function PageViewTracker() {
   const pathname = usePathname()
@@ -18,7 +21,7 @@ export function PageViewTracker() {
     if (!navId) return
 
     const now = Date.now()
-    if (lastSent.current?.path === pathname && now - lastSent.current.at < 60_000) return
+    if (lastSent.current?.path === pathname && now - lastSent.current.at < PAGE_VIEW_DEDUP_MS) return
     lastSent.current = { path: pathname, at: now }
 
     void fetchWithTimeout(

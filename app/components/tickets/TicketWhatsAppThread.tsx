@@ -38,7 +38,8 @@ type Props = {
   recoveringMedia?: boolean
 }
 
-const POLL_MS = 15_000
+/** Safety-net poll when Realtime is quiet; was 15s and doubled Realtime load. */
+const POLL_MS = 60_000
 
 export function TicketWhatsAppThread({
   reporterPhone: _reporterPhone,

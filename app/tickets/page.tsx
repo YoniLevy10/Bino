@@ -560,18 +560,28 @@ export default function TicketsPage() {
     }
   }, [ticketsQueryError, ticketsHasData])
 
-  // Supabase Realtime — silent refresh when tickets change
+  // Supabase Realtime — silent refresh when tickets change (tenant-filtered)
   useEffect(() => {
+    if (!tenantClientId) return
     const channel = supabase
-      .channel('tickets-page-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        debouncedFetchData(true)
-      })
+      .channel(`tickets-page-realtime:${tenantClientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets',
+          filter: `client_id=eq.${tenantClientId}`,
+        },
+        () => {
+          debouncedFetchData(true)
+        }
+      )
       .subscribe()
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [debouncedFetchData])
+  }, [debouncedFetchData, tenantClientId])
 
   // Visibility API — silent refresh when returning to tab
   useEffect(() => {

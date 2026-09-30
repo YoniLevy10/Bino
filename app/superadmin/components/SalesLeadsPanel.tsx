@@ -263,12 +263,12 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     void load()
   }, [load])
 
-  // Near-realtime poll while panel is open
+  // Background refresh while panel is open (was 25s — too chatty for Disk IO / DB load)
   useEffect(() => {
     if (!filtersReady) return
     const t = setInterval(() => {
       void load()
-    }, 25000)
+    }, 90_000)
     return () => clearInterval(t)
   }, [load, filtersReady])
 
