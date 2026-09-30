@@ -782,6 +782,14 @@ export function CollectionsBoard() {
                       {status === 'paid' && row.grow_approve_status === 'failed'
                         ? ' · ממתין לאישור Grow'
                         : ''}
+                      {status === 'paid' && row.receipt_email_sent_at
+                        ? ' · אישור מייל נשלח'
+                        : ''}
+                      {status === 'paid' &&
+                      row.receipt_email &&
+                      !row.receipt_email_sent_at
+                        ? ' · אישור מייל ממתין'
+                        : ''}
                     </div>
                   </div>
                   <div style={styles.rowMoney}>
@@ -856,6 +864,24 @@ export function CollectionsBoard() {
                       }
                     >
                       אשר שוב
+                    </Button>
+                  ) : null}
+                  {status === 'paid' && row.receipt_email ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        void postChargeAction(
+                          '/api/collections/charges/resend-receipt',
+                          row.id,
+                          row.receipt_email_sent_at
+                            ? 'אישור מייל נשלח שוב'
+                            : 'אישור מייל נשלח'
+                        )
+                      }
+                    >
+                      {row.receipt_email_sent_at ? 'שלח אישור שוב' : 'שלח אישור מייל'}
                     </Button>
                   ) : null}
                   {status !== 'paid' && status !== 'cancelled' ? (

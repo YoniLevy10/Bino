@@ -66,7 +66,7 @@ export async function sendCollectionReceiptEmailIfNeeded(
     .from('collection_charges')
     .select(
       `
-      id, title, amount, currency, paid_at, status,
+      id, client_id, title, amount, currency, paid_at, status,
       receipt_email, receipt_email_sent_at,
       clients ( name, email_slug ),
       residents ( full_name, apartment_number ),
@@ -82,6 +82,7 @@ export async function sendCollectionReceiptEmailIfNeeded(
 
   const row = data as unknown as {
     id: string
+    client_id: string
     title: string
     amount: number
     currency: string
@@ -127,26 +128,44 @@ export async function sendCollectionReceiptEmailIfNeeded(
     project_name: project?.name,
   })
 
+  const from = buildClientResendFrom({
+    clientName: client?.name,
+    emailSlug: client?.email_slug,
+  })
+
   const result = await sendResendEmail({
     to: email,
     subject,
     body,
-    from: buildClientResendFrom({
-      clientName: client?.name,
-      emailSlug: client?.email_slug,
-    }),
+    from,
   })
   if (!result.ok) {
-    console.error('[receipt-email]', chargeId, result.error)
+    console.error('[receipt-email]', chargeId, result.error, { to: email, from })
+    try {
+      await admin.from('failed_notifications').insert({
+        client_id: row.client_id,
+        channel: 'receipt_email',
+        destination: email,
+        error_message: result.error.slice(0, 500),
+        // Column is text — store JSON string (same pattern as SMS payload text).
+        payload: JSON.stringify({ charge_id: chargeId, from, subject }).slice(0, 2000),
+      })
+    } catch (e) {
+      console.error('[receipt-email] failed_notifications insert skipped', e)
+    }
     return { sent: false, error: result.error }
   }
 
   const now = new Date().toISOString()
-  await admin
+  const { error: stampErr } = await admin
     .from('collection_charges')
     .update({ receipt_email_sent_at: now, updated_at: now })
     .eq('id', chargeId)
     .is('receipt_email_sent_at', null)
+
+  if (stampErr) {
+    console.error('[receipt-email] stamp failed after send', chargeId, stampErr.message)
+  }
 
   return { sent: true }
 }
