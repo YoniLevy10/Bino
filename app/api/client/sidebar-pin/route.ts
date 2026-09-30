@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { sidebarPinBodySchema } from '@/lib/api-body-schemas'
 import { formatZodError } from '@/lib/format-zod-error'
@@ -17,7 +17,7 @@ import {
  * Pin or unpin a paid addon in the tenant sidebar (`clients.sidebar_nav_order`).
  */
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
   const { clientId, userId } = auth.ctx
 
