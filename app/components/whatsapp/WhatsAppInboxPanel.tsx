@@ -1,5 +1,6 @@
 'use client'
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
@@ -20,6 +21,7 @@ import {
   useWhatsAppMessages,
 } from '@/lib/hooks/use-whatsapp-conversations'
 import { queryKeys } from '@/lib/query-keys'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Button, Card, theme } from '../ui'
 
 type Conversation = {
@@ -83,22 +85,32 @@ export function WhatsAppInboxPanel() {
   const [contextLoading, setContextLoading] = useState(false)
   const [activeQuickAction, setActiveQuickAction] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<string[]>([])
+  const [isMobile, setIsMobile] = useState(false)
+  const [portalReady, setPortalReady] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const selected = (conversations as Conversation[]).find((c) => c.id === selectedId) ?? null
   const mobilePane = selectedId ? 'thread' : 'list'
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
   const loading = conversationsLoading && !conversationsHasData
+  const useMobileThreadPortal = isMobile && Boolean(selectedId)
 
   useEffect(() => {
-    if (mobilePane !== 'thread') return
-    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 768px)').matches) return
+    setPortalReady(true)
+    const check = () => setIsMobile(getIsMobileViewport())
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    if (!useMobileThreadPortal) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
     }
-  }, [mobilePane])
+  }, [useMobileThreadPortal])
 
   useEffect(() => {
     if (conversationsError) {
@@ -353,11 +365,186 @@ export function WhatsAppInboxPanel() {
     )
   }
 
+  const threadBody: ReactNode = !selected ? (
+    <div style={styles.emptyThread}>
+      <p style={styles.emptyTitle}>→ בחרו דייר/ה מהרשימה</p>
+      <p style={styles.muted}>המערכת מזהה את הטלפון אוטומטית.</p>
+    </div>
+  ) : (
+    <>
+      <div style={styles.threadHeader}>
+        <button
+          type="button"
+          className="wa-inbox-back"
+          style={styles.backBtn}
+          onClick={() => setSelectedId(null)}
+          aria-label="חזרה לרשימת דיירים"
+        >
+          → רשימה
+        </button>
+        <span style={styles.threadTitle}>{residentLabel(selected)}</span>
+        {!sessionLoading && (
+          <span style={inSession ? styles.badgeOpen : styles.badgeClosed}>
+            {inSession ? 'אפשר לכתוב חופשי' : 'שליחה דרך תבנית Meta'}
+          </span>
+        )}
+      </div>
+      <div className="wa-inbox-messages" style={styles.messages} role="log" aria-live="polite">
+        {messagesLoading && messages.length === 0 ? (
+          <p style={styles.muted}>טוען הודעות…</p>
+        ) : (
+          messages.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                ...styles.bubble,
+                ...(m.direction === 'out' ? styles.bubbleOut : styles.bubbleIn),
+              }}
+            >
+              {m.body || '—'}
+              <div style={styles.time}>
+                {new Date(m.created_at).toLocaleString('he-IL', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <div className="wa-inbox-compose" style={styles.compose}>
+        <label htmlFor="wa-reply" style={styles.composeLabel}>
+          הודעה לדייר/ה
+        </label>
+        {!inSession && (
+          <p style={styles.templateComposeHint}>
+            חלון 24 שעות סגור — ההודעה תישלח דרך תבנית Meta. כשהדייר/ה יגיב/תגיב, אפשר לכתוב חופשי.
+          </p>
+        )}
+        <textarea
+          id="wa-reply"
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          rows={2}
+          placeholder="כתבו כאן…"
+          style={styles.textarea}
+          maxLength={500}
+        />
+        {!inSession && reply.trim() && hasManagerReplyTemplate && (
+          <div style={styles.previewBox}>
+            <div style={styles.previewLabel}>כך תיראה ההודעה:</div>
+            <div style={styles.previewText}>
+              {buildInboxTemplatePreview(
+                {
+                  id: 'manager_reply',
+                  label: 'הודעה מהמשרד',
+                  description: '',
+                  language: 'he',
+                  resolveMetaName: () => 'manager_reply',
+                  preview: '',
+                  params: [],
+                },
+                managerReplyTemplateParams(managerReplyContext(), reply)
+              )}
+            </div>
+          </div>
+        )}
+        <Button onClick={() => void sendReply()} disabled={sending || !reply.trim()}>
+          {sending ? 'שולח…' : inSession ? 'שלח הודעה' : 'שלח דרך תבנית Meta'}
+        </Button>
+        {!inSession && !hasManagerReplyTemplate && (
+          <p style={styles.closedHint}>
+            הדייר/ה לא כתב/ה לאחרונה — אפשר לשלוח רק הודעה מוכנה מהרשימה:
+          </p>
+        )}
+        {!inSession && templates.length > 0 && (
+          <div style={styles.quickActions}>
+            <div style={styles.quickActionsTitle}>הודעות מוכנות</div>
+            <div style={styles.quickGrid}>
+              {QUICK_ACTIONS.filter((qa) => templates.some((t) => t.id === qa.templateId)).map(
+                (qa) => {
+                  const isActive = activeQuickAction === qa.templateId
+                  const disabled =
+                    qa.templateId === 'sla_escalation' &&
+                    (contextLoading || !inboxContext?.open_ticket)
+
+                  return (
+                    <button
+                      key={qa.templateId}
+                      type="button"
+                      disabled={disabled}
+                      style={{
+                        ...styles.quickBtn,
+                        ...(isActive ? styles.quickBtnActive : {}),
+                        ...(disabled ? styles.quickBtnDisabled : {}),
+                      }}
+                      onClick={() => !disabled && pickQuickAction(qa.templateId)}
+                    >
+                      <span style={styles.quickBtnTitle}>{qa.title}</span>
+                      <span style={styles.quickBtnHint}>
+                        {disabled ? 'אין תקלה פתוחה לדייר/ה' : qa.hint}
+                      </span>
+                    </button>
+                  )
+                }
+              )}
+            </div>
+          </div>
+        )}
+        {activeQuickAction && activeTemplate && (
+          <div style={styles.quickPanel}>
+            {missingParamIndices(activeTemplate, templateParams).map((i) => {
+              const p = activeTemplate.params[i]
+              if (!p) return null
+
+              return (
+                <div key={p.key}>
+                  <label htmlFor={`wa-q-${p.key}`} style={styles.composeLabel}>
+                    {p.label}
+                  </label>
+                  <input
+                    id={`wa-q-${p.key}`}
+                    value={templateParams[i] ?? ''}
+                    maxLength={p.maxLength}
+                    placeholder={p.placeholder}
+                    onChange={(e) => {
+                      const next = [...templateParams]
+                      next[i] = e.target.value
+                      setTemplateParams(next)
+                    }}
+                    style={styles.input}
+                  />
+                </div>
+              )
+            })}
+            <div style={styles.previewBox}>
+              <div style={styles.previewLabel}>כך תיראה ההודעה:</div>
+              <div style={styles.previewText}>
+                {templatePreviewFor(activeTemplate, templateParams)}
+              </div>
+            </div>
+            <Button
+              onClick={() => void sendQuickAction()}
+              disabled={
+                sending || missingParamIndices(activeTemplate, templateParams).length > 0
+              }
+            >
+              {sending ? 'שולח…' : 'שלח לדייר/ה'}
+            </Button>
+          </div>
+        )}
+      </div>
+    </>
+  )
+
   return (
     <Card noPadding style={{ overflow: 'hidden' }}>
-      <p className="wa-inbox-help-banner" style={styles.helpBanner}>
-        בחרו דייר/ה מהרשימה וכתבו הודעה — אין צורך להקליד מספר טלפון.
-      </p>
+      {!useMobileThreadPortal ? (
+        <p className="wa-inbox-help-banner" style={styles.helpBanner}>
+          בחרו דייר/ה מהרשימה וכתבו הודעה — אין צורך להקליד מספר טלפון.
+        </p>
+      ) : null}
       <div className="wa-inbox-wrap" data-mobile-pane={mobilePane}>
         <aside className="wa-inbox-list" style={styles.list} aria-label="רשימת דיירים">
           {loading ? (
@@ -382,189 +569,22 @@ export function WhatsAppInboxPanel() {
             ))
           )}
         </aside>
-        <section className="wa-inbox-thread" style={styles.thread} aria-label="שיחה">
-          {!selected ? (
-            <div style={styles.emptyThread}>
-              <p style={styles.emptyTitle}>→ בחרו דייר/ה מהרשימה</p>
-              <p style={styles.muted}>המערכת מזהה את הטלפון אוטומטית.</p>
-            </div>
-          ) : (
-            <>
-              <div style={styles.threadHeader}>
-                {selected ? (
-                  <button
-                    type="button"
-                    className="wa-inbox-back"
-                    style={styles.backBtn}
-                    onClick={() => setSelectedId(null)}
-                    aria-label="חזרה לרשימת דיירים"
-                  >
-                    → רשימה
-                  </button>
-                ) : null}
-                <span style={styles.threadTitle}>{selected ? residentLabel(selected) : ''}</span>
-                {!sessionLoading && (
-                  <span style={inSession ? styles.badgeOpen : styles.badgeClosed}>
-                    {inSession ? 'אפשר לכתוב חופשי' : 'שליחה דרך תבנית Meta'}
-                  </span>
-                )}
-              </div>
-              <div className="wa-inbox-messages" style={styles.messages} role="log" aria-live="polite">
-                {messagesLoading && messages.length === 0 ? (
-                  <p style={styles.muted}>טוען הודעות…</p>
-                ) : (
-                  messages.map((m) => (
-                  <div
-                    key={m.id}
-                    style={{
-                      ...styles.bubble,
-                      ...(m.direction === 'out' ? styles.bubbleOut : styles.bubbleIn),
-                    }}
-                  >
-                    {m.body || '—'}
-                    <div style={styles.time}>
-                      {new Date(m.created_at).toLocaleString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                  ))
-                )}
-                <div ref={bottomRef} />
-              </div>
-              <div className="wa-inbox-compose" style={styles.compose}>
-                <>
-                    <label htmlFor="wa-reply" style={styles.composeLabel}>
-                      הודעה לדייר/ה
-                    </label>
-                    {!inSession && (
-                      <p style={styles.templateComposeHint}>
-                        חלון 24 שעות סגור — ההודעה תישלח דרך תבנית Meta. כשהדייר/ה יגיב/תגיב, אפשר לכתוב חופשי.
-                      </p>
-                    )}
-                    <textarea
-                      id="wa-reply"
-                      value={reply}
-                      onChange={(e) => setReply(e.target.value)}
-                      rows={2}
-                      placeholder="כתבו כאן…"
-                      style={styles.textarea}
-                      maxLength={500}
-                    />
-                    {!inSession && reply.trim() && hasManagerReplyTemplate && (
-                      <div style={styles.previewBox}>
-                        <div style={styles.previewLabel}>כך תיראה ההודעה:</div>
-                        <div style={styles.previewText}>
-                          {buildInboxTemplatePreview(
-                            {
-                              id: 'manager_reply',
-                              label: 'הודעה מהמשרד',
-                              description: '',
-                              language: 'he',
-                              resolveMetaName: () => 'manager_reply',
-                              preview: '',
-                              params: [],
-                            },
-                            managerReplyTemplateParams(managerReplyContext(), reply)
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <Button onClick={() => void sendReply()} disabled={sending || !reply.trim()}>
-                      {sending ? 'שולח…' : inSession ? 'שלח הודעה' : 'שלח דרך תבנית Meta'}
-                    </Button>
-                  </>
-                {!inSession && !hasManagerReplyTemplate && (
-                  <p style={styles.closedHint}>
-                    הדייר/ה לא כתב/ה לאחרונה — אפשר לשלוח רק הודעה מוכנה מהרשימה:
-                  </p>
-                )}
-                {!inSession && templates.length > 0 && (
-                  <div style={styles.quickActions}>
-                    <div style={styles.quickActionsTitle}>הודעות מוכנות</div>
-                    <div style={styles.quickGrid}>
-                      {QUICK_ACTIONS.filter((qa) => templates.some((t) => t.id === qa.templateId)).map(
-                        (qa) => {
-
-                          const tpl = templates.find((t) => t.id === qa.templateId)!
-
-                          const isActive = activeQuickAction === qa.templateId
-
-                          const disabled =
-                            qa.templateId === 'sla_escalation' &&
-                            (contextLoading || !inboxContext?.open_ticket)
-
-                          return (
-                            <button
-                              key={qa.templateId}
-                              type="button"
-                              disabled={disabled}
-                              style={{
-                                ...styles.quickBtn,
-                                ...(isActive ? styles.quickBtnActive : {}),
-                                ...(disabled ? styles.quickBtnDisabled : {}),
-                              }}
-                              onClick={() => !disabled && pickQuickAction(qa.templateId)}
-                            >
-                              <span style={styles.quickBtnTitle}>{qa.title}</span>
-                              <span style={styles.quickBtnHint}>
-                                {disabled ? 'אין תקלה פתוחה לדייר/ה' : qa.hint}
-                              </span>
-                            </button>
-                          )
-                        }
-                      )}
-                    </div>
-                  </div>
-                )}
-                {activeQuickAction && activeTemplate && (
-                  <div style={styles.quickPanel}>
-                    {missingParamIndices(activeTemplate, templateParams).map((i) => {
-
-                      const p = activeTemplate.params[i]
-                      if (!p) return null
-
-                      return (
-                        <div key={p.key}>
-                          <label htmlFor={`wa-q-${p.key}`} style={styles.composeLabel}>
-                            {p.label}
-                          </label>
-                          <input
-                            id={`wa-q-${p.key}`}
-                            value={templateParams[i] ?? ''}
-                            maxLength={p.maxLength}
-                            placeholder={p.placeholder}
-                            onChange={(e) => {
-
-                              const next = [...templateParams]
-                              next[i] = e.target.value
-                              setTemplateParams(next)
-                            }}
-                            style={styles.input}
-                          />
-                        </div>
-                      )
-                    })}
-                    <div style={styles.previewBox}>
-                      <div style={styles.previewLabel}>כך תיראה ההודעה:</div>
-                      <div style={styles.previewText}>
-                        {templatePreviewFor(activeTemplate, templateParams)}
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => void sendQuickAction()}
-                      disabled={
-                        sending ||
-                        missingParamIndices(activeTemplate, templateParams).length > 0
-                      }
-                    >
-                      {sending ? 'שולח…' : 'שלח לדייר/ה'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
+        {!useMobileThreadPortal ? (
+          <section className="wa-inbox-thread" style={styles.thread} aria-label="שיחה">
+            {threadBody}
+          </section>
+        ) : null}
       </div>
+      {useMobileThreadPortal && portalReady
+        ? createPortal(
+            <div className="wa-inbox-portal-overlay" role="dialog" aria-modal="true" aria-label="שיחת WhatsApp">
+              <section className="wa-inbox-thread wa-inbox-thread-portal" style={styles.threadPortal} aria-label="שיחה">
+                {threadBody}
+              </section>
+            </div>,
+            document.body
+          )
+        : null}
     </Card>
   )
 }
@@ -602,6 +622,14 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     minHeight: 480,
+    background: theme.colors.surface,
+  },
+  threadPortal: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    minHeight: 0,
+    width: '100%',
     background: theme.colors.surface,
   },
   emptyThread: { padding: 32, textAlign: 'center' },
