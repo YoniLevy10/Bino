@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { residentMidragSearchHref, residentMidragSectors } from '@/lib/resident-portal/midrag'
+import {
+  ResidentAlert,
+  ResidentCard,
+  ResidentMuted,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  ResidentSectionTitle,
+  ResidentSelect,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 const SECTORS = residentMidragSectors()
 
@@ -69,49 +80,49 @@ export default function ResidentInformationPage() {
   const midrag = residentMidragSearchHref({ sectorId, city })
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <h1 style={{ margin: 0, fontSize: 22 }}>מידע הבניין</h1>
-      {error ? (
-        <div role="alert" style={{ background: '#FFEBE9', color: '#FF3B30', padding: 12, borderRadius: 12 }}>
-          {error}
-        </div>
-      ) : null}
+    <div style={{ display: 'grid', gap: 14 }}>
+      <ResidentPageTitle>מידע הבניין</ResidentPageTitle>
+      {error ? <ResidentAlert tone="error">{error}</ResidentAlert> : null}
 
-      <section style={card}>
-        <h2 style={h2}>הודעות</h2>
+      <ResidentCard>
+        <ResidentSectionTitle>הודעות</ResidentSectionTitle>
         {announcements.length === 0 ? (
-          <p style={{ color: '#86868B', margin: 0 }}>אין הודעות שפורסמו</p>
+          <ResidentMuted>אין הודעות שפורסמו</ResidentMuted>
         ) : (
           announcements.map((a) => (
             <div key={a.id} style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 700 }}>{a.title}</div>
-              <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{a.body}</p>
+              <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', color: residentTheme.colors.textSecondary }}>
+                {a.body}
+              </p>
             </div>
           ))
         )}
-      </section>
+      </ResidentCard>
 
-      <section style={card}>
-        <h2 style={h2}>מסמכים</h2>
+      <ResidentCard>
+        <ResidentSectionTitle>מסמכים</ResidentSectionTitle>
         {documents.length === 0 ? (
-          <p style={{ color: '#86868B', margin: 0 }}>אין מסמכים שפורסמו לדיירים</p>
+          <ResidentMuted>אין מסמכים שפורסמו לדיירים</ResidentMuted>
         ) : (
           documents.map((d) => (
             <button
               key={d.id}
               type="button"
               onClick={() => void openDoc(d.id)}
+              className="lg-chip"
               style={{
                 display: 'block',
                 width: '100%',
                 textAlign: 'right',
-                background: '#F5F5F7',
-                border: 'none',
-                borderRadius: 10,
                 padding: 12,
                 marginBottom: 8,
                 minHeight: 44,
                 fontSize: 15,
+                cursor: 'pointer',
+                borderRadius: residentTheme.radius.md,
+                color: residentTheme.colors.textPrimary,
+                fontFamily: 'inherit',
               }}
             >
               {d.file_name}
@@ -119,17 +130,17 @@ export default function ResidentInformationPage() {
             </button>
           ))
         )}
-      </section>
+      </ResidentCard>
 
-      <section style={card}>
-        <h2 style={h2}>מתקנים</h2>
+      <ResidentCard>
+        <ResidentSectionTitle>מתקנים</ResidentSectionTitle>
         {amenities.length === 0 ? (
-          <p style={{ color: '#86868B', margin: 0 }}>לא פורסם מידע על מתקנים</p>
+          <ResidentMuted>לא פורסם מידע על מתקנים</ResidentMuted>
         ) : (
           amenities.map((a) => (
             <div key={a.id} style={{ marginBottom: 10 }}>
               <strong>{a.name}</strong>
-              <div style={{ fontSize: 14, color: '#3C3C43' }}>
+              <div style={{ fontSize: 14, color: residentTheme.colors.textSecondary }}>
                 היום:{' '}
                 {a.today.source === 'none'
                   ? 'לא פורסמו שעות'
@@ -138,69 +149,49 @@ export default function ResidentInformationPage() {
                     : `${a.today.opens_at}–${a.today.closes_at}`}
               </div>
               {a.guidelines ? (
-                <div style={{ fontSize: 13, color: '#86868B', marginTop: 4 }}>{a.guidelines}</div>
+                <ResidentMuted style={{ marginTop: 4 }}>{a.guidelines}</ResidentMuted>
               ) : null}
             </div>
           ))
         )}
-      </section>
+      </ResidentCard>
 
-      <section style={card}>
-        <h2 style={h2}>פרטי קשר</h2>
+      <ResidentCard>
+        <ResidentSectionTitle>פרטי קשר</ResidentSectionTitle>
         {!contact.phone && !contact.email ? (
-          <p style={{ color: '#86868B', margin: 0 }}>לא פורסמו פרטי קשר</p>
+          <ResidentMuted>לא פורסמו פרטי קשר</ResidentMuted>
         ) : (
           <div style={{ fontSize: 15 }}>
             {contact.phone ? <div>טלפון: {contact.phone}</div> : null}
             {contact.email ? <div>דוא״ל: {contact.email}</div> : null}
           </div>
         )}
-      </section>
+      </ResidentCard>
 
-      <section style={card}>
-        <h2 style={h2}>חיפוש בעל מקצוע במידרג</h2>
-        <p style={{ fontSize: 13, color: '#86868B', marginTop: 0 }}>
+      <ResidentCard>
+        <ResidentSectionTitle>חיפוש בעל מקצוע במידרג</ResidentSectionTitle>
+        <ResidentMuted style={{ marginBottom: 8 }}>
           נפתח אתר מידרג בלשונית חדשה. אין הזמנה או אישור זמינות דרך BINO.
-        </p>
-        <label style={{ fontSize: 13 }}>מקצוע</label>
-        <select
+        </ResidentMuted>
+        <label style={residentShellStyles.label}>מקצוע</label>
+        <ResidentSelect
           value={sectorId}
           onChange={(e) => setSectorId(Number(e.target.value))}
-          style={{ width: '100%', minHeight: 44, marginBottom: 8, fontSize: 16 }}
+          style={{ marginBottom: 8 }}
         >
           {SECTORS.map((s) => (
             <option key={s.sectorId} value={s.sectorId}>
               {s.label}
             </option>
           ))}
-        </select>
-        <div style={{ fontSize: 13, marginBottom: 8 }}>עיר הפרויקט: {city || 'לא הוגדרה'}</div>
+        </ResidentSelect>
+        <ResidentMuted style={{ marginBottom: 8 }}>עיר הפרויקט: {city || 'לא הוגדרה'}</ResidentMuted>
         {midrag.href ? (
-          <a href={midrag.href} target="_blank" rel="noopener noreferrer" style={btn}>
+          <ResidentPrimaryButton href={midrag.href}>
             {midrag.needsCityPicker ? 'בחירת עיר במידרג' : 'חיפוש במידרג'}
-          </a>
+          </ResidentPrimaryButton>
         ) : null}
-      </section>
+      </ResidentCard>
     </div>
   )
-}
-
-const card: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 16,
-  padding: 16,
-  border: '1px solid #E8E8ED',
-}
-const h2: React.CSSProperties = { fontSize: 16, margin: '0 0 8px' }
-const btn: React.CSSProperties = {
-  display: 'inline-flex',
-  minHeight: 48,
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '0 16px',
-  borderRadius: 12,
-  background: '#007AFF',
-  color: '#fff',
-  textDecoration: 'none',
-  fontWeight: 700,
 }

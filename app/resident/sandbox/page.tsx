@@ -10,6 +10,20 @@ import {
   SANDBOX_TICKETS,
 } from '@/lib/resident-portal/sandbox-fixtures'
 import { residentMidragSearchHref, residentMidragSectors } from '@/lib/resident-portal/midrag'
+import {
+  ResidentAlert,
+  ResidentAmbientWash,
+  ResidentCard,
+  ResidentMuted,
+  ResidentNavIcon,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  ResidentSectionTitle,
+  ResidentSelect,
+  ResidentTextArea,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 type Tab = 'home' | 'payments' | 'tickets' | 'info'
 
@@ -52,58 +66,24 @@ export default function ResidentSandboxPage() {
   }
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        minHeight: '100dvh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#F2F4F8',
-        color: '#1A1A2E',
-        fontFamily: 'var(--font-heebo), sans-serif',
-      }}
-    >
-      <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          background: '#fff',
-          borderBottom: '1px solid #E8E8ED',
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            background: '#007AFF',
-            color: '#fff',
-            display: 'grid',
-            placeItems: 'center',
-            fontWeight: 700,
-          }}
-        >
-          B
-        </div>
+    <div className="resident-shell" style={residentShellStyles.root} dir="rtl">
+      <ResidentAmbientWash />
+
+      <header className="lg-chrome" style={residentShellStyles.header}>
+        <div style={residentShellStyles.logoMark}>B</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{SANDBOX_RESIDENT.clientName}</div>
-          <div style={{ fontSize: 13, color: '#86868B' }}>
+          <div style={residentShellStyles.title}>{SANDBOX_RESIDENT.clientName}</div>
+          <div style={residentShellStyles.subtitle}>
             {SANDBOX_RESIDENT.projectName} · דירה {SANDBOX_RESIDENT.apartment}
           </div>
         </div>
         <span
+          className="lg-chip lg-chip-active"
           style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: '#B45309',
-            background: '#FEF3C7',
-            borderRadius: 999,
-            padding: '6px 10px',
+            ...residentShellStyles.chip,
+            color: residentTheme.colors.warning,
+            background: residentTheme.colors.warningMuted,
+            border: `0.5px solid ${residentTheme.colors.warning}`,
           }}
         >
           SANDBOX
@@ -111,45 +91,48 @@ export default function ResidentSandboxPage() {
       </header>
 
       <div
+        className="lg-glass"
         style={{
-          padding: '10px 16px',
-          background: '#E5F2FF',
-          borderBottom: '1px solid #BFDBFE',
-          fontSize: 13,
+          margin: '8px 16px 0',
+          padding: '10px 14px',
+          borderRadius: residentTheme.radius.lg,
+          fontSize: residentTheme.typography.fontSize.sm,
+          color: residentTheme.colors.textSecondary,
         }}
       >
-        מחובר כ־<strong>{SANDBOX_RESIDENT.fullName}</strong> · {SANDBOX_RESIDENT.phone} · נתוני הדגמה
-        בלבד (ללא DB / OTP / תשלום אמיתי)
+        מחובר כ־<strong style={{ color: residentTheme.colors.textPrimary }}>{SANDBOX_RESIDENT.fullName}</strong>
+        {' · '}
+        {SANDBOX_RESIDENT.phone}
+        {' · '}
+        נתוני הדגמה בלבד
       </div>
 
-      <main style={{ flex: 1, padding: '16px 16px 96px', maxWidth: 560, width: '100%', margin: '0 auto' }}>
+      <main style={residentShellStyles.main}>
         {tab === 'home' ? (
-          <div style={{ display: 'grid', gap: 16 }}>
-            <section style={card}>
-              <div style={{ fontSize: 13, color: '#86868B' }}>יתרה לתשלום</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>
-                ₪{openBalance.toLocaleString('he-IL')}
-              </div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <ResidentCard>
+              <div style={{ fontSize: 13, color: residentTheme.colors.textMuted }}>יתרה לתשלום</div>
+              <div style={residentShellStyles.balanceValue}>₪{openBalance.toLocaleString('he-IL')}</div>
               {nextCharge ? (
-                <div style={{ marginTop: 8, fontSize: 14 }}>
+                <div style={{ marginTop: 8, fontSize: 14, color: residentTheme.colors.textSecondary }}>
                   החיוב הקרוב: {nextCharge.title} · עד {nextCharge.due_date}
                 </div>
               ) : null}
-              <button type="button" onClick={() => setTab('payments')} style={linkBtn}>
-                לתשלומים
-              </button>
-            </section>
+              <div style={{ marginTop: 12 }}>
+                <ResidentPrimaryButton onClick={() => setTab('payments')}>לתשלומים</ResidentPrimaryButton>
+              </div>
+            </ResidentCard>
 
-            <section style={card}>
-              <h2 style={h2}>הודעה</h2>
+            <ResidentCard>
+              <ResidentSectionTitle>הודעה</ResidentSectionTitle>
               <div style={{ fontWeight: 700 }}>{pinned.title}</div>
-              <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', color: '#3C3C43' }}>
+              <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', color: residentTheme.colors.textSecondary }}>
                 {pinned.body}
               </p>
-            </section>
+            </ResidentCard>
 
-            <section style={card}>
-              <h2 style={h2}>שעות מתקנים להיום</h2>
+            <ResidentCard>
+              <ResidentSectionTitle>שעות מתקנים להיום</ResidentSectionTitle>
               <ul style={{ margin: 0, paddingInlineStart: 18 }}>
                 {SANDBOX_AMENITIES.map((a) => (
                   <li key={a.id} style={{ marginBottom: 6 }}>
@@ -158,40 +141,41 @@ export default function ResidentSandboxPage() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </ResidentCard>
 
-            <button type="button" onClick={() => setTab('tickets')} style={{ ...linkBtn, background: '#1A1A2E' }}>
+            <ResidentPrimaryButton
+              onClick={() => setTab('tickets')}
+              style={{
+                background: 'linear-gradient(180deg, #3a3a4a 0%, #1A1A2E 46%, #12121f 100%)',
+                boxShadow:
+                  'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(0,0,0,0.25)',
+              }}
+            >
               פתיחת תקלה
-            </button>
+            </ResidentPrimaryButton>
           </div>
         ) : null}
 
         {tab === 'payments' ? (
           <div style={{ display: 'grid', gap: 12 }}>
-            <h1 style={{ margin: 0, fontSize: 22 }}>התשלומים שלי</h1>
-            <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '1px solid #E8E8ED' }}>
-              יתרה פתוחה: <strong>₪{openBalance.toLocaleString('he-IL')}</strong>
-            </div>
-            {payToast ? (
-              <div role="status" style={{ background: '#FEF3C7', padding: 12, borderRadius: 12 }}>
-                {payToast}
-              </div>
-            ) : null}
+            <ResidentPageTitle>התשלומים שלי</ResidentPageTitle>
+            <ResidentCard>
+              יתרה פתוחה:{' '}
+              <strong>₪{openBalance.toLocaleString('he-IL')}</strong>
+            </ResidentCard>
+            {payToast ? <ResidentAlert tone="warning">{payToast}</ResidentAlert> : null}
             {SANDBOX_CHARGES.map((c) => (
-              <article
-                key={c.id}
-                style={{ background: '#fff', borderRadius: 12, padding: 14, border: '1px solid #E8E8ED' }}
-              >
+              <ResidentCard key={c.id}>
                 <div style={{ fontWeight: 700 }}>{c.title}</div>
-                <div style={{ fontSize: 13, color: '#86868B', marginTop: 4 }}>
+                <div style={{ fontSize: 13, color: residentTheme.colors.textMuted, marginTop: 4 }}>
                   {c.period_label}
                   {c.due_date ? ` · פירעון ${c.due_date}` : ''}
                   {c.is_overdue ? ' · באיחור' : ''}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800 }}>
+                <div style={{ ...residentShellStyles.balanceValue, fontSize: 22, marginTop: 8 }}>
                   ₪{c.amount.toLocaleString('he-IL')}
                 </div>
-                <div style={{ fontSize: 13, marginTop: 4 }}>
+                <div style={{ fontSize: 13, marginTop: 4, color: residentTheme.colors.textSecondary }}>
                   סטטוס: {c.status === 'paid' ? 'שולם' : 'ממתין לתשלום'}
                 </div>
                 {c.invoice.available && c.invoice.url ? (
@@ -199,174 +183,157 @@ export default function ResidentSandboxPage() {
                     href={c.invoice.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ display: 'inline-block', marginTop: 8 }}
+                    style={{
+                      display: 'inline-block',
+                      marginTop: 8,
+                      color: residentTheme.colors.primary,
+                      fontWeight: 600,
+                    }}
                   >
                     מסמך כספי / חשבונית (PDF לדוגמה)
                   </a>
                 ) : null}
                 {c.can_pay ? (
-                  <button type="button" onClick={fakePay} style={{ ...linkBtn, width: '100%' }}>
-                    תשלום מאובטח (הדגמה)
-                  </button>
+                  <div style={{ marginTop: 12 }}>
+                    <ResidentPrimaryButton onClick={fakePay}>תשלום מאובטח (הדגמה)</ResidentPrimaryButton>
+                  </div>
                 ) : null}
-              </article>
+              </ResidentCard>
             ))}
           </div>
         ) : null}
 
         {tab === 'tickets' ? (
           <div style={{ display: 'grid', gap: 12 }}>
-            <h1 style={{ margin: 0, fontSize: 22 }}>תקלות</h1>
-            <section style={card}>
-              <label style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>תיאור</label>
-              <textarea
+            <ResidentPageTitle>תקלות</ResidentPageTitle>
+            <ResidentCard>
+              <label style={residentShellStyles.label}>תיאור</label>
+              <ResidentTextArea
                 value={ticketDesc}
                 onChange={(e) => setTicketDesc(e.target.value)}
                 rows={3}
-                style={{
-                  width: '100%',
-                  fontSize: 16,
-                  borderRadius: 10,
-                  border: '1px solid #D1D1D6',
-                  padding: 12,
-                  resize: 'vertical',
-                }}
                 placeholder="למשל: נזילה בלובי…"
               />
-              <label style={{ fontSize: 13, display: 'block', margin: '10px 0 4px' }}>סוג</label>
-              <select
+              <label style={{ ...residentShellStyles.label, marginTop: 10 }}>סוג</label>
+              <ResidentSelect
                 value={ticketScope}
                 onChange={(e) => setTicketScope(e.target.value as typeof ticketScope)}
-                style={{ width: '100%', minHeight: 44, fontSize: 16, marginBottom: 12 }}
+                style={{ marginBottom: 12 }}
               >
                 <option value="common">רכוש משותף</option>
                 <option value="private">דירה פרטית</option>
                 <option value="unclear">לא בטוח</option>
-              </select>
-              <button type="button" onClick={openTicket} style={{ ...linkBtn, width: '100%', marginTop: 0 }}>
-                פתיחת קריאה (Sandbox)
-              </button>
-            </section>
+              </ResidentSelect>
+              <ResidentPrimaryButton onClick={openTicket}>פתיחת קריאה (Sandbox)</ResidentPrimaryButton>
+            </ResidentCard>
             {tickets.map((t) => (
-              <article key={t.id} style={card}>
+              <ResidentCard key={t.id}>
                 <div style={{ fontWeight: 700 }}>#{t.ticket_number}</div>
-                <div style={{ fontSize: 13, color: '#86868B' }}>
+                <div style={{ fontSize: 13, color: residentTheme.colors.textMuted }}>
                   {t.status} · {t.scope}
                 </div>
                 <p style={{ margin: '8px 0 0' }}>{t.description}</p>
-              </article>
+              </ResidentCard>
             ))}
           </div>
         ) : null}
 
         {tab === 'info' ? (
-          <div style={{ display: 'grid', gap: 16 }}>
-            <h1 style={{ margin: 0, fontSize: 22 }}>מידע הבניין</h1>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <ResidentPageTitle>מידע הבניין</ResidentPageTitle>
 
-            <section style={card}>
-              <h2 style={h2}>הודעות</h2>
+            <ResidentCard>
+              <ResidentSectionTitle>הודעות</ResidentSectionTitle>
               {SANDBOX_ANNOUNCEMENTS.map((a) => (
                 <div key={a.id} style={{ marginBottom: 12 }}>
                   <div style={{ fontWeight: 700 }}>
                     {a.title}
                     {a.is_pinned ? ' · נעוץ' : ''}
                   </div>
-                  <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{a.body}</p>
+                  <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', color: residentTheme.colors.textSecondary }}>
+                    {a.body}
+                  </p>
                 </div>
               ))}
-            </section>
+            </ResidentCard>
 
-            <section style={card}>
-              <h2 style={h2}>מסמכים</h2>
+            <ResidentCard>
+              <ResidentSectionTitle>מסמכים</ResidentSectionTitle>
               {SANDBOX_DOCUMENTS.map((d) => (
                 <a
                   key={d.id}
                   href={d.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="lg-chip"
                   style={{
                     display: 'block',
                     width: '100%',
+                    boxSizing: 'border-box',
                     textAlign: 'right',
-                    background: '#F5F5F7',
-                    borderRadius: 10,
                     padding: 12,
                     marginBottom: 8,
                     minHeight: 44,
                     fontSize: 15,
-                    color: '#1A1A2E',
+                    color: residentTheme.colors.textPrimary,
                     textDecoration: 'none',
+                    borderRadius: residentTheme.radius.md,
                   }}
                 >
                   {d.file_name}
                   {d.category ? ` · ${d.category}` : ''}
                 </a>
               ))}
-            </section>
+            </ResidentCard>
 
-            <section style={card}>
-              <h2 style={h2}>מתקנים</h2>
+            <ResidentCard>
+              <ResidentSectionTitle>מתקנים</ResidentSectionTitle>
               {SANDBOX_AMENITIES.map((a) => (
                 <div key={a.id} style={{ marginBottom: 10 }}>
                   <strong>{a.name}</strong>
-                  <div style={{ fontSize: 14 }}>
+                  <div style={{ fontSize: 14, color: residentTheme.colors.textSecondary }}>
                     היום: {a.today.is_closed ? 'סגור' : `${a.today.opens_at}–${a.today.closes_at}`}
                   </div>
-                  <div style={{ fontSize: 13, color: '#86868B', marginTop: 4 }}>{a.guidelines}</div>
+                  <ResidentMuted style={{ marginTop: 4 }}>{a.guidelines}</ResidentMuted>
                 </div>
               ))}
-            </section>
+            </ResidentCard>
 
-            <section style={card}>
-              <h2 style={h2}>פרטי קשר</h2>
+            <ResidentCard>
+              <ResidentSectionTitle>פרטי קשר</ResidentSectionTitle>
               <div>טלפון: {SANDBOX_RESIDENT.contactPhone}</div>
               <div>דוא״ל: {SANDBOX_RESIDENT.contactEmail}</div>
-            </section>
+            </ResidentCard>
 
-            <section style={card}>
-              <h2 style={h2}>חיפוש בעל מקצוע במידרג</h2>
-              <select
+            <ResidentCard>
+              <ResidentSectionTitle>חיפוש בעל מקצוע במידרג</ResidentSectionTitle>
+              <ResidentSelect
                 value={sectorId}
                 onChange={(e) => setSectorId(Number(e.target.value))}
-                style={{ width: '100%', minHeight: 44, marginBottom: 8, fontSize: 16 }}
+                style={{ marginBottom: 8 }}
               >
                 {SECTORS.map((s) => (
                   <option key={s.sectorId} value={s.sectorId}>
                     {s.label}
                   </option>
                 ))}
-              </select>
-              <div style={{ fontSize: 13, marginBottom: 8 }}>עיר: {SANDBOX_RESIDENT.city}</div>
+              </ResidentSelect>
+              <ResidentMuted style={{ marginBottom: 8 }}>עיר: {SANDBOX_RESIDENT.city}</ResidentMuted>
               {midrag.href ? (
-                <a href={midrag.href} target="_blank" rel="noopener noreferrer" style={linkBtn}>
-                  חיפוש במידרג
-                </a>
+                <ResidentPrimaryButton href={midrag.href}>חיפוש במידרג</ResidentPrimaryButton>
               ) : null}
-            </section>
+            </ResidentCard>
           </div>
         ) : null}
       </main>
 
-      <nav
-        aria-label="ניווט Sandbox"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          insetInline: 0,
-          background: '#fff',
-          borderTop: '1px solid #E8E8ED',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          zIndex: 30,
-        }}
-      >
+      <nav className="lg-tabbar" aria-label="ניווט Sandbox" style={residentShellStyles.tabbar}>
         {(
           [
-            { id: 'home', label: 'בית' },
-            { id: 'payments', label: 'תשלומים' },
-            { id: 'tickets', label: 'תקלות' },
-            { id: 'info', label: 'מידע' },
+            { id: 'home', label: 'בית', icon: 'home' as const },
+            { id: 'payments', label: 'תשלומים', icon: 'payments' as const },
+            { id: 'tickets', label: 'תקלות', icon: 'tickets' as const },
+            { id: 'info', label: 'מידע', icon: 'info' as const },
           ] as const
         ).map((item) => {
           const active = tab === item.id
@@ -375,46 +342,18 @@ export default function ResidentSandboxPage() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
+              className={active ? 'lg-nav-active' : undefined}
               style={{
-                border: 'none',
-                background: 'transparent',
-                textAlign: 'center',
-                padding: '10px 4px',
-                minHeight: 56,
-                color: active ? '#007AFF' : '#86868B',
-                fontWeight: active ? 700 : 500,
-                fontSize: 13,
+                ...residentShellStyles.tabItem,
+                ...(active ? residentShellStyles.tabItemActive : null),
               }}
             >
-              {item.label}
+              <ResidentNavIcon name={item.icon} active={active} />
+              <span>{item.label}</span>
             </button>
           )
         })}
       </nav>
     </div>
   )
-}
-
-const card: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 16,
-  padding: 16,
-  border: '1px solid #E8E8ED',
-}
-const h2: React.CSSProperties = { fontSize: 16, margin: '0 0 8px' }
-const linkBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginTop: 12,
-  minHeight: 48,
-  padding: '0 16px',
-  borderRadius: 12,
-  background: '#007AFF',
-  color: '#fff',
-  textDecoration: 'none',
-  fontWeight: 700,
-  border: 'none',
-  fontSize: 16,
-  cursor: 'pointer',
 }

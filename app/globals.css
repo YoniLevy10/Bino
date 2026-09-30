@@ -653,13 +653,18 @@ select {
     #1c1c1e;
 }
 
-.worker-shell {
+.worker-shell,
+.resident-shell {
   position: relative;
   z-index: 1;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   --worker-tabbar-height: 78px;
+}
+
+.resident-shell {
+  --resident-tabbar-height: 78px;
 }
 
 .worker-shell-scroll {
