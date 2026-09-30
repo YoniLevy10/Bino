@@ -143,6 +143,9 @@ alter table public.sales_leads
 alter table public.sales_leads
   add column if not exists estimated_setup_fee_ils int;
 
+-- Drop status check BEFORE remapping (old CHECK rejects 'new' / 'contact_attempt'/…)
+alter table public.sales_leads drop constraint if exists sales_leads_status_check;
+
 -- Snapshot legacy status before remapping (idempotent)
 update public.sales_leads
 set legacy_status = status
@@ -182,9 +185,8 @@ set last_contact_at = contacted_at
 where last_contact_at is null
   and contacted_at is not null;
 
--- Drop old status check, enforce new stage set
+-- Enforce new stage set (idempotent if re-run after partial apply)
 alter table public.sales_leads drop constraint if exists sales_leads_status_check;
-
 alter table public.sales_leads
   add constraint sales_leads_status_check
   check (status in (
