@@ -8,6 +8,8 @@ import type { ClientTask } from './types'
 
 type PlaybookStep = { step: number; title: string; detail: string }
 
+type SmokeCheck = { id: string; title: string; detail: string }
+
 type LaunchPayload = {
   items: LaunchCheckItem[]
   doneCount: number
@@ -17,6 +19,7 @@ type LaunchPayload = {
   resolved_email_slug: string | null
   email_from: string
   playbook?: PlaybookStep[]
+  live_smoke?: SmokeCheck[]
   platform_notes: { title: string; detail: string }[]
   error?: string
 }
@@ -176,6 +179,26 @@ export function ClientLaunchChecklistPanel({
             </LoadingButton>
           </div>
 
+          {(data.live_smoke?.length ?? 0) > 0 ? (
+            <div style={styles.smokeBox}>
+              <div style={styles.sectionLabel}>שלב 7 — בדיקות חיות (ידני, בזמן טסטים)</div>
+              <ol style={styles.smokeList}>
+                {data.live_smoke!.map((s, idx) => (
+                  <li key={s.id} style={styles.smokeItem}>
+                    <span style={styles.smokeNum}>{idx + 1}</span>
+                    <div>
+                      <div style={styles.itemTitle}>{s.title}</div>
+                      <div style={styles.itemDetail}>{s.detail}</div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="sa-hint" style={{ marginTop: 8 }}>
+                מדריך מלא: docs/CLIENT_SOFT_LAUNCH_SMOKE.md
+              </p>
+            </div>
+          ) : null}
+
           <div style={styles.sectionLabel}>פירוט סטטוס לפי שלב</div>
           <ul style={styles.list}>
             {data.items.map((item) => (
@@ -308,6 +331,34 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     color: theme.colors.textSecondary,
     marginTop: 4,
+  },
+  smokeBox: {
+    padding: 12,
+    borderRadius: 12,
+    border: '1px solid #fde68a',
+    background: '#fffbeb',
+  },
+  smokeList: {
+    listStyle: 'none',
+    margin: '8px 0 0',
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  smokeItem: { display: 'flex', gap: 10, alignItems: 'flex-start' },
+  smokeNum: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    background: '#b45309',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 800,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   list: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 },
   item: {

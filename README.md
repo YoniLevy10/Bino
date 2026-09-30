@@ -170,7 +170,9 @@ npm run test:e2e
 
 - `tests/e2e/full-coverage.spec.ts` — כיסוי רחב (auth, API, מובייל)
 - `tests/e2e/flows.spec.ts` — זרימות ציבוריות ו-admin
+- `tests/e2e/client-soft-launch.spec.ts` — soft launch מצד לקוח/דייר/עובד (+ צ׳קליסט הקמה)
 - `tests/e2e/dashboard.spec.ts`, `tests/e2e/mobile.spec.ts`
+- בדיקות חיות ידניות: `docs/CLIENT_SOFT_LAUNCH_SMOKE.md`
 
 ---
 

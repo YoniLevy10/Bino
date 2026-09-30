@@ -5,6 +5,7 @@ import { buildClientResendFrom, resolveClientEmailSlug } from '@/lib/client-emai
 import {
   buildClientLaunchChecklist,
   LAUNCH_PLAYBOOK_HEADER,
+  LIVE_SMOKE_CHECKS,
   PLATFORM_LAUNCH_NOTES,
 } from '@/lib/client-launch-checklist'
 import { growLegalFromClientRow } from '@/lib/client-grow-legal'
@@ -118,6 +119,7 @@ export async function GET(req: Request, context: RouteContext) {
     resolved_email_slug: emailSlug,
     email_from: emailFrom,
     playbook: LAUNCH_PLAYBOOK_HEADER,
+    live_smoke: LIVE_SMOKE_CHECKS,
     platform_notes: PLATFORM_LAUNCH_NOTES,
     ...checklist,
     snapshot,

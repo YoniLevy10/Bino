@@ -67,11 +67,16 @@
 ### 6. מייל + תפעול + בדיקות
 - סופר-אדמין → צ׳קליסט → **slug** (`Bamakor` → `bamakor@bino.casa`)
 - בניין + עובד פעיל + טלפון מנהל + לוגו (מומלץ)
-- לפני השקה:
-  - [ ] WhatsApp נכנס → תקלה תחת הלקוח הנכון
-  - [ ] SMS יוצא עם מספר השולח של הלקוח
-  - [ ] חיוב גבייה ₪1 → webhook → «שולם»
-  - [ ] מייל מ-`{slug}@bino.casa`
+
+### 7. בדיקות חיות (חובה לפני soft launch)
+מדריך מלא: [`docs/CLIENT_SOFT_LAUNCH_SMOKE.md`](./CLIENT_SOFT_LAUNCH_SMOKE.md)  
+אוטומציה (mocks): `npm run test:e2e -- tests/e2e/client-soft-launch.spec.ts --project=chromium`
+
+- [ ] WhatsApp נכנס → תקלה תחת הלקוח הנכון
+- [ ] SMS יוצא עם מספר השולח של הלקוח
+- [ ] חיוב גבייה ₪1 → webhook → «שולם»
+- [ ] מייל מ-`{slug}@bino.casa`
+- [ ] פורטל עובד / דייר (אם רלוונטי)
 
 ---
 

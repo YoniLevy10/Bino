@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   LAUNCH_PLAYBOOK_HEADER,
+  LIVE_SMOKE_CHECKS,
   buildClientLaunchChecklist,
   type ClientLaunchSnapshot,
 } from '@/lib/client-launch-checklist'
@@ -24,11 +25,18 @@ const base: ClientLaunchSnapshot = {
 }
 
 describe('LAUNCH_PLAYBOOK_HEADER', () => {
-  it('lists 6 ordered live steps starting with create client then 019', () => {
-    expect(LAUNCH_PLAYBOOK_HEADER.map((s) => s.step)).toEqual([1, 2, 3, 4, 5, 6])
+  it('lists 7 ordered live steps ending with live smoke', () => {
+    expect(LAUNCH_PLAYBOOK_HEADER.map((s) => s.step)).toEqual([1, 2, 3, 4, 5, 6, 7])
     expect(LAUNCH_PLAYBOOK_HEADER[1]?.title).toMatch(/019/)
     expect(LAUNCH_PLAYBOOK_HEADER[2]?.title).toMatch(/Meta/)
     expect(LAUNCH_PLAYBOOK_HEADER[4]?.title).toMatch(/Grow|GetLink/i)
+    expect(LAUNCH_PLAYBOOK_HEADER[6]?.title).toMatch(/בדיקות חיות|מקצה לקצה/)
+  })
+
+  it('exports live smoke checks for soft-launch', () => {
+    expect(LIVE_SMOKE_CHECKS.length).toBeGreaterThanOrEqual(4)
+    expect(LIVE_SMOKE_CHECKS.map((c) => c.id)).toContain('wa_inbound_ticket')
+    expect(LIVE_SMOKE_CHECKS.map((c) => c.id)).toContain('grow_pay_1ils')
   })
 })
 
