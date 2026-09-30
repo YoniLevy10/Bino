@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { matchTicketTopic } from '../topic-keywords'
 import { buildDedupeKey } from '../dedupe'
+import { ticketsHrefForProject } from '../tickets-href'
 import type { RecommendationDraft } from '../types'
 
 const WINDOW_DAYS = 30
@@ -35,16 +36,21 @@ export async function detectBuildingVolumeAndTopics(
   const projectIds = [...byProject.keys()]
   const { data: projects } = await admin
     .from('projects')
-    .select('id, name')
+    .select('id, name, project_code')
     .eq('client_id', clientId)
     .in('id', projectIds)
 
   const nameMap = new Map((projects || []).map((p) => [p.id as string, (p.name as string) || '']))
+  const codeMap = new Map(
+    (projects || []).map((p) => [p.id as string, ((p.project_code as string) || '').trim()])
+  )
 
   const drafts: RecommendationDraft[] = []
 
   for (const [projectId, list] of byProject) {
     const projectName = nameMap.get(projectId) || 'בניין'
+    const projectCode = codeMap.get(projectId) || ''
+    const ticketsHref = ticketsHrefForProject(projectId, projectCode)
     const ticketIds = list.map((t) => t.id as string)
 
     if (list.length >= VOLUME_THRESHOLD) {
@@ -57,18 +63,19 @@ export async function detectBuildingVolumeAndTopics(
         reason: `נפתחו ${list.length} קריאות בבניין ${projectName} בחודש האחרון. כדאי לבדוק אם נדרש טיפול מרוכז.`,
         facts: {
           project_name: projectName,
+          project_code: projectCode || null,
           ticket_count: list.length,
           window_days: WINDOW_DAYS,
           min_count: VOLUME_THRESHOLD,
           ticket_ids: ticketIds.slice(0, 50),
         },
         primaryAction: 'view_tickets',
-        primaryActionHref: `/tickets?project_id=${projectId}`,
+        primaryActionHref: ticketsHref,
         actions: [
           {
             id: 'view_tickets',
             label: 'צפייה בקריאות הרלוונטיות',
-            href: `/tickets?project_id=${projectId}`,
+            href: ticketsHref,
             kind: 'navigate',
           },
           {
@@ -104,6 +111,7 @@ export async function detectBuildingVolumeAndTopics(
         reason: `נפתחו ${info.ids.length} קריאות בנושא ${info.label} בבניין ${projectName} בחודש האחרון. כדאי לבדוק טיפול מונע.`,
         facts: {
           project_name: projectName,
+          project_code: projectCode || null,
           topic_key: topicKey,
           topic_label: info.label,
           ticket_count: info.ids.length,
@@ -114,12 +122,12 @@ export async function detectBuildingVolumeAndTopics(
           structural_claim: false,
         },
         primaryAction: 'view_tickets',
-        primaryActionHref: `/tickets?project_id=${projectId}`,
+        primaryActionHref: ticketsHref,
         actions: [
           {
             id: 'view_tickets',
             label: 'צפייה בקריאות הרלוונטיות',
-            href: `/tickets?project_id=${projectId}`,
+            href: ticketsHref,
             kind: 'navigate',
           },
           {

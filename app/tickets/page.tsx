@@ -315,6 +315,12 @@ export default function TicketsPage() {
     if (typeof window === 'undefined') return null
     return parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
   })
+  /** Recommendation links use project UUID; filter UI uses project_code. */
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const id = new URLSearchParams(window.location.search).get('project_id')?.trim()
+    return id || null
+  })
 
   useEffect(() => {
     if (selectedTicket) setPendingDeepLinkTicket(null)
@@ -331,6 +337,8 @@ export default function TicketsPage() {
         return
       }
       if (params.get('project')) setProjectFilter(decodeURIComponent(params.get('project')!))
+      const projectIdParam = params.get('project_id')?.trim()
+      if (projectIdParam) setPendingProjectId(projectIdParam)
       if (params.get('worker')) setWorkerFilter(decodeURIComponent(params.get('worker')!))
       const statusParam = params.get('status')
       if (statusParam && statusParam !== 'CLOSED') {
@@ -342,6 +350,15 @@ export default function TicketsPage() {
   }, [router])
 
   useEffect(() => {
+    if (!pendingProjectId || projects.length === 0) return
+    const match = projects.find((p) => p.id === pendingProjectId)
+    if (match?.project_code) {
+      setProjectFilter(match.project_code)
+      setPendingProjectId(null)
+    }
+  }, [pendingProjectId, projects])
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const existing = new URLSearchParams(window.location.search)
       const params = new URLSearchParams()
@@ -351,10 +368,12 @@ export default function TicketsPage() {
       if (priorityFilter !== 'ALL') params.set('priority', priorityFilter)
       const ticketParam = existing.get('ticket')
       if (ticketParam) params.set('ticket', ticketParam)
+      // Keep project_id until resolved to project_code so refresh doesn't lose the deep link.
+      if (pendingProjectId) params.set('project_id', pendingProjectId)
       const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname
       window.history.replaceState(null, '', newUrl)
     }
-  }, [projectFilter, workerFilter, statusFilter, priorityFilter])
+  }, [projectFilter, workerFilter, statusFilter, priorityFilter, pendingProjectId])
 
   const loadProfessionals = useCallback(async () => {
     if (professionalsLoadedRef.current) return
