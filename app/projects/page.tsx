@@ -43,7 +43,6 @@ import { PageTransitionLoader } from '../components/page-skeleton'
 import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGate'
 import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
 import { ProjectPilotSmsPanel } from '../components/projects/ProjectPilotSmsPanel'
-import { ResidentPortalAdminPanel } from '../components/projects/ResidentPortalAdminPanel'
 import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
 import { CollapsibleSection } from '../components/shared/CollapsibleSection'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
@@ -932,8 +931,6 @@ export default function ProjectsPage() {
                 clientId={selectedProject.client_id}
                 projectName={selectedProject.name}
               />
-
-              <ResidentPortalAdminPanel projectId={selectedProject.id} />
 
               <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.pilot_sms}>
                 <ProjectPilotSmsPanel
