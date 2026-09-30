@@ -355,6 +355,11 @@ select {
   flex-direction: column;
 }
 
+.wa-inbox-portal-overlay .wa-inbox-thread-portal > div:first-child,
+.wa-inbox-portal-overlay .wa-inbox-thread-header {
+  flex-shrink: 0;
+}
+
 .wa-inbox-portal-overlay .wa-inbox-messages {
   flex: 1 !important;
   min-height: 0 !important;

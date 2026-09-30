@@ -22,6 +22,7 @@ import {
 } from '@/lib/hooks/use-whatsapp-conversations'
 import { queryKeys } from '@/lib/query-keys'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import { Button, Card, theme } from '../ui'
 
 type Conversation = {
@@ -74,7 +75,18 @@ export function WhatsAppInboxPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const messagesQuery = useWhatsAppMessages(selectedId)
   const messages = (messagesQuery.data ?? []) as Message[]
-  const messagesLoading = messagesQuery.isLoading && !messagesQuery.data
+  // isFetching+empty = true loading; isError must not render as an empty thread.
+  const messagesLoading =
+    Boolean(selectedId) &&
+    messages.length === 0 &&
+    (messagesQuery.isLoading || messagesQuery.isFetching) &&
+    !messagesQuery.isError
+  const messagesError =
+    messagesQuery.isError && messages.length === 0
+      ? messagesQuery.error instanceof Error
+        ? messagesQuery.error.message
+        : 'טעינת הודעות נכשלה'
+      : null
 
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
@@ -85,11 +97,13 @@ export function WhatsAppInboxPanel() {
   const [contextLoading, setContextLoading] = useState(false)
   const [activeQuickAction, setActiveQuickAction] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<string[]>([])
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
   const [portalReady, setPortalReady] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
 
   const selected = (conversations as Conversation[]).find((c) => c.id === selectedId) ?? null
+  const selectedPhone = selected?.phone ?? null
   const mobilePane = selectedId ? 'thread' : 'list'
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
   const loading = conversationsLoading && !conversationsHasData
@@ -102,6 +116,15 @@ export function WhatsAppInboxPanel() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useAppRefreshListener(
+    useCallback(() => {
+      void invalidateConversations()
+      if (selectedId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(selectedId) })
+      }
+    }, [invalidateConversations, queryClient, selectedId])
+  )
 
   useEffect(() => {
     if (!useMobileThreadPortal) return
@@ -181,10 +204,10 @@ export function WhatsAppInboxPanel() {
   }, [])
 
   useEffect(() => {
-    if (!selectedId || !selected) return
+    if (!selectedId || !selectedPhone) return
     setActiveQuickAction(null)
     setTemplateParams([])
-    void loadSessionStatus(selected.phone)
+    void loadSessionStatus(selectedPhone)
     void loadContext(selectedId)
 
     const channel = supabase
@@ -202,11 +225,24 @@ export function WhatsAppInboxPanel() {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [selectedId, selected, refreshMessages, refreshConversations, loadSessionStatus, loadContext])
+  }, [selectedId, selectedPhone, refreshMessages, refreshConversations, loadSessionStatus, loadContext])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+    // Scroll inside the messages pane only — window scrollIntoView breaks iOS portal layout.
+    const pane = messagesScrollRef.current
+    if (!pane) return
+    pane.scrollTop = pane.scrollHeight
+  }, [messages.length, selectedId])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(selectedId) })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [queryClient, selectedId])
 
   function pickQuickAction(templateId: string) {
     if (!inboxContext) {
@@ -389,9 +425,29 @@ export function WhatsAppInboxPanel() {
           </span>
         )}
       </div>
-      <div className="wa-inbox-messages" style={styles.messages} role="log" aria-live="polite">
-        {messagesLoading && messages.length === 0 ? (
+      <div
+        ref={messagesScrollRef}
+        className="wa-inbox-messages"
+        style={styles.messages}
+        role="log"
+        aria-live="polite"
+      >
+        {messagesLoading ? (
           <p style={styles.muted}>טוען הודעות…</p>
+        ) : messagesError ? (
+          <div style={styles.messagesErrorBox}>
+            <p style={styles.messagesErrorText}>{messagesError}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void messagesQuery.refetch()}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              נסו שוב
+            </Button>
+          </div>
+        ) : messages.length === 0 ? (
+          <p style={styles.muted}>אין הודעות בשיחה עדיין.</p>
         ) : (
           messages.map((m) => (
             <div
@@ -643,6 +699,8 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexShrink: 0,
+    background: theme.colors.surface,
   },
   backBtn: {
     border: 'none',
@@ -672,8 +730,23 @@ const styles: Record<string, CSSProperties> = {
     padding: '3px 10px',
     borderRadius: 999,
   },
-  messages: { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 },
-  bubble: { maxWidth: '85%', padding: '10px 12px', borderRadius: 12, fontSize: 14, lineHeight: 1.45 },
+  messages: { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 },
+  messagesErrorBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: theme.radius.md,
+    background: theme.colors.errorMuted,
+  },
+  messagesErrorText: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 600,
+    color: theme.colors.error,
+    lineHeight: 1.45,
+  },
+  bubble: { maxWidth: '85%', padding: '10px 12px', borderRadius: 12, fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap' },
   bubbleIn: { alignSelf: 'flex-start', background: theme.colors.muted, color: theme.colors.textPrimary },
   bubbleOut: { alignSelf: 'flex-end', background: '#dcf8c6', color: theme.colors.textPrimary },
   time: { fontSize: 11, color: theme.colors.textMuted, marginTop: 4 },
