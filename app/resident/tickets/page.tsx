@@ -1,13 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import {
-  MIDRAG_TRADE_CATEGORIES,
-  buildMidragCityPickerUrl,
-  buildMidragSearchUrl,
-  midragCityMatchForCity,
-  tradeLabelHe,
-} from '@/lib/midrag/external-search'
+import { residentMidragSearchHref, residentMidragSectors } from '@/lib/resident-portal/midrag'
 
 type Ticket = {
   id: string
@@ -19,11 +13,13 @@ type Ticket = {
   closed_at: string | null
 }
 
+const SECTORS = residentMidragSectors()
+
 export default function ResidentTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [description, setDescription] = useState('')
   const [scope, setScope] = useState<'common' | 'private' | 'unclear'>('unclear')
-  const [trade, setTrade] = useState('plumbing')
+  const [sectorId, setSectorId] = useState<number>(SECTORS[0]?.sectorId ?? 4)
   const [city, setCity] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -60,7 +56,7 @@ export default function ResidentTicketsPage() {
         body: JSON.stringify({
           description,
           scope,
-          trade_category: trade,
+          sector_id: sectorId,
           idempotency_key: idempotencyKey,
         }),
       })
@@ -82,8 +78,7 @@ export default function ResidentTicketsPage() {
     }
   }
 
-  const cityMatch = midragCityMatchForCity(city)
-  const midragUrl = cityMatch ? buildMidragSearchUrl({ category: trade, city }) : null
+  const midrag = residentMidragSearchHref({ sectorId, city })
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -101,7 +96,14 @@ export default function ResidentTicketsPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={4}
-          style={{ width: '100%', fontSize: 16, padding: 12, borderRadius: 10, border: '1px solid #D1D1D6', boxSizing: 'border-box' }}
+          style={{
+            width: '100%',
+            fontSize: 16,
+            padding: 12,
+            borderRadius: 10,
+            border: '1px solid #D1D1D6',
+            boxSizing: 'border-box',
+          }}
         />
         <label style={{ fontSize: 13, display: 'block', marginTop: 10 }}>סוג</label>
         <select
@@ -117,32 +119,26 @@ export default function ResidentTicketsPage() {
           <div style={{ marginBottom: 10 }}>
             <label style={{ fontSize: 13 }}>מקצוע לחיפוש במידרג</label>
             <select
-              value={trade}
-              onChange={(e) => setTrade(e.target.value)}
+              value={sectorId}
+              onChange={(e) => setSectorId(Number(e.target.value))}
               style={{ width: '100%', minHeight: 44, fontSize: 16 }}
             >
-              {MIDRAG_TRADE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {tradeLabelHe(c)}
+              {SECTORS.map((s) => (
+                <option key={s.sectorId} value={s.sectorId}>
+                  {s.label}
                 </option>
               ))}
             </select>
             <p style={{ fontSize: 12, color: '#86868B' }}>
               תקלה פרטית אינה משובצת אוטומטית. פתיחת מידרג אינה הזמנה.
             </p>
-            {midragUrl ? (
-              <a href={midragUrl} target="_blank" rel="noopener noreferrer">
-                חיפוש במידרג ({city})
+            {midrag.href ? (
+              <a href={midrag.href} target="_blank" rel="noopener noreferrer">
+                {midrag.needsCityPicker
+                  ? 'בחירת עיר במידרג'
+                  : `חיפוש במידרג (${city})`}
               </a>
-            ) : (
-              <a
-                href={buildMidragCityPickerUrl({ category: trade, city }) || 'https://www.midrag.co.il/'}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                בחירת עיר במידרג
-              </a>
-            )}
+            ) : null}
           </div>
         ) : null}
         {error ? (

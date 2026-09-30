@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     scope?: unknown
     idempotency_key?: unknown
     trade_category?: unknown
+    sector_id?: unknown
   }
   try {
     body = await req.json()
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
         typeof body.idempotency_key === 'string' ? body.idempotency_key : null,
       tradeCategory:
         typeof body.trade_category === 'string' ? body.trade_category : null,
+      sectorId: typeof body.sector_id === 'number' ? body.sector_id : null,
     })
     return NextResponse.json(result)
   } catch (e) {

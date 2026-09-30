@@ -4,7 +4,7 @@ import { createTicketShared } from '@/lib/tickets/create-ticket-service'
 import { listPublishedAnnouncementsForMembership } from '@/lib/resident-portal/announcements'
 import { listAmenitiesForMembership } from '@/lib/resident-portal/amenities'
 import { listChargesForMembership } from '@/lib/resident-portal/charges'
-import { buildMidragSearchUrl, midragCityMatchForCity } from '@/lib/midrag/external-search'
+import { parseSectorId, residentMidragSearchHref } from '@/lib/resident-portal/midrag'
 
 export type BotReply = {
   reply: string
@@ -57,6 +57,7 @@ export async function handleResidentBotTurn(
     scopeOverride?: TicketScope | null
     idempotencyKey?: string | null
     tradeCategory?: string | null
+    sectorId?: number | null
   }
 ): Promise<BotReply> {
   const message = opts.message.trim()
@@ -199,22 +200,19 @@ export async function handleResidentBotTurn(
 
       if (scope === 'private') {
         const city = membership.project_city
-        const cityMatch = midragCityMatchForCity(city)
-        const category = opts.tradeCategory || 'other'
-        if (cityMatch) {
-          const href = buildMidragSearchUrl({ category, city })
-          if (href) {
-            actions.unshift({
-              type: 'midrag',
-              label: 'חיפוש בעל מקצוע במידרג',
-              href,
-            })
-            reply +=
-              ' זו תקלה פרטית — חברת הניהול לא משבצת אותה אוטומטית. אפשר לחפש בעל מקצוע במידרג.'
-          }
-        } else {
-          reply +=
-            ' זו תקלה פרטית. לא הוגדרה עיר לפרויקט או שהעיר לא ממופה למידרג — בחרו עיר במסך התקלות.'
+        const sectorId = parseSectorId(opts.sectorId ?? opts.tradeCategory, 4)
+        const midrag = residentMidragSearchHref({ sectorId, city })
+        if (midrag.href) {
+          actions.unshift({
+            type: 'midrag',
+            label: midrag.needsCityPicker
+              ? 'בחירת עיר במידרג'
+              : 'חיפוש בעל מקצוע במידרג',
+            href: midrag.href,
+          })
+          reply += midrag.cityMapped
+            ? ' זו תקלה פרטית — חברת הניהול לא משבצת אותה אוטומטית. אפשר לחפש בעל מקצוע במידרג.'
+            : ' זו תקלה פרטית. העיר לא ממופה למידרג — בחרו עיר בקישור או הגדירו עיר בפרויקט.'
         }
       }
 

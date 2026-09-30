@@ -1,13 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  buildMidragCityPickerUrl,
-  buildMidragSearchUrl,
-  midragCityMatchForCity,
-  MIDRAG_TRADE_CATEGORIES,
-  tradeLabelHe,
-} from '@/lib/midrag/external-search'
+import { residentMidragSearchHref, residentMidragSectors } from '@/lib/resident-portal/midrag'
+
+const SECTORS = residentMidragSectors()
 
 export default function ResidentInformationPage() {
   const [announcements, setAnnouncements] = useState<
@@ -25,7 +21,7 @@ export default function ResidentInformationPage() {
     }>
   >([])
   const [city, setCity] = useState<string | null>(null)
-  const [trade, setTrade] = useState('plumbing')
+  const [sectorId, setSectorId] = useState<number>(SECTORS[0]?.sectorId ?? 4)
   const [error, setError] = useState('')
   const [contact, setContact] = useState<{ phone?: string | null; email?: string | null }>({})
 
@@ -70,9 +66,7 @@ export default function ResidentInformationPage() {
     window.open(json.url, '_blank', 'noopener,noreferrer')
   }
 
-  const cityMatch = midragCityMatchForCity(city)
-  const midragUrl = cityMatch ? buildMidragSearchUrl({ category: trade, city }) : null
-  const cityPicker = buildMidragCityPickerUrl({ category: trade, city })
+  const midrag = residentMidragSearchHref({ sectorId, city })
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -170,31 +164,22 @@ export default function ResidentInformationPage() {
         </p>
         <label style={{ fontSize: 13 }}>מקצוע</label>
         <select
-          value={trade}
-          onChange={(e) => setTrade(e.target.value)}
+          value={sectorId}
+          onChange={(e) => setSectorId(Number(e.target.value))}
           style={{ width: '100%', minHeight: 44, marginBottom: 8, fontSize: 16 }}
         >
-          {MIDRAG_TRADE_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {tradeLabelHe(c)}
+          {SECTORS.map((s) => (
+            <option key={s.sectorId} value={s.sectorId}>
+              {s.label}
             </option>
           ))}
         </select>
         <div style={{ fontSize: 13, marginBottom: 8 }}>עיר הפרויקט: {city || 'לא הוגדרה'}</div>
-        {midragUrl ? (
-          <a href={midragUrl} target="_blank" rel="noopener noreferrer" style={btn}>
-            חיפוש במידרג
+        {midrag.href ? (
+          <a href={midrag.href} target="_blank" rel="noopener noreferrer" style={btn}>
+            {midrag.needsCityPicker ? 'בחירת עיר במידרג' : 'חיפוש במידרג'}
           </a>
-        ) : (
-          <a
-            href={cityPicker || 'https://www.midrag.co.il/'}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={btn}
-          >
-            בחירת עיר במידרג
-          </a>
-        )}
+        ) : null}
       </section>
     </div>
   )

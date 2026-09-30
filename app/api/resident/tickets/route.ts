@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireResidentContext } from '@/lib/resident-portal/context'
 import { createTicketShared } from '@/lib/tickets/create-ticket-service'
 import type { TicketScope } from '@/lib/resident-portal/types'
-import { buildMidragSearchUrl, midragCityMatchForCity } from '@/lib/midrag/external-search'
+import { parseSectorId, residentMidragSearchHref } from '@/lib/resident-portal/midrag'
 
 const RESIDENT_TICKET_SELECT = `
   id, ticket_number, status, description, scope, opened_at, closed_at, updated_at, created_at
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   let description = ''
   let scope: TicketScope = 'unclear'
   let idempotencyKey: string | null = null
-  let tradeCategory = 'other'
+  let sectorId = 4
   let files: File[] = []
 
   try {
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       const s = String(form.get('scope') || 'unclear')
       scope = ['common', 'private', 'unclear'].includes(s) ? (s as TicketScope) : 'unclear'
       idempotencyKey = String(form.get('idempotency_key') || '').trim() || null
-      tradeCategory = String(form.get('trade_category') || 'other').trim() || 'other'
+      sectorId = parseSectorId(form.get('sector_id') ?? form.get('trade_category'), 4)
       files = form.getAll('attachments').filter((f) => f instanceof File) as File[]
     } else {
       const body = await req.json()
@@ -56,8 +56,7 @@ export async function POST(req: Request) {
       scope = ['common', 'private', 'unclear'].includes(s) ? (s as TicketScope) : 'unclear'
       idempotencyKey =
         typeof body.idempotency_key === 'string' ? body.idempotency_key.trim() || null : null
-      tradeCategory =
-        typeof body.trade_category === 'string' ? body.trade_category.trim() || 'other' : 'other'
+      sectorId = parseSectorId(body.sector_id ?? body.trade_category, 4)
     }
   } catch {
     return NextResponse.json({ error: 'גוף בקשה לא תקין' }, { status: 400 })
@@ -83,9 +82,8 @@ export async function POST(req: Request) {
     let midragUrl: string | null = null
     if (scope === 'private') {
       const city = auth.ctx.membership.project_city
-      if (midragCityMatchForCity(city)) {
-        midragUrl = buildMidragSearchUrl({ category: tradeCategory, city })
-      }
+      const midrag = residentMidragSearchHref({ sectorId, city })
+      midragUrl = midrag.href
     }
 
     return NextResponse.json({
