@@ -5,6 +5,7 @@ import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/super
 import { deleteClientCompletely } from '@/lib/delete-client'
 import { normalizeEnabledNavFeaturesPayload } from '@/lib/client-nav-features'
 import { SIDEBAR_NAV_ITEM_IDS } from '@/lib/sidebar-nav'
+import { normalizePhone019 } from '@/lib/sms-019-core'
 
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -39,6 +40,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const payload: Record<string, unknown> = { ...parsed.data }
+  if (parsed.data.sms_sender_name !== undefined) {
+    if (parsed.data.sms_sender_name == null || parsed.data.sms_sender_name.trim() === '') {
+      payload.sms_sender_name = null
+    } else {
+      const normalized = normalizePhone019(parsed.data.sms_sender_name)
+      if (!normalized) {
+        return NextResponse.json(
+          {
+            error:
+              'sms_sender_name must be an Israeli mobile (05… / 9725…). Alphanumeric brand names are rejected by 019SMS.',
+          },
+          { status: 400 }
+        )
+      }
+      payload.sms_sender_name = normalized
+    }
+  }
   if (parsed.data.enabled_nav_features !== undefined) {
     if (parsed.data.enabled_nav_features === null) {
       payload.enabled_nav_features = null

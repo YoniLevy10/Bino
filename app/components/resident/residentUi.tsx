@@ -11,7 +11,12 @@ export const RESIDENT_TABBAR_CLEARANCE =
   'calc(88px + env(safe-area-inset-bottom, 0px))'
 
 export function ResidentAmbientWash() {
-  return <div className="worker-ambient-wash" aria-hidden />
+  return (
+    <>
+      <div className="worker-ambient-wash resident-ambient-wash" aria-hidden />
+      <div className="resident-ambient-grain" aria-hidden />
+    </>
+  )
 }
 
 export function ResidentCard({
@@ -25,7 +30,7 @@ export function ResidentCard({
 }) {
   return (
     <div
-      className={['lg-glass', className].filter(Boolean).join(' ')}
+      className={['lg-glass', 'resident-card', className].filter(Boolean).join(' ')}
       style={{ ...residentCardStyle, ...style }}
     >
       {children}
@@ -59,7 +64,7 @@ export function ResidentPrimaryButton({
       return (
         <a
           href={href}
-          className="lg-btn lg-btn-primary"
+          className="lg-btn lg-btn-primary resident-btn-press"
           style={merged}
           target="_blank"
           rel="noopener noreferrer"
@@ -69,7 +74,7 @@ export function ResidentPrimaryButton({
       )
     }
     return (
-      <Link href={href} className="lg-btn lg-btn-primary" style={merged}>
+      <Link href={href} className="lg-btn lg-btn-primary resident-btn-press" style={merged}>
         {children}
       </Link>
     )
@@ -79,7 +84,7 @@ export function ResidentPrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className="lg-btn lg-btn-primary"
+      className="lg-btn lg-btn-primary resident-btn-press"
       style={merged}
     >
       {children}
@@ -88,7 +93,13 @@ export function ResidentPrimaryButton({
 }
 
 export function ResidentField(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={['lg-field', props.className].filter(Boolean).join(' ')} style={{ ...residentFieldStyle, ...props.style }} />
+  return (
+    <input
+      {...props}
+      className={['lg-field', props.className].filter(Boolean).join(' ')}
+      style={{ ...residentFieldStyle, ...props.style }}
+    />
+  )
 }
 
 export function ResidentTextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -151,6 +162,93 @@ export function ResidentAlert({
       }}
     >
       {children}
+    </div>
+  )
+}
+
+/** Auth / join screens — branded hero + glass panel. */
+export function ResidentAuthFrame({
+  brandName,
+  buildingName,
+  logoUrl,
+  children,
+}: {
+  brandName?: string | null
+  buildingName?: string | null
+  logoUrl?: string | null
+  children: ReactNode
+}) {
+  const brand = brandName?.trim() || 'BINO'
+  const building = buildingName?.trim() || null
+
+  return (
+    <div
+      className="resident-shell resident-auth-shell"
+      style={{ ...residentShellStyles.root, justifyContent: 'center' }}
+      dir="rtl"
+    >
+      <ResidentAmbientWash />
+      <div className="resident-auth-stage">
+        <header className="resident-auth-brand">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="" className="resident-auth-logo" width={56} height={56} />
+          ) : (
+            <div className="resident-auth-mark" aria-hidden>
+              {brand.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="resident-auth-brand-text">
+            <p className="resident-auth-brand-name">{brand}</p>
+            {building ? <p className="resident-auth-building">{building}</p> : null}
+          </div>
+        </header>
+        <ResidentCard className="resident-auth-panel" style={{ padding: '28px 24px' }}>
+          {children}
+        </ResidentCard>
+        <p className="resident-auth-foot">אזור אישי מאובטח לדיירים</p>
+      </div>
+    </div>
+  )
+}
+
+export function ResidentOtpBoxes({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (next: string) => void
+  disabled?: boolean
+}) {
+  const digits = value.padEnd(6, ' ').slice(0, 6).split('')
+
+  return (
+    <div className="resident-otp-row" dir="ltr">
+      {digits.map((d, i) => (
+        <span
+          key={i}
+          className={['resident-otp-cell', d.trim() ? 'is-filled' : '', i === value.length ? 'is-active' : '']
+            .filter(Boolean)
+            .join(' ')}
+          aria-hidden
+        >
+          {d.trim() || ''}
+        </span>
+      ))}
+      <input
+        className="resident-otp-hidden"
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        required
+        pattern="[0-9]{6}"
+        maxLength={6}
+        disabled={disabled}
+        value={value}
+        aria-label="סיסמה מ-SMS"
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+      />
     </div>
   )
 }
@@ -218,7 +316,7 @@ const residentPrimaryBtnStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   width: '100%',
-  minHeight: 48,
+  minHeight: 52,
   padding: '0 16px',
   borderRadius: theme.radius.md,
   fontSize: theme.typography.fontSize.base,
@@ -232,19 +330,20 @@ const residentPrimaryBtnStyle: CSSProperties = {
 const residentFieldStyle: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  minHeight: 48,
+  minHeight: 52,
   fontSize: 16,
-  padding: '12px 14px',
+  padding: '14px 16px',
   color: theme.colors.textPrimary,
   fontFamily: 'inherit',
 }
 
 const residentPageTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: theme.typography.fontSize.xl,
-  fontWeight: theme.typography.fontWeight.bold,
+  fontSize: '1.65rem',
+  fontWeight: 700,
   color: theme.colors.textPrimary,
-  letterSpacing: '-0.01em',
+  letterSpacing: '-0.03em',
+  lineHeight: 1.2,
 }
 
 const residentSectionTitleStyle: CSSProperties = {
@@ -258,7 +357,7 @@ const residentMutedStyle: CSSProperties = {
   margin: 0,
   fontSize: theme.typography.fontSize.sm,
   color: theme.colors.textMuted,
-  lineHeight: 1.45,
+  lineHeight: 1.55,
 }
 
 export const residentShellStyles = {
@@ -270,7 +369,7 @@ export const residentShellStyles = {
     flexDirection: 'column',
     background: 'transparent',
     color: theme.colors.textPrimary,
-    fontFamily: 'var(--font-heebo), -apple-system, BlinkMacSystemFont, sans-serif',
+    fontFamily: 'var(--font-heebo), Heebo, sans-serif',
   } satisfies CSSProperties,
   header: {
     position: 'sticky',
@@ -375,17 +474,18 @@ export const residentShellStyles = {
       'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(0,122,255,0.35)',
   } satisfies CSSProperties,
   balanceValue: {
-    fontSize: theme.typography.fontSize['3xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    letterSpacing: '-0.02em',
+    fontSize: '2.35rem',
+    fontWeight: 700,
+    letterSpacing: '-0.03em',
     color: theme.colors.textPrimary,
-    lineHeight: 1.1,
+    lineHeight: 1.05,
   } satisfies CSSProperties,
   label: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textMuted,
     display: 'block',
-    marginBottom: 6,
+    marginBottom: 8,
+    fontWeight: 600,
   } satisfies CSSProperties,
   chip: {
     display: 'inline-flex',

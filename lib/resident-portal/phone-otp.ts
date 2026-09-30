@@ -114,6 +114,7 @@ export async function requestResidentPhoneOtp(
     .eq('id', project.client_id)
     .maybeSingle()
 
+  // Client 019 sender phone only — alphanumeric names are stripped in resolve019SmsSource.
   const sender =
     (clientRow as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
   const company =

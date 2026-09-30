@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   normalizePhone019,
   post019SmsOnce,
-  SMS_019_SENDER,
+  resolve019SmsSource,
 } from '@/lib/sms-019-core'
 import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
 import { sanitizeSmsCampaignBody } from '@/lib/sms-campaign-message'
@@ -164,13 +164,13 @@ export async function send019StaffSms(
     return false
   }
 
-  const rawSource = String(senderPreferred ?? SMS_019_SENDER).trim()
   // 019SMS only accepts registered phone numbers as sender — never alphanumeric
-  const source = normalizePhone019(rawSource) || '972559899132'
+  const source = resolve019SmsSource(senderPreferred)
 
   console.log('📱 SMS_SEND_START', {
     channel: ctx.channel,
     normalizedPhone,
+    source,
     messageLength: clamped.message.length,
     ...(clamped.truncated
       ? { truncated: true, originalLength: clamped.originalLength, maxChars: getMaxSmsChars() }

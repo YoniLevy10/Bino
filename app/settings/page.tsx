@@ -337,11 +337,19 @@ function SettingsPageInner() {
       toast.error('ההגדרות טרם נטענו — רעננו את הדף לפני שמירה')
       return
     }
+    const senderTrimmed = smsSenderName.trim()
+    if (
+      senderTrimmed &&
+      !/^(\+?972|0)?5\d{8}$/.test(senderTrimmed.replace(/[\s-]/g, ''))
+    ) {
+      toast.error('מספר שולח SMS חייב להיות טלפון (05… / 9725…) — לא שם מותג')
+      return
+    }
     setSavingNotifications(true)
     await asyncHandler(
       async () => {
         const payload = {
-          sms_sender_name: smsSenderName.trim() || null,
+          sms_sender_name: senderTrimmed || null,
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
         }
