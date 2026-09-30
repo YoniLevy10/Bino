@@ -85,7 +85,13 @@ export const LAUNCH_PLAYBOOK_HEADER: { step: number; title: string; detail: stri
   {
     step: 6,
     title: 'מייל Resend + סיום תפעולי',
-    detail: 'הגדירו slug@bino.casa, לוגו, וודאו בניין/עובד/מנהל — ואז בדיקות',
+    detail: 'הגדירו slug@bino.casa, לוגו, וודאו בניין/עובד/מנהל — ואז בדיקות חיות (שלב 7)',
+  },
+  {
+    step: 7,
+    title: 'בדיקות חיות מקצה לקצה (מהצד של הלקוח)',
+    detail:
+      'WA→תקלה · SMS עם מספר הלקוח · גבייה ₪1→שולם · מייל מ-slug@bino.casa · פורטל עובד/דייר — ראו docs/CLIENT_SOFT_LAUNCH_SMOKE.md',
   },
 ]
 
@@ -263,6 +269,40 @@ export function buildClientLaunchChecklist(s: ClientLaunchSnapshot): {
 
   return { items, doneCount, totalCount: items.length, readyForSoftLaunch }
 }
+
+/** Manual live checks during soft-launch — not auto-verified from DB. */
+export const LIVE_SMOKE_CHECKS: { id: string; title: string; detail: string }[] = [
+  {
+    id: 'wa_inbound_ticket',
+    title: 'WhatsApp → תקלה אצל הלקוח הנכון',
+    detail: 'שלחו הודעה למספר ה-019 של הלקוח → נוצרת תקלה תחת אותו client בלוח הבקרה',
+  },
+  {
+    id: 'sms_sender',
+    title: 'SMS יוצא עם מספר השולח של הלקוח',
+    detail: 'הגדרות → בדיקת SMS / פתיחת תקלה → השולח הוא 972… של הלקוח (לא שם מותג)',
+  },
+  {
+    id: 'grow_pay_1ils',
+    title: 'גבייה ₪1 → webhook → שולם',
+    detail: 'שלחו חיוב טסט לדייר → שלמו ב-sandbox → הסטטוס ב-BINO הופך לשולם (+ מייל אישור)',
+  },
+  {
+    id: 'resend_from_slug',
+    title: 'מייל מ-slug@bino.casa',
+    detail: 'אישור תשלום / התראה מגיעים מ-Name <slug@bino.casa> של הלקוח',
+  },
+  {
+    id: 'worker_portal',
+    title: 'פורטל עובד',
+    detail: 'קישור עובד נפתח · רואים תקלה · אפשר להשיב / לעדכן סטטוס',
+  },
+  {
+    id: 'resident_portal',
+    title: 'פורטל דיירים (אם מופעל)',
+    detail: 'הזמנה במייל → כניסה ל-/resident · רואים מידע/תקלות/תשלומים',
+  },
+]
 
 export const PLATFORM_LAUNCH_NOTES: { title: string; detail: string }[] = [
   {
