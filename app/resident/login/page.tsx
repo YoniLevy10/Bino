@@ -4,8 +4,7 @@ import { FormEvent, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   ResidentAlert,
-  ResidentAmbientWash,
-  ResidentCard,
+  ResidentAuthFrame,
   ResidentField,
   ResidentMuted,
   ResidentPageTitle,
@@ -51,49 +50,37 @@ function ResidentLoginForm() {
   }
 
   return (
-    <div className="resident-shell" style={{ ...residentShellStyles.root, justifyContent: 'center' }} dir="rtl">
-      <ResidentAmbientWash />
-      <form
-        onSubmit={onSubmit}
-        style={{
-          width: '100%',
-          maxWidth: 420,
-          margin: '0 auto',
-          padding: 24,
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        <ResidentCard style={{ padding: 24 }}>
-          <ResidentPageTitle>כניסה לפורטל הדיירים</ResidentPageTitle>
-          <ResidentMuted style={{ margin: '8px 0 20px' }}>
-            הזינו את כתובת הדוא״ל שאליה קיבלתם הזמנה מחברת הניהול. נשלח קישור חד־פעמי להתחברות.
-          </ResidentMuted>
-          <label style={residentShellStyles.label}>דוא״ל</label>
-          <ResidentField
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ marginBottom: 16 }}
-          />
-          {error ? (
-            <div style={{ marginBottom: 12 }}>
-              <ResidentAlert tone="error">{error}</ResidentAlert>
-            </div>
-          ) : null}
-          {message ? (
-            <div style={{ marginBottom: 12 }}>
-              <ResidentAlert tone="success">{message}</ResidentAlert>
-            </div>
-          ) : null}
-          <ResidentPrimaryButton type="submit" disabled={loading}>
-            {loading ? 'שולח…' : 'שלחו קישור התחברות'}
-          </ResidentPrimaryButton>
-        </ResidentCard>
+    <ResidentAuthFrame brandName="BINO">
+      <form onSubmit={onSubmit}>
+        <ResidentPageTitle>כניסה לפורטל הדיירים</ResidentPageTitle>
+        <ResidentMuted style={{ margin: '10px 0 22px' }}>
+          הזינו את כתובת הדוא״ל שאליה קיבלתם הזמנה מחברת הניהול. נשלח קישור חד־פעמי להתחברות.
+        </ResidentMuted>
+        <label style={residentShellStyles.label}>דוא״ל</label>
+        <ResidentField
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ marginBottom: 16 }}
+          dir="ltr"
+        />
+        {error ? (
+          <div style={{ marginBottom: 12 }}>
+            <ResidentAlert tone="error">{error}</ResidentAlert>
+          </div>
+        ) : null}
+        {message ? (
+          <div style={{ marginBottom: 12 }}>
+            <ResidentAlert tone="success">{message}</ResidentAlert>
+          </div>
+        ) : null}
+        <ResidentPrimaryButton type="submit" disabled={loading}>
+          {loading ? 'שולח…' : 'שלחו קישור התחברות'}
+        </ResidentPrimaryButton>
       </form>
-    </div>
+    </ResidentAuthFrame>
   )
 }
 

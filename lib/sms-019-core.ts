@@ -6,6 +6,7 @@ export const SMS_019_ENDPOINT = 'https://019sms.co.il/api'
 const SMS_019_USERNAME = process.env.SMS_019_USERNAME
 const SMS_019_PASSWORD = process.env.SMS_019_PASSWORD
 export const SMS_019_SENDER = process.env.SMS_019_SENDER || '972559899132'
+export const SMS_019_FALLBACK_SENDER = '972559899132'
 
 /** נרמול מספר טלפון לפורמט 019SMS: 972xxxxxxxxx */
 export function normalizePhone019(phoneNumber: string): string {
@@ -16,6 +17,23 @@ export function normalizePhone019(phoneNumber: string): string {
   if (/^5\d{8}$/.test(n)) n = '972' + n
   if (!/^972\d{9}$/.test(n)) return ''
   return n
+}
+
+/**
+ * 019SMS accepts only registered phone numbers as `source`.
+ * Alphanumeric brand names (e.g. "מוקד במקור", "Bino") return XML status 515 and never deliver.
+ * Prefer the client-configured phone; otherwise fall back to the platform sender.
+ */
+export function resolve019SmsSource(senderPreferred: string | null | undefined): string {
+  const raw = String(senderPreferred ?? '').trim()
+  const fromPreferred = raw ? normalizePhone019(raw) : ''
+  if (fromPreferred) return fromPreferred
+  if (raw) {
+    console.warn('⚠️ SMS_SENDER_NOT_PHONE — using platform sender', {
+      invalidSenderPreview: raw.slice(0, 40),
+    })
+  }
+  return normalizePhone019(SMS_019_SENDER) || SMS_019_FALLBACK_SENDER
 }
 
 export function get019SmsEnv(): { username: string; password: string } | null {

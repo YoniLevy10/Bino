@@ -1,19 +1,24 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import {
   ResidentAlert,
-  ResidentAmbientWash,
-  ResidentCard,
+  ResidentAuthFrame,
   ResidentField,
   ResidentMuted,
+  ResidentOtpBoxes,
   ResidentPageTitle,
   ResidentPrimaryButton,
   residentShellStyles,
   residentTheme,
 } from '@/app/components/resident/residentUi'
+
+type JoinMeta = {
+  project?: { name?: string | null }
+  client?: { name?: string | null; logo_url?: string | null }
+}
 
 export default function ResidentJoinPage() {
   const params = useParams()
@@ -23,12 +28,33 @@ export default function ResidentJoinPage() {
     return typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : ''
   }, [params])
 
+  const [meta, setMeta] = useState<JoinMeta | null>(null)
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'phone' | 'code'>('phone')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+
+  useEffect(() => {
+    if (!projectId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/public/resident-portal/join-meta?project_id=${encodeURIComponent(projectId)}`
+        )
+        const json = (await res.json()) as JoinMeta & { error?: string }
+        if (cancelled || !res.ok) return
+        setMeta(json)
+      } catch {
+        /* branding is optional */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
 
   async function requestCode(e: FormEvent) {
     e.preventDefault()
@@ -46,7 +72,10 @@ export default function ResidentJoinPage() {
         setError(json.error || 'שליחת סיסמה נכשלה')
         return
       }
-      setInfo(json.message || 'אם המספר רשום, נשלחה סיסמה מספרית ב-SMS')
+      setInfo(
+        json.message ||
+          'אם המספר רשום אצל חברת הניהול בבניין זה, נשלחה אליו סיסמה מספרית ב-SMS'
+      )
       setStep('code')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאת רשת')
@@ -107,101 +136,76 @@ export default function ResidentJoinPage() {
   }
 
   return (
-    <div
-      className="resident-shell"
-      style={{ ...residentShellStyles.root, justifyContent: 'center' }}
-      dir="rtl"
+    <ResidentAuthFrame
+      brandName={meta?.client?.name}
+      buildingName={meta?.project?.name}
+      logoUrl={meta?.client?.logo_url}
     >
-      <ResidentAmbientWash />
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 420,
-          margin: '0 auto',
-          padding: 24,
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        <ResidentCard style={{ padding: 24 }}>
-          <ResidentPageTitle>כניסה לאזור האישי</ResidentPageTitle>
-          <ResidentMuted style={{ margin: '8px 0 20px' }}>
-            הזינו את מספר הטלפון הרשום אצל חברת הניהול. נשלח אליכם ב-SMS סיסמה מספרית חד־פעמית
-            שמשתנה בכל כניסה.
-          </ResidentMuted>
+      <ResidentPageTitle>כניסה לאזור האישי</ResidentPageTitle>
+      <ResidentMuted style={{ margin: '10px 0 22px' }}>
+        הזינו את מספר הטלפון הרשום אצל חברת הניהול. בכל כניסה נשלחת סיסמה מספרית חד־פעמית ב-SMS.
+      </ResidentMuted>
 
-          {step === 'phone' ? (
-            <form onSubmit={requestCode}>
-              <label style={residentShellStyles.label}>טלפון נייד</label>
-              <ResidentField
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                required
-                placeholder="050-0000000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                style={{ marginBottom: 16 }}
-              />
-              {error ? (
-                <div style={{ marginBottom: 12 }}>
-                  <ResidentAlert tone="error">{error}</ResidentAlert>
-                </div>
-              ) : null}
-              {info ? (
-                <div style={{ marginBottom: 12 }}>
-                  <ResidentAlert tone="success">{info}</ResidentAlert>
-                </div>
-              ) : null}
-              <ResidentPrimaryButton type="submit" disabled={loading}>
-                {loading ? 'שולח…' : 'שלחו סיסמה ב-SMS'}
-              </ResidentPrimaryButton>
-            </form>
+      {step === 'phone' ? (
+        <form onSubmit={requestCode}>
+          <label style={residentShellStyles.label}>טלפון נייד</label>
+          <ResidentField
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            required
+            placeholder="050-0000000"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            style={{ marginBottom: 16 }}
+            dir="ltr"
+          />
+          {error ? (
+            <div style={{ marginBottom: 12 }}>
+              <ResidentAlert tone="error">{error}</ResidentAlert>
+            </div>
+          ) : null}
+          <ResidentPrimaryButton type="submit" disabled={loading}>
+            {loading ? 'שולח…' : 'שלחו סיסמה ב-SMS'}
+          </ResidentPrimaryButton>
+        </form>
+      ) : (
+        <form onSubmit={verifyCode}>
+          <ResidentAlert tone="info">
+            {info ||
+              `אם המספר ${phone} רשום בבניין, נשלחה אליו סיסמה ב-SMS. בדקו גם במסוננים / הודעות לא רצויות.`}
+          </ResidentAlert>
+          <label style={{ ...residentShellStyles.label, marginTop: 18 }}>סיסמה מ-SMS</label>
+          <ResidentOtpBoxes value={code} onChange={setCode} disabled={loading} />
+          {error ? (
+            <div style={{ margin: '12px 0' }}>
+              <ResidentAlert tone="error">{error}</ResidentAlert>
+            </div>
           ) : (
-            <form onSubmit={verifyCode}>
-              <ResidentMuted style={{ marginBottom: 8 }}>סיסמה נשלחה אל {phone}</ResidentMuted>
-              <label style={residentShellStyles.label}>סיסמה מ-SMS (מספרים בלבד)</label>
-              <ResidentField
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                required
-                pattern="[0-9]{6}"
-                maxLength={6}
-                placeholder="000000"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                style={{ marginBottom: 16, letterSpacing: '0.2em', fontWeight: 700 }}
-              />
-              {error ? (
-                <div style={{ marginBottom: 12 }}>
-                  <ResidentAlert tone="error">{error}</ResidentAlert>
-                </div>
-              ) : null}
-              <ResidentPrimaryButton type="submit" disabled={loading || code.length !== 6}>
-                {loading ? 'מאמת…' : 'כניסה'}
-              </ResidentPrimaryButton>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('phone')
-                  setCode('')
-                  setError('')
-                  setInfo('')
-                }}
-                style={{
-                  ...residentShellStyles.headerAction,
-                  width: '100%',
-                  marginTop: 8,
-                  minHeight: 44,
-                }}
-              >
-                שינוי מספר / שליחה מחדש
-              </button>
-            </form>
+            <div style={{ height: 12 }} />
           )}
-        </ResidentCard>
-      </div>
-    </div>
+          <ResidentPrimaryButton type="submit" disabled={loading || code.length !== 6}>
+            {loading ? 'מאמת…' : 'כניסה'}
+          </ResidentPrimaryButton>
+          <button
+            type="button"
+            onClick={() => {
+              setStep('phone')
+              setCode('')
+              setError('')
+              setInfo('')
+            }}
+            style={{
+              ...residentShellStyles.headerAction,
+              width: '100%',
+              marginTop: 10,
+              minHeight: 44,
+            }}
+          >
+            שינוי מספר / שליחה מחדש
+          </button>
+        </form>
+      )}
+    </ResidentAuthFrame>
   )
 }

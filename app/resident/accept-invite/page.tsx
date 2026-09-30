@@ -3,6 +3,14 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import {
+  ResidentAlert,
+  ResidentAuthFrame,
+  ResidentMuted,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 function AcceptInviteInner() {
   const searchParams = useSearchParams()
@@ -52,22 +60,48 @@ function AcceptInviteInner() {
   }, [token, router])
 
   return (
-    <div dir="rtl" style={{ padding: 24, maxWidth: 480, margin: '40px auto' }}>
-      {status === 'working' ? <p>מאמתים הזמנה…</p> : null}
+    <ResidentAuthFrame brandName="BINO">
+      <ResidentPageTitle>אישור הזמנה</ResidentPageTitle>
+      {status === 'working' ? (
+        <ResidentMuted style={{ marginTop: 12 }}>מאמתים הזמנה…</ResidentMuted>
+      ) : null}
       {status === 'error' ? (
-        <div role="alert" style={{ background: '#FFEBE9', color: '#FF3B30', padding: 16, borderRadius: 12 }}>
-          <p style={{ marginTop: 0 }}>{error}</p>
-          <Link href={`/resident/login?token=${encodeURIComponent(token)}`}>מעבר להתחברות</Link>
+        <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
+          <ResidentAlert tone="error">{error}</ResidentAlert>
+          <ResidentPrimaryButton
+            href={`/resident/login?token=${encodeURIComponent(token)}`}
+          >
+            מעבר להתחברות
+          </ResidentPrimaryButton>
+          <Link
+            href="/resident/login"
+            style={{
+              textAlign: 'center',
+              color: residentTheme.colors.primary,
+              fontWeight: 600,
+              fontSize: 14,
+            }}
+          >
+            חזרה לכניסה
+          </Link>
         </div>
       ) : null}
-      {status === 'ok' ? <p>ההזמנה אושרה — מעבירים לפורטל…</p> : null}
-    </div>
+      {status === 'ok' ? (
+        <ResidentMuted style={{ marginTop: 12 }}>ההזמנה אושרה — מעבירים לפורטל…</ResidentMuted>
+      ) : null}
+    </ResidentAuthFrame>
   )
 }
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense fallback={<div dir="rtl" style={{ padding: 24 }}>טוען…</div>}>
+    <Suspense
+      fallback={
+        <div dir="rtl" style={{ padding: 24, color: residentTheme.colors.textMuted }}>
+          טוען…
+        </div>
+      }
+    >
       <AcceptInviteInner />
     </Suspense>
   )

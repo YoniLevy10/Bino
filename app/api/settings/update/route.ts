@@ -10,6 +10,7 @@ import {
   findOtherClientUsingGrowUserId,
   normalizeGrowUserId,
 } from '@/lib/grow-credentials'
+import { normalizePhone019 } from '@/lib/sms-019-core'
 
 export async function POST(req: Request) {
   const auth = await requireSessionWriteAccess()
@@ -33,6 +34,25 @@ export async function POST(req: Request) {
     payload.grow_user_id = normalizeGrowUserId(
       payload.grow_user_id as string | null | undefined
     )
+  }
+  // 019SMS rejects alphanumeric senders (status 515). Persist only normalized phones.
+  if ('sms_sender_name' in payload) {
+    const raw = payload.sms_sender_name
+    if (raw == null || String(raw).trim() === '') {
+      payload.sms_sender_name = null
+    } else {
+      const normalized = normalizePhone019(String(raw))
+      if (!normalized) {
+        return NextResponse.json(
+          {
+            error:
+              'מספר שולח SMS חייב להיות טלפון ישראלי (05… / 9725…) — שמות כמו מוקד במקור נדחים ע״י 019SMS',
+          },
+          { status: 400 }
+        )
+      }
+      payload.sms_sender_name = normalized
+    }
   }
 
   const touchesGrow = 'grow_enabled' in payload || 'grow_user_id' in payload
