@@ -3,8 +3,7 @@ import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { normalizeInviteEmail } from '@/lib/resident-portal/crypto'
-import { getPublicSiteUrlFromHeaders } from '@/lib/site-url'
-import { headers } from 'next/headers'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 
 /**
  * Request Supabase email OTP / magic link for resident portal.
@@ -37,8 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'יותר מדי בקשות — נסו שוב בעוד דקה' }, { status: 429 })
   }
 
-  const hdrs = await headers()
-  const siteBase = getPublicSiteUrlFromHeaders(hdrs) || new URL(req.url).origin
+  const siteBase = getClientPublicOrigin()
   const inviteToken =
     typeof body.inviteToken === 'string' && body.inviteToken.trim()
       ? body.inviteToken.trim()

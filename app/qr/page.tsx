@@ -39,6 +39,7 @@ import { PageTransitionLoader } from '../components/page-skeleton'
 import { digitsForWaMeLink } from '@/lib/wa-me-phone'
 import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
 import { buildResidentIntakeUrl } from '@/lib/resident-intake'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 
 type ProjectRow = {
   id: string
@@ -140,19 +141,14 @@ export default function QrPage() {
   }
 
   function buildReportLink(project: ProjectRow) {
-    const baseUrl =
-      (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '') ||
-      (typeof window !== 'undefined' ? window.location.origin : '')
-    return `${baseUrl}/report?project=${encodeURIComponent(project.project_code)}&client=${encodeURIComponent(project.client_id)}`
+    return `${getClientPublicOrigin()}/report?project=${encodeURIComponent(project.project_code)}&client=${encodeURIComponent(project.client_id)}`
   }
 
   function buildIntakeLink(project: ProjectRow) {
     return buildResidentIntakeUrl({
       projectCode: project.project_code,
       clientId: project.client_id,
-      baseUrl:
-        (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '') ||
-        (typeof window !== 'undefined' ? window.location.origin : ''),
+      baseUrl: getClientPublicOrigin(),
     })
   }
 

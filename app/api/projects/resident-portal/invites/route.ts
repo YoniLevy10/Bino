@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { createResidentPortalInvite, revokeResidentPortalMembership } from '@/lib/resident-portal/invites'
-import { getPublicSiteUrlFromHeaders } from '@/lib/site-url'
-import { headers } from 'next/headers'
+import { getResidentPortalAcceptInviteUrl } from '@/lib/public-origin'
 import { sanitizeId } from '@/lib/api-validation'
 import type { ResidentPortalRole } from '@/lib/resident-portal/types'
 
@@ -105,9 +104,7 @@ export async function POST(req: Request) {
       createdBy: auth.ctx.userId,
     })
 
-    const hdrs = await headers()
-    const siteBase = getPublicSiteUrlFromHeaders(hdrs) || new URL(req.url).origin
-    const acceptUrl = `${siteBase}/resident/accept-invite?token=${encodeURIComponent(created.token)}`
+    const acceptUrl = getResidentPortalAcceptInviteUrl(created.token)
 
     return NextResponse.json({
       ok: true,

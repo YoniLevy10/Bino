@@ -4,27 +4,28 @@
  * Do not use VERCEL_URL / *.vercel.app for customer-facing links.
  */
 
+import {
+  BINO_PUBLIC_ORIGIN,
+  getEnvPublicOrigin,
+  isVercelAppOrigin,
+} from '@/lib/public-origin'
+
 type HeaderLike = { get(name: string): string | null }
 
-function envSiteOrigin(): string {
-  if (typeof process === 'undefined') return ''
-  const fromSite = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/$/, '')
-  if (fromSite) return fromSite
-  return (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
-}
-
 export function getPublicSiteUrlFromHeaders(headers?: HeaderLike): string {
-  const env = envSiteOrigin()
+  const env = getEnvPublicOrigin()
   if (env) return env
 
-  if (!headers) return ''
+  if (!headers) return BINO_PUBLIC_ORIGIN
 
   const proto = headers.get('x-forwarded-proto') || 'https'
   const host =
     headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
     headers.get('host')?.trim() ||
     ''
-  if (!host) return ''
+  if (!host) return BINO_PUBLIC_ORIGIN
 
-  return `${proto}://${host}`.replace(/\/$/, '')
+  const fromHeaders = `${proto}://${host}`.replace(/\/$/, '')
+  if (isVercelAppOrigin(fromHeaders)) return BINO_PUBLIC_ORIGIN
+  return fromHeaders
 }

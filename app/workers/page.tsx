@@ -45,6 +45,7 @@ import {
   theme
 } from '../components/ui'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import Link from 'next/link'
@@ -629,7 +630,7 @@ export default function WorkersPage() {
           toast.error('אין טוקן לעובד')
           return
         }
-        const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/worker?token=${encodeURIComponent(token)}`
+        const url = `${getClientPublicOrigin()}/worker?token=${encodeURIComponent(token)}`
         await navigator.clipboard.writeText(url)
         toast.success('הקישור הועתק')
       } catch {

@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
 import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant-access'
@@ -94,7 +95,7 @@ export function LoginClient() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${getClientPublicOrigin()}/auth/callback`,
         },
       })
       if (oauthError) throw oauthError
