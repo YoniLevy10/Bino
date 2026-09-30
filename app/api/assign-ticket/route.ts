@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { assignTicketToWorker } from '@/lib/assign-ticket-worker'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { assignWorkerBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
     const bamakorClientId = auth.ctx.clientId
 
