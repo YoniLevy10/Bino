@@ -36,7 +36,11 @@ export async function GET(req: Request) {
     .order('apartment_number', { ascending: true })
     .limit(500)
 
-  return NextResponse.json({ project: data, residents: residents ?? [] })
+  return NextResponse.json({
+    project: data,
+    residents: residents ?? [],
+    joinPath: `/resident/join/${projectId}`,
+  })
 }
 
 export async function PATCH(req: Request) {

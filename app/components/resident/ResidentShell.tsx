@@ -60,6 +60,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
   const hideChrome =
     pathname === '/resident/login' ||
     pathname.startsWith('/resident/login') ||
+    pathname.startsWith('/resident/join') ||
     pathname.startsWith('/resident/accept-invite') ||
     pathname.startsWith('/resident/sandbox')
 
