@@ -34,6 +34,11 @@ const processedKeys = new Set<string>()
 
 vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: () => ({
+    rpc: () =>
+      Promise.resolve({
+        data: [{ is_limited: false, remaining: 99, reset_at: null }],
+        error: null,
+      }),
     from: (table: string) => {
       if (table === 'processed_webhooks') {
         return {
@@ -45,6 +50,11 @@ vi.mock('@/lib/supabase-admin', () => ({
             processedKeys.add(k)
             return Promise.resolve({ error: null })
           },
+          delete: () => ({
+            eq: () => ({
+              eq: () => Promise.resolve({ error: null }),
+            }),
+          }),
         }
       }
       if (table === 'clients') {
