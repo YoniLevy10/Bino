@@ -1,8 +1,18 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import {
+  ResidentAlert,
+  ResidentAmbientWash,
+  ResidentCard,
+  ResidentField,
+  ResidentMuted,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 function ResidentLoginForm() {
   const searchParams = useSearchParams()
@@ -41,76 +51,47 @@ function ResidentLoginForm() {
   }
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        minHeight: '100dvh',
-        display: 'grid',
-        placeItems: 'center',
-        padding: 24,
-        background: '#F2F4F8',
-      }}
-    >
+    <div className="resident-shell" style={{ ...residentShellStyles.root, justifyContent: 'center' }} dir="rtl">
+      <ResidentAmbientWash />
       <form
         onSubmit={onSubmit}
         style={{
           width: '100%',
-          maxWidth: 400,
-          background: '#fff',
-          borderRadius: 16,
+          maxWidth: 420,
+          margin: '0 auto',
           padding: 24,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
-        <h1 style={{ fontSize: 22, margin: '0 0 8px' }}>כניסה לפורטל הדיירים</h1>
-        <p style={{ margin: '0 0 20px', color: '#86868B', fontSize: 14, lineHeight: 1.5 }}>
-          הזינו את כתובת הדוא״ל שאליה קיבלתם הזמנה מחברת הניהול. נשלח קישור חד־פעמי להתחברות.
-        </p>
-        <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>דוא״ל</label>
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            minHeight: 48,
-            fontSize: 16,
-            padding: '12px 14px',
-            borderRadius: 10,
-            border: '1px solid #D1D1D6',
-            marginBottom: 16,
-          }}
-        />
-        {error ? (
-          <div role="alert" style={{ color: '#FF3B30', marginBottom: 12, fontSize: 14 }}>
-            {error}
-          </div>
-        ) : null}
-        {message ? (
-          <div role="status" style={{ color: '#16a34a', marginBottom: 12, fontSize: 14 }}>
-            {message}
-          </div>
-        ) : null}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            minHeight: 48,
-            border: 'none',
-            borderRadius: 12,
-            background: '#007AFF',
-            color: '#fff',
-            fontSize: 16,
-            fontWeight: 700,
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? 'שולח…' : 'שלחו קישור התחברות'}
-        </button>
+        <ResidentCard style={{ padding: 24 }}>
+          <ResidentPageTitle>כניסה לפורטל הדיירים</ResidentPageTitle>
+          <ResidentMuted style={{ margin: '8px 0 20px' }}>
+            הזינו את כתובת הדוא״ל שאליה קיבלתם הזמנה מחברת הניהול. נשלח קישור חד־פעמי להתחברות.
+          </ResidentMuted>
+          <label style={residentShellStyles.label}>דוא״ל</label>
+          <ResidentField
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ marginBottom: 16 }}
+          />
+          {error ? (
+            <div style={{ marginBottom: 12 }}>
+              <ResidentAlert tone="error">{error}</ResidentAlert>
+            </div>
+          ) : null}
+          {message ? (
+            <div style={{ marginBottom: 12 }}>
+              <ResidentAlert tone="success">{message}</ResidentAlert>
+            </div>
+          ) : null}
+          <ResidentPrimaryButton type="submit" disabled={loading}>
+            {loading ? 'שולח…' : 'שלחו קישור התחברות'}
+          </ResidentPrimaryButton>
+        </ResidentCard>
       </form>
     </div>
   )
@@ -118,7 +99,13 @@ function ResidentLoginForm() {
 
 export default function ResidentLoginPage() {
   return (
-    <Suspense fallback={<div dir="rtl" style={{ padding: 24 }}>טוען…</div>}>
+    <Suspense
+      fallback={
+        <div dir="rtl" style={{ padding: 24, color: residentTheme.colors.textMuted }}>
+          טוען…
+        </div>
+      }
+    >
       <ResidentLoginForm />
     </Suspense>
   )

@@ -1,7 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import {
+  ResidentAlert,
+  ResidentCard,
+  ResidentMuted,
+  ResidentPrimaryButton,
+  ResidentSectionTitle,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 type HomePayload = {
   openBalance: number
@@ -52,53 +60,47 @@ export default function ResidentHomePage() {
     }
   }, [])
 
-  if (error) {
-    return (
-      <div role="alert" style={{ background: '#FFEBE9', color: '#FF3B30', padding: 16, borderRadius: 12 }}>
-        {error}
-      </div>
-    )
-  }
-  if (!data) return <p style={{ color: '#86868B' }}>טוען…</p>
+  if (error) return <ResidentAlert tone="error">{error}</ResidentAlert>
+  if (!data) return <ResidentMuted>טוען…</ResidentMuted>
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <section style={card}>
-        <div style={{ fontSize: 13, color: '#86868B' }}>יתרה לתשלום</div>
-        <div style={{ fontSize: 28, fontWeight: 800 }}>
+    <div style={{ display: 'grid', gap: 14 }}>
+      <ResidentCard>
+        <div style={{ fontSize: 13, color: residentTheme.colors.textMuted }}>יתרה לתשלום</div>
+        <div style={residentShellStyles.balanceValue}>
           ₪{Number(data.openBalance || 0).toLocaleString('he-IL')}
         </div>
         {data.nextCharge ? (
-          <div style={{ marginTop: 8, fontSize: 14 }}>
+          <div style={{ marginTop: 8, fontSize: 14, color: residentTheme.colors.textSecondary }}>
             החיוב הקרוב: {data.nextCharge.title}
             {data.nextCharge.due_date ? ` · עד ${data.nextCharge.due_date}` : ''}
           </div>
         ) : (
-          <div style={{ marginTop: 8, fontSize: 14, color: '#86868B' }}>אין חיוב פתוח שפורסם</div>
+          <ResidentMuted style={{ marginTop: 8 }}>אין חיוב פתוח שפורסם</ResidentMuted>
         )}
-        <Link href="/resident/payments" style={linkBtn}>
-          לתשלומים
-        </Link>
-      </section>
+        <div style={{ marginTop: 12 }}>
+          <ResidentPrimaryButton href="/resident/payments">לתשלומים</ResidentPrimaryButton>
+        </div>
+      </ResidentCard>
 
-      <section style={card}>
-        <h2 style={h2}>הודעה</h2>
+      <ResidentCard>
+        <ResidentSectionTitle>הודעה</ResidentSectionTitle>
         {data.pinnedAnnouncement ? (
           <>
             <div style={{ fontWeight: 700 }}>{data.pinnedAnnouncement.title}</div>
-            <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', color: '#3C3C43' }}>
+            <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', color: residentTheme.colors.textSecondary }}>
               {data.pinnedAnnouncement.body}
             </p>
           </>
         ) : (
-          <p style={{ margin: 0, color: '#86868B' }}>אין הודעות שפורסמו כרגע</p>
+          <ResidentMuted>אין הודעות שפורסמו כרגע</ResidentMuted>
         )}
-      </section>
+      </ResidentCard>
 
-      <section style={card}>
-        <h2 style={h2}>שעות מתקנים להיום</h2>
+      <ResidentCard>
+        <ResidentSectionTitle>שעות מתקנים להיום</ResidentSectionTitle>
         {data.amenitiesToday.length === 0 ? (
-          <p style={{ margin: 0, color: '#86868B' }}>לא פורסמו שעות מתקנים</p>
+          <ResidentMuted>לא פורסמו שעות מתקנים</ResidentMuted>
         ) : (
           <ul style={{ margin: 0, paddingInlineStart: 18 }}>
             {data.amenitiesToday.map((a) => (
@@ -113,32 +115,18 @@ export default function ResidentHomePage() {
             ))}
           </ul>
         )}
-      </section>
+      </ResidentCard>
 
-      <Link href="/resident/tickets" style={{ ...linkBtn, background: '#1A1A2E' }}>
+      <ResidentPrimaryButton
+        href="/resident/tickets"
+        style={{
+          background: 'linear-gradient(180deg, #3a3a4a 0%, #1A1A2E 46%, #12121f 100%)',
+          boxShadow:
+            'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(0,0,0,0.25)',
+        }}
+      >
         פתיחת תקלה
-      </Link>
+      </ResidentPrimaryButton>
     </div>
   )
-}
-
-const card: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 16,
-  padding: 16,
-  border: '1px solid #E8E8ED',
-}
-const h2: React.CSSProperties = { fontSize: 16, margin: '0 0 8px' }
-const linkBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginTop: 12,
-  minHeight: 48,
-  padding: '0 16px',
-  borderRadius: 12,
-  background: '#007AFF',
-  color: '#fff',
-  textDecoration: 'none',
-  fontWeight: 700,
 }

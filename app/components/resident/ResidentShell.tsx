@@ -5,6 +5,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
+import {
+  ResidentAmbientWash,
+  ResidentAlert,
+  ResidentMuted,
+  ResidentNavIcon,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 type MembershipSummary = {
   id: string
@@ -15,20 +23,28 @@ type MembershipSummary = {
 }
 
 const NAV = [
-  { href: '/resident', label: 'בית', match: (p: string) => p === '/resident' },
+  {
+    href: '/resident',
+    label: 'בית',
+    icon: 'home' as const,
+    match: (p: string) => p === '/resident',
+  },
   {
     href: '/resident/payments',
     label: 'תשלומים',
+    icon: 'payments' as const,
     match: (p: string) => p.startsWith('/resident/payments'),
   },
   {
     href: '/resident/tickets',
     label: 'תקלות',
+    icon: 'tickets' as const,
     match: (p: string) => p.startsWith('/resident/tickets'),
   },
   {
     href: '/resident/information',
     label: 'מידע',
+    icon: 'info' as const,
     match: (p: string) => p.startsWith('/resident/information'),
   },
 ] as const
@@ -44,7 +60,8 @@ export function ResidentShell({ children }: { children: ReactNode }) {
   const hideChrome =
     pathname === '/resident/login' ||
     pathname.startsWith('/resident/login') ||
-    pathname.startsWith('/resident/accept-invite')
+    pathname.startsWith('/resident/accept-invite') ||
+    pathname.startsWith('/resident/sandbox')
 
   const loadMemberships = useCallback(async () => {
     if (hideChrome) {
@@ -103,7 +120,6 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       setError(json.error || 'בחירת דירה נכשלה')
       return
     }
-    // Clear any client query cache by hard navigation refresh.
     router.refresh()
     window.location.href = pathname || '/resident'
   }
@@ -123,30 +139,10 @@ export function ResidentShell({ children }: { children: ReactNode }) {
   const active = memberships.find((m) => m.id === activeId) || memberships[0]
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        minHeight: '100dvh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#F2F4F8',
-        color: '#1A1A2E',
-        fontFamily: 'var(--font-heebo), sans-serif',
-      }}
-    >
-      <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          background: '#fff',
-          borderBottom: '1px solid #E8E8ED',
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
+    <div className="resident-shell" style={residentShellStyles.root} dir="rtl">
+      <ResidentAmbientWash />
+
+      <header className="lg-chrome" style={residentShellStyles.header}>
         {active?.client_logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -154,65 +150,45 @@ export function ResidentShell({ children }: { children: ReactNode }) {
             alt=""
             width={36}
             height={36}
-            style={{ borderRadius: 8, objectFit: 'contain' }}
+            style={{ borderRadius: residentTheme.radius.md, objectFit: 'contain' }}
           />
         ) : (
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              background: '#007AFF',
-              color: '#fff',
-              display: 'grid',
-              placeItems: 'center',
-              fontWeight: 700,
-            }}
-          >
-            B
-          </div>
+          <div style={residentShellStyles.logoMark}>B</div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>
-            {active?.client_name || 'פורטל דיירים'}
-          </div>
-          <div style={{ fontSize: 13, color: '#86868B' }}>
+          <div style={residentShellStyles.title}>{active?.client_name || 'פורטל דיירים'}</div>
+          <div style={residentShellStyles.subtitle}>
             {active?.project_name || '—'}
             {active?.apartment_number ? ` · דירה ${active.apartment_number}` : ''}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            color: '#007AFF',
-            fontSize: 14,
-            minHeight: 44,
-            padding: '0 8px',
-          }}
-        >
+        <button type="button" onClick={() => void signOut()} style={residentShellStyles.headerAction}>
           יציאה
         </button>
       </header>
 
       {memberships.length > 1 ? (
-        <div style={{ padding: '8px 16px', background: '#fff', borderBottom: '1px solid #E8E8ED' }}>
-          <label style={{ fontSize: 12, color: '#86868B', display: 'block', marginBottom: 4 }}>
+        <div
+          className="lg-glass"
+          style={{
+            margin: '8px 16px 0',
+            padding: '10px 12px',
+            borderRadius: residentTheme.radius.lg,
+          }}
+        >
+          <label style={{ fontSize: 12, color: residentTheme.colors.textMuted, display: 'block', marginBottom: 4 }}>
             בחירת דירה
           </label>
           <select
+            className="lg-field"
             value={active?.id || ''}
             onChange={(e) => void selectMembership(e.target.value)}
             style={{
               width: '100%',
               minHeight: 44,
               fontSize: 16,
-              borderRadius: 10,
-              border: '1px solid #D1D1D6',
               padding: '8px 12px',
-              background: '#fff',
+              color: residentTheme.colors.textPrimary,
             }}
           >
             {memberships.map((m) => (
@@ -225,57 +201,31 @@ export function ResidentShell({ children }: { children: ReactNode }) {
         </div>
       ) : null}
 
-      <main style={{ flex: 1, padding: '16px 16px 96px', maxWidth: 560, width: '100%', margin: '0 auto' }}>
+      <main style={residentShellStyles.main}>
         {loading ? (
-          <p style={{ color: '#86868B' }}>טוען…</p>
+          <ResidentMuted>טוען…</ResidentMuted>
         ) : error && memberships.length === 0 ? (
-          <div
-            role="alert"
-            style={{
-              background: '#FFEBE9',
-              color: '#FF3B30',
-              padding: 16,
-              borderRadius: 12,
-            }}
-          >
-            {error}
-          </div>
+          <ResidentAlert tone="error">{error}</ResidentAlert>
         ) : (
           children
         )}
       </main>
 
-      <nav
-        aria-label="ניווט פורטל דיירים"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          insetInline: 0,
-          background: '#fff',
-          borderTop: '1px solid #E8E8ED',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          zIndex: 30,
-        }}
-      >
+      <nav className="lg-tabbar" aria-label="ניווט פורטל דיירים" style={residentShellStyles.tabbar}>
         {NAV.map((item) => {
           const activeNav = item.match(pathname || '')
           return (
             <Link
               key={item.href}
               href={item.href}
+              className={activeNav ? 'lg-nav-active' : undefined}
               style={{
-                textAlign: 'center',
-                padding: '10px 4px',
-                minHeight: 56,
-                textDecoration: 'none',
-                color: activeNav ? '#007AFF' : '#86868B',
-                fontWeight: activeNav ? 700 : 500,
-                fontSize: 13,
+                ...residentShellStyles.tabItem,
+                ...(activeNav ? residentShellStyles.tabItemActive : null),
               }}
             >
-              {item.label}
+              <ResidentNavIcon name={item.icon} active={activeNav} />
+              <span>{item.label}</span>
             </Link>
           )
         })}
@@ -284,22 +234,8 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       <Link
         href="/resident/chat"
         aria-label="שיחה עם הבוט"
-        style={{
-          position: 'fixed',
-          bottom: 72,
-          left: 16,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          background: '#007AFF',
-          color: '#fff',
-          display: 'grid',
-          placeItems: 'center',
-          textDecoration: 'none',
-          fontWeight: 700,
-          boxShadow: '0 8px 24px rgba(0,122,255,0.35)',
-          zIndex: 40,
-        }}
+        className="lg-btn lg-btn-primary"
+        style={residentShellStyles.fab}
       >
         בוט
       </Link>

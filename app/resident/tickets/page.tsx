@@ -2,6 +2,18 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { residentMidragSearchHref, residentMidragSectors } from '@/lib/resident-portal/midrag'
+import {
+  ResidentAlert,
+  ResidentCard,
+  ResidentMuted,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  ResidentSectionTitle,
+  ResidentSelect,
+  ResidentTextArea,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 type Ticket = {
   id: string
@@ -81,117 +93,82 @@ export default function ResidentTicketsPage() {
   const midrag = residentMidragSearchHref({ sectorId, city })
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <h1 style={{ margin: 0, fontSize: 22 }}>התקלות שלי</h1>
+    <div style={{ display: 'grid', gap: 14 }}>
+      <ResidentPageTitle>התקלות שלי</ResidentPageTitle>
 
-      <form
-        onSubmit={onSubmit}
-        style={{ background: '#fff', borderRadius: 16, padding: 16, border: '1px solid #E8E8ED' }}
-      >
-        <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>פתיחת תקלה</h2>
-        <label style={{ fontSize: 13 }}>תיאור</label>
-        <textarea
-          required
-          minLength={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={4}
-          style={{
-            width: '100%',
-            fontSize: 16,
-            padding: 12,
-            borderRadius: 10,
-            border: '1px solid #D1D1D6',
-            boxSizing: 'border-box',
-          }}
-        />
-        <label style={{ fontSize: 13, display: 'block', marginTop: 10 }}>סוג</label>
-        <select
-          value={scope}
-          onChange={(e) => setScope(e.target.value as typeof scope)}
-          style={{ width: '100%', minHeight: 44, fontSize: 16, marginBottom: 10 }}
-        >
-          <option value="common">שטח משותף</option>
-          <option value="private">דירה פרטית</option>
-          <option value="unclear">לא ברור</option>
-        </select>
-        {scope === 'private' ? (
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 13 }}>מקצוע לחיפוש במידרג</label>
-            <select
-              value={sectorId}
-              onChange={(e) => setSectorId(Number(e.target.value))}
-              style={{ width: '100%', minHeight: 44, fontSize: 16 }}
-            >
-              {SECTORS.map((s) => (
-                <option key={s.sectorId} value={s.sectorId}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <p style={{ fontSize: 12, color: '#86868B' }}>
-              תקלה פרטית אינה משובצת אוטומטית. פתיחת מידרג אינה הזמנה.
-            </p>
-            {midrag.href ? (
-              <a href={midrag.href} target="_blank" rel="noopener noreferrer">
-                {midrag.needsCityPicker
-                  ? 'בחירת עיר במידרג'
-                  : `חיפוש במידרג (${city})`}
-              </a>
-            ) : null}
-          </div>
-        ) : null}
-        {error ? (
-          <div role="alert" style={{ color: '#FF3B30', marginBottom: 8 }}>
-            {error}
-          </div>
-        ) : null}
-        {success ? (
-          <div role="status" style={{ color: '#16a34a', marginBottom: 8 }}>
-            {success}
-          </div>
-        ) : null}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            minHeight: 48,
-            border: 'none',
-            borderRadius: 12,
-            background: '#007AFF',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 16,
-          }}
-        >
-          {loading ? 'שולח…' : 'פתיחת קריאה'}
-        </button>
+      <form onSubmit={onSubmit}>
+        <ResidentCard>
+          <ResidentSectionTitle>פתיחת תקלה</ResidentSectionTitle>
+          <label style={residentShellStyles.label}>תיאור</label>
+          <ResidentTextArea
+            required
+            minLength={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+          />
+          <label style={{ ...residentShellStyles.label, marginTop: 10 }}>סוג</label>
+          <ResidentSelect
+            value={scope}
+            onChange={(e) => setScope(e.target.value as typeof scope)}
+            style={{ marginBottom: 10 }}
+          >
+            <option value="common">שטח משותף</option>
+            <option value="private">דירה פרטית</option>
+            <option value="unclear">לא ברור</option>
+          </ResidentSelect>
+          {scope === 'private' ? (
+            <div style={{ marginBottom: 10 }}>
+              <label style={residentShellStyles.label}>מקצוע לחיפוש במידרג</label>
+              <ResidentSelect
+                value={sectorId}
+                onChange={(e) => setSectorId(Number(e.target.value))}
+              >
+                {SECTORS.map((s) => (
+                  <option key={s.sectorId} value={s.sectorId}>
+                    {s.label}
+                  </option>
+                ))}
+              </ResidentSelect>
+              <ResidentMuted style={{ margin: '8px 0' }}>
+                תקלה פרטית אינה משובצת אוטומטית. פתיחת מידרג אינה הזמנה.
+              </ResidentMuted>
+              {midrag.href ? (
+                <a
+                  href={midrag.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: residentTheme.colors.primary, fontWeight: 600 }}
+                >
+                  {midrag.needsCityPicker
+                    ? 'בחירת עיר במידרג'
+                    : `חיפוש במידרג (${city})`}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+          {error ? <div style={{ marginBottom: 8 }}><ResidentAlert tone="error">{error}</ResidentAlert></div> : null}
+          {success ? <div style={{ marginBottom: 8 }}><ResidentAlert tone="success">{success}</ResidentAlert></div> : null}
+          <ResidentPrimaryButton type="submit" disabled={loading}>
+            {loading ? 'שולח…' : 'פתיחת קריאה'}
+          </ResidentPrimaryButton>
+        </ResidentCard>
       </form>
 
-      <section>
-        <h2 style={{ fontSize: 16 }}>הקריאות שלי</h2>
+      <section style={{ display: 'grid', gap: 10 }}>
+        <ResidentSectionTitle>הקריאות שלי</ResidentSectionTitle>
         {tickets.length === 0 ? (
-          <p style={{ color: '#86868B' }}>אין קריאות עדיין</p>
+          <ResidentMuted>אין קריאות עדיין</ResidentMuted>
         ) : (
           tickets.map((t) => (
-            <article
-              key={t.id}
-              style={{
-                background: '#fff',
-                borderRadius: 12,
-                padding: 14,
-                border: '1px solid #E8E8ED',
-                marginBottom: 8,
-              }}
-            >
+            <ResidentCard key={t.id} style={{ padding: 14 }}>
               <div style={{ fontWeight: 700 }}>#{t.ticket_number}</div>
-              <div style={{ fontSize: 13, color: '#86868B' }}>
+              <div style={{ fontSize: 13, color: residentTheme.colors.textMuted }}>
                 {t.status}
                 {t.scope ? ` · ${scopeLabel(t.scope)}` : ''}
               </div>
               <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{t.description}</p>
-            </article>
+            </ResidentCard>
           ))
         )}
       </section>

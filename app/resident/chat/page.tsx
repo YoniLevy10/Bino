@@ -2,6 +2,14 @@
 
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
+import {
+  ResidentAlert,
+  ResidentCard,
+  ResidentField,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
@@ -67,14 +75,10 @@ export default function ResidentChatPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: '60dvh' }}>
-      <h1 style={{ margin: 0, fontSize: 22 }}>בוט דיירים</h1>
-      <div
+      <ResidentPageTitle>בוט דיירים</ResidentPageTitle>
+      <ResidentCard
         style={{
           flex: 1,
-          background: '#fff',
-          borderRadius: 16,
-          border: '1px solid #E8E8ED',
-          padding: 12,
           display: 'grid',
           gap: 8,
           maxHeight: '50dvh',
@@ -84,11 +88,11 @@ export default function ResidentChatPage() {
         {messages.map((m, i) => (
           <div
             key={i}
+            className={m.role === 'user' ? 'lg-chip lg-chip-active' : 'lg-chip'}
             style={{
               justifySelf: m.role === 'user' ? 'start' : 'stretch',
-              background: m.role === 'user' ? '#E5F2FF' : '#F5F5F7',
               padding: 10,
-              borderRadius: 12,
+              borderRadius: residentTheme.radius.md,
               whiteSpace: 'pre-wrap',
               fontSize: 15,
             }}
@@ -96,15 +100,17 @@ export default function ResidentChatPage() {
             {m.content}
           </div>
         ))}
-      </div>
+      </ResidentCard>
       {error ? (
-        <div role="alert" style={{ color: '#FF3B30' }}>
-          {error}. <Link href="/resident/tickets">מעבר לטופס תקלות</Link>
-        </div>
+        <ResidentAlert tone="error">
+          {error}.{' '}
+          <Link href="/resident/tickets" style={{ color: 'inherit', fontWeight: 700 }}>
+            מעבר לטופס תקלות
+          </Link>
+        </ResidentAlert>
       ) : null}
       {pendingConfirm ? (
-        <button
-          type="button"
+        <ResidentPrimaryButton
           disabled={loading}
           onClick={() =>
             void send({
@@ -118,46 +124,26 @@ export default function ResidentChatPage() {
             })
           }
           style={{
-            minHeight: 48,
-            border: 'none',
-            borderRadius: 12,
-            background: '#34C759',
-            color: '#fff',
-            fontWeight: 700,
+            background: 'linear-gradient(180deg, #4cd964 0%, #34C759 46%, #2fb350 100%)',
           }}
         >
           אישור ופתיחת קריאה
-        </button>
+        </ResidentPrimaryButton>
       ) : null}
       <form onSubmit={onSubmit} style={{ display: 'flex', gap: 8 }}>
-        <input
+        <ResidentField
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="כתבו הודעה…"
-          style={{
-            flex: 1,
-            minHeight: 48,
-            fontSize: 16,
-            borderRadius: 12,
-            border: '1px solid #D1D1D6',
-            padding: '0 12px',
-          }}
+          style={{ flex: 1 }}
         />
-        <button
+        <ResidentPrimaryButton
           type="submit"
           disabled={loading}
-          style={{
-            minHeight: 48,
-            minWidth: 72,
-            border: 'none',
-            borderRadius: 12,
-            background: '#007AFF',
-            color: '#fff',
-            fontWeight: 700,
-          }}
+          style={{ width: 'auto', minWidth: 84, padding: '0 16px' }}
         >
           שליחה
-        </button>
+        </ResidentPrimaryButton>
       </form>
     </div>
   )
