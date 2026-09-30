@@ -14,6 +14,8 @@ import {
   writeMiddlewareTenantCache,
 } from '@/lib/middleware-tenant-cache'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
+import { isResidentPortalApiPath, isResidentPortalPath } from '@/lib/is-resident-portal-path'
+import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
 
 type Pending = { response: NextResponse }
 
@@ -58,6 +60,7 @@ export async function middleware(req: NextRequest) {
 
   // Marketing home is public, but logged-in managers (esp. iOS PWA with old
   // start_url "/") should land on the dashboard — not the sales page.
+  // Resident-only accounts go to /resident (never mix manager + resident authz).
   if (pathname === '/') {
     const pending: Pending = { response: NextResponse.next() }
     const supabase = createMiddlewareSupabase(req, pending)
@@ -66,12 +69,33 @@ export async function middleware(req: NextRequest) {
         data: { user },
       } = await supabase.auth.getUser()
       if (user) {
-        const url = req.nextUrl.clone()
-        url.pathname = '/dashboard'
-        return redirectWithCookies(pending, url)
+        try {
+          const admin = getSupabaseAdmin()
+          const clientIds = await listClientIdsForUserId(admin, user.id)
+          if (clientIds.length === 1) {
+            const url = req.nextUrl.clone()
+            url.pathname = '/dashboard'
+            return redirectWithCookies(pending, url)
+          }
+          if (clientIds.length === 0) {
+            const hasResident = await userHasActiveResidentMembership(admin, user.id)
+            if (hasResident) {
+              const url = req.nextUrl.clone()
+              url.pathname = '/resident'
+              return redirectWithCookies(pending, url)
+            }
+          }
+        } catch {
+          // fall through to marketing page on transient errors
+        }
       }
     }
     return pending.response
+  }
+
+  // Resident login is public (OTP request). Other /resident* need session below.
+  if (pathname === '/resident/login' || pathname.startsWith('/resident/login/')) {
+    return NextResponse.next()
   }
 
   // Public routes: do not block WhatsApp webhook or login screen
@@ -110,6 +134,29 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/.well-known/')
   ) {
     return NextResponse.next()
+  }
+
+  // Resident portal: require Auth session, but DO NOT require organization_users.
+  // APIs enforce active membership via requireResidentContext (service_role checks).
+  if (isResidentPortalPath(pathname) || isResidentPortalApiPath(pathname)) {
+    const pending: Pending = { response: NextResponse.next() }
+    const supabase = createMiddlewareSupabase(req, pending)
+    if (!supabase) {
+      return pending.response
+    }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      if (isResidentPortalApiPath(pathname)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      const url = req.nextUrl.clone()
+      url.pathname = '/resident/login'
+      url.searchParams.set('redirectTo', pathname)
+      return redirectWithCookies(pending, url)
+    }
+    return pending.response
   }
 
   // Let Next handle static assets + SEO crawl endpoints

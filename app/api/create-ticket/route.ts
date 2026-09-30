@@ -11,7 +11,7 @@ import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 import { runAfterResponse } from '@/lib/run-after-response'
 import { checkTicketsMonthlyQuota } from '@/lib/plan-quota-check'
-import { uploadTicketAttachments } from '@/lib/ticket-attachment-upload'
+import { createTicketShared } from '@/lib/tickets/create-ticket-service'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
 export const maxDuration = 60
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // MODE 1: WEB FORM
+    // MODE 1: WEB FORM — shared create service (also used by resident portal)
     if (projectCodeFromBody) {
       if (description.length < 3) {
         return NextResponse.json(
@@ -181,122 +181,44 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'לא נמצא פרויקט' }, { status: 404 })
       }
 
-      const storedReporterPhone = reporterPhone ? whatsappDbPhoneKey(reporterPhone) : null
-
-      const { data: createdTicket, error: ticketError } = await supabaseAdmin
-        .from('tickets')
-        .insert({
-          project_id: project.id,
-          client_id: project.client_id,
-          reporter_name: reporterName,
-          reporter_phone: storedReporterPhone,
-          description,
-          status: 'NEW',
-          priority: 'MEDIUM',
-          source,
-          language: 'he',
-          building_number: buildingNumberFromBody,
-        })
-        .select('id, ticket_number, project_id, status, building_number')
-        .single()
-
-      if (ticketError) {
-        console.error('❌ Failed to create ticket from web form:', ticketError)
-        logger.error('TICKET_API', 'Failed to create ticket from web form', ticketError as Error, { 
-          requestId, 
-          projectCode: projectCodeFromBody,
-          clientId: project.client_id 
-        })
-        audit.logFailedOperation('CREATE', 'TICKET', 'unknown', project.client_id, ticketError.message)
-        return NextResponse.json(
-          { error: ticketError.message || 'Failed to create ticket' },
-          { status: 500 }
-        )
-      }
-
-      // Log audit trail
-      audit.logTicketCreated(project.client_id, createdTicket.id, 'web_form')
-      logger.info('TICKET_API', 'Ticket created from web form', { 
-        requestId, 
-        ticketId: createdTicket.id, 
-        ticketNumber: createdTicket.ticket_number,
-        clientId: project.client_id 
-      })
-
-      const { error: logError } = await supabaseAdmin
-        .from('ticket_logs')
-        .insert({
-          ticket_id: createdTicket.id,
-          action_type: 'CREATED_FROM_WEB_FORM',
-          notes: `Ticket created from web form for project ${project.project_code}`,
-          created_by: 'system',
-          meta: {
-            source: 'web_form',
-            project_code: project.project_code,
-            reporter_name: reporterName,
-            building_number: buildingNumberFromBody,
-          },
-        })
-
-      if (logError) {
-        console.error('⚠️ Ticket log insert failed (non-blocking):', logError)
-      }
-
-      if (reporterPhone) {
-        await queuePendingResidentApproval({
-          supabase: supabaseAdmin,
+      try {
+        const created = await createTicketShared(supabaseAdmin, {
           clientId: project.client_id as string,
           projectId: project.id as string,
-          ticketId: createdTicket.id,
-          waFrom: reporterPhone,
-        })
-      }
-
-      // Handle file attachments if present
-      let imageUploadWarning: string | undefined
-      if (files.length > 0) {
-        const uploadResult = await uploadTicketAttachments(
-          supabaseAdmin,
-          createdTicket.id,
+          description,
+          source: source || 'web_form',
+          reporterName,
+          reporterPhone,
+          buildingNumber: buildingNumberFromBody,
           files,
-          'web'
-        )
-        imageUploadWarning = uploadResult.warning
-      }
-
-      const { data: clientRowWeb } = await supabaseAdmin
-        .from('clients')
-        .select('sms_sender_name')
-        .eq('id', project.client_id)
-        .maybeSingle()
-      const smsSenderWeb =
-        (clientRowWeb as { sms_sender_name?: string | null } | null)?.sms_sender_name?.trim() || null
-
-      runAfterResponse('create-ticket-web-auto-assign', async () => {
-        await autoAssignTicketFromProject(supabaseAdmin, {
-          ticketId: createdTicket.id,
-          clientId: project.client_id as string,
-          projectId: project.id as string,
-          ticketNumber: createdTicket.ticket_number as number,
-          description,
-          smsSenderName: smsSenderWeb,
-          projectName: (project as { name?: string }).name ?? null,
         })
-      })
-
-      void notifyNewTicketPush(supabaseAdmin, project.client_id as string, description, {
-        ticketNumber: createdTicket.ticket_number as number,
-      }).catch(() => {})
-
-      return NextResponse.json({
-        success: true,
-        mode: 'created_from_web_form',
-        ticketId: createdTicket.id,
-        ticketNumber: createdTicket.ticket_number,
-        projectCode: project.project_code,
-        buildingNumber: createdTicket.building_number,
-        imageUploadWarning,
-      })
+        audit.logTicketCreated(project.client_id, created.ticketId, 'web_form')
+        logger.info('TICKET_API', 'Ticket created from web form', {
+          requestId,
+          ticketId: created.ticketId,
+          ticketNumber: created.ticketNumber,
+          clientId: project.client_id,
+        })
+        return NextResponse.json({
+          success: true,
+          mode: 'created_from_web_form',
+          ticketId: created.ticketId,
+          ticketNumber: created.ticketNumber,
+          projectCode: project.project_code,
+          buildingNumber: buildingNumberFromBody,
+          imageUploadWarning: created.imageUploadWarning,
+        })
+      } catch (ticketError) {
+        const msg = ticketError instanceof Error ? ticketError.message : 'Failed to create ticket'
+        console.error('❌ Failed to create ticket from web form:', ticketError)
+        logger.error('TICKET_API', 'Failed to create ticket from web form', ticketError as Error, {
+          requestId,
+          projectCode: projectCodeFromBody,
+          clientId: project.client_id,
+        })
+        audit.logFailedOperation('CREATE', 'TICKET', 'unknown', project.client_id, msg)
+        return NextResponse.json({ error: msg }, { status: 500 })
+      }
     }
 
     // MODE 2: WHATSAPP / LEGACY FLOW

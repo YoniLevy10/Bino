@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
+import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -90,6 +91,8 @@ type LoadOptions = {
 export function PaidAddonsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isWorker = isWorkerPortalPath(pathname)
+  const isResident = isResidentPortalPath(pathname)
+  const skipManagerAddons = isWorker || isResident
   const initial = useRef(readInitialAddonsState()).current
   const [isBootstrapped, setIsBootstrapped] = useState(initial.isBootstrapped)
   const [catalogMissing, setCatalogMissing] = useState(initial.catalogMissing)
@@ -136,16 +139,16 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (isWorker) {
+    if (skipManagerAddons) {
       // Do not wipe entitlements — returning to the tenant shell must keep cached nav.
       setIsBootstrapped(true)
       return
     }
     void load()
-  }, [isWorker, load])
+  }, [skipManagerAddons, load])
 
   useEffect(() => {
-    if (isWorker) return
+    if (skipManagerAddons) return
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       const elapsed = Date.now() - lastNetworkFetchRef.current
@@ -154,13 +157,13 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [isWorker, load])
+  }, [skipManagerAddons, load])
 
   useAppRefreshListener(
     useCallback(() => {
-      if (isWorker) return
+      if (skipManagerAddons) return
       void load({ forceNetwork: true, skipCache: true })
-    }, [isWorker, load])
+    }, [skipManagerAddons, load])
   )
 
   const refresh = useCallback(() => load({ forceNetwork: true, skipCache: true }), [load])

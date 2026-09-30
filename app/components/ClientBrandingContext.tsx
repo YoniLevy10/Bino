@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
+import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createClient } from '@/utils/supabase/client'
@@ -78,6 +79,8 @@ type LoadBrandingOptions = {
 export function ClientBrandingProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isWorker = isWorkerPortalPath(pathname)
+  const isResident = isResidentPortalPath(pathname)
+  const skipManagerTenant = isWorker || isResident
 
   const [branding, setBranding] = useState<ClientBranding>(DEFAULT_BRANDING)
   const [isBootstrapped, setIsBootstrapped] = useState(false)
@@ -130,19 +133,19 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     [fetchBrandingFromNetwork]
   )
 
-  // Worker portal: local defaults only — never hit tenant branding APIs.
+  // Worker / resident portal: local defaults only — never hit manager tenant branding APIs.
   // Manager shell: load once on mount (not on every pathname change).
   useEffect(() => {
-    if (isWorker) {
+    if (skipManagerTenant) {
       setBranding(DEFAULT_BRANDING)
       setIsBootstrapped(true)
       return
     }
     void loadBranding()
-  }, [isWorker, loadBranding])
+  }, [skipManagerTenant, loadBranding])
 
   useEffect(() => {
-    if (isWorker) return
+    if (skipManagerTenant) return
     const supabase = createClient()
     const {
       data: { subscription },
@@ -173,10 +176,10 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [isWorker, loadBranding])
+  }, [skipManagerTenant, loadBranding])
 
   useEffect(() => {
-    if (isWorker) return
+    if (skipManagerTenant) return
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       const elapsed = Date.now() - lastNetworkFetchRef.current
@@ -185,13 +188,13 @@ export function ClientBrandingProvider({ children }: { children: ReactNode }) {
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [isWorker, loadBranding])
+  }, [skipManagerTenant, loadBranding])
 
   useAppRefreshListener(
     useCallback(() => {
-      if (isWorker) return
+      if (skipManagerTenant) return
       void loadBranding({ forceNetwork: true })
-    }, [isWorker, loadBranding])
+    }, [skipManagerTenant, loadBranding])
   )
 
   useEffect(() => {

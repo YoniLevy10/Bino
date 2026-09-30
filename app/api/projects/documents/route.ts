@@ -46,7 +46,9 @@ export async function GET(req: Request) {
 
   const { data: rows, error } = await admin
     .from('project_documents')
-    .select('id, file_name, mime_type, file_size, notes, created_at, storage_path')
+    .select(
+      'id, file_name, mime_type, file_size, notes, created_at, storage_path, visibility, published_at, category, building_id'
+    )
     .eq('client_id', auth.ctx.clientId)
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
@@ -63,6 +65,10 @@ export async function GET(req: Request) {
         notes: string | null
         created_at: string
         storage_path: string
+        visibility?: string | null
+        published_at?: string | null
+        category?: string | null
+        building_id?: string | null
       }
       const { data: signed } = await admin.storage
         .from(BUCKET)
@@ -74,6 +80,10 @@ export async function GET(req: Request) {
         file_size: r.file_size,
         notes: r.notes,
         created_at: r.created_at,
+        visibility: r.visibility ?? 'internal',
+        published_at: r.published_at ?? null,
+        category: r.category ?? null,
+        building_id: r.building_id ?? null,
         download_url: signed?.signedUrl ?? null,
       }
     })
