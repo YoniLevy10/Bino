@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -224,7 +224,7 @@ export function RecommendationsBell() {
       : null
 
   return (
-    <div ref={rootRef} style={styles.root}>
+    <div style={styles.root}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
