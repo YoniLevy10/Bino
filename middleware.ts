@@ -93,8 +93,20 @@ export async function middleware(req: NextRequest) {
     return pending.response
   }
 
+<<<<<<< HEAD
   // Resident login is public (OTP request). Other /resident* need session below.
   if (pathname === '/resident/login' || pathname.startsWith('/resident/login/')) {
+=======
+  // Resident login / shared join / UX sandbox are public. Other /resident* need session below.
+  if (
+    pathname === '/resident/login' ||
+    pathname.startsWith('/resident/login/') ||
+    pathname === '/resident/join' ||
+    pathname.startsWith('/resident/join/') ||
+    pathname === '/resident/sandbox' ||
+    pathname.startsWith('/resident/sandbox/')
+  ) {
+>>>>>>> 60f6f02 (feat(resident-portal): sandbox UX לדמו דייר ללא DB)
     return NextResponse.next()
   }
 
