@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { listClientIdsForUserId } from '@/lib/tenant-resolution'
 import {
   fetchClientEnabledNavFeatures,
@@ -70,15 +69,15 @@ export async function middleware(req: NextRequest) {
       } = await supabase.auth.getUser()
       if (user) {
         try {
-          const admin = getSupabaseAdmin()
-          const clientIds = await listClientIdsForUserId(admin, user.id)
+          // Session client only — Edge-safe (no Node crypto / service-role admin).
+          const clientIds = await listClientIdsForUserId(supabase, user.id)
           if (clientIds.length === 1) {
             const url = req.nextUrl.clone()
             url.pathname = '/dashboard'
             return redirectWithCookies(pending, url)
           }
           if (clientIds.length === 0) {
-            const hasResident = await userHasActiveResidentMembership(admin, user.id)
+            const hasResident = await userHasActiveResidentMembership(supabase, user.id)
             if (hasResident) {
               const url = req.nextUrl.clone()
               url.pathname = '/resident'
@@ -218,15 +217,17 @@ export async function middleware(req: NextRequest) {
 
   let clientId: string
   let enabledNavFeatures: SidebarNavItemId[] | null | undefined
-  const cachedTenant = readMiddlewareTenantCache(req, user.id)
+  const cachedTenant = await readMiddlewareTenantCache(req, user.id)
 
   if (cachedTenant) {
     clientId = cachedTenant.clientId
     enabledNavFeatures = cachedTenant.enabledNavFeatures
   } else {
     try {
-      const admin = getSupabaseAdmin()
-      const clientIds = await listClientIdsForUserId(admin, user.id)
+      // Use the session client (anon + user JWT) — Edge-safe. RLS already
+      // allows reading own organization_users / organizations / clients.
+      // Never call getSupabaseAdmin() here: it can pull Node-only modules.
+      const clientIds = await listClientIdsForUserId(supabase, user.id)
       if (clientIds.length === 0) {
         clearMiddlewareTenantCache(pending.response)
         await supabase.auth.signOut()
@@ -259,12 +260,12 @@ export async function middleware(req: NextRequest) {
 
       // Prefetch nav features into the same cookie so gated paths skip a second clients read.
       try {
-        enabledNavFeatures = await fetchClientEnabledNavFeatures(admin, clientId)
+        enabledNavFeatures = await fetchClientEnabledNavFeatures(supabase, clientId)
       } catch {
         enabledNavFeatures = undefined
       }
 
-      writeMiddlewareTenantCache(pending.response, {
+      await writeMiddlewareTenantCache(pending.response, {
         uid: user.id,
         clientId,
         enabledNavFeatures: enabledNavFeatures ?? null,
@@ -315,9 +316,8 @@ export async function middleware(req: NextRequest) {
     try {
       let enabled = enabledNavFeatures
       if (enabled === undefined) {
-        const admin = getSupabaseAdmin()
-        enabled = await fetchClientEnabledNavFeatures(admin, clientId)
-        writeMiddlewareTenantCache(pending.response, {
+        enabled = await fetchClientEnabledNavFeatures(supabase, clientId)
+        await writeMiddlewareTenantCache(pending.response, {
           uid: user.id,
           clientId,
           enabledNavFeatures: enabled,
