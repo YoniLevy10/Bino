@@ -3,6 +3,9 @@ import {
   normalizePhone019,
   post019SmsOnce,
   resolve019SmsSource,
+  is019UnverifiedSourceError,
+  SMS_019_FALLBACK_SENDER,
+  SMS_019_SENDER,
 } from '@/lib/sms-019-core'
 import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
 import { sanitizeSmsCampaignBody } from '@/lib/sms-campaign-message'
@@ -52,59 +55,72 @@ export type Send019SmsRetryContext = {
 /**
  * 019SMS: up to 3 attempts, 2s backoff, 10s timeout per attempt.
  * Logs to failed_notifications after final failure.
+ * Returns ok + last error so callers can fall back to the platform sender on 512/515.
  */
 export async function send019SmsWithRetries(
   normalizedPhone: string,
   message: string,
   from: string,
-  ctx: Send019SmsRetryContext
-): Promise<boolean> {
+  ctx: Send019SmsRetryContext,
+  opts?: { persistFailure?: boolean }
+): Promise<{ ok: boolean; lastErr: string }> {
   let lastErr = 'unknown'
+  const persistFailure = opts?.persistFailure !== false
 
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
     const result = await post019SmsOnce(normalizedPhone, message, from)
     if (result.ok) {
-      console.log('✅ SMS_019_SENT', { channel: ctx.channel, destination: normalizedPhone })
-      return true
+      console.log('✅ SMS_019_SENT', {
+        channel: ctx.channel,
+        destination: normalizedPhone,
+        source: from,
+      })
+      return { ok: true, lastErr: '' }
     }
     lastErr = result.error
     console.error(`❌ SMS_019_ATTEMPT_${attempt}_${RETRIES}_FAILED`, {
       channel: ctx.channel,
       destination: normalizedPhone,
+      source: from,
       detail: lastErr,
     })
+    // Unverified source never recovers on retry with the same sender — abort early.
+    if (is019UnverifiedSourceError(lastErr)) break
     if (attempt < RETRIES) await sleep(BETWEEN_MS)
   }
 
   console.error('❌ SMS_019_FINAL_FAILURE after retries', {
     channel: ctx.channel,
     destination: normalizedPhone,
+    source: from,
     lastErr,
   })
 
-  try {
-    const admin = getSupabaseAdmin()
-    await admin.from('failed_notifications').insert({
-      client_id: ctx.clientId ?? null,
-      channel: ctx.channel,
-      destination: normalizedPhone,
-      payload: message.length > 2000 ? `${message.slice(0, 2000)}…` : message,
-      error_message: lastErr.length > 2000 ? `${lastErr.slice(0, 2000)}…` : lastErr,
-    })
+  if (persistFailure) {
+    try {
+      const admin = getSupabaseAdmin()
+      await admin.from('failed_notifications').insert({
+        client_id: ctx.clientId ?? null,
+        channel: ctx.channel,
+        destination: normalizedPhone,
+        payload: message.length > 2000 ? `${message.slice(0, 2000)}…` : message,
+        error_message: lastErr.length > 2000 ? `${lastErr.slice(0, 2000)}…` : lastErr,
+      })
 
-    const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
-    void notifyPlatformOps({
-      kind: 'sms_failure',
-      title: 'כשל שליחת SMS',
-      message: lastErr,
-      clientId: ctx.clientId ?? null,
-      details: { channel: ctx.channel, destination: normalizedPhone },
-    })
-  } catch (e) {
-    console.error('⚠️ failed_notifications insert skipped or failed:', e instanceof Error ? e.message : String(e))
+      const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
+      void notifyPlatformOps({
+        kind: 'sms_failure',
+        title: 'כשל שליחת SMS',
+        message: lastErr,
+        clientId: ctx.clientId ?? null,
+        details: { channel: ctx.channel, destination: normalizedPhone, source: from },
+      })
+    } catch (e) {
+      console.error('⚠️ failed_notifications insert skipped or failed:', e instanceof Error ? e.message : String(e))
+    }
   }
 
-  return false
+  return { ok: false, lastErr }
 }
 
 export async function send019StaffSms(
@@ -164,20 +180,71 @@ export async function send019StaffSms(
     return false
   }
 
-  // 019SMS only accepts registered phone numbers as sender — never alphanumeric
-  const source = resolve019SmsSource(senderPreferred)
+  // 019SMS only accepts registered/verified phone numbers as sender — never alphanumeric.
+  const preferred = resolve019SmsSource(senderPreferred)
+  const platform = normalizePhone019(SMS_019_SENDER) || SMS_019_FALLBACK_SENDER
+  const canFallback = preferred !== platform
 
   console.log('📱 SMS_SEND_START', {
     channel: ctx.channel,
     normalizedPhone,
-    source,
+    source: preferred,
     messageLength: clamped.message.length,
     ...(clamped.truncated
       ? { truncated: true, originalLength: clamped.originalLength, maxChars: getMaxSmsChars() }
       : {}),
   })
 
-  return send019SmsWithRetries(normalizedPhone, clamped.message, source, ctx)
+  const first = await send019SmsWithRetries(normalizedPhone, clamped.message, preferred, ctx, {
+    // Defer failed_notifications if we may still succeed via platform sender.
+    persistFailure: !canFallback,
+  })
+  if (first.ok) return true
+
+  if (canFallback && is019UnverifiedSourceError(first.lastErr)) {
+    console.warn('⚠️ SMS_SENDER_UNVERIFIED_FALLBACK', {
+      channel: ctx.channel,
+      preferred,
+      platform,
+      detail: first.lastErr,
+    })
+    const second = await send019SmsWithRetries(normalizedPhone, clamped.message, platform, ctx)
+    return second.ok
+  }
+
+  if (canFallback) {
+    await persistSmsFailure(ctx, normalizedPhone, clamped.message, first.lastErr)
+  }
+
+  return false
+}
+
+async function persistSmsFailure(
+  ctx: Send019SmsRetryContext,
+  destination: string,
+  message: string,
+  lastErr: string
+): Promise<void> {
+  try {
+    const admin = getSupabaseAdmin()
+    await admin.from('failed_notifications').insert({
+      client_id: ctx.clientId ?? null,
+      channel: ctx.channel,
+      destination,
+      payload: message.length > 2000 ? `${message.slice(0, 2000)}…` : message,
+      error_message: lastErr.length > 2000 ? `${lastErr.slice(0, 2000)}…` : lastErr,
+    })
+    const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
+    void notifyPlatformOps({
+      kind: 'sms_failure',
+      title: 'כשל שליחת SMS',
+      message: lastErr,
+      clientId: ctx.clientId ?? null,
+      details: { channel: ctx.channel, destination },
+    })
+  } catch (e) {
+    console.error('⚠️ failed_notifications insert skipped or failed:', e instanceof Error ? e.message : String(e))
+  }
 }
 
 function get019SmsEnvPresent(): boolean {
