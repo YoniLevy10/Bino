@@ -15,7 +15,7 @@
 108_resident_portal_content.sql
 109_resident_portal_payments.sql
 110_resident_portal_tickets.sql
-111_resident_portal_phone_otp.sql
+117_resident_portal_phone_otp.sql
 ```
 
 **חסימה:** בסביבת הסוכן אין `supabase link` — יש להריץ מול הפרויקט המקושר אצלכם ולאמת עם `npm run db:types`.
@@ -29,7 +29,7 @@
 5. ודאו addon גבייה + Grow ללקוח אם בודקים תשלומים.
 6. אל תפעילו פרויקטים נוספים לפני משוב ומדדים.
 
-מיגרציה נוספת לכניסת טלפון: `111_resident_portal_phone_otp.sql`.
+מיגרציה נוספת לכניסת טלפון: `117_resident_portal_phone_otp.sql`.
 
 ## מדדים
 
