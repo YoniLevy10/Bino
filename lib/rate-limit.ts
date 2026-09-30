@@ -6,7 +6,7 @@ import { getLogger } from '@/lib/logging'
  */
 export type RpcRateLimitResult =
   | { isLimited: boolean; remaining?: number; resetMs?: number; rpcFailed?: false }
-  | { rpcFailed: true; isLimited: false }
+  | { rpcFailed: true; isLimited: true }
 
 export async function checkRateLimit(
   supabaseAdmin: SupabaseClient,
@@ -22,11 +22,12 @@ export async function checkRateLimit(
   })
 
   if (error) {
-    getLogger().warn('RATE_LIMIT', 'bamakor_rate_limit RPC failed — allowing request', {
+    // Audit #50: fail closed — do not allow public/payment traffic when limiter is down.
+    getLogger().warn('RATE_LIMIT', 'bamakor_rate_limit RPC failed — denying request', {
       message: error.message,
       code: error.code,
     })
-    return { rpcFailed: true, isLimited: false }
+    return { rpcFailed: true, isLimited: true }
   }
 
   const row = Array.isArray(data) ? data[0] : data
@@ -44,7 +45,7 @@ export async function checkRateLimit(
 export async function checkWhatsAppWebhookPhoneRateLimit(admin: SupabaseClient, phoneNumberId: string) {
   const id = phoneNumberId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'unknown'
   const r = await checkRateLimit(admin, `whatsapp:pn:${id}`, 100, 60_000)
-  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: false }
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true }
   return { isLimited: r.isLimited, remaining: r.remaining }
 }
 
@@ -53,7 +54,7 @@ export async function checkAuthenticatedPostRouteLimit(admin: SupabaseClient, us
   const safeUser = userId.slice(0, 64)
   const safeSlug = routeSlug.slice(0, 80).replace(/[^a-zA-Z0-9:_-]/g, '_')
   const r = await checkRateLimit(admin, `post:user:${safeUser}:${safeSlug}`, 20, 60_000)
-  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: false }
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true }
   return r
 }
 
@@ -62,7 +63,7 @@ export async function checkAuthenticatedReadRouteLimit(admin: SupabaseClient, us
   const safeUser = userId.slice(0, 64)
   const safeSlug = routeSlug.slice(0, 80).replace(/[^a-zA-Z0-9:_-]/g, '_')
   const r = await checkRateLimit(admin, `get:user:${safeUser}:${safeSlug}`, 120, 60_000)
-  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: false }
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true }
   return r
 }
 
@@ -71,6 +72,6 @@ export async function checkIpPostRouteLimit(admin: SupabaseClient, ip: string, r
   const safeIp = (ip || 'unknown').slice(0, 64)
   const safeSlug = routeSlug.slice(0, 80).replace(/[^a-zA-Z0-9:_-]/g, '_')
   const r = await checkRateLimit(admin, `post:ip:${safeIp}:${safeSlug}`, 20, 60_000)
-  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: false }
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true }
   return r
 }
