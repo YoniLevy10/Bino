@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { sanitizeId } from '@/lib/api-validation'
 import {
@@ -10,7 +10,7 @@ import {
 import { createServerSignedAttachmentUrl, withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
 
 export async function GET(req: NextRequest) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const taskId = sanitizeId(req.nextUrl.searchParams.get('task_id'))
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

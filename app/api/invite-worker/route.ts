@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { z } from 'zod'
 
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const requestId = `invite-worker-${Date.now()}`
 
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const supabase = getSupabaseAdmin()
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const requestId = `list-org-users-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const supabase = getSupabaseAdmin()
@@ -147,7 +147,7 @@ export async function GET(req: Request) {
 export async function DELETE(req: Request) {
   const requestId = `remove-org-user-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const { searchParams } = new URL(req.url)
