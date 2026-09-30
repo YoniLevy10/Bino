@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Button, theme } from '@/app/components/ui'
@@ -19,14 +20,14 @@ function snoozeUntilHours(hours: number): string {
 }
 
 /**
- * Bell next to the mobile hamburger — opens a professional dropdown of
- * management recommendations ("דורש תשומת לב").
+ * Bell next to the mobile hamburger — opens management recommendations
+ * ("דורש תשומת לב") in a viewport-fixed sheet (not a tiny absolute dropdown).
  */
 export function RecommendationsBell() {
   const router = useRouter()
   const panelId = useId()
-  const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [rows, setRows] = useState<ManagementRecommendationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -43,27 +44,20 @@ export function RecommendationsBell() {
   }
 
   useEffect(() => {
+    setMounted(true)
     void load()
   }, [])
 
   useEffect(() => {
     if (!open) return
-    function onPointerDown(e: MouseEvent | TouchEvent) {
-      const el = rootRef.current
-      if (!el) return
-      if (e.target instanceof Node && !el.contains(e.target)) {
-        setOpen(false)
-      }
-    }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('touchstart', onPointerDown, { passive: true })
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     document.addEventListener('keydown', onKey)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('touchstart', onPointerDown)
+      document.body.style.overflow = prevOverflow
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
@@ -132,6 +126,103 @@ export function RecommendationsBell() {
   const count = rows.length
   const showBadge = !loading && count > 0
 
+  const sheet =
+    open && mounted
+      ? createPortal(
+          <div style={styles.portalRoot}>
+            <button
+              type="button"
+              style={styles.backdrop}
+              aria-label="סגירת התראות"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              id={panelId}
+              role="dialog"
+              aria-modal="true"
+              aria-label="דורש תשומת לב"
+              style={styles.panel}
+            >
+              <div style={styles.panelHeader}>
+                <div style={styles.panelTitleRow}>
+                  <h3 style={styles.panelTitle}>דורש תשומת לב</h3>
+                  {showBadge ? <span style={styles.panelCount}>{count}</span> : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  style={styles.closeBtn}
+                  aria-label="סגירה"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={styles.panelBody}>
+                {loading ? (
+                  <p style={styles.empty}>טוען המלצות…</p>
+                ) : count === 0 ? (
+                  <p style={styles.empty}>אין התראות פעילות כרגע</p>
+                ) : (
+                  rows.map((row) => {
+                    const all = parseActions(row.actions)
+                    const actions = all.filter((a) => a.kind !== 'snooze' && a.kind !== 'dismiss')
+                    const primary =
+                      actions.find((a) => a.id === row.primary_action) || actions[0] || null
+                    const snooze = all.find((a) => a.kind === 'snooze')
+                    const dismiss = all.find((a) => a.kind === 'dismiss')
+                    return (
+                      <div key={row.id} style={styles.item}>
+                        <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
+                        <p style={styles.reason}>{row.reason}</p>
+                        <div style={styles.actions}>
+                          {primary ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              disabled={busyId === row.id}
+                              onClick={() => void runAction(row, primary)}
+                              style={styles.primaryBtn}
+                            >
+                              {primary.label}
+                            </Button>
+                          ) : null}
+                          {(snooze || dismiss) && (
+                            <div style={styles.secondaryRow}>
+                              {snooze ? (
+                                <button
+                                  type="button"
+                                  style={styles.textAction}
+                                  disabled={busyId === row.id}
+                                  onClick={() => void runAction(row, snooze)}
+                                >
+                                  הזכר לי מאוחר יותר
+                                </button>
+                              ) : null}
+                              {dismiss ? (
+                                <button
+                                  type="button"
+                                  style={styles.textActionMuted}
+                                  disabled={busyId === row.id}
+                                  onClick={() => void runAction(row, dismiss)}
+                                >
+                                  דחייה
+                                </button>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null
+
   return (
     <div ref={rootRef} style={styles.root}>
       <button
@@ -166,85 +257,7 @@ export function RecommendationsBell() {
           <span style={styles.badge}>{count > 99 ? '99+' : count}</span>
         ) : null}
       </button>
-
-      {open ? (
-        <div
-          id={panelId}
-          role="dialog"
-          aria-label="דורש תשומת לב"
-          style={styles.panel}
-        >
-          <div style={styles.panelHeader}>
-            <div style={styles.panelTitleRow}>
-              <h3 style={styles.panelTitle}>דורש תשומת לב</h3>
-              {showBadge ? <span style={styles.panelCount}>{count}</span> : null}
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              style={styles.closeBtn}
-              aria-label="סגירה"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div style={styles.panelBody}>
-            {loading ? (
-              <p style={styles.empty}>טוען המלצות…</p>
-            ) : count === 0 ? (
-              <p style={styles.empty}>אין התראות פעילות כרגע</p>
-            ) : (
-              rows.map((row) => {
-                const all = parseActions(row.actions)
-                const actions = all.filter((a) => a.kind !== 'snooze' && a.kind !== 'dismiss')
-                const primary =
-                  actions.find((a) => a.id === row.primary_action) || actions[0] || null
-                const snooze = all.find((a) => a.kind === 'snooze')
-                const dismiss = all.find((a) => a.kind === 'dismiss')
-                return (
-                  <div key={row.id} style={styles.item}>
-                    <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
-                    <p style={styles.reason}>{row.reason}</p>
-                    <div style={styles.actions}>
-                      {primary ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={busyId === row.id}
-                          onClick={() => void runAction(row, primary)}
-                        >
-                          {primary.label}
-                        </Button>
-                      ) : null}
-                      {snooze ? (
-                        <button
-                          type="button"
-                          style={styles.textAction}
-                          disabled={busyId === row.id}
-                          onClick={() => void runAction(row, snooze)}
-                        >
-                          הזכר לי מאוחר יותר
-                        </button>
-                      ) : null}
-                      {dismiss ? (
-                        <button
-                          type="button"
-                          style={styles.textActionMuted}
-                          disabled={busyId === row.id}
-                          onClick={() => void runAction(row, dismiss)}
-                        >
-                          דחייה
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-      ) : null}
+      {sheet}
     </div>
   )
 }
@@ -287,20 +300,42 @@ const styles: Record<string, CSSProperties> = {
     textAlign: 'center',
     boxShadow: `0 0 0 2px ${theme.colors.background}`,
   },
-  panel: {
+  portalRoot: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    padding:
+      'calc(12px + env(safe-area-inset-top, 0px) + 64px) 12px calc(12px + env(safe-area-inset-bottom, 0px))',
+    boxSizing: 'border-box',
+    pointerEvents: 'none',
+  },
+  backdrop: {
     position: 'absolute',
-    top: 'calc(100% + 4px)',
-    insetInlineEnd: 0,
-    width: 'min(360px, calc(100vw - 24px))',
-    maxHeight: 'min(70vh, 480px)',
+    inset: 0,
+    border: 'none',
+    padding: 0,
+    margin: 0,
+    background: theme.colors.overlay,
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+  },
+  panel: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: 'min(70vh, 520px)',
     display: 'flex',
     flexDirection: 'column',
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.radius.lg,
-    boxShadow: '0 12px 40px rgba(15, 23, 42, 0.14)',
-    zIndex: 80,
+    boxShadow: '0 12px 40px rgba(15, 23, 42, 0.18)',
     overflow: 'hidden',
+    pointerEvents: 'auto',
+    boxSizing: 'border-box',
   },
   panelHeader: {
     display: 'flex',
@@ -310,6 +345,7 @@ const styles: Record<string, CSSProperties> = {
     padding: '14px 16px',
     borderBottom: `1px solid ${theme.colors.border}`,
     background: theme.colors.muted,
+    flexShrink: 0,
   },
   panelTitleRow: {
     display: 'flex',
@@ -335,6 +371,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '0 7px',
+    flexShrink: 0,
   },
   closeBtn: {
     border: 'none',
@@ -348,11 +385,15 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   panelBody: {
     overflowY: 'auto',
+    overflowX: 'hidden',
     padding: '4px 0',
     WebkitOverflowScrolling: 'touch',
+    minHeight: 0,
+    flex: 1,
   },
   empty: {
     margin: 0,
@@ -364,6 +405,8 @@ const styles: Record<string, CSSProperties> = {
   item: {
     padding: '14px 16px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    boxSizing: 'border-box',
+    minWidth: 0,
   },
   urgency: {
     display: 'inline-block',
@@ -377,12 +420,27 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     lineHeight: 1.45,
     color: theme.colors.textPrimary,
+    overflowWrap: 'anywhere',
   },
   actions: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'stretch',
     gap: 8,
+    minWidth: 0,
+  },
+  primaryBtn: {
+    width: '100%',
+    whiteSpace: 'normal',
+    textAlign: 'center',
+    lineHeight: 1.3,
+  },
+  secondaryRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px 16px',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   textAction: {
     border: 'none',
