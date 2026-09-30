@@ -593,18 +593,28 @@ export default function DashboardPage() {
     }
   }, [loadData, queryClient])
 
-  // Supabase Realtime — silent refresh when DB changes
+  // Supabase Realtime — silent refresh when DB changes (tenant-filtered to cut fan-out)
   useEffect(() => {
+    if (!rqClientId) return
     const channel = supabase
-      .channel('dashboard-tickets-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        debouncedLoadData(true)
-      })
+      .channel(`dashboard-tickets-realtime:${rqClientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets',
+          filter: `client_id=eq.${rqClientId}`,
+        },
+        () => {
+          debouncedLoadData(true)
+        }
+      )
       .subscribe()
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [debouncedLoadData])
+  }, [debouncedLoadData, rqClientId])
 
   // Visibility API — silent refresh when returning to tab
   useEffect(() => {

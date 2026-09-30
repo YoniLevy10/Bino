@@ -20,6 +20,25 @@ export async function GET(req: NextRequest) {
     const admin = getSupabaseAdmin()
     const report = await runTicketMediaHealthProbe(admin)
 
+    // Ephemeral rate-limit keys bloat api_rate_limits (17MB heap / 190 live rows observed).
+    // Cleanup RPC already exists; it was never scheduled → stale keys 30+ days old.
+    let rateLimitCleanupOk = true
+    try {
+      const { error: cleanupErr } = await admin.rpc('bamakor_rate_limit_cleanup_stale')
+      if (cleanupErr) {
+        rateLimitCleanupOk = false
+        logger.warn('CRON', 'bamakor_rate_limit_cleanup_stale failed', {
+          message: cleanupErr.message,
+          code: cleanupErr.code,
+        })
+      }
+    } catch (cleanupEx) {
+      rateLimitCleanupOk = false
+      logger.warn('CRON', 'bamakor_rate_limit_cleanup_stale exception', {
+        message: cleanupEx instanceof Error ? cleanupEx.message : String(cleanupEx),
+      })
+    }
+
     await admin.from('system_logs').insert({
       level: report.status === 'ok' ? 'info' : 'error',
       source: 'cron.ticket-health',
@@ -28,6 +47,7 @@ export async function GET(req: NextRequest) {
         ts: report.ts,
         issues: report.issues,
         metrics: report.metrics,
+        rateLimitCleanupOk,
       },
     })
 
