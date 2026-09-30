@@ -2,9 +2,9 @@
  * lib/api-auth.ts — אימות API routes דשבורד
  *
  * @description
- * כל API route של the dashboard calls requireSessionClientId() at the start.
- * Returns: { ok, ctx: { userId, clientId, admin, role } }
- * If no valid session → { ok: false, response: 401/403/500 }
+ * כל API route של הדשבורד קורא ל-requireSessionClientId() בתחילה.
+ * הפונקציה מחזירה: { ok, ctx: { userId, clientId, admin, role } }
+ * אם אין session חוקי → { ok: false, response: 401/403/500 }
  *
  * Audit #04: mutating routes must use requireSessionWriteAccess() so viewers
  * cannot write via API even if the UI hides buttons.
@@ -25,7 +25,7 @@ export type SessionClientContext = {
 }
 
 /**
- * Logged-in user + service role + client_id via organization chain + role.
+ * משתמש מחובר + service role + client_id לפי organization chain + role.
  */
 export async function requireSessionClientId(): Promise<
   { ok: true; ctx: SessionClientContext } | { ok: false; response: NextResponse }
