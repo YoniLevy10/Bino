@@ -44,13 +44,8 @@ export function ResidentShell({ children }: { children: ReactNode }) {
   const hideChrome =
     pathname === '/resident/login' ||
     pathname.startsWith('/resident/login') ||
-<<<<<<< HEAD
-    pathname.startsWith('/resident/accept-invite')
-=======
-    pathname.startsWith('/resident/join') ||
     pathname.startsWith('/resident/accept-invite') ||
     pathname.startsWith('/resident/sandbox')
->>>>>>> 60f6f02 (feat(resident-portal): sandbox UX לדמו דייר ללא DB)
 
   const loadMemberships = useCallback(async () => {
     if (hideChrome) {
