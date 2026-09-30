@@ -9,6 +9,7 @@ import {
   resolveResidentIntakeShareMessage,
 } from '@/lib/resident-intake'
 import { toast } from '@/lib/error-handler'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 import { Button, theme } from '../ui'
 
 type Props = {
@@ -41,7 +42,7 @@ export function ProjectResidentIntakePanel({ projectCode, clientId, projectName 
     buildResidentIntakeUrl({
       projectCode,
       clientId,
-      baseUrl: process.env.NEXT_PUBLIC_APP_URL,
+      baseUrl: getClientPublicOrigin(),
     })
   )
   const [template, setTemplate] = useState(() => buildResidentIntakeShareTemplate(projectName))
@@ -51,7 +52,7 @@ export function ProjectResidentIntakePanel({ projectCode, clientId, projectName 
       buildResidentIntakeUrl({
         projectCode,
         clientId,
-        baseUrl: process.env.NEXT_PUBLIC_APP_URL || window.location.origin,
+        baseUrl: getClientPublicOrigin(),
       })
     )
     const stored = readStoredTemplate(clientId, projectCode)

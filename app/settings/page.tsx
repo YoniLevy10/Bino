@@ -24,6 +24,7 @@ import {
 } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { CollapsibleSection } from '../components/shared/CollapsibleSection'
 import { subscribeManagerPush } from '@/lib/manager-push-client'
@@ -167,8 +168,8 @@ function SettingsPageInner() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only origin for webhook URL
-    setOrigin(typeof window !== 'undefined' ? window.location.origin : '')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- public origin for webhook / vaad-pay URLs
+    setOrigin(getClientPublicOrigin())
   }, [])
 
   useEffect(() => {

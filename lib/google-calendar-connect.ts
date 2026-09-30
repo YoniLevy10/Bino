@@ -1,11 +1,12 @@
 import { createClient } from '@/utils/supabase/client'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 
 const GOOGLE_CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
 /** Start Google OAuth with Calendar Events scope; returns to /calendar?gcal=1. */
 export async function startGoogleCalendarConnect(): Promise<void> {
   const supabase = createClient()
-  const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/calendar?gcal=1')}`
+  const redirectTo = `${getClientPublicOrigin()}/auth/callback?next=${encodeURIComponent('/calendar?gcal=1')}`
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {

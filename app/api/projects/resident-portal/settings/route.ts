@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
+import { getResidentPortalJoinUrl } from '@/lib/public-origin'
 
 export async function GET(req: Request) {
   const auth = await requireSessionWriteAccess()
@@ -36,10 +37,12 @@ export async function GET(req: Request) {
     .order('apartment_number', { ascending: true })
     .limit(500)
 
+  const joinPath = `/resident/join/${projectId}`
   return NextResponse.json({
     project: data,
     residents: residents ?? [],
-    joinPath: `/resident/join/${projectId}`,
+    joinPath,
+    joinUrl: getResidentPortalJoinUrl(projectId),
   })
 }
 

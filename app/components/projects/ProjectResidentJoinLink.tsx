@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { Button, Card, theme } from '../ui'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { getResidentPortalJoinUrl } from '@/lib/public-origin'
 
 type Props = {
   projectId: string
@@ -20,11 +21,8 @@ export function ProjectResidentJoinLink({ projectId, projectName }: Props) {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const joinPath = useMemo(() => `/resident/join/${projectId}`, [projectId])
-  const joinUrl = useMemo(() => {
-    if (typeof window === 'undefined') return joinPath
-    return `${window.location.origin}${joinPath}`
-  }, [joinPath])
+  // Always bino.casa (NEXT_PUBLIC_APP_URL) — never window.location / *.vercel.app
+  const joinUrl = useMemo(() => getResidentPortalJoinUrl(projectId), [projectId])
 
   const load = useCallback(async () => {
     setLoading(true)

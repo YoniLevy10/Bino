@@ -3,10 +3,12 @@
  * Max ~5 questions; creates/updates a row in `residents`.
  */
 
+import { getClientPublicOrigin } from '@/lib/public-origin'
+
 export type ResidentIntakeLinkParams = {
   projectCode: string
   clientId: string
-  /** Prefer NEXT_PUBLIC_APP_URL; fall back to window origin in the browser. */
+  /** Prefer NEXT_PUBLIC_APP_URL / bino.casa; never *.vercel.app. */
   baseUrl?: string
 }
 
@@ -23,12 +25,8 @@ export function buildResidentIntakePath(projectCode: string, clientId: string): 
 
 export function buildResidentIntakeUrl(params: ResidentIntakeLinkParams): string {
   const path = buildResidentIntakePath(params.projectCode, params.clientId)
-  const rawBase =
-    (params.baseUrl || '').trim() ||
-    (typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || '').trim() : '') ||
-    (typeof window !== 'undefined' ? window.location.origin : '')
-  const base = rawBase.replace(/\/$/, '')
-  return base ? `${base}${path}` : path
+  const base = ((params.baseUrl || '').trim() || getClientPublicOrigin()).replace(/\/$/, '')
+  return `${base}${path}`
 }
 
 /** Default WhatsApp-group template. Placeholders: {project}, {url} */

@@ -38,8 +38,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
   const next = sanitizeNext(url.searchParams.get('next'))
-  const siteBase = getPublicSiteUrlFromHeaders(hdrs)
-  const origin = siteBase || url.origin
+  const origin = getPublicSiteUrlFromHeaders(hdrs)
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth`)

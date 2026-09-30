@@ -20,6 +20,7 @@ import {
   MUTATION_FETCH_TIMEOUT_MS,
 } from '@/lib/fetch-with-timeout'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getClientPublicOrigin } from '@/lib/public-origin'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
   COLLECTION_CHARGE_STATUS_COLORS,
@@ -583,10 +584,7 @@ export function CollectionsBoard() {
   }
 
   async function copyPayLink(row: CollectionChargeListItem) {
-    const url =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/pay/${row.public_token}`
-        : `/pay/${row.public_token}`
+    const url = `${getClientPublicOrigin()}/pay/${row.public_token}`
     try {
       await navigator.clipboard.writeText(url)
       toast.success('הקישור הועתק')
