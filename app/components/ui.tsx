@@ -34,6 +34,9 @@ import { PageViewTracker } from './PageViewTracker'
 import { PageTransitionLoader } from './PageTransitionLoader'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
+const RecommendationsBell = lazy(() =>
+  import('./recommendations/RecommendationsBell').then((m) => ({ default: m.RecommendationsBell }))
+)
 
 // ============================================================================
 // DESIGN TOKENS - Apple-Inspired Premium Design System
@@ -1038,6 +1041,9 @@ export function MobileHeader({
             </svg>
           </button>
         ) : null}
+        <Suspense fallback={null}>
+          <RecommendationsBell />
+        </Suspense>
         {showMenuButton ? (
           <button
             type="button"

@@ -961,7 +961,8 @@ export default function DashboardPage() {
           />
         ) : (
           <>
-            <AttentionRequired previewLimit={3} />
+            {/* Mobile: recommendations live in the header bell dropdown. */}
+            {!isMobile ? <AttentionRequired previewLimit={3} /> : null}
             <div style={{
               ...styles.kpiGrid,
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
