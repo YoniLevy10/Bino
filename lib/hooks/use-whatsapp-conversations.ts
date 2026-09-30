@@ -25,15 +25,22 @@ export type WhatsAppMessageRow = {
 }
 
 export async function fetchWhatsAppConversations(): Promise<WhatsAppConversationRow[]> {
-  const res = await whatsappUiFetch('/api/whatsapp/conversations')
+  const res = await whatsappUiFetch('/api/whatsapp/conversations', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
   const json = (await res.json()) as { conversations?: WhatsAppConversationRow[]; error?: string }
   if (!res.ok) throw new Error(json.error || 'טעינה נכשלה')
   return json.conversations ?? []
 }
 
-export async function fetchWhatsAppMessages(conversationId: string): Promise<WhatsAppMessageRow[]> {
+export async function fetchWhatsAppMessages(
+  conversationId: string,
+  signal?: AbortSignal
+): Promise<WhatsAppMessageRow[]> {
   const res = await whatsappUiFetch(
-    `/api/whatsapp/messages?conversation_id=${encodeURIComponent(conversationId)}`
+    `/api/whatsapp/messages?conversation_id=${encodeURIComponent(conversationId)}`,
+    { credentials: 'same-origin', cache: 'no-store', signal }
   )
   const json = (await res.json()) as { messages?: WhatsAppMessageRow[]; error?: string }
   if (!res.ok) throw new Error(json.error || 'טעינת הודעות נכשלה')
@@ -72,8 +79,12 @@ export function useWhatsAppMessages(conversationId: string | null) {
     queryKey: conversationId
       ? queryKeys.whatsappMessages(conversationId)
       : (['whatsapp-messages', 'none'] as const),
-    queryFn: () => fetchWhatsAppMessages(conversationId!),
+    queryFn: ({ signal }) => fetchWhatsAppMessages(conversationId!, signal),
     enabled: Boolean(conversationId),
     staleTime: 15_000,
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
+    retry: 1,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 3000),
   })
 }

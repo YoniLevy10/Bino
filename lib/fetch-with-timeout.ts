@@ -19,22 +19,41 @@ export function isFetchTimeoutError(error: unknown): boolean {
 /**
  * `fetch` with an AbortController timeout. On timeout, rejects with an Error
  * whose message is suitable for user-facing toasts (Hebrew).
+ * Honors an existing `init.signal` (e.g. React Query) in addition to the timeout.
  */
 export async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit = {},
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS
 ): Promise<Response> {
-  const controller = new AbortController()
-  const id = setTimeout(() => controller.abort(), timeoutMs)
+  const timeoutController = new AbortController()
+  const id = setTimeout(() => timeoutController.abort(), timeoutMs)
+  const upstream = init.signal
+  const onUpstreamAbort = () => timeoutController.abort()
+  if (upstream) {
+    if (upstream.aborted) {
+      clearTimeout(id)
+      throw upstream.reason instanceof Error
+        ? upstream.reason
+        : new DOMException('Aborted', 'AbortError')
+    }
+    upstream.addEventListener('abort', onUpstreamAbort, { once: true })
+  }
+
   try {
-    return await fetch(input, { ...init, signal: controller.signal })
+    return await fetch(input, { ...init, signal: timeoutController.signal })
   } catch (e) {
-    if (controller.signal.aborted) {
+    if (upstream?.aborted) {
+      throw upstream.reason instanceof Error
+        ? upstream.reason
+        : new DOMException('Aborted', 'AbortError')
+    }
+    if (timeoutController.signal.aborted) {
       throw new Error(FETCH_TIMEOUT_USER_MESSAGE)
     }
     throw e
   } finally {
     clearTimeout(id)
+    upstream?.removeEventListener('abort', onUpstreamAbort)
   }
 }
