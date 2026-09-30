@@ -149,6 +149,37 @@ describe('tenant resolution security', () => {
 
     await expect(listClientIdsForUserId(admin, 'u1')).resolves.toEqual([])
   })
+
+  it('listClientIdsForUserId falls back to org client_ids when clients.is_active is not granted', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const admin = {
+      from: (table: string) => {
+        if (table === 'organization_users') {
+          return chainEqIn({
+            data: [{ organization_id: 'org-a' }],
+            error: null,
+          })
+        }
+        if (table === 'organizations') {
+          return chainEqIn({
+            data: [{ client_id: 'client-a' }],
+            error: null,
+          })
+        }
+        if (table === 'clients') {
+          return chainEqIn({
+            data: null,
+            error: { message: 'permission denied for table clients' },
+          })
+        }
+        throw new Error(`unexpected table ${table}`)
+      },
+    } as unknown as Parameters<typeof listClientIdsForUserId>[0]
+
+    await expect(listClientIdsForUserId(admin, 'u1')).resolves.toEqual(['client-a'])
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })
 
 describe('userHasTenantAccess', () => {
