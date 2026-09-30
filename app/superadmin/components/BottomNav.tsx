@@ -4,6 +4,7 @@ import type { TabMode } from '../types'
 
 const TABS: { id: TabMode; label: string }[] = [
   { id: 'clients', label: 'לקוחות' },
+  { id: 'sandbox', label: 'Sandbox' },
   { id: 'leads', label: 'לידים' },
   { id: 'usage', label: 'שימוש' },
   { id: 'intelligence', label: 'תובנות' },

@@ -93,8 +93,13 @@ export async function middleware(req: NextRequest) {
     return pending.response
   }
 
-  // Resident login is public (OTP request). Other /resident* need session below.
-  if (pathname === '/resident/login' || pathname.startsWith('/resident/login/')) {
+  // Resident login / UX sandbox are public. Other /resident* need session below.
+  if (
+    pathname === '/resident/login' ||
+    pathname.startsWith('/resident/login/') ||
+    pathname === '/resident/sandbox' ||
+    pathname.startsWith('/resident/sandbox/')
+  ) {
     return NextResponse.next()
   }
 

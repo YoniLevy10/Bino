@@ -1,8 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import {
+  ResidentAlert,
+  ResidentCard,
+  ResidentMuted,
+  ResidentPageTitle,
+  ResidentPrimaryButton,
+  residentShellStyles,
+  residentTheme,
+} from '@/app/components/resident/residentUi'
 
 type Charge = {
   id: string
@@ -57,7 +65,6 @@ function PaymentsInner() {
         setError(json.error || 'לא ניתן להתחיל תשלום')
         return
       }
-      // Return hint: success page should not mark paid; we add returned=1 on back path via pay success UX.
       window.location.href = `${json.payPath}?from=resident`
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאת רשת')
@@ -68,71 +75,64 @@ function PaymentsInner() {
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <h1 style={{ margin: 0, fontSize: 22 }}>התשלומים שלי</h1>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '1px solid #E8E8ED' }}>
+      <ResidentPageTitle>התשלומים שלי</ResidentPageTitle>
+      <ResidentCard>
         יתרה פתוחה: <strong>₪{openBalance.toLocaleString('he-IL')}</strong>
-      </div>
+      </ResidentCard>
       {returned ? (
-        <div role="status" style={{ background: '#E5F2FF', padding: 12, borderRadius: 12 }}>
+        <ResidentAlert tone="info">
           התשלום בבדיקה — הסטטוס יתעדכן לאחר אישור השרת. אישור תשלום אינו חשבונית.
-        </div>
+        </ResidentAlert>
       ) : null}
-      {error ? (
-        <div role="alert" style={{ background: '#FFEBE9', color: '#FF3B30', padding: 12, borderRadius: 12 }}>
-          {error}
-        </div>
-      ) : null}
+      {error ? <ResidentAlert tone="error">{error}</ResidentAlert> : null}
       {charges.length === 0 ? (
-        <p style={{ color: '#86868B' }}>אין חיובים שפורסמו עבורכם</p>
+        <ResidentMuted>אין חיובים שפורסמו עבורכם</ResidentMuted>
       ) : (
         charges.map((c) => (
-          <article
-            key={c.id}
-            style={{ background: '#fff', borderRadius: 12, padding: 14, border: '1px solid #E8E8ED' }}
-          >
+          <ResidentCard key={c.id}>
             <div style={{ fontWeight: 700 }}>{c.title}</div>
-            <div style={{ fontSize: 13, color: '#86868B', marginTop: 4 }}>
+            <div style={{ fontSize: 13, color: residentTheme.colors.textMuted, marginTop: 4 }}>
               {c.period_label || '—'}
               {c.due_date ? ` · פירעון ${c.due_date}` : ''}
               {c.is_overdue ? ' · באיחור' : ''}
             </div>
-            <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800 }}>
+            <div style={{ ...residentShellStyles.balanceValue, fontSize: 22, marginTop: 8 }}>
               ₪{Number(c.amount).toLocaleString('he-IL')}
             </div>
-            <div style={{ fontSize: 13, marginTop: 4 }}>
+            <div style={{ fontSize: 13, marginTop: 4, color: residentTheme.colors.textSecondary }}>
               סטטוס: {statusLabel(c)}
               {c.payment_pending_confirmation ? ' (ממתין לאישור שרת)' : ''}
             </div>
             {c.invoice.available && c.invoice.url ? (
-              <a href={c.invoice.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8 }}>
+              <a
+                href={c.invoice.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  marginTop: 8,
+                  color: residentTheme.colors.primary,
+                  fontWeight: 600,
+                }}
+              >
                 מסמך כספי שהתקבל
               </a>
             ) : c.status === 'paid' ? (
-              <div style={{ fontSize: 13, color: '#86868B', marginTop: 8 }}>
+              <ResidentMuted style={{ marginTop: 8 }}>
                 התשלום אושר · המסמך הכספי טרם התקבל
-              </div>
+              </ResidentMuted>
             ) : null}
             {c.can_pay ? (
-              <button
-                type="button"
-                disabled={payingId === c.id}
-                onClick={() => void pay(c.id)}
-                style={{
-                  marginTop: 12,
-                  width: '100%',
-                  minHeight: 48,
-                  border: 'none',
-                  borderRadius: 12,
-                  background: '#007AFF',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 16,
-                }}
-              >
-                {payingId === c.id ? 'מעביר לתשלום…' : 'תשלום מאובטח'}
-              </button>
+              <div style={{ marginTop: 12 }}>
+                <ResidentPrimaryButton
+                  disabled={payingId === c.id}
+                  onClick={() => void pay(c.id)}
+                >
+                  {payingId === c.id ? 'מעביר לתשלום…' : 'תשלום מאובטח'}
+                </ResidentPrimaryButton>
+              </div>
             ) : null}
-          </article>
+          </ResidentCard>
         ))
       )}
     </div>
@@ -154,7 +154,7 @@ function statusLabel(c: Charge): string {
 
 export default function ResidentPaymentsPage() {
   return (
-    <Suspense fallback={<p>טוען…</p>}>
+    <Suspense fallback={<ResidentMuted>טוען…</ResidentMuted>}>
       <PaymentsInner />
     </Suspense>
   )
