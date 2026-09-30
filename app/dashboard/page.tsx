@@ -878,7 +878,7 @@ export default function DashboardPage() {
       if (!response.ok) {
         throw new Error(errorMessageFromResponseJson(result, TM.genericSaveError))
       }
-      toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה ✓`)
+      toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה`)
       setAddTicketProjectCode('')
       setAddTicketDescription('')
       setAddTicketReporterName('')

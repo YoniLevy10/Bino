@@ -1098,7 +1098,7 @@ export default function TicketsPage() {
         throw new Error(errorMessageFromResponseJson(result, TM.genericSaveError))
       }
 
-      toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה ✓`)
+      toast.success(`טיקט #${result.ticketNumber} נוצר בהצלחה`)
       setAddTicketForm({ project_code: '', description: '', reporter_name: '', reporter_phone: '' })
       setShowAddTicketModal(false)
       await invalidateOpenTickets()
