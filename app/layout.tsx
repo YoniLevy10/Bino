@@ -4,6 +4,7 @@ import "./globals.css";
 import { ToastContainer } from "./components/ToastContainer";
 import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
 import { ClearAppBadgeOnActivate } from "./components/ClearAppBadgeOnActivate";
+import { PwaSessionResume } from "./components/PwaSessionResume";
 import { UpdateNotification } from "./components/UpdateNotification";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { InstallPromptBanner } from "./components/InstallPromptBanner";
@@ -134,6 +135,7 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col bg-background text-foreground" dir="rtl">
         <RegisterServiceWorker />
         <ClearAppBadgeOnActivate />
+        <PwaSessionResume />
         <OfflineIndicator />
         <InstallPromptBanner />
         <UpdateNotification />
