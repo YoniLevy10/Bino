@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePhone019, resolve019SmsSource } from '@/lib/sms-019-core'
+import { normalizePhone019, resolve019SmsSource, is019UnverifiedSourceError } from '@/lib/sms-019-core'
 import { residentAuthEmailFromPhone } from '@/lib/resident-portal/phone-otp'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 
@@ -29,5 +29,15 @@ describe('resolve019SmsSource', () => {
   it('falls back when sender is empty', () => {
     const source = resolve019SmsSource(null)
     expect(source).toMatch(/^972\d{9}$/)
+  })
+
+  it('detects unverified-source provider errors', () => {
+    expect(
+      is019UnverifiedSourceError(
+        '019SMS status 512: unverified source number - you can verify this number with verify_phone request'
+      )
+    ).toBe(true)
+    expect(is019UnverifiedSourceError('019SMS status 515: Unverified source')).toBe(true)
+    expect(is019UnverifiedSourceError('019SMS status 989: The message is too long')).toBe(false)
   })
 })

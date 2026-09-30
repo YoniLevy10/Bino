@@ -36,6 +36,11 @@ export function resolve019SmsSource(senderPreferred: string | null | undefined):
   return normalizePhone019(SMS_019_SENDER) || SMS_019_FALLBACK_SENDER
 }
 
+/** Status 512 (unverified phone) or 515 (alphanumeric / unverified source). */
+export function is019UnverifiedSourceError(error: string): boolean {
+  return /019SMS status 51[25]\b/i.test(error) || /unverified source/i.test(error)
+}
+
 export function get019SmsEnv(): { username: string; password: string } | null {
   if (!SMS_019_USERNAME || !SMS_019_PASSWORD) return null
   return { username: SMS_019_USERNAME, password: SMS_019_PASSWORD }
