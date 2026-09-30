@@ -34,6 +34,8 @@ const DISALLOW = [
   '/onboarding',
   '/pay/',
   '/auth/',
+  '/resident',
+  '/resident/',
 ] as const
 
 export default function robots(): MetadataRoute.Robots {
