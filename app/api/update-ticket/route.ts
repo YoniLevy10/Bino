@@ -4,11 +4,12 @@ import { getLogger, getAuditLogger } from '@/lib/logging'
 import { sanitizeString } from '@/lib/api-validation'
 import { updateTicketBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { logAudit } from '@/lib/audit'
 import { isTicketStatus } from '@/lib/ticket-status'
 import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
 import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
+import { assertWorkerOwnedByClient } from '@/lib/tenant-owned-refs'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
 export const maxDuration = 60
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
     const bamakorClientId = auth.ctx.clientId
 
@@ -93,6 +94,14 @@ export async function POST(req: Request) {
       updatePayload.description = sanitizeString(description)
     }
     if (assigned_worker_id !== undefined) {
+      const owned = await assertWorkerOwnedByClient(
+        supabaseAdmin,
+        clientId,
+        assigned_worker_id as string | null
+      )
+      if (!owned.ok) {
+        return NextResponse.json({ error: owned.error, requestId }, { status: 400 })
+      }
       updatePayload.assigned_worker_id = assigned_worker_id
     }
 
