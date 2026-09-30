@@ -59,6 +59,9 @@ export type CollectionChargeRow = {
   receipt_email?: string | null
   receipt_phone?: string | null
   receipt_email_sent_at?: string | null
+  due_date?: string | null
+  published_to_portal?: boolean
+  unit_id?: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -82,6 +85,7 @@ export const COLLECTION_CHARGE_ROW_SELECT = `
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, receipt_email, receipt_phone, receipt_email_sent_at,
+  due_date, published_to_portal, unit_id,
   created_by, created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
 
@@ -93,7 +97,8 @@ export const COLLECTION_CHARGE_LIST_SELECT = `
   grow_invoice_id, grow_invoice_url, grow_invoice_email_sent_at,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
-  sent_at, paid_at, created_by, created_at, updated_at,
+  sent_at, paid_at, due_date, published_to_portal, unit_id,
+  created_by, created_at, updated_at,
   residents ( id, full_name, phone, apartment_number, normalized_phone ),
   projects ( id, name )
 `.replace(/\s+/g, ' ').trim()

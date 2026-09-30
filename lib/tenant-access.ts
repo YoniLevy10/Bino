@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
+import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
 
 /** True when the auth user is linked to a tenant via organization_users → organizations. */
 export async function userHasTenantAccess(
@@ -8,6 +9,14 @@ export async function userHasTenantAccess(
 ): Promise<boolean> {
   const clientId = await resolveClientIdForUserId(admin, userId)
   return Boolean(clientId?.trim())
+}
+
+/** True when the auth user has an active resident portal membership (not org access). */
+export async function userHasResidentPortalAccess(
+  admin: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  return userHasActiveResidentMembership(admin, userId)
 }
 
 export const TENANT_ACCESS_DENIED_HE =

@@ -6,6 +6,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { userHasTenantAccess } from '@/lib/tenant-access'
 import { upsertGoogleCalendarConnection } from '@/lib/google-calendar'
 import { getSingletonClientId } from '@/lib/singleton-client-server'
+import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
+import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
 
 function sanitizeNext(raw: string | null): string {
   if (!raw) return '/dashboard'
@@ -62,8 +64,30 @@ export async function GET(request: NextRequest) {
 
   try {
     const admin = getSupabaseAdmin()
-    const hasAccess = await userHasTenantAccess(admin, user.id)
-    if (!hasAccess) {
+    const wantsResident = isResidentPortalPath(next) || next.startsWith('/resident')
+    const acceptingInvite =
+      next.startsWith('/resident/accept-invite') || next.includes('/resident/accept-invite')
+    const hasTenant = await userHasTenantAccess(admin, user.id)
+    const hasResident =
+      wantsResident || !hasTenant
+        ? await userHasActiveResidentMembership(admin, user.id)
+        : false
+
+    // Managers stay on manager routes; residents on /resident*. Never mix scopes.
+    if (wantsResident) {
+      // Invite acceptance must run after login — membership does not exist yet.
+      if (!hasResident && !acceptingInvite) {
+        await supabase.auth.signOut()
+        return NextResponse.redirect(`${origin}/resident/login?error=no_access`)
+      }
+      // Resident path: allow even if user also has tenant (area chosen by next URL).
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+
+    if (!hasTenant) {
+      if (hasResident) {
+        return NextResponse.redirect(`${origin}/resident`)
+      }
       await supabase.auth.signOut()
       return NextResponse.redirect(`${origin}/login?error=no_access`)
     }

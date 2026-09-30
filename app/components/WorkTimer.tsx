@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
+import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
 
 const STORAGE_KEY = 'bamakor_work_seconds'
 
@@ -18,6 +21,12 @@ function formatHours(totalSec: number): string {
 }
 
 export function WorkTimer() {
+  const pathname = usePathname()
+  const skip =
+    isResidentPortalPath(pathname) ||
+    isWorkerPortalPath(pathname) ||
+    pathname?.startsWith('/login') ||
+    pathname?.startsWith('/resident/login')
   const [mounted, setMounted] = useState(false)
   const [totalSeconds, setTotalSeconds] = useState(0)
   const [sessionSeconds, setSessionSeconds] = useState(0)
@@ -25,6 +34,7 @@ export function WorkTimer() {
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
+    if (skip) return
     setMounted(true)
     const saved = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10)
     setTotalSeconds(saved)
@@ -46,9 +56,9 @@ export function WorkTimer() {
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [])
+  }, [skip])
 
-  if (!mounted) return null
+  if (skip || !mounted) return null
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   if (!isLocalhost) return null
