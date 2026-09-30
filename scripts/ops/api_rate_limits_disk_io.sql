@@ -1,30 +1,24 @@
--- Ops script: Bamakor Disk IO Budget — api_rate_limits remediation
--- Project: jsliqlmjksintyigkulq (Bamakor)
--- Run manually in Supabase SQL Editor (NOT via migration transaction).
+-- Ops reference: Bamakor Disk IO Budget — api_rate_limits
+-- Project: jsliqlmjksintyigkulq
 --
--- Evidence (2026-09-30):
---   * 6.47M cumulative inserts on api_rate_limits, ~190 live rows, 17 MB heap bloat
---   * bamakor_rate_limit mean ~79ms; top app WAL writer
---   * cleanup RPC existed but was never scheduled (now hooked to cron.ticket-health)
---   * Checkpointer: ~110k writes / ~50k fsyncs → Disk IO Budget
+-- Applied 2026-09-30 via migration `api_rate_limits_unlogged` (118):
+--   ALTER TABLE public.api_rate_limits SET UNLOGGED;
+--   ALTER TABLE public.rate_limits SET UNLOGGED;
+-- SET UNLOGGED rewrites the heap (reclaimed ~17MB bloat) and stops WAL for
+-- subsequent UPSERTs — the main Disk IO Budget consumer on Micro.
 --
--- A) Safe — delete stale windows (also runs every 6h via ticket-health cron)
-SELECT public.bamakor_rate_limit_cleanup_stale();
+-- Ongoing cleanup (app): cron ticket-health every 6h calls
+--   public.bamakor_rate_limit_cleanup_stale()
+--
+-- Manual re-check:
+SELECT c.relname,
+  CASE c.relpersistence WHEN 'u' THEN 'unlogged' ELSE 'logged' END AS persistence,
+  pg_size_pretty(pg_relation_size(c.oid)) AS heap,
+  (SELECT count(*) FROM public.api_rate_limits) AS api_rows
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname IN ('api_rate_limits', 'rate_limits');
 
--- B) Safe — reclaim dead space for reuse inside the file (does NOT shrink file size)
-VACUUM (ANALYZE) public.api_rate_limits;
-
--- C) Optional, quiet window — exclusive lock; shrinks 17MB heap back to real size
--- VACUUM (FULL, ANALYZE) public.api_rate_limits;
-
--- D) Optional — eliminate WAL for ephemeral counters (table wiped on crash; OK for rate limits)
--- This is the largest ongoing Disk IO win after app sparse-sync lands.
--- ALTER TABLE public.api_rate_limits SET UNLOGGED;
--- COMMENT ON TABLE public.api_rate_limits IS
---   'Ephemeral sliding-window counters. UNLOGGED: crash resets limits (OK). Avoids WAL Disk IO.';
-
--- Verify
-SELECT count(*) AS rows,
-  pg_size_pretty(pg_relation_size('public.api_rate_limits')) AS heap,
-  pg_size_pretty(pg_total_relation_size('public.api_rate_limits')) AS total
-FROM public.api_rate_limits;
+-- If bloat returns somehow (should not on UNLOGGED + cleanup):
+-- SELECT public.bamakor_rate_limit_cleanup_stale();
+-- VACUUM (ANALYZE) public.api_rate_limits;  -- run outside a transaction
