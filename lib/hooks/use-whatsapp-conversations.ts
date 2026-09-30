@@ -84,6 +84,8 @@ export function useWhatsAppMessages(conversationId: string | null) {
     staleTime: 15_000,
     refetchOnMount: 'always',
     refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    networkMode: 'always',
     retry: 1,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 3000),
   })

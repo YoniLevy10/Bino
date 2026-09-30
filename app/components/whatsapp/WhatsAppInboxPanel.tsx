@@ -75,17 +75,19 @@ export function WhatsAppInboxPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const messagesQuery = useWhatsAppMessages(selectedId)
   const messages = (messagesQuery.data ?? []) as Message[]
-  // isFetching+empty = true loading; isError must not render as an empty thread.
+  // Only the initial in-flight load — not background isFetching (avoids eternal "טוען").
   const messagesLoading =
     Boolean(selectedId) &&
     messages.length === 0 &&
-    (messagesQuery.isLoading || messagesQuery.isFetching) &&
+    messagesQuery.isLoading &&
     !messagesQuery.isError
+  const [messagesLoadTimedOut, setMessagesLoadTimedOut] = useState(false)
   const messagesError =
-    messagesQuery.isError && messages.length === 0
-      ? messagesQuery.error instanceof Error
+    messages.length === 0 &&
+    (messagesQuery.isError || messagesLoadTimedOut)
+      ? messagesQuery.isError && messagesQuery.error instanceof Error
         ? messagesQuery.error.message
-        : 'טעינת הודעות נכשלה'
+        : 'טעינת הודעות נכשלה — נסו שוב'
       : null
 
   const [reply, setReply] = useState('')
@@ -152,6 +154,17 @@ export function WhatsAppInboxPanel() {
       )
     }
   }, [messagesQuery.isError, messagesQuery.error])
+
+  // Belt-and-suspenders: if the request never settles (iOS timer throttle / hung fetch),
+  // leave the infinite "טוען הודעות…" state and offer retry.
+  useEffect(() => {
+    if (!selectedId || !messagesLoading) {
+      setMessagesLoadTimedOut(false)
+      return
+    }
+    const t = window.setTimeout(() => setMessagesLoadTimedOut(true), 28_000)
+    return () => window.clearTimeout(t)
+  }, [selectedId, messagesLoading])
 
   const refreshConversations = useCallback(async () => {
     await invalidateConversations()
@@ -432,7 +445,7 @@ export function WhatsAppInboxPanel() {
         role="log"
         aria-live="polite"
       >
-        {messagesLoading ? (
+        {messagesLoading && !messagesError ? (
           <p style={styles.muted}>טוען הודעות…</p>
         ) : messagesError ? (
           <div style={styles.messagesErrorBox}>
@@ -440,7 +453,10 @@ export function WhatsAppInboxPanel() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => void messagesQuery.refetch()}
+              onClick={() => {
+                setMessagesLoadTimedOut(false)
+                void messagesQuery.refetch()
+              }}
               style={{ alignSelf: 'flex-start' }}
             >
               נסו שוב
