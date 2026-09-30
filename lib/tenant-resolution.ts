@@ -73,6 +73,12 @@ export async function listClientIdsForUserId(
   )
   if (!candidateIds.length) return []
 
+  // Filter inactive clients when the role can read `is_active`.
+  // Migration 078 grants authenticated SELECT on a column allowlist that OMITTED
+  // `is_active` — `.eq('is_active', true)` then throws:
+  //   permission denied for table clients
+  // which took down middleware login (#188 session-client path). Fall back to
+  // org-filtered candidateIds so managers can still sign in.
   const { data: clientRows, error: clientErr } = await admin
     .from('clients')
     .select('id')
@@ -80,6 +86,13 @@ export async function listClientIdsForUserId(
     .eq('is_active', true)
 
   if (clientErr) {
+    if (/permission denied/i.test(clientErr.message)) {
+      console.warn(
+        '[tenant-resolution] clients.is_active not readable for this role — using org client_ids',
+        { message: clientErr.message }
+      )
+      return candidateIds
+    }
     throw new Error(`CLIENTS_ACTIVE_QUERY_FAILED: ${clientErr.message}`)
   }
   if (!clientRows?.length) return []
