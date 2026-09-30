@@ -9,6 +9,8 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
 import { LaunchFixlyBlock } from './LaunchFixlyBlock'
+import { EntityRecommendations } from '@/app/components/recommendations/EntityRecommendations'
+import { MidragSearchPanel, type MidragTicketContext } from '@/app/components/professionals/MidragSearchPanel'
 import { readFixlyMetadata } from '@/lib/fixly-ticket-metadata'
 import { TabBar } from '../ui/TabBar'
 import type {
@@ -425,6 +427,8 @@ export function TicketDetailDrawer({
                     </div>
                   )}
 
+                  <EntityRecommendations entityType="ticket" entityId={selectedTicket.id} />
+
                   {onTicketForwarded && (
                     <>
                       <LaunchFixlyBlock
@@ -440,6 +444,7 @@ export function TicketDetailDrawer({
                         professionals={professionals}
                         onForwarded={onTicketForwarded}
                       />
+                      <TicketMidragBlock ticketId={selectedTicket.id} isMobile={isMobile} />
                     </>
                   )}
 
@@ -514,6 +519,65 @@ export function TicketDetailDrawer({
         </div>
       )}
     </Drawer>
+  )
+}
+
+function TicketMidragBlock({ ticketId, isMobile }: { ticketId: string; isMobile: boolean }) {
+  const [ctx, setCtx] = useState<MidragTicketContext | null>(null)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetchWithTimeout(
+          `/api/recommendations/midrag-context?ticket_id=${encodeURIComponent(ticketId)}`
+        )
+        if (!res.ok || cancelled) return
+        const body = (await res.json()) as {
+          initial_sector_id?: number | null
+          initial_city_id?: number | null
+          initial_area_name?: string | null
+          suggestion_note?: string | null
+        }
+        if (cancelled) return
+        setCtx({
+          ticketId,
+          initialSectorId: body.initial_sector_id ?? null,
+          initialCityId: body.initial_city_id ?? null,
+          initialAreaName: body.initial_area_name ?? null,
+          suggestionNote: body.suggestion_note ?? null,
+        })
+      } catch {
+        if (!cancelled) setCtx({ ticketId })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [ticketId])
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <Button variant="secondary" size="sm" type="button" onClick={() => setOpen(true)}>
+        חיפוש איש מקצוע במידרג
+      </Button>
+      {open ? (
+        <div style={{ marginTop: 10 }}>
+          <MidragSearchPanel
+            isMobile={isMobile}
+            drawerOpen={isMobile ? open : undefined}
+            onDrawerOpenChange={isMobile ? setOpen : undefined}
+            ticketContext={ctx}
+          />
+          {!isMobile ? (
+            <Button variant="ghost" size="sm" type="button" onClick={() => setOpen(false)} style={{ marginTop: 8 }}>
+              סגור חיפוש
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   )
 }
 

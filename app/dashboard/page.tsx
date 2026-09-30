@@ -37,6 +37,7 @@ import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
 } from '@/lib/reporter-closed-notify-toast'
+import { AttentionRequired } from '@/app/components/recommendations/AttentionRequired'
 import { 
   AppShell, 
   MobileHeader, 
@@ -940,6 +941,7 @@ export default function DashboardPage() {
           />
         ) : (
           <>
+            <AttentionRequired previewLimit={3} />
             <div style={{
               ...styles.kpiGrid,
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',

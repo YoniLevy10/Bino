@@ -581,3 +581,32 @@ export const bulkSendCollectionChargesBodySchema = z.object({
   items: z.array(bulkSendItemSchema).min(1).max(500),
   send_sms: z.boolean().optional(),
 })
+
+/** המלצות ניהוליות — דחייה למועד */
+export const snoozeRecommendationBodySchema = z.object({
+  id: z.string().uuid(),
+  until: z.string().datetime({ offset: true }).or(z.string().min(10).max(40)),
+})
+
+export const dismissRecommendationBodySchema = z.object({
+  id: z.string().uuid(),
+})
+
+export const recommendationActionBodySchema = z.object({
+  id: z.string().uuid(),
+  action_id: z.string().min(1).max(80),
+})
+
+export const setProfessionalFollowUpBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  follow_up_at: z.string().datetime({ offset: true }).or(z.string().min(10).max(40)).nullable(),
+  recommendation_id: z.string().uuid().optional(),
+})
+
+export const midragSearchOpenedBodySchema = z.object({
+  ticket_id: z.string().uuid().nullable().optional(),
+  recommendation_id: z.string().uuid().nullable().optional(),
+  sector_id: z.number().int().nullable().optional(),
+  city_id: z.number().int().nullable().optional(),
+  url: z.string().max(2000).optional(),
+})
