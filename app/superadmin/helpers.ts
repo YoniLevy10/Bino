@@ -114,6 +114,8 @@ export function emptyEditState(): EditState {
   }
 }
 
-export function adminHeaders(secret: string): HeadersInit {
-  return { 'x-admin-secret': secret }
+export function adminHeaders(secret: string, operatorId?: string | null): HeadersInit {
+  const headers: Record<string, string> = { 'x-admin-secret': secret }
+  if (operatorId?.trim()) headers['x-sales-operator-id'] = operatorId.trim()
+  return headers
 }

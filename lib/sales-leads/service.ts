@@ -15,6 +15,13 @@ import type {
 } from '@/lib/sales-leads/types'
 import { LEAD_STATUSES } from '@/lib/sales-leads/types'
 import { notifyOpsBrainNewLead } from '@/lib/sales-leads/opsbrain-notify'
+import {
+  loadOperatorMap,
+  rowToLead as funnelRowToLead,
+  logWhatsappLinkOpened,
+} from '@/lib/sales-leads/funnel/service'
+import { jerusalemDayBounds } from '@/lib/sales-leads/funnel/timezone'
+import type { OperatorActor } from '@/lib/sales-leads/operators'
 
 export type IngestResult = {
   found: number
@@ -24,65 +31,18 @@ export type IngestResult = {
   errors: string[]
 }
 
-function rowToLead(row: Record<string, unknown>): SalesLead {
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    businessName: (row.business_name as string | null) ?? null,
-    phone: (row.phone as string | null) ?? null,
-    whatsappPhone: (row.whatsapp_phone as string | null) ?? null,
-    phoneNormalized: (row.phone_normalized as string | null) ?? null,
-    email: (row.email as string | null) ?? null,
-    city: String(row.city),
-    searchCity: (row.search_city as string | null) ?? null,
-    businessAddress: (row.business_address as string | null) ?? null,
-    segmentSlug: String(row.segment_slug ?? 'building_mgmt'),
-    sourceName: String(row.source_name),
-    sourceUrl: (row.source_url as string | null) ?? null,
-    websiteUrl: (row.website_url as string | null) ?? null,
-    externalId: (row.external_id as string | null) ?? null,
-    status: row.status as LeadStatus,
-    fitScore: (row.fit_score as number | null) ?? null,
-    fitClass: (row.fit_class as SalesLead['fitClass']) ?? null,
-    fitConfidence: (row.fit_confidence as number | null) ?? null,
-    fitReasons: Array.isArray(row.fit_reasons) ? (row.fit_reasons as string[]) : [],
-    contactability: (row.contactability as SalesLead['contactability']) ?? null,
-    estimatedBuildings: (row.estimated_buildings as number | null) ?? null,
-    estimatedMrrIls: (row.estimated_mrr_ils as number | null) ?? null,
-    outreachAngle: (row.outreach_angle as string | null) ?? null,
-    notes: (row.notes as string | null) ?? null,
-    enrichment:
-      row.enrichment && typeof row.enrichment === 'object'
-        ? (row.enrichment as Record<string, unknown>)
-        : {},
-    sourceRefs: Array.isArray(row.source_refs)
-      ? (row.source_refs as SalesLead['sourceRefs'])
-      : [],
-    lastSeenAt: (row.last_seen_at as string | null) ?? null,
-    contactedAt: (row.contacted_at as string | null) ?? null,
-    nextContactAt: (row.next_contact_at as string | null) ?? null,
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  }
+function rowToLead(row: Record<string, unknown>, operators?: Map<string, { id: string; displayName: string }>): SalesLead {
+  return funnelRowToLead(row, operators)
 }
 
 /** Clears follow-up when lead leaves the active outreach funnel. */
 const CLEAR_NEXT_CONTACT_STATUSES: ReadonlySet<LeadStatus> = new Set([
-  'demo_scheduled',
-  'won',
+  'customer',
   'lost',
-  'do_not_contact',
-  'rejected',
 ])
 
 function plusDaysIso(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
-}
-
-function endOfLocalDayIso(): string {
-  const d = new Date()
-  d.setHours(23, 59, 59, 999)
-  return d.toISOString()
 }
 
 /**
@@ -166,7 +126,7 @@ export async function ingestFromAdapter(
         continue
       }
 
-      const protectedStatus = ['won', 'lost', 'do_not_contact', 'demo_scheduled'].includes(
+      const protectedStatus = ['customer', 'lost', 'demo_scheduled', 'demo_done', 'proposal_sent', 'negotiation'].includes(
         String(current.status),
       )
       const patch: Record<string, unknown> = {
@@ -219,7 +179,9 @@ export async function ingestFromAdapter(
       source_url: record.sourceUrl ?? null,
       website_url: website,
       external_id: record.externalId ?? null,
-      status: 'discovered',
+      status: 'new',
+      interest_level: 'unknown',
+      version: 1,
       fit_score: record.fitScore ?? null,
       fit_class: record.fitClass ?? null,
       fit_confidence: record.fitConfidence ?? null,
@@ -268,7 +230,7 @@ export async function ingestFromAdapter(
       lead_id: created.id,
       actor: 'discovery',
       action: 'discovered',
-      to_status: 'discovered',
+      to_status: 'new',
       payload: { source: record.sourceName, segment: record.segmentSlug },
     })
 
@@ -305,13 +267,14 @@ export async function listSalesLeads(
   const limit = Math.min(filters.limit ?? 50, 200)
   const offset = filters.offset ?? 0
   const sort = filters.sort ?? 'fit_score'
+  const dayBounds = jerusalemDayBounds()
   const sortColumn =
     sort === 'created_at'
       ? 'created_at'
       : sort === 'estimated_mrr'
         ? 'estimated_mrr_ils'
         : sort === 'next_contact'
-          ? 'next_contact_at'
+          ? 'next_action_at'
           : 'fit_score'
 
   let query = admin
@@ -350,9 +313,19 @@ export async function listSalesLeads(
   }
   if (filters.dueToday) {
     query = query
-      .lte('next_contact_at', endOfLocalDayIso())
-      .not('next_contact_at', 'is', null)
-      .in('status', ['discovered', 'qualified', 'contacted'])
+      .lte('next_action_at', dayBounds.dayEndIso)
+      .gte('next_action_at', dayBounds.dayStartIso)
+      .not('next_action_at', 'is', null)
+      .in('status', [
+        'new',
+        'contact_attempt',
+        'conversation_held',
+        'demo_scheduled',
+        'demo_done',
+        'proposal_sent',
+        'negotiation',
+        'deferred',
+      ])
   }
   if (filters.q?.trim()) {
     const q = `%${filters.q.trim()}%`
@@ -363,8 +336,9 @@ export async function listSalesLeads(
 
   const { data, error, count } = await query
   if (error) throw error
+  const operators = await loadOperatorMap(admin)
   return {
-    leads: (data ?? []).map((r) => rowToLead(r as Record<string, unknown>)),
+    leads: (data ?? []).map((r) => rowToLead(r as Record<string, unknown>, operators)),
     total: count ?? 0,
   }
 }
@@ -373,7 +347,7 @@ export async function getLeadCounters(admin: SupabaseClient) {
   const { data } = await admin
     .from('sales_leads')
     .select(
-      'status, fit_class, city, segment_slug, estimated_mrr_ils, next_contact_at, phone, whatsapp_phone, email, contactability',
+      'status, fit_class, city, segment_slug, estimated_mrr_ils, next_action_at, next_contact_at, phone, whatsapp_phone, email, contactability, interest_level',
     )
     .limit(10000)
 
@@ -385,7 +359,7 @@ export async function getLeadCounters(admin: SupabaseClient) {
   let pipelineMrr = 0
   let dueToday = 0
   let withContactChannel = 0
-  const dueCutoff = endOfLocalDayIso()
+  const dayBounds = jerusalemDayBounds()
 
   for (const r of rows) {
     const st = String(r.status)
@@ -396,14 +370,29 @@ export async function getLeadCounters(admin: SupabaseClient) {
     byCity.set(city, (byCity.get(city) ?? 0) + 1)
     const seg = String(r.segment_slug || '—')
     bySegment.set(seg, (bySegment.get(seg) ?? 0) + 1)
-    if (['discovered', 'qualified', 'contacted', 'demo_scheduled'].includes(st)) {
+    if (
+      [
+        'new',
+        'contact_attempt',
+        'conversation_held',
+        'demo_scheduled',
+        'demo_done',
+        'proposal_sent',
+        'negotiation',
+      ].includes(st)
+    ) {
       pipelineMrr += Number(r.estimated_mrr_ils ?? 0)
     }
-    const nextAt = r.next_contact_at as string | null
+    const nextAt =
+      (r.next_action_at as string | null) ?? (r.next_contact_at as string | null)
     if (
       nextAt &&
-      nextAt <= dueCutoff &&
-      ['discovered', 'qualified', 'contacted'].includes(st)
+      nextAt >= dayBounds.dayStartIso &&
+      nextAt <= dayBounds.dayEndIso &&
+      ![
+        'customer',
+        'lost',
+      ].includes(st)
     ) {
       dueToday += 1
     }
@@ -446,15 +435,23 @@ export async function updateLeadStatus(
     .maybeSingle()
   if (curErr || !current) throw new Error(curErr?.message ?? 'lead not found')
 
-  const patch: Record<string, unknown> = { status }
-  if (status === 'contacted' && !current.contacted_at) {
+  const patch: Record<string, unknown> = {
+    status,
+    version: Number(current.version ?? 1) + 1,
+  }
+  if (status === 'contact_attempt' && !current.contacted_at) {
     patch.contacted_at = new Date().toISOString()
   }
-  if (status === 'contacted' && !current.next_contact_at) {
-    patch.next_contact_at = plusDaysIso(3)
+  if (status === 'contact_attempt' && !current.next_action_at && !current.next_contact_at) {
+    const due = plusDaysIso(3)
+    patch.next_contact_at = due
+    patch.next_action_at = due
+    patch.next_action_title = patch.next_action_title ?? 'מעקב'
   }
   if (CLEAR_NEXT_CONTACT_STATUSES.has(status)) {
     patch.next_contact_at = null
+    patch.next_action_at = null
+    patch.next_action_title = null
   }
 
   const { data: updated, error } = await admin
@@ -474,7 +471,8 @@ export async function updateLeadStatus(
     payload: {},
   })
 
-  return rowToLead(updated as Record<string, unknown>)
+  const operators = await loadOperatorMap(admin)
+  return rowToLead(updated as Record<string, unknown>, operators)
 }
 
 export type LeadPatchFields = {
@@ -525,7 +523,7 @@ export async function updateLeadFields(
   if (fields.notes !== undefined) patch.notes = fields.notes
 
   if (Object.keys(patch).length === 0 && !fields.outreachVariant) {
-    return rowToLead(current as Record<string, unknown>)
+    return rowToLead(current as Record<string, unknown>, await loadOperatorMap(admin))
   }
 
   let updated = current
@@ -560,7 +558,7 @@ export async function updateLeadFields(
     })
   }
 
-  return rowToLead(updated as Record<string, unknown>)
+  return rowToLead(updated as Record<string, unknown>, await loadOperatorMap(admin))
 }
 
 export async function listRecentRuns(admin: SupabaseClient, limit = 10) {
@@ -624,53 +622,21 @@ export async function deleteSalesLeadsBulk(
   return { deleted: count ?? ids.length }
 }
 
+/**
+ * Opening a WhatsApp deep link is NOT proof a message was sent.
+ * Logs activity only; does not change stage / contacted_at / interest.
+ */
 export async function markLeadWhatsappOpened(
   admin: SupabaseClient,
   leadId: string,
-  actor = 'superadmin',
+  actor: string | OperatorActor = 'superadmin',
+  variant?: string | null,
 ): Promise<SalesLead> {
-  const { data: current, error: curErr } = await admin
-    .from('sales_leads')
-    .select('*')
-    .eq('id', leadId)
-    .maybeSingle()
-  if (curErr || !current) throw new Error(curErr?.message ?? 'lead not found')
-
-  const nextStatus =
-    current.status === 'discovered' || current.status === 'qualified'
-      ? 'contacted'
-      : (current.status as LeadStatus)
-
-  const patch: Record<string, unknown> = {
-    status: nextStatus,
-  }
-  if (!current.contacted_at) patch.contacted_at = new Date().toISOString()
-  if (
-    nextStatus === 'contacted' &&
-    !current.next_contact_at &&
-    (current.status === 'discovered' || current.status === 'qualified' || current.status === 'contacted')
-  ) {
-    patch.next_contact_at = plusDaysIso(3)
-  }
-
-  const { data: updated, error } = await admin
-    .from('sales_leads')
-    .update(patch)
-    .eq('id', leadId)
-    .select('*')
-    .maybeSingle()
-  if (error || !updated) throw new Error(error?.message ?? 'update failed')
-
-  await admin.from('sales_lead_events').insert({
-    lead_id: leadId,
-    actor,
-    action: 'whatsapp_opened',
-    from_status: current.status,
-    to_status: nextStatus,
-    payload: {},
-  })
-
-  return rowToLead(updated as Record<string, unknown>)
+  const actorObj: OperatorActor =
+    typeof actor === 'string'
+      ? { id: '', displayName: actor, label: actor }
+      : actor
+  return logWhatsappLinkOpened(admin, leadId, actorObj, variant)
 }
 
 export async function enrichLeadFromWebsite(
@@ -747,7 +713,7 @@ export async function enrichLeadFromWebsite(
     },
   })
 
-  return rowToLead(updated as Record<string, unknown>)
+  return rowToLead(updated as Record<string, unknown>, await loadOperatorMap(admin))
 }
 
 /** Enrich leads that have a website but missing email/whatsapp. Cap per run for serverless. */
@@ -782,12 +748,22 @@ export async function enrichSalesLeadsBatch(
 }
 
 export async function countDueFollowUps(admin: SupabaseClient): Promise<number> {
-  const cutoff = endOfLocalDayIso()
+  const dayBounds = jerusalemDayBounds()
   const { count, error } = await admin
     .from('sales_leads')
     .select('id', { count: 'exact', head: true })
-    .lte('next_contact_at', cutoff)
-    .in('status', ['discovered', 'qualified', 'contacted'])
+    .gte('next_action_at', dayBounds.dayStartIso)
+    .lte('next_action_at', dayBounds.dayEndIso)
+    .in('status', [
+      'new',
+      'contact_attempt',
+      'conversation_held',
+      'demo_scheduled',
+      'demo_done',
+      'proposal_sent',
+      'negotiation',
+      'deferred',
+    ])
   if (error) throw error
   return count ?? 0
 }
