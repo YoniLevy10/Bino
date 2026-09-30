@@ -219,18 +219,25 @@ export async function listWhatsAppConversations(
     }
   })
 
-  // Backfill resident_id for older threads (best-effort)
-  await Promise.all(
-    enriched
-      .filter((row) => {
-        if (!row.resident_id) return false
-        const orig = rows.find((o) => (o as { id: string }).id === row.id) as { resident_id?: string | null } | undefined
-        return !orig?.resident_id
-      })
-      .map((row) =>
-        admin.from('whatsapp_conversations').update({ resident_id: row.resident_id }).eq('id', row.id)
-      )
-  )
+  // Backfill resident_id for older threads (best-effort, non-blocking).
+  // Awaiting these updates used to stall the conversations API under load and
+  // made the inbox feel stuck when opening a thread right after list fetch.
+  const backfills = enriched
+    .filter((row) => {
+      if (!row.resident_id) return false
+      const orig = rows.find((o) => (o as { id: string }).id === row.id) as
+        | { resident_id?: string | null }
+        | undefined
+      return !orig?.resident_id
+    })
+    .map((row) =>
+      admin.from('whatsapp_conversations').update({ resident_id: row.resident_id }).eq('id', row.id)
+    )
+  if (backfills.length > 0) {
+    void Promise.all(backfills).catch(() => {
+      /* ignore — display already enriched */
+    })
+  }
 
   return enriched
 }

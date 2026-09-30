@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildInboxTemplatePreview,
   getInboxMetaTemplateById,
+  isInboxComposeTemplate,
+  listInboxReadyTemplates,
+  WHATSAPP_INBOX_META_TEMPLATES,
+  type InboxMetaTemplate,
 } from '@/lib/whatsapp-inbox-meta-templates'
 import {
   managerReplyTemplateParams,
@@ -40,5 +44,27 @@ describe('whatsapp inbox meta templates', () => {
     )
     expect(params[0]).toBe('יוני')
     expect(params[1]).toHaveLength(500)
+  })
+
+  it('lists every catalog template except manager_reply as ready actions', () => {
+    const ready = listInboxReadyTemplates(WHATSAPP_INBOX_META_TEMPLATES)
+    expect(ready.map((t) => t.id).sort()).toEqual(['sla_escalation', 'ticket_closed'])
+    expect(ready.every((t) => !isInboxComposeTemplate(t.id))).toBe(true)
+  })
+
+  it('builds generic preview for unknown catalog templates via {{placeholders}}', () => {
+    const custom: InboxMetaTemplate = {
+      id: 'custom_notice',
+      label: 'הודעה מותאמת',
+      description: 'בדיקה',
+      language: 'he',
+      resolveMetaName: () => 'custom_notice',
+      preview: 'שלום {{שם}}, לגבי {{נושא}}',
+      params: [
+        { key: 'name', label: 'שם', placeholder: '', maxLength: 40 },
+        { key: 'topic', label: 'נושא', placeholder: '', maxLength: 80 },
+      ],
+    }
+    expect(buildInboxTemplatePreview(custom, ['דנה', 'מים'])).toBe('שלום דנה, לגבי מים')
   })
 })

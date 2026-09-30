@@ -8,6 +8,8 @@ import { toast } from '@/lib/error-handler'
 import { formatWhatsAppInboxDisplayLabel } from '@/lib/whatsapp-inbox-display'
 import {
   buildInboxTemplatePreview,
+  inboxTemplateRequiresOpenTicket,
+  listInboxReadyTemplates,
   type InboxMetaTemplate,
 } from '@/lib/whatsapp-inbox-meta-templates'
 import {
@@ -22,6 +24,7 @@ import {
 } from '@/lib/hooks/use-whatsapp-conversations'
 import { queryKeys } from '@/lib/query-keys'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import { Button, Card, theme } from '../ui'
 
 type Conversation = {
@@ -36,6 +39,7 @@ type Message = {
   id: string
   direction: 'in' | 'out'
   body: string | null
+  message_type?: string | null
   created_at: string
   ticket_id: string | null
 }
@@ -48,18 +52,34 @@ type InboxTemplateOption = {
   preview: string
 }
 
-const QUICK_ACTIONS: { templateId: string; title: string; hint: string }[] = [
-  {
-    templateId: 'ticket_closed',
-    title: 'התקלה נסגרה',
-    hint: 'עדכון שהטיפול הסתיים',
-  },
-  {
-    templateId: 'sla_escalation',
-    title: 'עדיין בטיפול',
-    hint: 'עדכון על תקלה פתוחה',
-  },
-]
+function formatInboxMessageBody(m: Message): string {
+  const text = m.body?.trim()
+  if (text) return text
+  switch (m.message_type) {
+    case 'image':
+      return 'תמונה'
+    case 'video':
+      return 'וידאו'
+    case 'audio':
+      return 'הודעה קולית'
+    case 'document':
+      return 'מסמך'
+    case 'interactive':
+      return 'הודעה אינטראקטיבית'
+    case 'template':
+      return 'תבנית Meta'
+    case 'reaction':
+      return 'תגובה'
+    case 'sticker':
+      return 'מדבקה'
+    case 'location':
+      return 'מיקום'
+    case 'unsupported':
+      return 'הודעה לא נתמכת'
+    default:
+      return '—'
+  }
+}
 
 export function WhatsAppInboxPanel() {
   const queryClient = useQueryClient()
@@ -74,7 +94,20 @@ export function WhatsAppInboxPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const messagesQuery = useWhatsAppMessages(selectedId)
   const messages = (messagesQuery.data ?? []) as Message[]
-  const messagesLoading = messagesQuery.isLoading && !messagesQuery.data
+  // Only the initial in-flight load — not background isFetching (avoids eternal "טוען").
+  const messagesLoading =
+    Boolean(selectedId) &&
+    messages.length === 0 &&
+    messagesQuery.isLoading &&
+    !messagesQuery.isError
+  const [messagesLoadTimedOut, setMessagesLoadTimedOut] = useState(false)
+  const messagesError =
+    messages.length === 0 &&
+    (messagesQuery.isError || messagesLoadTimedOut)
+      ? messagesQuery.isError && messagesQuery.error instanceof Error
+        ? messagesQuery.error.message
+        : 'טעינת הודעות נכשלה — נסו שוב'
+      : null
 
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
@@ -85,13 +118,16 @@ export function WhatsAppInboxPanel() {
   const [contextLoading, setContextLoading] = useState(false)
   const [activeQuickAction, setActiveQuickAction] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<string[]>([])
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
   const [portalReady, setPortalReady] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
 
   const selected = (conversations as Conversation[]).find((c) => c.id === selectedId) ?? null
+  const selectedPhone = selected?.phone ?? null
   const mobilePane = selectedId ? 'thread' : 'list'
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
+  const readyTemplates = listInboxReadyTemplates(templates)
   const loading = conversationsLoading && !conversationsHasData
   const useMobileThreadPortal = isMobile && Boolean(selectedId)
 
@@ -102,6 +138,15 @@ export function WhatsAppInboxPanel() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useAppRefreshListener(
+    useCallback(() => {
+      void invalidateConversations()
+      if (selectedId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(selectedId) })
+      }
+    }, [invalidateConversations, queryClient, selectedId])
+  )
 
   useEffect(() => {
     if (!useMobileThreadPortal) return
@@ -129,6 +174,17 @@ export function WhatsAppInboxPanel() {
       )
     }
   }, [messagesQuery.isError, messagesQuery.error])
+
+  // Belt-and-suspenders: if the request never settles (iOS timer throttle / hung fetch),
+  // leave the infinite "טוען הודעות…" state and offer retry.
+  useEffect(() => {
+    if (!selectedId || !messagesLoading) {
+      setMessagesLoadTimedOut(false)
+      return
+    }
+    const t = window.setTimeout(() => setMessagesLoadTimedOut(true), 28_000)
+    return () => window.clearTimeout(t)
+  }, [selectedId, messagesLoading])
 
   const refreshConversations = useCallback(async () => {
     await invalidateConversations()
@@ -181,10 +237,10 @@ export function WhatsAppInboxPanel() {
   }, [])
 
   useEffect(() => {
-    if (!selectedId || !selected) return
+    if (!selectedId || !selectedPhone) return
     setActiveQuickAction(null)
     setTemplateParams([])
-    void loadSessionStatus(selected.phone)
+    void loadSessionStatus(selectedPhone)
     void loadContext(selectedId)
 
     const channel = supabase
@@ -202,20 +258,35 @@ export function WhatsAppInboxPanel() {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [selectedId, selected, refreshMessages, refreshConversations, loadSessionStatus, loadContext])
+  }, [selectedId, selectedPhone, refreshMessages, refreshConversations, loadSessionStatus, loadContext])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+    // Scroll inside the messages pane only — window scrollIntoView breaks iOS portal layout.
+    const pane = messagesScrollRef.current
+    if (!pane) return
+    pane.scrollTop = pane.scrollHeight
+  }, [messages.length, selectedId])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(selectedId) })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [queryClient, selectedId])
 
   function pickQuickAction(templateId: string) {
+    const tpl = templates.find((t) => t.id === templateId)
+    const paramCount = tpl?.params.length ?? 0
     if (!inboxContext) {
       setActiveQuickAction(templateId)
-      setTemplateParams([])
+      setTemplateParams(Array.from({ length: paramCount }, () => ''))
       return
     }
     setActiveQuickAction(templateId)
-    setTemplateParams(inboxTemplateParamsFromContext(templateId, inboxContext))
+    setTemplateParams(inboxTemplateParamsFromContext(templateId, inboxContext, paramCount))
   }
 
   function missingParamIndices(template: InboxTemplateOption, params: string[]): number[] {
@@ -389,9 +460,32 @@ export function WhatsAppInboxPanel() {
           </span>
         )}
       </div>
-      <div className="wa-inbox-messages" style={styles.messages} role="log" aria-live="polite">
-        {messagesLoading && messages.length === 0 ? (
+      <div
+        ref={messagesScrollRef}
+        className="wa-inbox-messages"
+        style={styles.messages}
+        role="log"
+        aria-live="polite"
+      >
+        {messagesLoading && !messagesError ? (
           <p style={styles.muted}>טוען הודעות…</p>
+        ) : messagesError ? (
+          <div style={styles.messagesErrorBox}>
+            <p style={styles.messagesErrorText}>{messagesError}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setMessagesLoadTimedOut(false)
+                void messagesQuery.refetch()
+              }}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              נסו שוב
+            </Button>
+          </div>
+        ) : messages.length === 0 ? (
+          <p style={styles.muted}>אין הודעות בשיחה עדיין.</p>
         ) : (
           messages.map((m) => (
             <div
@@ -401,7 +495,7 @@ export function WhatsAppInboxPanel() {
                 ...(m.direction === 'out' ? styles.bubbleOut : styles.bubbleIn),
               }}
             >
-              {m.body || '—'}
+              {formatInboxMessageBody(m)}
               <div style={styles.time}>
                 {new Date(m.created_at).toLocaleString('he-IL', {
                   hour: '2-digit',
@@ -458,20 +552,19 @@ export function WhatsAppInboxPanel() {
             הדייר/ה לא כתב/ה לאחרונה — אפשר לשלוח רק הודעה מוכנה מהרשימה:
           </p>
         )}
-        {!inSession && templates.length > 0 && (
+        {!inSession && readyTemplates.length > 0 && (
           <div style={styles.quickActions}>
             <div style={styles.quickActionsTitle}>הודעות מוכנות</div>
             <div style={styles.quickGrid}>
-              {QUICK_ACTIONS.filter((qa) => templates.some((t) => t.id === qa.templateId)).map(
-                (qa) => {
-                  const isActive = activeQuickAction === qa.templateId
+              {readyTemplates.map((tpl) => {
+                  const isActive = activeQuickAction === tpl.id
+                  const needsOpenTicket = inboxTemplateRequiresOpenTicket(tpl.id)
                   const disabled =
-                    qa.templateId === 'sla_escalation' &&
-                    (contextLoading || !inboxContext?.open_ticket)
+                    needsOpenTicket && (contextLoading || !inboxContext?.open_ticket)
 
                   return (
                     <button
-                      key={qa.templateId}
+                      key={tpl.id}
                       type="button"
                       disabled={disabled}
                       style={{
@@ -479,16 +572,15 @@ export function WhatsAppInboxPanel() {
                         ...(isActive ? styles.quickBtnActive : {}),
                         ...(disabled ? styles.quickBtnDisabled : {}),
                       }}
-                      onClick={() => !disabled && pickQuickAction(qa.templateId)}
+                      onClick={() => !disabled && pickQuickAction(tpl.id)}
                     >
-                      <span style={styles.quickBtnTitle}>{qa.title}</span>
+                      <span style={styles.quickBtnTitle}>{tpl.label}</span>
                       <span style={styles.quickBtnHint}>
-                        {disabled ? 'אין תקלה פתוחה לדייר/ה' : qa.hint}
+                        {disabled ? 'אין תקלה פתוחה לדייר/ה' : tpl.description}
                       </span>
                     </button>
                   )
-                }
-              )}
+                })}
             </div>
           </div>
         )}
@@ -643,6 +735,8 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexShrink: 0,
+    background: theme.colors.surface,
   },
   backBtn: {
     border: 'none',
@@ -672,8 +766,23 @@ const styles: Record<string, CSSProperties> = {
     padding: '3px 10px',
     borderRadius: 999,
   },
-  messages: { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 },
-  bubble: { maxWidth: '85%', padding: '10px 12px', borderRadius: 12, fontSize: 14, lineHeight: 1.45 },
+  messages: { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 },
+  messagesErrorBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: 16,
+    borderRadius: theme.radius.md,
+    background: theme.colors.errorMuted,
+  },
+  messagesErrorText: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 600,
+    color: theme.colors.error,
+    lineHeight: 1.45,
+  },
+  bubble: { maxWidth: '85%', padding: '10px 12px', borderRadius: 12, fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap' },
   bubbleIn: { alignSelf: 'flex-start', background: theme.colors.muted, color: theme.colors.textPrimary },
   bubbleOut: { alignSelf: 'flex-end', background: '#dcf8c6', color: theme.colors.textPrimary },
   time: { fontSize: 11, color: theme.colors.textMuted, marginTop: 4 },

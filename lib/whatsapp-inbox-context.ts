@@ -135,24 +135,25 @@ export async function loadWhatsAppInboxContext(
 /** Build template param values from server context — managers rarely need to type anything. */
 export function inboxTemplateParamsFromContext(
   templateId: string,
-  ctx: WhatsAppInboxContext
+  ctx: WhatsAppInboxContext,
+  paramCount = 0
 ): string[] {
+  let values: string[] = []
   if (templateId === 'manager_reply') {
-    return [ctx.resident_name, '']
-  }
-  if (templateId === 'ticket_closed') {
+    values = [ctx.resident_name, '']
+  } else if (templateId === 'ticket_closed') {
     const building =
       ctx.building_name ||
       ctx.recent_closed_ticket?.building_name ||
       'הבניין'
-    return [building.slice(0, 60)]
-  }
-  if (templateId === 'sla_escalation') {
+    values = [building.slice(0, 60)]
+  } else if (templateId === 'sla_escalation') {
     const t = ctx.open_ticket
-    if (!t) return ['', '']
-    return [String(t.ticket_number), t.description]
+    values = t ? [String(t.ticket_number), t.description] : ['', '']
   }
-  return []
+
+  if (paramCount <= 0) return values
+  return Array.from({ length: paramCount }, (_, i) => values[i] ?? '')
 }
 
 /** Params for manager_reply when sending from inbox compose (outside 24h window). */

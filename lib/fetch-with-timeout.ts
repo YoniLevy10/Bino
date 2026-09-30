@@ -19,22 +19,55 @@ export function isFetchTimeoutError(error: unknown): boolean {
 /**
  * `fetch` with an AbortController timeout. On timeout, rejects with an Error
  * whose message is suitable for user-facing toasts (Hebrew).
+ * Honors an existing `init.signal` (e.g. React Query) in addition to the timeout.
+ * Uses Promise.race so we still reject if the platform ignores AbortSignal.
  */
 export async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit = {},
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS
 ): Promise<Response> {
-  const controller = new AbortController()
-  const id = setTimeout(() => controller.abort(), timeoutMs)
+  const timeoutController = new AbortController()
+  const upstream = init.signal
+
+  if (upstream?.aborted) {
+    throw upstream.reason instanceof Error
+      ? upstream.reason
+      : new DOMException('Aborted', 'AbortError')
+  }
+
+  const onUpstreamAbort = () => timeoutController.abort()
+  upstream?.addEventListener('abort', onUpstreamAbort, { once: true })
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      timeoutController.abort()
+      reject(new Error(FETCH_TIMEOUT_USER_MESSAGE))
+    }, timeoutMs)
+  })
+
+  const fetchPromise = fetch(input, { ...init, signal: timeoutController.signal })
+
   try {
-    return await fetch(input, { ...init, signal: controller.signal })
+    return await Promise.race([fetchPromise, timeoutPromise])
   } catch (e) {
-    if (controller.signal.aborted) {
+    if (upstream?.aborted) {
+      throw upstream.reason instanceof Error
+        ? upstream.reason
+        : new DOMException('Aborted', 'AbortError')
+    }
+    if (e instanceof Error && e.message === FETCH_TIMEOUT_USER_MESSAGE) {
+      throw e
+    }
+    if (timeoutController.signal.aborted) {
       throw new Error(FETCH_TIMEOUT_USER_MESSAGE)
     }
     throw e
   } finally {
-    clearTimeout(id)
+    if (timeoutId !== undefined) clearTimeout(timeoutId)
+    upstream?.removeEventListener('abort', onUpstreamAbort)
+    // If timeout won the race, the aborted fetch rejection must not become unhandled.
+    void fetchPromise.catch(() => {})
   }
 }

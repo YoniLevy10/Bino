@@ -92,6 +92,24 @@ export function getInboxMetaTemplateById(id: string): InboxMetaTemplate | undefi
   return WHATSAPP_INBOX_META_TEMPLATES.find((t) => t.id === id)
 }
 
+/**
+ * Free-text compose outside the 24h window uses `manager_reply`.
+ * Every other catalog template is a one-tap “הודעה מוכנה” action.
+ */
+export function isInboxComposeTemplate(templateId: string): boolean {
+  return templateId === 'manager_reply'
+}
+
+/** True when the template needs an open ticket in context (e.g. SLA update). */
+export function inboxTemplateRequiresOpenTicket(templateId: string): boolean {
+  return templateId === 'sla_escalation'
+}
+
+/** Ready-message chips — catalog-driven, not a hardcoded subset. */
+export function listInboxReadyTemplates<T extends { id: string }>(templates: T[]): T[] {
+  return templates.filter((t) => !isInboxComposeTemplate(t.id))
+}
+
 export function buildInboxTemplatePreview(template: InboxMetaTemplate, paramValues: string[]): string {
   if (template.id === 'manager_reply') {
     const name = paramValues[0]?.trim() || 'דייר/ה'
@@ -107,5 +125,15 @@ export function buildInboxTemplatePreview(template: InboxMetaTemplate, paramValu
     const desc = paramValues[1]?.trim() || '[תיאור]'
     return `שלום, הפנייה שלך #${num} בנושא "${desc}" עדיין בטיפול.\n\nאנחנו מטפלים בה. תודה על הסבלנות.`
   }
-  return template.preview
+
+  // Generic fallback for any future catalog template: fill {{…}} left-to-right.
+  let preview = template.preview
+  const placeholders = preview.match(/\{\{[^}]+\}\}/g) ?? []
+  for (let i = 0; i < placeholders.length; i++) {
+    const ph = placeholders[i]!
+    const label = template.params[i]?.label
+    const val = paramValues[i]?.trim() || (label ? `[${label}]` : ph)
+    preview = preview.replace(ph, val)
+  }
+  return preview
 }
