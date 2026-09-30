@@ -76,15 +76,25 @@ export async function POST(req: Request) {
         ? ({ ...root, ...(root.data as Record<string, unknown>) } as Record<string, unknown>)
         : root
 
-    const publicToken = pickStr(data, ['cField1', 'CField1'])
-    const processId = pickStr(data, ['processId', 'paymentLinkProcessId'])
-    const transactionId = pickStr(data, [
+    // Audit #24: Grow may nest cField1 under customFields (same as payment webhook flatten).
+    const customFields =
+      (data.customFields && typeof data.customFields === 'object'
+        ? (data.customFields as Record<string, unknown>)
+        : null) ||
+      (root.customFields && typeof root.customFields === 'object'
+        ? (root.customFields as Record<string, unknown>)
+        : null)
+    const flattened = customFields ? { ...data, ...customFields } : data
+
+    const publicToken = pickStr(flattened, ['cField1', 'CField1'])
+    const processId = pickStr(flattened, ['processId', 'paymentLinkProcessId'])
+    const transactionId = pickStr(flattened, [
       'transactionId',
       'transactionCode',
       'transaction_id',
       'transaction_code',
     ])
-    const invoiceId = pickStr(data, [
+    const invoiceId = pickStr(flattened, [
       'invoiceNumber',
       'invoiceId',
       'documentId',
@@ -92,7 +102,7 @@ export async function POST(req: Request) {
       'document_id',
       'asmachta',
     ])
-    const invoiceUrl = pickStr(data, [
+    const invoiceUrl = pickStr(flattened, [
       'invoiceUrl',
       'invoice_url',
       'documentUrl',
@@ -126,7 +136,14 @@ export async function POST(req: Request) {
     if (invoiceId) patch.grow_invoice_id = invoiceId
     if (invoiceUrl) patch.grow_invoice_url = invoiceUrl
 
-    await admin.from('collection_charges').update(patch).in('id', chargeIds)
+    const { error: updErr } = await admin
+      .from('collection_charges')
+      .update(patch)
+      .in('id', chargeIds)
+    if (updErr) {
+      logger.error('WEBHOOK', 'Grow invoice update failed', new Error(updErr.message))
+      return NextResponse.json({ error: 'db_update_failed' }, { status: 500 })
+    }
 
     // Email invoice link to residents (BINO Resend) — Grow may also email separately.
     const emailResults: Array<{ chargeId: string; sent: boolean; skipped?: string; error?: string }> =
