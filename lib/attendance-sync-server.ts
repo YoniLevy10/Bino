@@ -51,10 +51,25 @@ export function evaluateClientTimestamp(
   }
 }
 
+/**
+ * Audit #36: honor the client's intended event_type when provided.
+ * Fallback toggle only when the client did not send a concrete clock intent.
+ */
 export function resolveEventTypeForTag(
   tagType: 'office' | 'project',
-  hasOpenShift: boolean
+  hasOpenShift: boolean,
+  clientEventType?: AttendanceEventType | null
 ): AttendanceEventType {
+  if (
+    clientEventType === 'clock_in' ||
+    clientEventType === 'clock_out' ||
+    clientEventType === 'project_arrival' ||
+    clientEventType === 'project_departure' ||
+    clientEventType === 'project_visit'
+  ) {
+    return clientEventType
+  }
+  void tagType
   return hasOpenShift ? 'clock_out' : 'clock_in'
 }
 
@@ -137,9 +152,9 @@ export async function processAttendanceSyncEvent(
 
   const hasOpenShift = !!openShift
 
-  const event_type = resolveEventTypeForTag(tag.tag_type, hasOpenShift)
+  const event_type = resolveEventTypeForTag(tag.tag_type, hasOpenShift, input.event_type)
 
-  if (input.event_type !== event_type) {
+  if (input.event_type && input.event_type !== event_type) {
     suspicious_reason = [suspicious_reason, 'event_type_mismatch'].filter(Boolean).join(';')
   }
 
@@ -153,7 +168,18 @@ export async function processAttendanceSyncEvent(
     suspicious_reason = [suspicious_reason, 'no_open_shift'].filter(Boolean).join(';')
   }
 
-  if (tag.project_id && input.lat != null && input.lng != null) {
+  // Project visit events during an open shift must not silently become clock_out.
+  if (
+    (event_type === 'project_visit' ||
+      event_type === 'project_arrival' ||
+      event_type === 'project_departure') &&
+    hasOpenShift
+  ) {
+    sync_status = sync_status === 'synced' ? 'pending_review' : sync_status
+    suspicious_reason = [suspicious_reason, 'project_event_with_open_shift'].filter(Boolean).join(';')
+  }
+
+  if (tag.project_id) {
     const { data: proj } = await admin
       .from('projects')
       .select('geofence_lat, geofence_lng, geofence_radius_m')
@@ -170,10 +196,16 @@ export async function processAttendanceSyncEvent(
       gf?.geofence_radius_m != null &&
       gf.geofence_radius_m > 0
     ) {
-      const dist = haversineMeters(input.lat, input.lng, gf.geofence_lat, gf.geofence_lng)
-      if (dist > gf.geofence_radius_m) {
+      // Audit #38: missing coordinates on a geofenced tag → review, not silent pass.
+      if (input.lat == null || input.lng == null) {
         sync_status = sync_status === 'synced' ? 'pending_review' : sync_status
-        suspicious_reason = [suspicious_reason, 'outside_geofence'].filter(Boolean).join(';')
+        suspicious_reason = [suspicious_reason, 'missing_geofence_coords'].filter(Boolean).join(';')
+      } else {
+        const dist = haversineMeters(input.lat, input.lng, gf.geofence_lat, gf.geofence_lng)
+        if (dist > gf.geofence_radius_m) {
+          sync_status = sync_status === 'synced' ? 'pending_review' : sync_status
+          suspicious_reason = [suspicious_reason, 'outside_geofence'].filter(Boolean).join(';')
+        }
       }
     }
   }
@@ -226,12 +258,21 @@ export async function processAttendanceSyncEvent(
       start_source: input.source as AttendanceEventSource,
       status: 'open',
     })
-    if (shiftErr && shiftErr.code !== '23505') {
+    // Audit #37: unique conflict or any shift write failure must not report synced.
+    if (shiftErr) {
       await admin
         .from('worker_attendance_events')
-        .update({ sync_status: 'conflict', suspicious_reason: 'shift_insert_failed' })
+        .update({
+          sync_status: 'conflict',
+          suspicious_reason: shiftErr.code === '23505' ? 'shift_unique_conflict' : 'shift_insert_failed',
+        })
         .eq('id', eventId)
-      return { client_action_id: input.client_action_id, status: 'conflict', event_id: eventId }
+      return {
+        client_action_id: input.client_action_id,
+        status: 'conflict',
+        event_id: eventId,
+        message: shiftErr.message,
+      }
     }
   }
 
@@ -244,7 +285,7 @@ export async function processAttendanceSyncEvent(
         ? Math.max(0, Math.round((endedMs - startedMs) / 60_000))
         : null
 
-    await admin
+    const { error: outErr } = await admin
       .from('worker_attendance')
       .update({
         ended_at: endedAt,
@@ -255,6 +296,19 @@ export async function processAttendanceSyncEvent(
         updated_at: serverReceivedAt.toISOString(),
       })
       .eq('id', openShift.id as string)
+
+    if (outErr) {
+      await admin
+        .from('worker_attendance_events')
+        .update({ sync_status: 'conflict', suspicious_reason: 'shift_update_failed' })
+        .eq('id', eventId)
+      return {
+        client_action_id: input.client_action_id,
+        status: 'conflict',
+        event_id: eventId,
+        message: outErr.message,
+      }
+    }
   }
 
   return {
