@@ -17,7 +17,7 @@ const bodySchema = z.object({
  * Requires grow_transaction_id + grow_transaction_token from the original S2S callback.
  */
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections, { write: true })
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

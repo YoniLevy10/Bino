@@ -5,8 +5,19 @@ export const GROW_API_BASE_URLS: Record<GrowEnv, string> = {
   production: 'https://secure.meshulam.co.il/api/light/server/1.0',
 }
 
+/**
+ * Audit #33: only explicit sandbox selects sandbox.
+ * Unknown / typo values throw in non-production and refuse silent production fallback
+ * when GROW_ENV is set but not recognized.
+ */
 export function parseGrowEnv(raw: string | null | undefined): GrowEnv {
-  return raw === 'sandbox' ? 'sandbox' : 'production'
+  const v = (raw || '').trim().toLowerCase()
+  if (!v) return 'production'
+  if (v === 'sandbox' || v === 'sand-box' || v === 'test') return 'sandbox'
+  if (v === 'production' || v === 'prod' || v === 'live') return 'production'
+  throw new Error(
+    `Invalid GROW_ENV="${raw}". Use "sandbox" or "production" (refusing ambiguous value).`
+  )
 }
 
 export function growApiBaseUrl(env: GrowEnv = 'production'): string {

@@ -49,11 +49,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ projects: [], requestId })
     }
 
+    // Audit #43: search in DB — not only the first 80 by project_code.
+    const pattern = `%${q.replace(/[%_]/g, '')}%`
     const { data: rows, error } = await admin
       .from('projects')
       .select('id, name, project_code, client_id, address, address_en')
       .eq('client_id', clientId)
       .eq('is_active', true)
+      .or(
+        `name.ilike.${pattern},address.ilike.${pattern},address_en.ilike.${pattern},project_code.ilike.${pattern}`
+      )
       .order('project_code', { ascending: true })
       .limit(80)
 
@@ -61,7 +66,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
     }
 
-    const list = (rows || []) as {
+    const filtered = (rows || []) as {
       id: string
       name: string
       project_code: string
@@ -69,14 +74,6 @@ export async function GET(req: NextRequest) {
       address?: string | null
       address_en?: string | null
     }[]
-
-    const filtered = list.filter(
-      (p) =>
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.address || '').toLowerCase().includes(q) ||
-        (p.address_en || '').toLowerCase().includes(q) ||
-        (p.project_code || '').toLowerCase().includes(q)
-    )
 
     return NextResponse.json({
       projects: filtered.slice(0, 10).map(({ id, name, project_code, client_id }) => ({

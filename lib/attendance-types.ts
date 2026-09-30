@@ -46,6 +46,9 @@ export type LocalAttendanceState = {
 
 export type PendingAttendanceEvent = {
   client_action_id: string
+  /** Audit #34: queue is per-worker on shared devices. */
+  worker_id: string
+  client_id: string
   tag_code: string
   event_type: AttendanceEventType
   client_recorded_at: string

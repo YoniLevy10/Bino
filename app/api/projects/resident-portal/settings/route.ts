@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const projectId = sanitizeId(new URL(req.url).searchParams.get('project_id'))
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   let body: Record<string, unknown>

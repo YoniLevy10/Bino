@@ -41,7 +41,8 @@ export async function buildAttendanceAction(
   workerId: string,
   tag: NfcTagRow,
   source: AttendanceEventSource,
-  geo?: { lat: number; lng: number } | null
+  geo?: { lat: number; lng: number } | null,
+  clientId?: string
 ): Promise<{ event_type: AttendanceEventType; pending: PendingAttendanceEvent }> {
   const rawState = (await getLocalAttendanceState(workerId)) ?? {
     has_open_shift: false,
@@ -60,6 +61,8 @@ export async function buildAttendanceAction(
 
   const pending: PendingAttendanceEvent = {
     client_action_id: crypto.randomUUID(),
+    worker_id: workerId,
+    client_id: clientId || tag.client_id,
     tag_code: tag.tag_code,
     event_type,
     client_recorded_at,
@@ -140,7 +143,7 @@ export async function recordAttendanceScan(
     return { ok: true, pending: null, event_type, tag, duplicate: true }
   }
 
-  const { event_type, pending } = await buildAttendanceAction(workerId, tag, source, geo)
+  const { event_type, pending } = await buildAttendanceAction(workerId, tag, source, geo, clientId)
   await addPendingAttendanceEvent(pending)
   await applyLocalAttendanceAfterAction(workerId, tag, event_type, pending.client_recorded_at)
   return { ok: true, pending, event_type, tag }

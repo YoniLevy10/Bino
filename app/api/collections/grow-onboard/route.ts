@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { formatZodError } from '@/lib/format-zod-error'
 import { getPublicAppUrl } from '@/lib/public-app-url'
@@ -45,7 +45,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const rl = await checkAuthenticatedPostRouteLimit(

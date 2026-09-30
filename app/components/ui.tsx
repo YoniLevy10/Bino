@@ -269,6 +269,12 @@ function NavIcon({ type, active }: { type: string; active?: boolean }) {
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
     ),
+    search: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+    ),
   }
 
   return <>{icons[type] || null}</>
@@ -996,12 +1002,12 @@ export function MobileHeader({
   /** Use when subtitle is locale/time dependent (e.g. `formatDate()`) to avoid React #418 on SSR. */
   subtitleSuppressHydrationWarning?: boolean
   onMenuClick?: () => void
+  /** Optional explicit search control. Default header action is the menu hamburger. */
   onSearchClick?: () => void
 }) {
-  const appSearch = useAppSearch()
   const mobileMenu = useMobileMenuOptional()
-  const handleSearch = onSearchClick ?? appSearch?.openSearch
-  const showMenuButton = !!onMenuClick && !mobileMenu?.bottomNavVisible
+  const handleMenu = onMenuClick ?? mobileMenu?.openMenu
+  const showMenuButton = !!handleMenu
 
   return (
     <header className="lg-chrome" style={mobileHeaderStyles.container}>
@@ -1019,10 +1025,10 @@ export function MobileHeader({
         </div>
       </div>
       <div style={mobileHeaderStyles.actions}>
-        {handleSearch && (
+        {onSearchClick ? (
           <button
             type="button"
-            onClick={handleSearch}
+            onClick={onSearchClick}
             style={mobileHeaderStyles.menuButton}
             aria-label="חיפוש"
           >
@@ -1031,11 +1037,11 @@ export function MobileHeader({
               <path d="m21 21-4.3-4.3" />
             </svg>
           </button>
-        )}
-        {showMenuButton && (
+        ) : null}
+        {showMenuButton ? (
           <button
             type="button"
-            onClick={onMenuClick}
+            onClick={handleMenu}
             style={mobileHeaderStyles.menuButton}
             aria-label="פתיחת תפריט"
             aria-expanded={mobileMenu?.isOpen ?? false}
@@ -1046,7 +1052,7 @@ export function MobileHeader({
               <line x1="3" x2="21" y1="18" y2="18" />
             </svg>
           </button>
-        )}
+        ) : null}
       </div>
     </header>
   )
@@ -1117,6 +1123,7 @@ export function MobileMenu({
   const router = useRouter()
   const { displayName, logoUrl } = useClientBranding()
   const { navItems } = useSidebarNav()
+  const appSearch = useAppSearch()
 
   if (!open) return null
 
@@ -1155,6 +1162,27 @@ export function MobileMenu({
         </div>
 
         <div style={mobileMenuStyles.navColumn}>
+          {appSearch?.openSearch ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose()
+                appSearch.openSearch()
+              }}
+              style={{
+                ...mobileMenuStyles.navLink,
+                width: '100%',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                textAlign: 'right',
+              }}
+            >
+              <NavIcon type="search" />
+              <span style={mobileMenuStyles.navLabel}>חיפוש</span>
+            </button>
+          ) : null}
           <nav style={mobileMenuStyles.nav}>
             {navItems.map((item) => {
               const isActive = isNavItemActive(pathname, item)

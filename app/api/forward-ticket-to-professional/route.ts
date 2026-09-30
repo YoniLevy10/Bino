@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { getLogger } from '@/lib/logging'
 import { forwardTicketToProfessionalBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const requestId = `forward-ticket-pro-${Date.now()}`
 
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const rawBody = await req.json()

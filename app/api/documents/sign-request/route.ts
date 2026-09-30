@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { documentSignRequestBodySchema } from '@/lib/whatsapp-api-schemas'
 import { createDocumentSignRequest } from '@/lib/document-signing'
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()

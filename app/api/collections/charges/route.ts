@@ -66,27 +66,35 @@ export async function GET(req: Request) {
     )
   }
 
+  // Audit #30: search across all pages in DB (not only the current page in JS).
+  if (q) {
+    const safe = q.replace(/[%_,.()]/g, ' ').trim().slice(0, 80)
+    if (safe) {
+      const pattern = `%${safe}%`
+      const { data: matchedResidents } = await admin
+        .from('residents')
+        .select('id')
+        .eq('client_id', auth.ctx.clientId)
+        .is('deleted_at', null)
+        .or(
+          `full_name.ilike.${pattern},apartment_number.ilike.${pattern},phone.ilike.${pattern},normalized_phone.ilike.${pattern}`
+        )
+        .limit(200)
+      const residentIds = (matchedResidents || []).map((r) => (r as { id: string }).id)
+      if (residentIds.length > 0) {
+        query = query.or(`title.ilike.${pattern},resident_id.in.(${residentIds.join(',')})`)
+      } else {
+        query = query.ilike('title', pattern)
+      }
+    }
+  }
+
   const { data, error, count } = await query
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  let items = (data || []) as unknown as CollectionChargeListItem[]
-  if (q) {
-    const needle = q.toLowerCase()
-    items = items.filter((row) => {
-      const name = row.residents?.full_name?.toLowerCase() || ''
-      const apt = row.residents?.apartment_number?.toLowerCase() || ''
-      const phone = (row.residents?.phone || row.residents?.normalized_phone || '').toLowerCase()
-      const title = row.title?.toLowerCase() || ''
-      return (
-        name.includes(needle) ||
-        apt.includes(needle) ||
-        phone.includes(needle) ||
-        title.includes(needle)
-      )
-    })
-  }
+  const items = (data || []) as unknown as CollectionChargeListItem[]
 
   return NextResponse.json({
     items,
@@ -97,7 +105,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections, { write: true })
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
@@ -120,6 +128,20 @@ export async function POST(req: Request) {
 
   const body = validated.data
   const clientId = auth.ctx.clientId
+  const idempotencyKey = (req.headers.get('idempotency-key') || '').trim().slice(0, 128) || null
+
+  // Audit #28: return existing charge for the same Idempotency-Key.
+  if (idempotencyKey) {
+    const { data: existing } = await admin
+      .from('collection_charges')
+      .select(COLLECTION_CHARGE_ROW_SELECT)
+      .eq('client_id', clientId)
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle()
+    if (existing) {
+      return NextResponse.json({ charge: existing, idempotent_replay: true })
+    }
+  }
 
   const { data: project, error: projectErr } = await admin
     .from('projects')
@@ -158,9 +180,22 @@ export async function POST(req: Request) {
       status: 'draft',
       period_label: body.period_label?.trim() || null,
       created_by: auth.ctx.userId,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     })
     .select(COLLECTION_CHARGE_ROW_SELECT)
     .single()
+
+  if (insertErr?.code === '23505' && idempotencyKey) {
+    const { data: existing } = await admin
+      .from('collection_charges')
+      .select(COLLECTION_CHARGE_ROW_SELECT)
+      .eq('client_id', clientId)
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle()
+    if (existing) {
+      return NextResponse.json({ charge: existing, idempotent_replay: true })
+    }
+  }
 
   if (insertErr || !inserted) {
     return NextResponse.json({ error: insertErr?.message || 'יצירת חיוב נכשלה' }, { status: 500 })

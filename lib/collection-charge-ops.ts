@@ -260,6 +260,7 @@ export async function sendCollectionCharge(
   }
 
   const sentAt = charge.sent_at || nowIso()
+  // Audit #20: never overwrite paid/cancelled that flipped while Grow/SMS ran.
   const { data: updated, error } = await admin
     .from('collection_charges')
     .update({
@@ -271,11 +272,19 @@ export async function sendCollectionCharge(
     })
     .eq('id', charge.id)
     .eq('client_id', clientId)
+    .in('status', ['draft', 'sent', 'failed'])
     .select('*')
-    .single()
+    .maybeSingle()
 
-  if (error || !updated) {
-    return { ok: false, error: error?.message || 'עדכון החיוב נכשל', code: 'UPDATE_FAILED' }
+  if (error) {
+    return { ok: false, error: error.message || 'עדכון החיוב נכשל', code: 'UPDATE_FAILED' }
+  }
+  if (!updated) {
+    return {
+      ok: false,
+      error: 'סטטוס החיוב השתנה בזמן השליחה — רעננו את הרשימה',
+      code: 'STATUS_RACE',
+    }
   }
 
   return {
@@ -297,9 +306,11 @@ export async function resendCollectionChargeSms(
   }
 ): Promise<{ ok: true; smsSent: boolean; payUrl: string } | { ok: false; error: string }> {
   const { charge, resident, clientRow, clientId } = opts
-  if (!charge.grow_payment_url && !charge.greeninvoice_payment_url && charge.status !== 'sent' && charge.status !== 'draft') {
-    if (charge.status === 'paid') return { ok: false, error: 'החיוב כבר שולם' }
-    if (charge.status === 'cancelled') return { ok: false, error: 'החיוב בוטל' }
+  // Audit #23: paid/cancelled must always block resend, even when a URL remains.
+  if (charge.status === 'paid') return { ok: false, error: 'החיוב כבר שולם' }
+  if (charge.status === 'cancelled') return { ok: false, error: 'החיוב בוטל' }
+  if (charge.status !== 'sent' && charge.status !== 'draft' && charge.status !== 'failed') {
+    return { ok: false, error: 'לא ניתן לשלוח מחדש חיוב במצב זה' }
   }
   if (!charge.grow_payment_url && !charge.greeninvoice_payment_url && !charge.public_token) {
     return { ok: false, error: 'אין קישור תשלום לחיוב זה' }
@@ -354,8 +365,10 @@ export async function cancelCollectionCharge(
   if (row.status === 'paid') return { ok: false, error: 'לא ניתן לבטל חיוב ששולם' }
   if (row.status === 'cancelled') return { ok: true }
 
-  // Invalidate Bino public link; keep Grow link id so a late webhook can still match.
-  const { error: updErr } = await admin
+  // Invalidate Bino public link. Keep grow_payment_link_id for forensics, but
+  // markChargePaidByGrowIds refuses cancelled rows (audit #22 local hardening).
+  // Full Grow-side link revoke depends on Grow API support (external).
+  const { data: cancelled, error: updErr } = await admin
     .from('collection_charges')
     .update({
       status: 'cancelled' satisfies CollectionChargeStatus,
@@ -366,8 +379,12 @@ export async function cancelCollectionCharge(
     })
     .eq('id', opts.chargeId)
     .eq('client_id', opts.clientId)
+    .in('status', ['draft', 'sent', 'failed'])
+    .select('id')
+    .maybeSingle()
 
   if (updErr) return { ok: false, error: updErr.message }
+  if (!cancelled) return { ok: false, error: 'סטטוס החיוב השתנה — לא בוטל' }
   return { ok: true }
 }
 
@@ -447,11 +464,16 @@ export async function markChargePaidByGrowIds(
   }
 
   const applyPaid = async (filter: { column: string; values: string[] }) => {
-    const { data: candidates } = await admin
+    const { data: candidates, error: selErr } = await admin
       .from('collection_charges')
       .select('id, amount, status')
       .in(filter.column, filter.values)
       .neq('status', 'paid')
+      .neq('status', 'cancelled')
+
+    if (selErr) {
+      throw new Error(`grow_mark_paid_select_failed: ${selErr.message}`)
+    }
 
     const allowedIds: string[] = []
     for (const row of candidates ?? []) {
@@ -468,7 +490,7 @@ export async function markChargePaidByGrowIds(
     }
     if (allowedIds.length === 0) return
 
-    const { data } = await admin
+    const { data, error: updErr } = await admin
       .from('collection_charges')
       .update({
         status: 'paid' satisfies CollectionChargeStatus,
@@ -478,7 +500,11 @@ export async function markChargePaidByGrowIds(
       })
       .in('id', allowedIds)
       .neq('status', 'paid')
+      .neq('status', 'cancelled')
       .select('id')
+    if (updErr) {
+      throw new Error(`grow_mark_paid_update_failed: ${updErr.message}`)
+    }
     matched += data?.length ?? 0
     for (const row of data ?? []) {
       if (!newlyPaidIds.includes(row.id)) newlyPaidIds.push(row.id)
@@ -508,7 +534,7 @@ export async function recordGrowApproveResult(
 ): Promise<void> {
   if (opts.chargeIds.length === 0) return
   const now = nowIso()
-  await admin
+  const { error } = await admin
     .from('collection_charges')
     .update({
       grow_approve_status: opts.ok ? 'ok' : 'failed',
@@ -519,6 +545,9 @@ export async function recordGrowApproveResult(
       updated_at: now,
     })
     .in('id', opts.chargeIds)
+  if (error) {
+    throw new Error(`grow_record_approve_failed: ${error.message}`)
+  }
 }
 
 /** Persist transaction identifiers from S2S even when charge was already paid (idempotent webhook). */
@@ -533,7 +562,7 @@ export async function persistGrowTransactionIds(
   if (opts.chargeIds.length === 0) return
   if (!opts.transactionId && !opts.transactionToken) return
   const now = nowIso()
-  await admin
+  const { error } = await admin
     .from('collection_charges')
     .update({
       ...(opts.transactionId ? { grow_transaction_id: opts.transactionId } : {}),
@@ -541,6 +570,9 @@ export async function persistGrowTransactionIds(
       updated_at: now,
     })
     .in('id', opts.chargeIds)
+  if (error) {
+    throw new Error(`grow_persist_txn_failed: ${error.message}`)
+  }
 }
 
 /** Resolve charge ids for approve / invoice updates (paid or matching identifiers). */
@@ -556,7 +588,12 @@ export async function findChargeIdsByGrowIds(
   const found = new Set<string>()
   const run = async (column: string, values: string[]) => {
     if (values.length === 0) return
-    const { data } = await admin.from('collection_charges').select('id').in(column, values)
+    const { data, error } = await admin
+      .from('collection_charges')
+      .select('id, status')
+      .in(column, values)
+      .neq('status', 'cancelled')
+    if (error) throw new Error(`grow_find_charges_failed: ${error.message}`)
     for (const row of data ?? []) found.add(row.id)
   }
   await run('public_token', [...new Set(ids.publicTokens.filter(Boolean))])

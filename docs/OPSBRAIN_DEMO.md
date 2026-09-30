@@ -19,12 +19,12 @@ Default demo mailbox (override with env — mailbox domain may still be legacy u
 | | |
 |--|--|
 | Email | `savion@bamakor.com` (legacy mailbox; override via `DEMO_LOGIN_EMAIL`) |
-| Password | `savion2026!` |
+| Password | set via `DEMO_LOGIN_PASSWORD` (never commit plaintext) |
 
 Create / refresh the auth user and link it to OpsBrain (pick one):
 
 ```bash
-# Needs SUPABASE_SERVICE_ROLE_KEY in .env.local
+# Needs SUPABASE_SERVICE_ROLE_KEY + DEMO_LOGIN_PASSWORD in .env.local
 npx tsx scripts/ensure-opsbrain-demo-user.ts
 ```
 
@@ -37,7 +37,7 @@ Optional env for the TS script:
 
 ```bash
 DEMO_LOGIN_EMAIL=savion@bamakor.com
-DEMO_LOGIN_PASSWORD='savion2026!'
+DEMO_LOGIN_PASSWORD='…'  # from local secrets — not in git
 OPSBRAIN_CLIENT_ID=07773bb3-4969-4bce-8ce2-faab3b26383c
 ```
 

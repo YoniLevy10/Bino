@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
 
 /** Publish / unpublish an existing project document to the resident portal. */
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   let body: { document_id?: unknown; publish?: unknown; building_id?: unknown; category?: unknown }

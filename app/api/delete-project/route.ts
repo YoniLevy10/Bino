@@ -3,19 +3,18 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { deleteProjectBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 
 /**
- * Delete a project: soft-delete tickets & residents (`deleted_at`);
-
- * clears merge pointers, then deletes sessions + project row.
+ * Soft-delete a project (audit #40): mark project + tickets + residents with deleted_at.
+ * Never hard-delete the project row — CASCADE would wipe soft-deleted history.
  */
 export async function POST(req: Request) {
   const logger = getLogger()
   const audit = getAuditLogger()
   const requestId = `delete-project-${Date.now()}`
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()
@@ -35,59 +34,87 @@ export async function POST(req: Request) {
 
     const { data: project, error: pErr } = await admin
       .from('projects')
-      .select('id, name, project_code, client_id')
+      .select('id, name, project_code, client_id, deleted_at')
       .eq('id', projectId)
       .maybeSingle()
 
     if (pErr) {
-      logger.error('PROJECT_API', 'Delete project lookup failed', new Error(pErr.message), { requestId, projectId, clientId })
+      logger.error('PROJECT_API', 'Delete project lookup failed', new Error(pErr.message), {
+        requestId,
+        projectId,
+        clientId,
+      })
       return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
     }
     if (!project || (project as { client_id?: string }).client_id !== clientId) {
       audit.logFailedOperation('DELETE', 'PROJECT', projectId, clientId, 'project_not_found_or_wrong_tenant')
       return NextResponse.json({ error: 'פרויקט לא נמצא', requestId }, { status: 404 })
     }
-
-    const { data: ticketRows, error: tListErr } = await admin
-      .from('tickets')
-      .select('id')
-      .eq('project_id', projectId)
-
-    if (tListErr) {
-      logger.error('PROJECT_API', 'Delete project ticket list failed', new Error(tListErr.message), { requestId, projectId, clientId })
-      return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
-    }
-    const ticketIds = ((ticketRows as { id: string }[] | null) || []).map((r) => r.id)
-
-    if (ticketIds.length > 0) {
-      const { error: mErr } = await admin
-        .from('tickets')
-        .update({ merged_into_ticket_id: null })
-        .in('merged_into_ticket_id', ticketIds)
-      if (mErr) return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    if ((project as { deleted_at?: string | null }).deleted_at) {
+      return NextResponse.json({
+        success: true,
+        requestId,
+        already_deleted: true,
+        deleted: {
+          project_id: projectId,
+          name: (project as { name?: string }).name,
+          project_code: (project as { project_code?: string }).project_code,
+        },
+      })
     }
 
     const nowSoft = new Date().toISOString()
+
     const { error: softTicketsErr } = await admin
       .from('tickets')
       .update({ deleted_at: nowSoft, updated_at: nowSoft })
       .eq('project_id', projectId)
-    if (softTicketsErr) return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      .is('deleted_at', null)
+    if (softTicketsErr) {
+      return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    }
 
     const { error: resDelErr } = await admin
       .from('residents')
       .update({ deleted_at: nowSoft })
       .eq('project_id', projectId)
-    if (resDelErr) return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      .is('deleted_at', null)
+    if (resDelErr) {
+      return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    }
 
     const { error: sessDelErr } = await admin.from('sessions').delete().eq('project_id', projectId)
-    if (sessDelErr) return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    if (sessDelErr) {
+      return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    }
 
-    const { error: delProjErr } = await admin.from('projects').delete().eq('id', projectId).eq('client_id', clientId)
-    if (delProjErr) return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+    const { error: softProjErr } = await admin
+      .from('projects')
+      .update({ deleted_at: nowSoft, is_active: false, updated_at: nowSoft })
+      .eq('id', projectId)
+      .eq('client_id', clientId)
+      .is('deleted_at', null)
+    if (softProjErr) {
+      // updated_at may not exist on older schemas — retry without it.
+      const { error: softProjErr2 } = await admin
+        .from('projects')
+        .update({ deleted_at: nowSoft, is_active: false })
+        .eq('id', projectId)
+        .eq('client_id', clientId)
+        .is('deleted_at', null)
+      if (softProjErr2) {
+        logger.error('PROJECT_API', 'Soft-delete project failed', new Error(softProjErr2.message), {
+          requestId,
+          projectId,
+          clientId,
+          firstError: softProjErr.message,
+        })
+        return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
+      }
+    }
 
     audit.logAction('DELETE', 'PROJECT', projectId, clientId, 'dashboard')
-    logger.warn('PROJECT_API', 'Project hard-deleted', { requestId, projectId, clientId })
+    logger.warn('PROJECT_API', 'Project soft-deleted', { requestId, projectId, clientId })
     return NextResponse.json({
       success: true,
       requestId,
@@ -98,8 +125,8 @@ export async function POST(req: Request) {
       },
     })
   } catch (e) {
-    console.error('[delete-project]', e)
-    logger.error('PROJECT_API', 'Unhandled delete-project error', e instanceof Error ? e : new Error(String(e)), { requestId })
-    return NextResponse.json({ error: 'internal' }, { status: 500 })
+    const err = e instanceof Error ? e : new Error(String(e))
+    logger.error('PROJECT_API', 'Delete project unexpected error', err, { requestId })
+    return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
   }
 }

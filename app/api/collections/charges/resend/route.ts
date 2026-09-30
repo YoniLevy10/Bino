@@ -16,7 +16,7 @@ import {
 } from '@/lib/collection-charge-ops'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections, { write: true })
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
@@ -50,6 +50,15 @@ export async function POST(req: Request) {
   }
 
   const row = charge as CollectionChargeRow
+
+  // Re-check at action time — never remind for already-paid / cancelled charges
+  if (row.status === 'paid') {
+    return NextResponse.json({ error: 'החיוב כבר שולם', code: 'ALREADY_PAID' }, { status: 409 })
+  }
+  if (row.status === 'cancelled') {
+    return NextResponse.json({ error: 'החיוב בוטל', code: 'CANCELLED' }, { status: 409 })
+  }
+
   let resident: ChargeResidentInfo | null = null
   let project: ChargeProjectInfo | null = null
 

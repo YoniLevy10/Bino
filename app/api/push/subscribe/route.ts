@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { pushSubscribeBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import {
@@ -10,7 +10,7 @@ import {
 
 export async function POST(req: Request) {
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const { admin, clientId, userId } = auth.ctx
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 /** Remove this user's manager push rows (all tenants) + revoke browser endpoint elsewhere. */
 export async function DELETE(req: Request) {
   try {
-    const auth = await requireSessionClientId()
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const { admin, userId } = auth.ctx

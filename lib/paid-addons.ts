@@ -93,6 +93,17 @@ export async function clientHasPaidAddon(
   clientId: string,
   addonKey: PaidAddonKey | string
 ): Promise<boolean> {
+  // Audit #52: catalog.is_active must disable usage, not only hide purchase.
+  const { data: catalog, error: catalogErr } = await supabase
+    .from('paid_addons_catalog')
+    .select('addon_key')
+    .eq('addon_key', addonKey)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (catalogErr) throw catalogErr
+  if (!catalog) return false
+
   const { data, error } = await supabase
     .from('client_paid_addons')
     .select('addon_key')

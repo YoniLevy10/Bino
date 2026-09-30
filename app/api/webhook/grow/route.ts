@@ -89,42 +89,98 @@ export async function POST(req: Request) {
     }
 
     const admin = getSupabaseAdmin()
-    const result = await markChargePaidByGrowIds(admin, ids)
 
+    // Resolve candidates first so sum-reject / cancel can short-circuit before Approve.
     const chargeIds = await findChargeIdsByGrowIds(admin, {
       publicTokens: ids.publicTokens,
       paymentLinkIds: ids.paymentLinkIds,
       processIds: ids.processIds,
       transactionIds: ids.transactionIds,
     })
-    const targetIds = chargeIds.length ? chargeIds : result.newlyPaidIds
 
-    await persistGrowTransactionIds(admin, {
-      chargeIds: targetIds,
-      transactionId: ids.transactionIds[0] || null,
-      transactionToken: ids.transactionToken,
-    })
+    const needsApprove = Boolean(ids.transactionIds[0] && ids.transactionToken)
 
-    if (ids.transactionIds[0] && ids.transactionToken) {
+    // Audit #17: Approve before marking paid when Grow provides transaction credentials.
+    if (needsApprove && chargeIds.length > 0) {
       const approved = await approveGrowTransaction({
         transactionId: ids.transactionIds[0],
-        transactionToken: ids.transactionToken,
+        transactionToken: ids.transactionToken!,
         transactionTypeId: ids.transactionTypeId || undefined,
         paymentType: ids.paymentType || undefined,
       })
       await recordGrowApproveResult(admin, {
-        chargeIds: targetIds,
+        chargeIds,
         ok: approved.ok,
         error: approved.error,
         transactionId: ids.transactionIds[0],
         transactionToken: ids.transactionToken,
       })
       if (!approved.ok) {
-        logger.info('WEBHOOK', 'Grow approveTransaction failed — charge kept paid for retry', {
+        logger.info('WEBHOOK', 'Grow approveTransaction failed — not marking paid', {
           transactionId: ids.transactionIds[0],
-          matched: result.matched,
           error: approved.error,
         })
+        return NextResponse.json(
+          {
+            ok: false,
+            matched: 0,
+            approveFailed: true,
+            error: approved.error || 'approve_failed',
+          },
+          { status: 502 }
+        )
+      }
+    }
+
+    const result = await markChargePaidByGrowIds(admin, ids)
+
+    // Audit #19: when every candidate was sum-rejected, do not bind txn ids / Approve leftovers.
+    if (result.sumRejected > 0 && result.matched === 0) {
+      return NextResponse.json({
+        ok: false,
+        matched: 0,
+        sumRejected: result.sumRejected,
+        reason: 'sum_mismatch',
+      })
+    }
+
+    const targetIds = result.newlyPaidIds.length
+      ? result.newlyPaidIds
+      : chargeIds.filter(Boolean)
+
+    if (targetIds.length > 0) {
+      await persistGrowTransactionIds(admin, {
+        chargeIds: targetIds,
+        transactionId: ids.transactionIds[0] || null,
+        transactionToken: ids.transactionToken,
+      })
+    }
+
+    // Approve path when we had no charge ids before mark-paid (ids arrived only via paid update).
+    if (needsApprove && chargeIds.length === 0 && result.newlyPaidIds.length > 0) {
+      const approved = await approveGrowTransaction({
+        transactionId: ids.transactionIds[0],
+        transactionToken: ids.transactionToken!,
+        transactionTypeId: ids.transactionTypeId || undefined,
+        paymentType: ids.paymentType || undefined,
+      })
+      await recordGrowApproveResult(admin, {
+        chargeIds: result.newlyPaidIds,
+        ok: approved.ok,
+        error: approved.error,
+        transactionId: ids.transactionIds[0],
+        transactionToken: ids.transactionToken,
+      })
+      if (!approved.ok) {
+        return NextResponse.json(
+          {
+            ok: false,
+            matched: result.matched,
+            approveFailed: true,
+            error: approved.error || 'approve_failed',
+          },
+          { status: 502 }
+        )
       }
     }
 
