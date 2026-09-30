@@ -52,7 +52,9 @@ export function writeLastWorkerId(workerId: string): void {
 }
 
 export function clearWorkerToken(): void {
+  let lastWorkerId: string | null = null
   try {
+    lastWorkerId = localStorage.getItem(WORKER_LAST_ID_KEY)
     localStorage.removeItem(WORKER_TOKEN_KEY)
     sessionStorage.removeItem(WORKER_TOKEN_KEY)
     localStorage.removeItem(WORKER_LAST_ID_KEY)
@@ -60,5 +62,11 @@ export function clearWorkerToken(): void {
     /* ignore */
   }
   clearAllWorkerTicketsCaches()
+  // Audit #34: drop this worker's offline attendance queue on logout / token clear.
+  if (lastWorkerId && typeof window !== 'undefined') {
+    void import('@/lib/offline-attendance-db')
+      .then((m) => m.clearPendingAttendanceEventsForWorker(lastWorkerId!))
+      .catch(() => {})
+  }
   // Keep worker branding cache so the next open still shows the tenant logo while bootstrap runs.
 }
