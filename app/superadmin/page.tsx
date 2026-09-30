@@ -26,6 +26,7 @@ import { ClientHub } from './components/ClientHub'
 import { ClientTaskView } from './components/ClientTaskView'
 import { SettingsView } from './components/SettingsView'
 import { SalesLeadsPanel } from './components/SalesLeadsPanel'
+import { SandboxLabPanel } from './SandboxLabPanel'
 import { clientHash, parseSuperadminHash, tabHash, writeHash } from './hashRoute'
 import {
   adminHeaders,
@@ -590,6 +591,12 @@ export default function SuperAdminPage() {
             onBack={backToHub}
             onOpenTask={(task) => openClient(selectedClient.id, task)}
           />
+        ) : null}
+
+        {tab === 'sandbox' ? (
+          <div className="sa-tab-panel">
+            <SandboxLabPanel secret={secret} />
+          </div>
         ) : null}
 
         {tab === 'leads' ? <SalesLeadsPanel secret={secret} /> : null}
