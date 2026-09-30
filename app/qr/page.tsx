@@ -140,7 +140,9 @@ export default function QrPage() {
   }
 
   function buildReportLink(project: ProjectRow) {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+    const baseUrl =
+      (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '') ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
     return `${baseUrl}/report?project=${encodeURIComponent(project.project_code)}&client=${encodeURIComponent(project.client_id)}`
   }
 
@@ -149,8 +151,7 @@ export default function QrPage() {
       projectCode: project.project_code,
       clientId: project.client_id,
       baseUrl:
-        process.env.NEXT_PUBLIC_APP_URL ||
-        process.env.NEXT_PUBLIC_BASE_URL ||
+        (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '') ||
         (typeof window !== 'undefined' ? window.location.origin : ''),
     })
   }

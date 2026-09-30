@@ -61,10 +61,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ...result, mode: 'password' })
   }
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_BASE_URL?.trim() ||
-    ''
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
 
   const result = await inviteUserToClientOrganization(admin, {
     clientId,

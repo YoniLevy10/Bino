@@ -1,8 +1,16 @@
 # דומיין ייצור — bino.casa
 
-**Origin ראשי:** `https://bino.casa`  
+**Origin ראשי (קישורים / SMS / WhatsApp / SEO):** `https://bino.casa`  
 **www:** `https://www.bino.casa` → 308 ל־`bino.casa`  
-**Alias ישן (נשאר פעיל):** `https://bamakor.vercel.app` — לא מופנה בכוונה, כדי לא לשבור webhooks של Meta/Grow שעדיין מצביעים לשם.
+**Alias webhook ישן (נשאר פעיל, לא לפרסום):** `https://bamakor.vercel.app` — Meta/Grow שעדיין מצביעים לשם  
+**מייל Resend:** `{slug}@bino.casa`
+
+## למה לא Vercel.app בקישורים
+
+כל קישור ציבורי (SMS, WhatsApp, הזמנות, canonical, sitemap) נבנה מ־`NEXT_PUBLIC_APP_URL`.  
+חייב להיות `https://bino.casa` ב-Production — **לא** `*.vercel.app` ולא URL של Preview.
+
+`bamakor.vercel.app` נשאר רק לתאימות webhooks ישנים — לא לפרסום, לא ל-SMS חדש, לא ל-canonical.
 
 ## מה כבר הוגדר ב-Vercel
 
@@ -47,7 +55,7 @@ Developer Console → WhatsApp → Configuration → Callback URL:
 
 Authorized JavaScript origins / redirect URIs — להוסיף `https://bino.casa` ואת ה-callback של Supabase.
 
-## קישורי מערכת אחרי cutover
+## קישורי מערכת
 
 | שימוש | URL |
 |--------|-----|
@@ -57,4 +65,4 @@ Authorized JavaScript origins / redirect URIs — להוסיף `https://bino.cas
 | Webhook Grow | https://bino.casa/api/webhook/grow?token=… |
 | Apple Pay association | https://bino.casa/.well-known/apple-developer-merchantid-domain-association |
 
-קישורי SMS / WhatsApp / הזמנות חדשים נבנים מ־`NEXT_PUBLIC_APP_URL` → `bino.casa`.
+קישורי SMS / WhatsApp / הזמנות חדשים נבנים מ־`NEXT_PUBLIC_APP_URL` → **bino.casa**.

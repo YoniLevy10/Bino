@@ -1,18 +1,22 @@
 /**
  * Absolute origin for public marketing SEO (sitemap, robots, metadataBase, JSON-LD).
- * Prefers NEXT_PUBLIC_APP_URL; falls back to Vercel deployment URL, then localhost.
+ * Prefers NEXT_PUBLIC_APP_URL (production: https://bino.casa).
+ * Never use VERCEL_URL / *.vercel.app for canonicals or customer-facing links.
  */
 export function getMarketingSiteOrigin(): string {
   const fromEnv = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
   if (fromEnv) return fromEnv
 
-  const vercel = (process.env.VERCEL_URL || '').trim().replace(/\/$/, '')
-  if (vercel) {
-    return vercel.startsWith('http') ? vercel : `https://${vercel}`
+  // Local/dev only — never ship vercel.app as the public origin.
+  if (process.env.NODE_ENV !== 'production') {
+    return 'http://localhost:3000'
   }
 
-  return 'http://localhost:3000'
+  return 'https://bino.casa'
 }
+
+/** Display host in marketing UI (device chrome, OG art). */
+export const BINO_PUBLIC_HOST = 'bino.casa'
 
 /** ~50–60 chars for SEOptimer / SERP title length. */
 export const BINO_MARKETING_TITLE = 'BINO — מערכת ניהול פרויקטים, בניינים ושטחים בישראל'
