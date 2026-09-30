@@ -8,6 +8,7 @@
 import { BUYER_FIT_WEIGHTS, SEGMENT_MRR_HINT } from '@/lib/sales-leads/config'
 import { classifyPhoneKind, type PhoneKind } from '@/lib/sales-leads/phone'
 import type { Contactability, FitClass } from '@/lib/sales-leads/types'
+import { stageLabelHe } from '@/lib/sales-leads/funnel/model'
 
 export type FitAssessment = {
   score: number
@@ -337,24 +338,5 @@ export function contactabilityLabelHe(c: Contactability | null | undefined): str
 }
 
 export function statusLabelHe(status: string): string {
-  switch (status) {
-    case 'discovered':
-      return 'חדש'
-    case 'qualified':
-      return 'מסונן'
-    case 'contacted':
-      return 'פנו אליו'
-    case 'demo_scheduled':
-      return 'דמו נקבע'
-    case 'won':
-      return 'נסגר'
-    case 'lost':
-      return 'אבד'
-    case 'rejected':
-      return 'נדחה'
-    case 'do_not_contact':
-      return 'לא ליצור קשר'
-    default:
-      return status
-  }
+  return stageLabelHe(status)
 }

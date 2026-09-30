@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
 import { adminHeaders } from '@/app/superadmin/helpers'
 import {
@@ -9,19 +8,28 @@ import {
   ISRAEL_SALES_CITIES,
   segmentLabelHe,
 } from '@/lib/sales-leads/config'
+import { fitClassLabelHe } from '@/lib/sales-leads/fit-score'
 import {
-  contactabilityLabelHe,
-  fitClassLabelHe,
-  statusLabelHe,
-} from '@/lib/sales-leads/fit-score'
+  interestLabelHe,
+  interestTone,
+  stageLabelHe,
+  trackingLabelHe,
+} from '@/lib/sales-leads/funnel/model'
+import { formatJerusalemDateTime } from '@/lib/sales-leads/funnel/timezone'
 import {
   defaultOutreachMessage,
   outreachVariantsForLead,
 } from '@/lib/sales-leads/outreach-templates'
 import { formatPhoneLocalIl, whatsappLink } from '@/lib/sales-leads/phone'
-import { LEAD_STATUSES, type LeadStatus, type SalesLead } from '@/lib/sales-leads/types'
+import type {
+  FunnelCounters,
+  LeadWorkView,
+  SalesLead,
+  SalesOperatorLite,
+} from '@/lib/sales-leads/types'
+import { LeadDetailDrawer } from './sales-leads/LeadDetailDrawer'
 
-type Counters = {
+type LegacyCounters = {
   total: number
   byStatus: Record<string, number>
   byFitClass: Record<string, number>
@@ -32,6 +40,7 @@ type Counters = {
   dueToday?: number
   withContactChannel?: number
   contactChannelPct?: number
+  funnel?: FunnelCounters
 }
 
 type RunRow = {
@@ -44,78 +53,54 @@ type RunRow = {
   error_message?: string | null
 }
 
-type SortMode = 'fit_score' | 'created_at' | 'estimated_mrr' | 'next_contact'
+type SortMode = 'fit_score' | 'created_at' | 'estimated_mrr' | 'next_contact' | 'updated_at'
 
-const STATUS_CHIPS: Array<{ value: string; label: string }> = [
-  { value: 'discovered,qualified,contacted,demo_scheduled', label: 'פעילים' },
-  { value: 'discovered', label: 'חדשים' },
-  { value: 'qualified', label: 'מסוננים' },
-  { value: 'contacted', label: 'פנינו' },
-  { value: 'demo_scheduled', label: 'דמו' },
-  { value: 'won', label: 'נסגרו' },
-  { value: 'lost,rejected,do_not_contact', label: 'סגורים' },
-  { value: '', label: 'הכל' },
+const OPERATOR_STORAGE_KEY = 'bino_sales_operator_id'
+const FILTERS_STORAGE_KEY = 'bino_sales_lead_filters_v1'
+
+const WORK_VIEWS: Array<{ value: LeadWorkView; label: string }> = [
+  { value: 'active', label: 'פעילים' },
+  { value: 'mine', label: 'שלי' },
+  { value: 'due_today', label: 'לטיפול היום' },
+  { value: 'overdue', label: 'באיחור' },
+  { value: 'interested', label: 'מעוניינים' },
+  { value: 'needs_completion', label: 'דורש השלמה' },
+  { value: 'waiting', label: 'ממתינים לתשובה' },
+  { value: 'customers', label: 'לקוחות' },
+  { value: 'lost', label: 'אבודים' },
+  { value: 'deferred', label: 'נדחו להמשך' },
+  { value: 'all', label: 'הכל' },
 ]
 
-const FIT_CHIPS: Array<{ value: string; label: string }> = [
-  { value: 'suitable,needs_review', label: 'מתאים + לבדיקה' },
-  { value: 'suitable', label: 'מתאים בלבד' },
-  { value: 'needs_review', label: 'לבדיקה' },
-  { value: '', label: 'כל הדירוגים' },
-]
-
-const QUICK_STATUSES: LeadStatus[] = [
-  'qualified',
-  'contacted',
-  'demo_scheduled',
-  'won',
-  'lost',
-  'do_not_contact',
-]
-
-function enrichmentNum(lead: SalesLead, key: 'rating' | 'reviewCount'): number | null {
-  const raw = lead.enrichment?.[key]
-  return typeof raw === 'number' && Number.isFinite(raw) ? raw : null
+function interestClass(level: string): string {
+  return `sa-interest sa-interest-${interestTone(level)}`
 }
 
-function mapsHref(lead: SalesLead): string | null {
-  const src = lead.sourceUrl?.trim()
-  if (src && /google\.[^/]+\/maps|maps\.google\.|goo\.gl\/maps|maps\.app\.goo\.gl/i.test(src)) {
-    return src
+function friendlyError(raw: string): string {
+  const t = raw.trim()
+  if (!t) return 'שגיאה'
+  if (/API_KEY_HTTP_REFERRER_BLOCKED|referer.*blocked/i.test(t)) {
+    return 'מפתח Google חסום בגלל הגבלת HTTP referrer — הגדירו Application restrictions ל-None (או IP) במפתח שרת, לא לדפדפן.'
   }
-  const addr = lead.businessAddress?.trim()
-  if (addr) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+  if (/PERMISSION_DENIED|403/i.test(t) && /Places|Google/i.test(t)) {
+    return 'Google Places דחה את הבקשה — בדקו מפתח API, חיוב, והפעלת Places API (New).'
   }
-  return null
-}
-
-function formatNextContact(iso: string | null | undefined): string | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleString('he-IL', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function fitTone(score: number | null | undefined): string {
-  if (score == null) return theme.colors.textSecondary
-  if (score >= 75) return '#15803d'
-  if (score >= 60) return theme.colors.primary
-  if (score >= 40) return '#b45309'
-  return '#b91c1c'
+  const withoutJson = t.replace(/\{[\s\S]*\}$/, '').trim()
+  const clean = withoutJson || t
+  return clean.length > 220 ? `${clean.slice(0, 220)}…` : clean
 }
 
 export function SalesLeadsPanel({ secret }: { secret: string }) {
   const [leads, setLeads] = useState<SalesLead[]>([])
   const [total, setTotal] = useState(0)
-  const [counters, setCounters] = useState<Counters | null>(null)
+  const [counters, setCounters] = useState<LegacyCounters | null>(null)
+  const [funnelCounters, setFunnelCounters] = useState<FunnelCounters | null>(null)
+  const [operators, setOperators] = useState<SalesOperatorLite[]>([])
+  const [operatorsConfigured, setOperatorsConfigured] = useState(true)
+  const [operatorId, setOperatorId] = useState('')
   const [runs, setRuns] = useState<RunRow[]>([])
   const [placesConfigured, setPlacesConfigured] = useState<boolean | null>(null)
+  const [dayYmd, setDayYmd] = useState('')
   const [loading, setLoading] = useState(false)
   const [discovering, setDiscovering] = useState(false)
   const [discoverPct, setDiscoverPct] = useState(0)
@@ -124,24 +109,92 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
   const [discoverCreated, setDiscoverCreated] = useState(0)
   const [error, setError] = useState('')
   const [okMsg, setOkMsg] = useState('')
+  const [conflictMsg, setConflictMsg] = useState('')
 
   const [q, setQ] = useState('')
   const [qDraft, setQDraft] = useState('')
   const [city, setCity] = useState('')
   const [segment, setSegment] = useState('')
-  const [status, setStatus] = useState('discovered,qualified,contacted,demo_scheduled')
+  const [view, setView] = useState<LeadWorkView>('active')
   const [fitClass, setFitClass] = useState('suitable,needs_review')
   const [contactability, setContactability] = useState('mobile,landline,unknown')
   const [minFitScore, setMinFitScore] = useState(0)
-  const [sort, setSort] = useState<SortMode>('fit_score')
-  const [dueTodayOnly, setDueTodayOnly] = useState(false)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sort, setSort] = useState<SortMode>('next_contact')
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [bulkBusy, setBulkBusy] = useState(false)
-  /** Per-lead index into outreachVariantsForLead — cycles on each WhatsApp open. */
   const [waVariantIdx, setWaVariantIdx] = useState<Record<string, number>>({})
+  const [filtersReady, setFiltersReady] = useState(false)
+
+  // Restore filters + operator
+  useEffect(() => {
+    try {
+      const op = localStorage.getItem(OPERATOR_STORAGE_KEY)?.trim()
+      if (op) setOperatorId(op)
+      const raw = sessionStorage.getItem(FILTERS_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        if (typeof parsed.q === 'string') {
+          setQ(parsed.q)
+          setQDraft(parsed.q)
+        }
+        if (typeof parsed.city === 'string') setCity(parsed.city)
+        if (typeof parsed.segment === 'string') setSegment(parsed.segment)
+        if (typeof parsed.view === 'string') setView(parsed.view as LeadWorkView)
+        if (typeof parsed.fitClass === 'string') setFitClass(parsed.fitClass)
+        if (typeof parsed.contactability === 'string') setContactability(parsed.contactability)
+        if (typeof parsed.minFitScore === 'number') setMinFitScore(parsed.minFitScore)
+        if (typeof parsed.sort === 'string') setSort(parsed.sort as SortMode)
+        if (typeof parsed.selectedLeadId === 'string') setSelectedLeadId(parsed.selectedLeadId)
+      }
+    } catch {
+      /* ignore */
+    }
+    setFiltersReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!filtersReady) return
+    try {
+      sessionStorage.setItem(
+        FILTERS_STORAGE_KEY,
+        JSON.stringify({
+          q,
+          city,
+          segment,
+          view,
+          fitClass,
+          contactability,
+          minFitScore,
+          sort,
+          selectedLeadId,
+        }),
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [
+    filtersReady,
+    q,
+    city,
+    segment,
+    view,
+    fitClass,
+    contactability,
+    minFitScore,
+    sort,
+    selectedLeadId,
+  ])
+
+  useEffect(() => {
+    try {
+      if (operatorId) localStorage.setItem(OPERATOR_STORAGE_KEY, operatorId)
+    } catch {
+      /* ignore */
+    }
+  }, [operatorId])
 
   const load = useCallback(async () => {
+    if (!filtersReady) return
     setLoading(true)
     setError('')
     try {
@@ -149,75 +202,205 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       if (q.trim()) params.set('q', q.trim())
       if (city) params.set('city', city)
       if (segment) params.set('segment', segment)
-      if (status) params.set('status', status)
+      params.set('view', view)
       if (fitClass) params.set('fitClass', fitClass)
       if (contactability) params.set('contactability', contactability)
       if (minFitScore > 0) params.set('minFitScore', String(minFitScore))
-      if (dueTodayOnly) {
-        params.set('dueToday', '1')
-        params.set('sort', 'next_contact')
-      } else {
-        params.set('sort', sort)
-      }
+      params.set('sort', sort)
+      if (operatorId) params.set('viewerOperatorId', operatorId)
       params.set('limit', '100')
 
       const res = await fetch(`/api/superadmin/sales-leads?${params}`, {
-        headers: adminHeaders(secret),
+        headers: adminHeaders(secret, operatorId),
       })
       const json = (await res.json()) as {
         leads?: SalesLead[]
         total?: number
-        counters?: Counters
+        counters?: LegacyCounters
+        funnelCounters?: FunnelCounters
+        operators?: Array<{ id: string; displayName: string }>
+        operatorsConfigured?: boolean
         runs?: RunRow[]
         placesConfigured?: boolean
+        dayBounds?: { ymd?: string }
         error?: string
       }
       if (!res.ok) throw new Error(json.error || 'טעינה נכשלה')
       setLeads(json.leads ?? [])
       setTotal(json.total ?? 0)
       setCounters(json.counters ?? null)
+      setFunnelCounters(json.funnelCounters ?? json.counters?.funnel ?? null)
+      setOperators(json.operators ?? [])
+      setOperatorsConfigured(json.operatorsConfigured !== false)
       setRuns(json.runs ?? [])
+      setDayYmd(json.dayBounds?.ymd ?? '')
       if (typeof json.placesConfigured === 'boolean') {
         setPlacesConfigured(json.placesConfigured)
       }
-      setSelected(new Set())
+      if (!operatorId && (json.operators?.length ?? 0) === 1) {
+        setOperatorId(json.operators![0].id)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה')
     } finally {
       setLoading(false)
     }
-  }, [secret, q, city, segment, status, fitClass, contactability, minFitScore, sort, dueTodayOnly])
+  }, [
+    secret,
+    q,
+    city,
+    segment,
+    view,
+    fitClass,
+    contactability,
+    minFitScore,
+    sort,
+    operatorId,
+    filtersReady,
+  ])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  // Near-realtime poll while panel is open
+  useEffect(() => {
+    if (!filtersReady) return
+    const t = setInterval(() => {
+      void load()
+    }, 25000)
+    return () => clearInterval(t)
+  }, [load, filtersReady])
 
   useEffect(() => {
     const t = setTimeout(() => setQ(qDraft), 350)
     return () => clearTimeout(t)
   }, [qDraft])
 
-  const progressPct = counters
-    ? Math.min(
-        100,
-        Math.round((counters.pipelineMrrIls / Math.max(1, counters.targetMrrIls)) * 100),
-      )
-    : 0
+  const selectedLead = useMemo(
+    () => leads.find((l) => l.id === selectedLeadId) ?? null,
+    [leads, selectedLeadId],
+  )
 
-  const allSelected = leads.length > 0 && selected.size === leads.length
-
-  function toggleAll() {
-    if (allSelected) setSelected(new Set())
-    else setSelected(new Set(leads.map((l) => l.id)))
+  function onLeadUpdated(updated: SalesLead) {
+    setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
   }
 
-  function toggleOne(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+  async function claimLead(lead: SalesLead) {
+    if (!operatorId) {
+      setError('בחרו מי אתם לפני לקיחת אחריות')
+      return
+    }
+    setBusyId(lead.id)
+    setError('')
+    setConflictMsg('')
+    try {
+      const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...adminHeaders(secret, operatorId),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'claim', expectedVersion: lead.version }),
+      })
+      const json = (await res.json()) as { lead?: SalesLead; error?: string; code?: string }
+      if (res.status === 409) {
+        setConflictMsg(json.error || 'הליד כבר נתפס')
+        if (json.lead) onLeadUpdated(json.lead)
+        return
+      }
+      if (!res.ok) throw new Error(json.error || 'לקיחה נכשלה')
+      if (json.lead) onLeadUpdated(json.lead)
+      setOkMsg('הליד בטיפולך')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'שגיאה')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function quickPatch(
+    lead: SalesLead,
+    body: Record<string, unknown>,
+  ): Promise<boolean> {
+    if (!operatorId) {
+      setError('בחרו מי אתם לפני עדכון')
+      return false
+    }
+    setBusyId(lead.id)
+    setError('')
+    setConflictMsg('')
+    try {
+      const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...adminHeaders(secret, operatorId),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...body, expectedVersion: lead.version }),
+      })
+      const json = (await res.json()) as { lead?: SalesLead; error?: string; code?: string }
+      if (res.status === 409) {
+        setConflictMsg(json.error || 'הליד השתנה אצל מישהו אחר')
+        if (json.lead) onLeadUpdated(json.lead)
+        return false
+      }
+      if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
+      if (json.lead) onLeadUpdated(json.lead)
+      return true
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'שגיאה')
+      return false
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function onWhatsappOpened(lead: SalesLead, variantId: string) {
+    const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
+    const localPhone =
+      formatPhoneLocalIl(phoneRaw) ||
+      formatPhoneLocalIl(lead.phoneNormalized) ||
+      phoneRaw?.trim() ||
+      ''
+
+    try {
+      if (localPhone && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(localPhone)
+      }
+    } catch {
+      /* optional */
+    }
+
+    setOkMsg(
+      localPhone
+        ? `נפתח צ'אט WhatsApp · המספר ${localPhone} הועתק · לא סומן כשליחה`
+        : 'נפתח צ׳אט WhatsApp · לא סומן כשליחה',
+    )
+    setWaVariantIdx((prev) => {
+      const variants = outreachVariantsForLead(lead)
+      const idx = (prev[lead.id] ?? 0) % Math.max(1, variants.length)
+      return { ...prev, [lead.id]: (idx + 1) % Math.max(1, variants.length) }
     })
+
+    if (!operatorId) return
+    try {
+      const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...adminHeaders(secret, operatorId),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'whatsapp_link_opened',
+          outreachVariant: variantId,
+        }),
+      })
+      const json = (await res.json()) as { lead?: SalesLead }
+      if (res.ok && json.lead) onLeadUpdated(json.lead)
+    } catch {
+      /* non-blocking log */
+    }
   }
 
   async function runDiscover() {
@@ -233,11 +416,10 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     const pollProgress = async () => {
       try {
         const res = await fetch('/api/superadmin/sales-leads/discover', {
-          headers: adminHeaders(secret),
+          headers: adminHeaders(secret, operatorId),
         })
         if (!res.ok) return
         const json = (await res.json()) as {
-          status?: string | null
           found?: number
           created?: number
           progress?: {
@@ -257,7 +439,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
         if (typeof json.progress?.created === 'number') setDiscoverCreated(json.progress.created)
         else if (typeof json.created === 'number') setDiscoverCreated(json.created)
       } catch {
-        /* ignore poll errors while discover runs */
+        /* ignore poll */
       }
     }
 
@@ -270,7 +452,10 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     try {
       const res = await fetch('/api/superadmin/sales-leads/discover', {
         method: 'POST',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        headers: {
+          ...adminHeaders(secret, operatorId),
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ city: city || undefined }),
       })
       const json = (await res.json()) as {
@@ -310,206 +495,34 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     }
   }
 
-  async function patchLead(
-    id: string,
-    body: Record<string, unknown>,
-  ): Promise<SalesLead | null> {
-    const res = await fetch(`/api/superadmin/sales-leads/${id}`, {
-      method: 'PATCH',
-      headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const json = (await res.json()) as { lead?: SalesLead; error?: string }
-    if (!res.ok) throw new Error(json.error || 'עדכון נכשל')
-    if (json.lead) setLeads((prev) => prev.map((l) => (l.id === id ? json.lead! : l)))
-    return json.lead ?? null
-  }
-
-  async function patchStatus(id: string, next: LeadStatus) {
-    setBusyId(id)
-    setError('')
-    try {
-      await patchLead(id, { status: next })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function patchEstimatedBuildings(lead: SalesLead) {
-    const current = lead.estimatedBuildings ?? ''
-    const raw = window.prompt('מספר בניינים משוער', String(current))
-    if (raw == null) return
-    const trimmed = raw.trim()
-    const n = trimmed === '' ? null : Number(trimmed)
-    if (n != null && (!Number.isFinite(n) || n < 0 || !Number.isInteger(n))) {
-      setError('מספר בניינים חייב להיות מספר שלם לא-שלילי')
-      return
-    }
-    setBusyId(lead.id)
-    setError('')
-    try {
-      await patchLead(lead.id, { estimatedBuildings: n })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function onWhatsappOpened(lead: SalesLead, variantId: string) {
-    const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
-    const localPhone =
-      formatPhoneLocalIl(phoneRaw) ||
-      formatPhoneLocalIl(lead.phoneNormalized) ||
-      phoneRaw?.trim() ||
-      ''
-
-    try {
-      if (localPhone && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(localPhone)
-      }
-    } catch {
-      /* clipboard optional */
-    }
-
-    setOkMsg(
-      localPhone
-        ? `נפתח צ'אט WhatsApp · המספר ${localPhone} הועתק ללוח`
-        : 'נפתח צ׳אט WhatsApp',
-    )
-    setWaVariantIdx((prev) => {
-      const variants = outreachVariantsForLead(lead)
-      const idx = (prev[lead.id] ?? 0) % Math.max(1, variants.length)
-      return { ...prev, [lead.id]: (idx + 1) % Math.max(1, variants.length) }
-    })
-    setBusyId(lead.id)
-    try {
-      const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
-        method: 'PATCH',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'whatsapp_opened',
-          outreachVariant: variantId,
-        }),
-      })
-      const json = (await res.json()) as { lead?: SalesLead }
-      if (res.ok && json.lead) {
-        setLeads((prev) => prev.map((l) => (l.id === lead.id ? json.lead! : l)))
-      }
-    } catch {
-      /* non-blocking */
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function deleteOne(id: string) {
-    if (!window.confirm('למחוק את הליד הזה לצמיתות?')) return
-    setBusyId(id)
-    setError('')
-    try {
-      const res = await fetch(`/api/superadmin/sales-leads/${id}`, {
-        method: 'DELETE',
-        headers: adminHeaders(secret),
-      })
-      const json = (await res.json()) as { error?: string }
-      if (!res.ok) throw new Error(json.error || 'מחיקה נכשלה')
-      setLeads((prev) => prev.filter((l) => l.id !== id))
-      setTotal((t) => Math.max(0, t - 1))
-      setSelected((prev) => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function deleteSelected() {
-    const ids = [...selected]
-    if (ids.length === 0) return
-    if (!window.confirm(`למחוק ${ids.length} לידים שנבחרו?`)) return
-    setBulkBusy(true)
-    setError('')
-    try {
-      const res = await fetch('/api/superadmin/sales-leads', {
-        method: 'DELETE',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      })
-      const json = (await res.json()) as { deleted?: number; error?: string }
-      if (!res.ok) throw new Error(json.error || 'מחיקה נכשלה')
-      setOkMsg(`נמחקו ${json.deleted ?? ids.length} לידים`)
-      await load()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה')
-    } finally {
-      setBulkBusy(false)
-    }
-  }
-
-  async function bulkStatus(next: LeadStatus) {
-    const ids = [...selected]
-    if (ids.length === 0) return
-    setBulkBusy(true)
-    setError('')
-    try {
-      for (const id of ids) {
-        const res = await fetch(`/api/superadmin/sales-leads/${id}`, {
-          method: 'PATCH',
-          headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: next }),
-        })
-        if (!res.ok) {
-          const json = (await res.json()) as { error?: string }
-          throw new Error(json.error || 'עדכון מרובה נכשל')
-        }
-      }
-      setOkMsg(`עודכנו ${ids.length} לידים → ${statusLabelHe(next)}`)
-      await load()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה')
-    } finally {
-      setBulkBusy(false)
-    }
-  }
-
-  function friendlyError(raw: string): string {
-    const t = raw.trim()
-    if (!t) return 'שגיאה'
-    if (/API_KEY_HTTP_REFERRER_BLOCKED|referer.*blocked/i.test(t)) {
-      return 'מפתח Google חסום בגלל הגבלת HTTP referrer — הגדירו Application restrictions ל-None (או IP) במפתח שרת, לא לדפדפן.'
-    }
-    if (/PERMISSION_DENIED|403/i.test(t) && /Places|Google/i.test(t)) {
-      return 'Google Places דחה את הבקשה — בדקו מפתח API, חיוב, והפעלת Places API (New).'
-    }
-    if (/GOOGLE_PLACES_API_KEY|GOOGLE_MAPS_API_KEY|חסר מפתח/i.test(t)) {
-      return t.length > 180 ? `${t.slice(0, 180)}…` : t
-    }
-    // Strip raw JSON blobs from UI
-    const withoutJson = t.replace(/\{[\s\S]*\}$/, '').trim()
-    const clean = withoutJson || t
-    return clean.length > 220 ? `${clean.slice(0, 220)}…` : clean
-  }
-
-  const ranked = useMemo(() => leads, [leads])
+  const fc = funnelCounters
 
   return (
     <div className="sa-tab-panel sa-leads" dir="rtl">
       <section className="sa-panel sa-leads-hero">
         <div className="sa-leads-hero-top">
           <div>
-            <h2>מנוע לידים · מכירת BINO</h2>
+            <h2>משפך לידים · מכירות BINO</h2>
             <p className="sa-muted">
-              מיקוד: ירושלים · תל אביב · גוש דן/מרכז · Places + OSM · יעד ₪100K MRR
+              שלב · עניין · אחראי · פעולה הבאה · היסטוריה
+              {dayYmd ? ` · יום ירושלים ${dayYmd}` : ''}
             </p>
           </div>
           <div className="sa-leads-hero-actions">
+            <label className="sa-operator-pick">
+              מי אני
+              <select
+                value={operatorId}
+                onChange={(e) => setOperatorId(e.target.value)}
+              >
+                <option value="">בחרו מפעיל</option>
+                {operators.map((op) => (
+                  <option key={op.id} value={op.id}>
+                    {op.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
             <LoadingButton
               type="button"
               loading={discovering}
@@ -530,39 +543,73 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           </div>
         </div>
 
-        {counters ? (
-          <div className="sa-leads-kpis">
+        {!operatorsConfigured || operators.length === 0 ? (
+          <div className="sa-leads-setup-warn" role="status">
+            <strong>חסרה הגדרת מפעילי מכירות</strong>
+            <p>
+              הגדירו <code>BINO_SALES_OPERATORS</code> ב־Vercel כ־JSON עם id/name/email
+              לכל אחד משלושת אנשי הצוות (מזהי UUID יציבים). בלי זה אי אפשר לעדכן לידים
+              באחריות אישית.
+            </p>
+          </div>
+        ) : null}
+
+        {fc ? (
+          <div className="sa-leads-kpis" aria-label="מדדי משפך לפי הסינון הנוכחי">
+            <div>
+              <strong>{fc.activeCount}</strong>
+              <span>פעילים</span>
+            </div>
+            <div>
+              <strong>{fc.interestedCount}</strong>
+              <span>מעוניינים</span>
+            </div>
             <button
               type="button"
-              className={`sa-leads-due-chip${dueTodayOnly ? ' is-on' : ''}`}
-              onClick={() => setDueTodayOnly((v) => !v)}
-              title="סינון לידים עם nextContactAt להיום או שעבר"
+              className={`sa-leads-due-chip${view === 'due_today' ? ' is-on' : ''}`}
+              onClick={() => setView('due_today')}
             >
-              <strong>{counters.dueToday ?? 0}</strong>
-              <span>לטיפול היום</span>
+              <strong>{fc.dueTodayCount}</strong>
+              <span>להיום</span>
+            </button>
+            <button
+              type="button"
+              className={`sa-leads-due-chip sa-leads-overdue-chip${view === 'overdue' ? ' is-on' : ''}`}
+              onClick={() => setView('overdue')}
+            >
+              <strong>{fc.overdueCount}</strong>
+              <span>באיחור</span>
             </button>
             <div>
-              <strong>{counters.total}</strong>
-              <span>במאגר</span>
+              <strong>{fc.upcomingDemosCount}</strong>
+              <span>דמואים עתידיים</span>
             </div>
             <div>
-              <strong>{counters.byFitClass.suitable ?? 0}</strong>
-              <span>מתאימים</span>
+              <strong>{fc.openProposalsCount}</strong>
+              <span>הצעות פתוחות</span>
             </div>
-            {typeof counters.contactChannelPct === 'number' ? (
-              <div>
-                <strong>{counters.contactChannelPct}%</strong>
-                <span>עם ערוץ קשר</span>
-              </div>
-            ) : null}
-            <div>
-              <strong>₪{counters.pipelineMrrIls.toLocaleString('he-IL')}</strong>
-              <span>MRR בצנרת</span>
+            <div title="פוטנציאל — לא הכנסה בפועל">
+              <strong>₪{fc.potentialSetupFeeIls.toLocaleString('he-IL')}</strong>
+              <span>פוטנציאל הקמה</span>
+            </div>
+            <div title="פוטנציאל — לא הכנסה בפועל">
+              <strong>₪{fc.potentialMrrIls.toLocaleString('he-IL')}</strong>
+              <span>פוטנציאל MRR</span>
             </div>
             <div>
-              <strong>{progressPct}%</strong>
-              <span>מול יעד 100K</span>
+              <strong>{fc.dealsMissingValue}</strong>
+              <span>חסר סכום</span>
             </div>
+          </div>
+        ) : null}
+
+        {fc?.byStage ? (
+          <div className="sa-leads-stage-strip" aria-label="מספר לידים לפי שלב">
+            {Object.entries(fc.byStage).map(([stage, count]) => (
+              <span key={stage} className="sa-leads-stage-pill">
+                {stageLabelHe(stage)} · {count}
+              </span>
+            ))}
           </div>
         ) : null}
 
@@ -590,10 +637,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           <div className="sa-leads-setup-warn" role="status">
             <strong>חסר מפתח Google Places</strong>
             <p>
-              המנוע לא יכול לגלות לידים בלי{' '}
-              <code>GOOGLE_PLACES_API_KEY</code> ב-Vercel (או{' '}
-              <code>GOOGLE_MAPS_API_KEY</code>). הפעילו גם Places API (New) וחיוב
-              ב-Google Cloud — אחרת הגילוי נכשל מיד.
+              המנוע לא יכול לגלות לידים בלי <code>GOOGLE_PLACES_API_KEY</code>.
             </p>
           </div>
         ) : null}
@@ -604,9 +648,28 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
           {friendlyError(error)}
         </div>
       ) : null}
+      {conflictMsg ? (
+        <div className="sa-banner sa-banner-error" role="alert">
+          {conflictMsg} — רעננו את הליד ושמרו מחדש. הטיוטה המקומית לא נדרסת בשקט.
+        </div>
+      ) : null}
       {okMsg ? <div className="sa-banner sa-banner-ok">{okMsg}</div> : null}
 
       <section className="sa-panel sa-leads-filters">
+        <div className="sa-chip-row">
+          <span className="sa-chip-label">תצוגה</span>
+          {WORK_VIEWS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              className={`sa-chip${view === chip.value ? ' is-on' : ''}`}
+              onClick={() => setView(chip.value)}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+
         <div className="sa-filter-grid">
           <label>
             חיפוש
@@ -651,6 +714,15 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
             </select>
           </label>
           <label>
+            דירוג התאמה
+            <select value={fitClass} onChange={(e) => setFitClass(e.target.value)}>
+              <option value="suitable,needs_review">מתאים + לבדיקה</option>
+              <option value="suitable">מתאים בלבד</option>
+              <option value="needs_review">לבדיקה</option>
+              <option value="">כל הדירוגים</option>
+            </select>
+          </label>
+          <label>
             ציון מינימום
             <select
               value={String(minFitScore)}
@@ -659,279 +731,206 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
               <option value="0">ללא</option>
               <option value="40">40+</option>
               <option value="55">55+</option>
-              <option value="60">60+ (מתאים)</option>
+              <option value="60">60+</option>
               <option value="75">75+</option>
             </select>
           </label>
           <label>
             מיון
-            <select
-              value={dueTodayOnly ? 'next_contact' : sort}
-              disabled={dueTodayOnly}
-              onChange={(e) => setSort(e.target.value as SortMode)}
-            >
+            <select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+              <option value="next_contact">פעולה הבאה</option>
+              <option value="updated_at">עודכן לאחרונה</option>
               <option value="fit_score">דירוג התאמה</option>
-              <option value="estimated_mrr">MRR משוער</option>
+              <option value="estimated_mrr">MRR</option>
               <option value="created_at">חדש ביותר</option>
-              <option value="next_contact">תאריך מעקב</option>
             </select>
           </label>
         </div>
 
-        <div className="sa-chip-row">
-          <span className="sa-chip-label">סטטוס</span>
-          {STATUS_CHIPS.map((chip) => (
-            <button
-              key={chip.label}
-              type="button"
-              className={`sa-chip${status === chip.value ? ' is-on' : ''}`}
-              onClick={() => setStatus(chip.value)}
-            >
-              {chip.label}
-              {chip.value && counters?.byStatus
-                ? ` (${chip.value
-                    .split(',')
-                    .reduce((n, s) => n + (counters.byStatus[s] ?? 0), 0)})`
-                : ''}
-            </button>
-          ))}
-        </div>
-
-        <div className="sa-chip-row">
-          <span className="sa-chip-label">דירוג</span>
-          {FIT_CHIPS.map((chip) => (
-            <button
-              key={chip.label}
-              type="button"
-              className={`sa-chip${fitClass === chip.value ? ' is-on' : ''}`}
-              onClick={() => setFitClass(chip.value)}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-
         <p className="sa-muted sa-leads-count">
-          מציג {ranked.length} מתוך {total}
-          {selected.size > 0 ? ` · נבחרו ${selected.size}` : ''}
+          מציג {leads.length} מתוך {total}
+          {fc ? ` · מדדים על כל התוצאות המסוננות (${fc.filterScope})` : ''}
+          {counters ? ` · מאגר כולל ${counters.total}` : ''}
         </p>
       </section>
 
-      {selected.size > 0 ? (
-        <section className="sa-panel sa-leads-bulk">
-          <strong>{selected.size} נבחרו</strong>
-          <div className="sa-lead-actions">
-            <LoadingButton
-              type="button"
-              loading={bulkBusy}
-              className="sa-btn sa-btn-danger"
-              onClick={() => void deleteSelected()}
-            >
-              מחק נבחרים
-            </LoadingButton>
-            {QUICK_STATUSES.slice(0, 4).map((st) => (
-              <button
-                key={st}
-                type="button"
-                className="sa-btn sa-btn-ghost"
-                disabled={bulkBusy}
-                onClick={() => void bulkStatus(st)}
-              >
-                → {statusLabelHe(st)}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="sa-btn sa-btn-ghost"
-              onClick={() => setSelected(new Set())}
-            >
-              נקה בחירה
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      <div className="sa-leads-toolbar">
-        <label className="sa-check">
-          <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-          בחר הכל בדף
-        </label>
-      </div>
-
-      <div className="sa-leads-list">
-        {ranked.map((lead, idx) => {
-          const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
-          const variants = outreachVariantsForLead(lead)
-          const nextVariantIdx = (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
-          const nextVariant = variants[nextVariantIdx]
-          const nextVariantLabel = nextVariant?.labelHe
-          const { body: waBody } = defaultOutreachMessage(lead, nextVariant?.id)
-          const waHref = whatsappLink(phoneRaw, waBody)
-          const canWa = Boolean(waHref)
-          const score = lead.fitScore
-          const rating = enrichmentNum(lead, 'rating')
-          const reviewCount = enrichmentNum(lead, 'reviewCount')
-          const maps = mapsHref(lead)
-          const nextContactLabel = formatNextContact(lead.nextContactAt)
-          const displayName = lead.businessName || lead.name
-          return (
-            <article
-              key={lead.id}
-              className={`sa-lead-card${selected.has(lead.id) ? ' is-selected' : ''}`}
-            >
-              <div className="sa-lead-card-head">
-                <label className="sa-check sa-lead-check">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(lead.id)}
-                    onChange={() => toggleOne(lead.id)}
-                  />
-                </label>
-                <div className="sa-lead-main">
-                  <div className="sa-lead-title-row">
-                    <span className="sa-lead-index">#{idx + 1}</span>
-                    <h3 className="sa-lead-name" title={displayName}>
-                      {displayName}
-                    </h3>
-                    <div className="sa-lead-score" style={{ color: fitTone(score) }}>
-                      <strong>{score ?? '—'}</strong>
-                      <span>{fitClassLabelHe(lead.fitClass)}</span>
-                    </div>
-                  </div>
-                  <p className="sa-lead-sub">
-                    <span>{lead.city}</span>
-                    <span className="sa-lead-dot">·</span>
-                    <span>{segmentLabelHe(lead.segmentSlug)}</span>
-                    <span className="sa-lead-dot">·</span>
-                    <span>{statusLabelHe(lead.status)}</span>
-                    <span className="sa-lead-dot">·</span>
-                    <span>{contactabilityLabelHe(lead.contactability)}</span>
-                    {lead.estimatedMrrIls ? (
-                      <>
-                        <span className="sa-lead-dot">·</span>
-                        <span>MRR ₪{lead.estimatedMrrIls}</span>
-                      </>
-                    ) : null}
-                  </p>
-                  <div className="sa-lead-meta-row">
-                    <button
-                      type="button"
-                      className="sa-lead-inline-edit"
-                      disabled={busyId === lead.id}
-                      onClick={() => void patchEstimatedBuildings(lead)}
-                      title="עריכת מספר בניינים"
-                    >
-                      בניינים: {lead.estimatedBuildings ?? '—'}
-                    </button>
-                    {rating != null || reviewCount != null ? (
-                      <span className="sa-lead-meta-chip">
-                        Google {rating != null ? rating.toFixed(1) : '—'}
-                        {reviewCount != null ? ` · ${reviewCount}` : ''}
+      <div className={`sa-leads-workspace${selectedLead ? ' has-drawer' : ''}`}>
+        <div className="sa-leads-table-wrap">
+          <table className="sa-leads-table">
+            <thead>
+              <tr>
+                <th>ליד / חברה</th>
+                <th>טלפון</th>
+                <th>אחראי</th>
+                <th>שלב</th>
+                <th>עניין</th>
+                <th>קשר אחרון</th>
+                <th>פעולה הבאה</th>
+                <th>מעקב</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((lead) => {
+                const phoneRaw = lead.whatsappPhone || lead.phone || lead.phoneNormalized
+                const variants = outreachVariantsForLead(lead)
+                const nextVariantIdx =
+                  (waVariantIdx[lead.id] ?? 0) % Math.max(1, variants.length)
+                const nextVariant = variants[nextVariantIdx]
+                const { body: waBody } = defaultOutreachMessage(lead, nextVariant?.id)
+                const waHref = whatsappLink(phoneRaw, waBody)
+                const displayName = lead.businessName || lead.name
+                const overdue = lead.trackingState === 'overdue'
+                return (
+                  <tr
+                    key={lead.id}
+                    className={`sa-lead-row${selectedLeadId === lead.id ? ' is-selected' : ''}${lead.needsCompletion ? ' needs-completion' : ''}`}
+                  >
+                    <td>
+                      <button
+                        type="button"
+                        className="sa-lead-open"
+                        onClick={() => setSelectedLeadId(lead.id)}
+                      >
+                        <strong>{displayName}</strong>
+                        <span className="sa-muted">
+                          {lead.city} · {segmentLabelHe(lead.segmentSlug)} ·{' '}
+                          {fitClassLabelHe(lead.fitClass)}
+                        </span>
+                        {lead.needsCompletion ? (
+                          <span className="sa-lead-warn-tag">דורש השלמה</span>
+                        ) : null}
+                      </button>
+                    </td>
+                    <td className="sa-lead-phone-cell">{lead.phone || '—'}</td>
+                    <td>
+                      {lead.owner?.displayName ? (
+                        lead.owner.displayName
+                      ) : (
+                        <button
+                          type="button"
+                          className="sa-btn sa-btn-ghost sa-btn-tiny"
+                          disabled={busyId === lead.id || !operatorId}
+                          onClick={() => void claimLead(lead)}
+                        >
+                          לקחת לטיפולי
+                        </button>
+                      )}
+                    </td>
+                    <td>
+                      <select
+                        className="sa-lead-status-select"
+                        value={lead.status}
+                        disabled={busyId === lead.id || !operatorId}
+                        onChange={(e) => {
+                          const next = e.target.value
+                          if (next === 'lost') {
+                            setSelectedLeadId(lead.id)
+                            setOkMsg('לבחירת סיבת הפסד — פתחו את כרטיס הליד')
+                            return
+                          }
+                          if (next === 'deferred') {
+                            setSelectedLeadId(lead.id)
+                            setOkMsg('לדחייה נדרש תאריך חזרה בכרטיס')
+                            return
+                          }
+                          void quickPatch(lead, { status: next })
+                        }}
+                        aria-label={`שלב של ${displayName}`}
+                      >
+                        {[
+                          'new',
+                          'contact_attempt',
+                          'conversation_held',
+                          'demo_scheduled',
+                          'demo_done',
+                          'proposal_sent',
+                          'negotiation',
+                          'customer',
+                          'lost',
+                          'deferred',
+                        ].map((st) => (
+                          <option key={st} value={st}>
+                            {stageLabelHe(st)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <span className={interestClass(lead.interestLevel)}>
+                        {interestLabelHe(lead.interestLevel)}
                       </span>
-                    ) : null}
-                    {nextContactLabel ? (
-                      <span className="sa-lead-next-contact">מעקב: {nextContactLabel}</span>
-                    ) : null}
-                  </div>
-                  {lead.outreachAngle ? (
-                    <p className="sa-lead-angle">{lead.outreachAngle}</p>
-                  ) : null}
-                  <p className="sa-lead-phone">
-                    <strong className="sa-lead-phone-num">{lead.phone || 'אין טלפון'}</strong>
-                    {lead.email ? (
-                      <>
-                        {' · '}
-                        <a href={`mailto:${lead.email}`}>{lead.email}</a>
-                      </>
-                    ) : null}
-                    {lead.websiteUrl ? (
-                      <>
-                        {' · '}
-                        <a href={lead.websiteUrl} target="_blank" rel="noreferrer">
-                          אתר
-                        </a>
-                      </>
-                    ) : null}
-                    {maps ? (
-                      <>
-                        {' · '}
-                        <a href={maps} target="_blank" rel="noreferrer">
-                          מפות
-                        </a>
-                      </>
-                    ) : lead.sourceUrl ? (
-                      <>
-                        {' · '}
-                        <a href={lead.sourceUrl} target="_blank" rel="noreferrer">
-                          מקור
-                        </a>
-                      </>
-                    ) : null}
-                  </p>
-                </div>
-              </div>
+                    </td>
+                    <td>{formatJerusalemDateTime(lead.lastContactAt) ?? '—'}</td>
+                    <td>
+                      {lead.nextActionTitle || lead.nextActionAt ? (
+                        <>
+                          <div>{lead.nextActionTitle || 'מעקב'}</div>
+                          <div className="sa-muted">
+                            {formatJerusalemDateTime(lead.nextActionAt) ?? '—'}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="sa-lead-warn-tag">ללא פעולה</span>
+                      )}
+                    </td>
+                    <td>
+                      {overdue ? (
+                        <span className="sa-lead-overdue-tag" title="איחור טיפול — לא חוסר עניין">
+                          {trackingLabelHe('overdue')}
+                        </span>
+                      ) : (
+                        <span className="sa-muted">{trackingLabelHe(lead.trackingState)}</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="sa-lead-actions">
+                        {waHref && nextVariant ? (
+                          <a
+                            className="sa-btn sa-btn-primary sa-btn-tiny"
+                            href={waHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => void onWhatsappOpened(lead, nextVariant.id)}
+                          >
+                            WA
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="sa-btn sa-btn-ghost sa-btn-tiny"
+                          onClick={() => setSelectedLeadId(lead.id)}
+                        >
+                          כרטיס
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
 
-              <div className="sa-lead-actions">
-                {canWa && waHref && nextVariant ? (
-                  <a
-                    className="sa-btn sa-btn-primary sa-lead-wa"
-                    href={waHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => void onWhatsappOpened(lead, nextVariant.id)}
-                    title={
-                      nextVariantLabel
-                        ? `וריאנט: ${nextVariantLabel} (מחליף בכל פתיחה)`
-                        : 'פתיחת WhatsApp עם הודעה מוכנה'
-                    }
-                  >
-                    WhatsApp
-                    {nextVariantLabel ? (
-                      <span className="sa-lead-wa-variant"> · {nextVariantLabel}</span>
-                    ) : null}
-                  </a>
-                ) : (
-                  <button type="button" className="sa-btn sa-btn-ghost" disabled>
-                    אין WhatsApp
-                  </button>
-                )}
-                {lead.email ? (
-                  <a
-                    className="sa-btn sa-btn-ghost"
-                    href={`mailto:${lead.email}?subject=${encodeURIComponent(`BINO — ${displayName}`)}`}
-                  >
-                    אימייל
-                  </a>
-                ) : null}
-                <select
-                  className="sa-lead-status-select"
-                  value={lead.status}
-                  disabled={busyId === lead.id}
-                  onChange={(e) => void patchStatus(lead.id, e.target.value as LeadStatus)}
-                >
-                  {LEAD_STATUSES.map((st) => (
-                    <option key={st} value={st}>
-                      {statusLabelHe(st)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="sa-btn sa-btn-danger-ghost"
-                  disabled={busyId === lead.id}
-                  onClick={() => void deleteOne(lead.id)}
-                >
-                  מחק
-                </button>
-              </div>
-            </article>
-          )
-        })}
+          {!loading && leads.length === 0 ? (
+            <p className="sa-muted sa-leads-empty">
+              אין לידים לפי הסינון — הריצו גילוי או הרחיבו את הפילטרים.
+            </p>
+          ) : null}
+        </div>
 
-        {!loading && ranked.length === 0 ? (
-          <p className="sa-muted sa-leads-empty">
-            אין לידים לפי הסינון — הריצו גילוי או הרחיבו את הפילטרים.
-          </p>
+        {selectedLead ? (
+          <LeadDetailDrawer
+            lead={selectedLead}
+            secret={secret}
+            operatorId={operatorId}
+            operators={operators}
+            onClose={() => setSelectedLeadId(null)}
+            onLeadUpdated={onLeadUpdated}
+            onConflict={(lead, message) => {
+              setConflictMsg(message)
+              if (lead) onLeadUpdated(lead)
+            }}
+          />
         ) : null}
       </div>
 

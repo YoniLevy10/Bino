@@ -1,18 +1,22 @@
 export type FitClass = 'suitable' | 'needs_review' | 'unsuitable' | 'unknown'
 export type Contactability = 'mobile' | 'landline' | 'unknown' | 'none'
 
-export const LEAD_STATUSES = [
-  'discovered',
-  'qualified',
-  'contacted',
-  'demo_scheduled',
-  'won',
-  'lost',
-  'rejected',
-  'do_not_contact',
-] as const
+import type {
+  ActivityType,
+  InterestLevel,
+  LeadStage,
+  TrackingState,
+} from '@/lib/sales-leads/funnel/model'
+import {
+  LEAD_STAGES,
+  mapLegacyStatusToStage,
+} from '@/lib/sales-leads/funnel/model'
 
-export type LeadStatus = (typeof LEAD_STATUSES)[number]
+/** @deprecated Use LEAD_STAGES / LeadStage — kept as alias for gradual migration. */
+export const LEAD_STATUSES = LEAD_STAGES
+export type LeadStatus = LeadStage
+
+export type { ActivityType, InterestLevel, LeadStage, TrackingState }
 
 export type SalesLeadSourceRef = {
   source: string
@@ -52,6 +56,11 @@ export type SalesLeadSourceRecord = {
   openingHours?: string[] | null
 }
 
+export type SalesOperatorLite = {
+  id: string
+  displayName: string
+}
+
 export type SalesLead = {
   id: string
   name: string
@@ -68,21 +77,73 @@ export type SalesLead = {
   sourceUrl: string | null
   websiteUrl: string | null
   externalId: string | null
-  status: LeadStatus
+  /** Sales stage (funnel). */
+  status: LeadStage
+  legacyStatus: string | null
+  interestLevel: InterestLevel
+  ownerOperatorId: string | null
+  owner?: SalesOperatorLite | null
+  createdByOperatorId: string | null
+  updatedByOperatorId: string | null
+  updatedBy?: SalesOperatorLite | null
+  version: number
   fitScore: number | null
   fitClass: FitClass | null
   fitConfidence: number | null
   fitReasons: string[]
   contactability: Contactability | null
   estimatedBuildings: number | null
+  estimatedUnits: number | null
   estimatedMrrIls: number | null
+  estimatedSetupFeeIls: number | null
   outreachAngle: string | null
+  primaryNeed: string | null
+  contactRole: string | null
+  isDecisionMaker: boolean | null
   notes: string | null
+  summary: string | null
+  lostReason: string | null
+  lostReasonDetail: string | null
+  deferredUntil: string | null
+  waitingForReply: boolean
+  waitingUntil: string | null
   enrichment: Record<string, unknown>
   sourceRefs: SalesLeadSourceRef[]
   lastSeenAt: string | null
   contactedAt: string | null
+  lastContactAt: string | null
   nextContactAt: string | null
+  nextActionTitle: string | null
+  nextActionAt: string | null
+  trackingState: TrackingState
+  needsCompletion: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type SalesLeadActivity = {
+  id: string
+  leadId: string
+  operatorId: string | null
+  actorLabel: string
+  activityType: ActivityType
+  body: string | null
+  outcome: string | null
+  payload: Record<string, unknown>
+  createdAt: string
+  editedAt: string | null
+}
+
+export type SalesLeadTask = {
+  id: string
+  leadId: string
+  title: string
+  dueAt: string
+  status: 'open' | 'done' | 'cancelled'
+  waitingForReply: boolean
+  createdByOperatorId: string | null
+  completedByOperatorId: string | null
+  completedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -121,4 +182,39 @@ export type DiscoveryRunResult = {
       errors: string[]
     }
   >
+}
+
+export type LeadWorkView =
+  | 'active'
+  | 'mine'
+  | 'due_today'
+  | 'overdue'
+  | 'interested'
+  | 'needs_completion'
+  | 'waiting'
+  | 'customers'
+  | 'lost'
+  | 'deferred'
+  | 'all'
+
+export type FunnelCounters = {
+  activeCount: number
+  interestedCount: number
+  dueTodayCount: number
+  overdueCount: number
+  upcomingDemosCount: number
+  openProposalsCount: number
+  byStage: Record<string, number>
+  potentialSetupFeeIls: number
+  potentialMrrIls: number
+  dealsMissingValue: number
+  openDealsWithValue: number
+  filterScope: string
+  dayYmd: string
+  timezone: 'Asia/Jerusalem'
+}
+
+/** Normalize any stored status (legacy or new) to a LeadStage. */
+export function coerceLeadStage(status: string): LeadStage {
+  return mapLegacyStatusToStage(status)
 }

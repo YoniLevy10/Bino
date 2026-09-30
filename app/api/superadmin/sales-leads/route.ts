@@ -9,13 +9,34 @@ import {
   deleteSalesLeadsBulk,
   getLeadCounters,
   listRecentRuns,
-  listSalesLeads,
 } from '@/lib/sales-leads/service'
+import {
+  getFunnelCounters,
+  listFunnelLeads,
+} from '@/lib/sales-leads/funnel/service'
 import { recoverStaleDiscoveryRuns } from '@/lib/sales-leads/query-stats-store'
-import type { LeadStatus } from '@/lib/sales-leads/types'
-import { LEAD_STATUSES } from '@/lib/sales-leads/types'
+import {
+  listActiveOperators,
+  syncOperatorsFromEnv,
+} from '@/lib/sales-leads/operators'
+import { isInterestLevel, isLeadStage, LEAD_STAGES } from '@/lib/sales-leads/funnel/model'
+import type { InterestLevel, LeadStage, LeadWorkView } from '@/lib/sales-leads/types'
 
 export const dynamic = 'force-dynamic'
+
+const WORK_VIEWS: LeadWorkView[] = [
+  'active',
+  'mine',
+  'due_today',
+  'overdue',
+  'interested',
+  'needs_completion',
+  'waiting',
+  'customers',
+  'lost',
+  'deferred',
+  'all',
+]
 
 export async function GET(req: NextRequest) {
   if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
@@ -29,17 +50,35 @@ export async function GET(req: NextRequest) {
   const contactability = url.searchParams.get('contactability') ?? undefined
   const minFitScoreRaw = url.searchParams.get('minFitScore')
   const sortRaw = url.searchParams.get('sort')
-  const dueToday = url.searchParams.get('dueToday') === '1'
+  const viewRaw = url.searchParams.get('view') ?? 'active'
+  const interestRaw = url.searchParams.get('interest')
+  const ownerRaw = url.searchParams.get('owner')
+  const viewerOperatorId = url.searchParams.get('viewerOperatorId') ?? undefined
   const limit = Number(url.searchParams.get('limit') ?? 100)
   const offset = Number(url.searchParams.get('offset') ?? 0)
 
-  let status: LeadStatus | LeadStatus[] | undefined
+  const view = (WORK_VIEWS as string[]).includes(viewRaw)
+    ? (viewRaw as LeadWorkView)
+    : 'active'
+
+  let status: LeadStage | LeadStage[] | undefined
   if (statusRaw) {
     const parts = statusRaw
       .split(',')
-      .filter((s): s is LeadStatus => (LEAD_STATUSES as readonly string[]).includes(s))
+      .map((s) => s.trim())
+      .filter((s): s is LeadStage => isLeadStage(s))
     if (parts.length === 1) status = parts[0]
     else if (parts.length > 1) status = parts
+  }
+
+  let interestLevel: InterestLevel | InterestLevel[] | undefined
+  if (interestRaw) {
+    const parts = interestRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s): s is InterestLevel => isInterestLevel(s))
+    if (parts.length === 1) interestLevel = parts[0]
+    else if (parts.length > 1) interestLevel = parts
   }
 
   const minFitScore =
@@ -47,42 +86,71 @@ export async function GET(req: NextRequest) {
       ? Number(minFitScoreRaw)
       : undefined
 
-  const sort =
+  const sort:
+    | 'created_at'
+    | 'estimated_mrr'
+    | 'fit_score'
+    | 'next_contact'
+    | 'updated_at' =
     sortRaw === 'created_at' ||
     sortRaw === 'estimated_mrr' ||
     sortRaw === 'fit_score' ||
-    sortRaw === 'next_contact'
+    sortRaw === 'next_contact' ||
+    sortRaw === 'updated_at'
       ? sortRaw
-      : dueToday
-        ? 'next_contact'
-        : 'fit_score'
+      : 'next_contact'
 
   try {
     const admin = getSupabaseAdmin()
     await recoverStaleDiscoveryRuns(admin)
-    const [{ leads, total }, counters, runs] = await Promise.all([
-      listSalesLeads(admin, {
-        q,
-        city,
-        segmentSlug,
-        status,
-        fitClass: fitClass || undefined,
-        contactability: contactability || undefined,
-        minFitScore,
-        dueToday: dueToday || undefined,
-        sort,
-        limit,
-        offset,
-      }),
-      getLeadCounters(admin),
-      listRecentRuns(admin, 8),
-    ])
+
+    const operators = await syncOperatorsFromEnv(admin).catch(async () => listActiveOperators(admin))
+
+    const listFilters = {
+      q,
+      city,
+      segmentSlug,
+      status,
+      fitClass: fitClass || undefined,
+      contactability: contactability || undefined,
+      minFitScore,
+      interestLevel,
+      ownerOperatorId: ownerRaw === 'none' ? 'none' : ownerRaw || undefined,
+      view,
+      viewerOperatorId: viewerOperatorId || undefined,
+      sort,
+      limit,
+      offset,
+    }
+
+    const [{ leads, total, dayBounds }, funnelCounters, legacyCounters, runs] =
+      await Promise.all([
+        listFunnelLeads(admin, listFilters),
+        getFunnelCounters(admin, listFilters),
+        getLeadCounters(admin),
+        listRecentRuns(admin, 8),
+      ])
+
     return NextResponse.json({
       leads,
       total,
-      counters,
+      counters: {
+        ...legacyCounters,
+        funnel: funnelCounters,
+      },
+      funnelCounters,
+      operators,
+      stages: LEAD_STAGES,
+      view,
+      dayBounds: {
+        ymd: dayBounds.ymd,
+        dayStartIso: dayBounds.dayStartIso,
+        dayEndIso: dayBounds.dayEndIso,
+        timezone: 'Asia/Jerusalem',
+      },
       runs,
       placesConfigured: isGooglePlacesConfigured(),
+      operatorsConfigured: operators.length > 0,
     })
   } catch (e) {
     console.error('[superadmin.sales-leads]', e)
