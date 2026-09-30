@@ -1,0 +1,5139 @@
+[
+  {
+    "areaName": "אופקים והסביבה",
+    "cities": [
+      {
+        "cityId": 40,
+        "label": "אופקים"
+      },
+      {
+        "cityId": 27,
+        "label": "אבשלום"
+      },
+      {
+        "cityId": 34,
+        "label": "אוהד"
+      },
+      {
+        "cityId": 48,
+        "label": "אורים"
+      },
+      {
+        "cityId": 126,
+        "label": "אשל הנשיא"
+      },
+      {
+        "cityId": 146,
+        "label": "בטחה"
+      },
+      {
+        "cityId": 226,
+        "label": "ברוש"
+      },
+      {
+        "cityId": 250,
+        "label": "גבולות"
+      },
+      {
+        "cityId": 354,
+        "label": "דקל"
+      },
+      {
+        "cityId": 407,
+        "label": "חולית"
+      },
+      {
+        "cityId": 519,
+        "label": "ישע"
+      },
+      {
+        "cityId": 522,
+        "label": "יתד"
+      },
+      {
+        "cityId": 534,
+        "label": "כיסופים"
+      },
+      {
+        "cityId": 677,
+        "label": "מגן"
+      },
+      {
+        "cityId": 736,
+        "label": "מסלול"
+      },
+      {
+        "cityId": 870,
+        "label": "ניר יצחק"
+      },
+      {
+        "cityId": 878,
+        "label": "נירים"
+      },
+      {
+        "cityId": 909,
+        "label": "סופה"
+      },
+      {
+        "cityId": 951,
+        "label": "עין הבשור"
+      },
+      {
+        "cityId": 958,
+        "label": "עין השלושה"
+      },
+      {
+        "cityId": 988,
+        "label": "עמיעוז"
+      },
+      {
+        "cityId": 1010,
+        "label": "פדויים"
+      },
+      {
+        "cityId": 1017,
+        "label": "פטיש"
+      },
+      {
+        "cityId": 1030,
+        "label": "פרי גן"
+      },
+      {
+        "cityId": 1034,
+        "label": "צאלים"
+      },
+      {
+        "cityId": 1038,
+        "label": "צוחר"
+      },
+      {
+        "cityId": 1175,
+        "label": "שדה ניצן"
+      },
+      {
+        "cityId": 1180,
+        "label": "שדי אברהם"
+      },
+      {
+        "cityId": 1252,
+        "label": "תלמי אליהו"
+      },
+      {
+        "cityId": 1255,
+        "label": "תלמי יוסף"
+      },
+      {
+        "cityId": 1262,
+        "label": "תפרח"
+      }
+    ]
+  },
+  {
+    "areaName": "אור יהודה-סביון-יהוד",
+    "cities": [
+      {
+        "cityId": 481,
+        "label": "יהוד"
+      },
+      {
+        "cityId": 43,
+        "label": "אור יהודה"
+      },
+      {
+        "cityId": 137,
+        "label": "בארות יצחק"
+      },
+      {
+        "cityId": 209,
+        "label": "בני עטרות"
+      },
+      {
+        "cityId": 317,
+        "label": "גני יהודה"
+      },
+      {
+        "cityId": 426,
+        "label": "חמד"
+      },
+      {
+        "cityId": 679,
+        "label": "מגשימים"
+      },
+      {
+        "cityId": 691,
+        "label": "מזור"
+      },
+      {
+        "cityId": 815,
+        "label": "נווה אפרים"
+      },
+      {
+        "cityId": 831,
+        "label": "נופך"
+      },
+      {
+        "cityId": 903,
+        "label": "סביון"
+      },
+      {
+        "cityId": 1147,
+        "label": "רנתיה"
+      }
+    ]
+  },
+  {
+    "areaName": "אילת",
+    "cities": [
+      {
+        "cityId": 67,
+        "label": "אילת"
+      },
+      {
+        "cityId": 65,
+        "label": "אילות"
+      },
+      {
+        "cityId": 87,
+        "label": "אליפז"
+      },
+      {
+        "cityId": 133,
+        "label": "באר אורה"
+      },
+      {
+        "cityId": 325,
+        "label": "גרופית"
+      },
+      {
+        "cityId": 490,
+        "label": "יטבתה"
+      },
+      {
+        "cityId": 647,
+        "label": "לוטן"
+      },
+      {
+        "cityId": 820,
+        "label": "נווה חריף"
+      },
+      {
+        "cityId": 914,
+        "label": "סמר"
+      },
+      {
+        "cityId": 1072,
+        "label": "קטורה"
+      },
+      {
+        "cityId": 1198,
+        "label": "שחרות"
+      }
+    ]
+  },
+  {
+    "areaName": "אלעד",
+    "cities": [
+      {
+        "cityId": 94,
+        "label": "אלעד"
+      },
+      {
+        "cityId": 851,
+        "label": "נחשונים"
+      }
+    ]
+  },
+  {
+    "areaName": "אריאל והסביבה",
+    "cities": [
+      {
+        "cityId": 117,
+        "label": "אריאל"
+      }
+    ]
+  },
+  {
+    "areaName": "אשדוד",
+    "cities": [
+      {
+        "cityId": 121,
+        "label": "אשדוד"
+      },
+      {
+        "cityId": 99,
+        "label": "אמונים"
+      },
+      {
+        "cityId": 186,
+        "label": "בית עזרא"
+      },
+      {
+        "cityId": 206,
+        "label": "בני דרום"
+      },
+      {
+        "cityId": 275,
+        "label": "גבעתי"
+      },
+      {
+        "cityId": 304,
+        "label": "גן הדרום"
+      },
+      {
+        "cityId": 437,
+        "label": "חצור-אשדוד"
+      },
+      {
+        "cityId": 549,
+        "label": "כפר אביב"
+      },
+      {
+        "cityId": 866,
+        "label": "ניר גלים"
+      },
+      {
+        "cityId": 936,
+        "label": "עזר"
+      },
+      {
+        "cityId": 939,
+        "label": "עזריקם"
+      },
+      {
+        "cityId": 1176,
+        "label": "שדה עזיהו"
+      }
+    ]
+  },
+  {
+    "areaName": "אשקלון והסביבה",
+    "cities": [
+      {
+        "cityId": 128,
+        "label": "אשקלון"
+      },
+      {
+        "cityId": 196,
+        "label": "בית שקמה"
+      },
+      {
+        "cityId": 228,
+        "label": "ברכיה"
+      },
+      {
+        "cityId": 234,
+        "label": "בת הדר"
+      },
+      {
+        "cityId": 1274,
+        "label": "גבעת עזר"
+      },
+      {
+        "cityId": 277,
+        "label": "גברעם"
+      },
+      {
+        "cityId": 289,
+        "label": "גיאה"
+      },
+      {
+        "cityId": 360,
+        "label": "הודיה"
+      },
+      {
+        "cityId": 385,
+        "label": "זיקים"
+      },
+      {
+        "cityId": 424,
+        "label": "חלץ"
+      },
+      {
+        "cityId": 476,
+        "label": "יד מרדכי"
+      },
+      {
+        "cityId": 531,
+        "label": "כוכב מיכאל"
+      },
+      {
+        "cityId": 606,
+        "label": "כפר סילבר"
+      },
+      {
+        "cityId": 633,
+        "label": "כרמיה"
+      },
+      {
+        "cityId": 664,
+        "label": "מבקיעים"
+      },
+      {
+        "cityId": 784,
+        "label": "משואות יצחק"
+      },
+      {
+        "cityId": 794,
+        "label": "משען"
+      },
+      {
+        "cityId": 803,
+        "label": "נגבה"
+      },
+      {
+        "cityId": 808,
+        "label": "נוגה"
+      },
+      {
+        "cityId": 859,
+        "label": "ניצן"
+      },
+      {
+        "cityId": 863,
+        "label": "ניצנים"
+      },
+      {
+        "cityId": 871,
+        "label": "ניר ישראל"
+      },
+      {
+        "cityId": 897,
+        "label": "נתיב העשרה"
+      },
+      {
+        "cityId": 1257,
+        "label": "תלמי יפה"
+      }
+    ]
+  },
+  {
+    "areaName": "באר שבע והסביבה",
+    "cities": [
+      {
+        "cityId": 136,
+        "label": "באר שבע"
+      },
+      {
+        "cityId": 414,
+        "label": "חורה"
+      },
+      {
+        "cityId": 443,
+        "label": "חצרים"
+      },
+      {
+        "cityId": 545,
+        "label": "כסיפה"
+      },
+      {
+        "cityId": 634,
+        "label": "כרמים"
+      },
+      {
+        "cityId": 702,
+        "label": "לב יתיר"
+      },
+      {
+        "cityId": 653,
+        "label": "לקיה"
+      },
+      {
+        "cityId": 717,
+        "label": "מיתר"
+      },
+      {
+        "cityId": 738,
+        "label": "מסעודין אל-עזאזמה"
+      },
+      {
+        "cityId": 779,
+        "label": "משאבי שדה"
+      },
+      {
+        "cityId": 802,
+        "label": "נבטים"
+      },
+      {
+        "cityId": 934,
+        "label": "עוקבי (בנו עוקבה)"
+      },
+      {
+        "cityId": 1161,
+        "label": "שגב-שלום"
+      },
+      {
+        "cityId": 1249,
+        "label": "תל שבע"
+      }
+    ]
+  },
+  {
+    "areaName": "בית שאן והסביבה",
+    "cities": [
+      {
+        "cityId": 193,
+        "label": "בית שאן"
+      },
+      {
+        "cityId": 110,
+        "label": "אפיקים"
+      },
+      {
+        "cityId": 122,
+        "label": "אשדות יעקוב(איחוד)"
+      },
+      {
+        "cityId": 123,
+        "label": "אשדות יעקוב(מאוחד)"
+      },
+      {
+        "cityId": 153,
+        "label": "בית אלפא"
+      },
+      {
+        "cityId": 165,
+        "label": "בית השיטה"
+      },
+      {
+        "cityId": 168,
+        "label": "בית זרע"
+      },
+      {
+        "cityId": 176,
+        "label": "בית יוסף"
+      },
+      {
+        "cityId": 327,
+        "label": "גשר"
+      },
+      {
+        "cityId": 427,
+        "label": "חמדיה"
+      },
+      {
+        "cityId": 434,
+        "label": "חפצי-בה"
+      },
+      {
+        "cityId": 458,
+        "label": "טירת צבי"
+      },
+      {
+        "cityId": 513,
+        "label": "ירדנה"
+      },
+      {
+        "cityId": 617,
+        "label": "כפר רופין"
+      },
+      {
+        "cityId": 695,
+        "label": "מחולה"
+      },
+      {
+        "cityId": 714,
+        "label": "מירב"
+      },
+      {
+        "cityId": 725,
+        "label": "מלכישוע"
+      },
+      {
+        "cityId": 729,
+        "label": "מנחמיה"
+      },
+      {
+        "cityId": 733,
+        "label": "מסדה"
+      },
+      {
+        "cityId": 734,
+        "label": "מסילות"
+      },
+      {
+        "cityId": 743,
+        "label": "מעוז חיים"
+      },
+      {
+        "cityId": 751,
+        "label": "מעלה גלבוע"
+      },
+      {
+        "cityId": 810,
+        "label": "נווה אור"
+      },
+      {
+        "cityId": 813,
+        "label": "נווה איתן"
+      },
+      {
+        "cityId": 867,
+        "label": "ניר דוד(תל עמל)"
+      },
+      {
+        "cityId": 955,
+        "label": "עין הנציב"
+      },
+      {
+        "cityId": 1114,
+        "label": "רוויה"
+      },
+      {
+        "cityId": 1119,
+        "label": "רחוב"
+      },
+      {
+        "cityId": 1153,
+        "label": "רשפים"
+      },
+      {
+        "cityId": 1163,
+        "label": "שדה אליהו"
+      },
+      {
+        "cityId": 1173,
+        "label": "שדה נחום"
+      },
+      {
+        "cityId": 1181,
+        "label": "שדי תרומות"
+      },
+      {
+        "cityId": 1184,
+        "label": "שדמות מחולה"
+      },
+      {
+        "cityId": 1208,
+        "label": "שלוחות"
+      },
+      {
+        "cityId": 1250,
+        "label": "תל תאומים"
+      }
+    ]
+  },
+  {
+    "areaName": "בית שמש והסביבה",
+    "cities": [
+      {
+        "cityId": 194,
+        "label": "בית שמש"
+      },
+      {
+        "cityId": 18,
+        "label": "אביעזר"
+      },
+      {
+        "cityId": 31,
+        "label": "אדרת"
+      },
+      {
+        "cityId": 130,
+        "label": "אשתאול"
+      },
+      {
+        "cityId": 180,
+        "label": "בית מאיר"
+      },
+      {
+        "cityId": 221,
+        "label": "בקוע"
+      },
+      {
+        "cityId": 267,
+        "label": "גבעת ישעיהו"
+      },
+      {
+        "cityId": 273,
+        "label": "גבעת שמש"
+      },
+      {
+        "cityId": 291,
+        "label": "גיזו"
+      },
+      {
+        "cityId": 324,
+        "label": "גפן"
+      },
+      {
+        "cityId": 346,
+        "label": "דייר ראפאת"
+      },
+      {
+        "cityId": 376,
+        "label": "הראל"
+      },
+      {
+        "cityId": 388,
+        "label": "זכריה"
+      },
+      {
+        "cityId": 391,
+        "label": "זנוח"
+      },
+      {
+        "cityId": 405,
+        "label": "חולדה"
+      },
+      {
+        "cityId": 460,
+        "label": "טל שחר"
+      },
+      {
+        "cityId": 520,
+        "label": "ישעי"
+      },
+      {
+        "cityId": 546,
+        "label": "כסלון"
+      },
+      {
+        "cityId": 551,
+        "label": "כפר אוריה"
+      },
+      {
+        "cityId": 644,
+        "label": "לוזית"
+      },
+      {
+        "cityId": 707,
+        "label": "מחסיה"
+      },
+      {
+        "cityId": 735,
+        "label": "מסילת ציון"
+      },
+      {
+        "cityId": 825,
+        "label": "נווה מיכאל"
+      },
+      {
+        "cityId": 826,
+        "label": "נווה שלום"
+      },
+      {
+        "cityId": 842,
+        "label": "נחושה"
+      },
+      {
+        "cityId": 847,
+        "label": "נחם"
+      },
+      {
+        "cityId": 850,
+        "label": "נחשון"
+      },
+      {
+        "cityId": 896,
+        "label": "נתיב הלה"
+      },
+      {
+        "cityId": 924,
+        "label": "עגור"
+      },
+      {
+        "cityId": 1052,
+        "label": "צלפון"
+      },
+      {
+        "cityId": 1055,
+        "label": "צפרירים"
+      },
+      {
+        "cityId": 1058,
+        "label": "צרעה"
+      },
+      {
+        "cityId": 1144,
+        "label": "רמת רזיאל"
+      },
+      {
+        "cityId": 1179,
+        "label": "שדות מיכה"
+      },
+      {
+        "cityId": 648,
+        "label": "שריגים-לי און"
+      },
+      {
+        "cityId": 1242,
+        "label": "תירוש"
+      },
+      {
+        "cityId": 1261,
+        "label": "תעוז"
+      },
+      {
+        "cityId": 1266,
+        "label": "תרום"
+      }
+    ]
+  },
+  {
+    "areaName": "ביתר עילית-צור הדסה והסביבה",
+    "cities": [
+      {
+        "cityId": 198,
+        "label": "ביתר עילית"
+      },
+      {
+        "cityId": 223,
+        "label": "בר גיורא"
+      },
+      {
+        "cityId": 656,
+        "label": "מבוא ביתר"
+      },
+      {
+        "cityId": 709,
+        "label": "מטע"
+      },
+      {
+        "cityId": 881,
+        "label": "נס הרים"
+      },
+      {
+        "cityId": 1037,
+        "label": "צובה"
+      },
+      {
+        "cityId": 1044,
+        "label": "צור הדסה"
+      }
+    ]
+  },
+  {
+    "areaName": "בני ברק",
+    "cities": [
+      {
+        "cityId": 205,
+        "label": "בני ברק"
+      }
+    ]
+  },
+  {
+    "areaName": "גבעת זאב",
+    "cities": [
+      {
+        "cityId": 261,
+        "label": "גבעת זאב"
+      },
+      {
+        "cityId": 256,
+        "label": "גבעון החדשה"
+      }
+    ]
+  },
+  {
+    "areaName": "גדרה והסביבה",
+    "cities": [
+      {
+        "cityId": 283,
+        "label": "גדרה"
+      },
+      {
+        "cityId": 147,
+        "label": "ביצרון"
+      },
+      {
+        "cityId": 170,
+        "label": "בית חלקיה"
+      },
+      {
+        "cityId": 210,
+        "label": "בני עיש"
+      },
+      {
+        "cityId": 213,
+        "label": "בני ראם"
+      },
+      {
+        "cityId": 214,
+        "label": "בניה"
+      },
+      {
+        "cityId": 308,
+        "label": "גן יבנה"
+      },
+      {
+        "cityId": 316,
+        "label": "גני טל"
+      },
+      {
+        "cityId": 433,
+        "label": "חפץ חיים"
+      },
+      {
+        "cityId": 435,
+        "label": "חצב"
+      },
+      {
+        "cityId": 473,
+        "label": "יד בנימין"
+      },
+      {
+        "cityId": 496,
+        "label": "יסודות"
+      },
+      {
+        "cityId": 602,
+        "label": "כפר מרדכי"
+      },
+      {
+        "cityId": 716,
+        "label": "מישר"
+      },
+      {
+        "cityId": 780,
+        "label": "משגב דב"
+      },
+      {
+        "cityId": 786,
+        "label": "משמר דוד"
+      },
+      {
+        "cityId": 824,
+        "label": "נווה מבטח"
+      },
+      {
+        "cityId": 889,
+        "label": "נצר חזני"
+      },
+      {
+        "cityId": 1004,
+        "label": "עשרת"
+      },
+      {
+        "cityId": 1066,
+        "label": "קדרון"
+      },
+      {
+        "cityId": 1107,
+        "label": "רבדים"
+      },
+      {
+        "cityId": 1182,
+        "label": "שדמה"
+      },
+      {
+        "cityId": 1235,
+        "label": "שתולים"
+      }
+    ]
+  },
+  {
+    "areaName": "גוש עציון-אפרת",
+    "cities": [
+      {
+        "cityId": 113,
+        "label": "אפרת"
+      },
+      {
+        "cityId": 79,
+        "label": "אלון שבות"
+      },
+      {
+        "cityId": 95,
+        "label": "אלעזר"
+      },
+      {
+        "cityId": 105,
+        "label": "אספר"
+      },
+      {
+        "cityId": 238,
+        "label": "בת עין"
+      },
+      {
+        "cityId": 374,
+        "label": "הר גילה"
+      },
+      {
+        "cityId": 610,
+        "label": "כפר עציון"
+      },
+      {
+        "cityId": 631,
+        "label": "כרמי צור"
+      },
+      {
+        "cityId": 672,
+        "label": "מגדל עוז"
+      },
+      {
+        "cityId": 757,
+        "label": "מעלה עמוס"
+      },
+      {
+        "cityId": 816,
+        "label": "נווה דניאל"
+      },
+      {
+        "cityId": 832,
+        "label": "נוקדים"
+      },
+      {
+        "cityId": 1104,
+        "label": "ראש צורים"
+      },
+      {
+        "cityId": 1264,
+        "label": "תקוע"
+      }
+    ]
+  },
+  {
+    "areaName": "דימונה והסביבה",
+    "cities": [
+      {
+        "cityId": 347,
+        "label": "דימונה"
+      },
+      {
+        "cityId": 436,
+        "label": "חצבה"
+      },
+      {
+        "cityId": 681,
+        "label": "מדרשת בן גוריון"
+      },
+      {
+        "cityId": 942,
+        "label": "עידן"
+      },
+      {
+        "cityId": 978,
+        "label": "עיר אובות"
+      },
+      {
+        "cityId": 1003,
+        "label": "ערערה-בנגב"
+      },
+      {
+        "cityId": 1165,
+        "label": "שדה בוקר"
+      }
+    ]
+  },
+  {
+    "areaName": "דרום בנימין",
+    "cities": [
+      {
+        "cityId": 550,
+        "label": "כפר אדומים"
+      },
+      {
+        "cityId": 169,
+        "label": "בית חורון"
+      },
+      {
+        "cityId": 253,
+        "label": "גבע בנימין (אדם)"
+      },
+      {
+        "cityId": 530,
+        "label": "כוכב יעקוב"
+      },
+      {
+        "cityId": 658,
+        "label": "מבוא חורון"
+      },
+      {
+        "cityId": 755,
+        "label": "מעלה מכמש"
+      },
+      {
+        "cityId": 768,
+        "label": "מצפה יריחו"
+      },
+      {
+        "cityId": 984,
+        "label": "עלמון (ענתות)"
+      },
+      {
+        "cityId": 1021,
+        "label": "פסגות"
+      }
+    ]
+  },
+  {
+    "areaName": "הקריות",
+    "cities": [
+      {
+        "cityId": 1090,
+        "label": "קרית מוצקין"
+      },
+      {
+        "cityId": 51,
+        "label": "אושה"
+      },
+      {
+        "cityId": 554,
+        "label": "כפר ביאליק"
+      },
+      {
+        "cityId": 568,
+        "label": "כפר המכבי"
+      },
+      {
+        "cityId": 1083,
+        "label": "קרית אתא"
+      },
+      {
+        "cityId": 1084,
+        "label": "קרית ביאליק"
+      },
+      {
+        "cityId": 1267,
+        "label": "קרית חיים"
+      },
+      {
+        "cityId": 1087,
+        "label": "קרית ים"
+      },
+      {
+        "cityId": 1276,
+        "label": "קרית שמואל"
+      },
+      {
+        "cityId": 1139,
+        "label": "רמת יוחנן"
+      }
+    ]
+  },
+  {
+    "areaName": "הרצליה-רמה\"ש",
+    "cities": [
+      {
+        "cityId": 378,
+        "label": "הרצליה"
+      },
+      {
+        "cityId": 301,
+        "label": "גליל ים"
+      },
+      {
+        "cityId": 621,
+        "label": "כפר שמריהו"
+      },
+      {
+        "cityId": 1138,
+        "label": "רמת השרון"
+      }
+    ]
+  },
+  {
+    "areaName": "זכרון-בנימינה והסביבה",
+    "cities": [
+      {
+        "cityId": 387,
+        "label": "זכרון יעקב"
+      },
+      {
+        "cityId": 13,
+        "label": "אביאל"
+      },
+      {
+        "cityId": 215,
+        "label": "בנימינה"
+      },
+      {
+        "cityId": 269,
+        "label": "גבעת נילי"
+      },
+      {
+        "cityId": 270,
+        "label": "גבעת עדה"
+      },
+      {
+        "cityId": 562,
+        "label": "כפר גליקסון"
+      },
+      {
+        "cityId": 989,
+        "label": "עמיקם"
+      },
+      {
+        "cityId": 1015,
+        "label": "פוריידיס"
+      },
+      {
+        "cityId": 1111,
+        "label": "רגבים"
+      }
+    ]
+  },
+  {
+    "areaName": "חדרה והסביבה",
+    "cities": [
+      {
+        "cityId": 403,
+        "label": "חדרה"
+      },
+      {
+        "cityId": 86,
+        "label": "אליכין"
+      },
+      {
+        "cityId": 132,
+        "label": "באקה אל-גרביה"
+      },
+      {
+        "cityId": 1273,
+        "label": "גבעת אולגה"
+      },
+      {
+        "cityId": 312,
+        "label": "גן שמואל"
+      },
+      {
+        "cityId": 641,
+        "label": "להבות חביבה"
+      },
+      {
+        "cityId": 654,
+        "label": "מאור"
+      },
+      {
+        "cityId": 772,
+        "label": "מצר"
+      },
+      {
+        "cityId": 1171,
+        "label": "שדה יצחק"
+      }
+    ]
+  },
+  {
+    "areaName": "חולון-בת ים",
+    "cities": [
+      {
+        "cityId": 406,
+        "label": "חולון"
+      },
+      {
+        "cityId": 52,
+        "label": "אזור"
+      },
+      {
+        "cityId": 237,
+        "label": "בת ים"
+      },
+      {
+        "cityId": 313,
+        "label": "גנות"
+      },
+      {
+        "cityId": 790,
+        "label": "משמר השבעה"
+      }
+    ]
+  },
+  {
+    "areaName": "חיפה והסביבה",
+    "cities": [
+      {
+        "cityId": 421,
+        "label": "חיפה"
+      },
+      {
+        "cityId": 188,
+        "label": "בית צבי"
+      },
+      {
+        "cityId": 457,
+        "label": "טירת כרמל"
+      },
+      {
+        "cityId": 809,
+        "label": "נווה אבות"
+      },
+      {
+        "cityId": 1284,
+        "label": "נשר"
+      },
+      {
+        "cityId": 994,
+        "label": "עספיא"
+      }
+    ]
+  },
+  {
+    "areaName": "חריש",
+    "cities": [
+      {
+        "cityId": 1002,
+        "label": "ערערה"
+      },
+      {
+        "cityId": 37,
+        "label": "אום אל-קוטוף"
+      },
+      {
+        "cityId": 73,
+        "label": "אל-עריאן"
+      },
+      {
+        "cityId": 216,
+        "label": "בסמה"
+      },
+      {
+        "cityId": 231,
+        "label": "ברקאי"
+      },
+      {
+        "cityId": 1079,
+        "label": "חריש"
+      },
+      {
+        "cityId": 614,
+        "label": "כפר קרע"
+      },
+      {
+        "cityId": 712,
+        "label": "מייסר"
+      },
+      {
+        "cityId": 760,
+        "label": "מענית"
+      },
+      {
+        "cityId": 1281,
+        "label": "קציר"
+      }
+    ]
+  },
+  {
+    "areaName": "טבריה והסביבה",
+    "cities": [
+      {
+        "cityId": 450,
+        "label": "טבריה"
+      },
+      {
+        "cityId": 76,
+        "label": "אלומות"
+      },
+      {
+        "cityId": 92,
+        "label": "אלמגור"
+      },
+      {
+        "cityId": 294,
+        "label": "גינוסר"
+      },
+      {
+        "cityId": 336,
+        "label": "דגניה א"
+      },
+      {
+        "cityId": 337,
+        "label": "דגניה ב"
+      },
+      {
+        "cityId": 355,
+        "label": "האון"
+      },
+      {
+        "cityId": 413,
+        "label": "חוקוק"
+      },
+      {
+        "cityId": 425,
+        "label": "חמאם"
+      },
+      {
+        "cityId": 469,
+        "label": "יבנאל"
+      },
+      {
+        "cityId": 543,
+        "label": "כנרת (מושבה)"
+      },
+      {
+        "cityId": 544,
+        "label": "כנרת (קבוצה)"
+      },
+      {
+        "cityId": 598,
+        "label": "כפר מנדא"
+      },
+      {
+        "cityId": 625,
+        "label": "כרכום"
+      },
+      {
+        "cityId": 638,
+        "label": "לבנים"
+      },
+      {
+        "cityId": 670,
+        "label": "מגדל"
+      },
+      {
+        "cityId": 943,
+        "label": "עיילבון"
+      },
+      {
+        "cityId": 948,
+        "label": "עין גב"
+      },
+      {
+        "cityId": 1014,
+        "label": "פוריה עלית"
+      },
+      {
+        "cityId": 1012,
+        "label": "פוריה-כפר עבודה"
+      },
+      {
+        "cityId": 1013,
+        "label": "פוריה-נוה עובד"
+      },
+      {
+        "cityId": 1109,
+        "label": "רביד"
+      },
+      {
+        "cityId": 1220,
+        "label": "שער הגולן"
+      },
+      {
+        "cityId": 1248,
+        "label": "תל קציר"
+      }
+    ]
+  },
+  {
+    "areaName": "יקנעם והסביבה",
+    "cities": [
+      {
+        "cityId": 331,
+        "label": "דאלית אל-כרמל"
+      },
+      {
+        "cityId": 21,
+        "label": "אבן יצחק (גלעד)"
+      },
+      {
+        "cityId": 89,
+        "label": "אליקים"
+      },
+      {
+        "cityId": 349,
+        "label": "דליה"
+      },
+      {
+        "cityId": 365,
+        "label": "הזורע"
+      },
+      {
+        "cityId": 368,
+        "label": "היוגב"
+      },
+      {
+        "cityId": 510,
+        "label": "יקנעם עילית"
+      },
+      {
+        "cityId": 511,
+        "label": "יקנעם(מושבה)"
+      },
+      {
+        "cityId": 675,
+        "label": "מגידו"
+      },
+      {
+        "cityId": 680,
+        "label": "מדרך עוז"
+      },
+      {
+        "cityId": 710,
+        "label": "מי עמי"
+      },
+      {
+        "cityId": 789,
+        "label": "משמר העמק"
+      },
+      {
+        "cityId": 956,
+        "label": "עין העמק"
+      },
+      {
+        "cityId": 957,
+        "label": "עין השופט"
+      },
+      {
+        "cityId": 1130,
+        "label": "רמות מנשה"
+      },
+      {
+        "cityId": 1137,
+        "label": "רמת השופט"
+      }
+    ]
+  },
+  {
+    "areaName": "ירוחם",
+    "cities": [
+      {
+        "cityId": 514,
+        "label": "ירוחם"
+      },
+      {
+        "cityId": 127,
+        "label": "אשלים"
+      },
+      {
+        "cityId": 461,
+        "label": "טללים"
+      },
+      {
+        "cityId": 1108,
+        "label": "רביבים"
+      },
+      {
+        "cityId": 1154,
+        "label": "רתמים"
+      }
+    ]
+  },
+  {
+    "areaName": "ירושלים",
+    "cities": [
+      {
+        "cityId": 515,
+        "label": "ירושלים"
+      },
+      {
+        "cityId": 23,
+        "label": "אבן ספיר"
+      },
+      {
+        "cityId": 45,
+        "label": "אורה"
+      },
+      {
+        "cityId": 167,
+        "label": "בית זית"
+      },
+      {
+        "cityId": 986,
+        "label": "עמינדב"
+      },
+      {
+        "cityId": 1277,
+        "label": "פסגת זאב"
+      },
+      {
+        "cityId": 1145,
+        "label": "רמת רחל"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי הבקעה",
+    "cities": [
+      {
+        "cityId": 503,
+        "label": "יפית"
+      },
+      {
+        "cityId": 93,
+        "label": "אלמוג"
+      },
+      {
+        "cityId": 115,
+        "label": "ארגמן"
+      },
+      {
+        "cityId": 164,
+        "label": "בית הערבה"
+      },
+      {
+        "cityId": 222,
+        "label": "בקעות"
+      },
+      {
+        "cityId": 298,
+        "label": "גיתית"
+      },
+      {
+        "cityId": 375,
+        "label": "הר עמשא"
+      },
+      {
+        "cityId": 491,
+        "label": "ייטב"
+      },
+      {
+        "cityId": 719,
+        "label": "מכורה"
+      },
+      {
+        "cityId": 771,
+        "label": "מצפה שלם"
+      },
+      {
+        "cityId": 783,
+        "label": "משואה"
+      },
+      {
+        "cityId": 799,
+        "label": "נאות הככר"
+      },
+      {
+        "cityId": 818,
+        "label": "נווה זוהר"
+      },
+      {
+        "cityId": 835,
+        "label": "נחל אבנת"
+      },
+      {
+        "cityId": 880,
+        "label": "נירן"
+      },
+      {
+        "cityId": 886,
+        "label": "נעמי"
+      },
+      {
+        "cityId": 895,
+        "label": "נתיב הגדוד"
+      },
+      {
+        "cityId": 949,
+        "label": "עין גדי"
+      },
+      {
+        "cityId": 961,
+        "label": "עין חצבה"
+      },
+      {
+        "cityId": 976,
+        "label": "עין תמר"
+      },
+      {
+        "cityId": 1024,
+        "label": "פצאל"
+      },
+      {
+        "cityId": 1076,
+        "label": "קליה"
+      },
+      {
+        "cityId": 1118,
+        "label": "רועי"
+      },
+      {
+        "cityId": 1239,
+        "label": "תומר"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי הגליל המערבי",
+    "cities": [
+      {
+        "cityId": 523,
+        "label": "כאבול"
+      },
+      {
+        "cityId": 3,
+        "label": "אבו סנאן"
+      },
+      {
+        "cityId": 12,
+        "label": "אבטליון"
+      },
+      {
+        "cityId": 19,
+        "label": "אבירים"
+      },
+      {
+        "cityId": 22,
+        "label": "אבן מנחם"
+      },
+      {
+        "cityId": 30,
+        "label": "אדמית"
+      },
+      {
+        "cityId": 56,
+        "label": "אחיהוד"
+      },
+      {
+        "cityId": 64,
+        "label": "אילון"
+      },
+      {
+        "cityId": 97,
+        "label": "אלקוש"
+      },
+      {
+        "cityId": 106,
+        "label": "אעבלין"
+      },
+      {
+        "cityId": 112,
+        "label": "אפק"
+      },
+      {
+        "cityId": 129,
+        "label": "אשרת"
+      },
+      {
+        "cityId": 163,
+        "label": "בית העמק"
+      },
+      {
+        "cityId": 220,
+        "label": "בצת"
+      },
+      {
+        "cityId": 241,
+        "label": "גולס"
+      },
+      {
+        "cityId": 285,
+        "label": "גורן"
+      },
+      {
+        "cityId": 286,
+        "label": "גורנות הגליל"
+      },
+      {
+        "cityId": 297,
+        "label": "גיתה"
+      },
+      {
+        "cityId": 323,
+        "label": "געתון"
+      },
+      {
+        "cityId": 328,
+        "label": "גשר הזיו"
+      },
+      {
+        "cityId": 351,
+        "label": "דמיידה"
+      },
+      {
+        "cityId": 379,
+        "label": "הררית"
+      },
+      {
+        "cityId": 616,
+        "label": "זרעית"
+      },
+      {
+        "cityId": 410,
+        "label": "חוסן"
+      },
+      {
+        "cityId": 430,
+        "label": "חניתה"
+      },
+      {
+        "cityId": 448,
+        "label": "חרשים"
+      },
+      {
+        "cityId": 459,
+        "label": "טל-אל"
+      },
+      {
+        "cityId": 463,
+        "label": "טמרה"
+      },
+      {
+        "cityId": 466,
+        "label": "טפחות"
+      },
+      {
+        "cityId": 485,
+        "label": "יודפת"
+      },
+      {
+        "cityId": 489,
+        "label": "יחיעם"
+      },
+      {
+        "cityId": 497,
+        "label": "יסעור"
+      },
+      {
+        "cityId": 498,
+        "label": "יעד"
+      },
+      {
+        "cityId": 501,
+        "label": "יערה"
+      },
+      {
+        "cityId": 525,
+        "label": "כברי"
+      },
+      {
+        "cityId": 536,
+        "label": "כליל"
+      },
+      {
+        "cityId": 537,
+        "label": "כלנית"
+      },
+      {
+        "cityId": 577,
+        "label": "כפר ורדים"
+      },
+      {
+        "cityId": 645,
+        "label": "לוחמי הגיטאות"
+      },
+      {
+        "cityId": 646,
+        "label": "לוטם"
+      },
+      {
+        "cityId": 652,
+        "label": "לפידות"
+      },
+      {
+        "cityId": 689,
+        "label": "מורן"
+      },
+      {
+        "cityId": 690,
+        "label": "מורשת"
+      },
+      {
+        "cityId": 694,
+        "label": "מזרעה"
+      },
+      {
+        "cityId": 727,
+        "label": "מנוף"
+      },
+      {
+        "cityId": 728,
+        "label": "מנות"
+      },
+      {
+        "cityId": 745,
+        "label": "מעונה"
+      },
+      {
+        "cityId": 764,
+        "label": "מצובה"
+      },
+      {
+        "cityId": 767,
+        "label": "מצפה אביב"
+      },
+      {
+        "cityId": 796,
+        "label": "מתת"
+      },
+      {
+        "cityId": 819,
+        "label": "נווה זיו"
+      },
+      {
+        "cityId": 852,
+        "label": "נטועה"
+      },
+      {
+        "cityId": 882,
+        "label": "נס עמים"
+      },
+      {
+        "cityId": 898,
+        "label": "נתיב השיירה"
+      },
+      {
+        "cityId": 922,
+        "label": "עבדון"
+      },
+      {
+        "cityId": 965,
+        "label": "עין יעקב"
+      },
+      {
+        "cityId": 992,
+        "label": "עמקה"
+      },
+      {
+        "cityId": 1160,
+        "label": "עצמון שגב"
+      },
+      {
+        "cityId": 999,
+        "label": "עראמשה"
+      },
+      {
+        "cityId": 1018,
+        "label": "פלך"
+      },
+      {
+        "cityId": 1026,
+        "label": "פקיעין"
+      },
+      {
+        "cityId": 1035,
+        "label": "צביה"
+      },
+      {
+        "cityId": 1048,
+        "label": "צוריאל"
+      },
+      {
+        "cityId": 1071,
+        "label": "קורנית"
+      },
+      {
+        "cityId": 1151,
+        "label": "רקפת"
+      },
+      {
+        "cityId": 1190,
+        "label": "שומרה"
+      },
+      {
+        "cityId": 1206,
+        "label": "שכניה"
+      },
+      {
+        "cityId": 1228,
+        "label": "שפרעם"
+      },
+      {
+        "cityId": 1234,
+        "label": "שתולה"
+      },
+      {
+        "cityId": 1238,
+        "label": "תובל"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי הגליל העליון",
+    "cities": [
+      {
+        "cityId": 547,
+        "label": "כסרא-סמיע"
+      },
+      {
+        "cityId": 63,
+        "label": "איילת השחר"
+      },
+      {
+        "cityId": 143,
+        "label": "בוקעאתא"
+      },
+      {
+        "cityId": 156,
+        "label": "בית גן"
+      },
+      {
+        "cityId": 229,
+        "label": "ברעם"
+      },
+      {
+        "cityId": 279,
+        "label": "גדות"
+      },
+      {
+        "cityId": 284,
+        "label": "גונן"
+      },
+      {
+        "cityId": 338,
+        "label": "דובייב"
+      },
+      {
+        "cityId": 348,
+        "label": "דישון"
+      },
+      {
+        "cityId": 352,
+        "label": "דן"
+      },
+      {
+        "cityId": 357,
+        "label": "הגושרים"
+      },
+      {
+        "cityId": 408,
+        "label": "חולתה"
+      },
+      {
+        "cityId": 417,
+        "label": "חזון"
+      },
+      {
+        "cityId": 483,
+        "label": "יובל"
+      },
+      {
+        "cityId": 495,
+        "label": "יסוד המעלה"
+      },
+      {
+        "cityId": 505,
+        "label": "יפתח"
+      },
+      {
+        "cityId": 512,
+        "label": "יראון"
+      },
+      {
+        "cityId": 532,
+        "label": "כורזים"
+      },
+      {
+        "cityId": 533,
+        "label": "כחל"
+      },
+      {
+        "cityId": 556,
+        "label": "כפר בלום"
+      },
+      {
+        "cityId": 563,
+        "label": "כפר גלעדי"
+      },
+      {
+        "cityId": 571,
+        "label": "כפר הנשיא"
+      },
+      {
+        "cityId": 604,
+        "label": "כפר סאלד"
+      },
+      {
+        "cityId": 626,
+        "label": "כרם בן זמרה"
+      },
+      {
+        "cityId": 640,
+        "label": "להבות הבשן"
+      },
+      {
+        "cityId": 706,
+        "label": "מחניים"
+      },
+      {
+        "cityId": 724,
+        "label": "מלכיה"
+      },
+      {
+        "cityId": 730,
+        "label": "מנרה"
+      },
+      {
+        "cityId": 746,
+        "label": "מעיין ברוך"
+      },
+      {
+        "cityId": 781,
+        "label": "משגב עם"
+      },
+      {
+        "cityId": 787,
+        "label": "משמר הירדן"
+      },
+      {
+        "cityId": 800,
+        "label": "נאות מרדכי"
+      },
+      {
+        "cityId": 902,
+        "label": "סאסא"
+      },
+      {
+        "cityId": 947,
+        "label": "עין אל-אסד"
+      },
+      {
+        "cityId": 983,
+        "label": "עלמה"
+      },
+      {
+        "cityId": 985,
+        "label": "עמוקה"
+      },
+      {
+        "cityId": 987,
+        "label": "עמיעד"
+      },
+      {
+        "cityId": 990,
+        "label": "עמיר"
+      },
+      {
+        "cityId": 1025,
+        "label": "פקיעין (בוקייעה)"
+      },
+      {
+        "cityId": 1029,
+        "label": "פרוד"
+      },
+      {
+        "cityId": 1036,
+        "label": "צבעון"
+      },
+      {
+        "cityId": 1067,
+        "label": "קדרים"
+      },
+      {
+        "cityId": 1121,
+        "label": "ריחאניה"
+      },
+      {
+        "cityId": 1156,
+        "label": "שאר ישוב"
+      },
+      {
+        "cityId": 1164,
+        "label": "שדה אליעזר"
+      },
+      {
+        "cityId": 1174,
+        "label": "שדה נחמיה"
+      },
+      {
+        "cityId": 1211,
+        "label": "שמיר"
+      },
+      {
+        "cityId": 1215,
+        "label": "שניר"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי הגליל התחתון",
+    "cities": [
+      {
+        "cityId": 452,
+        "label": "טורעאן"
+      },
+      {
+        "cityId": 14,
+        "label": "אביבים"
+      },
+      {
+        "cityId": 66,
+        "label": "אילניה"
+      },
+      {
+        "cityId": 101,
+        "label": "אמנון"
+      },
+      {
+        "cityId": 114,
+        "label": "ארבל"
+      },
+      {
+        "cityId": 142,
+        "label": "בועיינה-נוגידאת"
+      },
+      {
+        "cityId": 190,
+        "label": "בית קשת"
+      },
+      {
+        "cityId": 192,
+        "label": "בית רימון"
+      },
+      {
+        "cityId": 257,
+        "label": "גבעת אבני"
+      },
+      {
+        "cityId": 361,
+        "label": "הודיות"
+      },
+      {
+        "cityId": 366,
+        "label": "הזורעים"
+      },
+      {
+        "cityId": 419,
+        "label": "חיואלד"
+      },
+      {
+        "cityId": 526,
+        "label": "כדורי"
+      },
+      {
+        "cityId": 579,
+        "label": "כפר זיתים"
+      },
+      {
+        "cityId": 581,
+        "label": "כפר חיטים"
+      },
+      {
+        "cityId": 593,
+        "label": "כפר כמא"
+      },
+      {
+        "cityId": 613,
+        "label": "כפר קיש"
+      },
+      {
+        "cityId": 622,
+        "label": "כפר תבור"
+      },
+      {
+        "cityId": 637,
+        "label": "לביא"
+      },
+      {
+        "cityId": 732,
+        "label": "מסד"
+      },
+      {
+        "cityId": 766,
+        "label": "מצפה"
+      },
+      {
+        "cityId": 769,
+        "label": "מצפה נטופה"
+      },
+      {
+        "cityId": 928,
+        "label": "עוזייר"
+      },
+      {
+        "cityId": 1116,
+        "label": "רומאנה"
+      },
+      {
+        "cityId": 1117,
+        "label": "רומת הייב"
+      },
+      {
+        "cityId": 1159,
+        "label": "שבלי"
+      },
+      {
+        "cityId": 1162,
+        "label": "שדה אילן"
+      },
+      {
+        "cityId": 1183,
+        "label": "שדמות דבורה"
+      },
+      {
+        "cityId": 1231,
+        "label": "שרונה"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי הר חברון",
+    "cities": [
+      {
+        "cityId": 465,
+        "label": "טנא"
+      },
+      {
+        "cityId": 28,
+        "label": "אדורה"
+      },
+      {
+        "cityId": 125,
+        "label": "אשכולות"
+      },
+      {
+        "cityId": 300,
+        "label": "גלגל"
+      },
+      {
+        "cityId": 399,
+        "label": "חגי"
+      },
+      {
+        "cityId": 635,
+        "label": "כרמל"
+      },
+      {
+        "cityId": 744,
+        "label": "מעון"
+      },
+      {
+        "cityId": 763,
+        "label": "מצדות יהודה"
+      },
+      {
+        "cityId": 908,
+        "label": "סוסיה"
+      },
+      {
+        "cityId": 915,
+        "label": "סנסנה"
+      },
+      {
+        "cityId": 1006,
+        "label": "עתניאל"
+      },
+      {
+        "cityId": 1020,
+        "label": "פני חבר"
+      },
+      {
+        "cityId": 1212,
+        "label": "שמעה"
+      },
+      {
+        "cityId": 1214,
+        "label": "שני"
+      },
+      {
+        "cityId": 1251,
+        "label": "תלם"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי חוף הכרמל",
+    "cities": [
+      {
+        "cityId": 367,
+        "label": "החותרים"
+      },
+      {
+        "cityId": 150,
+        "label": "בית אורן"
+      },
+      {
+        "cityId": 172,
+        "label": "בית חנניה"
+      },
+      {
+        "cityId": 239,
+        "label": "בת שלמה"
+      },
+      {
+        "cityId": 254,
+        "label": "גבע כרמל"
+      },
+      {
+        "cityId": 341,
+        "label": "דור"
+      },
+      {
+        "cityId": 356,
+        "label": "הבונים"
+      },
+      {
+        "cityId": 561,
+        "label": "כפר גלים"
+      },
+      {
+        "cityId": 628,
+        "label": "כרם מהרל"
+      },
+      {
+        "cityId": 669,
+        "label": "מגדים"
+      },
+      {
+        "cityId": 742,
+        "label": "מעגן מיכאל"
+      },
+      {
+        "cityId": 747,
+        "label": "מעיין צבי"
+      },
+      {
+        "cityId": 821,
+        "label": "נווה ים"
+      },
+      {
+        "cityId": 849,
+        "label": "נחשולים"
+      },
+      {
+        "cityId": 875,
+        "label": "ניר עציון"
+      },
+      {
+        "cityId": 931,
+        "label": "עופר"
+      },
+      {
+        "cityId": 946,
+        "label": "עין איילה"
+      },
+      {
+        "cityId": 952,
+        "label": "עין הוד"
+      },
+      {
+        "cityId": 967,
+        "label": "עין כרמל"
+      },
+      {
+        "cityId": 1005,
+        "label": "עתלית"
+      },
+      {
+        "cityId": 1057,
+        "label": "צרופה"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי עמק חפר",
+    "cities": [
+      {
+        "cityId": 389,
+        "label": "זמר"
+      },
+      {
+        "cityId": 16,
+        "label": "אביחיל"
+      },
+      {
+        "cityId": 39,
+        "label": "אומץ"
+      },
+      {
+        "cityId": 57,
+        "label": "אחיטוב"
+      },
+      {
+        "cityId": 90,
+        "label": "אלישיב"
+      },
+      {
+        "cityId": 138,
+        "label": "בארותים"
+      },
+      {
+        "cityId": 144,
+        "label": "בורגתה"
+      },
+      {
+        "cityId": 145,
+        "label": "בחן"
+      },
+      {
+        "cityId": 161,
+        "label": "בית הלוי"
+      },
+      {
+        "cityId": 1269,
+        "label": "בית חזון"
+      },
+      {
+        "cityId": 173,
+        "label": "בית חרות"
+      },
+      {
+        "cityId": 177,
+        "label": "בית ינאי"
+      },
+      {
+        "cityId": 178,
+        "label": "בית יצחק"
+      },
+      {
+        "cityId": 197,
+        "label": "ביתן אהרון"
+      },
+      {
+        "cityId": 1270,
+        "label": "בת חן"
+      },
+      {
+        "cityId": 235,
+        "label": "בת חפר"
+      },
+      {
+        "cityId": 247,
+        "label": "גאולי תימן"
+      },
+      {
+        "cityId": 263,
+        "label": "גבעת חיים(איחוד)"
+      },
+      {
+        "cityId": 264,
+        "label": "גבעת חיים(מאוחד)"
+      },
+      {
+        "cityId": 274,
+        "label": "גבעת שפירא"
+      },
+      {
+        "cityId": 307,
+        "label": "גן יאשיה"
+      },
+      {
+        "cityId": 358,
+        "label": "הדר עם"
+      },
+      {
+        "cityId": 370,
+        "label": "המעפיל"
+      },
+      {
+        "cityId": 372,
+        "label": "העוגן"
+      },
+      {
+        "cityId": 396,
+        "label": "חבצלת השרון"
+      },
+      {
+        "cityId": 400,
+        "label": "חגלה"
+      },
+      {
+        "cityId": 412,
+        "label": "חופית"
+      },
+      {
+        "cityId": 418,
+        "label": "חיבת ציון"
+      },
+      {
+        "cityId": 429,
+        "label": "חניאל"
+      },
+      {
+        "cityId": 444,
+        "label": "חרב לאת"
+      },
+      {
+        "cityId": 475,
+        "label": "יד חנה"
+      },
+      {
+        "cityId": 480,
+        "label": "ידידיה"
+      },
+      {
+        "cityId": 573,
+        "label": "כפר הראה"
+      },
+      {
+        "cityId": 575,
+        "label": "כפר ויתקין"
+      },
+      {
+        "cityId": 582,
+        "label": "כפר חיים"
+      },
+      {
+        "cityId": 595,
+        "label": "כפר מונש"
+      },
+      {
+        "cityId": 676,
+        "label": "מגל"
+      },
+      {
+        "cityId": 720,
+        "label": "מכמורת"
+      },
+      {
+        "cityId": 739,
+        "label": "מעברות"
+      },
+      {
+        "cityId": 791,
+        "label": "משמר השרון"
+      },
+      {
+        "cityId": 929,
+        "label": "עולש"
+      },
+      {
+        "cityId": 953,
+        "label": "עין החורש"
+      },
+      {
+        "cityId": 1043,
+        "label": "צוקי ים"
+      },
+      {
+        "cityId": 1195,
+        "label": "שושנת העמקים (רסקו)"
+      },
+      {
+        "cityId": 1271,
+        "label": "שער חפר"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי עמק יזרעאל",
+    "cities": [
+      {
+        "cityId": 1140,
+        "label": "רמת ישי"
+      },
+      {
+        "cityId": 77,
+        "label": "אלון הגליל"
+      },
+      {
+        "cityId": 80,
+        "label": "אלוני אבא"
+      },
+      {
+        "cityId": 83,
+        "label": "אלונים"
+      },
+      {
+        "cityId": 148,
+        "label": "ביר אל- מכסור"
+      },
+      {
+        "cityId": 179,
+        "label": "בית לחם הגלילית"
+      },
+      {
+        "cityId": 195,
+        "label": "בית שערים"
+      },
+      {
+        "cityId": 199,
+        "label": "בלפוריה"
+      },
+      {
+        "cityId": 258,
+        "label": "גבעת אלה"
+      },
+      {
+        "cityId": 278,
+        "label": "גבת"
+      },
+      {
+        "cityId": 295,
+        "label": "גיניגר"
+      },
+      {
+        "cityId": 364,
+        "label": "הושעיה"
+      },
+      {
+        "cityId": 371,
+        "label": "הסוללים"
+      },
+      {
+        "cityId": 377,
+        "label": "הרדוף"
+      },
+      {
+        "cityId": 393,
+        "label": "זרזיר"
+      },
+      {
+        "cityId": 431,
+        "label": "חנתון"
+      },
+      {
+        "cityId": 454,
+        "label": "טייבה(בעמק)"
+      },
+      {
+        "cityId": 464,
+        "label": "טמרה(יזרעאל)"
+      },
+      {
+        "cityId": 504,
+        "label": "יפעת"
+      },
+      {
+        "cityId": 559,
+        "label": "כפר ברוך"
+      },
+      {
+        "cityId": 560,
+        "label": "כפר גדעון"
+      },
+      {
+        "cityId": 567,
+        "label": "כפר החורש"
+      },
+      {
+        "cityId": 589,
+        "label": "כפר יהושע"
+      },
+      {
+        "cityId": 693,
+        "label": "מזרע"
+      },
+      {
+        "cityId": 699,
+        "label": "מחנה יהודית"
+      },
+      {
+        "cityId": 731,
+        "label": "מנשית-זבדה"
+      },
+      {
+        "cityId": 782,
+        "label": "משהד"
+      },
+      {
+        "cityId": 805,
+        "label": "נהלל"
+      },
+      {
+        "cityId": 905,
+        "label": "סואעד (חמרייה)"
+      },
+      {
+        "cityId": 925,
+        "label": "עדי"
+      },
+      {
+        "cityId": 950,
+        "label": "עין דור"
+      },
+      {
+        "cityId": 1051,
+        "label": "ציפורי"
+      },
+      {
+        "cityId": 1135,
+        "label": "רמת דוד"
+      },
+      {
+        "cityId": 1170,
+        "label": "שדה יעקב"
+      },
+      {
+        "cityId": 1205,
+        "label": "שימשית"
+      },
+      {
+        "cityId": 1232,
+        "label": "שריד"
+      },
+      {
+        "cityId": 1247,
+        "label": "תל עדשים"
+      },
+      {
+        "cityId": 1259,
+        "label": "תמרת"
+      }
+    ]
+  },
+  {
+    "areaName": "ישובי צפון השומרון",
+    "cities": [
+      {
+        "cityId": 447,
+        "label": "חרמש"
+      },
+      {
+        "cityId": 420,
+        "label": "חיננית"
+      },
+      {
+        "cityId": 657,
+        "label": "מבוא דותן"
+      },
+      {
+        "cityId": 1122,
+        "label": "ריחן"
+      },
+      {
+        "cityId": 1229,
+        "label": "שקד"
+      }
+    ]
+  },
+  {
+    "areaName": "כוכב יאיר",
+    "cities": [
+      {
+        "cityId": 529,
+        "label": "כוכב יאיר"
+      },
+      {
+        "cityId": 62,
+        "label": "אייל"
+      },
+      {
+        "cityId": 453,
+        "label": "טייבה"
+      },
+      {
+        "cityId": 455,
+        "label": "טירה"
+      },
+      {
+        "cityId": 1045,
+        "label": "צור יגאל"
+      },
+      {
+        "cityId": 1272,
+        "label": "צור יצחק"
+      },
+      {
+        "cityId": 1047,
+        "label": "צור נתן"
+      }
+    ]
+  },
+  {
+    "areaName": "כרמיאל",
+    "cities": [
+      {
+        "cityId": 632,
+        "label": "כרמיאל"
+      },
+      {
+        "cityId": 120,
+        "label": "אשבל"
+      },
+      {
+        "cityId": 124,
+        "label": "אשחר"
+      },
+      {
+        "cityId": 131,
+        "label": "אתגר"
+      },
+      {
+        "cityId": 218,
+        "label": "בענה"
+      },
+      {
+        "cityId": 292,
+        "label": "גילון"
+      },
+      {
+        "cityId": 344,
+        "label": "דייר אל-אסד"
+      },
+      {
+        "cityId": 345,
+        "label": "דיר חנא"
+      },
+      {
+        "cityId": 411,
+        "label": "חוסנייה"
+      },
+      {
+        "cityId": 422,
+        "label": "חלוץ"
+      },
+      {
+        "cityId": 484,
+        "label": "יובלים"
+      },
+      {
+        "cityId": 535,
+        "label": "כישור"
+      },
+      {
+        "cityId": 538,
+        "label": "כמאנה"
+      },
+      {
+        "cityId": 540,
+        "label": "כמון"
+      },
+      {
+        "cityId": 583,
+        "label": "כפר חנניה"
+      },
+      {
+        "cityId": 636,
+        "label": "לבון"
+      },
+      {
+        "cityId": 668,
+        "label": "מגאר"
+      },
+      {
+        "cityId": 666,
+        "label": "מגד אל-כרום"
+      },
+      {
+        "cityId": 721,
+        "label": "מכמנים"
+      },
+      {
+        "cityId": 848,
+        "label": "נחף"
+      },
+      {
+        "cityId": 901,
+        "label": "סאגור"
+      },
+      {
+        "cityId": 910,
+        "label": "סחנין"
+      },
+      {
+        "cityId": 998,
+        "label": "עראבה"
+      },
+      {
+        "cityId": 1049,
+        "label": "צורית"
+      },
+      {
+        "cityId": 1099,
+        "label": "ראמה"
+      },
+      {
+        "cityId": 1100,
+        "label": "ראס אל-עין"
+      },
+      {
+        "cityId": 1194,
+        "label": "שורשים"
+      },
+      {
+        "cityId": 1196,
+        "label": "שזור"
+      },
+      {
+        "cityId": 1216,
+        "label": "שעב"
+      }
+    ]
+  },
+  {
+    "areaName": "מבשרת והסביבה",
+    "cities": [
+      {
+        "cityId": 665,
+        "label": "מבשרת ציון"
+      },
+      {
+        "cityId": 2,
+        "label": "אבו גוש"
+      },
+      {
+        "cityId": 183,
+        "label": "בית נקופה"
+      },
+      {
+        "cityId": 266,
+        "label": "גבעת יערים"
+      },
+      {
+        "cityId": 373,
+        "label": "הר אדר"
+      },
+      {
+        "cityId": 474,
+        "label": "יד השמונה"
+      },
+      {
+        "cityId": 686,
+        "label": "מוצא עלית"
+      },
+      {
+        "cityId": 753,
+        "label": "מעלה החמישה"
+      },
+      {
+        "cityId": 812,
+        "label": "נווה אילן"
+      },
+      {
+        "cityId": 855,
+        "label": "נטף"
+      },
+      {
+        "cityId": 969,
+        "label": "עין נקובא"
+      },
+      {
+        "cityId": 973,
+        "label": "עין ראפה"
+      },
+      {
+        "cityId": 1088,
+        "label": "קרית יערים "
+      },
+      {
+        "cityId": 1089,
+        "label": "קרית יערים (מוסד)"
+      },
+      {
+        "cityId": 1093,
+        "label": "קרית ענבים"
+      },
+      {
+        "cityId": 1186,
+        "label": "שואבה"
+      },
+      {
+        "cityId": 1193,
+        "label": "שורש"
+      }
+    ]
+  },
+  {
+    "areaName": "מגדל העמק והסביבה",
+    "cities": [
+      {
+        "cityId": 671,
+        "label": "מגדל העמק"
+      }
+    ]
+  },
+  {
+    "areaName": "מודיעין והסביבה",
+    "cities": [
+      {
+        "cityId": 683,
+        "label": "מודיעין"
+      },
+      {
+        "cityId": 449,
+        "label": "חשמונאים"
+      },
+      {
+        "cityId": 557,
+        "label": "כפר בן נון"
+      },
+      {
+        "cityId": 566,
+        "label": "כפר האורנים"
+      },
+      {
+        "cityId": 618,
+        "label": "כפר רות"
+      },
+      {
+        "cityId": 620,
+        "label": "כפר שמואל"
+      },
+      {
+        "cityId": 651,
+        "label": "לפיד"
+      },
+      {
+        "cityId": 660,
+        "label": "מבוא מודיעים"
+      },
+      {
+        "cityId": 684,
+        "label": "מודיעין עילית"
+      },
+      {
+        "cityId": 718,
+        "label": "מכבים-רעות"
+      },
+      {
+        "cityId": 785,
+        "label": "משמר איילון"
+      },
+      {
+        "cityId": 797,
+        "label": "מתתיהו"
+      },
+      {
+        "cityId": 828,
+        "label": "נוף איילון"
+      },
+      {
+        "cityId": 857,
+        "label": "נילי"
+      },
+      {
+        "cityId": 1204,
+        "label": "שילת"
+      },
+      {
+        "cityId": 1218,
+        "label": "שעלבים"
+      }
+    ]
+  },
+  {
+    "areaName": "מעלה אדומים",
+    "cities": [
+      {
+        "cityId": 749,
+        "label": "מעלה אדומים"
+      },
+      {
+        "cityId": 380,
+        "label": "ורד יריחו"
+      },
+      {
+        "cityId": 1065,
+        "label": "קדר"
+      }
+    ]
+  },
+  {
+    "areaName": "מעלות וישובי הסביבה",
+    "cities": [
+      {
+        "cityId": 517,
+        "label": "ירכא"
+      },
+      {
+        "cityId": 415,
+        "label": "חורפיש"
+      },
+      {
+        "cityId": 467,
+        "label": "יאנוח-גת"
+      },
+      {
+        "cityId": 588,
+        "label": "כפר יאסיף"
+      },
+      {
+        "cityId": 673,
+        "label": "מגדל תפן"
+      },
+      {
+        "cityId": 748,
+        "label": "מעיליא"
+      },
+      {
+        "cityId": 759,
+        "label": "מעלות-תרשיחא"
+      },
+      {
+        "cityId": 1022,
+        "label": "פסוטה"
+      }
+    ]
+  },
+  {
+    "areaName": "מצפה רמון",
+    "cities": [
+      {
+        "cityId": 770,
+        "label": "מצפה רמון"
+      },
+      {
+        "cityId": 539,
+        "label": "כמהין"
+      },
+      {
+        "cityId": 861,
+        "label": "ניצני סיני"
+      },
+      {
+        "cityId": 918,
+        "label": "ספיר"
+      },
+      {
+        "cityId": 935,
+        "label": "עזוז"
+      },
+      {
+        "cityId": 964,
+        "label": "עין יהב"
+      },
+      {
+        "cityId": 1007,
+        "label": "פארן"
+      },
+      {
+        "cityId": 1042,
+        "label": "צופר"
+      },
+      {
+        "cityId": 696,
+        "label": "צוקים"
+      }
+    ]
+  },
+  {
+    "areaName": "נהריה והסביבה",
+    "cities": [
+      {
+        "cityId": 806,
+        "label": "נהריה"
+      },
+      {
+        "cityId": 201,
+        "label": "בן עמי"
+      },
+      {
+        "cityId": 615,
+        "label": "כפר ראש הנקרה"
+      },
+      {
+        "cityId": 649,
+        "label": "לימן"
+      },
+      {
+        "cityId": 917,
+        "label": "סער"
+      },
+      {
+        "cityId": 923,
+        "label": "עברון"
+      },
+      {
+        "cityId": 1268,
+        "label": "ראש הנקרה"
+      },
+      {
+        "cityId": 1110,
+        "label": "רגבה"
+      },
+      {
+        "cityId": 1157,
+        "label": "שבי ציון"
+      },
+      {
+        "cityId": 1202,
+        "label": "שייח דנון"
+      },
+      {
+        "cityId": 1209,
+        "label": "שלומי"
+      }
+    ]
+  },
+  {
+    "areaName": "נצרת",
+    "cities": [
+      {
+        "cityId": 892,
+        "label": "נצרת"
+      },
+      {
+        "cityId": 333,
+        "label": "דבוריה"
+      },
+      {
+        "cityId": 502,
+        "label": "יפיע"
+      },
+      {
+        "cityId": 1123,
+        "label": "ריינה"
+      }
+    ]
+  },
+  {
+    "areaName": "נצרת עילית",
+    "cities": [
+      {
+        "cityId": 893,
+        "label": "נצרת עילית"
+      },
+      {
+        "cityId": 71,
+        "label": "אכסאל"
+      },
+      {
+        "cityId": 594,
+        "label": "כפר כנא"
+      },
+      {
+        "cityId": 894,
+        "label": "נוף הגליל"
+      },
+      {
+        "cityId": 945,
+        "label": "עילוט"
+      },
+      {
+        "cityId": 968,
+        "label": "עין מאהל"
+      },
+      {
+        "cityId": 1201,
+        "label": "שיטים"
+      }
+    ]
+  },
+  {
+    "areaName": "נתיבות-שדרות",
+    "cities": [
+      {
+        "cityId": 1185,
+        "label": "שדרות"
+      },
+      {
+        "cityId": 42,
+        "label": "אור הנר"
+      },
+      {
+        "cityId": 61,
+        "label": "איבים"
+      },
+      {
+        "cityId": 116,
+        "label": "ארז"
+      },
+      {
+        "cityId": 119,
+        "label": "אשבול"
+      },
+      {
+        "cityId": 139,
+        "label": "בארי"
+      },
+      {
+        "cityId": 160,
+        "label": "בית הגדי"
+      },
+      {
+        "cityId": 189,
+        "label": "בית קמה"
+      },
+      {
+        "cityId": 225,
+        "label": "ברור חיל"
+      },
+      {
+        "cityId": 251,
+        "label": "גבים"
+      },
+      {
+        "cityId": 255,
+        "label": "גבעולים"
+      },
+      {
+        "cityId": 293,
+        "label": "גילת"
+      },
+      {
+        "cityId": 342,
+        "label": "דורות"
+      },
+      {
+        "cityId": 390,
+        "label": "זמרת"
+      },
+      {
+        "cityId": 392,
+        "label": "זרועה"
+      },
+      {
+        "cityId": 468,
+        "label": "יבול"
+      },
+      {
+        "cityId": 487,
+        "label": "יושיביה"
+      },
+      {
+        "cityId": 492,
+        "label": "יכיני"
+      },
+      {
+        "cityId": 596,
+        "label": "כפר מימון"
+      },
+      {
+        "cityId": 609,
+        "label": "כפר עזה"
+      },
+      {
+        "cityId": 629,
+        "label": "כרם שלום"
+      },
+      {
+        "cityId": 662,
+        "label": "מבועים"
+      },
+      {
+        "cityId": 663,
+        "label": "מבטחים"
+      },
+      {
+        "cityId": 723,
+        "label": "מלילות"
+      },
+      {
+        "cityId": 740,
+        "label": "מעגלים"
+      },
+      {
+        "cityId": 762,
+        "label": "מפלסים"
+      },
+      {
+        "cityId": 843,
+        "label": "נחל עוז"
+      },
+      {
+        "cityId": 872,
+        "label": "ניר משה"
+      },
+      {
+        "cityId": 873,
+        "label": "ניר עוז"
+      },
+      {
+        "cityId": 874,
+        "label": "ניר עם"
+      },
+      {
+        "cityId": 876,
+        "label": "ניר עקיבא"
+      },
+      {
+        "cityId": 899,
+        "label": "נתיבות"
+      },
+      {
+        "cityId": 916,
+        "label": "סעד"
+      },
+      {
+        "cityId": 980,
+        "label": "עלומים"
+      },
+      {
+        "cityId": 1023,
+        "label": "פעמי תשז"
+      },
+      {
+        "cityId": 1075,
+        "label": "קלחים"
+      },
+      {
+        "cityId": 1115,
+        "label": "רוחמה"
+      },
+      {
+        "cityId": 1146,
+        "label": "רנן"
+      },
+      {
+        "cityId": 1148,
+        "label": "רעים"
+      },
+      {
+        "cityId": 1166,
+        "label": "שדה דוד"
+      },
+      {
+        "cityId": 1177,
+        "label": "שדה צבי"
+      },
+      {
+        "cityId": 1187,
+        "label": "שובה"
+      },
+      {
+        "cityId": 1192,
+        "label": "שוקדה"
+      },
+      {
+        "cityId": 1199,
+        "label": "שיבולים"
+      },
+      {
+        "cityId": 1233,
+        "label": "שרשרת"
+      },
+      {
+        "cityId": 1236,
+        "label": "תאשור"
+      },
+      {
+        "cityId": 1237,
+        "label": "תדהר"
+      },
+      {
+        "cityId": 1240,
+        "label": "תושיה"
+      },
+      {
+        "cityId": 1254,
+        "label": "תלמי בילו"
+      },
+      {
+        "cityId": 1263,
+        "label": "תקומה"
+      }
+    ]
+  },
+  {
+    "areaName": "נתניה והסביבה",
+    "cities": [
+      {
+        "cityId": 900,
+        "label": "נתניה"
+      },
+      {
+        "cityId": 20,
+        "label": "אבן יהודה"
+      },
+      {
+        "cityId": 32,
+        "label": "אודים"
+      },
+      {
+        "cityId": 118,
+        "label": "ארסוף"
+      },
+      {
+        "cityId": 175,
+        "label": "בית יהושע"
+      },
+      {
+        "cityId": 314,
+        "label": "גנות הדר"
+      },
+      {
+        "cityId": 322,
+        "label": "געש"
+      },
+      {
+        "cityId": 445,
+        "label": "חרוצים"
+      },
+      {
+        "cityId": 508,
+        "label": "יקום"
+      },
+      {
+        "cityId": 603,
+        "label": "כפר נטר"
+      },
+      {
+        "cityId": 1095,
+        "label": "קרית שלמה"
+      },
+      {
+        "cityId": 1152,
+        "label": "רשפון"
+      },
+      {
+        "cityId": 1167,
+        "label": "שדה ורבורג"
+      },
+      {
+        "cityId": 1225,
+        "label": "שפיים"
+      },
+      {
+        "cityId": 1245,
+        "label": "תל יצחק"
+      }
+    ]
+  },
+  {
+    "areaName": "עומר-מיתר-להבים",
+    "cities": [
+      {
+        "cityId": 930,
+        "label": "עומר"
+      },
+      {
+        "cityId": 334,
+        "label": "דבירה"
+      },
+      {
+        "cityId": 639,
+        "label": "להב"
+      },
+      {
+        "cityId": 642,
+        "label": "להבים"
+      },
+      {
+        "cityId": 788,
+        "label": "משמר הנגב"
+      },
+      {
+        "cityId": 1112,
+        "label": "רהט"
+      },
+      {
+        "cityId": 1188,
+        "label": "שובל"
+      },
+      {
+        "cityId": 1191,
+        "label": "שומריה"
+      }
+    ]
+  },
+  {
+    "areaName": "עכו והסביבה",
+    "cities": [
+      {
+        "cityId": 979,
+        "label": "עכו"
+      },
+      {
+        "cityId": 141,
+        "label": "בוסתן הגליל"
+      },
+      {
+        "cityId": 240,
+        "label": "גדיידה-מכר"
+      },
+      {
+        "cityId": 600,
+        "label": "כפר מסריק"
+      },
+      {
+        "cityId": 954,
+        "label": "עין המפרץ"
+      },
+      {
+        "cityId": 1213,
+        "label": "שמרת"
+      }
+    ]
+  },
+  {
+    "areaName": "עפולה והסביבה",
+    "cities": [
+      {
+        "cityId": 995,
+        "label": "עפולה"
+      },
+      {
+        "cityId": 17,
+        "label": "אביטל"
+      },
+      {
+        "cityId": 29,
+        "label": "אדירים"
+      },
+      {
+        "cityId": 36,
+        "label": "אום אל-פחם"
+      },
+      {
+        "cityId": 38,
+        "label": "אומן"
+      },
+      {
+        "cityId": 55,
+        "label": "אחוזת ברק"
+      },
+      {
+        "cityId": 230,
+        "label": "ברק"
+      },
+      {
+        "cityId": 252,
+        "label": "גבע"
+      },
+      {
+        "cityId": 271,
+        "label": "גבעת עוז"
+      },
+      {
+        "cityId": 281,
+        "label": "גדיש"
+      },
+      {
+        "cityId": 282,
+        "label": "גדעונה"
+      },
+      {
+        "cityId": 287,
+        "label": "גזית"
+      },
+      {
+        "cityId": 309,
+        "label": "גן נר"
+      },
+      {
+        "cityId": 332,
+        "label": "דבורה"
+      },
+      {
+        "cityId": 335,
+        "label": "דברת"
+      },
+      {
+        "cityId": 343,
+        "label": "דחי"
+      },
+      {
+        "cityId": 397,
+        "label": "חבר"
+      },
+      {
+        "cityId": 488,
+        "label": "יזרעאל"
+      },
+      {
+        "cityId": 499,
+        "label": "יעל"
+      },
+      {
+        "cityId": 591,
+        "label": "כפר יחזקאל"
+      },
+      {
+        "cityId": 601,
+        "label": "כפר מצר"
+      },
+      {
+        "cityId": 678,
+        "label": "מגן שאול"
+      },
+      {
+        "cityId": 685,
+        "label": "מולדת"
+      },
+      {
+        "cityId": 687,
+        "label": "מוקייבלה"
+      },
+      {
+        "cityId": 711,
+        "label": "מיטב"
+      },
+      {
+        "cityId": 722,
+        "label": "מלאה"
+      },
+      {
+        "cityId": 756,
+        "label": "מעלה עירון"
+      },
+      {
+        "cityId": 776,
+        "label": "מרחביה (מושב)"
+      },
+      {
+        "cityId": 777,
+        "label": "מרחביה (קיבוץ)"
+      },
+      {
+        "cityId": 834,
+        "label": "נורית"
+      },
+      {
+        "cityId": 856,
+        "label": "ניין"
+      },
+      {
+        "cityId": 869,
+        "label": "ניר יפה"
+      },
+      {
+        "cityId": 907,
+        "label": "סולם"
+      },
+      {
+        "cityId": 962,
+        "label": "עין חרוד (איחוד)"
+      },
+      {
+        "cityId": 963,
+        "label": "עין חרוד (מאוחד)"
+      },
+      {
+        "cityId": 1031,
+        "label": "פריזון"
+      },
+      {
+        "cityId": 1053,
+        "label": "צנדלה"
+      },
+      {
+        "cityId": 1125,
+        "label": "רם-און"
+      },
+      {
+        "cityId": 1143,
+        "label": "רמת צבי"
+      },
+      {
+        "cityId": 1244,
+        "label": "תל יוסף"
+      }
+    ]
+  },
+  {
+    "areaName": "ערד",
+    "cities": [
+      {
+        "cityId": 1000,
+        "label": "ערד"
+      }
+    ]
+  },
+  {
+    "areaName": "פרדס חנה כרכור",
+    "cities": [
+      {
+        "cityId": 1027,
+        "label": "פרדס חנה-כרכור"
+      },
+      {
+        "cityId": 305,
+        "label": "גן השומרון"
+      },
+      {
+        "cityId": 611,
+        "label": "כפר פינס"
+      },
+      {
+        "cityId": 792,
+        "label": "משמרות"
+      },
+      {
+        "cityId": 970,
+        "label": "עין עירון"
+      },
+      {
+        "cityId": 974,
+        "label": "עין שמר"
+      },
+      {
+        "cityId": 1253,
+        "label": "תלמי אלעזר"
+      }
+    ]
+  },
+  {
+    "areaName": "פתח-תקווה - גבעת שמואל",
+    "cities": [
+      {
+        "cityId": 1032,
+        "label": "פתח תקווה"
+      },
+      {
+        "cityId": 260,
+        "label": "גבעת השלושה"
+      },
+      {
+        "cityId": 272,
+        "label": "גבעת שמואל"
+      },
+      {
+        "cityId": 329,
+        "label": "גת רימון"
+      },
+      {
+        "cityId": 607,
+        "label": "כפר סירקין"
+      },
+      {
+        "cityId": 846,
+        "label": "נחלים"
+      }
+    ]
+  },
+  {
+    "areaName": "צורן-קדימה-פרדסיה",
+    "cities": [
+      {
+        "cityId": 1062,
+        "label": "קדימה-צורן"
+      },
+      {
+        "cityId": 207,
+        "label": "בני דרור"
+      },
+      {
+        "cityId": 248,
+        "label": "גאולים"
+      },
+      {
+        "cityId": 493,
+        "label": "ינוב"
+      },
+      {
+        "cityId": 590,
+        "label": "כפר יונה"
+      },
+      {
+        "cityId": 608,
+        "label": "כפר עבודה"
+      },
+      {
+        "cityId": 833,
+        "label": "נורדיה"
+      },
+      {
+        "cityId": 862,
+        "label": "ניצני עוז"
+      },
+      {
+        "cityId": 1016,
+        "label": "פורת"
+      },
+      {
+        "cityId": 1028,
+        "label": "פרדסיה"
+      },
+      {
+        "cityId": 1046,
+        "label": "צור משה"
+      },
+      {
+        "cityId": 1077,
+        "label": "קלנסווה"
+      },
+      {
+        "cityId": 1219,
+        "label": "שער אפרים"
+      },
+      {
+        "cityId": 1260,
+        "label": "תנובות"
+      }
+    ]
+  },
+  {
+    "areaName": "צפון בנימין",
+    "cities": [
+      {
+        "cityId": 151,
+        "label": "בית אל"
+      },
+      {
+        "cityId": 154,
+        "label": "בית אריה"
+      },
+      {
+        "cityId": 340,
+        "label": "דולב"
+      },
+      {
+        "cityId": 423,
+        "label": "חלמיש"
+      },
+      {
+        "cityId": 462,
+        "label": "טלמון"
+      },
+      {
+        "cityId": 750,
+        "label": "מעלה אפרים"
+      },
+      {
+        "cityId": 845,
+        "label": "נחליאל"
+      },
+      {
+        "cityId": 1275,
+        "label": "נריה"
+      },
+      {
+        "cityId": 932,
+        "label": "עופרה"
+      },
+      {
+        "cityId": 941,
+        "label": "עטרת"
+      },
+      {
+        "cityId": 981,
+        "label": "עלי"
+      },
+      {
+        "cityId": 1203,
+        "label": "שילה"
+      }
+    ]
+  },
+  {
+    "areaName": "צפת-ראש פינה והסביבה",
+    "cities": [
+      {
+        "cityId": 438,
+        "label": "חצור הגלילית"
+      },
+      {
+        "cityId": 41,
+        "label": "אור הגנוז"
+      },
+      {
+        "cityId": 88,
+        "label": "אליפלט"
+      },
+      {
+        "cityId": 100,
+        "label": "אמירים"
+      },
+      {
+        "cityId": 149,
+        "label": "ביריה"
+      },
+      {
+        "cityId": 224,
+        "label": "בר יוחאי"
+      },
+      {
+        "cityId": 245,
+        "label": "גש (גוש חלב)"
+      },
+      {
+        "cityId": 350,
+        "label": "דלתון"
+      },
+      {
+        "cityId": 451,
+        "label": "טובא-זנגריה"
+      },
+      {
+        "cityId": 619,
+        "label": "כפר שמאי"
+      },
+      {
+        "cityId": 715,
+        "label": "מירון"
+      },
+      {
+        "cityId": 919,
+        "label": "ספסופה"
+      },
+      {
+        "cityId": 1056,
+        "label": "צפת"
+      },
+      {
+        "cityId": 1103,
+        "label": "ראש פינה"
+      },
+      {
+        "cityId": 1227,
+        "label": "שפר"
+      }
+    ]
+  },
+  {
+    "areaName": "קיסריה והסביבה",
+    "cities": [
+      {
+        "cityId": 44,
+        "label": "אור עקיבא"
+      },
+      {
+        "cityId": 244,
+        "label": "גסר א-זרקה"
+      },
+      {
+        "cityId": 1074,
+        "label": "קיסריה"
+      },
+      {
+        "cityId": 1178,
+        "label": "שדות ים"
+      }
+    ]
+  },
+  {
+    "areaName": "קריית אונו והסביבה",
+    "cities": [
+      {
+        "cityId": 1081,
+        "label": "קרית אונו"
+      },
+      {
+        "cityId": 320,
+        "label": "גני תקווה"
+      },
+      {
+        "cityId": 552,
+        "label": "כפר אזר"
+      },
+      {
+        "cityId": 761,
+        "label": "מעש"
+      }
+    ]
+  },
+  {
+    "areaName": "קריית טבעון והסביבה",
+    "cities": [
+      {
+        "cityId": 1086,
+        "label": "קרית טבעון"
+      },
+      {
+        "cityId": 11,
+        "label": "אבטין"
+      },
+      {
+        "cityId": 49,
+        "label": "אורנים"
+      },
+      {
+        "cityId": 166,
+        "label": "בית זיד"
+      },
+      {
+        "cityId": 217,
+        "label": "בסמת טבעון"
+      },
+      {
+        "cityId": 471,
+        "label": "יגור"
+      },
+      {
+        "cityId": 584,
+        "label": "כפר חסידים א"
+      },
+      {
+        "cityId": 585,
+        "label": "כפר חסידים ב"
+      },
+      {
+        "cityId": 830,
+        "label": "נופית"
+      },
+      {
+        "cityId": 1101,
+        "label": "ראס עלי"
+      },
+      {
+        "cityId": 1124,
+        "label": "רכסים"
+      },
+      {
+        "cityId": 1221,
+        "label": "שער העמקים"
+      }
+    ]
+  },
+  {
+    "areaName": "קריית מלאכי והסביבה",
+    "cities": [
+      {
+        "cityId": 134,
+        "label": "באר טוביה"
+      },
+      {
+        "cityId": 15,
+        "label": "אביגדור"
+      },
+      {
+        "cityId": 46,
+        "label": "אורות"
+      },
+      {
+        "cityId": 53,
+        "label": "אחווה"
+      },
+      {
+        "cityId": 72,
+        "label": "אל-עזי"
+      },
+      {
+        "cityId": 394,
+        "label": "זרחיה"
+      },
+      {
+        "cityId": 494,
+        "label": "ינון"
+      },
+      {
+        "cityId": 553,
+        "label": "כפר אחים"
+      },
+      {
+        "cityId": 574,
+        "label": "כפר הריף"
+      },
+      {
+        "cityId": 576,
+        "label": "כפר ורבורג"
+      },
+      {
+        "cityId": 599,
+        "label": "כפר מנחם"
+      },
+      {
+        "cityId": 778,
+        "label": "מרכז שפירא"
+      },
+      {
+        "cityId": 971,
+        "label": "עין צורים"
+      },
+      {
+        "cityId": 1001,
+        "label": "ערוגות"
+      },
+      {
+        "cityId": 1091,
+        "label": "קרית מלאכי"
+      },
+      {
+        "cityId": 1226,
+        "label": "שפיר"
+      },
+      {
+        "cityId": 1241,
+        "label": "תימורים"
+      },
+      {
+        "cityId": 1256,
+        "label": "תלמי יחיאל"
+      }
+    ]
+  },
+  {
+    "areaName": "קריית שמונה והסביבה",
+    "cities": [
+      {
+        "cityId": 1096,
+        "label": "קרית שמונה"
+      },
+      {
+        "cityId": 162,
+        "label": "בית הלל"
+      },
+      {
+        "cityId": 353,
+        "label": "דפנה"
+      },
+      {
+        "cityId": 708,
+        "label": "מטולה"
+      },
+      {
+        "cityId": 774,
+        "label": "מרגליות"
+      },
+      {
+        "cityId": 921,
+        "label": "עגר"
+      },
+      {
+        "cityId": 1131,
+        "label": "רמות נפתלי"
+      }
+    ]
+  },
+  {
+    "areaName": "קרית ארבע והסביבה",
+    "cities": [
+      {
+        "cityId": 1082,
+        "label": "קרית ארבע"
+      }
+    ]
+  },
+  {
+    "areaName": "קרית גת והסביבה",
+    "cities": [
+      {
+        "cityId": 1085,
+        "label": "קרית גת"
+      },
+      {
+        "cityId": 24,
+        "label": "אבן שמואל"
+      },
+      {
+        "cityId": 54,
+        "label": "אחוזם"
+      },
+      {
+        "cityId": 69,
+        "label": "איתן"
+      },
+      {
+        "cityId": 75,
+        "label": "אלומה"
+      },
+      {
+        "cityId": 102,
+        "label": "אמציה"
+      },
+      {
+        "cityId": 157,
+        "label": "בית גוברין"
+      },
+      {
+        "cityId": 182,
+        "label": "בית ניר"
+      },
+      {
+        "cityId": 1283,
+        "label": "בני דקלים"
+      },
+      {
+        "cityId": 299,
+        "label": "גלאון"
+      },
+      {
+        "cityId": 246,
+        "label": "גת"
+      },
+      {
+        "cityId": 381,
+        "label": "ורדון"
+      },
+      {
+        "cityId": 383,
+        "label": "זבדיאל"
+      },
+      {
+        "cityId": 384,
+        "label": "זהר"
+      },
+      {
+        "cityId": 477,
+        "label": "יד נתן"
+      },
+      {
+        "cityId": 650,
+        "label": "לכיש"
+      },
+      {
+        "cityId": 726,
+        "label": "מנוחה"
+      },
+      {
+        "cityId": 804,
+        "label": "נהורה"
+      },
+      {
+        "cityId": 827,
+        "label": "נועם"
+      },
+      {
+        "cityId": 844,
+        "label": "נחלה"
+      },
+      {
+        "cityId": 865,
+        "label": "ניר בנים"
+      },
+      {
+        "cityId": 868,
+        "label": "ניר חן"
+      },
+      {
+        "cityId": 904,
+        "label": "סגולה"
+      },
+      {
+        "cityId": 927,
+        "label": "עוזה"
+      },
+      {
+        "cityId": 997,
+        "label": "עוצם"
+      },
+      {
+        "cityId": 1070,
+        "label": "קוממיות"
+      },
+      {
+        "cityId": 1113,
+        "label": "רווחה"
+      },
+      {
+        "cityId": 1169,
+        "label": "שדה יואב"
+      },
+      {
+        "cityId": 1172,
+        "label": "שדה משה"
+      },
+      {
+        "cityId": 1197,
+        "label": "שחר"
+      },
+      {
+        "cityId": 1207,
+        "label": "שלווה"
+      },
+      {
+        "cityId": 1230,
+        "label": "שקף"
+      },
+      {
+        "cityId": 1258,
+        "label": "תלמים"
+      }
+    ]
+  },
+  {
+    "areaName": "ר\"ג-גבעתיים",
+    "cities": [
+      {
+        "cityId": 1134,
+        "label": "רמת גן"
+      },
+      {
+        "cityId": 276,
+        "label": "גבעתיים"
+      },
+      {
+        "cityId": 1133,
+        "label": "רמת אפעל"
+      }
+    ]
+  },
+  {
+    "areaName": "ראש העין",
+    "cities": [
+      {
+        "cityId": 1102,
+        "label": "ראש העין"
+      },
+      {
+        "cityId": 50,
+        "label": "אורנית"
+      },
+      {
+        "cityId": 558,
+        "label": "כפר ברא"
+      },
+      {
+        "cityId": 612,
+        "label": "כפר קאסם"
+      },
+      {
+        "cityId": 977,
+        "label": "עינת"
+      }
+    ]
+  },
+  {
+    "areaName": "ראשון לציון",
+    "cities": [
+      {
+        "cityId": 1105,
+        "label": "ראשון לציון"
+      },
+      {
+        "cityId": 159,
+        "label": "בית דגן"
+      },
+      {
+        "cityId": 310,
+        "label": "גן שורק"
+      },
+      {
+        "cityId": 580,
+        "label": "כפר חבד"
+      },
+      {
+        "cityId": 854,
+        "label": "נטעים"
+      },
+      {
+        "cityId": 1019,
+        "label": "פלמחים"
+      }
+    ]
+  },
+  {
+    "areaName": "רחובות-יבנה-נס ציונה",
+    "cities": [
+      {
+        "cityId": 1120,
+        "label": "רחובות"
+      },
+      {
+        "cityId": 1282,
+        "label": "אירוס"
+      },
+      {
+        "cityId": 135,
+        "label": "באר יעקב"
+      },
+      {
+        "cityId": 152,
+        "label": "בית אלעזרי"
+      },
+      {
+        "cityId": 158,
+        "label": "בית גמליאל"
+      },
+      {
+        "cityId": 171,
+        "label": "בית חנן"
+      },
+      {
+        "cityId": 184,
+        "label": "בית עובד"
+      },
+      {
+        "cityId": 200,
+        "label": "בן זכאי"
+      },
+      {
+        "cityId": 249,
+        "label": "גאליה"
+      },
+      {
+        "cityId": 259,
+        "label": "גבעת ברנר"
+      },
+      {
+        "cityId": 290,
+        "label": "גיבתון"
+      },
+      {
+        "cityId": 311,
+        "label": "גן שלומה"
+      },
+      {
+        "cityId": 315,
+        "label": "גני הדר"
+      },
+      {
+        "cityId": 318,
+        "label": "גני יוחנן"
+      },
+      {
+        "cityId": 470,
+        "label": "יבנה"
+      },
+      {
+        "cityId": 507,
+        "label": "יציץ"
+      },
+      {
+        "cityId": 555,
+        "label": "כפר בילו"
+      },
+      {
+        "cityId": 569,
+        "label": "כפר הנגיד"
+      },
+      {
+        "cityId": 627,
+        "label": "כרם יבנה (ישיבה)"
+      },
+      {
+        "cityId": 630,
+        "label": "כרמי יוסף"
+      },
+      {
+        "cityId": 692,
+        "label": "מזכרת בתיה"
+      },
+      {
+        "cityId": 883,
+        "label": "נס ציונה"
+      },
+      {
+        "cityId": 887,
+        "label": "נען"
+      },
+      {
+        "cityId": 890,
+        "label": "נצר סרני"
+      },
+      {
+        "cityId": 920,
+        "label": "סתריה"
+      },
+      {
+        "cityId": 1011,
+        "label": "פדיה"
+      },
+      {
+        "cityId": 1033,
+        "label": "פתחיה"
+      },
+      {
+        "cityId": 1060,
+        "label": "קבוצת יבנה"
+      },
+      {
+        "cityId": 1094,
+        "label": "קרית עקרון"
+      },
+      {
+        "cityId": 1129,
+        "label": "רמות מאיר"
+      }
+    ]
+  },
+  {
+    "areaName": "רמלה-לוד",
+    "cities": [
+      {
+        "cityId": 288,
+        "label": "גזר"
+      },
+      {
+        "cityId": 58,
+        "label": "אחיסמך"
+      },
+      {
+        "cityId": 59,
+        "label": "אחיעזר"
+      },
+      {
+        "cityId": 174,
+        "label": "בית חשמונאי"
+      },
+      {
+        "cityId": 185,
+        "label": "בית עוזיאל"
+      },
+      {
+        "cityId": 203,
+        "label": "בן שמן"
+      },
+      {
+        "cityId": 296,
+        "label": "גינתון"
+      },
+      {
+        "cityId": 386,
+        "label": "זיתן"
+      },
+      {
+        "cityId": 472,
+        "label": "יגל"
+      },
+      {
+        "cityId": 478,
+        "label": "יד רמב\"ם"
+      },
+      {
+        "cityId": 521,
+        "label": "ישרש"
+      },
+      {
+        "cityId": 204,
+        "label": "כרם בן שמן"
+      },
+      {
+        "cityId": 643,
+        "label": "לוד"
+      },
+      {
+        "cityId": 765,
+        "label": "מצליח"
+      },
+      {
+        "cityId": 877,
+        "label": "ניר צבי"
+      },
+      {
+        "cityId": 938,
+        "label": "עזריה"
+      },
+      {
+        "cityId": 1054,
+        "label": "צפריה"
+      },
+      {
+        "cityId": 1132,
+        "label": "רמלה"
+      }
+    ]
+  },
+  {
+    "areaName": "רמת הגולן",
+    "cities": [
+      {
+        "cityId": 1080,
+        "label": "קצרין"
+      },
+      {
+        "cityId": 25,
+        "label": "אבני איתן"
+      },
+      {
+        "cityId": 33,
+        "label": "אודם"
+      },
+      {
+        "cityId": 47,
+        "label": "אורטל"
+      },
+      {
+        "cityId": 74,
+        "label": "אל-רום"
+      },
+      {
+        "cityId": 81,
+        "label": "אלוני הבשן"
+      },
+      {
+        "cityId": 85,
+        "label": "אליעד"
+      },
+      {
+        "cityId": 103,
+        "label": "אניעם"
+      },
+      {
+        "cityId": 109,
+        "label": "אפיק"
+      },
+      {
+        "cityId": 208,
+        "label": "בני יהודה"
+      },
+      {
+        "cityId": 265,
+        "label": "גבעת יואב"
+      },
+      {
+        "cityId": 326,
+        "label": "גשור"
+      },
+      {
+        "cityId": 401,
+        "label": "חד-נס"
+      },
+      {
+        "cityId": 432,
+        "label": "חספין"
+      },
+      {
+        "cityId": 486,
+        "label": "יונתן"
+      },
+      {
+        "cityId": 542,
+        "label": "כנף"
+      },
+      {
+        "cityId": 586,
+        "label": "כפר חרוב"
+      },
+      {
+        "cityId": 659,
+        "label": "מבוא חמה"
+      },
+      {
+        "cityId": 667,
+        "label": "מגדל שמס"
+      },
+      {
+        "cityId": 713,
+        "label": "מיצר"
+      },
+      {
+        "cityId": 737,
+        "label": "מסעדה"
+      },
+      {
+        "cityId": 741,
+        "label": "מעגן"
+      },
+      {
+        "cityId": 752,
+        "label": "מעלה גמלא"
+      },
+      {
+        "cityId": 775,
+        "label": "מרום גולן"
+      },
+      {
+        "cityId": 798,
+        "label": "נאות גולן"
+      },
+      {
+        "cityId": 807,
+        "label": "נוב"
+      },
+      {
+        "cityId": 811,
+        "label": "נווה אטיב"
+      },
+      {
+        "cityId": 840,
+        "label": "נחל נמרוד"
+      },
+      {
+        "cityId": 853,
+        "label": "נטור"
+      },
+      {
+        "cityId": 960,
+        "label": "עין זיוון"
+      },
+      {
+        "cityId": 972,
+        "label": "עין קנייא"
+      },
+      {
+        "cityId": 1064,
+        "label": "קדמת צבי"
+      },
+      {
+        "cityId": 1078,
+        "label": "קלע"
+      },
+      {
+        "cityId": 1098,
+        "label": "קשת"
+      },
+      {
+        "cityId": 1127,
+        "label": "רמות"
+      },
+      {
+        "cityId": 1141,
+        "label": "רמת מגשימים"
+      },
+      {
+        "cityId": 1217,
+        "label": "שעל"
+      }
+    ]
+  },
+  {
+    "areaName": "רעננה-כ\"ס-הוד השרון",
+    "cities": [
+      {
+        "cityId": 1149,
+        "label": "רעננה"
+      },
+      {
+        "cityId": 91,
+        "label": "אלישמע"
+      },
+      {
+        "cityId": 155,
+        "label": "בית ברל"
+      },
+      {
+        "cityId": 212,
+        "label": "בני ציון"
+      },
+      {
+        "cityId": 219,
+        "label": "בצרה"
+      },
+      {
+        "cityId": 262,
+        "label": "גבעת חן"
+      },
+      {
+        "cityId": 242,
+        "label": "גלגוליה"
+      },
+      {
+        "cityId": 306,
+        "label": "גן חיים"
+      },
+      {
+        "cityId": 319,
+        "label": "גני עם"
+      },
+      {
+        "cityId": 359,
+        "label": "הוד השרון"
+      },
+      {
+        "cityId": 398,
+        "label": "חגור"
+      },
+      {
+        "cityId": 416,
+        "label": "חורשים"
+      },
+      {
+        "cityId": 516,
+        "label": "ירחיב"
+      },
+      {
+        "cityId": 518,
+        "label": "ירקונה"
+      },
+      {
+        "cityId": 597,
+        "label": "כפר מלל"
+      },
+      {
+        "cityId": 605,
+        "label": "כפר סבא"
+      },
+      {
+        "cityId": 795,
+        "label": "מתן"
+      },
+      {
+        "cityId": 822,
+        "label": "נווה ימין"
+      },
+      {
+        "cityId": 823,
+        "label": "נווה ירק"
+      },
+      {
+        "cityId": 864,
+        "label": "ניר אליהו"
+      },
+      {
+        "cityId": 879,
+        "label": "נירית"
+      },
+      {
+        "cityId": 926,
+        "label": "עדנים"
+      },
+      {
+        "cityId": 1041,
+        "label": "צופית"
+      },
+      {
+        "cityId": 1128,
+        "label": "רמות השבים"
+      },
+      {
+        "cityId": 1136,
+        "label": "רמת הכובש"
+      },
+      {
+        "cityId": 1168,
+        "label": "שדי חמד"
+      }
+    ]
+  },
+  {
+    "areaName": "שוהם והסביבה",
+    "cities": [
+      {
+        "cityId": 1189,
+        "label": "שוהם"
+      },
+      {
+        "cityId": 181,
+        "label": "בית נחמיה"
+      },
+      {
+        "cityId": 187,
+        "label": "בית עריף"
+      },
+      {
+        "cityId": 233,
+        "label": "ברקת"
+      },
+      {
+        "cityId": 268,
+        "label": "גבעת כח"
+      },
+      {
+        "cityId": 302,
+        "label": "גמזו"
+      },
+      {
+        "cityId": 402,
+        "label": "חדיד"
+      },
+      {
+        "cityId": 442,
+        "label": "חצרות כח"
+      },
+      {
+        "cityId": 456,
+        "label": "טירת יהודה"
+      },
+      {
+        "cityId": 564,
+        "label": "כפר דניאל"
+      },
+      {
+        "cityId": 587,
+        "label": "כפר טרומן"
+      }
+    ]
+  },
+  {
+    "areaName": "שומרון",
+    "cities": [
+      {
+        "cityId": 96,
+        "label": "אלפי מנשה"
+      },
+      {
+        "cityId": 26,
+        "label": "אבני חפץ"
+      },
+      {
+        "cityId": 68,
+        "label": "איתמר"
+      },
+      {
+        "cityId": 78,
+        "label": "אלון מורה"
+      },
+      {
+        "cityId": 98,
+        "label": "אלקנה"
+      },
+      {
+        "cityId": 933,
+        "label": "בית אריה"
+      },
+      {
+        "cityId": 227,
+        "label": "ברכה"
+      },
+      {
+        "cityId": 232,
+        "label": "ברקן"
+      },
+      {
+        "cityId": 409,
+        "label": "חומש"
+      },
+      {
+        "cityId": 428,
+        "label": "חמרה"
+      },
+      {
+        "cityId": 506,
+        "label": "יצהר"
+      },
+      {
+        "cityId": 509,
+        "label": "יקיר"
+      },
+      {
+        "cityId": 528,
+        "label": "כוכב השחר"
+      },
+      {
+        "cityId": 623,
+        "label": "כפר תפוח"
+      },
+      {
+        "cityId": 674,
+        "label": "מגדלים"
+      },
+      {
+        "cityId": 754,
+        "label": "מעלה לבונה"
+      },
+      {
+        "cityId": 758,
+        "label": "מעלה שומרון"
+      },
+      {
+        "cityId": 829,
+        "label": "נופים"
+      },
+      {
+        "cityId": 885,
+        "label": "נעלה"
+      },
+      {
+        "cityId": 913,
+        "label": "סלעית"
+      },
+      {
+        "cityId": 982,
+        "label": "עלי זהב"
+      },
+      {
+        "cityId": 991,
+        "label": "עמנואל"
+      },
+      {
+        "cityId": 993,
+        "label": "ענב"
+      },
+      {
+        "cityId": 996,
+        "label": "עץ אפרים"
+      },
+      {
+        "cityId": 1009,
+        "label": "פדואל"
+      },
+      {
+        "cityId": 1040,
+        "label": "צופים"
+      },
+      {
+        "cityId": 1061,
+        "label": "קדומים"
+      },
+      {
+        "cityId": 1092,
+        "label": "קרית נטפים"
+      },
+      {
+        "cityId": 1097,
+        "label": "קרני שומרון"
+      },
+      {
+        "cityId": 1106,
+        "label": "רבבה"
+      },
+      {
+        "cityId": 1126,
+        "label": "רמונים"
+      },
+      {
+        "cityId": 1158,
+        "label": "שבי שומרון"
+      },
+      {
+        "cityId": 1224,
+        "label": "שערי תקווה"
+      }
+    ]
+  },
+  {
+    "areaName": "תל אביב",
+    "cities": [
+      {
+        "cityId": 1243,
+        "label": "תל אביב"
+      },
+      {
+        "cityId": 1280,
+        "label": "יפו"
+      }
+    ]
+  },
+  {
+    "areaName": "תל מונד והסביבה",
+    "cities": [
+      {
+        "cityId": 1246,
+        "label": "תל מונד"
+      },
+      {
+        "cityId": 446,
+        "label": "חרות"
+      },
+      {
+        "cityId": 500,
+        "label": "יעף"
+      },
+      {
+        "cityId": 572,
+        "label": "כפר הס"
+      },
+      {
+        "cityId": 592,
+        "label": "כפר יעבץ"
+      },
+      {
+        "cityId": 793,
+        "label": "משמרת"
+      },
+      {
+        "cityId": 937,
+        "label": "עזריאל"
+      },
+      {
+        "cityId": 959,
+        "label": "עין ורד"
+      },
+      {
+        "cityId": 975,
+        "label": "עין שריד"
+      }
+    ]
+  }
+]

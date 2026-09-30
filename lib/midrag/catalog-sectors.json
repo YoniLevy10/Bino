@@ -1,0 +1,747 @@
+[
+  {
+    "sectorId": 113,
+    "label": "אדריכלים והנדסאי אדריכלות",
+    "serviceId": 884
+  },
+  {
+    "sectorId": 112,
+    "label": "אופטומטריסטים",
+    "serviceId": 1717
+  },
+  {
+    "sectorId": 156,
+    "label": "אורתודנטים",
+    "serviceId": 1398
+  },
+  {
+    "sectorId": 30,
+    "label": "אחזקת גינות",
+    "serviceId": 478
+  },
+  {
+    "sectorId": 104,
+    "label": "אטרקציות לאירועים",
+    "serviceId": 1635
+  },
+  {
+    "sectorId": 16,
+    "label": "איטום",
+    "serviceId": 262
+  },
+  {
+    "sectorId": 110,
+    "label": "אילוף כלבים",
+    "serviceId": 1706
+  },
+  {
+    "sectorId": 46,
+    "label": "אינטרקום וקודנים",
+    "serviceId": 515
+  },
+  {
+    "sectorId": 4,
+    "label": "אינסטלטורים",
+    "serviceId": 119
+  },
+  {
+    "sectorId": 105,
+    "label": "איפור ותסרוקות לאירועים",
+    "serviceId": 1648
+  },
+  {
+    "sectorId": 117,
+    "label": "איתור נזילות",
+    "serviceId": 126
+  },
+  {
+    "sectorId": 134,
+    "label": "אמבולנס פרטי",
+    "serviceId": 2037
+  },
+  {
+    "sectorId": 175,
+    "label": "אקוויליבריו",
+    "serviceId": 2599
+  },
+  {
+    "sectorId": 149,
+    "label": "אקווריומים ובריכות נוי",
+    "serviceId": 2259
+  },
+  {
+    "sectorId": 72,
+    "label": "בדיקות קרינה וסביבה",
+    "serviceId": 983
+  },
+  {
+    "sectorId": 78,
+    "label": "בדק בית",
+    "serviceId": 1219
+  },
+  {
+    "sectorId": 181,
+    "label": "בודקי חשמל",
+    "serviceId": 2787
+  },
+  {
+    "sectorId": 130,
+    "label": "ביובית",
+    "serviceId": 2393
+  },
+  {
+    "sectorId": 23,
+    "label": "בית דפוס",
+    "serviceId": 1613
+  },
+  {
+    "sectorId": 162,
+    "label": "בניה קלה",
+    "serviceId": 2869
+  },
+  {
+    "sectorId": 29,
+    "label": "גגות רעפים",
+    "serviceId": 445
+  },
+  {
+    "sectorId": 126,
+    "label": "גיזום עצים",
+    "serviceId": 479
+  },
+  {
+    "sectorId": 153,
+    "label": "דולה",
+    "serviceId": 2313
+  },
+  {
+    "sectorId": 115,
+    "label": "דיאטניות",
+    "serviceId": 1753
+  },
+  {
+    "sectorId": 170,
+    "label": "דיגיטציה",
+    "serviceId": 2555
+  },
+  {
+    "sectorId": 158,
+    "label": "דיטיילינג",
+    "serviceId": 2373
+  },
+  {
+    "sectorId": 121,
+    "label": "דיקור סיני",
+    "serviceId": 1856
+  },
+  {
+    "sectorId": 50,
+    "label": "דלתות",
+    "serviceId": 2511
+  },
+  {
+    "sectorId": 15,
+    "label": "הדברות",
+    "serviceId": 241
+  },
+  {
+    "sectorId": 169,
+    "label": "הדרכת הורים",
+    "serviceId": 2534
+  },
+  {
+    "sectorId": 1,
+    "label": "הובלות",
+    "serviceId": 102
+  },
+  {
+    "sectorId": 163,
+    "label": "הובלות קטנות",
+    "serviceId": 107
+  },
+  {
+    "sectorId": 178,
+    "label": "הנהלת חשבונות",
+    "serviceId": 1420
+  },
+  {
+    "sectorId": 116,
+    "label": "הסעות",
+    "serviceId": 1765
+  },
+  {
+    "sectorId": 83,
+    "label": "הפעלות לימי הולדת",
+    "serviceId": 1257
+  },
+  {
+    "sectorId": 179,
+    "label": "הקמת בריכות שחייה",
+    "serviceId": 2712
+  },
+  {
+    "sectorId": 183,
+    "label": "הקמת גינות",
+    "serviceId": 467
+  },
+  {
+    "sectorId": 81,
+    "label": "הרחקת יונים",
+    "serviceId": 1239
+  },
+  {
+    "sectorId": 103,
+    "label": "השכרת ציוד לאירועים",
+    "serviceId": 1595
+  },
+  {
+    "sectorId": 184,
+    "label": "התקנת דודי שמש וחשמל",
+    "serviceId": 419
+  },
+  {
+    "sectorId": 182,
+    "label": "התקנת מזגנים",
+    "serviceId": 279
+  },
+  {
+    "sectorId": 84,
+    "label": "וטרינרים",
+    "serviceId": 1300
+  },
+  {
+    "sectorId": 60,
+    "label": "וילונות",
+    "serviceId": 744
+  },
+  {
+    "sectorId": 88,
+    "label": "זגגות רכב",
+    "serviceId": 1348
+  },
+  {
+    "sectorId": 56,
+    "label": "זגגים",
+    "serviceId": 649
+  },
+  {
+    "sectorId": 151,
+    "label": "חברות מטבחים",
+    "serviceId": 216
+  },
+  {
+    "sectorId": 159,
+    "label": "חברות ניהול ואחזקת מבנים",
+    "serviceId": 2403
+  },
+  {
+    "sectorId": 14,
+    "label": "חידוש ושדרוג מטבחים",
+    "serviceId": 217
+  },
+  {
+    "sectorId": 97,
+    "label": "חשמל ומיזוג אוויר לרכב",
+    "serviceId": 1514
+  },
+  {
+    "sectorId": 5,
+    "label": "חשמלאים",
+    "serviceId": 152
+  },
+  {
+    "sectorId": 20,
+    "label": "טכנאי גז",
+    "serviceId": 317
+  },
+  {
+    "sectorId": 22,
+    "label": "טכנאי טלויזיה",
+    "serviceId": 352
+  },
+  {
+    "sectorId": 19,
+    "label": "טכנאי מוצרי חשמל",
+    "serviceId": 307
+  },
+  {
+    "sectorId": 7,
+    "label": "טכנאי מחשבים",
+    "serviceId": 181
+  },
+  {
+    "sectorId": 174,
+    "label": "טכנאי מקררים",
+    "serviceId": 295
+  },
+  {
+    "sectorId": 138,
+    "label": "טכנאי רשתות",
+    "serviceId": 2097
+  },
+  {
+    "sectorId": 124,
+    "label": "טפטים",
+    "serviceId": 553
+  },
+  {
+    "sectorId": 137,
+    "label": "יועצי מס",
+    "serviceId": 1423
+  },
+  {
+    "sectorId": 74,
+    "label": "יועצי משכנתאות",
+    "serviceId": 1015
+  },
+  {
+    "sectorId": 168,
+    "label": "יועצת שינה",
+    "serviceId": 2524
+  },
+  {
+    "sectorId": 164,
+    "label": "ייבוש תת רצפתי",
+    "serviceId": 1889
+  },
+  {
+    "sectorId": 167,
+    "label": "ייעוץ הנקה",
+    "serviceId": 2522
+  },
+  {
+    "sectorId": 177,
+    "label": "ייעוץ זוגי",
+    "serviceId": 2625
+  },
+  {
+    "sectorId": 128,
+    "label": "כיוון פסנתרים",
+    "serviceId": 1979
+  },
+  {
+    "sectorId": 92,
+    "label": "לימוד נהיגה",
+    "serviceId": 1405
+  },
+  {
+    "sectorId": 114,
+    "label": "מאמני כושר",
+    "serviceId": 1741
+  },
+  {
+    "sectorId": 166,
+    "label": "מגשי אירוח",
+    "serviceId": 1727
+  },
+  {
+    "sectorId": 144,
+    "label": "מודד מוסמך",
+    "serviceId": 2205
+  },
+  {
+    "sectorId": 119,
+    "label": "מוהלים",
+    "serviceId": 1835
+  },
+  {
+    "sectorId": 32,
+    "label": "מוסכי קטנועים ואופנועים",
+    "serviceId": 2805
+  },
+  {
+    "sectorId": 10,
+    "label": "מוסכים",
+    "serviceId": 2210
+  },
+  {
+    "sectorId": 61,
+    "label": "מכוני גירים",
+    "serviceId": 770
+  },
+  {
+    "sectorId": 157,
+    "label": "מנוף הרמה",
+    "serviceId": 116
+  },
+  {
+    "sectorId": 106,
+    "label": "מנעולני רכב",
+    "serviceId": 338
+  },
+  {
+    "sectorId": 21,
+    "label": "מנעולנים",
+    "serviceId": 340
+  },
+  {
+    "sectorId": 33,
+    "label": "מסגריות",
+    "serviceId": 487
+  },
+  {
+    "sectorId": 143,
+    "label": "מספרות כלבים",
+    "serviceId": 2189
+  },
+  {
+    "sectorId": 141,
+    "label": "מעצבים גרפיים",
+    "serviceId": 2151
+  },
+  {
+    "sectorId": 52,
+    "label": "מערכות חימום לבית",
+    "serviceId": 598
+  },
+  {
+    "sectorId": 147,
+    "label": "מערכות כיבוי אש",
+    "serviceId": 2123
+  },
+  {
+    "sectorId": 63,
+    "label": "מערכות לרכב",
+    "serviceId": 817
+  },
+  {
+    "sectorId": 152,
+    "label": "מערכות סולאריות",
+    "serviceId": 2303
+  },
+  {
+    "sectorId": 102,
+    "label": "מפקחי בנייה",
+    "serviceId": 1587
+  },
+  {
+    "sectorId": 98,
+    "label": "מצבות",
+    "serviceId": 703
+  },
+  {
+    "sectorId": 146,
+    "label": "מצלמות ואזעקות",
+    "serviceId": 509
+  },
+  {
+    "sectorId": 161,
+    "label": "מקלחונים",
+    "serviceId": 2421
+  },
+  {
+    "sectorId": 69,
+    "label": "מתווכים",
+    "serviceId": 922
+  },
+  {
+    "sectorId": 95,
+    "label": "נגרים",
+    "serviceId": 1445
+  },
+  {
+    "sectorId": 125,
+    "label": "נוטריון",
+    "serviceId": 1936
+  },
+  {
+    "sectorId": 131,
+    "label": "נטורופתיה",
+    "serviceId": 2004
+  },
+  {
+    "sectorId": 171,
+    "label": "ניהול והפקת אירועים",
+    "serviceId": 2578
+  },
+  {
+    "sectorId": 180,
+    "label": "ניסור וקידוח בטון",
+    "serviceId": 2697
+  },
+  {
+    "sectorId": 122,
+    "label": "ניקוי ספות",
+    "serviceId": 381
+  },
+  {
+    "sectorId": 25,
+    "label": "ניקיון ופוליש",
+    "serviceId": 373
+  },
+  {
+    "sectorId": 64,
+    "label": "סוככים והצללה",
+    "serviceId": 834
+  },
+  {
+    "sectorId": 120,
+    "label": "סוכן ביטוח",
+    "serviceId": 1840
+  },
+  {
+    "sectorId": 86,
+    "label": "סידור בתים",
+    "serviceId": 1322
+  },
+  {
+    "sectorId": 87,
+    "label": "עבודות אלומיניום",
+    "serviceId": 392
+  },
+  {
+    "sectorId": 160,
+    "label": "עבודות בגובה",
+    "serviceId": 272
+  },
+  {
+    "sectorId": 71,
+    "label": "עבודות גבס",
+    "serviceId": 961
+  },
+  {
+    "sectorId": 57,
+    "label": "עבודות עץ לגינה",
+    "serviceId": 678
+  },
+  {
+    "sectorId": 70,
+    "label": "עבודות צבע וטיח",
+    "serviceId": 935
+  },
+  {
+    "sectorId": 133,
+    "label": "עורך דין דיני עבודה",
+    "serviceId": 2122
+  },
+  {
+    "sectorId": 111,
+    "label": "עורך דין לטיפול בחובות",
+    "serviceId": 1712
+  },
+  {
+    "sectorId": 127,
+    "label": "עורך דין לענייני משפחה",
+    "serviceId": 1961
+  },
+  {
+    "sectorId": 118,
+    "label": "עורך דין מסחרי",
+    "serviceId": 1806
+  },
+  {
+    "sectorId": 99,
+    "label": "עורך דין מקרקעין",
+    "serviceId": 1535
+  },
+  {
+    "sectorId": 140,
+    "label": "עורך דין נזיקין",
+    "serviceId": 2132
+  },
+  {
+    "sectorId": 129,
+    "label": "עורך דין תעבורה",
+    "serviceId": 1988
+  },
+  {
+    "sectorId": 139,
+    "label": "עיסוי מקצועי",
+    "serviceId": 2108
+  },
+  {
+    "sectorId": 172,
+    "label": "עיצוב אירועים",
+    "serviceId": 2580
+  },
+  {
+    "sectorId": 67,
+    "label": "עיצוב פנים",
+    "serviceId": 874
+  },
+  {
+    "sectorId": 65,
+    "label": "עסקים נוספים",
+    "serviceId": null
+  },
+  {
+    "sectorId": 94,
+    "label": "פחחות רכב",
+    "serviceId": 1438
+  },
+  {
+    "sectorId": 123,
+    "label": "פיזיותרפיה",
+    "serviceId": 1877
+  },
+  {
+    "sectorId": 136,
+    "label": "פינוי דירה",
+    "serviceId": 2077
+  },
+  {
+    "sectorId": 150,
+    "label": "פנסיון לכלבים",
+    "serviceId": 2268
+  },
+  {
+    "sectorId": 145,
+    "label": "פרגולות אלומיניום",
+    "serviceId": 1341
+  },
+  {
+    "sectorId": 49,
+    "label": "פרקטים",
+    "serviceId": 548
+  },
+  {
+    "sectorId": 176,
+    "label": "צבע וטיח לקירות חיצוניים",
+    "serviceId": 955
+  },
+  {
+    "sectorId": 96,
+    "label": "צילום",
+    "serviceId": 1495
+  },
+  {
+    "sectorId": 82,
+    "label": "ציפוי אמבטיות",
+    "serviceId": 1250
+  },
+  {
+    "sectorId": 148,
+    "label": "ציפוי דלתות",
+    "serviceId": 351
+  },
+  {
+    "sectorId": 73,
+    "label": "קבלני ממדים",
+    "serviceId": 2410
+  },
+  {
+    "sectorId": 155,
+    "label": "קבלני שיפוצים ובנייה",
+    "serviceId": 197
+  },
+  {
+    "sectorId": 101,
+    "label": "קונסטרוקטורים",
+    "serviceId": 1580
+  },
+  {
+    "sectorId": 13,
+    "label": "קוסמטיקאיות",
+    "serviceId": 1895
+  },
+  {
+    "sectorId": 31,
+    "label": "קייטרינג",
+    "serviceId": 1552
+  },
+  {
+    "sectorId": 93,
+    "label": "ראיית חשבון",
+    "serviceId": 2645
+  },
+  {
+    "sectorId": 77,
+    "label": "רופאי שיניים",
+    "serviceId": 1181
+  },
+  {
+    "sectorId": 59,
+    "label": "רפדים וחידוש רהיטים",
+    "serviceId": 721
+  },
+  {
+    "sectorId": 132,
+    "label": "רפלקסולוגיה",
+    "serviceId": 2006
+  },
+  {
+    "sectorId": 11,
+    "label": "שיפוצים קטנים",
+    "serviceId": 202
+  },
+  {
+    "sectorId": 173,
+    "label": "שיקום מבנים מסוכנים",
+    "serviceId": 2563
+  },
+  {
+    "sectorId": 62,
+    "label": "שירותי דרך",
+    "serviceId": 795
+  },
+  {
+    "sectorId": 58,
+    "label": "שיש ואבן",
+    "serviceId": 691
+  },
+  {
+    "sectorId": 66,
+    "label": "שמאי מקרקעין",
+    "serviceId": 856
+  },
+  {
+    "sectorId": 107,
+    "label": "שמאי רכב",
+    "serviceId": 1672
+  },
+  {
+    "sectorId": 154,
+    "label": "שמאי רכוש",
+    "serviceId": 2324
+  },
+  {
+    "sectorId": 108,
+    "label": "שערים חשמליים",
+    "serviceId": 1693
+  },
+  {
+    "sectorId": 165,
+    "label": "שף פרטי",
+    "serviceId": 1855
+  },
+  {
+    "sectorId": 135,
+    "label": "תחזוקת בריכה ביתית",
+    "serviceId": 2057
+  },
+  {
+    "sectorId": 76,
+    "label": "תיקון אופניים חשמליים",
+    "serviceId": null
+  },
+  {
+    "sectorId": 55,
+    "label": "תיקון אייפון / סמארטפון",
+    "serviceId": 623
+  },
+  {
+    "sectorId": 27,
+    "label": "תיקון דודי שמש וחשמל",
+    "serviceId": 423
+  },
+  {
+    "sectorId": 18,
+    "label": "תיקון מזגנים",
+    "serviceId": 284
+  },
+  {
+    "sectorId": 26,
+    "label": "תיקון תריסים וחלונות",
+    "serviceId": 409
+  },
+  {
+    "sectorId": 75,
+    "label": "תיקונים קטנים - הנדימן",
+    "serviceId": 1027
+  },
+  {
+    "sectorId": 37,
+    "label": "תקליטנים ומוזיקה לאירועים",
+    "serviceId": 1615
+  }
+]

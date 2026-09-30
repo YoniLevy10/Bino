@@ -348,7 +348,7 @@ export default function ProfessionalsPage() {
         {!isMobile && (
           <PageHeader
             title="אנשי מקצוע"
-            subtitle="פנקס קבלנים + חיפוש במידרג — העברת תקלות ב-SMS מדף התקלות"
+            subtitle="פנקס קבלנים + חיפוש מידרג לפי תחום ואזור — העברת תקלות ב-SMS מדף התקלות"
             actions={
               <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
                 איש מקצוע חדש

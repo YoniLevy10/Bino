@@ -2,175 +2,83 @@
  * Midrag (מידרג) external professional search for BINO.
  * Opens in a new tab — not an iframe (X-Frame / product stance).
  *
- * Midrag Results deep links need **serviceId + cityId** (not areaId alone).
- * cityId comes from Midrag `/Search/ListCities` (`{ label, value, areaName }`).
- *
- * Ported from OpticalCenter `src/modules/vendors/external-search.ts`,
- * with trade keys suited to building-maintenance (not retail store tickets).
+ * Results deep links use **serviceId + cityId** (not areaId alone —
+ * areaId is imprecise on Midrag). Categories/areas come from the full
+ * Midrag catalog snapshot in `./catalog`.
  */
 
+import {
+  midragCityById,
+  midragCityMatchForLabel,
+  midragHubCityForArea,
+  midragSectorById,
+  type MidragCity,
+  type MidragSector,
+} from './catalog'
+
 export type ExternalSearchInput = {
-  category: string
+  /** Midrag ListSectors value */
+  sectorId: number | null
+  /** Midrag ListCities areaName (region) */
+  areaName?: string | null
+  /** Midrag cityId — preferred location filter */
+  cityId?: number | null
+  /** Free-text city fallback (legacy / aliases) */
   city?: string | null
 }
 
-export type MidragCityMatch = {
-  /** Midrag cityId (ListCities `value`) */
-  cityId: number
-  /** Canonical Midrag label (may differ from free-text spelling) */
-  midragLabel: string
+export type MidragCityMatch = MidragCity & {
+  areaName: string
 }
 
 export type MidragServiceMatch = {
-  /** Midrag Results `serviceId` (verified via ListFreeSearch → Results) */
   serviceId: number
-  /** Midrag service / sector label shown on Results */
   midragLabel: string
-  /** Midrag ListSectors value when known */
-  sectorId?: number
-}
-
-/** BINO building-maintenance trades shown in the Midrag search UI. */
-export const MIDRAG_TRADE_CATEGORIES = [
-  'electrical',
-  'plumbing',
-  'hvac',
-  'cleaning',
-  'security',
-  'other',
-] as const
-
-export type MidragTradeCategory = (typeof MIDRAG_TRADE_CATEGORIES)[number]
-
-export const MIDRAG_TRADE_LABELS_HE: Record<MidragTradeCategory, string> = {
-  electrical: 'חשמל',
-  plumbing: 'אינסטלציה',
-  hvac: 'מיזוג / מזגנים',
-  cleaning: 'ניקיון',
-  security: 'מצלמות / אבטחה',
-  other: 'אחר',
-}
-
-/**
- * BINO trade → Midrag serviceId.
- * Prefer the **general** free-search hit for that trade (not a narrow
- * sub-service), verified live on Midrag (same IDs as OpticalCenter).
- * `other` stays unmapped → InSector picker.
- */
-export const MIDRAG_SERVICE_BY_CATEGORY: Record<string, MidragServiceMatch> = {
-  // ListFreeSearch "טכנאי מזגנים" → serviceId 284 (not 286 מרכזי)
-  hvac: { serviceId: 284, midragLabel: 'תיקון מזגן', sectorId: 18 },
-  // ListFreeSearch "חשמלאי" → serviceId 152
-  electrical: { serviceId: 152, midragLabel: 'חשמלאים', sectorId: 5 },
-  // ListFreeSearch "אינסטלטור" → serviceId 119 (not 135 ניאגרות)
-  plumbing: { serviceId: 119, midragLabel: 'אינסטלציה', sectorId: 4 },
-  // ListFreeSearch "התקנת מצלמות אבטחה" → 509
-  security: {
-    serviceId: 509,
-    midragLabel: 'התקנת מצלמות אבטחה',
-    sectorId: 146,
-  },
-  // "ניקיון משרדים" — closest Midrag hit for building cleaning
-  cleaning: { serviceId: 1249, midragLabel: 'ניקיון משרדים', sectorId: 25 },
-}
-
-/**
- * Free-text city → Midrag cityId (from live ListCities).
- * Aliases folded into keys so common spellings resolve without a second lookup.
- */
-export const MIDRAG_CITY_ID_BY_CITY: Record<string, MidragCityMatch> = {
-  'תל אביב': { cityId: 1243, midragLabel: 'תל אביב' },
-  תלאביב: { cityId: 1243, midragLabel: 'תל אביב' },
-  'תל-אביב': { cityId: 1243, midragLabel: 'תל אביב' },
-  'תל אביב יפו': { cityId: 1243, midragLabel: 'תל אביב' },
-  חיפה: { cityId: 421, midragLabel: 'חיפה' },
-  ירושלים: { cityId: 515, midragLabel: 'ירושלים' },
-  נתניה: { cityId: 900, midragLabel: 'נתניה' },
-  'כפר סבא': { cityId: 605, midragLabel: 'כפר סבא' },
-  'פתח תקווה': { cityId: 1032, midragLabel: 'פתח תקווה' },
-  רעננה: { cityId: 1149, midragLabel: 'רעננה' },
-  מודיעין: { cityId: 683, midragLabel: 'מודיעין' },
-  רמלה: { cityId: 1132, midragLabel: 'רמלה' },
-  'נס ציונה': { cityId: 883, midragLabel: 'נס ציונה' },
-  'קרית עקרון': { cityId: 1094, midragLabel: 'קרית עקרון' },
-  'קריית עקרון': { cityId: 1094, midragLabel: 'קרית עקרון' },
-  'ראשון לציון': { cityId: 1105, midragLabel: 'ראשון לציון' },
-  רחובות: { cityId: 1120, midragLabel: 'רחובות' },
-  'בת ים': { cityId: 237, midragLabel: 'בת ים' },
-  חולון: { cityId: 406, midragLabel: 'חולון' },
-  'פרדס חנה': { cityId: 1027, midragLabel: 'פרדס חנה-כרכור' },
-  'פרדס חנה-כרכור': { cityId: 1027, midragLabel: 'פרדס חנה-כרכור' },
-  'קרית אתא': { cityId: 1083, midragLabel: 'קרית אתא' },
-  'קריית אתא': { cityId: 1083, midragLabel: 'קרית אתא' },
-  'בית שמש': { cityId: 194, midragLabel: 'בית שמש' },
-  כרמיאל: { cityId: 632, midragLabel: 'כרמיאל' },
-  עכו: { cityId: 979, midragLabel: 'עכו' },
-  רגבה: { cityId: 1110, midragLabel: 'רגבה' },
-  טבריה: { cityId: 450, midragLabel: 'טבריה' },
-  'קרית שמונה': { cityId: 1096, midragLabel: 'קרית שמונה' },
-  'קריית שמונה': { cityId: 1096, midragLabel: 'קרית שמונה' },
-  יקנעם: { cityId: 510, midragLabel: 'יקנעם עילית' },
-  'יקנעם עילית': { cityId: 510, midragLabel: 'יקנעם עילית' },
-  'מגדל העמק': { cityId: 671, midragLabel: 'מגדל העמק' },
-  'נוף הגליל': { cityId: 894, midragLabel: 'נוף הגליל' },
-  עפולה: { cityId: 995, midragLabel: 'עפולה' },
-  אשדוד: { cityId: 121, midragLabel: 'אשדוד' },
-  אשקלון: { cityId: 128, midragLabel: 'אשקלון' },
-  'באר שבע': { cityId: 136, midragLabel: 'באר שבע' },
-  דימונה: { cityId: 347, midragLabel: 'דימונה' },
-  'בני ברק': { cityId: 205, midragLabel: 'בני ברק' },
-  הרצליה: { cityId: 378, midragLabel: 'הרצליה' },
-  'רמת גן': { cityId: 1134, midragLabel: 'רמת גן' },
-  'רמת השרון': { cityId: 1138, midragLabel: 'רמת השרון' },
-  אריאל: { cityId: 117, midragLabel: 'אריאל' },
-  נתיבות: { cityId: 899, midragLabel: 'נתיבות' },
-  חדרה: { cityId: 403, midragLabel: 'חדרה' },
+  sectorId: number
 }
 
 const MIDRAG_RESULTS = 'https://www.midrag.co.il/Search/Results'
 const MIDRAG_IN_SECTOR = 'https://www.midrag.co.il/Search/InSector'
 const MIDRAG_IN_CITY = 'https://www.midrag.co.il/Search/InCity'
+const MIDRAG_SECTOR_PORTAL = 'https://www.midrag.co.il/Content/SectorPortal'
 
 function normalizeCity(city: string | null | undefined): string {
   return (city ?? '').trim().replace(/\s+/g, ' ')
 }
 
-function compactCity(city: string): string {
-  return city.replace(/[-\s]/g, '')
+export function midragServiceMatchForSector(
+  sectorId: number | null | undefined
+): MidragServiceMatch | null {
+  if (sectorId == null || !Number.isFinite(sectorId)) return null
+  const sector = midragSectorById(sectorId)
+  if (!sector?.serviceId) return null
+  return {
+    serviceId: sector.serviceId,
+    midragLabel: sector.label,
+    sectorId: sector.sectorId,
+  }
 }
 
-/** Resolve free-text city to Midrag cityId + canonical label. */
-export function midragCityMatchForCity(
-  city: string | null | undefined
-): MidragCityMatch | null {
-  const c = normalizeCity(city)
-  if (!c) return null
-  const direct = MIDRAG_CITY_ID_BY_CITY[c]
-  if (direct) return direct
-  const compact = compactCity(c)
-  for (const [name, match] of Object.entries(MIDRAG_CITY_ID_BY_CITY)) {
-    if (compactCity(name) === compact) return match
+export function resolveMidragCity(input: ExternalSearchInput): MidragCityMatch | null {
+  if (input.cityId != null && Number.isFinite(input.cityId)) {
+    const byId = midragCityById(input.cityId)
+    if (byId) return byId
+  }
+  const byLabel = midragCityMatchForLabel(input.city)
+  if (byLabel) return byLabel
+  // Area without explicit city → hub city for that region
+  if (input.areaName) {
+    const hub = midragHubCityForArea(input.areaName)
+    if (hub) {
+      return { ...hub, areaName: input.areaName }
+    }
   }
   return null
 }
 
-/** Resolve BINO trade category to Midrag serviceId + label. */
-export function midragServiceMatchForCategory(
-  category: string
-): MidragServiceMatch | null {
-  const key = category.trim().toLowerCase()
-  return MIDRAG_SERVICE_BY_CATEGORY[key] ?? null
-}
-
-export function midragServiceIdForCategory(category: string): number | null {
-  return midragServiceMatchForCategory(category)?.serviceId ?? null
-}
-
-export function tradeLabelHe(category: string): string {
-  const match = midragServiceMatchForCategory(category)
-  if (match) return match.midragLabel
-  const key = category.trim().toLowerCase() as MidragTradeCategory
-  return MIDRAG_TRADE_LABELS_HE[key] ?? category
+export function midragSectorLabel(sectorId: number | null | undefined): string {
+  if (sectorId == null) return 'בחירת מקצוע'
+  return midragSectorById(sectorId)?.label ?? 'בחירת מקצוע'
 }
 
 /**
@@ -178,8 +86,8 @@ export function tradeLabelHe(category: string): string {
  * Prefer Results with serviceId + cityId; never invent Tel Aviv.
  */
 export function buildMidragSearchUrl(input: ExternalSearchInput): string {
-  const service = midragServiceMatchForCategory(input.category)
-  const cityMatch = midragCityMatchForCity(input.city)
+  const service = midragServiceMatchForSector(input.sectorId)
+  const cityMatch = resolveMidragCity(input)
 
   if (service) {
     if (cityMatch) {
@@ -188,51 +96,83 @@ export function buildMidragSearchUrl(input: ExternalSearchInput): string {
     return `${MIDRAG_RESULTS}?serviceId=${service.serviceId}`
   }
 
+  // Sector known but no serviceId mapping → SectorPortal (still on Midrag)
+  if (input.sectorId != null) {
+    return `${MIDRAG_SECTOR_PORTAL}/${input.sectorId}`
+  }
+
   return MIDRAG_IN_SECTOR
 }
 
-/** When city is set but unmapped, offer Midrag city picker for the service. */
+/** When a free-text city is set but unmapped, offer Midrag city picker. */
 export function buildMidragCityPickerUrl(input: ExternalSearchInput): string | null {
-  const service = midragServiceMatchForCategory(input.category)
+  const service = midragServiceMatchForSector(input.sectorId)
   if (!service) return null
-  if (midragCityMatchForCity(input.city)) return null
-  if (!normalizeCity(input.city)) return null
+  if (resolveMidragCity(input)) return null
+  if (!normalizeCity(input.city) && !input.areaName) return null
   return `${MIDRAG_IN_CITY}?serviceId=${service.serviceId}`
 }
 
 /** Google query biased to Midrag — backup when Midrag Results are too broad. */
 export function buildMidragGoogleBackupUrl(input: ExternalSearchInput): string {
-  const trade = tradeLabelHe(input.category)
-  const match = midragCityMatchForCity(input.city)
-  const city = match?.midragLabel || normalizeCity(input.city)
+  const trade = midragSectorLabel(input.sectorId)
+  const cityMatch = resolveMidragCity(input)
+  const city =
+    cityMatch?.label ||
+    normalizeCity(input.city) ||
+    (input.areaName ? String(input.areaName) : '')
   const q = ['מידרג', trade, city].filter(Boolean).join(' ')
   return `https://www.google.com/search?q=${encodeURIComponent(q)}`
 }
 
 export function externalSearchCaption(input: ExternalSearchInput): string {
-  const service = midragServiceMatchForCategory(input.category)
-  const trade = service?.midragLabel ?? tradeLabelHe(input.category)
-  const match = midragCityMatchForCity(input.city)
-  const city = normalizeCity(input.city)
+  const service = midragServiceMatchForSector(input.sectorId)
+  const trade = service?.midragLabel ?? midragSectorLabel(input.sectorId)
+  const cityMatch = resolveMidragCity(input)
+  const area = input.areaName?.trim() || null
+
+  if (!service && input.sectorId == null) {
+    return area ? `מידרג · בחירת מקצוע · ${area}` : 'מידרג · בחירת מקצוע'
+  }
+
   if (!service) {
-    return city ? `מידרג · בחירת מקצוע · ${city}` : 'מידרג · בחירת מקצוע'
+    return cityMatch
+      ? `מידרג · ${trade} · ${cityMatch.label}`
+      : area
+        ? `מידרג · ${trade} · ${area}`
+        : `מידרג · ${trade}`
   }
-  if (match) {
-    const label =
-      city && city !== match.midragLabel
-        ? `${city} → ${match.midragLabel}`
-        : match.midragLabel
-    return `מידרג · ${trade} · ${label}`
+
+  if (cityMatch) {
+    const region =
+      area && area !== cityMatch.areaName
+        ? `${area} · ${cityMatch.label}`
+        : cityMatch.areaName && cityMatch.areaName !== cityMatch.label
+          ? `${cityMatch.label} (${cityMatch.areaName})`
+          : cityMatch.label
+    return `מידרג · ${trade} · ${region}`
   }
-  if (city) return `מידרג · ${trade} · ${city} (בחירת עיר במידרג)`
-  return `מידרג · ${trade} · ללא עיר`
+
+  if (area) return `מידרג · ${trade} · ${area} (בחירת עיר)`
+  return `מידרג · ${trade} · ללא אזור`
 }
 
-export function normalizeMidragTradeCategory(
-  raw: string | null | undefined
-): MidragTradeCategory {
-  const key = (raw ?? 'other').trim().toLowerCase()
-  return (MIDRAG_TRADE_CATEGORIES as readonly string[]).includes(key)
-    ? (key as MidragTradeCategory)
-    : 'other'
+/** @deprecated Prefer midragServiceMatchForSector — kept for older call sites. */
+export function midragServiceMatchForCategory(
+  category: string
+): MidragServiceMatch | null {
+  const n = Number(category)
+  if (Number.isFinite(n)) return midragServiceMatchForSector(n)
+  return null
 }
+
+/** @deprecated Prefer resolveMidragCity / midragCityMatchForLabel. */
+export function midragCityMatchForCity(
+  city: string | null | undefined
+): { cityId: number; midragLabel: string } | null {
+  const m = midragCityMatchForLabel(city)
+  if (!m) return null
+  return { cityId: m.cityId, midragLabel: m.label }
+}
+
+export type { MidragSector, MidragCity }
