@@ -212,7 +212,8 @@ export async function sendCollectionCharge(
       amount: Number(charge.amount),
       fullName: resident?.full_name || 'דייר',
       phone,
-      email: resident?.email,
+      // Prefer contact saved on /pay (receipt_email) — Grow needs it for official invoices.
+      email: charge.receipt_email || resident?.email,
       successUrl,
       cancelUrl: failureUrl,
       notifyUrl,
@@ -386,6 +387,117 @@ export async function cancelCollectionCharge(
   if (updErr) return { ok: false, error: updErr.message }
   if (!cancelled) return { ok: false, error: 'סטטוס החיוב השתנה — לא בוטל' }
   return { ok: true }
+}
+
+/**
+ * Recreate Grow payment link with payer email + invoiceNotifyUrl.
+ * Required for Grow official tax invoice / receipt webhook — links created
+ * without email never get grow_invoice_* callbacks.
+ */
+export async function ensureGrowPaymentLinkWithPayerEmail(
+  admin: SupabaseClient,
+  opts: {
+    chargeId: string
+    email: string
+  }
+): Promise<{ ok: true; paymentUrl: string } | { ok: false; error: string }> {
+  const email = (opts.email || '').trim().toLowerCase()
+  if (!email) return { ok: false, error: 'חסר מייל' }
+
+  const { data: charge, error } = await admin
+    .from('collection_charges')
+    .select(
+      `
+      id, client_id, title, amount, status, public_token, receipt_email,
+      grow_payment_url, greeninvoice_payment_url, grow_payment_link_id,
+      residents ( full_name, phone, normalized_phone, apartment_number, email ),
+      projects ( name )
+    `
+    )
+    .eq('id', opts.chargeId)
+    .maybeSingle()
+
+  if (error || !charge) return { ok: false, error: 'חיוב לא נמצא' }
+  const row = charge as unknown as CollectionChargeRow & {
+    client_id: string
+    residents: ChargeResidentInfo | ChargeResidentInfo[] | null
+    projects: ChargeProjectInfo | ChargeProjectInfo[] | null
+  }
+
+  if (row.status === 'paid') {
+    return {
+      ok: true,
+      paymentUrl: buildPublicPayUrl(row.public_token),
+    }
+  }
+  if (row.status === 'cancelled') {
+    return { ok: false, error: 'החיוב בוטל' }
+  }
+
+  const resident = Array.isArray(row.residents) ? row.residents[0] : row.residents
+  const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
+  const phone = residentPhone(resident)
+  if (!phone) {
+    return { ok: false, error: 'לדייר אין מספר טלפון — דרוש לדרישת תשלום ב-Grow' }
+  }
+
+  const clientRow = await loadClientCollectionsRow(admin, row.client_id)
+  if (!clientRow) return { ok: false, error: 'לקוח לא נמצא' }
+  const creds = requireConfiguredCredentials(clientRow)
+  if (!creds.ok) return { ok: false, error: creds.error }
+
+  const notifyUrl = buildGrowWebhookNotifyUrl()
+  if (!notifyUrl) {
+    return { ok: false, error: 'חסר GROW_WEBHOOK_SECRET בשרת' }
+  }
+
+  const { successUrl, failureUrl } = defaultSuccessFailureUrls(clientRow, {
+    publicToken: row.public_token,
+  })
+  const description = paymentDescription({
+    title: row.title,
+    apartment: resident?.apartment_number,
+    projectName: project?.name,
+  })
+
+  const form = await createGrowPaymentLink({
+    userId: creds.userId,
+    title: description,
+    amount: Number(row.amount),
+    fullName: resident?.full_name || 'דייר',
+    phone,
+    email,
+    successUrl,
+    cancelUrl: failureUrl,
+    notifyUrl,
+    publicToken: row.public_token,
+    invoiceNotifyUrl: buildGrowInvoiceNotifyUrl(),
+  })
+  if (!form.ok) {
+    return { ok: false, error: form.error || 'יצירת דרישת תשלום נכשלה' }
+  }
+
+  const now = nowIso()
+  const { data: updated, error: updErr } = await admin
+    .from('collection_charges')
+    .update({
+      receipt_email: email,
+      grow_payment_url: form.url,
+      grow_payment_link_id: form.paymentLinkProcessId || null,
+      updated_at: now,
+    })
+    .eq('id', row.id)
+    .eq('client_id', row.client_id)
+    .neq('status', 'paid')
+    .neq('status', 'cancelled')
+    .select('grow_payment_url')
+    .maybeSingle()
+
+  if (updErr || !updated) {
+    return { ok: false, error: updErr?.message || 'עדכון קישור התשלום נכשל' }
+  }
+
+  return { ok: true, paymentUrl: form.url }
 }
 
 /** Manual ops recovery when webhook missed a real payment. */

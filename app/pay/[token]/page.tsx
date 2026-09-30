@@ -153,12 +153,14 @@ export default function PublicPayPage() {
     }, 3000)
   }
 
-  async function saveReceiptContact(): Promise<boolean> {
-    if (!token) return false
-    if (!wantReceipt && !phone.trim()) return true
+  async function saveReceiptContact(): Promise<{ ok: boolean; paymentUrl?: string | null }> {
+    if (!token) return { ok: false }
+    if (!wantReceipt && !phone.trim()) {
+      return { ok: true, paymentUrl: data?.payment_url }
+    }
     if (wantReceipt && !email.trim()) {
-      setFormError('להודעת אישור במייל — הזינו כתובת מייל')
-      return false
+      setFormError('לקבלת חשבונית רשמית במייל — הזינו כתובת מייל')
+      return { ok: false }
     }
     setSaving(true)
     try {
@@ -174,19 +176,25 @@ export default function PublicPayPage() {
         },
         MUTATION_FETCH_TIMEOUT_MS
       )
-      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        payment_url?: string | null
+      }
       if (!res.ok) {
         setFormError(json.error || 'שמירת פרטים נכשלה')
         setSaving(false)
-        return false
+        return { ok: false }
       }
+      if (json.payment_url) {
+        setData((prev) => (prev ? { ...prev, payment_url: json.payment_url! } : prev))
+      }
+      setSaving(false)
+      return { ok: true, paymentUrl: json.payment_url || data?.payment_url }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'שמירה נכשלה')
       setSaving(false)
-      return false
+      return { ok: false }
     }
-    setSaving(false)
-    return true
   }
 
   async function continueToPay(e: FormEvent) {
@@ -200,10 +208,20 @@ export default function PublicPayPage() {
       return
     }
 
-    const ok = await saveReceiptContact()
-    if (!ok) return
+    if (wantReceipt && !email.trim()) {
+      setFormError('לקבלת חשבונית רשמית במייל — הזינו כתובת מייל')
+      return
+    }
 
-    window.location.href = data.payment_url
+    const saved = await saveReceiptContact()
+    if (!saved.ok) return
+
+    const payUrl = saved.paymentUrl || data.payment_url
+    if (!payUrl) {
+      setFormError('קישור התשלום לא מוכן — נסו שוב')
+      return
+    }
+    window.location.href = payUrl
   }
 
   async function openWallet() {
@@ -221,7 +239,7 @@ export default function PublicPayPage() {
     }
 
     const contactOk = await saveReceiptContact()
-    if (!contactOk) return
+    if (!contactOk.ok) return
 
     setWalletBusy(true)
     try {
@@ -347,9 +365,11 @@ export default function PublicPayPage() {
             <div style={styles.paidBox}>
               <p style={styles.paidTitle}>התשלום התקבל. תודה!</p>
               {data.receipt_email_sent ? (
-                <p style={styles.metaDark}>אישור נשלח למייל.</p>
+                <p style={styles.metaDark}>נשלח אישור למייל (BINO).</p>
               ) : data.receipt_email ? (
-                <p style={styles.metaDark}>אישור במייל בדרך אליכם.</p>
+                <p style={styles.metaDark}>
+                  חשבונית רשמית מ-Grow נשלחת בנפרד למייל שהזנתם (אם מופעל בחשבון).
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -362,7 +382,7 @@ export default function PublicPayPage() {
                   checked={wantReceipt}
                   onChange={(ev) => setWantReceipt(ev.target.checked)}
                 />
-                שלחו לי אישור תשלום במייל
+                שלחו לי חשבונית רשמית במייל (Grow)
               </label>
               {wantReceipt ? (
                 <label style={styles.fieldLabel}>
