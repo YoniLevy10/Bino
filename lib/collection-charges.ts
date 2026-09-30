@@ -97,7 +97,7 @@ export const COLLECTION_CHARGE_LIST_SELECT = `
   grow_invoice_id, grow_invoice_url, grow_invoice_email_sent_at,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
-  sent_at, paid_at, due_date, published_to_portal, unit_id,
+  sent_at, paid_at, receipt_email, receipt_email_sent_at, due_date, published_to_portal, unit_id,
   created_by, created_at, updated_at,
   residents ( id, full_name, phone, apartment_number, normalized_phone ),
   projects ( id, name )

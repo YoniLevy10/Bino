@@ -196,9 +196,13 @@ export async function PATCH(req: Request, context: RouteContext) {
     return NextResponse.json({ error: 'שמירת פרטים נכשלה' }, { status: 500 })
   }
 
-  // If already paid (late contact save), try sending receipt now.
+  // If already paid (late contact save), send receipt before responding.
+  let receiptSent = false
+  let receiptError: string | undefined
   if (charge.status === 'paid' && email && !charge.receipt_email_sent_at) {
-    void sendCollectionReceiptEmailIfNeeded(admin, charge.id).catch(() => {})
+    const receipt = await sendCollectionReceiptEmailIfNeeded(admin, charge.id)
+    receiptSent = receipt.sent
+    receiptError = receipt.error
   }
 
   return NextResponse.json({
@@ -206,5 +210,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     receipt_email: email,
     receipt_phone: phone,
     payment_url: chargePaymentUrl(charge),
+    receipt_sent: receiptSent,
+    receipt_error: receiptError || null,
   })
 }

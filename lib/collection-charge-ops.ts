@@ -425,7 +425,11 @@ export async function markCollectionChargePaidManual(
   if (updErr || !updated) {
     return { ok: false, error: updErr?.message || 'עדכון ל«שולם» נכשל' }
   }
-  void sendCollectionReceiptEmailIfNeeded(admin, opts.chargeId).catch(() => {})
+  // Await — fire-and-forget is dropped on Vercel after the webhook/response ends.
+  const receipt = await sendCollectionReceiptEmailIfNeeded(admin, opts.chargeId)
+  if (!receipt.sent && receipt.error) {
+    console.error('[collections] receipt email after mark-paid', opts.chargeId, receipt.error)
+  }
   return { ok: true, charge: updated as CollectionChargeRow }
 }
 
@@ -515,8 +519,13 @@ export async function markChargePaidByGrowIds(
   if (linkIds.length > 0) await applyPaid({ column: 'grow_payment_link_id', values: linkIds })
   if (processIds.length > 0) await applyPaid({ column: 'grow_process_id', values: processIds })
 
+  // Await receipt emails inside the Grow webhook request so serverless does not
+  // freeze mid-send (previous void/.catch left receipt_email_sent_at null).
   for (const id of newlyPaidIds) {
-    void sendCollectionReceiptEmailIfNeeded(admin, id).catch(() => {})
+    const receipt = await sendCollectionReceiptEmailIfNeeded(admin, id)
+    if (!receipt.sent && receipt.error) {
+      console.error('[grow-webhook] receipt email failed', id, receipt.error)
+    }
   }
 
   return { matched, newlyPaidIds, sumRejected }
