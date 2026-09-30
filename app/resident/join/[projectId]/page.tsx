@@ -103,20 +103,29 @@ export default function ResidentJoinPage() {
         setError(json.error || 'אימות נכשל')
         return
       }
-      if (!json.email || !json.token_hash) {
+      if (!json.token_hash) {
         setError('תגובת שרת חסרה פרטי התחברות')
         return
       }
 
+      // Server issues a magiclink hashed_token. Supabase requires ONLY
+      // { token_hash, type } — passing email returns:
+      // "Only the token_hash and type should be provided".
       const supabase = createClient()
       const { error: vErr } = await supabase.auth.verifyOtp({
-        email: json.email,
         token_hash: json.token_hash,
-        type: 'email',
+        type: 'magiclink',
       })
       if (vErr) {
-        setError(vErr.message || 'יצירת סשן נכשלה')
-        return
+        // Fallback for older Auth versions that expect type "email".
+        const retry = await supabase.auth.verifyOtp({
+          token_hash: json.token_hash,
+          type: 'email',
+        })
+        if (retry.error) {
+          setError(retry.error.message || vErr.message || 'יצירת סשן נכשלה')
+          return
+        }
       }
       router.replace('/resident')
       router.refresh()
