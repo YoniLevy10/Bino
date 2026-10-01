@@ -14,6 +14,7 @@ import {
   ResidentAlert,
   ResidentAmbientWash,
   ResidentCard,
+  ResidentDocumentPreviewButton,
   ResidentMuted,
   ResidentNavIcon,
   ResidentPageTitle,
@@ -260,29 +261,12 @@ export default function ResidentSandboxPage() {
             <ResidentCard>
               <ResidentSectionTitle>מסמכים</ResidentSectionTitle>
               {SANDBOX_DOCUMENTS.map((d) => (
-                <a
+                <ResidentDocumentPreviewButton
                   key={d.id}
+                  fileName={d.file_name}
+                  category={d.category}
                   href={d.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="lg-chip"
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    textAlign: 'right',
-                    padding: 12,
-                    marginBottom: 8,
-                    minHeight: 44,
-                    fontSize: 15,
-                    color: residentTheme.colors.textPrimary,
-                    textDecoration: 'none',
-                    borderRadius: residentTheme.radius.md,
-                  }}
-                >
-                  {d.file_name}
-                  {d.category ? ` · ${d.category}` : ''}
-                </a>
+                />
               ))}
             </ResidentCard>
 
