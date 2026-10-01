@@ -10,6 +10,7 @@
  *  - עריכת פרויקט → PATCH /api/update-project (שם, כתובת, קוד)
  *  - ארכיב/הסרה → PATCH is_active=false
  *  - "קוד QR" → מנווט ל-/qr
+ *  - מידע לדיירים → העלאת PDF לפורטל הדיירים
  *  - פעולות מתקדמות → תפריט כפתורים (שיתוף דיירים / תוספים / השבתה / מחיקה)
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
@@ -42,6 +43,7 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { ProjectAdvancedActions } from '../components/projects/ProjectAdvancedActions'
+import { ResidentPortalDocsPanel } from '../components/projects/ResidentPortalDocsPanel'
 import { CollapsibleSection } from '../components/shared/CollapsibleSection'
 
 type ProjectRow = {
@@ -139,6 +141,7 @@ export default function ProjectsPage() {
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [exportingHistory, setExportingHistory] = useState(false)
   const [projectAdvancedOpen, setProjectAdvancedOpen] = useState(false)
+  const [projectResidentDocsOpen, setProjectResidentDocsOpen] = useState(true)
   const [projectHistoryOpen, setProjectHistoryOpen] = useState(false)
 
   async function loadClientId() {
@@ -281,6 +284,7 @@ export default function ProjectsPage() {
     setSelectedProject(project)
     setDetailDrawerOpen(true)
     setProjectAdvancedOpen(false)
+    setProjectResidentDocsOpen(true)
     setProjectHistoryOpen(false)
     await fetchProjectTickets(project.id)
   }
@@ -289,6 +293,7 @@ export default function ProjectsPage() {
     setDetailDrawerOpen(false)
     setSelectedProject(null)
     setProjectAdvancedOpen(false)
+    setProjectResidentDocsOpen(true)
     setProjectHistoryOpen(false)
     setProjectTickets([])
     setProjectClosedTickets([])
@@ -917,6 +922,14 @@ export default function ProjectsPage() {
                 צפייה ב-QR
               </Button>
             </div>
+
+            <CollapsibleSection
+              title="מידע לדיירים"
+              open={projectResidentDocsOpen}
+              onToggle={() => setProjectResidentDocsOpen((v) => !v)}
+            >
+              <ResidentPortalDocsPanel projectId={selectedProject.id} />
+            </CollapsibleSection>
 
             <CollapsibleSection
               title="פעולות מתקדמות"

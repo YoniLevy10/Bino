@@ -1170,6 +1170,8 @@ export type Database = {
       }
       project_documents: {
         Row: {
+          building_id: string | null
+          category: string | null
           client_id: string
           created_at: string
           file_name: string
@@ -1178,10 +1180,14 @@ export type Database = {
           mime_type: string | null
           notes: string | null
           project_id: string
+          published_at: string | null
           storage_path: string
           uploaded_by: string | null
+          visibility: string
         }
         Insert: {
+          building_id?: string | null
+          category?: string | null
           client_id: string
           created_at?: string
           file_name: string
@@ -1190,10 +1196,14 @@ export type Database = {
           mime_type?: string | null
           notes?: string | null
           project_id: string
+          published_at?: string | null
           storage_path: string
           uploaded_by?: string | null
+          visibility?: string
         }
         Update: {
+          building_id?: string | null
+          category?: string | null
           client_id?: string
           created_at?: string
           file_name?: string
@@ -1202,8 +1212,10 @@ export type Database = {
           mime_type?: string | null
           notes?: string | null
           project_id?: string
+          published_at?: string | null
           storage_path?: string
           uploaded_by?: string | null
+          visibility?: string
         }
         Relationships: [
           {
