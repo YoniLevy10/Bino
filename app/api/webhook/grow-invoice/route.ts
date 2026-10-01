@@ -4,6 +4,7 @@ import { getLogger } from '@/lib/logging'
 import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/grow-webhook'
 import { findChargeIdsByGrowIds } from '@/lib/collection-charge-ops'
 import { sendCollectionInvoiceEmailIfNeeded } from '@/lib/collection-invoice-email'
+import { extractGrowInvoiceWebhookFields } from '@/lib/grow-invoice-webhook'
 
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()
@@ -47,14 +48,6 @@ function isAuthorized(req: Request): boolean {
   })
 }
 
-function pickStr(rec: Record<string, unknown>, keys: string[]): string | null {
-  for (const k of keys) {
-    const v = rec[k]
-    if (v != null && String(v).trim()) return String(v).trim()
-  }
-  return null
-}
-
 export async function GET() {
   return NextResponse.json({ ok: true, route: 'grow-invoice' })
 }
@@ -67,74 +60,44 @@ export async function POST(req: Request) {
     }
 
     const payload = await parsePayload(req)
-    const root =
-      payload && typeof payload === 'object' && !Array.isArray(payload)
-        ? (payload as Record<string, unknown>)
-        : {}
-    const data =
-      root.data && typeof root.data === 'object' && !Array.isArray(root.data)
-        ? ({ ...root, ...(root.data as Record<string, unknown>) } as Record<string, unknown>)
-        : root
-
-    // Audit #24: Grow may nest cField1 under customFields (same as payment webhook flatten).
-    const customFields =
-      (data.customFields && typeof data.customFields === 'object'
-        ? (data.customFields as Record<string, unknown>)
-        : null) ||
-      (root.customFields && typeof root.customFields === 'object'
-        ? (root.customFields as Record<string, unknown>)
-        : null)
-    const flattened = customFields ? { ...data, ...customFields } : data
-
-    const publicToken = pickStr(flattened, ['cField1', 'CField1'])
-    const processId = pickStr(flattened, ['processId', 'paymentLinkProcessId'])
-    const transactionId = pickStr(flattened, [
-      'transactionId',
-      'transactionCode',
-      'transaction_id',
-      'transaction_code',
-    ])
-    const invoiceId = pickStr(flattened, [
-      'invoiceNumber',
-      'invoiceId',
-      'documentId',
-      'invoice_id',
-      'document_id',
-      'asmachta',
-    ])
-    const invoiceUrl = pickStr(flattened, [
-      'invoiceUrl',
-      'invoice_url',
-      'documentUrl',
-      'document_url',
-      'url',
-    ])
+    const fields = extractGrowInvoiceWebhookFields(payload)
 
     const admin = getSupabaseAdmin()
     const chargeIds = await findChargeIdsByGrowIds(admin, {
-      publicTokens: publicToken ? [publicToken] : [],
-      paymentLinkIds: processId ? [processId] : [],
-      processIds: processId ? [processId] : [],
-      transactionIds: transactionId ? [transactionId] : [],
+      publicTokens: fields.publicToken ? [fields.publicToken] : [],
+      paymentLinkIds: fields.processId ? [fields.processId] : [],
+      processIds: fields.processId ? [fields.processId] : [],
+      transactionIds: fields.transactionId ? [fields.transactionId] : [],
     })
 
     logger.info('WEBHOOK', 'Grow invoice webhook', {
       matched: chargeIds.length,
-      hasInvoiceId: Boolean(invoiceId),
-      hasInvoiceUrl: Boolean(invoiceUrl),
+      hasInvoiceId: Boolean(fields.invoiceId),
+      hasInvoiceUrl: Boolean(fields.invoiceUrl),
+      documentType: fields.documentType,
+      payloadKeys: fields.payloadKeys.slice(0, 40),
     })
 
     if (chargeIds.length === 0) {
-      return NextResponse.json({ ok: true, matched: 0 })
+      return NextResponse.json({
+        ok: true,
+        matched: 0,
+        document_type: fields.documentType,
+        payload_keys: fields.payloadKeys,
+      })
     }
 
     const now = new Date().toISOString()
     const patch: Record<string, string | null> = {
       grow_invoice_received_at: now,
       updated_at: now,
+      grow_invoice_payload_keys: fields.payloadKeys.join(',').slice(0, 1000),
     }
-    if (invoiceId) patch.grow_invoice_id = invoiceId
-    if (invoiceUrl) patch.grow_invoice_url = invoiceUrl
+    if (fields.invoiceId) patch.grow_invoice_id = fields.invoiceId
+    if (fields.invoiceUrl) patch.grow_invoice_url = fields.invoiceUrl
+    if (fields.documentType) {
+      patch.grow_invoice_document_type = fields.documentType.slice(0, 120)
+    }
 
     const { error: updErr } = await admin
       .from('collection_charges')
@@ -145,7 +108,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'db_update_failed' }, { status: 500 })
     }
 
-    // Email invoice link to residents (BINO Resend) — Grow may also email separately.
+    // Optional BINO Resend of the Grow document URL — Grow may also email the payer.
     const emailResults: Array<{ chargeId: string; sent: boolean; skipped?: string; error?: string }> =
       []
     for (const chargeId of chargeIds) {
@@ -156,6 +119,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       matched: chargeIds.length,
+      document_type: fields.documentType,
       emails: emailResults,
     })
   } catch (e) {
