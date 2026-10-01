@@ -18,6 +18,7 @@ import {
   fetchWithTimeout,
   DEFAULT_FETCH_TIMEOUT_MS,
   MUTATION_FETCH_TIMEOUT_MS,
+  LONG_RUNNING_FETCH_TIMEOUT_MS,
 } from '@/lib/fetch-with-timeout'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { getClientPublicOrigin } from '@/lib/public-origin'
@@ -476,11 +477,61 @@ export function CollectionsBoard() {
           sent?: number
           failed?: number
           batch_id?: string
+          run_id?: string
+          status?: string
+          items_total?: number
         }
         if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'שליחה מרוכזת נכשלה'))
-        setBulkResult(
-          `נוצרו ${json.created ?? 0} · נשלחו ${json.sent ?? 0} · נכשלו ${json.failed ?? 0}`
-        )
+
+        if (json.run_id && (res.status === 202 || json.status === 'queued' || json.status === 'running')) {
+          setBulkResult('שולח ברקע…')
+          let final = {
+            status: json.status || 'queued',
+            created: json.created ?? 0,
+            sent: json.sent ?? 0,
+            failed: json.failed ?? 0,
+            items_total: json.items_total ?? items.length,
+          }
+          for (let i = 0; i < 120; i++) {
+            await new Promise((r) => setTimeout(r, 2000))
+            const pollRes = await fetchWithTimeout(
+              `/api/collections/charges/bulk-send?run_id=${encodeURIComponent(json.run_id!)}`,
+              {},
+              LONG_RUNNING_FETCH_TIMEOUT_MS
+            )
+            const snap = (await pollRes.json().catch(() => ({}))) as {
+              status?: string
+              created?: number
+              sent?: number
+              failed?: number
+              items_total?: number
+              error?: string
+              error_message?: string
+            }
+            if (!pollRes.ok) throw new Error(snap.error || snap.error_message || 'מעקב שליחה נכשל')
+            final = {
+              status: snap.status || 'running',
+              created: snap.created ?? 0,
+              sent: snap.sent ?? 0,
+              failed: snap.failed ?? 0,
+              items_total: snap.items_total ?? items.length,
+            }
+            setBulkResult(
+              `שולח… ${final.sent + final.failed}/${final.items_total} (נשלחו ${final.sent}, נכשלו ${final.failed})`
+            )
+            if (final.status === 'completed' || final.status === 'failed') break
+          }
+          if (final.status === 'failed') {
+            throw new Error('השליחה המרוכזת נכשלה — נסו שוב')
+          }
+          setBulkResult(
+            `נוצרו ${final.created} · נשלחו ${final.sent} · נכשלו ${final.failed}`
+          )
+        } else {
+          setBulkResult(
+            `נוצרו ${json.created ?? 0} · נשלחו ${json.sent ?? 0} · נכשלו ${json.failed ?? 0}`
+          )
+        }
         toast.success('השליחה המרוכזת הושלמה')
         await loadCharges()
         return true

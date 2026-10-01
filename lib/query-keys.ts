@@ -6,6 +6,7 @@ export const queryKeys = {
   workersActive: (clientId: string) => ['workers', clientId, 'active'] as const,
   ticketsOpen: (clientId: string, limit = 200) => ['tickets-open', clientId, limit] as const,
   residents: (clientId: string, limit = 100) => ['residents', clientId, limit] as const,
+  professionals: (clientId: string, limit = 100) => ['professionals', clientId, limit] as const,
   entitlements: (clientId: string) => ['entitlements', clientId] as const,
   navConfig: (clientId: string) => ['nav-config', clientId] as const,
   branding: (clientId: string) => ['branding', clientId] as const,

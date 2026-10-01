@@ -1,4 +1,4 @@
-import { theme } from '@/app/components/ui'
+import { theme } from '@/app/components/ui/theme'
 
 /** Light wash — same as manager ambient background. */
 export const WORKER_LIGHT_THEME_COLOR = '#dfe7f2'
