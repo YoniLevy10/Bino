@@ -70,15 +70,14 @@ function PaySuccessInner() {
   useEffect(() => {
     if (!token) return
     const paid = payload?.status === 'paid'
-    const ready = paid || !loading
-    if (!ready && payload === null) return
+    // Wait until paid, or until polling finished (webhook may still be catching up).
+    if (!paid && loading) return
 
-    const delay = paid ? REDIRECT_AFTER_MS : Math.max(REDIRECT_AFTER_MS, 4500)
     const id = window.setTimeout(() => {
       router.replace(`/pay/${encodeURIComponent(token)}`)
-    }, delay)
+    }, REDIRECT_AFTER_MS)
     return () => window.clearTimeout(id)
-  }, [token, payload, loading, router])
+  }, [token, payload?.status, loading, router])
 
   const paid = payload?.status === 'paid'
   const pending = Boolean(token) && !paid && (loading || payload?.status === 'sent')
