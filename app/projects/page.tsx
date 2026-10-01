@@ -10,6 +10,7 @@
  *  - עריכת פרויקט → PATCH /api/update-project (שם, כתובת, קוד)
  *  - ארכיב/הסרה → PATCH is_active=false
  *  - "קוד QR" → מנווט ל-/qr
+ *  - פעולות מתקדמות → תפריט כפתורים (שיתוף דיירים / תוספים / השבתה / מחיקה)
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
@@ -40,13 +41,8 @@ import {
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageTransitionLoader } from '../components/page-skeleton'
-import { PaidAddonFeatureGate } from '../components/projects/PaidAddonFeatureGate'
-import { ProjectDocumentsPanel } from '../components/projects/ProjectDocumentsPanel'
-import { ProjectPilotSmsPanel } from '../components/projects/ProjectPilotSmsPanel'
-import { ProjectResidentJoinLink } from '../components/projects/ProjectResidentJoinLink'
-import { ProjectResidentIntakePanel } from '../components/projects/ProjectResidentIntakePanel'
+import { ProjectAdvancedActions } from '../components/projects/ProjectAdvancedActions'
 import { CollapsibleSection } from '../components/shared/CollapsibleSection'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 type ProjectRow = {
   id: string
@@ -927,45 +923,15 @@ export default function ProjectsPage() {
               open={projectAdvancedOpen}
               onToggle={() => setProjectAdvancedOpen((v) => !v)}
             >
-              <ProjectResidentIntakePanel
-                projectCode={selectedProject.project_code}
-                clientId={selectedProject.client_id}
-                projectName={selectedProject.name}
-              />
-
-              <ProjectResidentJoinLink
+              <ProjectAdvancedActions
                 projectId={selectedProject.id}
                 projectName={selectedProject.name}
+                projectCode={selectedProject.project_code}
+                clientId={selectedProject.client_id}
+                isActive={selectedProject.is_active}
+                onToggleActive={() => void toggleProjectStatus(selectedProject)}
+                onDelete={() => deleteProject(selectedProject)}
               />
-
-              <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.pilot_sms}>
-                <ProjectPilotSmsPanel
-                  projectId={selectedProject.id}
-                  projectName={selectedProject.name}
-                />
-              </PaidAddonFeatureGate>
-
-              <PaidAddonFeatureGate featureId={PAID_ADDON_KEYS.project_documents}>
-                <ProjectDocumentsPanel projectId={selectedProject.id} />
-              </PaidAddonFeatureGate>
-
-              <Button
-                variant="secondary"
-                onClick={() => void toggleProjectStatus(selectedProject)}
-                style={{ width: '100%' }}
-              >
-                {selectedProject.is_active ? 'השבתת פרויקט' : 'הפעלת פרויקט'}
-              </Button>
-
-              <div style={styles.dangerZone}>
-                <Button
-                  variant="danger"
-                  onClick={() => deleteProject(selectedProject)}
-                  style={{ width: '100%' }}
-                >
-                  מחיקת פרויקט לצמיתות
-                </Button>
-              </div>
             </CollapsibleSection>
           </div>
         )}
@@ -1111,11 +1077,6 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     gap: '12px',
     justifyContent: 'flex-end',
-  },
-  dangerZone: {
-    paddingTop: '20px',
-    borderTop: `1px solid ${theme.colors.border}`,
-    marginTop: '12px',
   },
   detailSection: {
     display: 'flex',
