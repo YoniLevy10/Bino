@@ -192,6 +192,12 @@ export default function PublicPayPage() {
               ) : data.receipt_email ? (
                 <p style={styles.metaDark}>אישור במייל בדרך אליכם.</p>
               ) : null}
+              <Link
+                href="/resident/payments"
+                style={styles.residentCta}
+              >
+                לאזור האישי שלי
+              </Link>
             </div>
           ) : null}
 
@@ -453,5 +459,20 @@ const styles: Record<string, CSSProperties> = {
     border: 'none',
     cursor: 'pointer',
     marginTop: 4,
+  },
+  residentCta: {
+    display: 'block',
+    width: '100%',
+    marginTop: 14,
+    padding: '12px 20px',
+    borderRadius: 12,
+    border: '1px solid #93c5fd',
+    background: '#fff',
+    color: '#1e40af',
+    fontWeight: 700,
+    fontSize: 15,
+    textAlign: 'center',
+    textDecoration: 'none',
+    boxSizing: 'border-box',
   },
 }
