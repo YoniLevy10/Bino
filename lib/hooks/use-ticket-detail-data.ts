@@ -90,8 +90,9 @@ export function useTicketDetailData() {
   const loadTicketDrawerData = useCallback(
     async (ticket: TicketDetailDataTicketRef) => {
       setTicketLogs([])
-      await loadTicketLogs(ticket.id)
-      await loadTicketAttachments(ticket)
+      setAttachments([])
+      // Parallel — logs and attachments are independent (was sequential waterfall).
+      await Promise.all([loadTicketLogs(ticket.id), loadTicketAttachments(ticket)])
     },
     [loadTicketAttachments, loadTicketLogs]
   )

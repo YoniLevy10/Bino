@@ -22,17 +22,41 @@ import {
   useDeferredValue,
   type CSSProperties,
 } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
-import { AddResidentModal, type ResidentProjectRow } from '../components/residents/AddResidentModal'
-import { ImportResidentsModal } from '../components/residents/ImportResidentsModal'
-import { ShareResidentIntakeLinkModal } from '../components/residents/ShareResidentIntakeLinkModal'
+import {
+  RESIDENTS_PAGE_SIZE,
+  fetchResidentsPage,
+  useTenantResidentsList,
+} from '@/lib/hooks/use-residents-list'
+import { queryKeys } from '@/lib/query-keys'
+import type { ResidentProjectRow } from '../components/residents/AddResidentModal'
+
+const AddResidentModal = dynamic(
+  () =>
+    import('../components/residents/AddResidentModal').then((m) => ({ default: m.AddResidentModal })),
+  { loading: () => null }
+)
+const ImportResidentsModal = dynamic(
+  () =>
+    import('../components/residents/ImportResidentsModal').then((m) => ({
+      default: m.ImportResidentsModal,
+    })),
+  { loading: () => null }
+)
+const ShareResidentIntakeLinkModal = dynamic(
+  () =>
+    import('../components/residents/ShareResidentIntakeLinkModal').then((m) => ({
+      default: m.ShareResidentIntakeLinkModal,
+    })),
+  { loading: () => null }
+)
 import {
   AppShell,
   MobileHeader,
@@ -109,6 +133,7 @@ export default function ResidentsPage() {
 
 function ResidentsPageInner() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { openMenu } = useMobileMenu()
   const {
     clientId: tenantClientId,
@@ -116,6 +141,12 @@ function ResidentsPageInner() {
     isLoading: projectsLoading,
     hasData: projectsHasData,
   } = useTenantProjectsList()
+  const {
+    residents: rqResidents,
+    hasMore: rqHasMore,
+    isLoading: rqResidentsLoading,
+    hasData: rqResidentsHasData,
+  } = useTenantResidentsList()
   const projects: ResidentProjectRow[] = useMemo(
     () =>
       projectRows.map((p) => ({
@@ -237,30 +268,18 @@ function ResidentsPageInner() {
   async function refreshResidentsQuiet() {
     try {
       const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
-      const rRes = await withClientId(
-        supabase
-          .from('residents')
-          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
-        tenantId
-      )
-        .is('deleted_at', null)
-        .order('full_name')
-        .limit(500)
-
-      if (!rRes.error) {
-        const rows = (rRes.data as ResidentRow[]) || []
-        startTransition(() => {
-          setResidents(rows)
-          setResidentsHasMore(rows.length >= 500)
-          setResidentsOffset(rows.length)
-        })
-      }
+      const page = await fetchResidentsPage(tenantId, { offset: 0, limit: RESIDENTS_PAGE_SIZE })
+      startTransition(() => {
+        setResidents(page.rows)
+        setResidentsHasMore(page.hasMore)
+        setResidentsOffset(page.rows.length)
+        setHasResidentsData(true)
+      })
+      queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
     } catch {
       // keep existing list on background refresh failure
     }
   }
-
-  const RESIDENTS_PAGE_SIZE = 500
 
   async function loadResidentsPage(opts?: { append?: boolean; offset?: number }) {
     const append = opts?.append === true
@@ -271,44 +290,64 @@ function ResidentsPageInner() {
     setLoadError(false)
     try {
       const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
-      const rRes = await withClientId(
-        supabase
-          .from('residents')
-          .select('id, project_id, client_id, full_name, phone, email, is_renter, apartment_number, notes'),
-        tenantId
-      )
-        .is('deleted_at', null)
-        .order('full_name')
-        .range(offset, offset + RESIDENTS_PAGE_SIZE - 1)
-
-      if (rRes.error) {
-        if (isResidentsTableMissingError(rRes.error)) {
-          setResidents([])
-          setResidentsTableMissing(true)
-          setResidentsHasMore(false)
-        } else {
-          toast.error(rRes.error.message || TM.genericLoadError)
-          if (!append) setLoadError(true)
-        }
-      } else {
-        const rows = (rRes.data as ResidentRow[]) || []
-        setResidents((prev) => (append ? [...prev, ...rows] : rows))
-        setResidentsHasMore(rows.length >= RESIDENTS_PAGE_SIZE)
-        setResidentsOffset(offset + rows.length)
-        setHasResidentsData(true)
-        setLoadError(false)
+      const page = await fetchResidentsPage(tenantId, {
+        offset,
+        limit: RESIDENTS_PAGE_SIZE,
+      })
+      setResidents((prev) => (append ? [...prev, ...page.rows] : page.rows))
+      setResidentsHasMore(page.hasMore)
+      setResidentsOffset(offset + page.rows.length)
+      setHasResidentsData(true)
+      setLoadError(false)
+      if (!append) {
+        queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
       }
     } catch (e) {
-      if (!append) setLoadError(true)
-      toast.error(e instanceof Error ? e.message : TM.genericLoadError)
+      const err = e as { message?: string }
+      if (isResidentsTableMissingError(err)) {
+        setResidents([])
+        setResidentsTableMissing(true)
+        setResidentsHasMore(false)
+      } else {
+        if (!append) setLoadError(true)
+        toast.error(err?.message || (e instanceof Error ? e.message : TM.genericLoadError))
+      }
     }
     if (append) setLoadingMore(false)
     else setResidentsLoading(false)
   }
 
   async function load() {
+    if (tenantClientId) {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.residents(tenantClientId, RESIDENTS_PAGE_SIZE),
+      })
+    }
     await loadResidentsPage({ append: false, offset: 0 })
   }
+
+  // Prefer shared RQ first page for warm nav
+  useEffect(() => {
+    if (!rqResidentsHasData) return
+    // Do not clobber pages appended via "load more"
+    if (residentsOffset > rqResidents.length) return
+    setResidents(rqResidents)
+    setResidentsHasMore(rqHasMore)
+    setResidentsOffset(rqResidents.length)
+    setHasResidentsData(true)
+    setResidentsLoading(false)
+    setLoadError(false)
+  }, [rqResidents, rqResidentsHasData, rqHasMore, residentsOffset])
+
+  useEffect(() => {
+    if (rqResidentsHasData) return
+    if (rqResidentsLoading) {
+      setResidentsLoading(true)
+      return
+    }
+    // RQ finished without usable data — stop blocking the page shell
+    if (!hasResidentsData) setResidentsLoading(false)
+  }, [rqResidentsLoading, rqResidentsHasData, hasResidentsData])
 
   async function loadMoreResidents() {
     await loadResidentsPage({ append: true, offset: residentsOffset })
@@ -485,11 +524,7 @@ function ResidentsPageInner() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  useEffect(() => {
-    void load()
-    // load is defined above and stable — intentional empty deps for mount-only call
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // mount only
+  // First page comes from useTenantResidentsList (shared RQ). load() remains for retry/mutations.
 
   // Single pending-residents fetch source (badge + pending tab) — avoids double fetch when tab=pending on mount
   useEffect(() => {
@@ -755,21 +790,30 @@ function ResidentsPageInner() {
     setBulkDeleting(true)
     try {
       const ids = Array.from(selectedIds)
-      for (const resident_id of ids) {
-        const res = await fetchWithTimeout(
-          '/api/update-resident',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resident_id, soft_delete: true }),
-          },
-          MUTATION_FETCH_TIMEOUT_MS
-        )
-        const json = (await res.json().catch(() => ({}))) as { error?: unknown }
-        if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקה נכשלה'))
-      }
-      setResidents((prev) => prev.filter((r) => !selectedIds.has(r.id)))
+      const results = await Promise.all(
+        ids.map(async (resident_id) => {
+          const res = await fetchWithTimeout(
+            '/api/update-resident',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resident_id, soft_delete: true }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
+          const json = (await res.json().catch(() => ({}))) as { error?: unknown }
+          if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקה נכשלה'))
+          return resident_id
+        })
+      )
+      const deleted = new Set(results)
+      setResidents((prev) => prev.filter((r) => !deleted.has(r.id)))
       setSelectedIds(new Set())
+      if (tenantClientId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.residents(tenantClientId, RESIDENTS_PAGE_SIZE),
+        })
+      }
       toast.success(`${count} דיירים נמחקו`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'מחיקה נכשלה')

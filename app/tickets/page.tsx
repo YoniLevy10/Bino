@@ -26,6 +26,7 @@
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -76,7 +77,13 @@ import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { removeTicketFromListState } from '@/lib/open-tickets'
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { ImageLightbox } from '../components/shared/ImageLightbox'
-import { TicketDetailDrawer } from '../components/tickets/TicketDetailDrawer'
+const TicketDetailDrawer = dynamic(
+  () =>
+    import('../components/tickets/TicketDetailDrawer').then((m) => ({
+      default: m.TicketDetailDrawer,
+    })),
+  { loading: () => null }
+)
 import { TicketMobileCard } from '../components/tickets/TicketMobileCard'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { CloseTicketConfirmSheet } from '../components/tickets/CloseTicketConfirmSheet'
