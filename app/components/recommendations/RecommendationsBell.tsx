@@ -2,11 +2,9 @@
 
 import { useEffect, useId, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { Button, theme } from '@/app/components/ui'
-import type { ManagementRecommendationRow, RecommendationAction } from '@/lib/recommendations/types'
-import { parseActions } from '@/lib/recommendations/entitlements'
+import { theme } from '@/app/components/ui'
+import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 
 function urgencyLabel(u: string): string {
   if (u === 'critical') return 'דחוף'
@@ -15,22 +13,16 @@ function urgencyLabel(u: string): string {
   return 'בינוני'
 }
 
-function snoozeUntilHours(hours: number): string {
-  return new Date(Date.now() + hours * 3_600_000).toISOString()
-}
-
 /**
  * Bell next to the mobile hamburger — opens management recommendations
- * ("דורש תשומת לב") in a viewport-fixed sheet (not a tiny absolute dropdown).
+ * ("דורש תשומת לב") as read-only smart alerts (no action buttons).
  */
 export function RecommendationsBell() {
-  const router = useRouter()
   const panelId = useId()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [rows, setRows] = useState<ManagementRecommendationRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [busyId, setBusyId] = useState<string | null>(null)
 
   async function load() {
     try {
@@ -61,67 +53,6 @@ export function RecommendationsBell() {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
-
-  async function runAction(row: ManagementRecommendationRow, action: RecommendationAction) {
-    if (busyId) return
-    setBusyId(row.id)
-    try {
-      if (action.kind === 'snooze') {
-        const res = await fetchWithTimeout('/api/recommendations/snooze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: row.id, until: snoozeUntilHours(24) }),
-        })
-        if (res.ok) setRows((prev) => prev.filter((r) => r.id !== row.id))
-        return
-      }
-      if (action.kind === 'dismiss') {
-        const res = await fetchWithTimeout('/api/recommendations/dismiss', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: row.id }),
-        })
-        if (res.ok) setRows((prev) => prev.filter((r) => r.id !== row.id))
-        return
-      }
-      if (action.kind === 'set_follow_up') {
-        const followUp = snoozeUntilHours(48)
-        const res = await fetchWithTimeout('/api/recommendations/set-professional-follow-up', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ticket_id: row.entity_id,
-            follow_up_at: followUp,
-            recommendation_id: row.id,
-          }),
-        })
-        if (res.ok) {
-          await fetchWithTimeout('/api/recommendations/snooze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: row.id, until: followUp }),
-          })
-          setRows((prev) => prev.filter((r) => r.id !== row.id))
-        }
-        return
-      }
-
-      const res = await fetchWithTimeout('/api/recommendations/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: row.id, action_id: action.id }),
-      })
-      if (!res.ok) return
-      const body = (await res.json()) as { href?: string | null }
-      const href = body.href || action.href
-      if (href) {
-        setOpen(false)
-        router.push(href)
-      }
-    } finally {
-      setBusyId(null)
-    }
-  }
 
   const count = rows.length
   const showBadge = !loading && count > 0
@@ -164,57 +95,12 @@ export function RecommendationsBell() {
                 ) : count === 0 ? (
                   <p style={styles.empty}>אין התראות פעילות כרגע</p>
                 ) : (
-                  rows.map((row) => {
-                    const all = parseActions(row.actions)
-                    const actions = all.filter((a) => a.kind !== 'snooze' && a.kind !== 'dismiss')
-                    const primary =
-                      actions.find((a) => a.id === row.primary_action) || actions[0] || null
-                    const snooze = all.find((a) => a.kind === 'snooze')
-                    const dismiss = all.find((a) => a.kind === 'dismiss')
-                    return (
-                      <div key={row.id} style={styles.item}>
-                        <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
-                        <p style={styles.reason}>{row.reason}</p>
-                        <div style={styles.actions}>
-                          {primary ? (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              disabled={busyId === row.id}
-                              onClick={() => void runAction(row, primary)}
-                              style={styles.primaryBtn}
-                            >
-                              {primary.label}
-                            </Button>
-                          ) : null}
-                          {(snooze || dismiss) && (
-                            <div style={styles.secondaryRow}>
-                              {snooze ? (
-                                <button
-                                  type="button"
-                                  style={styles.textAction}
-                                  disabled={busyId === row.id}
-                                  onClick={() => void runAction(row, snooze)}
-                                >
-                                  הזכר לי מאוחר יותר
-                                </button>
-                              ) : null}
-                              {dismiss ? (
-                                <button
-                                  type="button"
-                                  style={styles.textActionMuted}
-                                  disabled={busyId === row.id}
-                                  onClick={() => void runAction(row, dismiss)}
-                                >
-                                  דחייה
-                                </button>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })
+                  rows.map((row) => (
+                    <div key={row.id} style={styles.item}>
+                      <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
+                      <p style={styles.reason}>{row.reason}</p>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
@@ -416,50 +302,10 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 6,
   },
   reason: {
-    margin: '0 0 12px',
+    margin: 0,
     fontSize: 14,
     lineHeight: 1.45,
     color: theme.colors.textPrimary,
     overflowWrap: 'anywhere',
-  },
-  actions: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: 8,
-    minWidth: 0,
-  },
-  primaryBtn: {
-    width: '100%',
-    whiteSpace: 'normal',
-    textAlign: 'center',
-    lineHeight: 1.3,
-  },
-  secondaryRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px 16px',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  textAction: {
-    border: 'none',
-    background: 'transparent',
-    color: theme.colors.primary,
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: 'pointer',
-    padding: '4px 0',
-    textAlign: 'center',
-  },
-  textActionMuted: {
-    border: 'none',
-    background: 'transparent',
-    color: theme.colors.textMuted,
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: 'pointer',
-    padding: '2px 0',
-    textAlign: 'center',
   },
 }
