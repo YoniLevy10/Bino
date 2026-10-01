@@ -5,6 +5,7 @@ import { residentMidragSearchHref, residentMidragSectors } from '@/lib/resident-
 import {
   ResidentAlert,
   ResidentCard,
+  ResidentDocumentPreviewButton,
   ResidentMuted,
   ResidentPageTitle,
   ResidentPrimaryButton,
@@ -106,28 +107,12 @@ export default function ResidentInformationPage() {
           <ResidentMuted>אין מסמכים שפורסמו לדיירים</ResidentMuted>
         ) : (
           documents.map((d) => (
-            <button
+            <ResidentDocumentPreviewButton
               key={d.id}
-              type="button"
+              fileName={d.file_name}
+              category={d.category}
               onClick={() => void openDoc(d.id)}
-              className="lg-chip"
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'right',
-                padding: 12,
-                marginBottom: 8,
-                minHeight: 44,
-                fontSize: 15,
-                cursor: 'pointer',
-                borderRadius: residentTheme.radius.md,
-                color: residentTheme.colors.textPrimary,
-                fontFamily: 'inherit',
-              }}
-            >
-              {d.file_name}
-              {d.category ? ` · ${d.category}` : ''}
-            </button>
+            />
           ))
         )}
       </ResidentCard>
