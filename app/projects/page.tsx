@@ -11,7 +11,7 @@
  *  - ארכיב/הסרה → PATCH is_active=false
  *  - "קוד QR" → מנווט ל-/qr
  *  - מידע לדיירים → העלאת PDF לפורטל הדיירים
- *  - פעולות מתקדמות → תפריט כפתורים (שיתוף דיירים / תוספים / השבתה / מחיקה)
+ *  - כפתורי פעולה לבניין → שיתוף דיירים / תוספים / השבתה / מחיקה
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
@@ -140,7 +140,6 @@ export default function ProjectsPage() {
   const [projectClosedTickets, setProjectClosedTickets] = useState<TicketRow[]>([])
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [exportingHistory, setExportingHistory] = useState(false)
-  const [projectAdvancedOpen, setProjectAdvancedOpen] = useState(false)
   const [projectResidentDocsOpen, setProjectResidentDocsOpen] = useState(true)
   const [projectHistoryOpen, setProjectHistoryOpen] = useState(false)
 
@@ -931,21 +930,15 @@ export default function ProjectsPage() {
               <ResidentPortalDocsPanel projectId={selectedProject.id} />
             </CollapsibleSection>
 
-            <CollapsibleSection
-              title="פעולות מתקדמות"
-              open={projectAdvancedOpen}
-              onToggle={() => setProjectAdvancedOpen((v) => !v)}
-            >
-              <ProjectAdvancedActions
-                projectId={selectedProject.id}
-                projectName={selectedProject.name}
-                projectCode={selectedProject.project_code}
-                clientId={selectedProject.client_id}
-                isActive={selectedProject.is_active}
-                onToggleActive={() => void toggleProjectStatus(selectedProject)}
-                onDelete={() => deleteProject(selectedProject)}
-              />
-            </CollapsibleSection>
+            <ProjectAdvancedActions
+              projectId={selectedProject.id}
+              projectName={selectedProject.name}
+              projectCode={selectedProject.project_code}
+              clientId={selectedProject.client_id}
+              isActive={selectedProject.is_active}
+              onToggleActive={() => void toggleProjectStatus(selectedProject)}
+              onDelete={() => deleteProject(selectedProject)}
+            />
           </div>
         )}
       </Drawer>

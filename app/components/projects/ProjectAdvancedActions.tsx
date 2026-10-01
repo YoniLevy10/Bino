@@ -33,7 +33,7 @@ type MenuRow = {
 }
 
 /**
- * Compact advanced-actions menu for a building:
+ * Compact action buttons for a building detail drawer:
  * share shortcuts (intermediate copy / WhatsApp) + links to addon pages + danger actions.
  */
 export function ProjectAdvancedActions({
