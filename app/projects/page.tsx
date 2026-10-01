@@ -282,7 +282,6 @@ export default function ProjectsPage() {
     closeDrawer()
     setSelectedProject(project)
     setDetailDrawerOpen(true)
-    setProjectAdvancedOpen(false)
     setProjectResidentDocsOpen(true)
     setProjectHistoryOpen(false)
     await fetchProjectTickets(project.id)
@@ -291,7 +290,6 @@ export default function ProjectsPage() {
   function closeDetailDrawer() {
     setDetailDrawerOpen(false)
     setSelectedProject(null)
-    setProjectAdvancedOpen(false)
     setProjectResidentDocsOpen(true)
     setProjectHistoryOpen(false)
     setProjectTickets([])
