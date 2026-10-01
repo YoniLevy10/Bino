@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense, type CSSProperties } from 'react'
-import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 type PayStatus = {
@@ -15,7 +14,11 @@ type PayStatus = {
   error?: string
 }
 
+/** Brief green confirmation, then land on branded /pay/{token} paid card. */
+const REDIRECT_AFTER_MS = 2800
+
 function PaySuccessInner() {
+  const router = useRouter()
   const search = useSearchParams()
   const token = (search.get('t') || '').trim()
   const [payload, setPayload] = useState<PayStatus | null>(null)
@@ -63,6 +66,20 @@ function PaySuccessInner() {
     }
   }, [token])
 
+  // After a short pause on the green screen → branded paid receipt on /pay/{token}.
+  useEffect(() => {
+    if (!token) return
+    const paid = payload?.status === 'paid'
+    const ready = paid || !loading
+    if (!ready && payload === null) return
+
+    const delay = paid ? REDIRECT_AFTER_MS : Math.max(REDIRECT_AFTER_MS, 4500)
+    const id = window.setTimeout(() => {
+      router.replace(`/pay/${encodeURIComponent(token)}`)
+    }, delay)
+    return () => window.clearTimeout(id)
+  }, [token, payload, loading, router])
+
   const paid = payload?.status === 'paid'
   const pending = Boolean(token) && !paid && (loading || payload?.status === 'sent')
 
@@ -76,14 +93,11 @@ function PaySuccessInner() {
         {payload?.amount_label ? <p style={styles.amount}>{payload.amount_label}</p> : null}
         <p style={styles.sub}>
           {paid
-            ? 'תודה. אם הזנתם מייל בדף התשלום — אישור יישלח אליכם. אפשר לסגור את החלון.'
+            ? 'מעבירים לאישור המלא…'
             : pending
-              ? 'אם שילמתם עכשיו — האישור יופיע תוך רגעים. אפשר לסגור ולחזור לקישור מההודעה.'
-              : 'תודה. אם האישור לא מתעדכן אצל הוועד תוך דקות — פנו אליהם עם צילום מסך מהתשלום.'}
+              ? 'אם שילמתם עכשיו — האישור יופיע תוך רגעים.'
+              : 'מעבירים לפרטי החיוב…'}
         </p>
-        <Link href={token ? `/pay/${encodeURIComponent(token)}` : '/'} style={styles.link}>
-          {token ? 'חזרה לפרטי החיוב' : 'חזרה'}
-        </Link>
       </div>
     </main>
   )
@@ -124,6 +138,4 @@ const styles: Record<string, CSSProperties> = {
   title: { margin: '0 0 12px', fontSize: 28, color: '#14532d' },
   amount: { margin: '0 0 12px', fontSize: 28, fontWeight: 800, color: '#14532d' },
   sub: { margin: '0 0 16px', fontSize: 16, color: '#166534', lineHeight: 1.6 },
-  meta: { margin: '0 0 16px', fontSize: 13, color: '#64748b' },
-  link: { color: '#15803d', fontWeight: 600, textDecoration: 'underline' },
 }
