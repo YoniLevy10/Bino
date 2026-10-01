@@ -3,6 +3,9 @@
 import Link from 'next/link'
 import type { CSSProperties, ReactNode } from 'react'
 import { theme } from '@/app/components/ui'
+import { residentDocumentDisplayName } from '@/lib/resident-portal/document-display'
+
+export { residentDocumentDisplayName }
 
 /** Shared Apple iOS 27 Liquid Glass tokens for the resident portal. */
 export const residentTheme = theme
@@ -239,8 +242,12 @@ export function ResidentOtpBoxes({
       <input
         className="resident-otp-hidden"
         type="text"
+        name="one-time-code"
         inputMode="numeric"
         autoComplete="one-time-code"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
         required
         pattern="[0-9]{6}"
         maxLength={6}
@@ -250,6 +257,66 @@ export function ResidentOtpBoxes({
         onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
       />
     </div>
+  )
+}
+
+/**
+ * Tappable document row that looks like a paper page peek —
+ * residents recognize “open this notice”, not a raw filename chip.
+ */
+export function ResidentDocumentPreviewButton({
+  fileName,
+  category,
+  onClick,
+  href,
+}: {
+  fileName: string
+  category?: string | null
+  onClick?: () => void
+  href?: string
+}) {
+  const title = residentDocumentDisplayName(fileName)
+  const subtitle = category?.trim() || 'מסמך לבניין · לחצו לפתיחה'
+  const body = (
+    <>
+      <span style={docPreviewStyles.thumb} aria-hidden>
+        <span style={docPreviewStyles.paper}>
+          <span style={docPreviewStyles.paperLineWide} />
+          <span style={docPreviewStyles.paperLine} />
+          <span style={docPreviewStyles.paperLine} />
+          <span style={docPreviewStyles.paperLineShort} />
+          <span style={docPreviewStyles.paperLine} />
+          <span style={docPreviewStyles.paperLineMid} />
+        </span>
+        <span style={docPreviewStyles.pdfBadge}>PDF</span>
+      </span>
+      <span style={docPreviewStyles.copy}>
+        <span style={docPreviewStyles.title}>{title}</span>
+        <span style={docPreviewStyles.subtitle}>{subtitle}</span>
+      </span>
+      <span style={docPreviewStyles.chevron} aria-hidden>
+        ←
+      </span>
+    </>
+  )
+  const className = 'lg-chip resident-btn-press'
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        style={docPreviewStyles.row}
+      >
+        {body}
+      </a>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} className={className} style={docPreviewStyles.row}>
+      {body}
+    </button>
   )
 }
 
@@ -303,6 +370,118 @@ export function ResidentNavIcon({
         </svg>
       )
   }
+}
+
+const docPreviewStyles: Record<string, CSSProperties> = {
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+    boxSizing: 'border-box',
+    textAlign: 'right',
+    padding: 10,
+    marginBottom: 10,
+    minHeight: 88,
+    cursor: 'pointer',
+    borderRadius: theme.radius.lg,
+    color: theme.colors.textPrimary,
+    fontFamily: 'inherit',
+    textDecoration: 'none',
+    border: 'none',
+    background: 'transparent',
+  },
+  thumb: {
+    position: 'relative',
+    flexShrink: 0,
+    width: 56,
+    height: 72,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    width: 48,
+    height: 64,
+    padding: '10px 8px 8px',
+    boxSizing: 'border-box',
+    borderRadius: 6,
+    background: 'linear-gradient(165deg, #ffffff 0%, #f3f5f8 55%, #e8edf3 100%)',
+    border: '1px solid rgba(26, 26, 46, 0.12)',
+    boxShadow:
+      '0 1px 0 rgba(255,255,255,0.9) inset, 0 6px 14px rgba(26, 26, 46, 0.10), 2px 2px 0 rgba(26, 26, 46, 0.04)',
+  },
+  paperLineWide: {
+    display: 'block',
+    height: 3,
+    width: '78%',
+    borderRadius: 2,
+    background: 'rgba(26, 26, 46, 0.22)',
+    marginBottom: 2,
+  },
+  paperLine: {
+    display: 'block',
+    height: 2.5,
+    width: '100%',
+    borderRadius: 2,
+    background: 'rgba(26, 26, 46, 0.12)',
+  },
+  paperLineShort: {
+    display: 'block',
+    height: 2.5,
+    width: '62%',
+    borderRadius: 2,
+    background: 'rgba(26, 26, 46, 0.12)',
+  },
+  paperLineMid: {
+    display: 'block',
+    height: 2.5,
+    width: '84%',
+    borderRadius: 2,
+    background: 'rgba(26, 26, 46, 0.12)',
+  },
+  pdfBadge: {
+    position: 'absolute',
+    bottom: 2,
+    insetInlineStart: 0,
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: '0.04em',
+    color: '#fff',
+    background: 'linear-gradient(180deg, #ff6b5a 0%, #e11d48 100%)',
+    padding: '2px 5px',
+    borderRadius: 4,
+    boxShadow: '0 1px 3px rgba(225, 29, 72, 0.35)',
+    lineHeight: 1.2,
+  },
+  copy: {
+    flex: 1,
+    minWidth: 0,
+    display: 'grid',
+    gap: 4,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: 700,
+    lineHeight: 1.3,
+    color: theme.colors.textPrimary,
+    overflowWrap: 'anywhere',
+  },
+  subtitle: {
+    fontSize: 12,
+    fontWeight: 500,
+    color: theme.colors.textMuted,
+    lineHeight: 1.35,
+  },
+  chevron: {
+    flexShrink: 0,
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: 700,
+  },
 }
 
 const residentCardStyle: CSSProperties = {

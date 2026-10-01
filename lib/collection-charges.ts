@@ -48,7 +48,9 @@ export type CollectionChargeRow = {
   grow_approve_last_error?: string | null
   grow_invoice_id?: string | null
   grow_invoice_url?: string | null
+  grow_invoice_document_type?: string | null
   grow_invoice_email_sent_at?: string | null
+  grow_invoice_received_at?: string | null
   greeninvoice_client_id: string | null
   greeninvoice_document_id: string | null
   greeninvoice_document_number: number | null
@@ -81,7 +83,8 @@ export const COLLECTION_CHARGE_ROW_SELECT = `
   public_token, batch_id, period_label,
   grow_payment_url, grow_payment_link_id, grow_transaction_id, grow_transaction_token,
   grow_process_id, grow_approve_status, grow_approve_last_error,
-  grow_invoice_id, grow_invoice_url, grow_invoice_email_sent_at,
+  grow_invoice_id, grow_invoice_url, grow_invoice_document_type, grow_invoice_email_sent_at,
+  grow_invoice_received_at,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, receipt_email, receipt_phone, receipt_email_sent_at,
@@ -94,7 +97,8 @@ export const COLLECTION_CHARGE_LIST_SELECT = `
   public_token, batch_id, period_label,
   grow_payment_url, grow_payment_link_id, grow_transaction_id,
   grow_process_id, grow_approve_status, grow_approve_last_error,
-  grow_invoice_id, grow_invoice_url, grow_invoice_email_sent_at,
+  grow_invoice_id, grow_invoice_url, grow_invoice_document_type, grow_invoice_email_sent_at,
+  grow_invoice_received_at,
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, receipt_email, receipt_email_sent_at, due_date, published_to_portal, unit_id,

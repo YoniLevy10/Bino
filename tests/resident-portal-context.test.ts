@@ -3,6 +3,7 @@ import { assertMembershipScope } from '@/lib/resident-portal/context'
 import { isAnnouncementVisibleNow } from '@/lib/resident-portal/jerusalem-time'
 import { hashInviteToken, normalizeInviteEmail } from '@/lib/resident-portal/crypto'
 import { isResidentPortalApiPath, isResidentPortalPath } from '@/lib/is-resident-portal-path'
+import { residentDocumentDisplayName } from '@/lib/resident-portal/document-display'
 import type { ResidentPortalMembershipView } from '@/lib/resident-portal/types'
 
 const baseMembership: ResidentPortalMembershipView = {
@@ -58,6 +59,13 @@ describe('resident portal isolation helpers', () => {
     expect(isResidentPortalPath('/resident/payments')).toBe(true)
     expect(isResidentPortalPath('/dashboard')).toBe(false)
     expect(isResidentPortalApiPath('/api/resident/home')).toBe(true)
+  })
+
+  it('humanizes document filenames for residents', () => {
+    expect(residentDocumentDisplayName('Bamakor_Residents_Notice.pdf')).toBe(
+      'Bamakor Residents Notice'
+    )
+    expect(residentDocumentDisplayName('שעות-בריכה.pdf')).toBe('שעות בריכה')
   })
 })
 

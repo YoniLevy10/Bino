@@ -7,6 +7,7 @@ import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { normalizeReceiptEmail } from '@/lib/collection-receipt-email'
 import { normalizePhone019 } from '@/lib/sms-019-core'
 import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collection-receipt-email'
+import { ensureGrowPaymentLinkWithPayerEmail } from '@/lib/collection-charge-ops'
 import {
   residentSafeDescription,
   residentSafeTitle,
@@ -170,7 +171,9 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   const { data: charge, error: fetchErr } = await admin
     .from('collection_charges')
-    .select('id, status, grow_payment_url, greeninvoice_payment_url, receipt_email_sent_at')
+    .select(
+      'id, status, grow_payment_url, greeninvoice_payment_url, receipt_email_sent_at'
+    )
     .eq('public_token', publicToken)
     .maybeSingle()
 
@@ -196,7 +199,21 @@ export async function PATCH(req: Request, context: RouteContext) {
     return NextResponse.json({ error: 'שמירת פרטים נכשלה' }, { status: 500 })
   }
 
-  // If already paid (late contact save), send receipt before responding.
+  // Unpaid + email: recreate Grow link so official invoiceNotifyUrl has payer email.
+  let paymentUrl = chargePaymentUrl(charge)
+  if (charge.status !== 'paid' && email) {
+    const linked = await ensureGrowPaymentLinkWithPayerEmail(admin, {
+      chargeId: charge.id,
+      email,
+    })
+    if (linked.ok) {
+      paymentUrl = linked.paymentUrl
+    } else {
+      console.error('[public-pay] grow link with email failed', charge.id, linked.error)
+    }
+  }
+
+  // If already paid (late contact save), send BINO confirmation (not Grow invoice).
   let receiptSent = false
   let receiptError: string | undefined
   if (charge.status === 'paid' && email && !charge.receipt_email_sent_at) {
@@ -209,7 +226,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     ok: true,
     receipt_email: email,
     receipt_phone: phone,
-    payment_url: chargePaymentUrl(charge),
+    payment_url: paymentUrl,
     receipt_sent: receiptSent,
     receipt_error: receiptError || null,
   })

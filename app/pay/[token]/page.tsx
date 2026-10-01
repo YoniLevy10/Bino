@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import {
   residentSafeDescription,
@@ -17,7 +17,6 @@ type PayPayload = {
   currency: string
   status: string
   can_pay: boolean
-  can_wallet_pay?: boolean
   payment_url: string | null
   paid_at: string | null
   receipt_email?: string | null
@@ -31,51 +30,8 @@ type PayPayload = {
   project_name: string | null
 }
 
-declare global {
-  interface Window {
-    growPayment?: {
-      init: (opts: {
-        environment: string
-        version: string
-        events: Record<string, (payload?: unknown) => void>
-      }) => void
-      renderPaymentOptions: (authCode: string) => void
-    }
-  }
-}
-
-const GROW_SDK_SRC = 'https://cdn.meshulam.co.il/sdk/gs.min.js'
-
-function loadGrowSdk(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') {
-      reject(new Error('no window'))
-      return
-    }
-    if (window.growPayment) {
-      resolve()
-      return
-    }
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GROW_SDK_SRC}"]`)
-    if (existing) {
-      existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error('טעינת תשלום נכשלה')), {
-        once: true,
-      })
-      return
-    }
-    const s = document.createElement('script')
-    s.src = GROW_SDK_SRC
-    s.async = true
-    s.onload = () => resolve()
-    s.onerror = () => reject(new Error('טעינת תשלום נכשלה'))
-    document.head.appendChild(s)
-  })
-}
-
 export default function PublicPayPage() {
   const params = useParams()
-  const router = useRouter()
   const token = typeof params?.token === 'string' ? params.token : ''
   const [data, setData] = useState<PayPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -86,21 +42,6 @@ export default function PublicPayPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [walletBusy, setWalletBusy] = useState(false)
-  const [walletHint, setWalletHint] = useState<string | null>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const sdkReadyRef = useRef(false)
-
-  async function refreshStatus(): Promise<PayPayload | null> {
-    if (!token) return null
-    const res = await fetchWithTimeout(`/api/public/pay/${encodeURIComponent(token)}`, {
-      method: 'GET',
-    })
-    const json = (await res.json()) as PayPayload & { error?: string }
-    if (!res.ok) return null
-    setData(json)
-    return json
-  }
 
   useEffect(() => {
     if (!token) {
@@ -129,36 +70,14 @@ export default function PublicPayPage() {
     })()
   }, [token])
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
+  async function saveReceiptContact(): Promise<{ ok: boolean; paymentUrl?: string | null }> {
+    if (!token) return { ok: false }
+    if (!wantReceipt && !phone.trim()) {
+      return { ok: true, paymentUrl: data?.payment_url }
     }
-  }, [])
-
-  function startPaidPoll() {
-    if (pollRef.current) clearInterval(pollRef.current)
-    let ticks = 0
-    pollRef.current = setInterval(() => {
-      ticks += 1
-      void refreshStatus().then((row) => {
-        if (row?.status === 'paid') {
-          if (pollRef.current) clearInterval(pollRef.current)
-          router.push(`/pay/success?t=${encodeURIComponent(token)}`)
-        }
-      })
-      if (ticks >= 40 && pollRef.current) {
-        clearInterval(pollRef.current)
-        setWalletHint('אם שילמתם — אפשר לרענן בעוד רגע.')
-      }
-    }, 3000)
-  }
-
-  async function saveReceiptContact(): Promise<boolean> {
-    if (!token) return false
-    if (!wantReceipt && !phone.trim()) return true
     if (wantReceipt && !email.trim()) {
-      setFormError('להודעת אישור במייל — הזינו כתובת מייל')
-      return false
+      setFormError('לקבלת חשבונית רשמית במייל — הזינו כתובת מייל')
+      return { ok: false }
     }
     setSaving(true)
     try {
@@ -174,122 +93,51 @@ export default function PublicPayPage() {
         },
         MUTATION_FETCH_TIMEOUT_MS
       )
-      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        payment_url?: string | null
+      }
       if (!res.ok) {
         setFormError(json.error || 'שמירת פרטים נכשלה')
         setSaving(false)
-        return false
+        return { ok: false }
       }
+      if (json.payment_url) {
+        setData((prev) => (prev ? { ...prev, payment_url: json.payment_url! } : prev))
+      }
+      setSaving(false)
+      return { ok: true, paymentUrl: json.payment_url || data?.payment_url }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'שמירה נכשלה')
       setSaving(false)
-      return false
+      return { ok: false }
     }
-    setSaving(false)
-    return true
   }
 
   async function continueToPay(e: FormEvent) {
     e.preventDefault()
     if (!data?.payment_url || !token) return
     setFormError(null)
-    setWalletHint(null)
 
     if (!acceptedTerms) {
       setFormError('יש לאשר את התקנון לפני המשך לתשלום')
       return
     }
 
-    const ok = await saveReceiptContact()
-    if (!ok) return
-
-    window.location.href = data.payment_url
-  }
-
-  async function openWallet() {
-    if (!data || !token) return
-    setFormError(null)
-    setWalletHint(null)
-
-    if (!acceptedTerms) {
-      setFormError('יש לאשר את התקנון לפני המשך לתשלום')
-      return
-    }
-    if (!phone.trim()) {
-      setFormError('נדרש מספר טלפון לתשלום')
+    if (wantReceipt && !email.trim()) {
+      setFormError('לקבלת חשבונית רשמית במייל — הזינו כתובת מייל')
       return
     }
 
-    const contactOk = await saveReceiptContact()
-    if (!contactOk) return
+    const saved = await saveReceiptContact()
+    if (!saved.ok) return
 
-    setWalletBusy(true)
-    try {
-      await loadGrowSdk()
-      const res = await fetchWithTimeout(
-        `/api/public/pay/${encodeURIComponent(token)}/wallet`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: phone.trim(),
-            email: wantReceipt ? email.trim() || null : email.trim() || null,
-            full_name: data.resident_name || undefined,
-          }),
-        },
-        MUTATION_FETCH_TIMEOUT_MS
-      )
-      const json = (await res.json().catch(() => ({}))) as {
-        error?: string
-        authCode?: string
-        sdkEnvironment?: 'DEV' | 'PRODUCTION'
-      }
-      if (!res.ok || !json.authCode) {
-        setFormError(json.error || 'פתיחת התשלום נכשלה')
-        setWalletBusy(false)
-        return
-      }
-
-      if (!window.growPayment) {
-        setFormError('לא ניתן לפתוח תשלום כרגע')
-        setWalletBusy(false)
-        return
-      }
-
-      if (!sdkReadyRef.current) {
-        window.growPayment.init({
-          environment: json.sdkEnvironment || 'DEV',
-          version: '1',
-          events: {
-            onSuccess: () => {
-              setWalletHint('התשלום התקבל. מעדכנים…')
-              startPaidPoll()
-            },
-            onFailure: () => {
-              setWalletHint('התשלום לא הושלם.')
-              setWalletBusy(false)
-            },
-            onError: () => {
-              setWalletHint('אירעה שגיאה בתשלום.')
-              setWalletBusy(false)
-            },
-            onTimeout: () => {
-              setWalletHint('פג הזמן. אפשר לנסות שוב.')
-              setWalletBusy(false)
-            },
-            onWalletChange: () => {},
-          },
-        })
-        sdkReadyRef.current = true
-      }
-
-      window.growPayment.renderPaymentOptions(json.authCode)
-      setWalletHint(null)
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'פתיחת תשלום נכשלה')
-    } finally {
-      setWalletBusy(false)
+    const payUrl = saved.paymentUrl || data.payment_url
+    if (!payUrl) {
+      setFormError('קישור התשלום לא מוכן — נסו שוב')
+      return
     }
+    window.location.href = payUrl
   }
 
   if (loading) {
@@ -312,7 +160,7 @@ export default function PublicPayPage() {
     )
   }
 
-  const showPayForm = data.can_pay || data.can_wallet_pay
+  const showPayForm = Boolean(data.can_pay && data.payment_url)
   const description = residentSafeDescription(data.description)
   const title = residentSafeTitle(data.title)
   const clientName = data.client.name || 'ועד הבית'
@@ -349,7 +197,9 @@ export default function PublicPayPage() {
               {data.receipt_email_sent ? (
                 <p style={styles.metaDark}>אישור נשלח למייל.</p>
               ) : data.receipt_email ? (
-                <p style={styles.metaDark}>אישור במייל בדרך אליכם.</p>
+                <p style={styles.metaDark}>
+                  חשבונית רשמית מ-Grow נשלחת בנפרד למייל שהזנתם (אם מופעל בחשבון).
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -362,7 +212,7 @@ export default function PublicPayPage() {
                   checked={wantReceipt}
                   onChange={(ev) => setWantReceipt(ev.target.checked)}
                 />
-                שלחו לי אישור תשלום במייל
+                שלחו לי חשבונית רשמית במייל (Grow)
               </label>
               {wantReceipt ? (
                 <label style={styles.fieldLabel}>
@@ -420,28 +270,14 @@ export default function PublicPayPage() {
               </label>
 
               {formError ? <p style={styles.formErr}>{formError}</p> : null}
-              {walletHint ? <p style={styles.walletHint}>{walletHint}</p> : null}
 
-              {data.can_pay && data.payment_url ? (
-                <button
-                  type="submit"
-                  style={styles.ctaBtn}
-                  disabled={saving || walletBusy || !acceptedTerms}
-                >
-                  {saving ? 'שומר…' : 'לתשלום מאובטח'}
-                </button>
-              ) : null}
-
-              {data.can_wallet_pay ? (
-                <button
-                  type="button"
-                  style={data.can_pay && data.payment_url ? styles.secondaryBtn : styles.ctaBtn}
-                  disabled={saving || walletBusy || !acceptedTerms}
-                  onClick={() => void openWallet()}
-                >
-                  {walletBusy ? 'פותח…' : 'תשלום מהיר'}
-                </button>
-              ) : null}
+              <button
+                type="submit"
+                style={styles.ctaBtn}
+                disabled={saving || !acceptedTerms}
+              >
+                {saving ? 'שומר…' : 'לתשלום מאובטח'}
+              </button>
 
               <p style={styles.legalLinks}>
                 <Link href="/contact" style={styles.inlineLink}>
@@ -603,13 +439,6 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     textAlign: 'center',
   },
-  walletHint: {
-    margin: 0,
-    color: '#1e40af',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 1.45,
-  },
   inlineLink: {
     color: '#1e40af',
     fontWeight: 700,
@@ -633,17 +462,5 @@ const styles: Record<string, CSSProperties> = {
     border: 'none',
     cursor: 'pointer',
     marginTop: 4,
-  },
-  secondaryBtn: {
-    display: 'block',
-    width: '100%',
-    padding: '12px 28px',
-    background: 'transparent',
-    color: '#1e40af',
-    borderRadius: 14,
-    fontWeight: 700,
-    fontSize: 15,
-    border: '1px solid #93c5fd',
-    cursor: 'pointer',
   },
 }

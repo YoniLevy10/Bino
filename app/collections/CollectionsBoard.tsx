@@ -927,9 +927,16 @@ export function CollectionsBoard() {
                       target="_blank"
                       rel="noopener noreferrer"
                       style={styles.docId}
+                      title={row.grow_invoice_document_type || undefined}
                     >
-                      {row.grow_invoice_email_sent_at ? 'חשבונית נשלחה' : 'חשבונית'}
+                      {row.grow_invoice_document_type
+                        ? row.grow_invoice_document_type
+                        : row.grow_invoice_email_sent_at
+                          ? 'מסמך Grow נשלח'
+                          : 'מסמך Grow'}
                     </a>
+                  ) : status === 'paid' && !row.grow_invoice_received_at ? (
+                    <span style={styles.docId}>ממתין למסמך Grow</span>
                   ) : null}
                 </div>
               </article>
