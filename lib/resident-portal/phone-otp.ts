@@ -4,6 +4,7 @@ import { normalizePhone } from '@/lib/residents-whatsapp'
 import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { logAudit } from '@/lib/audit'
+import { BINO_PUBLIC_ORIGIN, getEnvPublicOrigin } from '@/lib/public-origin'
 
 const OTP_TTL_MS = 10 * 60 * 1000
 const MAX_SENDS_PER_PHONE_PER_HOUR = 3
@@ -11,6 +12,32 @@ const SYNTHETIC_EMAIL_DOMAIN = 'residents.bino.local'
 
 export function residentAuthEmailFromPhone(normalizedPhone: string): string {
   return `r${normalizedPhone}@${SYNTHETIC_EMAIL_DOMAIN}`
+}
+
+/** Host for Apple/Android domain-bound SMS OTP (must match the site the resident opens). */
+export function residentPortalOtpSmsHost(): string {
+  const origin = getEnvPublicOrigin() || BINO_PUBLIC_ORIGIN
+  try {
+    return new URL(origin).hostname
+  } catch {
+    return 'bino.casa'
+  }
+}
+
+/**
+ * SMS copy for resident portal OTP.
+ * Last line is Apple domain-bound format so iOS/Safari suggest “From Messages”.
+ * @see https://developer.apple.com/documentation/security/enabling-autofill-for-domain-bound-sms-codes
+ */
+export function buildResidentPortalOtpSms(opts: {
+  company: string
+  code: string
+  host?: string
+}): string {
+  const company = opts.company.trim() || 'BINO'
+  const code = opts.code.trim()
+  const host = (opts.host || residentPortalOtpSmsHost()).replace(/^www\./i, '')
+  return `${company}: הסיסמה לכניסה לאזור האישי היא ${code}. בתוקף ל-10 דקות. אל תשתפו.\n\n@${host} #${code}`
 }
 
 function hashOtpCode(code: string, phone: string): string {
@@ -122,7 +149,7 @@ export async function requestResidentPhoneOtp(
     (clientRow as { name?: string | null } | null)?.name?.trim() ||
     'BINO'
 
-  const smsBody = `${company}: הסיסמה לכניסה לאזור האישי היא ${code}. בתוקף ל-10 דקות. אל תשתפו.`
+  const smsBody = buildResidentPortalOtpSms({ company, code })
   const sent = await sendResidentSMS(normalized, smsBody, sender, project.client_id)
   if (!sent) {
     return { ok: false, error: 'שליחת SMS נכשלה — נסו שוב', status: 502 }
