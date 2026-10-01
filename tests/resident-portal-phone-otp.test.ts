@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { normalizePhone019, resolve019SmsSource, is019UnverifiedSourceError } from '@/lib/sms-019-core'
-import { residentAuthEmailFromPhone } from '@/lib/resident-portal/phone-otp'
+import {
+  buildResidentPortalOtpSms,
+  residentAuthEmailFromPhone,
+} from '@/lib/resident-portal/phone-otp'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 
 describe('resident phone otp helpers', () => {
@@ -11,6 +14,18 @@ describe('resident phone otp helpers', () => {
 
   it('builds stable synthetic auth email from phone', () => {
     expect(residentAuthEmailFromPhone('972501234567')).toBe('r972501234567@residents.bino.local')
+  })
+
+  it('builds Apple domain-bound OTP SMS with code on the last line', () => {
+    const body = buildResidentPortalOtpSms({
+      company: 'Bamakor',
+      code: '830191',
+      host: 'bino.casa',
+    })
+    expect(body).toContain('Bamakor: הסיסמה לכניסה לאזור האישי היא 830191.')
+    expect(body.trimEnd().endsWith('@bino.casa #830191')).toBe(true)
+    const lines = body.split('\n')
+    expect(lines[lines.length - 1]).toBe('@bino.casa #830191')
   })
 })
 

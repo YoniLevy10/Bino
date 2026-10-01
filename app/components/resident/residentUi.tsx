@@ -242,8 +242,12 @@ export function ResidentOtpBoxes({
       <input
         className="resident-otp-hidden"
         type="text"
+        name="one-time-code"
         inputMode="numeric"
         autoComplete="one-time-code"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
         required
         pattern="[0-9]{6}"
         maxLength={6}
