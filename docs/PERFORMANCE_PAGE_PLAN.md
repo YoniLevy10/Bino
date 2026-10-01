@@ -14,36 +14,48 @@
 
 יעדי מוצר (warm nav אחרי ביקור ראשון בטאב): T_nav &lt; 300ms תחושתי, T_full &lt; 1s לרשימות יומיומיות.
 
-## ממצאי מדידה חיה
+## ממצאי מדידה חיה (baseline — production לפני merge של גל 1)
 
-ניסיון מדידה אוטומטית מול `https://bino.casa` עם `savion@bamakor.com` נכשל ב-login (401 — סיסמת הדמו בסביבת הסוכן לא תואמת production; אין `DEMO_LOGIN_PASSWORD` / service role ב-env של ה-agent). סוכן דפדפן רץ במקביל; אם יצליח — הזמנים יעודכנו ב-artifacts.
+מדידת דפדפן על `https://bino.casa` (OpsBrain demo), 2026-10-01.  
+זמנים בקרוב ל־ms (קיר cold/warm מעורב באותה סשן; יעד warm: T_nav &lt; 300ms, T_full &lt; 1s).
 
-בינתיים התוכנית והתיקונים מבוססים על **ביקורת קוד מלאה** של כל לשוניות המנהל + דפוסי fetch (ראה גם audit #29/#31/#44/#45).
+| Route | T_nav_ms | T_full_ms | T_detail_ms | Notes |
+|-------|----------|-----------|-------------|-------|
+| `/dashboard` | ~800 | ~1500 | — | KPIs + טבלת פעילות |
+| `/tickets` | ~700 | ~3000 | ~800 | ספינר ראשוני; Drawer תקלה #201 |
+| `/projects` | ~600 | ~2000 | ~1200 | Drawer: מידע מהיר, תקלות פעילות ב־waterfall (~+800ms) |
+| `/residents` | ~600 | ~1800 | — | לחיצת «עריכה» לא נתפסה במדידה (מודאל) |
+| `/workers` | ~600 | ~2000 | — | כרטיסי עובדים; פרטי Drawer לא נפתחו בלחיצת עריכה |
+| `/tasks` | ~700 | ~3000 | — | ספינר; משימה אחת בדמו |
+| `/site-tours` | ~700 | ~3000 | — | empty state |
+| `/summary` | ~600 | ~1800 | — | KPIs + עומס פרויקטים |
+| `/settings` | ~700 | ~3000 | — | ספינר; כמה סקשנים |
+| `/addons` | ~600 | ~1800 | — | 8 תוספים |
+| `/whatsapp-inbox` | ~700 | ~3000 | — | «טוען…» ואז empty |
 
-| Route | מצב לפני גל 1 | צוואר בקבוק עיקרי | תיקון בגל 1 |
-|-------|---------------|-------------------|-------------|
-| `/dashboard` | RQ + LS + Realtime | KPI/logs משניים אחרי paint | נשאר; ללא שינוי middleware |
-| `/tickets` | RQ חם; Drawer סטטי | Bundle של TicketDetailDrawer; logs→attachments בטור | `next/dynamic` ל-Drawer; Promise.all ל-logs+attachments |
-| `/workers` | useEffect + LS בלבד | לא שותף RQ עם dashboard/tickets | `useTenantWorkersList` + hydrate LS→RQ |
-| `/projects` | useEffect כפול | לא שותף RQ | `useTenantProjectsList` + `useTenantWorkersList` |
-| `/residents` | עמודים של 500; סדר לא יציב | Paint כבד; bulk-delete סדרתי | page size 100 + order יציב; RQ; Promise.all למחיקה; dynamic למודלים |
-| `/tasks` | תקרה 300 בלי pagination | טעינת כל המשימות | `limit/offset/filter` + כפתור "טען עוד" |
-| `/collections` | summary בלי pagination | PostgREST חותך ב-1000 | `fetchAllRows` לסיכום |
-| `/summary` | דף גדול | history יכול להיות כבד | גל 2 (קיצוב טווח) |
-| `/settings` | כמה API בטור | waterfall ב-mount | גל 2 |
-| `/professionals` | select מלא | unbounded | גל 2 + RQ |
-| `/whatsapp-inbox` | RQ קיים | Realtime בערוץ פתוח | ניטור בלבד |
-| `/attendance` | limit 500 | נדיר בדמו | ניטור |
-| `/calendar`, `/campaigns`, `/site-tours`, `/qr`, `/addons` | קלים יחסית | — | עדיפות נמוכה |
+תובנות UX מהמדידה: shell נטען לפני הנתונים (T_nav סביר יחסית ל־T_full); ספינר לוגו+פס בכל הדפים הכבדים; waterfall בפרטי פרויקט.
+
+### מיפוי ממצא → תיקון גל 1
+
+| Route | צוואר בקבוק (קוד + מדידה) | תיקון בגל 1 |
+|-------|---------------------------|-------------|
+| `/dashboard` | RQ קיים; T_full ~1.5s מ־KPI משניים | ללא שינוי middleware; דחיית KPI בגל 2 |
+| `/tickets` | T_full ~3s; Drawer ב־bundle | `next/dynamic` + logs∥attachments |
+| `/workers` | T_full ~2s; לא שותף RQ | `useTenantWorkersList` + LS→RQ |
+| `/projects` | T_full ~2s; detail waterfall | RQ משותף; תקלות detail עדיין async |
+| `/residents` | T_full ~1.8s; עמודים גדולים | page size 100 + order יציב + RQ |
+| `/tasks` | T_full ~3s | pagination API + «טען עוד» |
+| `/collections` | לא נמדד (addon) | `fetchAllRows` ל־summary (#31) |
+| `/settings` | T_full ~3s | גל 2 — Promise.all |
+| `/summary`, `/professionals`, addons אחרים | T_full 1.8–3s | גל 2 לפי עדיפות |
 
 ### פרטי ישות (חובה)
 
-| זרימה | מצב | תיקון |
-|-------|-----|-------|
-| פרטי עובד (Drawer) | נפתח מיד; תקלות limit 10 | RQ לרשימה מאיץ הגעה ללחיצה |
-| עריכת דייר (מודאל) | מודאל כבד ב-bundle הראשוני | `next/dynamic` ל-Add/Import/Share |
-| פרטי תקלה | logs ואז attachments | טעינה במקביל |
-| פרטי פרויקט | תקלות open/closed בנפרד | RQ לרשימת פרויקטים |
+| זרימה | מדידה | תיקון |
+|-------|--------|-------|
+| פרטי תקלה | T_detail ~800ms | טעינה במקביל ל־logs+attachments |
+| פרטי פרויקט | T_detail ~1200ms (waterfall תקלות) | RQ לרשימה; תקלות נשארות async |
+| פרטי עובד / עריכת דייר | לא נמדדו במדויק (UI click miss) | RQ + dynamic למודאלי דיירים |
 
 ## צווארי בקבוק משותפים
 
