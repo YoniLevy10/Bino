@@ -216,12 +216,15 @@ export default function SummaryPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyLoadError, setHistoryLoadError] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [historyHasMore, setHistoryHasMore] = useState(false)
+  const [historyTruncated, setHistoryTruncated] = useState(false)
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false)
   const [historyDataPeriodKey, setHistoryDataPeriodKey] = useState<string | null>(null)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [lightboxKind, setLightboxKind] = useState<'image' | 'video'>('image')
   const [isMobile, setIsMobile] = useState(false)
-    const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
-  const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('all')
+  const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
+  const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('month')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -342,21 +345,32 @@ export default function SummaryPage() {
       setHistoryTickets([])
       setHistoryDataPeriodKey(null)
       setHistoryLoaded(false)
+      setHistoryHasMore(false)
+      setHistoryTruncated(false)
       setHistoryLoading(true)
     }
     try {
       const params = new URLSearchParams({
         from: range.from.toISOString(),
         to: range.toExclusive.toISOString(),
+        limit: '200',
+        offset: '0',
       })
+      if (historyProjectFilter !== 'ALL') params.set('project_id', historyProjectFilter)
       const res = await fetchWithTimeout(
         `/api/summary/history?${params}`,
         { credentials: 'include' },
         SUMMARY_FETCH_TIMEOUT_MS
       )
       if (!res.ok) throw new Error('summary history failed')
-      const data = (await res.json()) as { tickets: TicketRow[] }
+      const data = (await res.json()) as {
+        tickets: TicketRow[]
+        has_more?: boolean
+        truncated?: boolean
+      }
       setHistoryTickets(data.tickets)
+      setHistoryHasMore(Boolean(data.has_more))
+      setHistoryTruncated(Boolean(data.truncated))
       setHistoryDataPeriodKey(periodKey)
       setHistoryLoaded(true)
       setHistoryLoadError(false)
@@ -368,7 +382,52 @@ export default function SummaryPage() {
       }
     }
     if (!silent) setHistoryLoading(false)
-  }, [historyPeriod, customFrom, customTo])
+  }, [historyPeriod, customFrom, customTo, historyProjectFilter])
+
+  const loadMoreHistory = useCallback(async () => {
+    if (historyLoadingMore || !historyHasMore) return
+    const range = resolveDateRange(historyPeriod, customFrom, customTo)
+    if (!range) return
+    setHistoryLoadingMore(true)
+    try {
+      const params = new URLSearchParams({
+        from: range.from.toISOString(),
+        to: range.toExclusive.toISOString(),
+        limit: '200',
+        offset: String(historyTickets.length),
+      })
+      if (historyProjectFilter !== 'ALL') params.set('project_id', historyProjectFilter)
+      const res = await fetchWithTimeout(
+        `/api/summary/history?${params}`,
+        { credentials: 'include' },
+        SUMMARY_FETCH_TIMEOUT_MS
+      )
+      if (!res.ok) throw new Error('summary history failed')
+      const data = (await res.json()) as {
+        tickets: TicketRow[]
+        has_more?: boolean
+        truncated?: boolean
+      }
+      setHistoryTickets((prev) => {
+        const seen = new Set(prev.map((t) => t.id))
+        return [...prev, ...data.tickets.filter((t) => !seen.has(t.id))]
+      })
+      setHistoryHasMore(Boolean(data.has_more))
+      setHistoryTruncated(Boolean(data.truncated))
+    } catch {
+      toast.error('טעינת היסטוריה נוספת נכשלה')
+    } finally {
+      setHistoryLoadingMore(false)
+    }
+  }, [
+    historyLoadingMore,
+    historyHasMore,
+    historyPeriod,
+    customFrom,
+    customTo,
+    historyTickets.length,
+    historyProjectFilter,
+  ])
 
   useEffect(() => {
     void loadSummary()
@@ -1078,6 +1137,12 @@ export default function SummaryPage() {
               </p>
             )}
 
+            {historyTruncated ? (
+              <div style={styles.historyTruncationBanner}>
+                מוצגות עד 2,000 תקלות אחרונות. צמצמו טווח תאריכים לייצוא מלא יותר.
+              </div>
+            ) : null}
+
             {showHistoryInlineLoader ? (
               <SectionLoader />
             ) : historyLoadError && !historyLoaded ? (
@@ -1210,6 +1275,18 @@ export default function SummaryPage() {
                 ))}
               </div>
             )}
+            {historyHasMore ? (
+              <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={historyLoadingMore}
+                  onClick={() => void loadMoreHistory()}
+                >
+                  טען עוד היסטוריה
+                </Button>
+              </div>
+            ) : null}
           </Card>
         ) : (
           <>

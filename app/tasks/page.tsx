@@ -109,22 +109,39 @@ type MaintenanceTasksPayload = {
   workers: WorkerOpt[]
   projects: ProjectOpt[]
   attachments_by_task: Record<string, TaskAttachment[]>
+  has_more: boolean
 }
 
-async function fetchMaintenanceTasks(): Promise<MaintenanceTasksPayload> {
-  const tasksRes = await fetchWithTimeout('/api/maintenance-tasks')
+const TASKS_PAGE_SIZE = 100
+
+function apiFilterForList(listFilter: ListFilter): 'open' | 'all' {
+  return listFilter === 'all' ? 'all' : 'open'
+}
+
+async function fetchMaintenanceTasksPage(
+  filter: 'open' | 'all',
+  offset: number
+): Promise<MaintenanceTasksPayload> {
+  const params = new URLSearchParams({
+    limit: String(TASKS_PAGE_SIZE),
+    offset: String(offset),
+    filter,
+  })
+  const tasksRes = await fetchWithTimeout(`/api/maintenance-tasks?${params}`)
   if (!tasksRes.ok) throw new Error('טעינת משימות נכשלה')
   const json = (await tasksRes.json()) as {
     tasks?: TaskRow[]
     workers?: WorkerOpt[]
     projects?: ProjectOpt[]
     attachments_by_task?: Record<string, TaskAttachment[]>
+    has_more?: boolean
   }
   return {
     tasks: json.tasks || [],
     workers: json.workers || [],
     projects: json.projects || [],
     attachments_by_task: json.attachments_by_task || {},
+    has_more: Boolean(json.has_more),
   }
 }
 
@@ -144,6 +161,9 @@ export default function TasksPage() {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const createFileRef = useRef<HTMLInputElement | null>(null)
   const [createFile, setCreateFile] = useState<File | null>(null)
+  const [extraTasks, setExtraTasks] = useState<TaskRow[]>([])
+  const [hasMoreTasks, setHasMoreTasks] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const clientIdQuery = useQuery({
     queryKey: ['tenant-client-id'],
@@ -151,17 +171,25 @@ export default function TasksPage() {
     staleTime: 5 * 60_000,
   })
   const clientId = clientIdQuery.data
+  const apiFilter = apiFilterForList(listFilter)
 
   const tasksQuery = useQuery({
-    queryKey: clientId ? queryKeys.maintenanceTasks(clientId) : ['maintenance-tasks', 'pending'],
-    queryFn: fetchMaintenanceTasks,
+    queryKey: clientId
+      ? queryKeys.maintenanceTasks(clientId, apiFilter, TASKS_PAGE_SIZE, 0)
+      : ['maintenance-tasks', 'pending'],
+    queryFn: () => fetchMaintenanceTasksPage(apiFilter, 0),
     enabled: Boolean(clientId),
     staleTime: 30_000,
   })
 
-  const tasks = tasksQuery.data?.tasks ?? []
+  const baseTasks = tasksQuery.data?.tasks ?? []
   const workers = tasksQuery.data?.workers ?? []
   const projects = tasksQuery.data?.projects ?? []
+  const tasks = useMemo(() => {
+    if (extraTasks.length === 0) return baseTasks
+    const seen = new Set(baseTasks.map((t) => t.id))
+    return [...baseTasks, ...extraTasks.filter((t) => !seen.has(t.id))]
+  }, [baseTasks, extraTasks])
   const loading = clientIdQuery.isLoading || (tasksQuery.isLoading && !tasksQuery.data)
 
   useEffect(() => {
@@ -170,6 +198,11 @@ export default function TasksPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useEffect(() => {
+    setExtraTasks([])
+    setHasMoreTasks(Boolean(tasksQuery.data?.has_more))
+  }, [apiFilter, tasksQuery.dataUpdatedAt, tasksQuery.data?.has_more])
 
   useEffect(() => {
     const fromApi = tasksQuery.data?.attachments_by_task
@@ -191,12 +224,28 @@ export default function TasksPage() {
   }, [])
 
   const load = useCallback(async () => {
+    setExtraTasks([])
     if (clientId) {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.maintenanceTasks(clientId) })
+      await queryClient.invalidateQueries({ queryKey: ['maintenance-tasks', clientId] })
     } else {
       await tasksQuery.refetch()
     }
   }, [clientId, queryClient, tasksQuery])
+
+  async function loadMoreTasks() {
+    if (loadingMore || !hasMoreTasks) return
+    setLoadingMore(true)
+    try {
+      const page = await fetchMaintenanceTasksPage(apiFilter, tasks.length)
+      setExtraTasks((prev) => [...prev, ...page.tasks])
+      setHasMoreTasks(page.has_more)
+      setAttachmentsByTask((prev) => ({ ...page.attachments_by_task, ...prev }))
+    } catch {
+      toast.error('טעינת משימות נוספות נכשלה')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     if (tasksQuery.isError) {
@@ -205,10 +254,10 @@ export default function TasksPage() {
   }, [tasksQuery.isError, tasksQuery.error])
 
   const visible = useMemo(() => {
-    if (listFilter === 'all') return tasks
     if (listFilter === 'today') {
       return tasks.filter((t) => isMaintenanceTaskForToday({ dueAt: t.due_at, status: t.status }))
     }
+    if (listFilter === 'all') return tasks
     return tasks.filter((t) => t.status !== 'DONE')
   }, [tasks, listFilter])
 
@@ -622,6 +671,18 @@ export default function TasksPage() {
                 })}
               </div>
             ))}
+            {hasMoreTasks && listFilter !== 'today' ? (
+              <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={loadingMore}
+                  onClick={() => void loadMoreTasks()}
+                >
+                  טען עוד משימות
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

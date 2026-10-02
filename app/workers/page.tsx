@@ -13,8 +13,10 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
+import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { shouldShowPageLoadError } from '@/lib/page-load-error'
@@ -26,7 +28,8 @@ import {
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validateEmail } from '@/lib/validators'
 import { ticketDetailPath } from '@/lib/ticket-deep-link'
-import { WORKERS_LIST_SELECT } from '@/lib/hooks/use-workers-list'
+import { WORKERS_LIST_SELECT, useTenantWorkersList } from '@/lib/hooks/use-workers-list'
+import { queryKeys } from '@/lib/query-keys'
 import {
   AppShell,
   MobileHeader,
@@ -173,11 +176,20 @@ async function findWorkerByPhoneAndName(
 
 export default function WorkersPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { openMenu } = useMobileMenu()
   const { hasAddon, isBootstrapped } = usePaidAddons()
+  const {
+    clientId: rqClientId,
+    workers: rqWorkers,
+    isLoading: workersLoading,
+    hasData: workersHasData,
+    refetch: refetchWorkers,
+    error: workersQueryError,
+  } = useTenantWorkersList()
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [clientId, setClientId] = useState<string>('')
-  const [loading, setLoading] = useState(true)
+  const [cachePainted, setCachePainted] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [sendingPortalLinkId, setSendingPortalLinkId] = useState<string | null>(null)
@@ -201,57 +213,70 @@ export default function WorkersPage() {
   const [workerTickets, setWorkerTickets] = useState<TicketRow[]>([])
   const [loadingWorkerTickets, setLoadingWorkerTickets] = useState(false)
 
-  async function loadClientId() {
-    const id = await resolveBinoClientIdForBrowser()
-    setClientId(id)
-    return id
-  }
-
-  async function loadWorkers(nextClientId?: string) {
-    const activeClientId = nextClientId || clientId
-    if (!activeClientId) return
-
-    const { data, error } = await supabase
-      .from('workers')
-      .select(WORKERS_LIST_SELECT)
-      .eq('client_id', activeClientId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    const nextWorkers = (data as WorkerRow[]) || []
-    setWorkers(nextWorkers)
-    writeWorkersCache(activeClientId, { workers: nextWorkers })
-  }
+  // Hydrate from localStorage / seed RQ so warm nav from dashboard/tickets paints instantly.
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const syncCid = tryReadSessionBoundClientId()
+        if (syncCid && !cancelled) {
+          const existing = queryClient.getQueryData(queryKeys.workers(syncCid))
+          if (existing) {
+            setClientId(syncCid)
+            setCachePainted(true)
+          }
+        }
+        const fetchedClientId = await resolveBinoClientIdForBrowser()
+        if (cancelled) return
+        setClientId(fetchedClientId)
+        if (queryClient.getQueryData(queryKeys.workers(fetchedClientId))) {
+          setCachePainted(true)
+          return
+        }
+        const cached = shouldSkipStalePageCache() ? null : readWorkersCache(fetchedClientId)
+        if (!cached || cancelled) return
+        setWorkers(cached.workers)
+        setCachePainted(true)
+        queryClient.setQueryData(queryKeys.workers(fetchedClientId), cached.workers)
+      } catch {
+        /* RQ will load */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [queryClient])
 
   useEffect(() => {
-    const initialize = async () => {
-      const fetchedClientId = await loadClientId()
-      const cached = shouldSkipStalePageCache() ? null : readWorkersCache(fetchedClientId)
-      if (cached) {
-        setWorkers(cached.workers)
-        setLoading(false)
-      } else {
-        setLoading(true)
-      }
-      const result = await asyncHandler(
-        async () => {
-          await loadWorkers(fetchedClientId)
-          return true
-        },
-        { context: 'טעינת עובדים', showErrorToast: !cached }
-      )
-      setLoadError(
-        shouldShowPageLoadError({
-          fetchSucceeded: !!result,
-          silent: !!cached,
-          hasDataToShow: !!cached || !!result,
-        })
-      )
-      setLoading(false)
+    if (rqClientId) setClientId(rqClientId)
+  }, [rqClientId])
+
+  useEffect(() => {
+    if (!workersHasData) return
+    const next = rqWorkers as WorkerRow[]
+    setWorkers(next)
+    setCachePainted(true)
+    setLoadError(false)
+    if (rqClientId) writeWorkersCache(rqClientId, { workers: next })
+  }, [rqWorkers, workersHasData, rqClientId])
+
+  useEffect(() => {
+    if (!workersQueryError || workers.length > 0 || cachePainted) return
+    setLoadError(true)
+  }, [workersQueryError, workers.length, cachePainted])
+
+  const loading = workersLoading && !cachePainted && workers.length === 0
+
+  async function loadWorkers(nextClientId?: string) {
+    const activeClientId = nextClientId || clientId || rqClientId
+    if (activeClientId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.workers(activeClientId) })
     }
-    void initialize()
-  }, [])
+    const result = await refetchWorkers()
+    if (result.data && activeClientId) {
+      writeWorkersCache(activeClientId, { workers: result.data as WorkerRow[] })
+    }
+  }
 
   function openCreateDrawer() {
     closeDetailDrawer()
@@ -285,7 +310,10 @@ export default function WorkersPage() {
   function prependWorker(worker: WorkerRow) {
     setWorkers((prev) => {
       const next = [worker, ...prev.filter((w) => w.id !== worker.id)]
-      if (clientId) writeWorkersCache(clientId, { workers: next })
+      if (clientId) {
+        writeWorkersCache(clientId, { workers: next })
+        queryClient.setQueryData(queryKeys.workers(clientId), next)
+      }
       return next
     })
   }
@@ -763,9 +791,9 @@ export default function WorkersPage() {
             message="נסו שוב בעוד רגע. אם הבעיה נמשכת — סגרו את האפליקציה ופתחו מחדש."
             onRetry={() => {
               setLoadError(false)
-              setLoading(true)
               void (async () => {
-                const fetchedClientId = await loadClientId()
+                const fetchedClientId = clientId || (await resolveBinoClientIdForBrowser())
+                setClientId(fetchedClientId)
                 const result = await asyncHandler(
                   async () => {
                     await loadWorkers(fetchedClientId)
@@ -777,10 +805,9 @@ export default function WorkersPage() {
                   shouldShowPageLoadError({
                     fetchSucceeded: !!result,
                     silent: false,
-                    hasDataToShow: false,
+                    hasDataToShow: workers.length > 0,
                   })
                 )
-                setLoading(false)
               })()
             }}
           />
@@ -1088,11 +1115,16 @@ export default function WorkersPage() {
                             toast.error('עדכון העדפות נכשל')
                             return
                           }
-                          setWorkers((prev) =>
-                            prev.map((w) =>
+                          setWorkers((prev) => {
+                            const next = prev.map((w) =>
                               w.id === selectedWorker.id ? { ...w, [key]: value } : w
                             )
-                          )
+                            if (clientId) {
+                              writeWorkersCache(clientId, { workers: next })
+                              queryClient.setQueryData(queryKeys.workers(clientId), next)
+                            }
+                            return next
+                          })
                           setSelectedWorker((prev) =>
                             prev && prev.id === selectedWorker.id ? { ...prev, [key]: value } : prev
                           )

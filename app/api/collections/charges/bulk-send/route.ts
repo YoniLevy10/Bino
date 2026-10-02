@@ -6,22 +6,28 @@ import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { bulkSendCollectionChargesBodySchema } from '@/lib/api-body-schemas'
 import { formatZodError } from '@/lib/format-zod-error'
-import type { CollectionChargeRow } from '@/lib/collection-charges'
+import { runAfterResponse } from '@/lib/run-after-response'
 import {
-  loadClientCollectionsRow,
-  sendCollectionCharge,
-  type ChargeProjectInfo,
-  type ChargeResidentInfo,
-  type ClientCollectionsRow,
-} from '@/lib/collection-charge-ops'
+  getCollectionBulkSendRun,
+  processCollectionBulkSendRun,
+} from '@/lib/collection-bulk-send'
+import { loadClientCollectionsRow } from '@/lib/collection-charge-ops'
 
-type BulkItemResult = {
-  resident_id: string
-  charge_id?: string
-  ok: boolean
-  sms_sent?: boolean
-  pay_url?: string
-  error?: string
+export const maxDuration = 60
+
+export async function GET(req: Request) {
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections)
+  if (!auth.ok) return auth.response
+
+  const runId = new URL(req.url).searchParams.get('run_id')
+  if (!runId) {
+    return NextResponse.json({ error: 'run_id חסר' }, { status: 400 })
+  }
+
+  const admin = getSupabaseAdmin()
+  const run = await getCollectionBulkSendRun(admin, auth.ctx.clientId, runId)
+  if (!run) return NextResponse.json({ error: 'רצה לא נמצאה' }, { status: 404 })
+  return NextResponse.json(run)
 }
 
 export async function POST(req: Request) {
@@ -60,131 +66,60 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
   }
 
-  const clientRow = (await loadClientCollectionsRow(admin, clientId)) as ClientCollectionsRow | null
+  const clientRow = await loadClientCollectionsRow(admin, clientId)
   if (!clientRow) {
     return NextResponse.json({ error: 'לא נמצאו הגדרות לקוח' }, { status: 500 })
   }
-
-  const residentIds = body.items.map((i) => i.resident_id)
-  const { data: residents, error: residentsErr } = await admin
-    .from('residents')
-    .select('id, full_name, phone, normalized_phone, apartment_number, email, project_id')
-    .eq('client_id', clientId)
-    .eq('project_id', body.project_id)
-    .in('id', residentIds)
-    .is('deleted_at', null)
-
-  if (residentsErr) {
-    return NextResponse.json({ error: residentsErr.message }, { status: 500 })
-  }
-
-  const byId = new Map(
-    ((residents || []) as Array<ChargeResidentInfo>).map((r) => [r.id, r])
-  )
 
   const batchId = randomUUID()
   const titleTemplate = body.title_template.trim()
   const periodLabel = body.period_label?.trim() || null
   const description = body.description?.trim() || null
 
-  const results: BulkItemResult[] = []
-  let created = 0
-  let sent = 0
-  let failed = 0
-
-  for (const item of body.items) {
-    const resident = byId.get(item.resident_id)
-    if (!resident) {
-      failed += 1
-      results.push({
-        resident_id: item.resident_id,
-        ok: false,
-        error: 'דייר לא נמצא בפרויקט',
-      })
-      continue
-    }
-
-    if (sendSms && !(resident.normalized_phone?.trim() || resident.phone?.trim())) {
-      failed += 1
-      results.push({
-        resident_id: item.resident_id,
-        ok: false,
-        error: 'אין טלפון לדייר',
-      })
-      continue
-    }
-
-    const apt = resident.apartment_number?.trim()
-    const title = apt
-      ? `${titleTemplate} — דירה ${apt}`
-      : `${titleTemplate} — ${resident.full_name}`
-
-    const { data: inserted, error: insertErr } = await admin
-      .from('collection_charges')
-      .insert({
-        client_id: clientId,
-        project_id: body.project_id,
-        resident_id: item.resident_id,
-        title,
-        description,
-        amount: item.amount,
-        currency: 'ILS',
-        status: 'draft',
-        period_label: periodLabel,
-        batch_id: batchId,
-        created_by: auth.ctx.userId,
-      })
-      .select('*')
-      .single()
-
-    if (insertErr || !inserted) {
-      failed += 1
-      results.push({
-        resident_id: item.resident_id,
-        ok: false,
-        error: insertErr?.message || 'יצירת חיוב נכשלה',
-      })
-      continue
-    }
-
-    created += 1
-    const charge = inserted as CollectionChargeRow
-
-    const sendResult = await sendCollectionCharge(admin, {
-      clientId,
-      charge,
-      resident,
-      project: project as ChargeProjectInfo,
-      clientRow,
-      sendSms,
+  const { data: runRow, error: insertErr } = await admin
+    .from('collection_bulk_send_runs')
+    .insert({
+      client_id: clientId,
+      project_id: body.project_id,
+      batch_id: batchId,
+      created_by: auth.ctx.userId,
+      status: 'queued',
+      items_total: body.items.length,
+      created_count: 0,
+      sent_count: 0,
+      failed_count: 0,
+      next_index: 0,
+      title_template: titleTemplate,
+      period_label: periodLabel,
+      description,
+      send_sms: sendSms,
+      items: body.items,
     })
+    .select('id')
+    .single()
 
-    if (!sendResult.ok) {
-      failed += 1
-      results.push({
-        resident_id: item.resident_id,
-        charge_id: charge.id,
-        ok: false,
-        error: sendResult.error,
-      })
-      continue
-    }
-
-    sent += 1
-    results.push({
-      resident_id: item.resident_id,
-      charge_id: sendResult.charge.id,
-      ok: true,
-      sms_sent: sendResult.smsSent,
-      pay_url: sendResult.payUrl,
-    })
+  if (insertErr || !runRow) {
+    return NextResponse.json(
+      { error: insertErr?.message || 'יצירת רצת שליחה נכשלה — הריצו מיגרציה 119' },
+      { status: 500 }
+    )
   }
 
-  return NextResponse.json({
-    batch_id: batchId,
-    created,
-    sent,
-    failed,
-    results,
+  const runId = (runRow as { id: string }).id
+  runAfterResponse('collections-bulk-send', async () => {
+    await processCollectionBulkSendRun(admin, { runId, clientId })
   })
+
+  return NextResponse.json(
+    {
+      run_id: runId,
+      batch_id: batchId,
+      status: 'queued',
+      items_total: body.items.length,
+      created: 0,
+      sent: 0,
+      failed: 0,
+    },
+    { status: 202 }
+  )
 }

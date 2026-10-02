@@ -172,37 +172,6 @@ function SettingsPageInner() {
     setOrigin(getClientPublicOrigin())
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await fetchWithTimeout('/api/collections/webhook-url')
-        const json = (await res.json().catch(() => ({}))) as {
-          ok?: boolean
-          url?: string
-          error?: string
-          configured?: boolean
-        }
-        if (cancelled) return
-        if (res.ok && json.configured) {
-          setGrowWebhookConfigured(true)
-          setGrowWebhookLoadError(null)
-        } else {
-          setGrowWebhookConfigured(false)
-          setGrowWebhookLoadError(json.error || 'סוד webhook לא מוגדר בשרת')
-        }
-      } catch {
-        if (!cancelled) {
-          setGrowWebhookConfigured(false)
-          setGrowWebhookLoadError('טעינת סטטוס webhook נכשלה')
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   const webhookUrl = useMemo(
     () => (origin ? `${origin}/api/webhook/whatsapp` : '/api/webhook/whatsapp'),
     [origin]
@@ -263,43 +232,69 @@ function SettingsPageInner() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from Supabase
+    void load()
+  }, [])
+
+  // Grow extras only when Grow tab is open (keeps general-tab TTI light).
+  useEffect(() => {
+    if (activeTab !== 'grow') return
     let cancelled = false
     void (async () => {
       try {
-        const res = await fetchWithTimeout('/api/collections/grow-onboard')
-        const json = (await res.json().catch(() => ({}))) as {
+        const [webhookRes, growRes] = await Promise.all([
+          fetchWithTimeout('/api/collections/webhook-url'),
+          fetchWithTimeout('/api/collections/grow-onboard'),
+        ])
+        if (cancelled) return
+
+        const webhookJson = (await webhookRes.json().catch(() => ({}))) as {
+          error?: string
+          configured?: boolean
+        }
+        if (webhookRes.ok && webhookJson.configured) {
+          setGrowWebhookConfigured(true)
+          setGrowWebhookLoadError(null)
+        } else {
+          setGrowWebhookConfigured(false)
+          setGrowWebhookLoadError(webhookJson.error || 'סוד webhook לא מוגדר בשרת')
+        }
+
+        const growJson = (await growRes.json().catch(() => ({}))) as {
           register_ready?: boolean
           onboarding?: ClientRow | null
         }
-        if (cancelled) return
-        if (res.ok) {
-          setGrowRegisterReady(json.register_ready === true)
-          if (json.onboarding) {
-            setGrowOnboardStatus(json.onboarding.grow_onboarding_status || null)
-            setGrowOnboardUrl(json.onboarding.grow_onboarding_url || '')
-            setGrowBusinessNumber(json.onboarding.grow_business_number || '')
-            setGrowOnboardPhone(json.onboarding.grow_onboarding_phone || '')
-            if (json.onboarding.grow_user_id) setGrowUserId(json.onboarding.grow_user_id)
-            if (json.onboarding.grow_enabled != null) {
-              setGrowEnabled(json.onboarding.grow_enabled === true)
+        if (growRes.ok) {
+          setGrowRegisterReady(growJson.register_ready === true)
+          if (growJson.onboarding) {
+            setGrowOnboardStatus(growJson.onboarding.grow_onboarding_status || null)
+            setGrowOnboardUrl(growJson.onboarding.grow_onboarding_url || '')
+            setGrowBusinessNumber(growJson.onboarding.grow_business_number || '')
+            setGrowOnboardPhone(growJson.onboarding.grow_onboarding_phone || '')
+            if (growJson.onboarding.grow_user_id) setGrowUserId(growJson.onboarding.grow_user_id)
+            if (growJson.onboarding.grow_enabled != null) {
+              setGrowEnabled(growJson.onboarding.grow_enabled === true)
             }
           }
         } else {
           setGrowRegisterReady(false)
         }
       } catch {
-        if (!cancelled) setGrowRegisterReady(false)
+        if (!cancelled) {
+          setGrowWebhookConfigured(false)
+          setGrowWebhookLoadError('טעינת סטטוס webhook נכשלה')
+          setGrowRegisterReady(false)
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [activeTab])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from Supabase
-    void load()
-  }, [])
+    if (activeTab === 'team') void loadTeam()
+  }, [activeTab])
 
   async function saveGeneral() {
     if (!clientId || !settingsHydrated) {

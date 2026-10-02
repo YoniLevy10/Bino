@@ -12,22 +12,36 @@ import { assertProjectOwnedByClient, assertWorkerOwnedByClient } from '@/lib/ten
 const TASK_SELECT =
   'id, client_id, project_id, assigned_worker_id, title, description, priority, status, due_at, notes, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name)'
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireSessionClientId()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
   const clientId = auth.ctx.clientId
+  const url = new URL(req.url)
+  const rawLimit = Number(url.searchParams.get('limit') || '100')
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), 300) : 100
+  const rawOffset = Number(url.searchParams.get('offset') || '0')
+  const offset = Number.isFinite(rawOffset) ? Math.max(Math.floor(rawOffset), 0) : 0
+  const filter = (url.searchParams.get('filter') || 'all').trim().toLowerCase()
 
-  const [tasksRes, workersRes, projectsRes] = await Promise.all([
-    admin
-      .from('maintenance_tasks')
-      .select(TASK_SELECT)
-      .eq('client_id', clientId)
-      .is('deleted_at', null)
-      .order('due_at', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false })
-      .limit(300),
+  let tasksQuery = admin
+    .from('maintenance_tasks')
+    .select(TASK_SELECT)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (filter === 'open') {
+    tasksQuery = tasksQuery.neq('status', 'DONE')
+  } else if (filter === 'done') {
+    tasksQuery = tasksQuery.eq('status', 'DONE')
+  }
+
+  const [tasksRes, workersRes, projectsRes, openCountRes] = await Promise.all([
+    tasksQuery,
     admin
       .from('workers')
       .select('id, full_name')
@@ -37,6 +51,12 @@ export async function GET() {
       .order('full_name'),
     // projects has no deleted_at column — do not filter it
     admin.from('projects').select('id, name').eq('client_id', clientId).order('name'),
+    admin
+      .from('maintenance_tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .is('deleted_at', null)
+      .neq('status', 'DONE'),
   ])
 
   if (tasksRes.error) {
@@ -44,6 +64,7 @@ export async function GET() {
   }
 
   const tasks = tasksRes.data || []
+  const hasMore = tasks.length >= limit
   const previewTaskIds = tasks.slice(0, 40).map((t) => t.id as string)
 
   let attachmentsByTask: Record<
@@ -85,7 +106,11 @@ export async function GET() {
     tasks,
     workers: workersRes.data || [],
     projects: projectsRes.data || [],
-    open_count: tasks.filter((t) => t.status !== 'DONE').length,
+    open_count: openCountRes.count ?? tasks.filter((t) => t.status !== 'DONE').length,
+    has_more: hasMore,
+    limit,
+    offset,
+    filter,
     attachments_by_task: attachmentsByTask,
   })
 }

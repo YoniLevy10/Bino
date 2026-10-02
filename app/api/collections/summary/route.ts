@@ -7,6 +7,9 @@ import {
   COLLECTION_CHARGE_STATUSES,
   type CollectionChargeStatus,
 } from '@/lib/collection-charges'
+import { fetchAllRows } from '@/lib/supabase/fetch-all-rows'
+
+type ChargeAggRow = { status: string; amount: number | string }
 
 export async function GET(req: Request) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections)
@@ -23,18 +26,24 @@ export async function GET(req: Request) {
   const periodLabel = url.searchParams.get('period_label')?.trim() || ''
   const batchId = url.searchParams.get('batch_id')?.trim() || ''
 
-  let query = admin
-    .from('collection_charges')
-    .select('status, amount')
-    .eq('client_id', auth.ctx.clientId)
-
-  if (projectId) query = query.eq('project_id', projectId)
-  if (periodLabel) query = query.eq('period_label', periodLabel)
-  if (batchId) query = query.eq('batch_id', batchId)
-
-  const { data, error } = await query
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  let data: ChargeAggRow[]
+  try {
+    // Paginate past PostgREST 1000-row cap (audit #31) instead of a single unbounded select.
+    data = await fetchAllRows<ChargeAggRow>((from, to) => {
+      let query = admin
+        .from('collection_charges')
+        .select('status, amount')
+        .eq('client_id', auth.ctx.clientId)
+        .order('id', { ascending: true })
+        .range(from, to)
+      if (projectId) query = query.eq('project_id', projectId)
+      if (periodLabel) query = query.eq('period_label', periodLabel)
+      if (batchId) query = query.eq('batch_id', batchId)
+      return query
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'שגיאת שרת'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 
   const counts: Record<CollectionChargeStatus, number> = {
@@ -48,9 +57,9 @@ export async function GET(req: Request) {
   let outstandingAmount = 0
   let billedAmount = 0
 
-  for (const row of data || []) {
-    const status = (row as { status: string }).status
-    const amount = Number((row as { amount: number | string }).amount) || 0
+  for (const row of data) {
+    const status = row.status
+    const amount = Number(row.amount) || 0
     if (!(COLLECTION_CHARGE_STATUSES as readonly string[]).includes(status)) continue
     counts[status as CollectionChargeStatus] += 1
     if (status === 'cancelled') continue

@@ -15,14 +15,19 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
+import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
 import { ticketDetailPath } from '@/lib/ticket-deep-link'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
+import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
+import { queryKeys } from '@/lib/query-keys'
 import {
   AppShell,
   MobileHeader,
@@ -121,11 +126,24 @@ function writeProjectsCache(clientId: string, data: Omit<ProjectsCache, 'savedAt
 
 export default function ProjectsPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { openMenu } = useMobileMenu()
+  const {
+    clientId: rqClientId,
+    projects: rqProjects,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+    refetch: refetchProjects,
+  } = useTenantProjectsList()
+  const {
+    workers: rqWorkers,
+    isLoading: workersLoading,
+    hasData: workersHasData,
+  } = useTenantWorkersList()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
   const [clientId, setClientId] = useState<string>('')
-  const [loading, setLoading] = useState(true)
+  const [cachePainted, setCachePainted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
@@ -143,43 +161,88 @@ export default function ProjectsPage() {
   const [projectResidentDocsOpen, setProjectResidentDocsOpen] = useState(true)
   const [projectHistoryOpen, setProjectHistoryOpen] = useState(false)
 
-  async function loadClientId() {
-    const id = await resolveBinoClientIdForBrowser()
-    setClientId(id)
-    return id
-  }
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const syncCid = tryReadSessionBoundClientId()
+        if (syncCid && !cancelled) {
+          if (
+            queryClient.getQueryData(queryKeys.projects(syncCid)) ||
+            queryClient.getQueryData(queryKeys.workers(syncCid))
+          ) {
+            setClientId(syncCid)
+            setCachePainted(true)
+          }
+        }
+        const fetchedClientId = await resolveBinoClientIdForBrowser()
+        if (cancelled) return
+        setClientId(fetchedClientId)
+        if (queryClient.getQueryData(queryKeys.projects(fetchedClientId))) {
+          setCachePainted(true)
+          return
+        }
+        const cached = shouldSkipStalePageCache() ? null : readProjectsCache(fetchedClientId)
+        if (!cached || cancelled) return
+        setProjects(cached.projects)
+        setWorkers(cached.workers)
+        setCachePainted(true)
+        if (!queryClient.getQueryData(queryKeys.projects(fetchedClientId))) {
+          queryClient.setQueryData(queryKeys.projects(fetchedClientId), cached.projects)
+        }
+        if (!queryClient.getQueryData(queryKeys.workers(fetchedClientId))) {
+          queryClient.setQueryData(queryKeys.workers(fetchedClientId), cached.workers)
+        }
+      } catch {
+        /* RQ loads */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [queryClient])
+
+  useEffect(() => {
+    if (rqClientId) setClientId(rqClientId)
+  }, [rqClientId])
+
+  useEffect(() => {
+    if (!projectsHasData) return
+    const next = rqProjects as ProjectRow[]
+    setProjects(next)
+    setCachePainted(true)
+    if (rqClientId) {
+      const cached = readProjectsCache(rqClientId)
+      writeProjectsCache(rqClientId, { projects: next, workers: cached?.workers ?? workers })
+    }
+  }, [rqProjects, projectsHasData, rqClientId])
+
+  useEffect(() => {
+    if (!workersHasData) return
+    const next = rqWorkers.map((w) => ({ id: w.id, full_name: w.full_name }))
+    setWorkers(next)
+    if (rqClientId) {
+      const cached = readProjectsCache(rqClientId)
+      writeProjectsCache(rqClientId, { projects: cached?.projects ?? projects, workers: next })
+    }
+  }, [rqWorkers, workersHasData, rqClientId])
+
+  const loading =
+    (projectsLoading || workersLoading) && !cachePainted && projects.length === 0
 
   async function loadProjects(nextClientId?: string) {
-    const activeClientId = nextClientId || clientId
-    if (!activeClientId) return
-    const { data, error } = await supabase
-      .from('projects')
-      .select(PROJECTS_LIST_SELECT)
-      .eq('client_id', activeClientId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    const nextProjects = (data as ProjectRow[]) || []
-    setProjects(nextProjects)
-    const cached = readProjectsCache(activeClientId)
-    writeProjectsCache(activeClientId, {
-      projects: nextProjects,
-      workers: cached?.workers ?? workers,
-    })
-  }
-
-  async function loadWorkers(nextClientId?: string) {
-    const activeClientId = nextClientId || clientId
-    if (!activeClientId) return
-    const { data, error } = await supabase
-      .from('workers')
-      .select('id, full_name')
-      .eq('client_id', activeClientId)
-      .is('deleted_at', null)
-      .order('full_name', { ascending: true })
-
-    if (error) throw error
-    setWorkers((data as WorkerRow[]) || [])
+    const activeClientId = nextClientId || clientId || rqClientId
+    if (activeClientId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects(activeClientId) })
+    }
+    const result = await refetchProjects()
+    if (result.data && activeClientId) {
+      const cached = readProjectsCache(activeClientId)
+      writeProjectsCache(activeClientId, {
+        projects: result.data as ProjectRow[],
+        workers: cached?.workers ?? workers,
+      })
+    }
   }
 
   async function updateProjectAssignedWorker(projectId: string, workerId: string) {
@@ -199,48 +262,6 @@ export default function ProjectsPage() {
       { context: 'Failed to update assigned worker', showErrorToast: true }
     )
   }
-
-  useEffect(() => {
-    const initialize = async () => {
-      const fetchedClientId = await loadClientId()
-      const cached = shouldSkipStalePageCache() ? null : readProjectsCache(fetchedClientId)
-      if (cached) {
-        setWorkers(cached.workers)
-        setProjects(cached.projects)
-        setLoading(false)
-      } else {
-        setLoading(true)
-      }
-      await asyncHandler(
-        async () => {
-          const [workersResult, projectsResult] = await Promise.all([
-            supabase
-              .from('workers')
-              .select('id, full_name')
-              .eq('client_id', fetchedClientId)
-              .is('deleted_at', null)
-              .order('full_name', { ascending: true }),
-            supabase
-              .from('projects')
-              .select(PROJECTS_LIST_SELECT)
-              .eq('client_id', fetchedClientId)
-              .order('created_at', { ascending: false }),
-          ])
-          if (workersResult.error) throw workersResult.error
-          if (projectsResult.error) throw projectsResult.error
-          const nextWorkers = (workersResult.data as WorkerRow[]) || []
-          const nextProjects = (projectsResult.data as ProjectRow[]) || []
-          setWorkers(nextWorkers)
-          setProjects(nextProjects)
-          writeProjectsCache(fetchedClientId, { projects: nextProjects, workers: nextWorkers })
-          return true
-        },
-        { context: 'טעינת פרויקטים', showErrorToast: !cached }
-      )
-      setLoading(false)
-    }
-    void initialize()
-  }, [])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())

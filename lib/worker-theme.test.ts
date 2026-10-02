@@ -4,7 +4,7 @@ import {
   WORKER_LIGHT_THEME_COLOR,
   workerDarkColors,
 } from '@/lib/worker-theme'
-import { theme } from '@/app/components/ui'
+import { theme } from '@/app/components/ui/theme'
 
 describe('worker liquid-glass theme', () => {
   it('keeps iOS system blue in dark outdoor palette', () => {

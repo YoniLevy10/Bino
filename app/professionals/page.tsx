@@ -5,9 +5,7 @@
  * העברת תקלות מתבצעת מדף התקלות ב-SMS.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { supabase } from '@/lib/supabase'
-import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { withClientId } from '@/lib/supabase/with-client-id'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
@@ -40,6 +38,13 @@ import {
   focusMidragSearch,
 } from '../components/professionals/MidragSearchPanel'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import {
+  PROFESSIONALS_PAGE_SIZE,
+  fetchProfessionalsPage,
+  isProfessionalsTableMissing,
+  useTenantProfessionalsList,
+} from '@/lib/hooks/use-professionals-list'
+import { queryKeys } from '@/lib/query-keys'
 
 type ProfessionalRow = {
   id: string
@@ -75,17 +80,23 @@ const emptyForm: ProfessionalForm = {
   is_active: true,
 }
 
-function isProfessionalsTableMissing(err: { message?: string } | null): boolean {
-  if (!err?.message) return false
-  const m = err.message.toLowerCase()
-  return m.includes('professionals') && (m.includes('does not exist') || m.includes('schema cache'))
-}
-
 export default function ProfessionalsPage() {
   const { openMenu } = useMobileMenu()
+  const queryClient = useQueryClient()
+  const {
+    clientId: rqClientId,
+    professionals: rqProfessionals,
+    hasMore: rqHasMore,
+    isLoading: rqLoading,
+    hasData: rqHasData,
+    error: rqError,
+    refetch: refetchProfessionals,
+  } = useTenantProfessionalsList()
   const [rows, setRows] = useState<ProfessionalRow[]>([])
   const [clientId, setClientId] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [extraRows, setExtraRows] = useState<ProfessionalRow[]>([])
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [tableMissing, setTableMissing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -103,45 +114,63 @@ export default function ProfessionalsPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  async function loadProfessionals(nextClientId?: string) {
-    const cid = nextClientId || clientId
-    if (!cid) return
-    const { data, error } = await withClientId(
-      supabase.from('professionals').select(
-        'id, full_name, phone, extra_phones, trade, company_name, email, notes, is_active'
-      ),
-      cid
-    )
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      if (isProfessionalsTableMissing(error)) {
-        setTableMissing(true)
-        setRows([])
-        return
-      }
-      throw error
-    }
-    setTableMissing(false)
-    setRows((data as ProfessionalRow[]) || [])
-  }
+  useEffect(() => {
+    if (rqClientId) setClientId(rqClientId)
+  }, [rqClientId])
 
   useEffect(() => {
-    void (async () => {
-      setLoading(true)
-      await asyncHandler(
-        async () => {
-          const cid = await resolveBinoClientIdForBrowser()
-          setClientId(cid)
-          await loadProfessionals(cid)
-          return true
-        },
-        { context: 'טעינת אנשי מקצוע', showErrorToast: true }
-      )
-      setLoading(false)
-    })()
-  }, [])
+    if (!rqHasData) return
+    setRows(rqProfessionals as ProfessionalRow[])
+    setExtraRows([])
+    setHasMore(rqHasMore)
+    setTableMissing(false)
+  }, [rqProfessionals, rqHasData, rqHasMore])
+
+  useEffect(() => {
+    if (!rqError) return
+    if (isProfessionalsTableMissing(rqError as { message?: string })) {
+      setTableMissing(true)
+      setRows([])
+    } else {
+      toast.error(TM.genericLoadError)
+    }
+  }, [rqError])
+
+  const loading = rqLoading && rows.length === 0 && !tableMissing
+  const allRows = useMemo(() => {
+    if (extraRows.length === 0) return rows
+    const seen = new Set(rows.map((r) => r.id))
+    return [...rows, ...extraRows.filter((r) => !seen.has(r.id))]
+  }, [rows, extraRows])
+
+  async function loadProfessionals() {
+    const cid = clientId || rqClientId
+    if (cid) {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.professionals(cid, PROFESSIONALS_PAGE_SIZE),
+      })
+    }
+    setExtraRows([])
+    await refetchProfessionals()
+  }
+
+  async function loadMoreProfessionals() {
+    const cid = clientId || rqClientId
+    if (!cid || loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const page = await fetchProfessionalsPage(cid, {
+        offset: allRows.length,
+        limit: PROFESSIONALS_PAGE_SIZE,
+      })
+      setExtraRows((prev) => [...prev, ...page.rows])
+      setHasMore(page.hasMore)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : TM.genericLoadError)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   function openCreate() {
     setEditing(null)
@@ -312,14 +341,14 @@ export default function ProfessionalsPage() {
   }
 
   const stats = useMemo(() => {
-    const total = rows.length
-    const active = rows.filter((r) => r.is_active).length
+    const total = allRows.length
+    const active = allRows.filter((r) => r.is_active).length
     return { total, active, inactive: total - active }
-  }, [rows])
+  }, [allRows])
 
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase()
-    return rows.filter((r) => {
+    return allRows.filter((r) => {
       const matchQ =
         !q ||
         r.full_name.toLowerCase().includes(q) ||
@@ -332,7 +361,7 @@ export default function ProfessionalsPage() {
         (statusFilter === 'INACTIVE' && !r.is_active)
       return matchQ && matchStatus
     })
-  }, [rows, searchTerm, statusFilter])
+  }, [allRows, searchTerm, statusFilter])
 
   return (
     <AppShell isMobile={isMobile}>
@@ -462,6 +491,18 @@ export default function ProfessionalsPage() {
                   ))}
                 </div>
               )}
+              {hasMore && !searchTerm.trim() && statusFilter === 'ALL' ? (
+                <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={loadingMore}
+                    onClick={() => void loadMoreProfessionals()}
+                  >
+                    טען עוד
+                  </Button>
+                </div>
+              ) : null}
             </Card>
           </>
         )}
