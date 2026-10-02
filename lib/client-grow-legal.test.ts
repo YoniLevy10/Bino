@@ -42,6 +42,7 @@ describe('growLegalFromClientRow', () => {
     const legal = growLegalFromClientRow({
       id: CLIENT_ID,
       name: 'Bino',
+      logo_url: 'https://cdn.example.com/logo.png',
       grow_legal_business_name: 'שרה ניהול בע״מ',
       grow_legal_phone: '0501234567',
       grow_legal_address: 'הרצל 1, תל אביב',
@@ -49,8 +50,10 @@ describe('growLegalFromClientRow', () => {
     })
     expect(legal.ready).toBe(true)
     expect(legal.businessName).toBe('שרה ניהול בע״מ')
+    expect(legal.logoUrl).toBe('https://cdn.example.com/logo.png')
     expect(growLegalToSiteConfig(legal).readyForGrowAudit).toBe(true)
     expect(growLegalToSiteConfig(legal).phoneDisplay).toMatch(/050/)
+    expect(growLegalToSiteConfig(legal).logoUrl).toBe('https://cdn.example.com/logo.png')
   })
 })
 

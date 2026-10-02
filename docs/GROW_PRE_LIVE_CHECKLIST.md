@@ -104,21 +104,22 @@ Site_check: https://grow.business/Site_check
 מאשרים את סעיפי הבדיקה המקדימה לעלייה ללייב:
 
 1. ApproveTransaction — בוצע ומאומת במערכת.
-   transactionId לדוגמה לעסקה מוצלחת: 552938
+   transactionId לדוגמה לעסקה מוצלחת: 553499
 
 2. תקנון + צ'קבוקס אישור תקנון לפני תשלום — קיימים.
    כתובת האתר לבדיקה: https://bino.casa
    תקנון: https://bino.casa/terms
    פרטיות: https://bino.casa/privacy
    יצירת קשר: https://bino.casa/contact
-   עמוד תשלום לדוגמה (קישור חיוב אישי /pay) + עמוד עסק:
+   עמוד עסק ממותג ללקוח (שם + פרטי קשר + לוגו):
    https://bino.casa/vaad-pay/7573f5ad-70e5-4357-8fef-1d96ec38d169
+   עמוד תשלום לדייר (/pay) מציג את שם הלקוח והלוגו של אותו לקוח לפי ה-userId / החיוב.
 
-3. מצורף סרטון וידאו של תהליך התשלום מקצה לקצה. [לצרף קובץ]
+3. מצורף סרטון וידאו של תהליך התשלום מקצה לקצה.
 
 4. תהליך הצטרפות GetLink הוזנק והגענו לשלב אימות תעודת זהות.
    מייל לחיווי: levyyoni5@gmail.com
-   Webhook להקמת לקוח: [להדביק מ־/api/collections/grow-onboard → register_webhook_url]
+   Webhook להקמת לקוח: [להדביק מ־הגדרות → Grow / grow-onboard → register_webhook_url]
 
 5. שם המערכת כפי שמשווקת ללקוחות: BINO
 
