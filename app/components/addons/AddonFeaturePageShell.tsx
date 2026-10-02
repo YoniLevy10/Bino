@@ -15,6 +15,8 @@ type Props = {
   headerActions?: ReactNode
   contentMaxWidth?: number
   narrow?: boolean
+  /** When false, skip AppShell (parent manager layout already provides it). Default false under (manager). */
+  wrapAppShell?: boolean
 }
 
 export function AddonFeaturePageShell({
@@ -26,6 +28,7 @@ export function AddonFeaturePageShell({
   headerActions,
   contentMaxWidth,
   narrow = false,
+  wrapAppShell = false,
 }: Props) {
   const [isMobile, setIsMobile] = useState(false)
   const { openMenu } = useMobileMenu()
@@ -38,36 +41,37 @@ export function AddonFeaturePageShell({
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  return (
-    <AppShell isMobile={isMobile}>
-      <PaidAddonGate addonKey={addonKey}>
-        {isMobile && (
-          <MobileHeader
+  const body = (
+    <PaidAddonGate addonKey={addonKey}>
+      {isMobile && (
+        <MobileHeader
+          title={title}
+          subtitle={mobileSubtitle}
+          onMenuClick={openMenu}
+        />
+      )}
+
+      <div
+        style={{
+          ...styles.content,
+          maxWidth,
+          ...(isMobile ? styles.contentMobile : {}),
+        }}
+      >
+        {!isMobile && (
+          <PageHeader
             title={title}
-            subtitle={mobileSubtitle}
-            onMenuClick={openMenu}
+            subtitle={desktopSubtitle ?? mobileSubtitle}
+            actions={headerActions}
           />
         )}
-
-        <div
-          style={{
-            ...styles.content,
-            maxWidth,
-            ...(isMobile ? styles.contentMobile : {}),
-          }}
-        >
-          {!isMobile && (
-            <PageHeader
-              title={title}
-              subtitle={desktopSubtitle ?? mobileSubtitle}
-              actions={headerActions}
-            />
-          )}
-          <div style={styles.body}>{children}</div>
-        </div>
-      </PaidAddonGate>
-    </AppShell>
+        <div style={styles.body}>{children}</div>
+      </div>
+    </PaidAddonGate>
   )
+
+  if (!wrapAppShell) return body
+  return <AppShell isMobile={isMobile}>{body}</AppShell>
 }
 
 const styles: Record<string, CSSProperties> = {

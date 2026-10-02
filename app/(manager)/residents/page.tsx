@@ -1,0 +1,1383 @@
+'use client'
+
+/**
+ * דף דיירים – ניהול פנקס הדיירים הרשומים בפרויקטים.
+ *
+ * מציג: טאבים לפי פרויקט, רשימת דיירים עם טלפון, שם, קומה/דירה.
+ *
+ * פעולות:
+ *  - "הוסף דייר" → AddResidentModal → POST /api/create-resident
+ *  - "ייבוא Excel" → ImportResidentsModal → POST /api/import-residents (CSV/xlsx)
+ *  - מחיקת דייר → DELETE soft
+ *
+ * קשור ל: /pending-residents (דיירים שדיווחו אך עדיין לא בפנקס)
+ */
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  Suspense,
+  startTransition,
+  useDeferredValue,
+  type CSSProperties,
+} from 'react'
+import dynamic from 'next/dynamic'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
+import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { TM } from '@/lib/toast-messages'
+import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
+import {
+  RESIDENTS_PAGE_SIZE,
+  fetchResidentsPage,
+  useTenantResidentsList,
+} from '@/lib/hooks/use-residents-list'
+import { queryKeys } from '@/lib/query-keys'
+import type { ResidentProjectRow } from '@/app/components/residents/AddResidentModal'
+
+const AddResidentModal = dynamic(
+  () =>
+    import('@/app/components/residents/AddResidentModal').then((m) => ({ default: m.AddResidentModal })),
+  { loading: () => null }
+)
+const ImportResidentsModal = dynamic(
+  () =>
+    import('@/app/components/residents/ImportResidentsModal').then((m) => ({
+      default: m.ImportResidentsModal,
+    })),
+  { loading: () => null }
+)
+const ShareResidentIntakeLinkModal = dynamic(
+  () =>
+    import('@/app/components/residents/ShareResidentIntakeLinkModal').then((m) => ({
+      default: m.ShareResidentIntakeLinkModal,
+    })),
+  { loading: () => null }
+)
+import {
+  MobileHeader,
+  useMobileMenu,
+  PageHeader,
+  Card,
+  Button,
+  ErrorState,
+  SearchInput,
+  LoadingSpinner,
+  theme
+} from '@/app/components/ui'
+import { VirtualizedList } from '@/app/components/VirtualizedList'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { pickResidentToKeep } from '@/lib/merge-residents'
+import { PageListSkeleton } from '@/app/components/page-skeleton'
+
+const MAIN_TAB_ACTIVE: CSSProperties = {
+  padding: '10px 18px',
+  borderRadius: theme.radius.md,
+  border: `1px solid ${theme.colors.primary}`,
+  background: theme.colors.primaryMuted,
+  color: theme.colors.primaryText,
+  fontWeight: 600,
+  fontSize: '14px',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+}
+
+const MAIN_TAB_INACTIVE: CSSProperties = {
+  ...MAIN_TAB_ACTIVE,
+  border: `1px solid ${theme.colors.border}`,
+  background: theme.colors.surface,
+  color: theme.colors.textSecondary,
+}
+
+type ResidentRow = {
+  id: string
+  project_id: string
+  client_id?: string | null
+  full_name: string
+  phone: string | null
+  email?: string | null
+  is_renter?: boolean
+  apartment_number: string | null
+  notes?: string | null
+}
+
+function isResidentsTableMissingError(err: { message?: string } | null): boolean {
+  if (!err?.message) return false
+  const m = err.message.toLowerCase()
+  return (
+    m.includes('schema cache') ||
+    m.includes('does not exist') ||
+    m.includes('could not find') ||
+    (m.includes('relation') && m.includes('residents'))
+  )
+}
+
+export default function ResidentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+          <LoadingSpinner />
+        </div>
+      }
+    >
+      <ResidentsPageInner />
+    </Suspense>
+  )
+}
+
+function ResidentsPageInner() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const { openMenu } = useMobileMenu()
+  const {
+    clientId: tenantClientId,
+    projects: projectRows,
+    isLoading: projectsLoading,
+    hasData: projectsHasData,
+  } = useTenantProjectsList()
+  const {
+    residents: rqResidents,
+    hasMore: rqHasMore,
+    isLoading: rqResidentsLoading,
+    hasData: rqResidentsHasData,
+  } = useTenantResidentsList()
+  const projects: ResidentProjectRow[] = useMemo(
+    () =>
+      projectRows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        project_code: p.project_code || '',
+        client_id: p.client_id || tenantClientId || undefined,
+      })),
+    [projectRows, tenantClientId]
+  )
+  const [residents, setResidents] = useState<ResidentRow[]>([])
+  const [residentsTableMissing, setResidentsTableMissing] = useState(false)
+  const [residentsLoading, setResidentsLoading] = useState(true)
+  const [hasResidentsData, setHasResidentsData] = useState(false)
+  const [residentsHasMore, setResidentsHasMore] = useState(false)
+  const [residentsOffset, setResidentsOffset] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [projectFilter, setProjectFilter] = useState<string>('ALL')
+  const [isMobile, setIsMobile] = useState(false)
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [editResidentId, setEditResidentId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [deletingResident, setDeletingResident] = useState(false)
+  const [addError, setAddError] = useState('')
+  const [addProjectId, setAddProjectId] = useState('')
+  const [addFullName, setAddFullName] = useState('')
+  const [addPhone, setAddPhone] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addIsRenter, setAddIsRenter] = useState(false)
+  const [addApartment, setAddApartment] = useState('')
+  const [addNotes, setAddNotes] = useState('')
+
+  const [importOpen, setImportOpen] = useState(false)
+  const [shareIntakeOpen, setShareIntakeOpen] = useState(false)
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkMerging, setBulkMerging] = useState(false)
+
+  type SortKey = 'full_name' | 'phone' | 'apartment_number' | 'project'
+  type SortDir = 'asc' | 'desc'
+  const [sortKey, setSortKey] = useState<SortKey>('full_name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  // Read initial filter from URL (?project=ID&q=term)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const p = params.get('project')
+    const q = params.get('q')
+    if (p) setProjectFilter(p)
+    if (q) setSearchTerm(q)
+  }, [])
+
+  // Sync filter changes to URL (debounced — avoids router work on every keystroke)
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams()
+      if (projectFilter !== 'ALL') params.set('project', projectFilter)
+      if (searchTerm.trim()) params.set('q', searchTerm.trim())
+      const qs = params.toString()
+      const newUrl = qs ? `?${qs}` : window.location.pathname
+      router.replace(newUrl, { scroll: false })
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [projectFilter, searchTerm, router])
+
+  const searchParams = useSearchParams()
+  const [mainTab, setMainTab] = useState<'active' | 'pending'>(() =>
+    searchParams.get('tab') === 'pending' ? 'pending' : 'active'
+  )
+  const [pendingMounted, setPendingMounted] = useState(() => searchParams.get('tab') === 'pending')
+  const deferredSearchTerm = useDeferredValue(searchTerm)
+
+  const switchMainTab = useCallback((tab: 'active' | 'pending') => {
+    if (tab === 'pending') setPendingMounted(true)
+    startTransition(() => setMainTab(tab))
+  }, [])
+  const [pendingItems, setPendingItems] = useState<
+    Array<{
+      id: string
+      project_id: string
+      reporter_phone_normalized: string
+      created_at: string
+      project_name: string
+      project_code: string
+      ticket_number?: number
+    }>
+  >([])
+  const [pendingLoading, setPendingLoading] = useState(false)
+  const [pendingBadge, setPendingBadge] = useState(0)
+  const [pendingNames, setPendingNames] = useState<Record<string, string>>({})
+  const [pendingApartments, setPendingApartments] = useState<Record<string, string>>({})
+  const [pendingBusyId, setPendingBusyId] = useState<string | null>(null)
+
+  async function loadPending(options?: { silent?: boolean }) {
+    if (!options?.silent) setPendingLoading(true)
+    try {
+      const res = await fetchWithTimeout('/api/pending-residents')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'טעינה נכשלה')
+      const items = (data.items as typeof pendingItems) || []
+      startTransition(() => {
+        setPendingItems(items)
+        setPendingBadge(items.length)
+      })
+    } catch {
+      startTransition(() => {
+        setPendingItems([])
+        setPendingBadge(0)
+      })
+    } finally {
+      if (!options?.silent) setPendingLoading(false)
+    }
+  }
+
+  async function refreshResidentsQuiet() {
+    try {
+      const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
+      const page = await fetchResidentsPage(tenantId, { offset: 0, limit: RESIDENTS_PAGE_SIZE })
+      startTransition(() => {
+        setResidents(page.rows)
+        setResidentsHasMore(page.hasMore)
+        setResidentsOffset(page.rows.length)
+        setHasResidentsData(true)
+      })
+      queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
+    } catch {
+      // keep existing list on background refresh failure
+    }
+  }
+
+  async function loadResidentsPage(opts?: { append?: boolean; offset?: number }) {
+    const append = opts?.append === true
+    const offset = opts?.offset ?? 0
+    if (append) setLoadingMore(true)
+    else if (!hasResidentsData) setResidentsLoading(true)
+    setResidentsTableMissing(false)
+    setLoadError(false)
+    try {
+      const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
+      const page = await fetchResidentsPage(tenantId, {
+        offset,
+        limit: RESIDENTS_PAGE_SIZE,
+      })
+      setResidents((prev) => (append ? [...prev, ...page.rows] : page.rows))
+      setResidentsHasMore(page.hasMore)
+      setResidentsOffset(offset + page.rows.length)
+      setHasResidentsData(true)
+      setLoadError(false)
+      if (!append) {
+        queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
+      }
+    } catch (e) {
+      const err = e as { message?: string }
+      if (isResidentsTableMissingError(err)) {
+        setResidents([])
+        setResidentsTableMissing(true)
+        setResidentsHasMore(false)
+      } else {
+        if (!append) setLoadError(true)
+        toast.error(err?.message || (e instanceof Error ? e.message : TM.genericLoadError))
+      }
+    }
+    if (append) setLoadingMore(false)
+    else setResidentsLoading(false)
+  }
+
+  async function load() {
+    if (tenantClientId) {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.residents(tenantClientId, RESIDENTS_PAGE_SIZE),
+      })
+    }
+    await loadResidentsPage({ append: false, offset: 0 })
+  }
+
+  // Prefer shared RQ first page for warm nav
+  useEffect(() => {
+    if (!rqResidentsHasData) return
+    // Do not clobber pages appended via "load more"
+    if (residentsOffset > rqResidents.length) return
+    setResidents(rqResidents)
+    setResidentsHasMore(rqHasMore)
+    setResidentsOffset(rqResidents.length)
+    setHasResidentsData(true)
+    setResidentsLoading(false)
+    setLoadError(false)
+  }, [rqResidents, rqResidentsHasData, rqHasMore, residentsOffset])
+
+  useEffect(() => {
+    if (rqResidentsHasData) return
+    if (rqResidentsLoading) {
+      setResidentsLoading(true)
+      return
+    }
+    // RQ finished without usable data — stop blocking the page shell
+    if (!hasResidentsData) setResidentsLoading(false)
+  }, [rqResidentsLoading, rqResidentsHasData, hasResidentsData])
+
+  async function loadMoreResidents() {
+    await loadResidentsPage({ append: true, offset: residentsOffset })
+  }
+
+  function openAdd() {
+    setEditResidentId(null)
+    setAddError('')
+    setAddFullName('')
+    setAddPhone('')
+    setAddEmail('')
+    setAddIsRenter(false)
+    setAddApartment('')
+    setAddNotes('')
+    setAddProjectId(projectFilter !== 'ALL' ? projectFilter : '')
+    setAddOpen(true)
+  }
+
+  function openEdit(r: ResidentRow) {
+    setEditResidentId(r.id)
+    setAddError('')
+    setAddProjectId(r.project_id)
+    setAddFullName(r.full_name)
+    setAddPhone(r.phone?.trim() || '')
+    setAddEmail(r.email?.trim() || '')
+    setAddIsRenter(r.is_renter ?? false)
+    setAddApartment(r.apartment_number?.trim() || '')
+    setAddNotes(r.notes?.trim() || '')
+    setAddOpen(true)
+  }
+
+  function closeResidentModal() {
+    setAddOpen(false)
+    setEditResidentId(null)
+    setAddError('')
+  }
+
+  function openImport() {
+    setImportOpen(true)
+  }
+
+  function openShareIntakeLink() {
+    setShareIntakeOpen(true)
+  }
+
+  async function deleteResident() {
+    if (residentsTableMissing || !editResidentId) return
+    const name = addFullName.trim() || 'הדייר'
+    if (!window.confirm(`למחוק את ${name} מהרשימה? הפעולה לא ניתנת לשחזור.`)) return
+
+    setDeletingResident(true)
+    setAddError('')
+    try {
+      const res = await fetchWithTimeout(
+        '/api/update-resident',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resident_id: editResidentId, soft_delete: true }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res?.json().catch(() => ({}))) as { error?: unknown }
+      if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקת דייר נכשלה'))
+      setResidents((prev) => prev.filter((x) => x.id !== editResidentId))
+      closeResidentModal()
+      toast.success('הדייר נמחק')
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'מחיקת דייר נכשלה')
+    } finally {
+      setDeletingResident(false)
+    }
+  }
+
+  async function submitAdd(e: React.FormEvent) {
+    e.preventDefault()
+    if (residentsTableMissing) return
+
+    const projectId = addProjectId
+    const fullName = addFullName.trim()
+    if (!projectId) {
+      setAddError('בחרו בניין')
+      return
+    }
+    if (!fullName) {
+      setAddError('שם מלא הוא שדה חובה')
+      return
+    }
+
+    const project = projects.find((p) => p.id === projectId)
+    const clientId = project?.client_id ?? null
+
+    setSaving(true)
+    setAddError('')
+    try {
+      if (editResidentId) {
+        const updateRes = await fetchWithTimeout(
+          '/api/update-resident',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              resident_id: editResidentId,
+              project_id: projectId,
+              full_name: fullName,
+              phone: addPhone.trim() || null,
+              email: addEmail.trim() || null,
+              is_renter: addIsRenter ?? false,
+              apartment_number: addApartment.trim() || null,
+              notes: addNotes.trim() || null,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const updateJson = (await updateRes?.json().catch(() => ({}))) as {
+          error?: unknown
+          data?: ResidentRow
+        }
+        if (!updateRes?.ok) {
+          const msg = errorMessageFromResponseJson(updateJson, TM.genericSaveError)
+          setAddError(msg)
+          toast.error(msg)
+          return
+        }
+
+        const row = updateJson.data as ResidentRow
+        setResidents((prev) => prev.map((x) => (x.id === row.id ? row : x)))
+        closeResidentModal()
+        toast.success(TM.residentUpdated)
+        return
+      }
+
+      const insertRes = await fetchWithTimeout(
+        '/api/create-resident',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: projectId,
+            full_name: fullName,
+            phone: addPhone.trim() || null,
+            email: addEmail.trim() || null,
+            is_renter: addIsRenter ?? false,
+            apartment_number: addApartment.trim() || null,
+            notes: addNotes.trim() || null,
+          }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const insertData = await insertRes.json()
+      if (!insertRes.ok) {
+        const msg = errorMessageFromResponseJson(insertData, TM.genericSaveError)
+        setAddError(msg)
+        toast.error(msg)
+        return
+      }
+
+      setResidents((prev) => [insertData.resident as ResidentRow, ...prev])
+      closeResidentModal()
+      toast.success(TM.residentAdded)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : TM.genericSaveError
+      setAddError(msg)
+      toast.error(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    const check = () => setIsMobile(getIsMobileViewport())
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // First page comes from useTenantResidentsList (shared RQ). load() remains for retry/mutations.
+
+  // Single pending-residents fetch source (badge + pending tab) — avoids double fetch when tab=pending on mount
+  useEffect(() => {
+    void loadPending({ silent: mainTab !== 'pending' || pendingItems.length > 0 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainTab])
+
+  // Refresh pending badge whenever the browser tab regains focus
+  useEffect(() => {
+    const onFocus = () => void loadPending({ silent: true })
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const loading =
+    (residentsLoading && !hasResidentsData) || (projectsLoading && !projectsHasData)
+
+  function displayPendingPhone(digits: string) {
+    const d = digits.replace(/\D/g, '')
+    if (d.startsWith('972')) return `+${d}`
+    if (d.startsWith('0')) return `+972${d.slice(1)}`
+    return d ? `+${d}` : '—'
+  }
+
+  async function approvePending(id: string) {
+    setPendingBusyId(id)
+    try {
+      const res = await fetchWithTimeout('/api/pending-residents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          action: 'approve',
+          full_name: pendingNames[id]?.trim() || undefined,
+          apartment_number: pendingApartments[id]?.trim() || undefined,
+        }),
+      })
+      const data = (await res.json()) as { error?: unknown; hint?: string }
+      if (!res.ok) {
+        const msg = errorMessageFromResponseJson(data, 'פעולה נכשלה')
+        throw new Error([msg, data.hint].filter(Boolean).join('\n'))
+      }
+      toast.success(TM.residentApproved)
+      startTransition(() => {
+        setPendingItems((prev) => prev.filter((p) => p.id !== id))
+        setPendingBadge((prev) => Math.max(0, prev - 1))
+      })
+      void refreshResidentsQuiet()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'פעולה נכשלה')
+    } finally {
+      setPendingBusyId(null)
+    }
+  }
+
+  async function rejectPending(id: string) {
+    setPendingBusyId(id)
+    try {
+      const res = await fetchWithTimeout('/api/pending-residents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'reject' }),
+      })
+      const data = (await res.json()) as { error?: unknown; hint?: string }
+      if (!res.ok) {
+        const msg = errorMessageFromResponseJson(data, 'פעולה נכשלה')
+        throw new Error([msg, data.hint].filter(Boolean).join('\n'))
+      }
+      toast.success(TM.residentRejected)
+      startTransition(() => {
+        setPendingItems((prev) => prev.filter((p) => p.id !== id))
+        setPendingBadge((prev) => Math.max(0, prev - 1))
+      })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'פעולה נכשלה')
+    } finally {
+      setPendingBusyId(null)
+    }
+  }
+
+  const projectName = useMemo(() => {
+    const m: Record<string, string> = {}
+    projects.forEach((p) => { m[p.id] = p.name })
+    return m
+  }, [projects])
+
+  const residentsByPhone = useMemo(() => {
+    const m = new Map<string, ResidentRow>()
+    for (const r of residents) {
+      const digits = (r.phone || '').replace(/\D/g, '')
+      if (digits) m.set(digits, r)
+    }
+    return m
+  }, [residents])
+
+  // For each pending item: if its phone already exists in the residents list (any project), return info
+  const pendingConflictMap = useMemo(() => {
+    const result: Record<string, { residentName: string; projectName: string }> = {}
+    for (const p of pendingItems) {
+      const pDigits = p.reporter_phone_normalized.replace(/\D/g, '')
+      const match = residentsByPhone.get(pDigits)
+      if (match) {
+        result[p.id] = {
+          residentName: match.full_name,
+          projectName: projectName[match.project_id] || '',
+        }
+      }
+    }
+    return result
+  }, [pendingItems, residentsByPhone, projectName])
+
+  const filtered = useMemo(() => {
+    const q = deferredSearchTerm.trim().toLowerCase()
+    return residents.filter((r) => {
+      const byProject = projectFilter === 'ALL' || r.project_id === projectFilter
+      const text =
+        !q ||
+        r.full_name.toLowerCase().includes(q) ||
+        (r.phone || '').includes(q) ||
+        (r.email || '').toLowerCase().includes(q) ||
+        (r.apartment_number || '').toLowerCase().includes(q) ||
+        (r.notes || '').toLowerCase().includes(q)
+      return byProject && text
+    })
+  }, [residents, deferredSearchTerm, projectFilter])
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let av = ''
+      let bv = ''
+      if (sortKey === 'full_name') { av = a.full_name; bv = b.full_name }
+      else if (sortKey === 'phone') { av = a.phone || ''; bv = b.phone || '' }
+      else if (sortKey === 'apartment_number') {
+        const na = parseInt(a.apartment_number || '0', 10)
+        const nb = parseInt(b.apartment_number || '0', 10)
+        if (!isNaN(na) && !isNaN(nb)) return sortDir === 'asc' ? na - nb : nb - na
+        av = a.apartment_number || ''; bv = b.apartment_number || ''
+      }
+      else if (sortKey === 'project') { av = projectName[a.project_id] || ''; bv = projectName[b.project_id] || '' }
+      return sortDir === 'asc' ? av.localeCompare(bv, 'he') : bv.localeCompare(av, 'he')
+    })
+  }, [filtered, sortKey, sortDir, projectName])
+
+  function handleSort(key: SortKey) {
+    startTransition(() => {
+      if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortKey(key)
+        setSortDir('asc')
+      }
+    })
+  }
+
+  function sortArrow(key: SortKey) {
+    if (sortKey !== key) return ' ↕'
+    return sortDir === 'asc' ? ' ↑' : ' ↓'
+  }
+
+  function copyPhone(phone: string) {
+    navigator.clipboard.writeText(phone).then(() => toast.success('טלפון הועתק')).catch(() => {})
+  }
+
+  async function exportCsv() {
+    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+    const COLS = 5
+    const rows = sorted.map((r) => ({
+      'שם מלא': r.full_name,
+      'טלפון': r.phone || '',
+      'אימייל': r.email || '',
+      'שוכר': r.is_renter ? 'כן' : '',
+      'דירה': r.apartment_number || '',
+      'בניין': projectName[r.project_id] || '',
+      'הערות': r.notes || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 22 }, { wch: 36 }]
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 }
+    ws['!autofilter'] = { ref: ws['!ref'] as string }
+    applyHeaderStyle(ws, COLS)
+    applyDataStyles(ws, rows.length, COLS)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'דיירים')
+    XLSX.writeFile(wb, 'דיירים.xlsx')
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filtered.map((r) => r.id)))
+    }
+  }
+
+  async function bulkMerge() {
+    if (selectedIds.size !== 2) return
+    const ids = Array.from(selectedIds)
+    const a = residents.find((r) => r.id === ids[0])
+    const b = residents.find((r) => r.id === ids[1])
+    if (!a || !b) return
+
+    const toMergeRow = (r: ResidentRow) => ({
+      id: r.id,
+      project_id: r.project_id,
+      client_id: r.client_id ?? null,
+      full_name: r.full_name,
+      phone: r.phone,
+      normalized_phone: null,
+      email: r.email ?? null,
+      apartment_number: r.apartment_number,
+      notes: r.notes ?? null,
+      is_renter: r.is_renter ?? false,
+    })
+
+    const { keepId, mergeId } = pickResidentToKeep(toMergeRow(a), toMergeRow(b))
+    const keep = keepId === a.id ? a : b
+    const merge = mergeId === a.id ? a : b
+    if (
+      !window.confirm(
+        `לאחד את "${merge.full_name}" לתוך "${keep.full_name}"?\nהרשומה המאוחדת תכלול את כל הפרטים; הכפילות תימחק.`
+      )
+    ) {
+      return
+    }
+
+    setBulkMerging(true)
+    try {
+      const res = await fetchWithTimeout(
+        '/api/merge-residents',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keep_resident_id: keepId, merge_resident_id: mergeId }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res?.json().catch(() => ({}))) as { error?: unknown; data?: ResidentRow }
+      if (!res?.ok) throw new Error(errorMessageFromResponseJson(json, 'איחוד נכשל'))
+
+      const row = json.data as ResidentRow
+      setResidents((prev) => prev.filter((r) => r.id !== mergeId).map((r) => (r.id === keepId ? row : r)))
+      setSelectedIds(new Set())
+      toast.success('הדיירים אוחדו')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'איחוד נכשל')
+    } finally {
+      setBulkMerging(false)
+    }
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return
+    const count = selectedIds.size
+    if (!window.confirm(`למחוק ${count} דיירים? לא ניתן לשחזר.`)) return
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedIds)
+      const results = await Promise.all(
+        ids.map(async (resident_id) => {
+          const res = await fetchWithTimeout(
+            '/api/update-resident',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resident_id, soft_delete: true }),
+            },
+            MUTATION_FETCH_TIMEOUT_MS
+          )
+          const json = (await res.json().catch(() => ({}))) as { error?: unknown }
+          if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'מחיקה נכשלה'))
+          return resident_id
+        })
+      )
+      const deleted = new Set(results)
+      setResidents((prev) => prev.filter((r) => !deleted.has(r.id)))
+      setSelectedIds(new Set())
+      if (tenantClientId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.residents(tenantClientId, RESIDENTS_PAGE_SIZE),
+        })
+      }
+      toast.success(`${count} דיירים נמחקו`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'מחיקה נכשלה')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  // Escape סוגר מודאלים
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (addOpen) { closeResidentModal(); return }
+      if (importOpen) { setImportOpen(false); return }
+      if (shareIntakeOpen) { setShareIntakeOpen(false); return }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [addOpen, importOpen, shareIntakeOpen])
+
+  return (
+    <>
+      {isMobile && (
+        <MobileHeader
+          title="דיירים"
+          subtitle={`${filtered.length} רשומות`}
+          onMenuClick={openMenu}
+        />
+      )}
+
+      <div
+        style={{
+          ...styles.content,
+          ...(isMobile
+            ? { padding: '16px 16px 8px', maxWidth: '100%', boxSizing: 'border-box', minWidth: 0 }
+            : {}),
+        }}
+      >
+        {!isMobile && (
+          <PageHeader
+            title="דיירים"
+            subtitle="ניהול שמות דיירים לפי בניין (לאחר הרצת מיגרציה ב-Supabase)"
+            actions={
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={openShareIntakeLink}
+                  disabled={residentsTableMissing || projects.length === 0}
+                >
+                  שליחת קישור רישום
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={openImport}
+                  disabled={residentsTableMissing}
+                >
+                  ייבוא דיירים
+                </Button>
+                <Button variant="primary" size="sm" onClick={openAdd} disabled={residentsTableMissing}>
+                  הוספת דייר
+                </Button>
+              </div>
+            }
+          />
+        )}
+
+        <Card noPadding>
+          <div className="app-error-log-tabs" style={styles.mainTabs}>
+            <button
+              type="button"
+              style={mainTab === 'active' ? MAIN_TAB_ACTIVE : MAIN_TAB_INACTIVE}
+              onClick={() => switchMainTab('active')}
+            >
+              פעילים
+            </button>
+            <button
+              type="button"
+              style={mainTab === 'pending' ? MAIN_TAB_ACTIVE : MAIN_TAB_INACTIVE}
+              onClick={() => switchMainTab('pending')}
+            >
+              ממתינים לאישור
+              {pendingBadge > 0 && <span style={styles.pendingBadge}>{pendingBadge}</span>}
+            </button>
+          </div>
+
+          {pendingMounted && (
+            <div style={{ display: mainTab === 'pending' ? 'block' : 'none' }}>
+              <div style={styles.pendingWrap}>
+                {pendingLoading && pendingItems.length === 0 ? (
+                  <div style={styles.loading}>
+                    <LoadingSpinner />
+                  </div>
+                ) : pendingItems.length === 0 ? (
+                  <p style={styles.empty}>אין בקשות ממתינות.</p>
+                ) : (
+                  <div style={styles.pendingList}>
+                    {pendingItems.map((p) => {
+                      const conflict = pendingConflictMap[p.id]
+                      const hasName = !!pendingNames[p.id]?.trim()
+                      return (
+                      <div key={p.id} style={styles.pendingCard}>
+                        {conflict && (
+                          <div style={styles.pendingConflict}>
+                            טלפון זה רשום כבר כדייר &quot;{conflict.residentName}&quot; בבניין {conflict.projectName}
+                          </div>
+                        )}
+                        <div style={styles.pendingRow}>
+                          <span style={styles.pendingLabel}>טלפון</span>
+                          <span>{displayPendingPhone(p.reporter_phone_normalized)}</span>
+                        </div>
+                        <div style={styles.pendingRow}>
+                          <span style={styles.pendingLabel}>פרויקט</span>
+                          <span>{p.project_name}</span>
+                        </div>
+                        {p.ticket_number != null && (
+                          <div style={styles.pendingRow}>
+                            <span style={styles.pendingLabel}>תקלה</span>
+                            <span>#{p.ticket_number}</span>
+                          </div>
+                        )}
+                        <label style={styles.pendingNameLab}>
+                          שם דייר <span style={{ color: theme.colors.error }}>*</span>
+                        </label>
+                        <input
+                          value={pendingNames[p.id] || ''}
+                          onChange={(e) => setPendingNames((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          placeholder="שם מלא (חובה)"
+                          style={{
+                            ...styles.pendingInput,
+                            borderColor: !hasName ? theme.colors.error : theme.colors.border,
+                          }}
+                        />
+                        <label style={styles.pendingNameLab}>דירה (אופציונלי)</label>
+                        <input
+                          value={pendingApartments[p.id] || ''}
+                          onChange={(e) => setPendingApartments((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          placeholder="מספר דירה"
+                          style={styles.pendingInput}
+                        />
+                        <div style={styles.pendingActions}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={!hasName}
+                            loading={pendingBusyId === p.id}
+                            onClick={() => approvePending(p.id)}
+                          >
+                            אישור
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            loading={pendingBusyId === p.id}
+                            onClick={() => rejectPending(p.id)}
+                          >
+                            דחייה
+                          </Button>
+                        </div>
+                      </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: mainTab === 'active' ? 'block' : 'none' }}>
+          <div style={styles.filters}>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="חיפוש לפי שם, טלפון, אימייל, דירה, הערות..."
+              style={{ flex: 1, maxWidth: '360px' }}
+            />
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              style={styles.select}
+            >
+              <option value="ALL">כל הבניינים</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <Button variant="secondary" size="sm" onClick={() => load()}>
+              רענון
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={openShareIntakeLink}
+              disabled={residentsTableMissing || projects.length === 0}
+            >
+              שליחת קישור רישום
+            </Button>
+            <Button variant="secondary" size="sm" onClick={openImport} disabled={residentsTableMissing}>
+              ייבוא דיירים
+            </Button>
+            <Button variant="secondary" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
+              ייצוא Excel
+            </Button>
+            <Button variant="primary" size="sm" onClick={openAdd} disabled={residentsTableMissing}>
+              הוספת דייר
+            </Button>
+          </div>
+
+          {loading ? (
+            <PageListSkeleton rows={8} />
+          ) : loadError && residents.length === 0 && !residentsTableMissing ? (
+            <ErrorState
+              title="לא הצלחנו לטעון את הדיירים"
+              message="בדקו חיבור לאינטרנט ונסו שוב."
+              onRetry={() => void load()}
+            />
+          ) : residentsTableMissing ? (
+            <div style={styles.friendlyEmpty}>
+              <p style={styles.friendlyEmptyTitle}>טבלת הדיירים עדיין לא הוגדרה במערכת.</p>
+            </div>
+          ) : (
+            <div style={styles.tableWrap}>
+              {selectedIds.size > 0 && (
+                <div style={styles.bulkBar}>
+                  <span style={{ fontSize: '14px', fontWeight: 600 }}>{selectedIds.size} נבחרו</span>
+                  <Button variant="secondary" size="sm" onClick={() => setSelectedIds(new Set())} type="button">
+                    ביטול בחירה
+                  </Button>
+                  {selectedIds.size === 2 && (
+                    <Button variant="primary" size="sm" onClick={bulkMerge} loading={bulkMerging} type="button">
+                      איחוד 2 דיירים
+                    </Button>
+                  )}
+                  <Button variant="danger" size="sm" onClick={bulkDelete} loading={bulkDeleting} type="button">
+                    מחק {selectedIds.size} נבחרים
+                  </Button>
+                </div>
+              )}
+
+              {/* Mobile: card view (virtualized for long lists) */}
+              {isMobile ? (
+                sorted.length === 0 ? (
+                  <p style={styles.empty}>אין דיירים להצגה.</p>
+                ) : (
+                  <VirtualizedList
+                    items={sorted}
+                    estimateSize={132}
+                    overscan={6}
+                    getKey={(r) => r.id}
+                    maxHeight="min(72vh, 900px)"
+                    renderItem={(r) => (
+                      <div style={{ paddingBottom: 10 }}>
+                        <div style={{ background: selectedIds.has(r.id) ? theme.colors.primaryMuted : theme.colors.surface, border: `1px solid ${selectedIds.has(r.id) ? theme.colors.primary : theme.colors.border}`, borderRadius: theme.radius.md, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} aria-label={`בחר ${r.full_name}`} />
+                              <span style={{ fontWeight: 600, fontSize: '15px', color: theme.colors.textPrimary }}>{r.full_name}</span>
+                              {r.is_renter === true && <span style={styles.renterBadge}>שוכר</span>}
+                            </div>
+                            <Button variant="secondary" size="sm" type="button" onClick={() => openEdit(r)}>עריכה</Button>
+                          </div>
+                          {r.phone && (
+                            <button type="button" onClick={() => copyPhone(r.phone!)} title="לחץ להעתקה" style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: '14px', padding: 0, direction: 'ltr', textAlign: 'right', alignSelf: 'flex-start' }}>
+                              {r.phone}
+                            </button>
+                          )}
+                          {r.email && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: theme.colors.textSecondary, direction: 'ltr', alignSelf: 'flex-start' }}>
+                              <span>✉</span>
+                              <span>{r.email}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: theme.colors.textSecondary }}>
+                            {r.apartment_number && <span>דירה {r.apartment_number}</span>}
+                            {projectName[r.project_id] && <span>{projectName[r.project_id]}</span>}
+                          </div>
+                          {r.notes && <p style={{ fontSize: '12px', color: theme.colors.textMuted, margin: 0 }}>{r.notes.length > 100 ? `${r.notes.slice(0, 100)}…` : r.notes}</p>}
+                        </div>
+                      </div>
+                    )}
+                  />
+                )
+              ) : (
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={{ ...styles.th, width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                        ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
+                        onChange={toggleSelectAll}
+                        aria-label="בחר הכל"
+                      />
+                    </th>
+                    <th style={{ ...styles.th, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('full_name')}>שם{sortArrow('full_name')}</th>
+                    <th style={styles.th}>טלפון</th>
+                    <th style={{ ...styles.th, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('apartment_number')}>דירה{sortArrow('apartment_number')}</th>
+                    <th style={{ ...styles.th, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('project')}>בניין{sortArrow('project')}</th>
+                    <th style={styles.th}>הערות</th>
+                    <th style={{ ...styles.th, width: '100px' }}>פעולות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((r) => (
+                    <tr key={r.id} style={selectedIds.has(r.id) ? { background: theme.colors.primaryMuted } : undefined}>
+                      <td style={styles.td}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(r.id)}
+                          onChange={() => toggleSelect(r.id)}
+                          aria-label={`בחר ${r.full_name}`}
+                        />
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>{r.full_name}</span>
+                          {r.is_renter === true && <span style={styles.renterBadge}>שוכר</span>}
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        {r.phone ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                            <button
+                              type="button"
+                              title="לחץ להעתקה"
+                              onClick={() => copyPhone(r.phone!)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: 'inherit', padding: 0, direction: 'ltr', display: 'inline-block' }}
+                            >
+                              {r.phone}
+                            </button>
+                            {r.email && (
+                              <span style={{ color: theme.colors.textSecondary, fontSize: '12px', direction: 'ltr' }}>
+                                ✉ {r.email}
+                              </span>
+                            )}
+                          </div>
+                        ) : r.email ? (
+                          <span style={{ color: theme.colors.textSecondary, fontSize: '12px', direction: 'ltr' }}>
+                            ✉ {r.email}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td style={styles.td}>{r.apartment_number || '—'}</td>
+                      <td style={styles.td}>{projectName[r.project_id] || '—'}</td>
+                      <td style={{ ...styles.td, maxWidth: '220px', color: theme.colors.textSecondary }}>
+                        {r.notes ? (
+                          <span title={r.notes}>
+                            {r.notes.length > 80 ? `${r.notes.slice(0, 80)}…` : r.notes}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={styles.td}>
+                        <Button variant="secondary" size="sm" type="button" onClick={() => openEdit(r)}>
+                          עריכה
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              )}
+              {filtered.length === 0 && !isMobile && (
+                <p style={styles.empty}>אין דיירים להצגה. הוסיפו רשומות ב-Supabase.</p>
+              )}
+              {residentsHasMore && projectFilter === 'ALL' && !deferredSearchTerm.trim() ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={loadingMore}
+                    onClick={() => void loadMoreResidents()}
+                  >
+                    טען עוד
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
+          </div>
+        </Card>
+      </div>
+
+      <AddResidentModal
+        open={addOpen}
+        onClose={closeResidentModal}
+        isMobile={isMobile}
+        projects={projects}
+        projectId={addProjectId}
+        fullName={addFullName}
+        phone={addPhone}
+        email={addEmail}
+        isRenter={addIsRenter}
+        apartmentNumber={addApartment}
+        notes={addNotes}
+        error={addError}
+        loading={saving}
+        variant={editResidentId ? 'edit' : 'add'}
+        onDelete={editResidentId ? deleteResident : undefined}
+        deleteLoading={deletingResident}
+        onProjectIdChange={setAddProjectId}
+        onFullNameChange={setAddFullName}
+        onPhoneChange={setAddPhone}
+        onEmailChange={setAddEmail}
+        onIsRenterChange={setAddIsRenter}
+        onApartmentNumberChange={setAddApartment}
+        onNotesChange={setAddNotes}
+        onSubmit={submitAdd}
+      />
+
+      <ImportResidentsModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        isMobile={isMobile}
+        projects={projects}
+        defaultProjectId={projectFilter !== 'ALL' ? projectFilter : ''}
+        onImported={(newRows) => {
+          setResidents((prev) => [...(newRows as ResidentRow[]), ...prev])
+        }}
+      />
+
+      <ShareResidentIntakeLinkModal
+        open={shareIntakeOpen}
+        onClose={() => setShareIntakeOpen(false)}
+        isMobile={isMobile}
+        projects={projects}
+        defaultProjectId={projectFilter !== 'ALL' ? projectFilter : ''}
+      />
+    </>
+  )
+}
+
+const styles: Record<string, CSSProperties> = {
+  content: { padding: '32px 40px', maxWidth: '1200px', margin: '0 auto' },
+  mainTabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+    padding: '16px 20px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  renterBadge: {
+    background: theme.colors.warningMuted,
+    color: theme.colors.warning,
+    border: `1px solid ${theme.colors.warning}`,
+    borderRadius: '999px',
+    fontSize: '11px',
+    fontWeight: 600,
+    padding: '2px 8px',
+    lineHeight: 1.4,
+  },
+  pendingBadge: {
+    background: theme.colors.warning,
+    color: '#fff',
+    fontSize: '11px',
+    minWidth: '22px',
+    height: '22px',
+    borderRadius: '11px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 7px',
+  },
+  pendingWrap: { padding: '0 0 8px' },
+  pendingList: { padding: '16px 20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' },
+  pendingCard: {
+    padding: '16px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.muted,
+  },
+  pendingConflict: {
+    marginBottom: '12px',
+    padding: '10px 14px',
+    borderRadius: theme.radius.sm,
+    background: theme.colors.warningMuted,
+    border: `1px solid ${theme.colors.warning}`,
+    fontSize: '13px',
+    color: theme.colors.textPrimary,
+    fontWeight: 500,
+  },
+  pendingRow: { display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px', fontSize: '14px' },
+  pendingLabel: { color: theme.colors.textMuted, fontWeight: 600 },
+  pendingNameLab: {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: theme.colors.textSecondary,
+    marginTop: '8px',
+    marginBottom: '6px',
+  },
+  pendingInput: {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    fontSize: '15px',
+    marginBottom: '12px',
+    boxSizing: 'border-box',
+  },
+  pendingActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+  filters: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '12px',
+    alignItems: 'center',
+    padding: '20px 24px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  select: {
+    padding: '10px 14px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    fontSize: '15px',
+    minWidth: '200px',
+  },
+  loading: { padding: '48px', display: 'flex', justifyContent: 'center' },
+  tableWrap: { padding: '0 0 24px', overflowX: 'auto' },
+  bulkBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 20px',
+    background: theme.colors.primaryMuted,
+    borderBottom: `1px solid ${theme.colors.primary}44`,
+    flexWrap: 'wrap' as const,
+  },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: {
+    textAlign: 'start',
+    padding: '12px 20px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: theme.colors.textMuted,
+    background: theme.colors.muted,
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  td: {
+    padding: '14px 20px',
+    fontSize: '14px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  empty: { padding: '32px 24px', color: theme.colors.textMuted, textAlign: 'center' },
+  friendlyEmpty: {
+    padding: '48px 28px',
+    textAlign: 'center',
+    maxWidth: '520px',
+    margin: '0 auto',
+  },
+  friendlyEmptyTitle: {
+    fontSize: '17px',
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+    margin: '0 0 12px',
+  },
+  friendlyEmptyText: {
+    fontSize: '15px',
+    color: theme.colors.textSecondary,
+    lineHeight: 1.6,
+    margin: 0,
+  },
+}

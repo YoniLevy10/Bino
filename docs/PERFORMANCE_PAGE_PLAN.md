@@ -1,8 +1,8 @@
 # תוכנית ביצועים לפי דף — BINO Manager
 
-תאריך: 2026-10-01 (עודכן אחרי גל 1+2)  
-סביבת מדידה: `https://bino.casa` (OpsBrain demo)  
-ענף: `cursor/perf-page-wave1-0484` / PR #223
+תאריך: 2026-10-02 (עודכן אחרי גל 3 evidence)  
+סביבת מדידה: `https://bino.casa` (OpsBrain / savion@bino.com)  
+ענף: `cursor/perf-evidence-wave3-0484`
 
 ## מדדים
 
@@ -14,21 +14,21 @@
 
 יעדי מוצר (warm nav): T_nav &lt; 300ms תחושתי, T_full &lt; 1s לרשימות יומיומיות.
 
-## Baseline (production לפני המיזוג)
+## Baseline Wave 3 (production לפני שינויי הגל, 2026-10-02)
 
-| Route | T_nav_ms | T_full_ms | T_detail_ms |
-|-------|----------|-----------|-------------|
-| `/dashboard` | ~800 | ~1500 | — |
-| `/tickets` | ~700 | ~3000 | ~800 |
-| `/projects` | ~600 | ~2000 | ~1200 |
-| `/residents` | ~600 | ~1800 | — |
-| `/workers` | ~600 | ~2000 | — |
-| `/tasks` | ~700 | ~3000 | — |
-| `/site-tours` | ~700 | ~3000 | — |
-| `/summary` | ~600 | ~1800 | — |
-| `/settings` | ~700 | ~3000 | — |
-| `/addons` | ~600 | ~1800 | — |
-| `/whatsapp-inbox` | ~700 | ~3000 | — |
+Harness: `DEMO_LOGIN_* node scripts/perf-nav-timing.mjs` → `/opt/cursor/artifacts/perf-baseline.json`
+
+| Journey | T_nav_ms | T_full_ms | notes |
+|---------|----------|-----------|-------|
+| cold `/dashboard` | 1958 | 527 | slowest API: `dashboard_ticket_kpi_counts` 755ms |
+| cold `/tickets` | 1896 | 510 | RQ warm from prior route (0 API) |
+| cold `/workers` | 3361 | 809 | shell remount / JS |
+| cold `/site-tours` | 7158 | 508 | shell remount / JS dominant |
+| warm dashboard→tickets | 31 | 407 | client click |
+| warm tickets→settings | 55 | 415 | client click |
+| ticket-detail | — | T_detail=663 | slowest: `professionals` 350ms, `ticket_attachments` 318ms |
+
+סיווג: cold nav = `react-remount` + JS; detail = `network|db` (professionals unbounded + attachments).
 
 ## גל 1 — הושלם
 
@@ -48,10 +48,29 @@
 - [x] **ui theme leaf** — `app/components/ui/theme.ts` (ייבוא קל ל־theme-only)
 - [x] **middleware matcher** — החרגת נכסים סטטיים/SEO/PWA (בלי שינוי tenant JWT)
 
+## גל 3 — evidence + ארכיטקטורה
+
+- [x] Harness: `scripts/perf-nav-timing.mjs` — env-only auth, warm journeys, network top, Playwright trace
+- [x] **Persistent manager shell** — `app/(manager)/layout.tsx` מחזיק `AppShell` פעם אחת; דפי מנהל בלי עטיפה כפולה; `AddonFeaturePageShell` עם `wrapAppShell=false`
+- [x] Skeletons מקומיים (`PageListSkeleton` / `PageKpiSkeleton`) במקום spinner מלא ב־tickets/dashboard/residents
+- [x] `@tanstack/react-virtual` ברשימות tickets (mobile + רשימות ארוכות) ו־residents (mobile)
+- [x] Prefetch RQ על hover/focus בניווט (tickets/workers/projects/residents)
+- [x] Professionals ב־drawer: `is_active` + `limit(200)`
+- [x] Migration `120_perf_wave3_hot_path_indexes.sql` (attachments, residents name, closed_at, open tickets) — הוחל על production
+
+### After (מדידה מקומית / אחרי deploy)
+
+להריץ שוב:
+
+```bash
+DEMO_LOGIN_EMAIL=… DEMO_LOGIN_PASSWORD=… PERF_LABEL=after node scripts/perf-nav-timing.mjs
+```
+
+ולעדכן טבלת before/after כאן + ב־PR.
+
 ## אימות אחרי deploy
 
-1. Login → dashboard → tickets → workers → residents → projects (warm nav)
+1. Login → dashboard → tickets → workers → residents → projects (warm nav; shell לא אמור להבהב)
 2. Settings → טאב כללי מהיר; טאב Grow טוען webhook/onboard
-3. Summary → היסטוריה: חודש + טען עוד
-4. Collections → שליחה מרוכזת מחזירה 202 ומתעדכנת בפול
-5. `node scripts/perf-nav-timing.mjs` עם `DEMO_LOGIN_PASSWORD`
+3. פתיחת תקלה → drawer; professionals לא שואב את כל הטבלה
+4. `node scripts/perf-nav-timing.mjs` עם `DEMO_LOGIN_EMAIL` + `DEMO_LOGIN_PASSWORD` (חובה; בלי defaults)

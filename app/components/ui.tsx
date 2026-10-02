@@ -27,7 +27,9 @@ import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
 import { navLinkPrefetchHandlers } from '@/lib/route-prefetch'
+import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useQueryClient } from '@tanstack/react-query'
 import { PullToRefresh } from './PullToRefresh'
 import { ManagerPushOnboarding, ManagerPushSync } from './ManagerPushOnboarding'
 import { PageViewTracker } from './PageViewTracker'
@@ -262,12 +264,15 @@ function NavSignOutButton({ onAfterSignOut }: { onAfterSignOut?: () => void }) {
 export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   const pathname = usePathname()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { navItems } = useSidebarNav()
   const { displayName, logoUrl } = useClientBranding()
   const [mounted, setMounted] = useState(false)
   const [userEmail, setUserEmail] = useState('')
   const [userInitials, setUserInitials] = useState('?')
   const [opsOpen, setOpsOpen] = useState(false)
+  const prefetchClientId = typeof window !== 'undefined' ? tryReadSessionBoundClientId() : null
+  const prefetchOpts = { queryClient, clientId: prefetchClientId }
 
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,7 +312,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
       <Link
         key={item.id}
         href={item.href}
-        {...navLinkPrefetchHandlers(item.href, router.prefetch)}
+        {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
         className={isActive ? 'lg-nav-active' : undefined}
         style={{
           ...sidebarStyles.navLink,
@@ -380,7 +385,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
         <div style={sidebarStyles.settingsNav}>
           <Link
             href="/settings"
-            {...navLinkPrefetchHandlers('/settings', router.prefetch)}
+            {...navLinkPrefetchHandlers('/settings', router.prefetch, prefetchOpts)}
             className={pathname === '/settings' ? 'lg-nav-active' : undefined}
             style={{
               ...sidebarStyles.navLink,
@@ -638,6 +643,11 @@ export function MobileBottomNav() {
   const { mobileBottomPrimary, mobileBottomMore } = useSidebarNav()
   const { openMenu, isOpen: menuOpen } = useMobileMenu()
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const prefetchOpts = {
+    queryClient,
+    clientId: typeof window !== 'undefined' ? tryReadSessionBoundClientId() : null,
+  }
 
   const pathname = usePathname()
   const settingsActive = pathname === '/settings'
@@ -654,7 +664,7 @@ export function MobileBottomNav() {
               <Link
                 key={item.id}
                 href={item.href}
-                {...navLinkPrefetchHandlers(item.href, router.prefetch)}
+                {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
                 style={{
                   ...bottomNavStyles.link,
                   ...(active ? bottomNavStyles.linkActive : {}),
@@ -692,6 +702,7 @@ export function MobileBottomNav() {
         <div style={bottomNavStyles.settingsDivider} aria-hidden />
         <Link
           href="/settings"
+          {...navLinkPrefetchHandlers('/settings', router.prefetch, prefetchOpts)}
           style={{
             ...bottomNavStyles.link,
             ...bottomNavStyles.settingsLink,
@@ -1050,6 +1061,11 @@ export function MobileMenu({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const prefetchOpts = {
+    queryClient,
+    clientId: typeof window !== 'undefined' ? tryReadSessionBoundClientId() : null,
+  }
   const { displayName, logoUrl } = useClientBranding()
   const { navItems } = useSidebarNav()
   const appSearch = useAppSearch()
@@ -1120,7 +1136,7 @@ export function MobileMenu({
                   key={item.id}
                   href={item.href}
                   onClick={onClose}
-                  {...navLinkPrefetchHandlers(item.href, router.prefetch)}
+                  {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
                   style={{
                     ...mobileMenuStyles.navLink,
                     ...(isActive ? mobileMenuStyles.navLinkActive : {}),
@@ -1136,7 +1152,7 @@ export function MobileMenu({
             <Link
               href="/settings"
               onClick={onClose}
-              {...navLinkPrefetchHandlers('/settings', router.prefetch)}
+              {...navLinkPrefetchHandlers('/settings', router.prefetch, prefetchOpts)}
               style={{
                 ...mobileMenuStyles.navLink,
                 ...(pathname === '/settings' ? mobileMenuStyles.navLinkActive : {}),
