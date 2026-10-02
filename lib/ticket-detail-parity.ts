@@ -19,17 +19,17 @@ export type TicketDetailParityFeature = (typeof TICKET_DETAIL_PARITY_FEATURES)[n
 export const TICKET_DETAIL_ENTRY_POINTS = [
   {
     id: 'dashboard',
-    pageFile: 'app/dashboard/page.tsx',
+    pageFile: 'app/(manager)/dashboard/page.tsx',
     drawerComponent: 'TicketDetailDrawer',
   },
   {
     id: 'tickets',
-    pageFile: 'app/tickets/page.tsx',
+    pageFile: 'app/(manager)/tickets/page.tsx',
     drawerComponent: 'TicketDetailDrawer',
   },
   {
     id: 'summary',
-    pageFile: 'app/summary/page.tsx',
+    pageFile: 'app/(manager)/summary/page.tsx',
     drawerComponent: 'TicketDetailDrawer',
     dataHook: 'useManagerTicketDrawer',
   },
@@ -38,8 +38,8 @@ export const TICKET_DETAIL_ENTRY_POINTS = [
 /** Navigation sources that must deep-link into ticket detail. */
 export const TICKET_DETAIL_NAV_SOURCES = [
   { id: 'global_search', file: 'app/components/GlobalSearch.tsx', mustUse: 'ticketDetailPath' },
-  { id: 'summary_history', file: 'app/summary/page.tsx', mustUse: 'handleOpenTicket' },
-  { id: 'projects_drawer', file: 'app/projects/page.tsx', mustUse: 'ticketDetailPath' },
-  { id: 'workers_drawer', file: 'app/workers/page.tsx', mustUse: 'ticketDetailPath' },
-  { id: 'dashboard_activity', file: 'app/dashboard/page.tsx', mustUse: 'openTicketById' },
+  { id: 'summary_history', file: 'app/(manager)/summary/page.tsx', mustUse: 'handleOpenTicket' },
+  { id: 'projects_drawer', file: 'app/(manager)/projects/page.tsx', mustUse: 'ticketDetailPath' },
+  { id: 'workers_drawer', file: 'app/(manager)/workers/page.tsx', mustUse: 'ticketDetailPath' },
+  { id: 'dashboard_activity', file: 'app/(manager)/dashboard/page.tsx', mustUse: 'openTicketById' },
 ] as const
