@@ -3,17 +3,26 @@
  * (production: https://bino.casa). Trimmed; trailing slash stripped before appending paths.
  * Never fall back to *.vercel.app for user-facing links.
  */
+
+import { BINO_PUBLIC_ORIGIN, getEnvPublicOrigin } from '@/lib/public-origin'
+
 function getPublicAppBaseUrl(): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
-  if (!base) {
+  const fromEnv = getEnvPublicOrigin()
+  if (fromEnv) return fromEnv
+  // Required for SMS/WhatsApp deep links in production; fall back to canonical host
+  // rather than emitting a *.vercel.app alias if env is missing/mis-set.
+  if (!(process.env.NEXT_PUBLIC_APP_URL || '').trim()) {
     throw new Error('NEXT_PUBLIC_APP_URL is not set')
   }
-  return base
+  return BINO_PUBLIC_ORIGIN
 }
 
-/** Base URL when optional (e.g. ops alert emails). Empty if unset. */
+/** Base URL when optional (e.g. ops alert emails). Empty only if unset; never *.vercel.app. */
 export function getPublicAppUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+  const fromEnv = getEnvPublicOrigin()
+  if (fromEnv) return fromEnv
+  if ((process.env.NEXT_PUBLIC_APP_URL || '').trim()) return BINO_PUBLIC_ORIGIN
+  return ''
 }
 
 export function getPublicTicketsUrl(): string {
