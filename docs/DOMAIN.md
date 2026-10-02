@@ -12,6 +12,11 @@
 
 `bamakor.vercel.app` נשאר רק לתאימות webhooks ישנים — לא לפרסום, לא ל-SMS חדש, לא ל-canonical.
 
+ב־middleware: ב־Production כל בקשת דפדפן ל־`*.vercel.app` (למשל `bino-…-projects.vercel.app`) מופנית ב־308 ל־`https://bino.casa`, חוץ מ־`/api/webhook/*`, `/api/cron/*`, `/.well-known/*`.  
+כפתור «כניסה למערכת» בנחיתה מצביע ישירות ל־`https://bino.casa/login`.
+
+**Vercel Authentication:** אם SSO מופעל גם על Production Deployment URLs, גולשים שמגיעים ל־`*.vercel.app` נזרקים ל־`vercel.com/sso-api` לפני שהאפליקציה רצה. בדשבורד Vercel → Project → Deployment Protection → Vercel Authentication: להשאיר **Preview only** (לא Production deployment URLs). כניסה למערכת תמיד דרך `https://bino.casa`.
+
 ## מה כבר הוגדר ב-Vercel
 
 | פריט | סטטוס |

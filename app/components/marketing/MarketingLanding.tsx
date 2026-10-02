@@ -11,6 +11,7 @@ import {
   waDemoUrl,
 } from '@/lib/marketing-copy'
 import { trackMarketingEvent } from '@/lib/marketing-analytics'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
 import { BINO_PUBLIC_HOST } from '@/lib/marketing-site'
 import { MarketingLeadLink } from './MarketingLeadLink'
 
@@ -45,7 +46,9 @@ function CtaPair({
         className={
           variant === 'closing' ? 'bino-cta__secondary bino-cta__secondary--dark' : 'bino-cta__secondary'
         }
-        href="/login"
+        // Absolute production origin — if the visitor landed on *.vercel.app
+        // (SSO / old alias), relative /login keeps them trapped on that host.
+        href={`${BINO_PUBLIC_ORIGIN}/login`}
         onClick={() =>
           trackMarketingEvent('login_click', {
             locale,
