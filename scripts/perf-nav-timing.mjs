@@ -144,16 +144,41 @@ async function main() {
     classificationHints: [],
   }
 
-  await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 60000 })
-  const email = page.locator('input[type="email"], input[name="email"]').first()
-  const password = page.locator('input[type="password"]').first()
-  await email.waitFor({ timeout: 20000 })
-  await email.fill(EMAIL)
-  await password.fill(PASSWORD)
-  await page.getByRole('button', { name: /התחבר|כניסה|Sign in|Login/i }).first().click()
-  await page.waitForURL(/\/(dashboard|tickets|projects)/, { timeout: 60000 }).catch(() => null)
+  async function loginOnce() {
+    await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    await page.waitForTimeout(800)
+    const email = page.locator('input[type="email"], input[name="email"]').first()
+    const password = page.locator('input[type="password"]').first()
+    await email.waitFor({ timeout: 20000 })
+    // Controlled React inputs: fill() alone can submit empty; type into focused fields.
+    await email.click()
+    await email.fill('')
+    await email.pressSequentially(EMAIL, { delay: 15 })
+    await password.click()
+    await password.fill('')
+    await password.pressSequentially(PASSWORD, { delay: 15 })
+    const ev = await email.inputValue()
+    const pv = await password.inputValue()
+    if (!ev || !pv) throw new Error('LOGIN_INPUTS_EMPTY')
+    await page.getByRole('button', { name: /התחבר|כניסה|Sign in|Login|התחברות/i }).first().click()
+    await page.waitForURL(/\/(dashboard|tickets|projects)/, { timeout: 45000 }).catch(() => null)
+  }
 
-  if (page.url().includes('/login')) {
+  let loggedIn = false
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await loginOnce()
+      if (!page.url().includes('/login')) {
+        loggedIn = true
+        break
+      }
+      console.error('LOGIN_RETRY', attempt, page.url())
+    } catch (err) {
+      console.error('LOGIN_RETRY_ERR', attempt, err?.message || err)
+    }
+  }
+
+  if (!loggedIn) {
     console.error('LOGIN_FAILED', page.url())
     await page.screenshot({ path: join(OUT_DIR, `perf-login-failed-${LABEL}.png`), fullPage: true })
     await context.tracing.stop({ path: join(OUT_DIR, `perf-trace-${LABEL}-login-failed.zip`) })
@@ -256,7 +281,11 @@ async function main() {
     )
   }
 
-  await detail('ticket-detail', '/tickets', 'table tbody tr, [data-ticket-id], [data-testid="ticket-row"]')
+  await detail(
+    'ticket-detail',
+    '/tickets',
+    'table tbody tr[role="button"], table tbody tr, [data-ticket-id], button:has-text("תקלה")'
+  )
   await detail('worker-detail', '/workers', 'table tbody tr, [role="row"], button:has-text("פרטים")')
   await detail('resident-edit', '/residents', 'button:has-text("עריכה")')
 

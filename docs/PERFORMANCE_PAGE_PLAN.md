@@ -58,15 +58,26 @@ Harness: `DEMO_LOGIN_* node scripts/perf-nav-timing.mjs` → `/opt/cursor/artifa
 - [x] Professionals ב־drawer: `is_active` + `limit(200)`
 - [x] Migration `120_perf_wave3_hot_path_indexes.sql` (attachments, residents name, closed_at, open tickets) — הוחל על production
 
-### After (מדידה מקומית / אחרי deploy)
+### After — indexes on production (2026-10-02, לפני merge של layout)
 
-להריץ שוב:
+`PERF_LABEL=after-indexes` מול `bino.casa` (אינדקסי `120` כבר ב־prod; shell הקבוע עדיין לא ב־prod עד merge).
+
+| Journey | Baseline T_nav | After T_nav | Baseline T_full | After T_full |
+|---------|----------------|-------------|-----------------|--------------|
+| cold `/dashboard` | 1958 | 541 | 527 | 545 |
+| cold `/tickets` | 1896 | 1017 | 510 | 512 |
+| cold `/workers` | 3361 | 808 | 809 | 520 |
+| cold `/site-tours` | 7158 | 390 | 508 | 494 |
+| warm dashboard→tickets | 31 | 53 | 407 | 413 |
+| warm tickets→settings | 55 | 58 | 415 | 425 |
+
+הערות: שיפור cold משמעותי אחרי אינדקסים + ריצה חמה יותר; **שיפור תחושתי של ניווט (בלי splash remount) דורש merge של `(manager)/layout`**. Artifacts: `/opt/cursor/artifacts/perf-baseline.json`, `perf-after-indexes.json`.
+
+מדידת layout המלאה אחרי deploy:
 
 ```bash
-DEMO_LOGIN_EMAIL=… DEMO_LOGIN_PASSWORD=… PERF_LABEL=after node scripts/perf-nav-timing.mjs
+DEMO_LOGIN_EMAIL=… DEMO_LOGIN_PASSWORD=… PERF_LABEL=after-layout node scripts/perf-nav-timing.mjs
 ```
-
-ולעדכן טבלת before/after כאן + ב־PR.
 
 ## אימות אחרי deploy
 
