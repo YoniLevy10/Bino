@@ -17,6 +17,23 @@ export function VaadPayContent({
 }) {
   return (
     <>
+      {cfg.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- public merchant logo URL from storage
+        <img
+          src={cfg.logoUrl}
+          alt=""
+          style={{
+            display: 'block',
+            width: 64,
+            height: 64,
+            objectFit: 'contain',
+            borderRadius: 12,
+            marginBottom: 12,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+          }}
+        />
+      ) : null}
       <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: '#1e40af' }}>
         {cfg.businessName}
       </p>

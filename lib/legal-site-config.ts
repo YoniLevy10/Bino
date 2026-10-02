@@ -6,6 +6,8 @@ export type LegalSiteConfig = {
   phoneDisplay: string
   address: string
   email: string
+  /** Optional tenant logo (public URL) for /vaad-pay and related pages. */
+  logoUrl?: string | null
   publicBaseUrl: string
   /** True when phone + address look configured (not empty placeholders). */
   readyForGrowAudit: boolean
@@ -53,6 +55,7 @@ export function getLegalSiteConfig(): LegalSiteConfig {
     phoneDisplay: phone ? formatLegalPhoneDisplay(phone) : 'טלפון יושלם בהגדרות LEGAL_PHONE',
     address: address || 'כתובת יושלם בהגדרות LEGAL_ADDRESS',
     email,
+    logoUrl: null,
     publicBaseUrl,
     readyForGrowAudit,
   }

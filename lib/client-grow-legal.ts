@@ -2,7 +2,7 @@ import { formatLegalPhoneDisplay, type LegalSiteConfig } from '@/lib/legal-site-
 import { getPublicAppUrl } from '@/lib/public-app-url'
 
 export const CLIENT_GROW_LEGAL_SELECT =
-  'id, name, is_active, grow_legal_business_name, grow_legal_phone, grow_legal_address, grow_legal_email'
+  'id, name, logo_url, is_active, grow_legal_business_name, grow_legal_phone, grow_legal_address, grow_legal_email'
 
 export const CLIENT_GROW_LEGAL_SETTINGS_SELECT =
   'grow_legal_business_name, grow_legal_phone, grow_legal_address, grow_legal_email'
@@ -17,6 +17,7 @@ export function isClientGrowPageId(raw: string): boolean {
 export type ClientGrowLegalRow = {
   id: string
   name?: string | null
+  logo_url?: string | null
   is_active?: boolean | null
   grow_legal_business_name?: string | null
   grow_legal_phone?: string | null
@@ -30,6 +31,7 @@ export type ClientGrowLegal = {
   phone: string
   address: string
   email: string
+  logoUrl: string | null
   ready: boolean
 }
 
@@ -47,12 +49,14 @@ export function growLegalFromClientRow(row: ClientGrowLegalRow): ClientGrowLegal
   const phone = trimOrEmpty(row.grow_legal_phone)
   const address = trimOrEmpty(row.grow_legal_address)
   const email = trimOrEmpty(row.grow_legal_email)
+  const logoUrl = trimOrEmpty(row.logo_url) || null
   return {
     clientId: row.id,
     businessName,
     phone,
     address,
     email,
+    logoUrl,
     ready: Boolean(businessName && phone && address),
   }
 }
@@ -83,6 +87,7 @@ export function growLegalToSiteConfig(legal: ClientGrowLegal): LegalSiteConfig {
     phoneDisplay: phone ? formatLegalPhoneDisplay(phone) : 'טלפון יושלם בהגדרות הלקוח',
     address: legal.address || 'כתובת יושלם בהגדרות הלקוח',
     email: legal.email || '',
+    logoUrl: legal.logoUrl,
     publicBaseUrl: getPublicAppUrl(),
     readyForGrowAudit: legal.ready,
   }
