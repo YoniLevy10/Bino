@@ -16,6 +16,8 @@ import { z } from 'zod'
 import { getSetupPackageNavFeatures } from '@/lib/client-nav-features'
 import { normalizeTier } from '@/lib/plan-limits'
 import { parseWorkerPhone } from '@/lib/worker-phones'
+import { getPublicAppUrl } from '@/lib/public-app-url'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const setupSchema = z.object({
@@ -80,7 +82,7 @@ export async function POST(req: Request) {
   }
   const d = parsed.data
   const supabase = getSupabaseAdmin()
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+  const appUrl = getPublicAppUrl() || BINO_PUBLIC_ORIGIN
 
   try {
     // ── 1. Create client row ──────────────────────────────────────────────────

@@ -16,6 +16,10 @@ import {
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 import { isResidentPortalApiPath, isResidentPortalPath } from '@/lib/is-resident-portal-path'
 import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
+import {
+  buildCanonicalRedirectUrl,
+  shouldRedirectVercelAppHostToCanonical,
+} from '@/lib/canonical-host'
 
 type Pending = { response: NextResponse }
 
@@ -57,6 +61,29 @@ function redirectWithCookies(pending: Pending, url: URL) {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  // Production *.vercel.app → https://bino.casa (avoid Vercel SSO / stale aliases).
+  // Keep webhooks/crons/well-known on the legacy alias (docs/DOMAIN.md).
+  const host =
+    req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    req.headers.get('host')?.trim() ||
+    ''
+  if (
+    shouldRedirectVercelAppHostToCanonical({
+      host,
+      pathname,
+      vercelEnv: process.env.VERCEL_ENV,
+      nodeEnv: process.env.NODE_ENV,
+    })
+  ) {
+    return NextResponse.redirect(
+      buildCanonicalRedirectUrl({
+        pathname,
+        search: req.nextUrl.search,
+      }),
+      308
+    )
+  }
 
   // Marketing home is public, but logged-in managers (esp. iOS PWA with old
   // start_url "/") should land on the dashboard — not the sales page.

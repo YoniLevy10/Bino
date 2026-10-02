@@ -4,6 +4,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
 import { inviteUserToClientOrganization } from '@/lib/invite-organization-user'
 import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-user-password'
+import { getPublicAppUrl } from '@/lib/public-app-url'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
 
 const bodySchema = z
   .object({
@@ -61,7 +63,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ...result, mode: 'password' })
   }
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+  const appUrl = getPublicAppUrl() || BINO_PUBLIC_ORIGIN
 
   const result = await inviteUserToClientOrganization(admin, {
     clientId,

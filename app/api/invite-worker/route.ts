@@ -4,6 +4,8 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { inviteUserToClientOrganization } from '@/lib/invite-organization-user'
+import { getPublicAppUrl } from '@/lib/public-app-url'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
 import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-user-password'
 import { canOrgRoleWrite } from '@/lib/org-role'
 import { z } from 'zod'
@@ -93,7 +95,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
+    const appUrl = getPublicAppUrl() || BINO_PUBLIC_ORIGIN
     const result = await inviteUserToClientOrganization(supabase, {
       clientId,
       email,
