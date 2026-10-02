@@ -85,10 +85,10 @@ export async function middleware(req: NextRequest) {
     )
   }
 
-  // Marketing home is public, but logged-in managers (esp. iOS PWA with old
-  // start_url "/") should land on the dashboard — not the sales page.
-  // Resident-only accounts go to /resident (never mix manager + resident authz).
-  if (pathname === '/') {
+  // Temporary: marketing landing is down — bino.casa / and /en go to /login.
+  // Logged-in managers (esp. iOS PWA with old start_url "/") → dashboard.
+  // Resident-only accounts → /resident (never mix manager + resident authz).
+  if (pathname === '/' || pathname === '/en') {
     const pending: Pending = { response: NextResponse.next() }
     const supabase = createMiddlewareSupabase(req, pending)
     if (supabase) {
@@ -115,11 +115,13 @@ export async function middleware(req: NextRequest) {
             }
           }
         } catch {
-          // fall through to marketing page on transient errors
+          // fall through to login redirect on transient errors
         }
       }
     }
-    return pending.response
+    const url = req.nextUrl.clone()
+    url.pathname = '/login'
+    return redirectWithCookies(pending, url)
   }
 
   // Resident login / shared join link / UX sandbox are public. Other /resident* need session below.
