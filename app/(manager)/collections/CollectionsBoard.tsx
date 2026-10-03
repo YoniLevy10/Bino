@@ -15,6 +15,10 @@ import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import {
+  toastCollectionsBulkSendOutcome,
+  toastCollectionsSmsOutcome,
+} from '@/lib/collections-notify-toast'
+import {
   fetchWithTimeout,
   DEFAULT_FETCH_TIMEOUT_MS,
   MUTATION_FETCH_TIMEOUT_MS,
@@ -483,6 +487,11 @@ export function CollectionsBoard() {
         }
         if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'שליחה מרוכזת נכשלה'))
 
+        let outcome = {
+          created: json.created ?? 0,
+          sent: json.sent ?? 0,
+          failed: json.failed ?? 0,
+        }
         if (json.run_id && (res.status === 202 || json.status === 'queued' || json.status === 'running')) {
           setBulkResult('שולח ברקע…')
           let final = {
@@ -521,18 +530,23 @@ export function CollectionsBoard() {
             )
             if (final.status === 'completed' || final.status === 'failed') break
           }
-          if (final.status === 'failed') {
+          if (final.status === 'failed' && final.sent === 0) {
             throw new Error('השליחה המרוכזת נכשלה — נסו שוב')
+          }
+          outcome = {
+            created: final.created,
+            sent: final.sent,
+            failed: final.failed,
           }
           setBulkResult(
             `נוצרו ${final.created} · נשלחו ${final.sent} · נכשלו ${final.failed}`
           )
         } else {
           setBulkResult(
-            `נוצרו ${json.created ?? 0} · נשלחו ${json.sent ?? 0} · נכשלו ${json.failed ?? 0}`
+            `נוצרו ${outcome.created} · נשלחו ${outcome.sent} · נכשלו ${outcome.failed}`
           )
         }
-        toast.success('השליחה המרוכזת הושלמה')
+        toastCollectionsBulkSendOutcome(outcome)
         await loadCharges()
         return true
       },
@@ -589,9 +603,20 @@ export function CollectionsBoard() {
           },
           MUTATION_FETCH_TIMEOUT_MS
         )
-        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string
+          sms_sent?: boolean
+        }
         if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'יצירת חיוב נכשלה'))
-        toast.success(send ? 'החיוב נוצר ונשלח' : 'החיוב נשמר כטיוטה')
+        if (send) {
+          toastCollectionsSmsOutcome({
+            smsSent: json.sms_sent,
+            successMessage: 'החיוב נוצר ונשלח',
+            smsFailedMessage: 'החיוב נוצר, אך SMS לא נשלח',
+          })
+        } else {
+          toast.success('החיוב נשמר כטיוטה')
+        }
         setCreateOpen(false)
         setCAmount('')
         setCDescription('')
@@ -606,7 +631,8 @@ export function CollectionsBoard() {
   async function postChargeAction(
     path: string,
     chargeId: string,
-    successMsg: string
+    successMsg: string,
+    smsOpts?: { smsFailedMessage: string }
   ) {
     setBusyId(chargeId)
     await asyncHandler(
@@ -623,9 +649,18 @@ export function CollectionsBoard() {
         const json = (await res.json().catch(() => ({}))) as {
           error?: string
           pay_url?: string
+          sms_sent?: boolean
         }
         if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'הפעולה נכשלה'))
-        toast.success(successMsg)
+        if (smsOpts) {
+          toastCollectionsSmsOutcome({
+            smsSent: json.sms_sent,
+            successMessage: successMsg,
+            smsFailedMessage: smsOpts.smsFailedMessage,
+          })
+        } else {
+          toast.success(successMsg)
+        }
         await loadCharges()
         return true
       },
@@ -858,7 +893,8 @@ export function CollectionsBoard() {
                         void postChargeAction(
                           '/api/collections/charges/send',
                           row.id,
-                          'נשלח לתשלום'
+                          'נשלח לתשלום',
+                          { smsFailedMessage: 'החיוב מוכן לתשלום, אך SMS לא נשלח' }
                         )
                       }
                     >
@@ -892,7 +928,8 @@ export function CollectionsBoard() {
                         void postChargeAction(
                           '/api/collections/charges/resend',
                           row.id,
-                          'SMS נשלח מחדש'
+                          'SMS נשלח מחדש',
+                          { smsFailedMessage: 'לא הצלחנו לשלוח SMS מחדש' }
                         )
                       }
                     >
