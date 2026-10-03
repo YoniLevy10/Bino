@@ -1,4 +1,8 @@
-import { downloadExcelWorkbook } from '@/lib/excel-download'
+import {
+  addJsonSheet,
+  createWorkbook,
+  downloadExcelWorkbook,
+} from '@/lib/excel-workbook'
 import { ticketHistoryExportFilename } from '@/lib/export-filename'
 
 export type ClosedTicketExportRow = {
@@ -43,20 +47,12 @@ export async function downloadClosedTicketsExcel(options: {
   filename?: string
 }) {
   const { tickets, projectName, sheetName = 'היסטוריה' } = options
-  const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
   const rows = buildClosedTicketExcelRows(tickets)
-
-  const ws = XLSX.utils.json_to_sheet(rows)
-  const COLS = 9
-  ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 7 }, { wch: 42 }, { wch: 10 }, { wch: 10 }, { wch: 18 }]
-  ws['!freeze'] = { xSplit: 0, ySplit: 1 }
-  if (ws['!ref']) ws['!autofilter'] = { ref: ws['!ref'] as string }
-  applyHeaderStyle(ws, COLS)
-  applyDataStyles(ws, rows.length, COLS)
-
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  const wb = createWorkbook()
+  addJsonSheet(wb, sheetName, rows, {
+    columnWidths: [6, 18, 18, 16, 7, 42, 10, 10, 18],
+  })
 
   const filename = options.filename ?? ticketHistoryExportFilename(projectName)
-  downloadExcelWorkbook(wb, XLSX, filename)
+  await downloadExcelWorkbook(wb, filename)
 }

@@ -742,8 +742,13 @@ export default function TicketsPage() {
   }
 
   async function exportToExcel() {
-    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles, setCellStyle, STATUS_STYLES, PRIORITY_STYLES } =
-      await import('@/lib/excel-style')
+    const {
+      createWorkbook,
+      addJsonSheet,
+      setCellStyle,
+      downloadExcelWorkbook,
+    } = await import('@/lib/excel-workbook')
+    const { STATUS_STYLES, PRIORITY_STYLES } = await import('@/lib/excel-style')
     const list = filteredTickets
     const rows = list.map((t) => ({
       '#': t.ticket_number,
@@ -758,16 +763,12 @@ export default function TicketsPage() {
       'ימי טיפול': treatmentDaysForExport(t),
     }))
 
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const COLS = 10
-    ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 7 }, { wch: 42 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 10 }]
-    ws['!freeze'] = { xSplit: 0, ySplit: 1 }
-    ws['!autofilter'] = { ref: ws['!ref'] as string }
+    const wb = createWorkbook()
+    const ws = addJsonSheet(wb, 'תקלות', rows, {
+      columnWidths: [6, 18, 18, 22, 7, 42, 10, 12, 18, 10],
+    })
 
-    applyHeaderStyle(ws, COLS)
-    applyDataStyles(ws, list.length, COLS)
-
-    // צבע עמודת סטטוס (7) ועדיפות (6)
+    // צבע עמודת סטטוס (7) ועדיפות (6) — אינדקס 0-based כמו SheetJS
     list.forEach((t, i) => {
       const r = i + 1
       const sStyle = STATUS_STYLES[t.status]
@@ -776,14 +777,11 @@ export default function TicketsPage() {
       if (pStyle) setCellStyle(ws, r, 6, pStyle)
     })
 
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'תקלות')
     const exportProjectName =
       projectFilter !== 'ALL'
         ? projects.find((p) => p.project_code === projectFilter)?.name
         : undefined
-    const { downloadExcelWorkbook } = await import('@/lib/excel-download')
-    downloadExcelWorkbook(wb, XLSX, ticketsListExportFilename({ projectName: exportProjectName }))
+    await downloadExcelWorkbook(wb, ticketsListExportFilename({ projectName: exportProjectName }))
     toast.success(TM.excelExported)
   }
 

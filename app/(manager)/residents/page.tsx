@@ -689,8 +689,7 @@ function ResidentsPageInner() {
   }
 
   async function exportCsv() {
-    const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
-    const COLS = 5
+    const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
     const rows = sorted.map((r) => ({
       'שם מלא': r.full_name,
       'טלפון': r.phone || '',
@@ -700,15 +699,11 @@ function ResidentsPageInner() {
       'בניין': projectName[r.project_id] || '',
       'הערות': r.notes || '',
     }))
-    const ws = XLSX.utils.json_to_sheet(rows)
-    ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 22 }, { wch: 36 }]
-    ws['!freeze'] = { xSplit: 0, ySplit: 1 }
-    ws['!autofilter'] = { ref: ws['!ref'] as string }
-    applyHeaderStyle(ws, COLS)
-    applyDataStyles(ws, rows.length, COLS)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'דיירים')
-    XLSX.writeFile(wb, 'דיירים.xlsx')
+    const wb = createWorkbook()
+    addJsonSheet(wb, 'דיירים', rows, {
+      columnWidths: [22, 16, 26, 8, 8, 22, 36],
+    })
+    await downloadExcelWorkbook(wb, 'דיירים.xlsx')
   }
 
   function toggleSelect(id: string) {

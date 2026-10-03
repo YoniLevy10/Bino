@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx'
 import { describe, expect, it } from 'vitest'
+import { matrixToXlsxArrayBuffer, MAX_IMPORT_BYTES, parseWorkbookToMatrix } from './excel-workbook'
 import {
   buildResidentsImportPayload,
   findResidentsHeaderRowIndex,
@@ -8,18 +8,14 @@ import {
   parseResidentsWorkbook,
 } from './import-residents-excel'
 
-function workbookBuffer(data: unknown[][]): ArrayBuffer {
-  const ws = XLSX.utils.aoa_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+async function workbookBuffer(data: unknown[][]): Promise<ArrayBuffer> {
+  return matrixToXlsxArrayBuffer(data)
 }
 
 describe('import-residents-excel', () => {
-  it('maps שם דייר instead of שם בניין when both exist', () => {
-    const { rows, headers, mapping } = parseResidentsWorkbook(
-      workbookBuffer([
+  it('maps שם דייר instead of שם בניין when both exist', async () => {
+    const { rows, headers, mapping } = await parseResidentsWorkbook(
+      await workbookBuffer([
         ['שם בניין', 'שם דייר', 'טלפון', 'דירה'],
         ['בוזגלו 4', 'אוריאל ברמי', '0501234567', '51'],
         ['', 'משה כהן', '0509876543', '12'],
@@ -59,9 +55,9 @@ describe('import-residents-excel', () => {
     expect(payload[1].full_name).toBe('משה כהן')
   })
 
-  it('keeps export format mapping stable', () => {
-    const { mapping } = parseResidentsWorkbook(
-      workbookBuffer([
+  it('keeps export format mapping stable', async () => {
+    const { mapping } = await parseResidentsWorkbook(
+      await workbookBuffer([
         ['שם מלא', 'טלפון', 'אימייל', 'שוכר', 'דירה', 'בניין', 'הערות'],
         ['אוריאל ברמי', '0501234567', '', '', '51', 'בוזגלו 4', ''],
         ['משה כהן', '0509876543', '', '', '12', 'בוזגלו 4', ''],
@@ -79,9 +75,9 @@ describe('import-residents-excel', () => {
     expect(mapping.full_name).toBe('שם')
   })
 
-  it('reads primary phone when sheet has duplicate טלפון/שם/מייל columns', () => {
-    const { rows, mapping } = parseResidentsWorkbook(
-      workbookBuffer([
+  it('reads primary phone when sheet has duplicate טלפון/שם/מייל columns', async () => {
+    const { rows, mapping } = await parseResidentsWorkbook(
+      await workbookBuffer([
         ['דירה', 'שם', 'טלפון', 'מייל', 'שם', 'טלפון', 'סטטוס', 'בעלים', 'טלפון', 'מייל'],
         ['1', 'כהן סימון', '050-2377750', 'mscohad@gmail.com', '', '', '', '', '', ''],
         ['2', 'אסואד מיקי', '054-6649957', 'm@b.com', 'אסואד דינה', '050-8900288', '', '', '', ''],
@@ -107,5 +103,23 @@ describe('import-residents-excel', () => {
       phone: '0546649957',
       apartment_number: '2',
     })
+  })
+
+  it('parses UTF-8 CSV with Hebrew headers', async () => {
+    const csv = '\uFEFFשם,טלפון,דירה\nאוריאל,0501234567,51\nמשה,0509876543,12\n'
+    const buf = new TextEncoder().encode(csv).buffer
+    const { rows, mapping } = await parseResidentsWorkbook(buf, { fileName: 'דיירים.csv' })
+    expect(mapping.full_name).toBe('שם')
+    expect(rows).toHaveLength(2)
+    expect(buildResidentsImportPayload(rows, mapping)[0].full_name).toBe('אוריאל')
+  })
+
+  it('rejects oversized buffers and legacy OLE .xls magic', async () => {
+    await expect(
+      parseWorkbookToMatrix(new ArrayBuffer(MAX_IMPORT_BYTES + 1), { fileName: 'big.xlsx' })
+    ).rejects.toThrow(/גדול מדי/)
+
+    const ole = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+    await expect(parseWorkbookToMatrix(ole.buffer, { fileName: 'old.xls' })).rejects.toThrow(/xls/)
   })
 })

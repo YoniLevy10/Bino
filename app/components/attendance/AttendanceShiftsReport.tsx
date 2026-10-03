@@ -215,7 +215,7 @@ export function AttendanceShiftsReport({
   async function exportExcel() {
     setExporting(true)
     try {
-      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
 
       const detailRows = shifts.map((s) => {
         const rate = workerHourlyRate(s)
@@ -241,26 +241,14 @@ export function AttendanceShiftsReport({
         'עלות משוערת': w.cost > 0 ? w.cost.toFixed(2) : '',
       }))
 
-      const wsDetail = XLSX.utils.json_to_sheet(detailRows)
-      wsDetail['!cols'] = [{ wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 16 }]
-      applyHeaderStyle(wsDetail, 9)
-      applyDataStyles(wsDetail, detailRows.length, 9)
+      const wb = createWorkbook()
+      addJsonSheet(wb, 'מידע', [{ תקופה: periodLabel, הופק: new Date().toLocaleString('he-IL') }])
+      addJsonSheet(wb, 'סיכום עובדים', summaryRows, { columnWidths: [22, 14, 8, 12] })
+      addJsonSheet(wb, 'משמרות', detailRows, {
+        columnWidths: [22, 14, 18, 18, 12, 8, 10, 12, 16],
+      })
 
-      const wsSummary = XLSX.utils.json_to_sheet(summaryRows)
-      wsSummary['!cols'] = [{ wch: 22 }, { wch: 14 }, { wch: 8 }, { wch: 12 }]
-      applyHeaderStyle(wsSummary, 4)
-      applyDataStyles(wsSummary, summaryRows.length, 4)
-
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet([{ תקופה: periodLabel, הופק: new Date().toLocaleString('he-IL') }]),
-        'מידע'
-      )
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום עובדים')
-      XLSX.utils.book_append_sheet(wb, wsDetail, 'משמרות')
-
-      XLSX.writeFile(wb, `bino-shifts-${monthKey || fromDate}.xlsx`)
+      await downloadExcelWorkbook(wb, `bino-shifts-${monthKey || fromDate}.xlsx`)
       toast.success('הקובץ הורד')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'ייצוא נכשל')

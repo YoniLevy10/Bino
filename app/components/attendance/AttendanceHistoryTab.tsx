@@ -117,7 +117,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
   async function exportMonthExcel(group: AttendanceHistoryMonthGroup) {
     setExportingMonthKey(group.monthKey)
     try {
-      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
 
       const detailRows = group.workerGroups.flatMap((wg) =>
         wg.shifts.map((s) => ({
@@ -136,23 +136,11 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
         משמרות: wg.shifts.length,
       }))
 
-      const wsDetail = XLSX.utils.json_to_sheet(detailRows)
-      applyHeaderStyle(wsDetail, 5)
-      applyDataStyles(wsDetail, detailRows.length, 5)
-
-      const wsSummary = XLSX.utils.json_to_sheet(summaryRows)
-      applyHeaderStyle(wsSummary, 4)
-      applyDataStyles(wsSummary, summaryRows.length, 4)
-
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet([{ חודש: group.label, הופק: new Date().toLocaleString('he-IL') }]),
-        'מידע'
-      )
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום עובדים')
-      XLSX.utils.book_append_sheet(wb, wsDetail, 'משמרות')
-      XLSX.writeFile(wb, `bino-attendance-${group.monthKey}.xlsx`)
+      const wb = createWorkbook()
+      addJsonSheet(wb, 'מידע', [{ חודש: group.label, הופק: new Date().toLocaleString('he-IL') }])
+      addJsonSheet(wb, 'סיכום עובדים', summaryRows)
+      addJsonSheet(wb, 'משמרות', detailRows)
+      await downloadExcelWorkbook(wb, `bino-attendance-${group.monthKey}.xlsx`)
       toast.success('הקובץ הורד')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'ייצוא נכשל')
@@ -165,7 +153,7 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
     if (historyByMonth.length === 0) return
     setExportingAll(true)
     try {
-      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
 
       const detailRows = filteredShifts.map((s) => ({
         חודש: monthBoundsFromKey(monthKeyFromIso(s.started_at))?.label ?? '',
@@ -176,18 +164,10 @@ export function AttendanceHistoryTab({ isMobile = false }: AttendanceHistoryTabP
         סטטוס: SHIFT_STATUS_HE[s.status] ?? s.status,
       }))
 
-      const ws = XLSX.utils.json_to_sheet(detailRows)
-      applyHeaderStyle(ws, 6)
-      applyDataStyles(ws, detailRows.length, 6)
-
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet([{ טווח: range?.label ?? '', הופק: new Date().toLocaleString('he-IL') }]),
-        'מידע'
-      )
-      XLSX.utils.book_append_sheet(wb, ws, 'משמרות')
-      XLSX.writeFile(wb, `bino-attendance-history-${currentMonthKey()}.xlsx`)
+      const wb = createWorkbook()
+      addJsonSheet(wb, 'מידע', [{ טווח: range?.label ?? '', הופק: new Date().toLocaleString('he-IL') }])
+      addJsonSheet(wb, 'משמרות', detailRows)
+      await downloadExcelWorkbook(wb, `bino-attendance-history-${currentMonthKey()}.xlsx`)
       toast.success('הקובץ הורד')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'ייצוא נכשל')
