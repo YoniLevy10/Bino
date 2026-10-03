@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
 
 export async function GET(req: Request) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
 

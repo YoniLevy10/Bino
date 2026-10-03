@@ -21,7 +21,7 @@ const inputStyle: CSSProperties = {
 type Props = {
   clientId: string
   defaultEmail: string | null
-  secret: string
+  secret?: string
 }
 
 export function ClientInvitePanel({ clientId, defaultEmail, secret }: Props) {
@@ -49,7 +49,7 @@ export function ClientInvitePanel({ clientId, defaultEmail, secret }: Props) {
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/invite-user`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify(
           mode === 'password'
             ? { email: trimmed, role, mode: 'password', password }

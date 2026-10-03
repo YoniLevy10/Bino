@@ -137,7 +137,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Public routes: do not block WhatsApp webhook or login screen
-  // Also: /api/superadmin/* and /api/admin/* use x-admin-secret auth, not Supabase cookies
+  // Also: /api/superadmin/* and /api/admin/* enforce session+MFA in-handler; pages are public entry
   // Audit 01–03: public ticket create + provider webhooks must bypass session gate;
   // handlers still enforce their own auth (client_id / webhook secret / Bearer).
   if (

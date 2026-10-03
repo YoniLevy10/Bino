@@ -19,7 +19,7 @@ const inputStyle: CSSProperties = {
 
 type Props = {
   clientId: string
-  secret: string
+  secret?: string
 }
 
 export function ClientRecoverTicketMediaPanel({ clientId, secret }: Props) {
@@ -40,7 +40,7 @@ export function ClientRecoverTicketMediaPanel({ clientId, secret }: Props) {
     try {
       const res = await fetch('/api/superadmin/ticket/recover-media', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({ client_id: clientId, ticket_number: n }),
       })
       const json = (await res.json()) as {

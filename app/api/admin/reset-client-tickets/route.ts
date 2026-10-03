@@ -1,21 +1,16 @@
 import { NextResponse } from 'next/server'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
-function isAuthorized(req: Request): boolean {
-  const secret = process.env.ADMIN_SETUP_SECRET?.trim()
-  if (!secret) return false
-  return (req.headers.get('x-admin-secret') ?? '') === secret
-}
 
 const bodySchema = z.object({
   client_id: z.string().uuid(),
 })
 
 export async function POST(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   let body: unknown
   try {

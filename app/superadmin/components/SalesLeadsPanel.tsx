@@ -90,7 +90,7 @@ function friendlyError(raw: string): string {
   return clean.length > 220 ? `${clean.slice(0, 220)}…` : clean
 }
 
-export function SalesLeadsPanel({ secret }: { secret: string }) {
+export function SalesLeadsPanel({ secret }: { secret?: string }) {
   const [leads, setLeads] = useState<SalesLead[]>([])
   const [total, setTotal] = useState(0)
   const [counters, setCounters] = useState<LegacyCounters | null>(null)
@@ -211,7 +211,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       params.set('limit', '100')
 
       const res = await fetch(`/api/superadmin/sales-leads?${params}`, {
-        headers: adminHeaders(secret, operatorId),
+        headers: adminHeaders(operatorId),
       })
       const json = (await res.json()) as {
         leads?: SalesLead[]
@@ -246,7 +246,6 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       setLoading(false)
     }
   }, [
-    secret,
     q,
     city,
     segment,
@@ -298,7 +297,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action: 'claim', expectedVersion: lead.version }),
@@ -334,7 +333,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ ...body, expectedVersion: lead.version }),
@@ -388,7 +387,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -416,7 +415,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
     const pollProgress = async () => {
       try {
         const res = await fetch('/api/superadmin/sales-leads/discover', {
-          headers: adminHeaders(secret, operatorId),
+          headers: adminHeaders(operatorId),
         })
         if (!res.ok) return
         const json = (await res.json()) as {
@@ -453,7 +452,7 @@ export function SalesLeadsPanel({ secret }: { secret: string }) {
       const res = await fetch('/api/superadmin/sales-leads/discover', {
         method: 'POST',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ city: city || undefined }),

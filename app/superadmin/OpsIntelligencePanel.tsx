@@ -25,7 +25,7 @@ const AGING_LABELS: { key: keyof OpsAging; label: string }[] = [
 
 type ClientSort = 'attention' | 'tickets' | 'resolution' | 'recurring' | 'open'
 
-export function OpsIntelligencePanel({ secret }: { secret: string }) {
+export function OpsIntelligencePanel({ secret }: { secret?: string }) {
   const [days, setDays] = useState(90)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,13 +37,12 @@ export function OpsIntelligencePanel({ secret }: { secret: string }) {
   const [clientSort, setClientSort] = useState<ClientSort>('attention')
 
   const load = useCallback(async () => {
-    if (!secret.trim()) return
     setLoading(true)
     setError(null)
     try {
       const res = await fetchWithTimeout(
         `/api/superadmin/ops-intelligence?days=${days}`,
-        { headers: { 'x-admin-secret': secret } },
+        { credentials: 'same-origin' },
         90_000
       )
       const json = (await res.json()) as OpsIntelligenceReport & { error?: string }
@@ -59,7 +58,7 @@ export function OpsIntelligencePanel({ secret }: { secret: string }) {
     } finally {
       setLoading(false)
     }
-  }, [secret, days])
+  }, [days])
 
   useEffect(() => {
     void load()

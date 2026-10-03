@@ -26,7 +26,7 @@ import type {
 
 type Props = {
   lead: SalesLead
-  secret: string
+  secret?: string
   operatorId: string
   operators: SalesOperatorLite[]
   onClose: () => void
@@ -93,7 +93,7 @@ export function LeadDetailDrawer({
       try {
         const res = await fetch(
           `/api/superadmin/sales-leads/${lead.id}?include=activities,tasks`,
-          { headers: adminHeaders(secret, operatorId) },
+          { headers: adminHeaders(operatorId) },
         )
         const json = (await res.json()) as {
           lead?: SalesLead
@@ -121,7 +121,7 @@ export function LeadDetailDrawer({
     }
     // intentionally only reload when lead id / auth context changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lead.id, secret, operatorId])
+  }, [lead.id, operatorId])
 
   async function patch(body: Record<string, unknown>): Promise<SalesLead | null> {
     setSaveState('saving')
@@ -129,7 +129,7 @@ export function LeadDetailDrawer({
     const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
       method: 'PATCH',
       headers: {
-        ...adminHeaders(secret, operatorId),
+        ...adminHeaders(operatorId),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ...body, expectedVersion: version }),
@@ -210,7 +210,7 @@ export function LeadDetailDrawer({
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -253,7 +253,7 @@ export function LeadDetailDrawer({
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -304,7 +304,7 @@ export function LeadDetailDrawer({
       const res = await fetch(`/api/superadmin/sales-leads/${lead.id}`, {
         method: 'PATCH',
         headers: {
-          ...adminHeaders(secret, operatorId),
+          ...adminHeaders(operatorId),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action: 'complete_task', taskId, ...followUp }),
@@ -321,7 +321,7 @@ export function LeadDetailDrawer({
       }
       const detailRes = await fetch(
         `/api/superadmin/sales-leads/${lead.id}?include=activities,tasks`,
-        { headers: adminHeaders(secret, operatorId) },
+        { headers: adminHeaders(operatorId) },
       )
       const detail = (await detailRes.json()) as {
         activities?: SalesLeadActivity[]

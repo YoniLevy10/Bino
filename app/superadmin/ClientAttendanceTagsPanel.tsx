@@ -24,7 +24,7 @@ export function ClientAttendanceTagsPanel({
   projects,
 }: {
   clientId: string
-  secret: string
+  secret?: string
   projects: Project[]
 }) {
   const [stampAddonEnabled, setStampAddonEnabled] = useState(false)
@@ -54,7 +54,7 @@ export function ClientAttendanceTagsPanel({
 
   const loadAddons = useCallback(async () => {
     const res = await fetch(`/api/superadmin/client/${clientId}/addons`, {
-      headers: { 'x-admin-secret': secret },
+      credentials: 'same-origin' as RequestCredentials,
     })
     const body = (await res.json().catch(() => ({}))) as {
       addons?: { addon_key: string; enabled: boolean }[]
@@ -65,20 +65,20 @@ export function ClientAttendanceTagsPanel({
       return on
     }
     return false
-  }, [clientId, secret])
+  }, [clientId])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags`, {
-        headers: { 'x-admin-secret': secret },
+        credentials: 'same-origin' as RequestCredentials,
       })
       const body = (await res.json().catch(() => ({}))) as { tags?: TagRow[] }
       if (res.ok) setTags(body.tags ?? [])
     } finally {
       setLoading(false)
     }
-  }, [clientId, secret])
+  }, [clientId])
 
   useEffect(() => {
     void (async () => {
@@ -92,7 +92,7 @@ export function ClientAttendanceTagsPanel({
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/bulk`, {
         method: 'POST',
-        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({ include_office: true, office_tag_code: 'OFFICE' }),
       })
       const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
@@ -126,7 +126,7 @@ export function ClientAttendanceTagsPanel({
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/installed`, {
         method: 'PATCH',
-        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({ tag_id: currentTag.id, installed }),
       })
       const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -155,7 +155,7 @@ export function ClientAttendanceTagsPanel({
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/status`, {
         method: 'PATCH',
-        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({ tag_id: currentTag.id, is_active: isActive }),
       })
       const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -184,7 +184,7 @@ export function ClientAttendanceTagsPanel({
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/attendance-tags/delete`, {
         method: 'POST',
-        headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({ tag_id: currentTag.id }),
       })
       const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -258,7 +258,7 @@ export function ClientAttendanceTagsPanel({
           onClick={(e) => {
             e.preventDefault()
             void fetch(`/api/superadmin/client/${clientId}/attendance-tags/print-sheet`, {
-              headers: { 'x-admin-secret': secret },
+              credentials: 'same-origin' as RequestCredentials,
             })
               .then((r) => r.text())
               .then((html) => {

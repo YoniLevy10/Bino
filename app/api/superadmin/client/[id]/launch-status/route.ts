@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { buildClientResendFrom, resolveClientEmailSlug } from '@/lib/client-email-from'
 import {
   buildClientLaunchChecklist,
@@ -14,7 +14,8 @@ import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 type RouteContext = { params: Promise<{ id: string }> }
 
 export async function GET(req: Request, context: RouteContext) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id: clientId } = await context.params
   if (!clientId) {
@@ -127,7 +128,8 @@ export async function GET(req: Request, context: RouteContext) {
 }
 
 export async function PATCH(req: Request, context: RouteContext) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id: clientId } = await context.params
   let body: unknown

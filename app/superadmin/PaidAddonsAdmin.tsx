@@ -34,7 +34,7 @@ const inputStyle: CSSProperties = {
 }
 
 /** Global add-on pricing — Super Admin edits monthly prices. */
-export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
+export function PaidAddonsCatalogAdmin({ secret }: { secret?: string }) {
   const [catalog, setCatalog] = useState<CatalogRow[]>([])
   const [draft, setDraft] = useState<Record<string, { price: string; name: string; desc: string }>>({})
   const [loading, setLoading] = useState(false)
@@ -45,7 +45,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/superadmin/addons/catalog', { headers: { 'x-admin-secret': secret } })
+      const res = await fetch('/api/superadmin/addons/catalog', { credentials: 'same-origin' })
       const json = (await res.json()) as { catalog?: CatalogRow[]; error?: string }
       if (!res.ok) {
         setError(json.error || `שגיאה ${res.status}`)
@@ -89,7 +89,7 @@ export function PaidAddonsCatalogAdmin({ secret }: { secret: string }) {
       })
       const res = await fetch('/api/superadmin/addons/catalog', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({ items }),
       })
       const json = (await res.json()) as { error?: string }
@@ -196,7 +196,7 @@ export function ClientPaidAddonsPanel({
   secret,
 }: {
   clientId: string
-  secret: string
+  secret?: string
 }) {
   const [rows, setRows] = useState<ClientAddonRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -207,7 +207,7 @@ export function ClientPaidAddonsPanel({
     setLoading(true)
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/addons`, {
-        headers: { 'x-admin-secret': secret },
+        credentials: 'same-origin' as RequestCredentials,
       })
       const json = (await res.json()) as { addons?: ClientAddonRow[]; error?: string }
       if (!res.ok) {
@@ -221,7 +221,7 @@ export function ClientPaidAddonsPanel({
     } finally {
       setLoading(false)
     }
-  }, [clientId, secret])
+  }, [clientId])
 
   useEffect(() => {
     void load()
@@ -239,7 +239,7 @@ export function ClientPaidAddonsPanel({
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/addons`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({
           addons: rows.map((r) => ({ addon_key: r.addon_key, enabled: r.enabled })),
         }),

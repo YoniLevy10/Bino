@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  isSuperAdminRequest,
-  superAdminUnauthorizedResponse,
-} from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { deleteSalesLead } from '@/lib/sales-leads/service'
 import {
@@ -70,7 +67,8 @@ function conflictResponse(e: LeadConflictError) {
 }
 
 export async function GET(req: NextRequest, ctx: Ctx) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
   const { id } = await ctx.params
   const include = req.nextUrl.searchParams.get('include') ?? 'activities,tasks'
 
@@ -96,7 +94,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
   const { id } = await ctx.params
 
   let body: Record<string, unknown> = {}
@@ -279,7 +278,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
-  if (!isSuperAdminRequest(_req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
   const { id } = await ctx.params
 
   try {

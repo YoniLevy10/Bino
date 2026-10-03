@@ -3,7 +3,7 @@
 import { PaidAddonsCatalogAdmin } from '../PaidAddonsAdmin'
 import { PlanPricingCatalogAdmin } from '../PlanPricingAdmin'
 
-export function SettingsView({ secret }: { secret: string }) {
+export function SettingsView({ secret }: { secret?: string }) {
   return (
     <div className="sa-settings-view">
       <a href="/superadmin/setup" className="sa-setup-cta">

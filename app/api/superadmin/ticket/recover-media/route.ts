@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
 
 const bodySchema = z.object({
@@ -11,7 +11,8 @@ const bodySchema = z.object({
 
 /** Superadmin: attach stashed WhatsApp media to a ticket by number (e.g. ticket #27). */
 export async function POST(req: Request) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   let body: unknown
   try {

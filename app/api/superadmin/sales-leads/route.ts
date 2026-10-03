@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  isSuperAdminRequest,
-  superAdminUnauthorizedResponse,
-} from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isGooglePlacesConfigured } from '@/lib/sales-leads/config'
 import {
@@ -39,7 +36,8 @@ const WORK_VIEWS: LeadWorkView[] = [
 ]
 
 export async function GET(req: NextRequest) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const url = req.nextUrl
   const q = url.searchParams.get('q') ?? undefined
@@ -162,7 +160,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   let body: { ids?: string[] } = {}
   try {

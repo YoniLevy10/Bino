@@ -36,7 +36,7 @@ export function ClientLaunchChecklistPanel({
   onOpenTask,
 }: {
   clientId: string
-  secret: string
+  secret?: string
   onOpenTask: (task: ClientTask) => void
 }) {
   const [data, setData] = useState<LaunchPayload | null>(null)
@@ -51,7 +51,7 @@ export function ClientLaunchChecklistPanel({
     setError('')
     try {
       const res = await fetch(`/api/superadmin/client/${clientId}/launch-status`, {
-        headers: { 'x-admin-secret': secret },
+        credentials: 'same-origin' as RequestCredentials,
       })
       const json = (await res.json()) as LaunchPayload
       if (!res.ok) throw new Error(json.error || 'טעינת צ׳קליסט נכשלה')
@@ -63,7 +63,7 @@ export function ClientLaunchChecklistPanel({
     } finally {
       setLoading(false)
     }
-  }, [clientId, secret])
+  }, [clientId])
 
   useEffect(() => {
     void load()
@@ -76,7 +76,6 @@ export function ClientLaunchChecklistPanel({
       const res = await fetch(`/api/superadmin/client/${clientId}/launch-status`, {
         method: 'PATCH',
         headers: {
-          'x-admin-secret': secret,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email_slug: slugDraft.trim() || null }),

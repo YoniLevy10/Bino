@@ -2,15 +2,16 @@
  * POST /api/admin/setup-client — הקמת לקוח חדש בפעולה אטומית
  *
  * @description
- * API פנימי (מוגן ב-x-admin-secret header).
+ * API פנימי (מוגן ב-Supabase Auth + MFA AAL2).
  * מקים בבת-אחת: clients → organizations → auth.invite → organization_users → projects → workers.
  * מחזיר: client_id, org_id, admin_user_id, קישורי QR לכל פרויקט.
  *
- * @security מחייב header: x-admin-secret = ADMIN_SETUP_SECRET (env var)
+ * @security מחייב סשן סופר־אדמין מורשה + MFA (AAL2)
  * @method POST
  * @body {SetupSchema} body — ראה setupSchema למטה
  */
 import { NextResponse } from 'next/server'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
 import { getSetupPackageNavFeatures } from '@/lib/client-nav-features'
@@ -56,18 +57,11 @@ const setupSchema = z.object({
 })
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
-function isAuthorized(req: Request): boolean {
-  const secret = process.env.ADMIN_SETUP_SECRET?.trim()
-  if (!secret) return false // secret must be configured
-  const header = req.headers.get('x-admin-secret') ?? ''
-  return header === secret
-}
 
 // ─── Route ────────────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   let body: unknown
   try {

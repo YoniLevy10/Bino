@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { mergePremiumNavFeaturesForSync, fetchClientEnabledNavFeatures } from '@/lib/client-nav-features'
 import { z } from 'zod'
 
-function isAuthorized(req: Request): boolean {
-  const secret = process.env.ADMIN_SETUP_SECRET?.trim()
-  if (!secret) return false
-  return (req.headers.get('x-admin-secret') ?? '') === secret
-}
 
 const patchSchema = z.object({
   addons: z.array(
@@ -20,9 +16,8 @@ const patchSchema = z.object({
 })
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id: clientId } = await params
   const admin = getSupabaseAdmin()
@@ -53,9 +48,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id: clientId } = await params
 
