@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AUTH_RATE_LIMIT_DB_SYNC_EVERY,
+  PUBLIC_REPORT_CLIENT_BURST_LIMIT,
   __resetRateLimitLocalBucketsForTests,
   checkAuthenticatedRateLimitSparse,
+  checkPublicReportClientBurstLimit,
+  checkPublicReportClientHourlyLimit,
   checkRateLimitMemoryOnly,
 } from '@/lib/rate-limit'
 
@@ -80,5 +83,34 @@ describe('checkAuthenticatedRateLimitSparse', () => {
       failOpenOnRpcError: true,
     })
     expect(r.isLimited).toBe(false)
+  })
+})
+
+describe('public report client limits', () => {
+  it('burst helper fail-closes on RPC error', async () => {
+    const admin = mockAdmin(async () => ({
+      data: null,
+      error: { message: 'down' },
+    }))
+    const r = await checkPublicReportClientBurstLimit(admin, 'client-1')
+    expect(r.isLimited).toBe(true)
+  })
+
+  it('passes through limited=true from RPC for burst and hourly', async () => {
+    const admin = mockAdmin(async () => ({
+      data: [{ is_limited: true, remaining: 0, reset_at: new Date(Date.now() + 60_000).toISOString() }],
+      error: null,
+    }))
+    expect((await checkPublicReportClientBurstLimit(admin, 'client-2')).isLimited).toBe(true)
+    expect((await checkPublicReportClientHourlyLimit(admin, 'client-2')).isLimited).toBe(true)
+    expect(PUBLIC_REPORT_CLIENT_BURST_LIMIT).toBe(10)
+  })
+
+  it('allows when RPC says not limited', async () => {
+    const admin = mockAdmin(async () => ({
+      data: [{ is_limited: false, remaining: 9, reset_at: new Date(Date.now() + 60_000).toISOString() }],
+      error: null,
+    }))
+    expect((await checkPublicReportClientBurstLimit(admin, 'client-3')).isLimited).toBe(false)
   })
 })

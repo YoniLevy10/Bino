@@ -4,7 +4,12 @@ import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { createTicketJsonBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit, checkIpPostRouteLimit } from '@/lib/rate-limit'
+import {
+  checkAuthenticatedPostRouteLimit,
+  checkIpPostRouteLimit,
+  checkPublicReportClientBurstLimit,
+  checkPublicReportClientHourlyLimit,
+} from '@/lib/rate-limit'
 import { notifyNewTicketPush } from '@/lib/push-notifications'
 import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
 import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
@@ -147,9 +152,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'יותר מדי בקשות, נסה שוב בעוד דקה' }, { status: 429 })
       }
     } else {
+      // Public /report: IP burst + per-client burst/hourly (QR links with client_id keep working).
       const ax = await checkIpPostRouteLimit(supabaseAdmin, ipFwd, 'create-ticket')
       if (ax.isLimited) {
         return NextResponse.json({ error: 'יותר מדי בקשות, נסה שוב בעוד דקה' }, { status: 429 })
+      }
+      const clientBurst = await checkPublicReportClientBurstLimit(supabaseAdmin, bamakorClientId)
+      if (clientBurst.isLimited) {
+        return NextResponse.json(
+          { error: 'יותר מדי דיווחים ללקוח זה כרגע. נסו שוב בעוד דקה.', code: 'PUBLIC_REPORT_BURST' },
+          { status: 429 }
+        )
+      }
+      const clientHour = await checkPublicReportClientHourlyLimit(supabaseAdmin, bamakorClientId)
+      if (clientHour.isLimited) {
+        return NextResponse.json(
+          { error: 'הגעתם למכסת דיווחים ציבוריים לשעה. נסו שוב מאוחר יותר.', code: 'PUBLIC_REPORT_HOURLY' },
+          { status: 429 }
+        )
       }
     }
 

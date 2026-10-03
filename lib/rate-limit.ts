@@ -210,3 +210,36 @@ export async function checkIpPostRouteLimit(admin: SupabaseClient, ip: string, r
   if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true }
   return r
 }
+
+/**
+ * Public /report spam shield (M11 / P10) — does NOT break existing QR/client_id links.
+ * Burst: 10/min per client. Sustained: 60/hour per client (in addition to IP + monthly plan quota).
+ */
+export const PUBLIC_REPORT_CLIENT_BURST_LIMIT = 10
+export const PUBLIC_REPORT_CLIENT_BURST_WINDOW_MS = 60_000
+export const PUBLIC_REPORT_CLIENT_HOURLY_LIMIT = 60
+export const PUBLIC_REPORT_CLIENT_HOURLY_WINDOW_MS = 60 * 60_000
+
+export async function checkPublicReportClientBurstLimit(admin: SupabaseClient, clientId: string) {
+  const id = (clientId || 'unknown').slice(0, 64)
+  const r = await checkRateLimit(
+    admin,
+    `post:public-report:client:${id}:burst`,
+    PUBLIC_REPORT_CLIENT_BURST_LIMIT,
+    PUBLIC_REPORT_CLIENT_BURST_WINDOW_MS
+  )
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true as const }
+  return r
+}
+
+export async function checkPublicReportClientHourlyLimit(admin: SupabaseClient, clientId: string) {
+  const id = (clientId || 'unknown').slice(0, 64)
+  const r = await checkRateLimit(
+    admin,
+    `post:public-report:client:${id}:hour`,
+    PUBLIC_REPORT_CLIENT_HOURLY_LIMIT,
+    PUBLIC_REPORT_CLIENT_HOURLY_WINDOW_MS
+  )
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true as const }
+  return r
+}
