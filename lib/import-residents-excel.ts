@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { parseWorkbookToMatrix } from '@/lib/excel-workbook'
 
 export type ParsedRow = Record<string, unknown>
 
@@ -181,15 +181,15 @@ export function guessResidentsColumnMapping(
   }
 }
 
-export function parseResidentsWorkbook(buffer: ArrayBuffer): {
+export async function parseResidentsWorkbook(
+  buffer: ArrayBuffer,
+  options: { fileName?: string } = {}
+): Promise<{
   rows: ParsedRow[]
   headers: string[]
   mapping: ResidentsColumnMapping
-} {
-  const wb = XLSX.read(buffer, { type: 'array' })
-  const sheetName = wb.SheetNames[0]
-  const ws = wb.Sheets[sheetName]
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' })
+}> {
+  const matrix = await parseWorkbookToMatrix(buffer, { fileName: options.fileName })
   const headerRowIdx = findResidentsHeaderRowIndex(matrix)
   const headerCells = matrix[headerRowIdx] || []
   const rows = matrixToResidentRows(matrix, headerRowIdx)

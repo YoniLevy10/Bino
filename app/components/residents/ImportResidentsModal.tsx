@@ -76,13 +76,19 @@ export function ImportResidentsModal({
 
   async function parseFile(file: File) {
     setApiError('')
-    const buf = await file.arrayBuffer()
-    const parsed = parseResidentsWorkbook(buf)
+    try {
+      const buf = await file.arrayBuffer()
+      const parsed = await parseResidentsWorkbook(buf, { fileName: file.name })
 
-    setFileName(file.name)
-    setRows(parsed.rows)
-    setHeaders(parsed.headers)
-    setMapping(parsed.mapping)
+      setFileName(file.name)
+      setRows(parsed.rows)
+      setHeaders(parsed.headers)
+      setMapping(parsed.mapping)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'קריאת הקובץ נכשלה'
+      setApiError(msg)
+      toast.error(msg)
+    }
   }
 
   async function onDrop(e: React.DragEvent) {
@@ -197,7 +203,7 @@ export function ImportResidentsModal({
           >
             <div style={styles.dropTitle}>גררו קובץ Excel/CSV לכאן</div>
             <div style={styles.dropSub}>או בחרו קובץ מהמחשב</div>
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={onFileInput} />
+            <input type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={onFileInput} />
             {fileName && <div style={styles.fileName}>{fileName}</div>}
           </div>
 

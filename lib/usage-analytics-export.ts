@@ -1,5 +1,5 @@
 import type { UsageAnalyticsReport } from '@/lib/usage-analytics'
-import { downloadExcelWorkbook } from '@/lib/excel-download'
+import { addJsonSheet, createWorkbook, downloadExcelWorkbook } from '@/lib/excel-workbook'
 import { exportDateSuffix } from '@/lib/export-filename'
 
 const SIGNAL_HE: Record<string, string> = {
@@ -15,8 +15,6 @@ export function usageAnalyticsExportFilename(lookbackDays: number, date = new Da
 
 /** Build + download a full usage analytics workbook (Hebrew sheet names). */
 export async function downloadUsageAnalyticsExcel(report: UsageAnalyticsReport): Promise<string> {
-  const XLSX = await import('xlsx')
-
   const metaRows = [
     {
       'הופק בתאריך': new Date(report.generated_at).toLocaleString('he-IL'),
@@ -72,14 +70,14 @@ export async function downloadUsageAnalyticsExcel(report: UsageAnalyticsReport):
     return row
   })
 
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metaRows), 'Meta')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(insightRows), 'תובנות')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(featureRows), 'פיצרים')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pageViewRows), 'לשוניות')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientRows), 'לקוחות')
+  const wb = createWorkbook()
+  addJsonSheet(wb, 'Meta', metaRows)
+  addJsonSheet(wb, 'תובנות', insightRows)
+  addJsonSheet(wb, 'פיצרים', featureRows)
+  addJsonSheet(wb, 'לשוניות', pageViewRows)
+  addJsonSheet(wb, 'לקוחות', clientRows)
 
   const filename = usageAnalyticsExportFilename(report.lookback_days)
-  downloadExcelWorkbook(wb, XLSX, filename)
+  await downloadExcelWorkbook(wb, filename)
   return filename
 }

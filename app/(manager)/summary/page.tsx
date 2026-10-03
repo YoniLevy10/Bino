@@ -21,7 +21,6 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { isTicketInTreatment, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { toast } from '@/lib/error-handler'
 import { TM } from '@/lib/toast-messages'
-import { downloadExcelWorkbook } from '@/lib/excel-download'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import {
@@ -743,7 +742,7 @@ export default function SummaryPage() {
 
     setExporting(true)
     try {
-      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
       const projectTickets = sourceTicketsForExport
         .filter(
           (t) =>
@@ -753,30 +752,25 @@ export default function SummaryPage() {
         .sort((a, b) => b.ticket_number - a.ticket_number)
 
       const ticketRows = buildTicketExportRows(projectTickets)
-      const wsTickets = XLSX.utils.json_to_sheet(ticketRows)
-      wsTickets['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 42 }, { wch: 12 }, { wch: 10 }, { wch: 18 }]
-      wsTickets['!freeze'] = { xSplit: 0, ySplit: 1 }
-      if (wsTickets['!ref']) wsTickets['!autofilter'] = { ref: wsTickets['!ref'] as string }
-      applyHeaderStyle(wsTickets, 10)
-      applyDataStyles(wsTickets, ticketRows.length, 10)
-
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(
+      const wb = createWorkbook()
+      addJsonSheet(
         wb,
-        XLSX.utils.json_to_sheet([
+        'Meta',
+        [
           {
             פרויקט: project.name,
             קוד: project.project_code,
             טווח: range.label,
             הופק_בתאריך: new Date().toLocaleString('he-IL'),
           },
-        ]),
-        'Meta'
+        ]
       )
-      XLSX.utils.book_append_sheet(wb, wsTickets, 'תקלות')
+      addJsonSheet(wb, 'תקלות', ticketRows, {
+        columnWidths: [22, 12, 6, 18, 18, 14, 42, 12, 10, 18],
+      })
 
       const { summaryProjectExportFilename } = await import('@/lib/export-filename')
-      downloadExcelWorkbook(wb, XLSX, summaryProjectExportFilename(project.name, exportFilenameSuffix()))
+      await downloadExcelWorkbook(wb, summaryProjectExportFilename(project.name, exportFilenameSuffix()))
       toast.success(TM.excelExported)
     } catch (err) {
       console.error('Project Excel export failed:', err)
@@ -841,7 +835,7 @@ export default function SummaryPage() {
 
     setExporting(true)
     try {
-      const { XLSXStyle: XLSX, applyHeaderStyle, applyDataStyles } = await import('@/lib/excel-style')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
 
       const kpiRows = [
         { מדד: 'פתוחות כעת', ערך: summary.openNow },
@@ -875,42 +869,16 @@ export default function SummaryPage() {
         })
       )
 
-      const wsKpi = XLSX.utils.json_to_sheet(kpiRows)
-      wsKpi['!cols'] = [{ wch: 28 }, { wch: 12 }]
-      wsKpi['!freeze'] = { xSplit: 0, ySplit: 1 }
-      wsKpi['!autofilter'] = { ref: wsKpi['!ref'] as string }
-      applyHeaderStyle(wsKpi, 2)
-      applyDataStyles(wsKpi, kpiRows.length, 2)
+      const wb = createWorkbook()
+      addJsonSheet(wb, 'Meta', [{ טווח: range.label, הופק_בתאריך: new Date().toLocaleString('he-IL') }])
+      addJsonSheet(wb, 'KPIs', kpiRows, { columnWidths: [28, 12] })
+      addJsonSheet(wb, 'Projects', projectRows, { columnWidths: [28, 14, 14, 12, 12, 12] })
+      addJsonSheet(wb, 'תקלות', ticketRows, {
+        columnWidths: [22, 12, 6, 18, 18, 14, 42, 12, 10, 18],
+      })
+      addJsonSheet(wb, 'Workers', workerRows, { columnWidths: [24, 16] })
 
-      const wsProjects = XLSX.utils.json_to_sheet(projectRows)
-      wsProjects['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
-      wsProjects['!freeze'] = { xSplit: 0, ySplit: 1 }
-      wsProjects['!autofilter'] = { ref: wsProjects['!ref'] as string }
-      applyHeaderStyle(wsProjects, 6)
-      applyDataStyles(wsProjects, projectRows.length, 6)
-
-      const wsTickets = XLSX.utils.json_to_sheet(ticketRows)
-      wsTickets['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 6 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 42 }, { wch: 12 }, { wch: 10 }, { wch: 18 }]
-      wsTickets['!freeze'] = { xSplit: 0, ySplit: 1 }
-      if (wsTickets['!ref']) wsTickets['!autofilter'] = { ref: wsTickets['!ref'] as string }
-      applyHeaderStyle(wsTickets, 10)
-      applyDataStyles(wsTickets, ticketRows.length, 10)
-
-      const wsWorkers = XLSX.utils.json_to_sheet(workerRows)
-      wsWorkers['!cols'] = [{ wch: 24 }, { wch: 16 }]
-      wsWorkers['!freeze'] = { xSplit: 0, ySplit: 1 }
-      if (wsWorkers['!ref']) wsWorkers['!autofilter'] = { ref: wsWorkers['!ref'] as string }
-      applyHeaderStyle(wsWorkers, 2)
-      applyDataStyles(wsWorkers, workerRows.length, 2)
-
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ טווח: range.label, הופק_בתאריך: new Date().toLocaleString('he-IL') }]), 'Meta')
-      XLSX.utils.book_append_sheet(wb, wsKpi, 'KPIs')
-      XLSX.utils.book_append_sheet(wb, wsProjects, 'Projects')
-      XLSX.utils.book_append_sheet(wb, wsTickets, 'תקלות')
-      XLSX.utils.book_append_sheet(wb, wsWorkers, 'Workers')
-
-      downloadExcelWorkbook(wb, XLSX, `summary-${exportFilenameSuffix()}.xlsx`)
+      await downloadExcelWorkbook(wb, `summary-${exportFilenameSuffix()}.xlsx`)
       toast.success(TM.excelExported)
     } catch (err) {
       console.error('Summary Excel export failed:', err)
