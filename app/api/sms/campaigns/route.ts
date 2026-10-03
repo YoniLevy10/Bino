@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.campaigns)
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.campaigns, { write: true })
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
