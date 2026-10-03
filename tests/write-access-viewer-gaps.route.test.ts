@@ -6,10 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextResponse } from 'next/server'
 import { canOrgRoleWrite } from '@/lib/org-role'
 
-const viewerDenied = NextResponse.json(
-  { error: 'אין הרשאת כתיבה לתפקיד צופה', code: 'VIEWER_READ_ONLY' },
-  { status: 403 }
-)
+function viewerDeniedResponse() {
+  return NextResponse.json(
+    { error: 'אין הרשאת כתיבה לתפקיד צופה', code: 'VIEWER_READ_ONLY' },
+    { status: 403 }
+  )
+}
 
 const managerCtx = {
   userId: 'user-manager',
@@ -67,7 +69,7 @@ vi.mock('@/lib/logging', () => ({
 }))
 
 import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
+import { requireClientPaidAddon, requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { POST as dismissPost } from '@/app/api/recommendations/dismiss/route'
 import { POST as snoozePost } from '@/app/api/recommendations/snooze/route'
 import { POST as actionPost } from '@/app/api/recommendations/action/route'
@@ -132,7 +134,7 @@ describe('recommendations mutating routes — write gate', () => {
     it(`${c.name}: viewer → 403 VIEWER_READ_ONLY`, async () => {
       vi.mocked(requireSessionWriteAccess).mockResolvedValue({
         ok: false,
-        response: viewerDenied,
+        response: viewerDeniedResponse(),
       })
       const res = await c.post(jsonReq('http://localhost/api', c.body))
       expect(res.status).toBe(403)
@@ -162,9 +164,14 @@ describe('recommendations mutating routes — write gate', () => {
 describe('attendance/shifts — GET read vs POST write', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(requireClientPaidAddon).mockResolvedValue({ ok: true })
   })
 
   it('GET still uses ClientId-only (viewer readable)', async () => {
+    vi.mocked(requireClientPaidAddon).mockResolvedValue({
+      ok: false,
+      response: NextResponse.json({ code: 'ADDON_REQUIRED' }, { status: 403 }),
+    })
     vi.mocked(requireSessionClientId).mockResolvedValue({ ok: true, ctx: viewerCtx })
     const req = new Request('http://localhost/api/attendance/shifts') as import('next/server').NextRequest
     Object.defineProperty(req, 'nextUrl', {
@@ -173,17 +180,14 @@ describe('attendance/shifts — GET read vs POST write', () => {
     const res = await shiftsGet(req as never)
     expect(requireSessionClientId).toHaveBeenCalled()
     expect(requireSessionWriteAccess).not.toHaveBeenCalled()
-    // Downstream may fail without full admin mock; must not be VIEWER_READ_ONLY
-    if (res.status === 403) {
-      const body = await res.json()
-      expect(body.code).not.toBe('VIEWER_READ_ONLY')
-    }
+    expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe('ADDON_REQUIRED')
   })
 
   it('POST viewer → 403 VIEWER_READ_ONLY', async () => {
     vi.mocked(requireSessionWriteAccess).mockResolvedValue({
       ok: false,
-      response: viewerDenied,
+      response: viewerDeniedResponse(),
     })
     const res = await shiftsPost(
       jsonReq('http://localhost/api/attendance/shifts', {
@@ -197,6 +201,10 @@ describe('attendance/shifts — GET read vs POST write', () => {
 
   it('POST manager passes write auth', async () => {
     vi.mocked(requireSessionWriteAccess).mockResolvedValue({ ok: true, ctx: managerCtx })
+    vi.mocked(requireClientPaidAddon).mockResolvedValue({
+      ok: false,
+      response: NextResponse.json({ code: 'ADDON_REQUIRED' }, { status: 403 }),
+    })
     const res = await shiftsPost(
       jsonReq('http://localhost/api/attendance/shifts', {
         worker_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
@@ -204,9 +212,8 @@ describe('attendance/shifts — GET read vs POST write', () => {
       }) as never
     )
     expect(requireSessionWriteAccess).toHaveBeenCalled()
-    if (res.status === 403) {
-      expect((await res.json()).code).not.toBe('VIEWER_READ_ONLY')
-    }
+    expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe('ADDON_REQUIRED')
   })
 })
 
@@ -218,7 +225,7 @@ describe('paid-addon mutating routes — write: true', () => {
   it('calendar/events POST: viewer denied via paid-addon write gate', async () => {
     vi.mocked(requireSessionClientPaidAddon).mockResolvedValue({
       ok: false,
-      response: viewerDenied,
+      response: viewerDeniedResponse(),
     })
     const res = await calendarEventsPost(
       jsonReq('http://localhost/api/calendar/events', {
@@ -250,7 +257,7 @@ describe('paid-addon mutating routes — write: true', () => {
   it('sms/campaigns POST: viewer denied', async () => {
     vi.mocked(requireSessionClientPaidAddon).mockResolvedValue({
       ok: false,
-      response: viewerDenied,
+      response: viewerDeniedResponse(),
     })
     const res = await smsCampaignsPost(
       jsonReq('http://localhost/api/sms/campaigns', {
@@ -282,7 +289,7 @@ describe('paid-addon mutating routes — write: true', () => {
   it('whatsapp/send-template POST: viewer denied', async () => {
     vi.mocked(requireSessionClientPaidAddon).mockResolvedValue({
       ok: false,
-      response: viewerDenied,
+      response: viewerDeniedResponse(),
     })
     const res = await waTemplatePost(
       jsonReq('http://localhost/api/whatsapp/send-template', {
