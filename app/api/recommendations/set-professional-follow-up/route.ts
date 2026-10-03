@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { setProfessionalFollowUpBodySchema } from '@/lib/api-body-schemas'
@@ -7,7 +7,7 @@ import { formatZodError } from '@/lib/format-zod-error'
 import { recordRecommendationEvent } from '@/lib/recommendations/record-event'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
