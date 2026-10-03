@@ -12,6 +12,10 @@
 | Dashboard Backups UI | **Not opened by agent** (no browser dashboard session) | — |
 | PITR add-on | **Not proven.** Docs: PITR is a **paid add-on** for Pro/Team/Enterprise; requires ≥ Small compute. Org metadata returned plan only, no PITR entitlement field via MCP | [Supabase Backups docs](https://supabase.com/docs/guides/platform/backups) |
 | Entitled daily backups (docs) | Pro **typically** keeps **7 days** of daily backups | Docs only — **not** confirmed by listing actual backup objects |
+| Storage object bytes in DB backups | **Not included** | [Supabase Backups docs](https://supabase.com/docs/guides/platform/backups) |
+| Storage bucket versioning | **DISABLED** on `ticket-attachments`, `project-documents`, `client-logos` | `storage.buckets.versioning_status` (2026-10-03) |
+
+Storage DR policy (inventory, RPO/RTO, purge gate): [`STORAGE_BACKUP_POLICY_2026-10-03.md`](./STORAGE_BACKUP_POLICY_2026-10-03.md).
 
 ## What this means
 
