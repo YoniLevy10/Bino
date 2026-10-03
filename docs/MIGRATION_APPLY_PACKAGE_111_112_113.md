@@ -1,8 +1,9 @@
 # חבילת Apply — מיגרציות 111 / 112 / 113 / 121 + system_logs + worker_nfc_tags
 
-**סטטוס:** מוכנה להצגה · **לא הוחלה בפרוד** · ממתין לאישור owner (D1)  
-**תאריך precheck:** 2026-10-03 (רענון באותו יום) · פרויקט Bamakor `jsliqlmjksintyigkulq`  
-**כלל:** אין `apply_migration` / SQL כותב לפרוד עד אישור מפורש אחרי הצגת חבילה זו.
+**סטטוס:** חלון A **הוחל בפרוד** (2026-10-03) · חלון B / 113 **לא** הוחל  
+**ראיות:** [`WINDOW_A_APPLY_EVIDENCE_2026-10-03.md`](./WINDOW_A_APPLY_EVIDENCE_2026-10-03.md)  
+**תאריך precheck/apply:** 2026-10-03 · פרויקט Bamakor `jsliqlmjksintyigkulq`  
+**כלל:** אין apply נוסף (כולל 113) בלי אישור owner מפורש.
 
 ---
 
