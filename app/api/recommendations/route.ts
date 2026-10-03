@@ -48,9 +48,20 @@ export async function GET(req: NextRequest) {
   if (refresh) {
     scan = await runClientDetectors(admin, clientId)
   } else if (isStale) {
-    runAfterResponse(`recommendations-detectors:${clientId}`, async () => {
-      await runClientDetectors(admin, clientId)
-    })
+    // Fluid/serverless-safe: after() + waitUntil keeps the isolate alive.
+    // Failures → system_logs source recommendations.detectors + ops alert.
+    runAfterResponse(
+      `recommendations-detectors:${clientId}`,
+      async () => {
+        await runClientDetectors(admin, clientId)
+      },
+      {
+        logSource: 'recommendations.detectors',
+        clientId,
+        alertOps: true,
+        alertTitle: 'Recommendations detector scan failed',
+      }
+    )
   }
 
   let query = admin
