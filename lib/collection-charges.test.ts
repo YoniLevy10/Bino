@@ -260,4 +260,52 @@ describe('markChargePaidByGrowIds', () => {
     expect(matched.sumRejected).toBe(0)
     expect(calls.some((c) => c.op === 'update')).toBe(true)
   })
+
+  it('idempotent when candidates already paid (select returns empty)', async () => {
+    const { markChargePaidByGrowIds } = await import('@/lib/collection-charge-ops')
+    let updateCalls = 0
+    const chain: Record<string, unknown> = {}
+    chain.select = () => chain
+    chain.in = () => chain
+    chain.neq = () => chain
+    chain.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+      Promise.resolve({ data: [], error: null }).then(resolve, reject)
+    chain.update = () => {
+      updateCalls += 1
+      return chain
+    }
+    const admin = { from: () => chain }
+
+    const result = await markChargePaidByGrowIds(admin as never, {
+      publicTokens: ['11111111-1111-4111-8111-111111111111'],
+      paymentLinkIds: [],
+      transactionIds: ['tx-1'],
+      sum: '50',
+    })
+    expect(result).toEqual({ matched: 0, newlyPaidIds: [], sumRejected: 0 })
+    expect(updateCalls).toBe(0)
+  })
+})
+
+describe('preflightGrowWebhookSumCheck', () => {
+  it('rejects all unpaid candidates on sum mismatch', async () => {
+    const { preflightGrowWebhookSumCheck } = await import('@/lib/collection-charge-ops')
+    const chain: Record<string, unknown> = {}
+    chain.select = () => chain
+    chain.in = () => chain
+    chain.neq = () => chain
+    chain.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+      Promise.resolve({
+        data: [{ id: 'c1', amount: 100, status: 'sent' }],
+        error: null,
+      }).then(resolve, reject)
+    const admin = { from: () => chain }
+
+    const result = await preflightGrowWebhookSumCheck(admin as never, {
+      publicTokens: ['11111111-1111-4111-8111-111111111111'],
+      paymentLinkIds: [],
+      sum: '1',
+    })
+    expect(result).toEqual({ unpaidCount: 1, sumRejected: 1, sumOkIds: [] })
+  })
 })
