@@ -7,8 +7,9 @@ import { createTicketJsonBodySchema } from '@/lib/api-body-schemas'
 import {
   checkAuthenticatedPostRouteLimit,
   checkIpPostRouteLimit,
-  checkPublicReportClientBurstLimit,
-  checkPublicReportClientHourlyLimit,
+  checkPublicReportClientHourlyCeiling,
+  checkPublicReportSourceBurstLimit,
+  checkPublicReportSourceHourlyLimit,
 } from '@/lib/rate-limit'
 import { notifyNewTicketPush } from '@/lib/push-notifications'
 import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
@@ -152,22 +153,47 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'יותר מדי בקשות, נסה שוב בעוד דקה' }, { status: 429 })
       }
     } else {
-      // Public /report: IP burst + per-client burst/hourly (QR links with client_id keep working).
+      // Public /report: IP route + per-(client, source IP) burst/hourly via DB RPC
+      // (one source cannot exhaust a tenant-wide quota). High client ceiling is secondary.
       const ax = await checkIpPostRouteLimit(supabaseAdmin, ipFwd, 'create-ticket')
       if (ax.isLimited) {
         return NextResponse.json({ error: 'יותר מדי בקשות, נסה שוב בעוד דקה' }, { status: 429 })
       }
-      const clientBurst = await checkPublicReportClientBurstLimit(supabaseAdmin, bamakorClientId)
-      if (clientBurst.isLimited) {
+      const sourceBurst = await checkPublicReportSourceBurstLimit(
+        supabaseAdmin,
+        bamakorClientId,
+        ipFwd
+      )
+      if (sourceBurst.isLimited) {
         return NextResponse.json(
-          { error: 'יותר מדי דיווחים ללקוח זה כרגע. נסו שוב בעוד דקה.', code: 'PUBLIC_REPORT_BURST' },
+          { error: 'יותר מדי דיווחים ממקור זה כרגע. נסו שוב בעוד דקה.', code: 'PUBLIC_REPORT_BURST' },
           { status: 429 }
         )
       }
-      const clientHour = await checkPublicReportClientHourlyLimit(supabaseAdmin, bamakorClientId)
-      if (clientHour.isLimited) {
+      const sourceHour = await checkPublicReportSourceHourlyLimit(
+        supabaseAdmin,
+        bamakorClientId,
+        ipFwd
+      )
+      if (sourceHour.isLimited) {
         return NextResponse.json(
-          { error: 'הגעתם למכסת דיווחים ציבוריים לשעה. נסו שוב מאוחר יותר.', code: 'PUBLIC_REPORT_HOURLY' },
+          {
+            error: 'הגעתם למכסת דיווחים ציבוריים לשעה ממקור זה. נסו שוב מאוחר יותר.',
+            code: 'PUBLIC_REPORT_HOURLY',
+          },
+          { status: 429 }
+        )
+      }
+      const clientCeiling = await checkPublicReportClientHourlyCeiling(
+        supabaseAdmin,
+        bamakorClientId
+      )
+      if (clientCeiling.isLimited) {
+        return NextResponse.json(
+          {
+            error: 'הגעתם למכסת דיווחים ציבוריים לשעה ללקוח זה. נסו שוב מאוחר יותר.',
+            code: 'PUBLIC_REPORT_CLIENT_CEILING',
+          },
           { status: 429 }
         )
       }

@@ -14,8 +14,11 @@ vi.mock('@/lib/api-auth', () => ({
 }))
 
 vi.mock('@/lib/rate-limit', () => ({
-  checkAuthenticatedPostRouteLimit: vi.fn(),
+  checkAuthenticatedPostRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
   checkIpPostRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
+  checkPublicReportSourceBurstLimit: vi.fn().mockResolvedValue({ isLimited: false }),
+  checkPublicReportSourceHourlyLimit: vi.fn().mockResolvedValue({ isLimited: false }),
+  checkPublicReportClientHourlyCeiling: vi.fn().mockResolvedValue({ isLimited: false }),
 }))
 
 vi.mock('@/lib/plan-quota-check', () => ({

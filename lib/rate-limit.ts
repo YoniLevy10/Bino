@@ -213,33 +213,95 @@ export async function checkIpPostRouteLimit(admin: SupabaseClient, ip: string, r
 
 /**
  * Public /report spam shield (M11 / P10) — does NOT break existing QR/client_id links.
- * Burst: 10/min per client. Sustained: 60/hour per client (in addition to IP + monthly plan quota).
+ *
+ * Primary limits are keyed by **request source (IP) × client_id** so one attacker
+ * cannot exhaust a tenant-wide quota and block other residents. Enforcement uses
+ * `bamakor_rate_limit` (Postgres) on every check — not process memory — so limits
+ * hold across Vercel isolates. A high client-wide hourly ceiling remains as a
+ * secondary multi-source flood guard (far above one source's cap).
+ *
+ * Also layered with `checkIpPostRouteLimit` + monthly plan quota.
  */
-export const PUBLIC_REPORT_CLIENT_BURST_LIMIT = 10
-export const PUBLIC_REPORT_CLIENT_BURST_WINDOW_MS = 60_000
-export const PUBLIC_REPORT_CLIENT_HOURLY_LIMIT = 60
-export const PUBLIC_REPORT_CLIENT_HOURLY_WINDOW_MS = 60 * 60_000
+export const PUBLIC_REPORT_SOURCE_BURST_LIMIT = 10
+export const PUBLIC_REPORT_SOURCE_BURST_WINDOW_MS = 60_000
+export const PUBLIC_REPORT_SOURCE_HOURLY_LIMIT = 40
+export const PUBLIC_REPORT_SOURCE_HOURLY_WINDOW_MS = 60 * 60_000
+/** Secondary multi-IP flood ceiling — must stay well above SOURCE_HOURLY_LIMIT. */
+export const PUBLIC_REPORT_CLIENT_HOURLY_CEILING = 300
+export const PUBLIC_REPORT_CLIENT_HOURLY_CEILING_WINDOW_MS = 60 * 60_000
 
-export async function checkPublicReportClientBurstLimit(admin: SupabaseClient, clientId: string) {
+/** @deprecated Use PUBLIC_REPORT_SOURCE_BURST_LIMIT — kept for test import stability during rollout. */
+export const PUBLIC_REPORT_CLIENT_BURST_LIMIT = PUBLIC_REPORT_SOURCE_BURST_LIMIT
+/** @deprecated Use PUBLIC_REPORT_SOURCE_HOURLY_LIMIT */
+export const PUBLIC_REPORT_CLIENT_HOURLY_LIMIT = PUBLIC_REPORT_SOURCE_HOURLY_LIMIT
+export const PUBLIC_REPORT_CLIENT_BURST_WINDOW_MS = PUBLIC_REPORT_SOURCE_BURST_WINDOW_MS
+export const PUBLIC_REPORT_CLIENT_HOURLY_WINDOW_MS = PUBLIC_REPORT_SOURCE_HOURLY_WINDOW_MS
+
+function sanitizeRateLimitIp(ip: string): string {
+  return (ip || 'unknown').slice(0, 64).replace(/[^a-zA-Z0-9:._-]/g, '_')
+}
+
+/**
+ * Burst per (client, source IP) via distributed RPC.
+ * One IP hitting the burst cap must not block other IPs for the same client.
+ */
+export async function checkPublicReportSourceBurstLimit(
+  admin: SupabaseClient,
+  clientId: string,
+  ip: string
+) {
   const id = (clientId || 'unknown').slice(0, 64)
+  const safeIp = sanitizeRateLimitIp(ip)
   const r = await checkRateLimit(
     admin,
-    `post:public-report:client:${id}:burst`,
-    PUBLIC_REPORT_CLIENT_BURST_LIMIT,
-    PUBLIC_REPORT_CLIENT_BURST_WINDOW_MS
+    `post:public-report:client:${id}:ip:${safeIp}:burst`,
+    PUBLIC_REPORT_SOURCE_BURST_LIMIT,
+    PUBLIC_REPORT_SOURCE_BURST_WINDOW_MS
   )
   if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true as const }
   return r
 }
 
-export async function checkPublicReportClientHourlyLimit(admin: SupabaseClient, clientId: string) {
+/** Sustained hourly cap per (client, source IP) via distributed RPC. */
+export async function checkPublicReportSourceHourlyLimit(
+  admin: SupabaseClient,
+  clientId: string,
+  ip: string
+) {
   const id = (clientId || 'unknown').slice(0, 64)
+  const safeIp = sanitizeRateLimitIp(ip)
   const r = await checkRateLimit(
     admin,
-    `post:public-report:client:${id}:hour`,
-    PUBLIC_REPORT_CLIENT_HOURLY_LIMIT,
-    PUBLIC_REPORT_CLIENT_HOURLY_WINDOW_MS
+    `post:public-report:client:${id}:ip:${safeIp}:hour`,
+    PUBLIC_REPORT_SOURCE_HOURLY_LIMIT,
+    PUBLIC_REPORT_SOURCE_HOURLY_WINDOW_MS
   )
   if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true as const }
   return r
+}
+
+/**
+ * High client-wide hourly ceiling (distributed). Secondary only — must not be
+ * low enough that a single source can exhaust it (see SOURCE_HOURLY_LIMIT).
+ */
+export async function checkPublicReportClientHourlyCeiling(admin: SupabaseClient, clientId: string) {
+  const id = (clientId || 'unknown').slice(0, 64)
+  const r = await checkRateLimit(
+    admin,
+    `post:public-report:client:${id}:hour-ceiling`,
+    PUBLIC_REPORT_CLIENT_HOURLY_CEILING,
+    PUBLIC_REPORT_CLIENT_HOURLY_CEILING_WINDOW_MS
+  )
+  if ('rpcFailed' in r && r.rpcFailed) return { isLimited: true as const }
+  return r
+}
+
+/** @deprecated Prefer checkPublicReportSourceBurstLimit(admin, clientId, ip) */
+export async function checkPublicReportClientBurstLimit(admin: SupabaseClient, clientId: string) {
+  return checkPublicReportSourceBurstLimit(admin, clientId, 'legacy-unknown')
+}
+
+/** @deprecated Prefer checkPublicReportSourceHourlyLimit(admin, clientId, ip) */
+export async function checkPublicReportClientHourlyLimit(admin: SupabaseClient, clientId: string) {
+  return checkPublicReportSourceHourlyLimit(admin, clientId, 'legacy-unknown')
 }
