@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { cookies, headers } from 'next/headers'
-import { createClient } from '@/utils/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { headers } from 'next/headers'
 import { getPublicSiteUrlFromHeaders } from '@/lib/site-url'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { userHasTenantAccess } from '@/lib/tenant-access'
@@ -8,6 +8,7 @@ import { upsertGoogleCalendarConnection } from '@/lib/google-calendar'
 import { getSingletonClientId } from '@/lib/singleton-client-server'
 import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
 import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
+import { SUPABASE_AUTH_COOKIE_OPTIONS } from '@/lib/supabase-cookie-options'
 
 function sanitizeNext(raw: string | null): string {
   if (!raw) return '/dashboard'
@@ -26,12 +27,21 @@ function wantsGoogleCalendarConnect(nextPath: string): boolean {
   }
 }
 
+type CookieToSet = {
+  name: string
+  value: string
+  options?: Parameters<NextResponse['cookies']['set']>[2]
+}
+
 /**
- * OAuth PKCE: Google מחזיר לכאן עם ?code= — מחליפים לסשן ומפנים ליעד הבטוח.
- * יש להוסיף ב-Supabase Dashboard → Authentication → URL configuration:
- * Redirect URLs: https://bino.casa/auth/callback (ראה docs/DOMAIN.md)
+ * OAuth PKCE: Google returns here with ?code= — exchange for a session and redirect.
  *
- * When next includes ?gcal=1, persist Google Calendar provider tokens for the tenant.
+ * Critical: session cookies from exchangeCodeForSession MUST be written onto the
+ * same NextResponse.redirect we return. Using cookies() from next/headers and then
+ * creating a fresh redirect can drop Set-Cookie → middleware sees no user → bounce
+ * straight back to /login (password login still works).
+ *
+ * Redirect URLs: https://bino.casa/auth/callback (see docs/DOMAIN.md)
  */
 export async function GET(request: NextRequest) {
   const hdrs = await headers()
@@ -40,16 +50,52 @@ export async function GET(request: NextRequest) {
   const next = sanitizeNext(url.searchParams.get('next'))
   const origin = getPublicSiteUrlFromHeaders(hdrs)
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.redirect(`${origin}/login?error=auth`)
+  }
+
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth`)
   }
 
-  const cookieStore = await cookies()
-  const supabase = createClient(cookieStore)
+  /** Cookies collected during exchange / signOut — applied to the final redirect. */
+  const pendingCookies: CookieToSet[] = []
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: SUPABASE_AUTH_COOKIE_OPTIONS,
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        for (const c of cookiesToSet) {
+          pendingCookies.push(c)
+          // Keep request jar in sync for subsequent getUser() in this handler.
+          try {
+            request.cookies.set(c.name, c.value)
+          } catch {
+            /* RequestCookies.set may be restricted; pendingCookies is the source of truth */
+          }
+        }
+      },
+    },
+  })
+
+  function redirectWithSessionCookies(targetPath: string) {
+    const redirect = NextResponse.redirect(`${origin}${targetPath}`)
+    for (const { name, value, options } of pendingCookies) {
+      redirect.cookies.set(name, value, options)
+    }
+    return redirect
+  }
+
   const { data: exchangeData, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    return NextResponse.redirect(`${origin}/login?error=auth`)
+    console.error('[auth/callback] exchangeCodeForSession failed', error.message)
+    return redirectWithSessionCookies('/login?error=auth')
   }
 
   const {
@@ -58,7 +104,7 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     await supabase.auth.signOut()
-    return NextResponse.redirect(`${origin}/login?error=auth`)
+    return redirectWithSessionCookies('/login?error=auth')
   }
 
   try {
@@ -74,21 +120,19 @@ export async function GET(request: NextRequest) {
 
     // Managers stay on manager routes; residents on /resident*. Never mix scopes.
     if (wantsResident) {
-      // Invite acceptance must run after login — membership does not exist yet.
       if (!hasResident && !acceptingInvite) {
         await supabase.auth.signOut()
-        return NextResponse.redirect(`${origin}/resident/login?error=no_access`)
+        return redirectWithSessionCookies('/resident/login?error=no_access')
       }
-      // Resident path: allow even if user also has tenant (area chosen by next URL).
-      return NextResponse.redirect(`${origin}${next}`)
+      return redirectWithSessionCookies(next)
     }
 
     if (!hasTenant) {
       if (hasResident) {
-        return NextResponse.redirect(`${origin}/resident`)
+        return redirectWithSessionCookies('/resident')
       }
       await supabase.auth.signOut()
-      return NextResponse.redirect(`${origin}/login?error=no_access`)
+      return redirectWithSessionCookies('/login?error=no_access')
     }
 
     if (wantsGoogleCalendarConnect(next)) {
@@ -108,20 +152,19 @@ export async function GET(request: NextRequest) {
           })
         } catch (e) {
           console.error('[auth/callback] google calendar save failed', e)
-          return NextResponse.redirect(`${origin}/calendar?gcal=error`)
+          return redirectWithSessionCookies('/calendar?gcal=error')
         }
       } else {
-        // Consent may have returned access without refresh (already granted before).
-        // Client page can retry with prompt=consent.
         console.warn('[auth/callback] gcal connect without provider_refresh_token')
-        return NextResponse.redirect(`${origin}/calendar?gcal=need_consent`)
+        return redirectWithSessionCookies('/calendar?gcal=need_consent')
       }
-      return NextResponse.redirect(`${origin}/calendar?gcal=connected`)
+      return redirectWithSessionCookies('/calendar?gcal=connected')
     }
-  } catch {
+  } catch (e) {
+    console.error('[auth/callback] post-exchange failure', e)
     await supabase.auth.signOut()
-    return NextResponse.redirect(`${origin}/login?error=auth`)
+    return redirectWithSessionCookies('/login?error=auth')
   }
 
-  return NextResponse.redirect(`${origin}${next}`)
+  return redirectWithSessionCookies(next)
 }
