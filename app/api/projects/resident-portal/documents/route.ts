@@ -3,8 +3,9 @@ import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { removeDurableStorageObjects } from '@/lib/storage-purge'
 
-const BUCKET = 'project-documents'
+const BUCKET = 'project-documents' as const
 const MAX_BYTES = 15 * 1024 * 1024
 const ALLOWED_MIME = new Set(['application/pdf'])
 
@@ -173,7 +174,7 @@ export async function POST(req: Request) {
     .single()
 
   if (insErr || !inserted) {
-    await auth.ctx.admin.storage.from(BUCKET).remove([storagePath])
+    await removeDurableStorageObjects(auth.ctx.admin, BUCKET, [storagePath], 'upload_rollback')
     console.error('[portal/documents insert]', insErr?.message)
     return NextResponse.json({ error: insErr?.message || 'שמירה נכשלה' }, { status: 500 })
   }
@@ -204,7 +205,7 @@ export async function POST(req: Request) {
   })
 }
 
-/** Remove a portal document from residents and delete the file. */
+/** Remove a portal document from residents; Storage purge is gated (see storage-purge). */
 export async function DELETE(req: Request) {
   const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
@@ -233,7 +234,12 @@ export async function DELETE(req: Request) {
   }
 
   const storagePath = (row as { storage_path: string }).storage_path
-  await auth.ctx.admin.storage.from(BUCKET).remove([storagePath])
+  const purge = await removeDurableStorageObjects(
+    auth.ctx.admin,
+    BUCKET,
+    [storagePath],
+    'user_delete'
+  )
   const { error: delErr } = await auth.ctx.admin
     .from('project_documents')
     .delete()
@@ -253,8 +259,13 @@ export async function DELETE(req: Request) {
     oldValues: {
       file_name: (row as { file_name?: string }).file_name,
       visibility: (row as { visibility?: string }).visibility,
+      storage_purged: purge.ok && purge.purged === true,
     },
   })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    storage_purged: purge.ok && purge.purged === true,
+    storage_purge_skipped: purge.ok && 'skipped' in purge ? purge.skipped : false,
+  })
 }

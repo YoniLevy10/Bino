@@ -2,7 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 type SoftDeleteResult = { deleted_count: number; ticket_ids: string[]; error?: string }
 
-/** Soft-delete tenant tickets and clear related session / merge pointers. */
+/**
+ * Soft-delete tenant tickets and clear related session / merge pointers.
+ *
+ * Intentionally does **not** call Storage `.remove()` on `ticket-attachments`.
+ * Soft-deleted tickets keep media objects so operational memory (and any future
+ * restore) is not wiped. See docs/STORAGE_BACKUP_POLICY_2026-10-03.md.
+ */
 export async function softDeleteTicketsForClient(
   admin: SupabaseClient,
   clientId: string,

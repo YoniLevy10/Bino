@@ -3,9 +3,10 @@ import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { deleteProjectDocumentBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { removeDurableStorageObjects } from '@/lib/storage-purge'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
-const BUCKET = 'project-documents'
+const BUCKET = 'project-documents' as const
 const MAX_BYTES = 15 * 1024 * 1024
 
 const ALLOWED_MIME = new Set([
@@ -148,7 +149,7 @@ export async function POST(req: Request) {
     .single()
 
   if (insErr) {
-    await admin.storage.from(BUCKET).remove([storagePath])
+    await removeDurableStorageObjects(admin, BUCKET, [storagePath], 'upload_rollback')
     return NextResponse.json({ error: insErr.message }, { status: 500 })
   }
 
@@ -191,12 +192,18 @@ export async function DELETE(req: Request) {
   }
 
   const storagePath = (row as { storage_path: string }).storage_path
-  await admin.storage.from(BUCKET).remove([storagePath])
+  // DB row delete always proceeds; Storage bytes are purged only when
+  // STORAGE_ALLOW_PURGE=true (default off — see docs/STORAGE_BACKUP_POLICY_2026-10-03.md).
+  const purge = await removeDurableStorageObjects(admin, BUCKET, [storagePath], 'user_delete')
   const { error: delErr } = await admin
     .from('project_documents')
     .delete()
     .eq('id', parsed.data.document_id)
 
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    storage_purged: purge.ok && purge.purged === true,
+    storage_purge_skipped: purge.ok && 'skipped' in purge ? purge.skipped : false,
+  })
 }
