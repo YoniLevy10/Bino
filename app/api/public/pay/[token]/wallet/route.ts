@@ -139,7 +139,8 @@ export async function POST(req: Request, context: RouteContext) {
   }
 
   const now = new Date().toISOString()
-  await admin
+  // M3: status-guard — never overwrite paid/cancelled if a race flips status after the reads above.
+  const { data: updatedRow, error: updErr } = await admin
     .from('collection_charges')
     .update({
       grow_process_id: process.processId || null,
@@ -149,6 +150,27 @@ export async function POST(req: Request, context: RouteContext) {
       updated_at: now,
     })
     .eq('id', charge.id)
+    .in('status', ['draft', 'sent', 'failed'])
+    .select('id, status')
+    .maybeSingle()
+
+  if (updErr) {
+    return NextResponse.json({ error: 'שמירת סשן ארנק נכשלה' }, { status: 500 })
+  }
+  if (!updatedRow) {
+    const { data: latest } = await admin
+      .from('collection_charges')
+      .select('status')
+      .eq('id', charge.id)
+      .maybeSingle()
+    if (latest?.status === 'paid') {
+      return NextResponse.json({ error: 'החיוב כבר שולם', code: 'ALREADY_PAID' }, { status: 409 })
+    }
+    if (latest?.status === 'cancelled') {
+      return NextResponse.json({ error: 'החיוב בוטל', code: 'CANCELLED' }, { status: 409 })
+    }
+    return NextResponse.json({ error: 'לא ניתן לעדכן את החיוב כעת' }, { status: 409 })
+  }
 
   return NextResponse.json({
     ok: true,

@@ -545,6 +545,63 @@ export async function markCollectionChargePaidManual(
   return { ok: true, charge: updated as CollectionChargeRow }
 }
 
+/**
+ * Sum-check unpaid candidates BEFORE ApproveTransaction.
+ * Missing callback sum → treat as ok (same as markChargePaidByGrowIds).
+ */
+export async function preflightGrowWebhookSumCheck(
+  admin: SupabaseClient,
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    processIds?: string[]
+    sum?: string | null
+  }
+): Promise<{ unpaidCount: number; sumRejected: number; sumOkIds: string[] }> {
+  const tokens = [...new Set(ids.publicTokens.filter(Boolean))]
+  const linkIds = [...new Set(ids.paymentLinkIds.filter(Boolean))]
+  const processIds = [...new Set((ids.processIds || []).filter(Boolean))]
+  if (tokens.length === 0 && linkIds.length === 0 && processIds.length === 0) {
+    return { unpaidCount: 0, sumRejected: 0, sumOkIds: [] }
+  }
+
+  const seen = new Set<string>()
+  const sumOkIds: string[] = []
+  let unpaidCount = 0
+  let sumRejected = 0
+
+  const scan = async (column: string, values: string[]) => {
+    if (values.length === 0) return
+    const { data, error } = await admin
+      .from('collection_charges')
+      .select('id, amount, status')
+      .in(column, values)
+      .neq('status', 'paid')
+      .neq('status', 'cancelled')
+    if (error) throw new Error(`grow_sum_preflight_failed: ${error.message}`)
+    for (const row of data ?? []) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      unpaidCount += 1
+      if (!growCallbackSumMatchesCharge(ids.sum, row.amount)) {
+        sumRejected += 1
+        console.error('[grow-webhook] sum mismatch — refusing Approve / mark paid', {
+          chargeId: row.id,
+          callbackSum: ids.sum,
+          chargeAmount: row.amount,
+        })
+        continue
+      }
+      sumOkIds.push(row.id)
+    }
+  }
+
+  await scan('public_token', tokens)
+  await scan('grow_payment_link_id', linkIds)
+  await scan('grow_process_id', processIds)
+  return { unpaidCount, sumRejected, sumOkIds }
+}
+
 export async function markChargePaidByGrowIds(
   admin: SupabaseClient,
   ids: {

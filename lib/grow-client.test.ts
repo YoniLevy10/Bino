@@ -1,6 +1,16 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { parseGrowPaymentLinkResponse } from '@/lib/grow-client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  approveGrowTransaction,
+  isGrowApiSuccessStatus,
+  parseGrowPaymentLinkResponse,
+} from '@/lib/grow-client'
 import { parseGrowEnv, readGrowPlatformConfig, sanitizeGrowPlainText } from '@/lib/grow-config'
+
+vi.mock('@/lib/fetch-timeout', () => ({
+  fetchWithTimeout: vi.fn(),
+}))
+
+import { fetchWithTimeout } from '@/lib/fetch-timeout'
 
 describe('parseGrowEnv', () => {
   it('defaults to production unless sandbox', () => {
@@ -86,5 +96,66 @@ describe('parseGrowPaymentLinkResponse', () => {
         data: { url: 'https://secure.meshulam.co.il/pay/abc' },
       })
     ).toBeNull()
+  })
+})
+
+describe('isGrowApiSuccessStatus', () => {
+  it('accepts only numeric/string 1', () => {
+    expect(isGrowApiSuccessStatus(1)).toBe(true)
+    expect(isGrowApiSuccessStatus('1')).toBe(true)
+    expect(isGrowApiSuccessStatus(0)).toBe(false)
+    expect(isGrowApiSuccessStatus('0')).toBe(false)
+    expect(isGrowApiSuccessStatus(200)).toBe(false)
+    expect(isGrowApiSuccessStatus(undefined)).toBe(false)
+  })
+})
+
+describe('approveGrowTransaction', () => {
+  const platform = {
+    env: 'sandbox' as const,
+    apiKey: 'body-key',
+    xApiKey: 'header-key',
+    pageCode: 'page',
+    walletPageCode: 'page',
+    webhookSecret: 'hook',
+  }
+
+  beforeEach(() => {
+    vi.mocked(fetchWithTimeout).mockReset()
+  })
+
+  it('fails when HTTP 200 but body status is not 1', async () => {
+    vi.mocked(fetchWithTimeout).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ status: 0, err: 'reject' }),
+    } as Response)
+
+    const result = await approveGrowTransaction(
+      {
+        transactionId: 'tx-1',
+        transactionToken: 'tok-1',
+      },
+      platform
+    )
+    expect(result.ok).toBe(false)
+    expect(result.error).toBeTruthy()
+  })
+
+  it('succeeds only when body status is 1', async () => {
+    vi.mocked(fetchWithTimeout).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ status: 1, data: {} }),
+    } as Response)
+
+    const result = await approveGrowTransaction(
+      {
+        transactionId: 'tx-1',
+        transactionToken: 'tok-1',
+      },
+      platform
+    )
+    expect(result).toEqual({ ok: true })
   })
 })

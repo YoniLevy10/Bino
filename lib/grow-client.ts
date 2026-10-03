@@ -126,6 +126,11 @@ function growErrorMessage(data: unknown, fallback: string): string {
   return fallback
 }
 
+/** Grow API success — body `status` must be 1 / '1' (same rule as payment-link / payment-process parsers). */
+export function isGrowApiSuccessStatus(status: unknown): boolean {
+  return status === 1 || status === '1'
+}
+
 export function parseGrowPaymentLinkResponse(data: unknown): {
   url: string
   paymentLinkProcessId: string
@@ -133,8 +138,7 @@ export function parseGrowPaymentLinkResponse(data: unknown): {
 } | null {
   if (!data || typeof data !== 'object') return null
   const rec = data as Record<string, unknown>
-  const status = rec.status
-  if (status !== 1 && status !== '1') return null
+  if (!isGrowApiSuccessStatus(rec.status)) return null
   const inner =
     rec.data && typeof rec.data === 'object' ? (rec.data as Record<string, unknown>) : rec
   const url = typeof inner.url === 'string' ? inner.url.trim() : ''
@@ -240,7 +244,10 @@ export async function approveGrowTransaction(
   const posted = await postGrowForm(platform.env, '/approveTransaction', fields, platform.xApiKey)
   if (posted.status === 0) return { ok: false, error: 'פסק זמן באישור עסקה ל-Grow' }
   const rec = posted.data && typeof posted.data === 'object' ? (posted.data as { status?: unknown }) : null
-  const ok = rec?.status === 1 || rec?.status === '1' || posted.status === 200
+  // Do not treat bare HTTP 200 as success — Grow returns business status in the JSON body
+  // (createPaymentLink / createPaymentProcess already require status 1/'1'). Official Approve
+  // readme (developers.grow.business/reference/approve-transaction) does not document HTTP-200-alone.
+  const ok = isGrowApiSuccessStatus(rec?.status)
   return ok
     ? { ok: true }
     : { ok: false, error: growErrorMessage(posted.data, 'ApproveTransaction נכשל') }
@@ -253,7 +260,7 @@ function parseGrowPaymentProcessResponse(data: unknown): {
 } | null {
   if (!data || typeof data !== 'object') return null
   const rec = data as Record<string, unknown>
-  if (rec.status !== 1 && rec.status !== '1') return null
+  if (!isGrowApiSuccessStatus(rec.status)) return null
   const inner =
     rec.data && typeof rec.data === 'object' ? (rec.data as Record<string, unknown>) : rec
   const authCode = typeof inner.authCode === 'string' ? inner.authCode.trim() : ''
