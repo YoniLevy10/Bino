@@ -1,7 +1,7 @@
-# חבילת Apply — מיגרציות 111 / 112 / 113 + system_logs
+# חבילת Apply — מיגרציות 111 / 112 / 113 / 121 + system_logs + worker_nfc_tags
 
 **סטטוס:** מוכנה להצגה · **לא הוחלה בפרוד** · ממתין לאישור owner (D1)  
-**תאריך precheck:** 2026-10-03 · פרויקט Bamakor `jsliqlmjksintyigkulq`  
+**תאריך precheck:** 2026-10-03 (רענון באותו יום) · פרויקט Bamakor `jsliqlmjksintyigkulq`  
 **כלל:** אין `apply_migration` / SQL כותב לפרוד עד אישור מפורש אחרי הצגת חבילה זו.
 
 ---
@@ -13,22 +13,23 @@
 | יצירת `system_logs` (תוכן מ־`033_indexes_health_logs.sql`) | H4 | בניינים |
 | `112_audit_projects_soft_delete.sql` | H8 | בניינים |
 | `111_audit_whatsapp_phone_unique_and_rls_writes.sql` | B1, H1 | בניינים |
-| **משלים:** `REVOKE` על `worker_nfc_tags` (+ אופציונלי טבלאות attendance אם חסרות) | פער ב־111 (`nfc_tags` לא קיים) | בניינים |
+| `121_revoke_worker_nfc_attendance_writes.sql` | פער ב־111 (`nfc_tags`≠`worker_nfc_tags`) | בניינים |
 | `113_audit_collection_charge_idempotency.sql` | B2 | **גבייה בלבד** |
 
 ---
 
-## 2. תוצאות Precheck (READ-ONLY)
+## 2. תוצאות Precheck (READ-ONLY) — רענון
 
 | בדיקה | תוצאה | משמעות |
 |--------|--------|--------|
 | כפילויות `whatsapp_phone_number_id` | **0** | UNIQUE בטוח להחלה |
-| `projects.deleted_at` | חסר | 112 נדרש |
-| `collection_charges.idempotency_key` | חסר | 113 נדרש לגבייה |
-| index `clients_whatsapp_phone_number_id_uidx` | חסר | חלק מ־111 |
-| `system_logs` | חסר | נדרש ל־health |
-| `public.nfc_tags` | **לא קיים** | 111 לא יבטל כתיבה על טבלת NFC האמיתית |
-| `public.worker_nfc_tags` | **קיים** | חובה REVOKE משלים |
+| `projects.deleted_at` | **חסר** | 112 נדרש |
+| `collection_charges.idempotency_key` | **חסר** | 113 נדרש לגבייה |
+| index `clients_whatsapp_phone_number_id_uidx` | **חסר** | חלק מ־111 |
+| `system_logs` | **חסר** | נדרש ל־health |
+| `public.nfc_tags` | **לא קיים** | 111 לא מבטל כתיבה על NFC האמיתי |
+| `public.worker_nfc_tags` | **קיים** | חובה 121 |
+| `bamakor_rate_limit` / `api_rate_limits` | **קיימים** | מוכן ל־M11 מבוזר (לא חלק מחבילת D1) |
 | כתיבות דפדפן לטבלאות 111 | לא נמצאו בקוד | סיכון שבירת UI נמוך אחרי REVOKE |
 
 שאילתות שימוש חוזר (לקריאה בלבד לפני apply):
@@ -42,9 +43,9 @@ GROUP BY 1 HAVING COUNT(*) > 1;
 
 -- flags
 SELECT
-  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='deleted_at') AS has_deleted_at,
-  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collection_charges' AND column_name='idempotency_key') AS has_idempotency,
-  EXISTS (SELECT 1 FROM pg_indexes WHERE indexname='clients_whatsapp_phone_number_id_uidx') AS has_wa_uidx,
+  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='projects' AND column_name='deleted_at') AS has_deleted_at,
+  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='collection_charges' AND column_name='idempotency_key') AS has_idempotency,
+  EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='clients_whatsapp_phone_number_id_uidx') AS has_wa_uidx,
   to_regclass('public.system_logs') IS NOT NULL AS has_system_logs,
   to_regclass('public.worker_nfc_tags') IS NOT NULL AS has_worker_nfc_tags,
   to_regclass('public.nfc_tags') IS NOT NULL AS has_nfc_tags;
@@ -54,21 +55,20 @@ SELECT
 
 ## 3. סדר פריסה מומלץ
 
-### חלון A — Go בניינים (אחרי אישור D1)
+### חלון A — Go בניינים (אחרי אישור D1 מפורש)
 
-1. **system_logs** — יצירת טבלה (+ אינדקסים מ־033 אם רלוונטי).  
-2. **112** — `deleted_at` על projects.  
-3. **111** — UNIQUE WA + REVOKE על רשימת הטבלאות בקובץ.  
-4. **משלים חדש** (להוסיף ב־PR ייעודי לפני apply):  
-   `REVOKE INSERT, UPDATE, DELETE ON TABLE public.worker_nfc_tags FROM authenticated, anon;`  
-   (ואם קיימות: `worker_attendance` אם יש כתיבת authenticated — לבדוק `has_table_privilege` לפני).  
-5. רענון `lib/database.types.ts`.  
-6. Smoke login + תקלות.
+1. **Snapshot / point-in-time** — ודאו שיש PITR / backup זמין לפני DDL.  
+2. **system_logs** — יצירת טבלה (+ אינדקסים מ־033 אם רלוונטי).  
+3. **112** — `deleted_at` על `projects`.  
+4. **111** — UNIQUE WA + REVOKE על רשימת הטבלאות בקובץ.  
+5. **121** — `REVOKE` על `worker_nfc_tags` (+ `worker_attendance` אם קיימת).  
+6. רענון `lib/database.types.ts` אם נדרש.  
+7. Smoke: login → dashboard → תקלות / assign / update.
 
-### חלון B — לפני Go גבייה (יכול להיות מאוחר יותר)
+### חלון B — לפני Go גבייה (נפרד; יכול להיות מאוחר יותר)
 
-7. **113** — `idempotency_key`.  
-8. בדיקת create charge עם/בלי Idempotency-Key.
+8. **113** — `idempotency_key`.  
+9. בדיקת create charge עם/בלי Idempotency-Key.
 
 **אל תפעילו addon גבייה ללקוח חדש לפני חלון B.**
 
@@ -86,17 +86,21 @@ SELECT
 
 ---
 
-## 5. תוכנית Rollback
+## 5. תוכנית התאוששות (Rollback) — בלי GRANT גורף אוטומטי
 
-| שלב | Rollback |
-|-----|----------|
-| UNIQUE index | `DROP INDEX IF EXISTS clients_whatsapp_phone_number_id_uidx;` |
-| REVOKE | `GRANT INSERT, UPDATE, DELETE ON TABLE public.<t> TO authenticated;` לכל טבלה שבוטלה (סקריפט מראש) |
-| deleted_at | **לא** drop אם כבר נכתבו ערכים — להשאיר עמודה; rollback התנהגות בקוד |
-| idempotency_key | להסיר שימוש בכותרת בקוד לפני drop; אחרת להשאיר עמודה |
-| system_logs | `DROP TABLE` רק אם ריק / בהסכמה |
+**כלל:** אין rollback אוטומטי שמחזיר `GRANT INSERT/UPDATE/DELETE` גורף ל־`authenticated`/`anon`. החזרת כתיבה PostgREST היא החלטת אבטחה מפורשת של owner בלבד, ורק לטבלאות ספציפיות שנמצאו כשבורות ב־smoke — לא סקריפט «החזר הכול».
 
-שמרו סקריפט GRANT מלא **לפני** apply (העתק מ־`information_schema.role_table_grants`).
+| שלב | התאוששות מועדפת | הערה |
+|-----|------------------|------|
+| UNIQUE index | `DROP INDEX IF EXISTS clients_whatsapp_phone_number_id_uidx;` | בטוח יחסית אם insert נכשל |
+| REVOKE (111/121) | **קודם:** rollback קוד / feature flag אם API נשבר; **רק אם** הוכח ש־UI תלוי בכתיבת JWT לטבלה ספציפית — `GRANT` **לטבלה אחת** אחרי תיעוד הסיבה | לא GRANT גורף לכל הרשימה |
+| `projects.deleted_at` | **לא** DROP אם נכתבו ערכים; rollback התנהגות בקוד (להסיר פילטרים זמנית) | עמודה נשארת |
+| `idempotency_key` | להסיר שימוש בכותרת בקוד לפני כל DROP; אחרת להשאיר עמודה | חלון B |
+| `system_logs` | `TRUNCATE` / הפסקת כתיבה בקוד; `DROP TABLE` רק אם ריק ובהסכמה | |
+
+**לפני apply:** שמרו העתק READ-ONLY של `information_schema.role_table_grants` לטבלאות המושפעות — לתיעוד בלבד, לא כסקריפט rollback אוטומטי.
+
+**אם apply נכשל באמצע:** עצרו; אל תמשיכו ל־113; בדקו `has_table_privilege` + smoke login; פתחו חלון תיקון ממוקד.
 
 ---
 
@@ -105,11 +109,11 @@ SELECT
 ```sql
 SELECT has_table_privilege('authenticated','public.tickets','INSERT') AS tickets_ins; -- expect false
 SELECT has_table_privilege('authenticated','public.worker_nfc_tags','INSERT') AS nfc_ins; -- expect false
-SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname='clients_whatsapp_phone_number_id_uidx'); -- true
-SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='deleted_at'); -- true
+SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='clients_whatsapp_phone_number_id_uidx'); -- true
+SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='projects' AND column_name='deleted_at'); -- true
 SELECT to_regclass('public.system_logs') IS NOT NULL; -- true
 -- only after window B:
-SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collection_charges' AND column_name='idempotency_key'); -- true
+SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='collection_charges' AND column_name='idempotency_key'); -- true
 ```
 
 API smoke: assign-ticket / update-ticket / create-ticket (session) עדיין עובדים.
@@ -118,6 +122,6 @@ API smoke: assign-ticket / update-ticket / create-ticket (session) עדיין ע
 
 ## 7. מה עדיין לא אומת בחבילה זו
 
-- Apply בפועל לפרוד  
-- PostgREST PATCH חי עם JWT משתמש אמיתי (דורש D4)  
+- Apply בפועל לפרוד (ממתין לאישור D1)  
+- PostgREST PATCH חי עם JWT משתמש אמיתי (דורש D4 / משתמש בדיקה מבודד)  
 - תרגיל restore מלא (P9 / D5)
