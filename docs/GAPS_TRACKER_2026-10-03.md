@@ -1,6 +1,6 @@
 # Gaps tracker — paying customers readiness (unified)
 
-**Updated:** 2026-10-03 ~19:55 UTC  
+**Updated:** 2026-10-03 ~20:15 UTC (execution mode)  
 **Prod tip:** `edd27bb` · Vercel `dpl_68zCkLfqbhF8z4PGck5TG2GvUHx9` · merged #234→#231→#232→#233→#236→#235  
 **Owners:** Agent = cloud agent this run; Owner = Yoni
 
@@ -11,13 +11,13 @@ Status vocabulary: **פתוח** / **תוקן בקוד** / **נפרס** / **או�
 | B1/H1 | Mig 111 WA unique + REVOKE auth writes | **אומת** | Agent | — | Keep monitoring | 0 | done 2026-10-03 | Window A apply + PostgREST 403 |
 | H8 | Mig 112 projects.deleted_at | **אומת** | Agent | — | — | 0 | done | Window A |
 | H4 | system_logs table | **אומת** (table) / **פתוח** (live cron row) | Agent | CRON_SECRET / 06:00 UTC cron | Trigger health-check with secret or wait for schedule | wait | 2026-10-04 | `system_logs.message=db_connected` from real cron |
-| B2 | Mig 113 idempotency_key | **פתוח** | Owner | Window B approval | Do **not** apply yet; prep only | apply+verify | TBD after Go בניינים | column + unique + concurrent test |
+| B2 | Mig 113 idempotency_key | **אומת** (schema+UNIQUE) / E2E Grow **פתוח** | Agent | Grow sandbox | Grow E2E when keys available | Grow wait | Go גבייה | WINDOW_B_113 evidence + concurrent 23505 |
 | H7 | Next ≥16.2.5 | **נפרס** | Agent | — | — | 0 | done | #231 on prod |
 | H2/H3/M2/M3 | Grow webhook harden | **נפרס** | Agent | Grow E2E | Sandbox E2E | Grow wait | Go גבייה | live webhook cases |
 | M11 | Public report rate limit | **נפרס** | Agent | — | Optional HMAC later | small | residual | #236 + unit |
 | P1 | Viewer WriteAccess gaps | **אומת** | Agent | — | — | 0 | done | `PERMISSIONS_LIVE_EVIDENCE` |
 | Cross-org | Service-role isolation | **אומת** | Agent | — | Optional 2nd sandbox org user | 0 for Go | done | 404 on Bamakor ticket ids |
-| Anon GRANTs | Core table anon INSERT/UPD/DEL | **פתוח** (proposal ready) | Owner | Approval | Review `122_…_PROPOSAL.sql` | apply ~minutes | before Go בניינים preferred | PostgREST anon write 403 after apply |
+| Anon GRANTs | Core table anon INSERT/UPD/DEL | **אומת** | Agent | — | — | 0 | done | MIGRATION_122 evidence + PostgREST deny |
 | Backup/PITR truth | Real backup list + window | **חסום** (token/dashboard) | Owner | Dashboard or access token | List backups; correct PITR claim | owner ~10m | 2026-10-04 | `BACKUP_TRUTH` + screenshot/API JSON |
 | Restore drill | Isolated dump vs backup | **אומת** (local subset) | Agent | — | Optional: restore listed daily backup to **new** project | optional | residual | `RESTORE_DRILL_SANDBOX` |
 | Storage DR | Object backup | **פתוח** | Owner | Product decision | Define Storage backup policy | design | residual | written policy |
