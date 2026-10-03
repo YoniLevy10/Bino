@@ -1,41 +1,26 @@
-# Go schedule — buildings / collections / residual (2026-10-03)
+# Go schedule — buildings / collections / load (2026-10-03, post-closure)
 
-Dates are calendar targets based on **remaining agent work** vs **external wait**. Not effort inflation.
+Supersedes earlier draft dates after Window A/B, mig 122, #238–#244 on prod (`fd803d9`).
 
-## א. Go ניהול בניינים
+## א. ניהול בניינים — Conditional Go **now**
 
-| Track | Remaining | Wait |
-|-------|-----------|------|
-| Anon REVOKE apply (after owner OK) | ~0.5h agent verify | Owner review of `122_…_PROPOSAL.sql` |
-| Backup list confirmation | — | Owner Dashboard/API ~10m |
-| Deploy recommendations perf fix + re-measure | ~1h | Vercel deploy |
-| Real cron → system_logs `db_connected` | — | Next cron **2026-10-04 06:00 UTC** **or** owner provides `CRON_SECRET` / Vercel team re-auth |
-| Monitoring alert proof | ~0.5h once logs accessible | Vercel MCP team-scope re-auth |
+Agent work for this track is done. Calendar slip only for **owner**:
 
-**Earliest credible Go בניינים:** **2026-10-04** if owner completes backup screenshot + anon approve + Vercel re-auth (or CRON_SECRET) same day.  
-**If waits slip:** Go slips with them — no “ready” on unit/build alone.
+| Owner item | Blocks absolute Go? |
+|------------|---------------------|
+| Backups UI screenshot | Yes for “backup proven”; Conditional Go OK if knowingly accepted |
+| Vercel team re-auth / cron `db_connected` | Yes for monitoring proven; Conditional Go OK if knowingly accepted |
+| Superadmin MFA enroll + `SUPERADMIN_EMAILS` | **Yes** — must complete before relying on superadmin after secret removal |
 
-Already green for this track: Window A (111/112/system_logs/121), Next 16.3.8, WriteAccess live, sandbox smoke, local restore drill, rate limits, prod tip `edd27bb`.
+## ב. גבייה — No-Go until Grow E2E
 
-## ב. Go גבייה
+| Remaining | Dependency |
+|-----------|------------|
+| Grow sandbox charge → webhook → invoice | Owner Grow sandbox keys |
+| D3 treatment decision | Owner |
 
-| Track | Remaining | Wait |
-|-------|-----------|------|
-| Apply 113 + concurrent idempotency proof | ~2–3h after approval | Owner Window B OK |
-| Grow sandbox E2E + invoice path | ~3–5h | Grow sandbox keys / D2 (no real charges) |
-| D3 treatment decision | — | Owner decision on 4 classified rows |
-| False-success + webhook harden | already **נפרס** | E2E confirmation |
+113 schema + concurrent idempotency already **אומת**. No second migration gate.
 
-**Target:** start immediately after Go בניינים; calendar **2026-10-06–07** only if Grow access arrives by 2026-10-05. **Missing for a firm date:** Grow sandbox confirmation + 113 apply approval.
+## ג. עומס יעד — No-Go until measured local run
 
-## ג. Residual + load validation
-
-| Item | Remaining | Wait |
-|------|-----------|------|
-| Storage backup policy | design 0.5–1d | Owner decision |
-| MFA superadmin | 3–5d work | Product decision |
-| xlsx mitigation | 1–2d | Library choice |
-| Isolated load test (not prod) | 2–4d | Staging/load env |
-| Optional PITR purchase | — | Explicit paid approval only |
-
-**Target window:** after Go גבייה; load env missing → cannot date load sign-off yet.
+Harness **אומת** (guard + mock). Need healthy local Next + local Supabase, then `npm run load:isolated`. Never `bino.casa`.
