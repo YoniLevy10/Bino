@@ -28,3 +28,14 @@ No real Grow charges / Approve / status changes performed.
 ## Unit
 
 `tests/collection-charge-idempotency.test.ts`
+
+## Live API concurrency (Sandbox, 2026-10-03)
+
+Enabled `collections` addon on Sandbox lab only. Created resident `1a5c9c86-…`.
+
+4 parallel `POST /api/collections/charges` with identical `Idempotency-Key: sandbox-api-idem-1791058087` and `send:false`:
+
+- All returned **200** with the **same** charge id `6077ad97-dea9-42b2-ad75-acaae7b19637`
+- DB count for that key: **1** draft row (amount 12.50)
+
+No Grow link / Approve / paid status involved.

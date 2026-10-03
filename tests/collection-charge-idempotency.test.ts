@@ -26,7 +26,8 @@ describe('collection charge idempotency (113)', () => {
   })
 
   it('skips unique path when Idempotency-Key header absent', () => {
-    const idempotencyKey = ('' || '').trim().slice(0, 128) || null
+    const header = ''
+    const idempotencyKey = header.trim().slice(0, 128) || null
     expect(idempotencyKey).toBeNull()
   })
 })
