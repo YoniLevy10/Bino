@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
-import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { deleteClientCompletely } from '@/lib/delete-client'
 import { normalizeEnabledNavFeaturesPayload } from '@/lib/client-nav-features'
 import { SIDEBAR_NAV_ITEM_IDS } from '@/lib/sidebar-nav'
@@ -23,7 +23,8 @@ const selectFields =
   'id, name, plan_tier, whatsapp_phone_number_id, manager_phone, sms_sender_name, enabled_nav_features, max_workers, buildings_allowed, max_tickets_per_month'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id } = await params
 
@@ -100,7 +101,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id } = await params
   const admin = getSupabaseAdmin()

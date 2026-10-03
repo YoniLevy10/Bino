@@ -14,7 +14,7 @@ export function ClientLogoUpload({
   clientId: string
   clientName: string
   currentLogoUrl?: string | null
-  secret: string
+  secret?: string
   onUploaded?: (url: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -33,7 +33,7 @@ export function ClientLogoUpload({
       form.append('client_id', clientId)
       const res = await fetch('/api/admin/upload-client-logo', {
         method: 'POST',
-        headers: { 'x-admin-secret': secret },
+        credentials: 'same-origin' as RequestCredentials,
         body: form,
       })
       const json = (await res.json()) as { url?: string; error?: string }

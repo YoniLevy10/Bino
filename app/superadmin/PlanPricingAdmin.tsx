@@ -43,7 +43,7 @@ function parseOptionalInt(s: string): number | null {
 }
 
 /** Subscription tiers + setup fee — Super Admin. */
-export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
+export function PlanPricingCatalogAdmin({ secret }: { secret?: string }) {
   const [catalog, setCatalog] = useState<PlanPricingRow[]>([])
   const [setupFee, setSetupFee] = useState('10000')
   const [draft, setDraft] = useState<Record<string, DraftPlan>>({})
@@ -55,7 +55,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/superadmin/plans/pricing', { headers: { 'x-admin-secret': secret } })
+      const res = await fetch('/api/superadmin/plans/pricing', { credentials: 'same-origin' })
       const json = (await res.json()) as {
         catalog?: PlanPricingRow[]
         setup_fee_ils?: number
@@ -117,7 +117,7 @@ export function PlanPricingCatalogAdmin({ secret }: { secret: string }) {
 
       const res = await fetch('/api/superadmin/plans/pricing', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' as RequestCredentials,
         body: JSON.stringify({
           setup_fee_ils: Number.isFinite(setup) && setup >= 0 ? setup : 10000,
           plans,

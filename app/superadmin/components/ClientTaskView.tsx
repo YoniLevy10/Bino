@@ -37,7 +37,7 @@ function TaskShell({ title, onBack, children }: { title: string; onBack: () => v
 export type ClientTaskViewProps = {
   task: Exclude<ClientTask, 'hub'>
   client: ClientRow
-  secret: string
+  secret?: string
   catalog: PlanCatalogRow[]
   editState: EditState
   setEditState: (updater: (s: EditState) => EditState) => void

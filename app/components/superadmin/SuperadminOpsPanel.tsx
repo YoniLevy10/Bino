@@ -6,7 +6,7 @@ import { OpsFailuresPanel, type OpsFeed } from './OpsFailuresPanel'
 import { theme } from '../ui'
 
 type Props = {
-  adminSecret: string
+  adminSecret?: string
   onCountsChange?: (counts: OpsFeed['counts']) => void
 }
 
@@ -21,7 +21,7 @@ export function SuperadminOpsPanel({ adminSecret, onCountsChange }: Props) {
     setOpsError('')
     try {
       const res = await fetchWithTimeout('/api/superadmin/ops-feed?limit=50', {
-        headers: { 'x-admin-secret': adminSecret },
+        credentials: 'same-origin' as RequestCredentials,
       })
       const json = await res.json() as OpsFeed & { error?: string }
       if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)
@@ -41,7 +41,7 @@ export function SuperadminOpsPanel({ adminSecret, onCountsChange }: Props) {
     } finally {
       setOpsLoading(false)
     }
-  }, [adminSecret, onCountsChange])
+  }, [onCountsChange])
 
   useEffect(() => {
     void loadOpsFeed()
@@ -52,7 +52,7 @@ export function SuperadminOpsPanel({ adminSecret, onCountsChange }: Props) {
     try {
       const res = await fetchWithTimeout(`/api/superadmin/error-logs/${id}/resolve`, {
         method: 'PATCH',
-        headers: { 'x-admin-secret': adminSecret },
+        credentials: 'same-origin' as RequestCredentials,
       })
       const json = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(json.error ?? `שגיאה ${res.status}`)

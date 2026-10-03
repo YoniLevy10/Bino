@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { buildUsageAnalyticsReport } from '@/lib/usage-analytics'
 
 export async function GET(req: Request) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const url = new URL(req.url)
   const daysRaw = Number(url.searchParams.get('days') ?? '30')

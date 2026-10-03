@@ -348,7 +348,7 @@ test.describe('Soft launch — סופר-אדמין צ׳קליסט הקמה', () 
     // Seed secret before first paint so unlock useEffect skips the lock form (stable under parallel workers).
     await page.addInitScript((secret) => {
       try {
-        sessionStorage.setItem('bamakor_admin_secret', secret)
+        sessionStorage.removeItem('bamakor_admin_secret')
         localStorage.removeItem('bamakor_admin_secret_persist')
       } catch {
         /* ignore */

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminAuthorized } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { buildNfcTagScanUrl, normalizeTagCode } from '@/lib/nfc-tag-utils'
 
 type CreatedTag = {
@@ -13,9 +13,8 @@ type CreatedTag = {
 
 /** Create office tag + one tag per project (skips existing codes). */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!isSuperAdminAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id: clientId } = await params
   let includeOffice = true

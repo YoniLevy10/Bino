@@ -19,7 +19,7 @@ const signalColor: Record<string, string> = {
   unused: theme.colors.error,
 }
 
-export function UsageAnalyticsPanel({ secret }: { secret: string }) {
+export function UsageAnalyticsPanel({ secret }: { secret?: string }) {
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -29,14 +29,13 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
   const [showAllClients, setShowAllClients] = useState(false)
 
   const load = useCallback(async () => {
-    if (!secret.trim()) return
     setLoading(true)
     setError(null)
     setExportMsg(null)
     try {
       const res = await fetchWithTimeout(
         `/api/superadmin/usage?days=${days}`,
-        { headers: { 'x-admin-secret': secret } },
+        { credentials: 'same-origin' },
         60_000
       )
       const json = (await res.json()) as UsageAnalyticsReport & { error?: string }
@@ -52,7 +51,7 @@ export function UsageAnalyticsPanel({ secret }: { secret: string }) {
     } finally {
       setLoading(false)
     }
-  }, [secret, days])
+  }, [days])
 
   const exportExcel = useCallback(async () => {
     if (!report) return

@@ -3,21 +3,21 @@
  *
  * @description
  * טופס פנימי (Yoni בלבד) להקמת לקוח חדש תוך פחות מדקה.
- * שלב 1 — מסך נעילה: הזנת ADMIN_SETUP_SECRET (משתנה סביבה ב-Vercel).
+ * שלב 1 — כניסה: זהות Supabase Auth + MFA (AAL2).
  * שלב 2 — טופס: שם חברה, תכנית, WhatsApp, מנהל, פרויקטים, עובדים.
  * שלב 3 — תוצאות: client_id, הזמנה נשלחה, קישורי QR לכל פרויקט.
  *
- * קריאה: POST /api/admin/setup-client עם header x-admin-secret.
+ * קריאה: POST /api/admin/setup-client עם סשן MFA.
  *
  * @route /admin/setup
- * @access פנימי — מוגן ב-ADMIN_SETUP_SECRET
+ * @access פנימי — סופר־אדמין מורשה + MFA
  */
 'use client'
 
-import { useState, useEffect, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { theme, Button, Card } from '../../components/ui'
 import { LoadingButton } from '../../components/LoadingButton'
-import { readAdminSecret, writeAdminSecret } from '@/lib/admin-secret-session'
+import { SuperadminMfaGate } from '@/app/superadmin/components/SuperadminMfaGate'
 import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
 import type { PlanTier } from '@/lib/plan-limits'
 
@@ -208,12 +208,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function AdminSetupPage() {
-  // Auth
-  const [secret, setSecret] = useState('')
-  const [unlocked, setUnlocked] = useState(false)
-  const [unlockError, setUnlockError] = useState('')
-
+function AdminSetupForm() {
   // Form state
   const [companyName, setCompanyName] = useState('')
   const [planTier, setPlanTier] = useState<'starter' | 'pro' | 'business' | 'enterprise'>('starter')
@@ -232,23 +227,6 @@ export default function AdminSetupPage() {
   const [csvMsgProjects, setCsvMsgProjects] = useState('')
   const [csvMsgWorkers, setCsvMsgWorkers] = useState('')
 
-  // ── Unlock ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const stored = readAdminSecret()
-    if (!stored) return
-    setSecret(stored)
-    setUnlocked(true)
-  }, [])
-
-  function handleUnlock() {
-    if (!secret.trim()) {
-      setUnlockError('הכנס קוד גישה')
-      return
-    }
-    writeAdminSecret(secret.trim())
-    setUnlocked(true)
-    setUnlockError('')
-  }
 
   // ── Projects ──────────────────────────────────────────────────────────────
   function updateProject(i: number, field: keyof ProjectInput, val: string) {
@@ -319,9 +297,9 @@ export default function AdminSetupPage() {
     try {
       const res = await fetch('/api/admin/setup-client', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-secret': secret,
         },
         body: JSON.stringify({
           company_name: companyName.trim(),
@@ -360,7 +338,7 @@ export default function AdminSetupPage() {
           try {
             const logoRes = await fetch('/api/admin/upload-client-logo', {
               method: 'POST',
-              headers: { 'x-admin-secret': secret },
+              credentials: 'same-origin' as RequestCredentials,
               body: form,
             })
             const logoJson = (await logoRes.json().catch(() => ({}))) as { url?: string; error?: string }
@@ -426,49 +404,6 @@ export default function AdminSetupPage() {
     marginBottom: theme.spacing.md,
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Lock screen
-  // ─────────────────────────────────────────────────────────────────────────
-  if (!unlocked) {
-    return (
-      <div style={pageStyle}>
-        <div style={{ ...containerStyle, maxWidth: 400, marginTop: 80 }}>
-          <div style={cardStyle}>
-            <h1
-              style={{
-                fontSize: theme.typography.fontSize['2xl'],
-                fontWeight: theme.typography.fontWeight.bold,
-                marginBottom: theme.spacing.xl,
-                textAlign: 'center',
-                color: theme.colors.textPrimary,
-              }}
-            >
-              הגדרת לקוח חדש
-            </h1>
-            <Field label="קוד גישה" required>
-              <input
-                type="password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-                placeholder="הכנס קוד גישה..."
-                style={inputStyle}
-              />
-            </Field>
-            {unlockError && (
-              <p style={{ color: theme.colors.error, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md }}>
-                {unlockError}
-              </p>
-            )}
-            <LoadingButton onClick={handleUnlock} style={{ width: '100%' }}>
-              כניסה
-            </LoadingButton>
-            <AdminQuickLinks />
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Results screen
@@ -993,5 +928,13 @@ export default function AdminSetupPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminSetupPage() {
+  return (
+    <SuperadminMfaGate>
+      {() => <AdminSetupForm />}
+    </SuperadminMfaGate>
   )
 }

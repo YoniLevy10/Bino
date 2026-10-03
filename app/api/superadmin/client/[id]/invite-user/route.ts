@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminRequest, superAdminUnauthorizedResponse } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { inviteUserToClientOrganization } from '@/lib/invite-organization-user'
 import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-user-password'
 import { getPublicAppUrl } from '@/lib/public-app-url'
@@ -26,7 +26,8 @@ const bodySchema = z
   })
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!isSuperAdminRequest(req)) return superAdminUnauthorizedResponse()
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   const { id: clientId } = await params
 

@@ -3,12 +3,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
-import {
-  clearAdminSecret,
-  isAdminSecretPersisted,
-  readAdminSecret,
-  writeAdminSecret,
-} from '@/lib/admin-secret-session'
+import { supabase } from '@/lib/supabase'
+import { purgeLegacyAdminSecret } from '@/lib/admin-secret-session'
+import { SuperadminMfaGate } from './components/SuperadminMfaGate'
 import { PLAN_SETUP_OPTIONS } from '@/lib/plan-display'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import {
@@ -59,11 +56,7 @@ function featuresForUi(raw: SidebarNavItemId[] | null): SidebarNavItemId[] {
   return raw?.length ? [...raw] : [...DEFAULT_SIDEBAR_NAV_ORDER]
 }
 
-export default function SuperAdminPage() {
-  const [secret, setSecret] = useState('')
-  const [inputSecret, setInputSecret] = useState('')
-  const [rememberSecret, setRememberSecret] = useState(true)
-  const [unlocked, setUnlocked] = useState(false)
+function SuperAdminPanel({ email }: { email: string | null }) {
   const [clients, setClients] = useState<ClientRow[]>([])
   const [catalog, setCatalog] = useState<PlanCatalogRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -109,22 +102,14 @@ export default function SuperAdminPage() {
     return () => window.removeEventListener('hashchange', applyRoute)
   }, [applyRoute])
 
-  useEffect(() => {
-    const stored = readAdminSecret()
-    if (!stored) return
-    setSecret(stored)
-    setInputSecret(stored)
-    setRememberSecret(isAdminSecretPersisted())
-    setUnlocked(true)
-  }, [])
 
-  const loadClients = useCallback(async (s: string) => {
+  const loadClients = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const [statsRes, pricingRes] = await Promise.all([
-        fetch('/api/superadmin/stats', { headers: adminHeaders(s) }),
-        fetch('/api/superadmin/plans/pricing', { headers: adminHeaders(s) }),
+        fetch('/api/superadmin/stats', { credentials: 'same-origin' }),
+        fetch('/api/superadmin/plans/pricing', { credentials: 'same-origin' }),
       ])
       const statsJson = (await statsRes.json()) as { error?: string; clients?: ClientRow[] }
       const pricingJson = (await pricingRes.json()) as { catalog?: PlanCatalogRow[]; error?: string }
@@ -133,15 +118,14 @@ export default function SuperAdminPage() {
       if (pricingRes.ok) setCatalog(pricingJson.catalog || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה')
-      setUnlocked(false)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    if (unlocked && secret) void loadClients(secret)
-  }, [unlocked, secret, loadClients])
+    void loadClients()
+  }, [loadClients])
 
   const selectedClient = useMemo(
     () => (selectedClientId ? clients.find((c) => c.id === selectedClientId) ?? null : null),
@@ -181,23 +165,13 @@ export default function SuperAdminPage() {
     [clients],
   )
 
-  function unlock(e: FormEvent) {
-    e.preventDefault()
-    if (!inputSecret.trim()) return
-    const next = inputSecret.trim()
-    writeAdminSecret(next, { persist: rememberSecret })
-    setSecret(next)
-    setUnlocked(true)
-  }
-
-  function logout() {
-    clearAdminSecret()
-    setSecret('')
-    setInputSecret('')
-    setUnlocked(false)
+  async function logout() {
+    purgeLegacyAdminSecret()
     setClients([])
     setSelectedClientId(null)
     writeHash('')
+    await supabase.auth.signOut()
+    window.location.href = '/superadmin'
   }
 
   function goTab(next: TabMode) {
@@ -253,7 +227,7 @@ export default function SuperAdminPage() {
     try {
       const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
         method: 'PATCH',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editState.name.trim() || undefined,
           plan_tier: editState.plan_tier || undefined,
@@ -268,7 +242,7 @@ export default function SuperAdminPage() {
       const json = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(json.error || 'שגיאה בשמירה')
       setSuccess('נשמר')
-      await loadClients(secret)
+      await loadClients()
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'שגיאה')
     } finally {
@@ -283,7 +257,7 @@ export default function SuperAdminPage() {
     try {
       const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
         method: 'PATCH',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled_nav_features: featuresDraft }),
       })
       const json = (await res.json()) as { client?: ClientRow; error?: string }
@@ -310,7 +284,7 @@ export default function SuperAdminPage() {
     try {
       const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
         method: 'PATCH',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled_nav_features: null }),
       })
       const json = (await res.json()) as { error?: string }
@@ -338,13 +312,13 @@ export default function SuperAdminPage() {
     try {
       const res = await fetch(`/api/superadmin/client/${selectedClient.id}`, {
         method: 'DELETE',
-        headers: adminHeaders(secret),
+        headers: adminHeaders(),
       })
       const json = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(json.error || 'שגיאה במחיקה')
       setSuccess('הלקוח נמחק')
       backToList()
-      await loadClients(secret)
+      await loadClients()
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'שגיאה')
     } finally {
@@ -370,7 +344,7 @@ export default function SuperAdminPage() {
       if (newClient.max_tickets_per_month.trim()) body.max_tickets_per_month = Number(newClient.max_tickets_per_month)
       const res = await fetch('/api/superadmin/clients', {
         method: 'POST',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       const json = (await res.json()) as { error?: string }
@@ -378,7 +352,7 @@ export default function SuperAdminPage() {
       setSuccess('לקוח נוצר')
       setNewClient(EMPTY_NEW)
       setShowNewForm(false)
-      await loadClients(secret)
+      await loadClients()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה')
     } finally {
@@ -396,7 +370,7 @@ export default function SuperAdminPage() {
       clearAllTenantUiCaches()
       const res = await fetch('/api/superadmin/magic-link', {
         method: 'POST',
-        headers: { ...adminHeaders(secret), 'Content-Type': 'application/json' },
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
       const json = (await res.json()) as { error?: string; link?: string }
@@ -415,42 +389,6 @@ export default function SuperAdminPage() {
 
   const hideBottomNav = Boolean(selectedClientId && clientTask !== 'hub')
 
-  if (!unlocked) {
-    return (
-      <div className="sa-lock" dir="rtl">
-        <form className="sa-lock-card" onSubmit={unlock}>
-          <div className="sa-brand">
-            <span className="sa-brand-mark" aria-hidden>B</span>
-            <div>
-              <h1>Super Admin</h1>
-              <p className="sa-muted">הזן סיסמת מנהל מערכת</p>
-            </div>
-          </div>
-          <input
-            type="password"
-            value={inputSecret}
-            onChange={(e) => setInputSecret(e.target.value)}
-            placeholder="סיסמה"
-            autoFocus
-          />
-          <label className="sa-check">
-            <input
-              type="checkbox"
-              checked={rememberSecret}
-              onChange={(e) => setRememberSecret(e.target.checked)}
-            />
-            זכור במכשיר זה
-          </label>
-          <LoadingButton type="submit" loading={false} className="sa-btn sa-btn-primary">
-            כניסה
-          </LoadingButton>
-          <div className="sa-lock-setup">
-            <a href="/superadmin/setup">הקמת לקוח חדש</a>
-          </div>
-        </form>
-      </div>
-    )
-  }
 
   return (
     <div className="sa-page" dir="rtl">
@@ -459,7 +397,7 @@ export default function SuperAdminPage() {
           <span className="sa-brand-mark" aria-hidden>B</span>
           <div>
             <h1 className="sa-header-title">Super Admin</h1>
-            <p className="sa-muted">לקוחות, לידים, שימוש, תובנות ותפעול</p>
+            <p className="sa-muted">{email ? `${email} · ` : ''}לקוחות, לידים, שימוש, תובנות ותפעול</p>
           </div>
         </div>
         <div className="sa-topbar-actions sa-header-actions">
@@ -467,7 +405,7 @@ export default function SuperAdminPage() {
             type="button"
             loading={loading}
             className="sa-btn sa-btn-ghost sa-touch-btn"
-            onClick={() => void loadClients(secret)}
+            onClick={() => void loadClients()}
           >
             רענון
           </LoadingButton>
@@ -563,7 +501,6 @@ export default function SuperAdminPage() {
           <ClientTaskView
             task={clientTask}
             client={selectedClient}
-            secret={secret}
             catalog={catalog}
             editState={editState}
             setEditState={setEditState}
@@ -595,16 +532,15 @@ export default function SuperAdminPage() {
 
         {tab === 'sandbox' ? (
           <div className="sa-tab-panel">
-            <SandboxLabPanel secret={secret} />
+            <SandboxLabPanel />
           </div>
         ) : null}
 
-        {tab === 'leads' ? <SalesLeadsPanel secret={secret} /> : null}
+        {tab === 'leads' ? <SalesLeadsPanel /> : null}
 
         {tab === 'ops' ? (
           <div className="sa-tab-panel">
             <SuperadminOpsPanel
-              adminSecret={secret}
               onCountsChange={(c) => setOpsUnresolved(c.unresolved_errors)}
             />
             <details className="sa-meta-details sa-collapsible">
@@ -618,17 +554,17 @@ export default function SuperAdminPage() {
 
         {tab === 'usage' ? (
           <div className="sa-tab-panel">
-            <UsageAnalyticsPanel secret={secret} />
+            <UsageAnalyticsPanel />
           </div>
         ) : null}
 
         {tab === 'intelligence' ? (
           <div className="sa-tab-panel">
-            <OpsIntelligencePanel secret={secret} />
+            <OpsIntelligencePanel />
           </div>
         ) : null}
 
-        {tab === 'settings' ? <SettingsView secret={secret} /> : null}
+        {tab === 'settings' ? <SettingsView /> : null}
       </main>
 
       <BottomNav tab={tab} opsBadge={opsUnresolved} onChange={goTab} hidden={hideBottomNav} />
@@ -655,5 +591,14 @@ export default function SuperAdminPage() {
         }
       `}</style>
     </div>
+  )
+}
+
+
+export default function SuperAdminPage() {
+  return (
+    <SuperadminMfaGate>
+      {({ email }) => <SuperAdminPanel email={email} />}
+    </SuperadminMfaGate>
   )
 }

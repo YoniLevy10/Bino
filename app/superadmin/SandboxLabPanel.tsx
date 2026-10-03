@@ -15,7 +15,7 @@ type ActionResponse = {
   status?: SandboxStatus
 }
 
-export function SandboxLabPanel({ secret }: { secret: string }) {
+export function SandboxLabPanel({ secret }: { secret?: string }) {
   const [status, setStatus] = useState<SandboxStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -39,7 +39,7 @@ export function SandboxLabPanel({ secret }: { secret: string }) {
     setFlash(null)
     try {
       const res = await fetch('/api/superadmin/sandbox', {
-        headers: { 'x-admin-secret': secret },
+        credentials: 'same-origin' as RequestCredentials,
       })
       const json = (await res.json()) as { status?: SandboxStatus; error?: string }
       if (!res.ok) throw new Error(json.error || 'טעינה נכשלה')
@@ -49,7 +49,7 @@ export function SandboxLabPanel({ secret }: { secret: string }) {
     } finally {
       setLoading(false)
     }
-  }, [secret, applyStatus])
+  }, [applyStatus])
 
   useEffect(() => {
     void load()
@@ -63,7 +63,6 @@ export function SandboxLabPanel({ secret }: { secret: string }) {
       const res = await fetch('/api/superadmin/sandbox', {
         method: 'POST',
         headers: {
-          'x-admin-secret': secret,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action, ...extra }),

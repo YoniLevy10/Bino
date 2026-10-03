@@ -12,9 +12,13 @@ export const ADMIN_SECRET_STORAGE_KEY = 'bamakor_admin_secret'
 /** @deprecated Cleared on every superadmin entry; never read for auth. */
 export const ADMIN_SECRET_PERSIST_KEY = 'bamakor_admin_secret_persist'
 
+function storageAvailable(): boolean {
+  return typeof sessionStorage !== 'undefined' && typeof localStorage !== 'undefined'
+}
+
 /** True if a legacy secret blob still exists in either storage. */
 export function hasLegacyAdminSecret(): boolean {
-  if (typeof window === 'undefined') return false
+  if (!storageAvailable()) return false
   try {
     const session = sessionStorage.getItem(ADMIN_SECRET_STORAGE_KEY)?.trim()
     const persist = localStorage.getItem(ADMIN_SECRET_PERSIST_KEY)?.trim()
@@ -29,7 +33,7 @@ export function hasLegacyAdminSecret(): boolean {
  * Returns whether a secret was present (so UI can show a migration notice).
  */
 export function purgeLegacyAdminSecret(): boolean {
-  if (typeof window === 'undefined') return false
+  if (!storageAvailable()) return false
   const had = hasLegacyAdminSecret()
   try {
     sessionStorage.removeItem(ADMIN_SECRET_STORAGE_KEY)

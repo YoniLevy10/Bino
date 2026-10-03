@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { isSuperAdminAuthorized } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin-auth'
 import { listAllPlanPricingAdmin, getBillingPlatformSettings } from '@/lib/plan-pricing'
 import { z } from 'zod'
 
@@ -23,9 +23,8 @@ const patchBodySchema = z.object({
 })
 
 export async function GET(req: Request) {
-  if (!isSuperAdminAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   try {
     const admin = getSupabaseAdmin()
@@ -41,9 +40,8 @@ export async function GET(req: Request) {
 
 /** Super Admin: update subscription tiers and global setup fee. */
 export async function PATCH(req: Request) {
-  if (!isSuperAdminAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireSuperAdmin()
+  if (!auth.ok) return auth.response
 
   let body: unknown
   try {
