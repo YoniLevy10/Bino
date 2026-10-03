@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { recommendationActionBodySchema } from '@/lib/api-body-schemas'
@@ -18,7 +18,7 @@ import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
  * Opening a card / clicking a button is not completion.
  */
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   const admin = getSupabaseAdmin()
