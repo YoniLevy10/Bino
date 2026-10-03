@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionClientId } from '@/lib/api-auth'
+import { canOrgRoleWrite } from '@/lib/org-role'
 import { sanitizeId } from '@/lib/api-validation'
 import { createTicketJsonBodySchema } from '@/lib/api-body-schemas'
 import {
@@ -118,6 +119,14 @@ export async function POST(req: Request) {
     const auth = await requireSessionClientId()
     let bamakorClientId: string | null = null
     if (auth.ok) {
+      // Session path: viewers must not create tickets via the dashboard session.
+      // Public report links (client_id in body, no session) stay open below.
+      if (!canOrgRoleWrite(auth.ctx.role)) {
+        return NextResponse.json(
+          { error: 'אין הרשאת כתיבה לתפקיד צופה', code: 'VIEWER_READ_ONLY' },
+          { status: 403 }
+        )
+      }
       bamakorClientId = auth.ctx.clientId
     } else {
       const fromBody = sanitizeId(body?.client_id)
