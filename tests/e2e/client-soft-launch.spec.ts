@@ -16,7 +16,6 @@ const PAY_TOKEN = 'pay-e2e-soft-launch-token'
 const WORKER_TOKEN = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const TICKET_ID = '44444444-4444-4444-4444-444444444444'
 const FIXTURES = path.join(process.cwd(), 'tests/fixtures')
-const ADMIN_SECRET = 'e2e-soft-launch-secret'
 
 async function gotoOk(page: import('@playwright/test').Page, url: string) {
   try {
@@ -294,6 +293,23 @@ test.describe('Soft launch — סופר-אדמין צ׳קליסט הקמה', () 
 
     await page.route('**/api/superadmin/**', async (route) => {
       const url = route.request().url()
+      // MFA gate: identity + AAL2 — no shared-secret unlock.
+      if (url.includes('/session')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            authenticated: true,
+            allowed: true,
+            aal: 'aal2',
+            nextLevel: null,
+            email: 'superadmin@example.com',
+            userId: '00000000-0000-4000-8000-000000000099',
+            hasVerifiedFactor: true,
+          }),
+        })
+        return
+      }
       if (url.includes('/launch-status')) {
         await route.fulfill({
           status: 200,
@@ -345,15 +361,15 @@ test.describe('Soft launch — סופר-אדמין צ׳קליסט הקמה', () 
       })
     })
 
-    // Seed secret before first paint so unlock useEffect skips the lock form (stable under parallel workers).
-    await page.addInitScript((secret) => {
+    // Purge any leftover legacy secret — must never unlock the panel.
+    await page.addInitScript(() => {
       try {
         sessionStorage.removeItem('bamakor_admin_secret')
         localStorage.removeItem('bamakor_admin_secret_persist')
       } catch {
         /* ignore */
       }
-    }, ADMIN_SECRET)
+    })
 
     await page.goto(`/superadmin#client/${CLIENT_ID}/launch`, { waitUntil: 'domcontentloaded' })
 
