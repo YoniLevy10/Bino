@@ -11,6 +11,7 @@ import {
 } from '@/lib/recommendations/entitlements'
 import { recordRecommendationEvent } from '@/lib/recommendations/record-event'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
+import { runAfterResponse } from '@/lib/run-after-response'
 
 const STALE_MS = 5 * 60_000
 
@@ -31,7 +32,8 @@ export async function GET(req: NextRequest) {
   const refresh = url.searchParams.get('refresh') === '1'
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || '20') || 20))
 
-  // Stale-while-revalidate: refresh detectors for this tenant only
+  // Stale-while-revalidate: never block dashboard nav on detector scan.
+  // Default GET returns cached rows immediately; refresh=1 awaits a fresh scan.
   const { data: latest } = await admin
     .from('management_recommendations')
     .select('updated_at')
@@ -43,8 +45,12 @@ export async function GET(req: NextRequest) {
   const lastUpdated = latest?.updated_at ? new Date(latest.updated_at as string).getTime() : 0
   const isStale = !lastUpdated || Date.now() - lastUpdated > STALE_MS
   let scan: { drafts: number; upserted: number; cleared: number } | null = null
-  if (refresh || isStale) {
+  if (refresh) {
     scan = await runClientDetectors(admin, clientId)
+  } else if (isStale) {
+    runAfterResponse(`recommendations-detectors:${clientId}`, async () => {
+      await runClientDetectors(admin, clientId)
+    })
   }
 
   let query = admin
