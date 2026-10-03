@@ -21,7 +21,9 @@
     "test:e2e:debug": "playwright test --debug",
     "import:residents-pdf": "npx tsx scripts/import-residents-from-pdf.ts",
     "import:residents-sql": "npx tsx scripts/generate-residents-import-sql.ts",
-    "demo:opsbrain-user": "npx tsx scripts/ensure-opsbrain-demo-user.ts"
+    "demo:opsbrain-user": "npx tsx scripts/ensure-opsbrain-demo-user.ts",
+    "load:isolated": "node scripts/load/run.mjs",
+    "load:isolated:guard-test": "vitest run scripts/load/guard.test.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.51.0",
@@ -48,6 +50,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
+    "autocannon": "^8.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "pg": "^8.21.0",
