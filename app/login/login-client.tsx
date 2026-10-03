@@ -92,10 +92,14 @@ export function LoginClient() {
       await unsubscribeManagerPushBestEffort()
       await supabase.auth.signOut()
       clearTenantBrowserCaches()
+      const next =
+        redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${getClientPublicOrigin()}/auth/callback`,
+          // Explicit next keeps post-login landings stable; callback attaches cookies
+          // onto the redirect response (see app/auth/callback/route.ts).
+          redirectTo: `${getClientPublicOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       })
       if (oauthError) throw oauthError
