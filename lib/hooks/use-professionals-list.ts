@@ -5,8 +5,11 @@ import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { queryKeys } from '@/lib/query-keys'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
+import type { ProfessionalOption } from '@/app/components/tickets/ForwardToProfessionalBlock'
 
 export const PROFESSIONALS_PAGE_SIZE = 100
+/** Shared assign/forward list size (Dashboard + Tickets drawer). */
+export const ACTIVE_PROFESSIONALS_ASSIGN_LIMIT = 200
 
 /** List columns — notes loaded on edit when needed. */
 export const PROFESSIONALS_LIST_SELECT =
@@ -72,6 +75,48 @@ export function useTenantProfessionalsList(options?: { enabled?: boolean; limit?
     isFetching: q.isFetching,
     error: clientIdQuery.error || q.error,
     refetch: q.refetch,
+    hasData: Boolean(q.data) || q.isSuccess,
+  }
+}
+
+/** Active professionals for ticket assign UI — one RQ key shared across manager screens. */
+export async function fetchActiveProfessionalsForAssign(
+  clientId: string
+): Promise<ProfessionalOption[]> {
+  const { data, error } = await withClientId(
+    supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
+    clientId
+  )
+    .is('deleted_at', null)
+    .eq('is_active', true)
+    .order('full_name', { ascending: true })
+    .limit(ACTIVE_PROFESSIONALS_ASSIGN_LIMIT)
+
+  if (error) throw error
+  return (data || []) as ProfessionalOption[]
+}
+
+export function useActiveProfessionalsForAssign(options?: { enabled?: boolean }) {
+  const clientIdQuery = useTenantClientId({ enabled: options?.enabled !== false })
+  const clientId = clientIdQuery.data
+
+  const q = useQuery({
+    queryKey: clientId
+      ? queryKeys.professionalsActiveAssign(clientId)
+      : ['professionals', 'pending', 'active-assign'],
+    queryFn: () => fetchActiveProfessionalsForAssign(clientId!),
+    enabled: Boolean(clientId) && options?.enabled !== false,
+    staleTime: 60_000,
+  })
+
+  return {
+    clientId: clientId ?? null,
+    professionals: q.data ?? [],
+    isLoading: clientIdQuery.isLoading || (q.isLoading && !q.data),
+    isFetching: q.isFetching,
+    error: clientIdQuery.error || q.error,
+    refetch: q.refetch,
+    ensureLoaded: () => q.refetch(),
     hasData: Boolean(q.data) || q.isSuccess,
   }
 }

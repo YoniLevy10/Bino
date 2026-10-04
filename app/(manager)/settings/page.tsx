@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast, asyncHandler } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
+import { useTenantSettingsRead, type SettingsReadRow } from '@/lib/hooks/use-settings-read'
 import {
   MobileHeader,
   useMobileMenu,
@@ -28,33 +29,7 @@ import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { CollapsibleSection } from '@/app/components/shared/CollapsibleSection'
 import { subscribeManagerPush } from '@/lib/manager-push-client'
 
-type ClientRow = {
-  id: string
-  name?: string | null
-  logo_url?: string | null
-  whatsapp_business_phone?: string | null
-  manager_phone?: string | null
-  default_worker_phone?: string | null
-  sms_on_ticket_open?: boolean | null
-  sms_on_ticket_close?: boolean | null
-  whatsapp_phone_number_id?: string | null
-  whatsapp_access_token_set?: boolean
-  sms_sender_name?: string | null
-  grow_enabled?: boolean | null
-  grow_user_id?: string | null
-  grow_legal_business_name?: string | null
-  grow_legal_phone?: string | null
-  grow_legal_address?: string | null
-  grow_legal_email?: string | null
-  grow_onboarding_status?: string | null
-  grow_onboarding_url?: string | null
-  grow_onboarding_phone?: string | null
-  grow_business_number?: string | null
-  grow_onboarding_started_at?: string | null
-  grow_onboarding_completed_at?: string | null
-  grow_package_name?: string | null
-  grow_encrypted_lead?: string | null
-}
+type ClientRow = SettingsReadRow
 
 const TABS = [
   { id: 'general', label: 'כללי' },
@@ -94,7 +69,15 @@ function SettingsPageInner() {
   }
 
   const [isMobile, setIsMobile] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const {
+    settings: settingsRow,
+    isLoading: settingsQueryLoading,
+    isFetching: settingsFetching,
+    error: settingsQueryError,
+    refetch: refetchSettings,
+    hasData: settingsHasData,
+  } = useTenantSettingsRead()
+  const [loadErrorBanner, setLoadErrorBanner] = useState<string | null>(null)
 
   const [clientId, setClientId] = useState<string>('')
   const [settingsHydrated, setSettingsHydrated] = useState(false)
@@ -185,55 +168,69 @@ function SettingsPageInner() {
     growLegalName.trim() && growLegalPhone.trim() && growLegalAddress.trim()
   )
 
-  async function load() {
-    setLoading(true)
-    setSettingsHydrated(false)
-    await asyncHandler(
-      async () => {
-        const res = await fetchWithTimeout('/api/settings/read')
-        const row = (await res.json().catch(() => ({}))) as ClientRow & { error?: string }
-        if (!res.ok) throw new Error(row.error || 'טעינת הגדרות נכשלה')
-        if (!row?.id) throw new Error('לא נמצא רשומת לקוח')
+  function applySettingsRow(row: ClientRow) {
+    setClientId(row.id)
+    setClientName(row.name?.trim() || '')
+    setLogoUrl(row.logo_url?.trim() || null)
 
-        setClientId(row.id)
-        setClientName(row.name?.trim() || '')
-        setLogoUrl(row.logo_url?.trim() || null)
+    setManagerPhone(row.manager_phone || '')
+    setDefaultWorkerPhone(row.default_worker_phone || '')
+    setSmsSenderName(row.sms_sender_name || '')
+    setSmsOnOpen(row.sms_on_ticket_open !== false)
+    setSmsOnClose(row.sms_on_ticket_close !== false)
 
-        setManagerPhone(row.manager_phone || '')
-        setDefaultWorkerPhone(row.default_worker_phone || '')
-        setSmsSenderName(row.sms_sender_name || '')
-        setSmsOnOpen(row.sms_on_ticket_open !== false)
-        setSmsOnClose(row.sms_on_ticket_close !== false)
+    setWaBusinessPhone(row.whatsapp_business_phone || '')
+    setWaPhoneNumberId(row.whatsapp_phone_number_id || '')
+    setWaAccessToken('')
+    setWhatsappAccessTokenSet(row.whatsapp_access_token_set === true)
+    setWaTokenLoaded(true)
 
-        setWaBusinessPhone(row.whatsapp_business_phone || '')
-        setWaPhoneNumberId(row.whatsapp_phone_number_id || '')
-        setWaAccessToken('')
-        setWhatsappAccessTokenSet(row.whatsapp_access_token_set === true)
-        setWaTokenLoaded(true)
-
-        setGrowEnabled(row.grow_enabled === true)
-        setGrowUserId(row.grow_user_id || '')
-        setGrowLegalName(row.grow_legal_business_name || row.name?.trim() || '')
-        setGrowLegalPhone(row.grow_legal_phone || '')
-        setGrowLegalAddress(row.grow_legal_address || '')
-        setGrowLegalEmail(row.grow_legal_email || '')
-        setGrowOnboardStatus(row.grow_onboarding_status || null)
-        setGrowOnboardUrl(row.grow_onboarding_url || '')
-        setGrowBusinessNumber(row.grow_business_number || '')
-        setGrowOnboardPhone(row.grow_onboarding_phone || '')
-        setSettingsHydrated(true)
-
-        return true
-      },
-      { context: 'טעינת הגדרות נכשלה — הריצו מיגרציה ל-clients אם עדיין לא', showErrorToast: true }
-    )
-    setLoading(false)
+    setGrowEnabled(row.grow_enabled === true)
+    setGrowUserId(row.grow_user_id || '')
+    setGrowLegalName(row.grow_legal_business_name || row.name?.trim() || '')
+    setGrowLegalPhone(row.grow_legal_phone || '')
+    setGrowLegalAddress(row.grow_legal_address || '')
+    setGrowLegalEmail(row.grow_legal_email || '')
+    setGrowOnboardStatus(row.grow_onboarding_status || null)
+    setGrowOnboardUrl(row.grow_onboarding_url || '')
+    setGrowBusinessNumber(row.grow_business_number || '')
+    setGrowOnboardPhone(row.grow_onboarding_phone || '')
+    setSettingsHydrated(true)
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from Supabase
-    void load()
-  }, [])
+    if (!settingsRow) return
+    applySettingsRow(settingsRow)
+    setLoadErrorBanner(null)
+  }, [settingsRow])
+
+  useEffect(() => {
+    if (settingsHasData) return
+    if (!settingsQueryError) return
+    setLoadErrorBanner(
+      settingsQueryError instanceof Error
+        ? settingsQueryError.message
+        : 'טעינת הגדרות נכשלה'
+    )
+  }, [settingsHasData, settingsQueryError])
+
+  const loading = settingsQueryLoading && !settingsHydrated
+
+  async function load() {
+    const result = await refetchSettings()
+    if (result.error) {
+      if (!settingsHydrated) {
+        toast.error(
+          result.error instanceof Error ? result.error.message : 'טעינת הגדרות נכשלה'
+        )
+      } else {
+        setLoadErrorBanner('רענון נכשל — מוצגות ההגדרות האחרונות שנטענו')
+      }
+    } else if (result.data) {
+      applySettingsRow(result.data)
+      setLoadErrorBanner(null)
+    }
+  }
 
   // Grow extras only when Grow tab is open (keeps general-tab TTI light).
   useEffect(() => {
@@ -694,6 +691,43 @@ function SettingsPageInner() {
         {!isMobile && (
           <PageHeader title="הגדרות" subtitle="כללי, התראות ווואטסאפ" />
         )}
+
+        {loadErrorBanner ? (
+          <div
+            role="status"
+            style={{
+              marginBottom: 12,
+              padding: '10px 14px',
+              borderRadius: theme.radius.md,
+              background: theme.colors.warningMuted,
+              color: theme.colors.textPrimary,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span>{loadErrorBanner}</span>
+            <Button size="sm" variant="secondary" onClick={() => void load()} disabled={settingsFetching}>
+              נסה שוב
+            </Button>
+          </div>
+        ) : null}
+
+        {!loading && !settingsHydrated && settingsQueryError ? (
+          <Card>
+            <div style={{ padding: 24, textAlign: 'center' }}>
+              <p style={{ color: theme.colors.textSecondary, marginBottom: 12 }}>
+                לא הצלחנו לטעון את ההגדרות.
+              </p>
+              <Button onClick={() => void load()} disabled={settingsFetching}>
+                נסה שוב
+              </Button>
+            </div>
+          </Card>
+        ) : null}
 
         <div style={{ marginBottom: 16 }}>
           <Card>

@@ -33,6 +33,7 @@ import {
   useTenantOpenTickets,
   type OpenTicketRow,
 } from '@/lib/hooks/use-open-tickets'
+import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
 import { queryKeys } from '@/lib/query-keys'
 import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import {
@@ -51,7 +52,6 @@ import {
   EmptyState,
   theme
 } from '@/app/components/ui'
-import type { ProfessionalOption } from '@/app/components/tickets/ForwardToProfessionalBlock'
 
 const TicketDetailDrawer = dynamic(
   () => import('@/app/components/tickets/TicketDetailDrawer').then((m) => ({ default: m.TicketDetailDrawer })),
@@ -203,7 +203,10 @@ export default function DashboardPage() {
   const [kpiReady, setKpiReady] = useState(false)
   const [pageLoadError, setPageLoadError] = useState(false)
   const [workersMap, setWorkersMap] = useState<Record<string, string>>({})
-  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
+  const {
+    professionals,
+    ensureLoaded: ensureProfessionalsLoaded,
+  } = useActiveProfessionalsForAssign()
   const isMobile = useIsMobile()
   const { openMenu } = useMobileMenu()
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
@@ -254,7 +257,6 @@ export default function DashboardPage() {
 
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const lastFetchAtRef = useRef(0)
-  const professionalsLoadedRef = useRef(false)
   /** True after cache paint or successful network load — keeps UI up on silent refresh failure. */
   const hasPaintedDataRef = useRef(false)
   const ticketsRef = useRef(tickets)
@@ -278,27 +280,6 @@ export default function DashboardPage() {
       queryKey: queryKeys.ticketsOpen(clientId, OPEN_TICKETS_SHARED_LIMIT),
     })
   }, [queryClient, rqClientId])
-
-  const loadProfessionals = useCallback(async () => {
-    if (professionalsLoadedRef.current) return
-    try {
-      const clientId = await resolveBinoClientIdForBrowser()
-      const { data, error } = await withClientId(
-        supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
-        clientId
-      )
-        .is('deleted_at', null)
-        .eq('is_active', true)
-        .order('full_name', { ascending: true })
-        .limit(200)
-      if (!error) {
-        setProfessionals((data as ProfessionalOption[]) || [])
-        professionalsLoadedRef.current = true
-      }
-    } catch {
-      /* non-critical */
-    }
-  }, [])
 
   const loadSecondaryData = useCallback(
     async (ctx: {
@@ -432,12 +413,21 @@ export default function DashboardPage() {
             recentActivity: cacheAuxRef.current.recentActivity,
           })
 
-          void loadSecondaryData({
+          // Defer enrichment (activity/logs/counts) until after first useful paint.
+          const secondaryPayload = {
             tickets: formatted,
             projects: nextProjects,
             workersMap: map,
             ticketKpis: kpiCounts,
-          })
+          }
+          const runSecondary = () => {
+            void loadSecondaryData(secondaryPayload)
+          }
+          if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+            window.requestIdleCallback(() => runSecondary(), { timeout: 2000 })
+          } else {
+            setTimeout(runSecondary, 0)
+          }
 
           return true
         },
@@ -755,13 +745,13 @@ export default function DashboardPage() {
       setDraftDescription(ticket.description || '')
       setDraftStatus(ticket.status)
       setDraftWorkerId(ticket.assigned_worker_id || '')
-      void loadProfessionals()
+      void ensureProfessionalsLoaded()
       void loadTicketDrawerData(ticket)
       if (!opts?.skipDeepLink) {
         setTicketDeepLinkForOpen(ticket.id)
       }
     },
-    [loadProfessionals, loadTicketDrawerData, setTicketDeepLinkForOpen]
+    [ensureProfessionalsLoaded, loadTicketDrawerData, setTicketDeepLinkForOpen]
   )
 
   openTicketFnRef.current = openTicket

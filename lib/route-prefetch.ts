@@ -4,6 +4,7 @@ import { fetchOpenTickets, OPEN_TICKETS_SHARED_LIMIT } from '@/lib/hooks/use-ope
 import { fetchWorkersList } from '@/lib/hooks/use-workers-list'
 import { fetchProjectsList } from '@/lib/hooks/use-projects-list'
 import { fetchResidentsPage, RESIDENTS_PAGE_SIZE } from '@/lib/hooks/use-residents-list'
+import { fetchActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
 
 /** Prefetch App Router pages (+ shared RQ lists) on hover/touch/focus. */
 export function navLinkPrefetchHandlers(
@@ -31,6 +32,11 @@ export function navLinkPrefetchHandlers(
       void qc.prefetchQuery({
         queryKey: queryKeys.projects(clientId),
         queryFn: () => fetchProjectsList(clientId),
+        staleTime: 60_000,
+      })
+      void qc.prefetchQuery({
+        queryKey: queryKeys.professionalsActiveAssign(clientId),
+        queryFn: () => fetchActiveProfessionalsForAssign(clientId),
         staleTime: 60_000,
       })
     } else if (href === '/residents') {
