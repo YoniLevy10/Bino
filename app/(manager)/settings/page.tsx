@@ -109,6 +109,7 @@ function SettingsPageInner() {
   const [growBusinessNumber, setGrowBusinessNumber] = useState('')
   const [growOnboardPhone, setGrowOnboardPhone] = useState('')
   const [growRegisterReady, setGrowRegisterReady] = useState<boolean | null>(null)
+  const [growRegisterWebhookUrl, setGrowRegisterWebhookUrl] = useState('')
   const [startingGrowOnboard, setStartingGrowOnboard] = useState(false)
 
   const [savingGeneral, setSavingGeneral] = useState(false)
@@ -258,10 +259,14 @@ function SettingsPageInner() {
 
         const growJson = (await growRes.json().catch(() => ({}))) as {
           register_ready?: boolean
+          register_webhook_url?: string | null
           onboarding?: ClientRow | null
         }
         if (growRes.ok) {
           setGrowRegisterReady(growJson.register_ready === true)
+          setGrowRegisterWebhookUrl(
+            typeof growJson.register_webhook_url === 'string' ? growJson.register_webhook_url : ''
+          )
           if (growJson.onboarding) {
             setGrowOnboardStatus(growJson.onboarding.grow_onboarding_status || null)
             setGrowOnboardUrl(growJson.onboarding.grow_onboarding_url || '')
@@ -274,12 +279,14 @@ function SettingsPageInner() {
           }
         } else {
           setGrowRegisterReady(false)
+          setGrowRegisterWebhookUrl('')
         }
       } catch {
         if (!cancelled) {
           setGrowWebhookConfigured(false)
           setGrowWebhookLoadError('טעינת סטטוס webhook נכשלה')
           setGrowRegisterReady(false)
+          setGrowRegisterWebhookUrl('')
         }
       }
     })()
@@ -414,6 +421,19 @@ function SettingsPageInner() {
     try {
       await navigator.clipboard.writeText(growPageUrl)
       toast.success('הועתק עמוד העסק')
+    } catch {
+      toast.error('העתקה נכשלה')
+    }
+  }
+
+  async function copyGrowRegisterWebhook() {
+    if (!growRegisterWebhookUrl) {
+      toast.error('כתובת webhook הרשמה לא זמינה — בדקו הגדרות שרת')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(growRegisterWebhookUrl)
+      toast.success('הועתק Webhook הרשמה')
     } catch {
       toast.error('העתקה נכשלה')
     }
@@ -1192,6 +1212,33 @@ function SettingsPageInner() {
                           פתח קישור שוב
                         </Button>
                       ) : null}
+                    </div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>Webhook הרשמה ל-Grow (להעתקה)</label>
+                      <div style={styles.readonlyRow}>
+                        <input
+                          readOnly
+                          value={
+                            growRegisterWebhookUrl ||
+                            (growRegisterReady === false
+                              ? 'לא מוגדר בשרת'
+                              : 'טוען…')
+                          }
+                          style={{ ...styles.input, flex: 1, fontSize: 12 }}
+                          dir="ltr"
+                        />
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={copyGrowRegisterWebhook}
+                          disabled={!growRegisterWebhookUrl}
+                        >
+                          העתק
+                        </Button>
+                      </div>
+                      <span style={styles.formHint}>
+                        זו הכתובת לשלוח ל-Grow לחיווי על הקמת לקוח (לא webhook התשלום).
+                      </span>
                     </div>
                   </div>
 
