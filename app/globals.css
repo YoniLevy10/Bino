@@ -1,53 +1,52 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Apple-Inspired Premium Design System */
+  /* Tide v2 preview — Penpot New UX (visual tokens only) */
   
-  /* Typography - Inter/SF Pro style */
+  /* Typography — Heebo (RTL product) */
   --font-sans: var(--font-heebo), 'Heebo', 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
   
-  /* Base Colors - Near-white background, deep charcoal text */
-  --color-background: #F9F9FB;
-  --color-foreground: #1A1A2E;
+  /* Base Colors */
+  --color-background: #E8EEF0;
+  --color-foreground: #142222;
   
-  /* Surface Colors - Subtle layering */
+  /* Surface Colors */
   --color-surface: #FFFFFF;
   --color-surface-elevated: #FFFFFF;
-  --color-surface-hover: #F5F5F7;
-  --color-surface-active: #EEEEEF;
-  --color-muted: #F5F5F7;
+  --color-surface-hover: #F7FAFA;
+  --color-surface-active: #E8F2F0;
+  --color-muted: #F3F0EA;
   
-  /* Border Colors - Barely visible, use space instead */
-  --color-border: #E8E8ED;
-  --color-border-subtle: #F0F0F2;
-  --color-border-strong: #D1D1D6;
+  /* Border Colors */
+  --color-border: #D5E0E0;
+  --color-border-subtle: #E4EBEB;
+  --color-border-strong: #B7C7C7;
   
-  /* Text Colors - Strong hierarchy */
-  --color-text-primary: #1A1A2E;
-  --color-text-secondary: #3C3C43;
-  --color-text-muted: #86868B;
+  /* Text Colors */
+  --color-text-primary: #142222;
+  --color-text-secondary: #2F3F3F;
+  --color-text-muted: #6B7C7C;
   --color-text-inverse: #FFFFFF;
   
-  /* Primary — iOS system blue */
-  --color-primary: #007AFF;
-  --color-primary-hover: #0066E0;
-  --color-primary-active: #0055C4;
-  --color-primary-muted: rgba(0, 122, 255, 0.12);
-  --color-primary-subtle: rgba(0, 122, 255, 0.18);
-  --color-primary-text: #007AFF;
+  /* Primary — Tide teal */
+  --color-primary: #0F5C56;
+  --color-primary-hover: #0C4B46;
+  --color-primary-active: #0A3F3B;
+  --color-primary-muted: rgba(15, 92, 86, 0.12);
+  --color-primary-subtle: rgba(31, 138, 126, 0.18);
+  --color-primary-text: #1F8A7E;
   
-  /* Status Colors - Soft, accessible */
-  --color-success: #34C759;
-  --color-success-muted: #E8F9ED;
-  --color-warning: #FF9500;
-  --color-warning-muted: #FFF4E5;
-  --color-error: #FF3B30;
-  --color-error-muted: #FFEBE9;
-  --color-info: #007AFF;
-  --color-info-muted: #E5F2FF;
+  /* Status Colors */
+  --color-success: #15803D;
+  --color-success-muted: #DCFCE7;
+  --color-warning: #C97816;
+  --color-warning-muted: #FFF1DC;
+  --color-error: #B91C1C;
+  --color-error-muted: #FEE2E2;
+  --color-info: #1F6FEB;
+  --color-info-muted: #E7F0FF;
   
-  /* Radius - Apple-style rounded corners */
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
@@ -55,8 +54,8 @@
 }
 
 :root {
-  --background: #dfe7f2;
-  --foreground: #1A1A2E;
+  --background: #E8EEF0;
+  --foreground: #142222;
   /* Floating glass tab bar (see MobileBottomNav in ui.tsx) */
   --mobile-bottom-nav-height: 78px;
 }
@@ -75,9 +74,9 @@ html {
 
 body {
   background:
-    radial-gradient(1100px 640px at 88% -12%, rgba(0, 122, 255, 0.28), transparent 56%),
-    radial-gradient(900px 580px at -6% 112%, rgba(90, 200, 250, 0.26), transparent 52%),
-    radial-gradient(720px 480px at 42% 18%, rgba(255, 255, 255, 0.5), transparent 62%),
+    radial-gradient(1100px 640px at 88% -12%, rgba(31, 138, 126, 0.22), transparent 56%),
+    radial-gradient(900px 580px at -6% 112%, rgba(15, 92, 86, 0.14), transparent 52%),
+    radial-gradient(720px 480px at 42% 18%, rgba(255, 255, 255, 0.55), transparent 62%),
     var(--background);
   background-attachment: fixed;
   color: var(--foreground);
@@ -124,7 +123,7 @@ button, a, [role="button"], [role="tab"], label {
 }
 
 ::selection {
-  background: rgba(0, 122, 255, 0.22);
+  background: rgba(31, 138, 126, 0.22);
   color: inherit;
 }
 
@@ -240,7 +239,7 @@ select {
   width: 420px;
   height: 420px;
   border-radius: 9999px;
-  background: rgba(0, 122, 255, 0.1);
+  background: rgba(31, 138, 126, 0.14);
   filter: blur(64px);
   pointer-events: none;
   animation: bamakor-splash-glow 3s ease-in-out infinite;
@@ -266,7 +265,7 @@ select {
   width: 45%;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #007aff 0%, #5ac8fa 100%);
+  background: linear-gradient(90deg, #0F5C56 0%, #1F8A7E 100%);
   animation: bamakor-page-loader-bar 1.1s ease-in-out infinite;
 }
 
@@ -493,15 +492,19 @@ select {
     inset 0 0 0 0.5px rgba(0, 0, 0, 0.1);
 }
 
-.lg-chrome,
-.lg-sidebar {
-  background: rgba(246, 246, 250, 0.78);
-  -webkit-backdrop-filter: blur(40px) saturate(1.65);
-  backdrop-filter: blur(40px) saturate(1.65);
+.lg-chrome {
+  background: rgba(247, 250, 250, 0.82);
+  -webkit-backdrop-filter: blur(40px) saturate(1.55);
+  backdrop-filter: blur(40px) saturate(1.55);
 }
 
+/* Tide desktop sidebar — solid deep teal (Penpot D shell) */
 .lg-sidebar {
-  border-inline-end: 0.5px solid rgba(0, 0, 0, 0.1);
+  background: #0B3A38;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-inline-end: 1px solid rgba(213, 239, 234, 0.12);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .lg-tabbar {
@@ -512,19 +515,19 @@ select {
 }
 
 .lg-nav-active {
-  background: rgba(0, 122, 255, 0.14);
+  background: rgba(31, 138, 126, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 0 0 0.5px rgba(0, 122, 255, 0.22);
+    inset 0 0 0 0.5px rgba(31, 138, 126, 0.28);
 }
 
 .lg-btn-primary {
-  background: linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%);
+  background: linear-gradient(180deg, #2AA396 0%, #1F8A7E 46%, #0F5C56 100%);
   color: #fff;
   border: none;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.48),
-    inset 0 0 0 0.5px rgba(0, 40, 100, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 0 0 0.5px rgba(11, 58, 56, 0.28);
 }
 
 .lg-btn-primary:hover:not(:disabled) {
@@ -540,19 +543,24 @@ select {
 
 .lg-field:focus {
   outline: none;
-  border-color: rgba(0, 122, 255, 0.45);
+  border-color: rgba(31, 138, 126, 0.5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 0 0 4px rgba(0, 122, 255, 0.18);
+    0 0 0 4px rgba(31, 138, 126, 0.2);
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .lg-glass,
   .lg-chrome,
-  .lg-sidebar,
   .lg-tabbar,
   .lg-field {
     background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .lg-sidebar {
+    background: #0B3A38;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -589,17 +597,17 @@ select {
 }
 
 [data-worker-theme='dark'] .lg-nav-active {
-  background: rgba(10, 132, 255, 0.28);
+  background: rgba(31, 138, 126, 0.32);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 0 0 0.5px rgba(10, 132, 255, 0.4);
+    inset 0 0 0 0.5px rgba(31, 138, 126, 0.45);
 }
 
 [data-worker-theme='dark'] .lg-btn-primary {
-  background: linear-gradient(180deg, #409cff 0%, #0a84ff 46%, #0071eb 100%);
+  background: linear-gradient(180deg, #2AA396 0%, #1F8A7E 46%, #0F5C56 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 0 0 0.5px rgba(0, 40, 100, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 0.5px rgba(11, 58, 56, 0.4);
 }
 
 [data-worker-theme='dark'] .lg-field {
@@ -610,10 +618,10 @@ select {
 }
 
 [data-worker-theme='dark'] .lg-field:focus {
-  border-color: rgba(10, 132, 255, 0.55);
+  border-color: rgba(31, 138, 126, 0.55);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 0 4px rgba(10, 132, 255, 0.28);
+    0 0 0 4px rgba(31, 138, 126, 0.28);
 }
 
 [data-worker-theme='dark'] .lg-chip {
@@ -623,9 +631,9 @@ select {
 }
 
 [data-worker-theme='dark'] .lg-chip-active {
-  background: rgba(10, 132, 255, 0.28);
-  border: 0.5px solid rgba(10, 132, 255, 0.45);
-  color: #0a84ff;
+  background: rgba(31, 138, 126, 0.32);
+  border: 0.5px solid rgba(31, 138, 126, 0.5);
+  color: #7dd3c7;
 }
 
 .lg-chip {
@@ -636,10 +644,10 @@ select {
 }
 
 .lg-chip-active {
-  background: rgba(0, 122, 255, 0.14);
-  border: 0.5px solid rgba(0, 122, 255, 0.28);
+  background: rgba(31, 138, 126, 0.14);
+  border: 0.5px solid rgba(31, 138, 126, 0.3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  color: #007aff;
+  color: #0F5C56;
 }
 
 .worker-ambient-wash {
@@ -648,16 +656,16 @@ select {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(1100px 640px at 88% -12%, rgba(0, 122, 255, 0.28), transparent 56%),
-    radial-gradient(900px 580px at -6% 112%, rgba(90, 200, 250, 0.26), transparent 52%),
-    radial-gradient(720px 480px at 42% 18%, rgba(255, 255, 255, 0.5), transparent 62%),
-    #dfe7f2;
+    radial-gradient(1100px 640px at 88% -12%, rgba(31, 138, 126, 0.22), transparent 56%),
+    radial-gradient(900px 580px at -6% 112%, rgba(15, 92, 86, 0.14), transparent 52%),
+    radial-gradient(720px 480px at 42% 18%, rgba(255, 255, 255, 0.55), transparent 62%),
+    #E8EEF0;
 }
 
 [data-worker-theme='dark'] .worker-ambient-wash {
   background:
-    radial-gradient(900px 560px at 90% -10%, rgba(10, 132, 255, 0.22), transparent 55%),
-    radial-gradient(800px 520px at -8% 110%, rgba(48, 209, 88, 0.08), transparent 50%),
+    radial-gradient(900px 560px at 90% -10%, rgba(31, 138, 126, 0.22), transparent 55%),
+    radial-gradient(800px 520px at -8% 110%, rgba(21, 128, 61, 0.08), transparent 50%),
     radial-gradient(640px 420px at 40% 20%, rgba(255, 255, 255, 0.04), transparent 60%),
     #1c1c1e;
 }
@@ -713,10 +721,10 @@ select {
 /* —— Resident portal auth / ambient polish —— */
 .resident-ambient-wash {
   background:
-    radial-gradient(980px 560px at 92% -8%, rgba(0, 122, 255, 0.34), transparent 58%),
-    radial-gradient(820px 520px at -10% 108%, rgba(90, 200, 250, 0.3), transparent 54%),
+    radial-gradient(980px 560px at 92% -8%, rgba(31, 138, 126, 0.28), transparent 58%),
+    radial-gradient(820px 520px at -10% 108%, rgba(15, 92, 86, 0.18), transparent 54%),
     radial-gradient(640px 420px at 48% 22%, rgba(255, 255, 255, 0.62), transparent 64%),
-    linear-gradient(165deg, #d5e4f6 0%, #e8eef7 48%, #dfe7f2 100%);
+    linear-gradient(165deg, #d5efe8 0%, #e8eef0 48%, #E8EEF0 100%);
 }
 
 .resident-ambient-grain {
@@ -766,11 +774,11 @@ select {
   font-weight: 700;
   font-size: 1.35rem;
   letter-spacing: -0.02em;
-  background: linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%);
+  background: linear-gradient(180deg, #2AA396 0%, #1F8A7E 46%, #0F5C56 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 0 0 0.5px rgba(0, 40, 100, 0.18),
-    0 12px 28px rgba(0, 122, 255, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 0.5px rgba(11, 58, 56, 0.28),
+    0 12px 28px rgba(15, 92, 86, 0.28);
 }
 
 .resident-auth-brand-name {
@@ -778,7 +786,7 @@ select {
   font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: #1a1a2e;
+  color: #142222;
   line-height: 1.15;
 }
 
@@ -834,14 +842,14 @@ select {
 }
 
 .resident-otp-cell.is-filled {
-  border-color: rgba(0, 122, 255, 0.35);
+  border-color: rgba(31, 138, 126, 0.4);
   background: rgba(255, 255, 255, 0.82);
 }
 
 .resident-otp-cell.is-active {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 0 0 3px rgba(0, 122, 255, 0.16);
+    0 0 0 3px rgba(31, 138, 126, 0.18);
 }
 
 /* Keep opacity:1 — iOS blocks Paste / SMS AutoFill on opacity:0 fields. */

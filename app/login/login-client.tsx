@@ -38,7 +38,7 @@ const fieldStyle: CSSProperties = {
   minHeight: 48,
   padding: '12px 14px',
   fontSize: 16,
-  color: '#1A1A2E',
+  color: '#142222',
   outline: 'none',
 }
 
@@ -187,7 +187,7 @@ export function LoginClient() {
           width={88}
           height={88}
           priority
-          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 8px 24px rgba(0, 122, 255, 0.12)' }}
+          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 8px 24px rgba(15, 92, 86, 0.14)' }}
         />
 
         <div style={{ textAlign: 'center' }}>
@@ -196,7 +196,7 @@ export function LoginClient() {
               margin: '0 0 8px 0',
               fontSize: '32px',
               fontWeight: 800,
-              color: '#1A1A2E',
+              color: '#142222',
               letterSpacing: '-0.02em',
             }}
           >
@@ -324,7 +324,7 @@ export function LoginClient() {
             padding: '14px 22px',
             borderRadius: 14,
             border: 'none',
-            color: '#1A1A2E',
+            color: '#142222',
             fontSize: '16px',
             fontWeight: 700,
             cursor: loading ? 'wait' : 'pointer',

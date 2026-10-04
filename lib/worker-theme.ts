@@ -1,13 +1,13 @@
-import { theme } from '@/app/components/ui/theme'
+import { theme } from '@/app/components/ui'
 
-/** Light wash — same as manager ambient background. */
-export const WORKER_LIGHT_THEME_COLOR = '#dfe7f2'
+/** Light wash — Tide ambient background (matches manager shell). */
+export const WORKER_LIGHT_THEME_COLOR = '#E8EEF0'
 /** Outdoor dark glass surface (higher opacity than manager light materials). */
 export const WORKER_DARK_THEME_COLOR = '#1c1c1e'
 
 /**
  * Dark liquid-glass palette for worker portal outdoor use.
- * Keeps iOS system blue (#007AFF) — not Tailwind slate/blue-500.
+ * Tide teal primary — aligned with Penpot Tide v2 preview.
  */
 export const workerDarkColors: typeof theme.colors = {
   ...theme.colors,
@@ -24,21 +24,21 @@ export const workerDarkColors: typeof theme.colors = {
   textSecondary: '#EBEBF5',
   textMuted: 'rgba(235, 235, 245, 0.6)',
   textInverse: '#FFFFFF',
-  primary: '#007AFF',
-  primaryHover: '#0A84FF',
-  primaryActive: '#409CFF',
-  primaryMuted: 'rgba(0, 122, 255, 0.22)',
-  primarySubtle: 'rgba(0, 122, 255, 0.32)',
-  primaryText: '#0A84FF',
-  accent: '#0A84FF',
+  primary: '#1F8A7E',
+  primaryHover: '#2AA396',
+  primaryActive: '#3BB5A8',
+  primaryMuted: 'rgba(31, 138, 126, 0.28)',
+  primarySubtle: 'rgba(31, 138, 126, 0.38)',
+  primaryText: '#7DD3C7',
+  accent: '#1F8A7E',
   success: '#30D158',
   successMuted: 'rgba(48, 209, 88, 0.18)',
   warning: '#FF9F0A',
   warningMuted: 'rgba(255, 159, 10, 0.18)',
   error: '#FF453A',
   errorMuted: 'rgba(255, 69, 58, 0.18)',
-  info: '#0A84FF',
-  infoMuted: 'rgba(10, 132, 255, 0.18)',
+  info: '#5AC8FA',
+  infoMuted: 'rgba(90, 200, 250, 0.18)',
   overlay: 'rgba(0, 0, 0, 0.55)',
   overlayLight: 'rgba(0, 0, 0, 0.35)',
 }

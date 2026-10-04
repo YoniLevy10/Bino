@@ -412,7 +412,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
 
 const sidebarStyles: Record<string, CSSProperties> = {
   container: {
-    width: '240px',
+    width: '248px',
     padding: '24px 12px',
     position: 'fixed',
     top: 0,
@@ -434,7 +434,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     width: '40px',
     height: '40px',
     borderRadius: theme.radius.md,
-    background: theme.colors.primary,
+    background: theme.colors.accent,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -450,12 +450,12 @@ const sidebarStyles: Record<string, CSSProperties> = {
   title: {
     fontSize: '17px',
     fontWeight: 700,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textInverse,
     letterSpacing: '-0.02em',
   },
   subtitle: {
     fontSize: '12px',
-    color: theme.colors.textMuted,
+    color: 'rgba(183, 212, 209, 0.9)',
     marginTop: '1px',
   },
   navColumn: {
@@ -491,7 +491,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: 'none',
     background: 'transparent',
-    color: theme.colors.textMuted,
+    color: 'rgba(183, 212, 209, 0.75)',
     fontSize: '12px',
     fontWeight: 700,
     letterSpacing: '0.04em',
@@ -502,7 +502,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     boxSizing: 'border-box' as const,
   },
   opsToggleActive: {
-    color: theme.colors.primary,
+    color: '#D5EFEA',
   },
   opsChevron: {
     fontSize: '12px',
@@ -516,7 +516,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
   settingsNav: {
     paddingTop: '12px',
     marginTop: 'auto',
-    borderTop: `1px solid ${theme.colors.border}`,
+    borderTop: '1px solid rgba(213, 239, 234, 0.16)',
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
@@ -528,7 +528,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     gap: '12px',
     padding: '10px 12px',
     borderRadius: theme.radius.md,
-    color: theme.colors.textSecondary,
+    color: 'rgba(231, 242, 240, 0.82)',
     textDecoration: 'none',
     fontSize: '14px',
     fontWeight: 500,
@@ -544,18 +544,20 @@ const sidebarStyles: Record<string, CSSProperties> = {
     minWidth: 0,
   },
   navLinkActive: {
-    color: theme.colors.primary,
+    color: '#FFFFFF',
+    background: 'rgba(31, 138, 126, 0.35)',
+    boxShadow: 'inset 0 0 0 1px rgba(213, 239, 234, 0.22)',
   },
   navLinkLocked: {
-    border: `1px dashed ${theme.colors.borderStrong}`,
-    background: theme.colors.muted,
+    border: '1px dashed rgba(183, 212, 209, 0.35)',
+    background: 'rgba(15, 92, 86, 0.28)',
   },
   navLockBadge: {
     display: 'inline-block',
     marginInlineStart: '6px',
     fontSize: '10px',
     fontWeight: 600,
-    color: theme.colors.warning,
+    color: '#F6C78A',
     verticalAlign: 'middle',
   },
   footer: {
@@ -563,20 +565,20 @@ const sidebarStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '12px',
     padding: '16px 12px',
-    borderTop: `1px solid ${theme.colors.border}`,
+    borderTop: '1px solid rgba(213, 239, 234, 0.16)',
     flexShrink: 0,
   },
   footerAvatar: {
     width: '36px',
     height: '36px',
     borderRadius: theme.radius.full,
-    background: theme.colors.muted,
+    background: 'rgba(31, 138, 126, 0.4)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '13px',
     fontWeight: 600,
-    color: theme.colors.textSecondary,
+    color: '#D5EFEA',
   },
   footerInfo: {
     flex: 1,
@@ -584,11 +586,11 @@ const sidebarStyles: Record<string, CSSProperties> = {
   footerName: {
     fontSize: '14px',
     fontWeight: 600,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textInverse,
   },
   footerRole: {
     fontSize: '12px',
-    color: theme.colors.textMuted,
+    color: 'rgba(183, 212, 209, 0.8)',
   },
 }
 
@@ -776,7 +778,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   linkActive: {
     color: theme.colors.primary,
-    background: 'rgba(0, 122, 255, 0.12)',
+    background: 'rgba(31, 138, 126, 0.14)',
     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
   },
   iconWrap: {
@@ -856,7 +858,7 @@ function AppShellInner({
           data-app-main
           style={{
             flex: 1,
-            marginInlineStart: mobile ? 0 : '240px',
+            marginInlineStart: mobile ? 0 : '248px',
             minWidth: 0,
             textAlign: 'right',
               paddingBottom: bottomNav
@@ -1603,10 +1605,10 @@ export function StatusBadge({
   const statusConfig: Record<string, { bg: string; text: string }> = {
     NEW: { bg: theme.colors.warningMuted, text: theme.colors.warning },
     ASSIGNED: { bg: theme.colors.infoMuted, text: theme.colors.info },
-    IN_PROGRESS: { bg: theme.colors.infoMuted, text: theme.colors.info },
+    IN_PROGRESS: { bg: theme.colors.brandSoft, text: theme.colors.accent },
     WAITING_PARTS: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    SITE_TOUR: { bg: '#E0E7FF', text: '#4338CA' },
-    PROFESSIONAL_ESCORT: { bg: '#F3E8FF', text: '#7C3AED' },
+    SITE_TOUR: { bg: theme.colors.brandSoft, text: theme.colors.primary },
+    PROFESSIONAL_ESCORT: { bg: theme.colors.sand, text: theme.colors.primary },
     CLOSED: { bg: theme.colors.successMuted, text: theme.colors.success },
     ACTIVE: { bg: theme.colors.successMuted, text: theme.colors.success },
     INACTIVE: { bg: theme.colors.muted, text: theme.colors.textMuted },

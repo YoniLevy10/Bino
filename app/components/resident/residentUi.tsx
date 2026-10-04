@@ -564,14 +564,14 @@ export const residentShellStyles = {
     width: 36,
     height: 36,
     borderRadius: theme.radius.md,
-    background: 'linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%)',
+    background: 'linear-gradient(180deg, #2AA396 0%, #1F8A7E 46%, #0F5C56 100%)',
     color: '#fff',
     display: 'grid',
     placeItems: 'center',
     fontWeight: 700,
     fontSize: 15,
     boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.48), inset 0 0 0 0.5px rgba(0,40,100,0.18)',
+      'inset 0 1px 0 rgba(255,255,255,0.48), inset 0 0 0 0.5px rgba(11,58,56,0.28)',
     flexShrink: 0,
   } satisfies CSSProperties,
   title: {
@@ -650,7 +650,7 @@ export const residentShellStyles = {
     color: '#fff',
     zIndex: 40,
     boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(0,122,255,0.35)',
+      'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(15,92,86,0.32)',
   } satisfies CSSProperties,
   balanceValue: {
     fontSize: '2.35rem',
