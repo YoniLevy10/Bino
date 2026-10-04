@@ -124,3 +124,16 @@ BASE_URL=http://127.0.0.1:3000 k6 run scripts/load/k6-login.js
 - Load against Vercel production / Bamakor live tenants
 - Cold WhatsApp / SMS blast under load
 - Creating paid Supabase preview branches for load (forbidden — see CLAUDE.md)
+
+---
+
+## Verification run (2026-10-03 closure)
+
+| Check | Result |
+|-------|--------|
+| `vitest run scripts/load/guard.test.mjs` | **7/7 pass** |
+| `BASE_URL=https://bino.casa node scripts/load/run.mjs` | **HARD FAIL** (refused) |
+| Mock HTTP `127.0.0.1:3456` 10s × 10 conn | ~59.6k rps, 0 errors — proves runner only |
+| Real Next local capacity | **Not measured** this run (local `.next` start failed with `renderToPipeableStream`) |
+
+Target-load **Go** still requires a healthy local Next + local Supabase measurement (see [`GO_NO_GO_2026-10-03.md`](./GO_NO_GO_2026-10-03.md)).

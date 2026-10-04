@@ -1,26 +1,25 @@
-# Monitoring proof status (2026-10-03)
+# Monitoring proof status (2026-10-03 → 2026-10-04)
 
-## What does **not** close this gap
+## Closed — live cron → `system_logs`
 
-- Manual `system_logs` inserts labeled `cron.health-check` / “window-a continuous probe”
-- `GET /api/cron/health-check` → **401** without secret
+Scheduled Vercel cron ran successfully:
 
-## What is required
+| Field | Value |
+|-------|--------|
+| `created_at` | **2026-10-04 06:00:31.827636+00** |
+| `source` | `cron.health-check` |
+| `message` | `db_connected` |
+| `level` | `info` |
 
-1. Authenticated cron invocation that inserts `message=db_connected` (see `app/api/cron/health-check/route.ts`).
-2. Controlled error that reaches Vercel runtime logs **and** an alert channel (email/SMS/ops) if configured.
+Also same window: `cron.ticket-health` → `ticket_media_ok` at 06:00:30Z.
 
-## Current blockers
+Manual “window-a continuous probe” rows from 2026-10-03 do **not** count; the 06:00 UTC scheduled row does.
+
+## Still owner (optional) — Vercel runtime logs / alert channel
 
 | Item | Detail |
 |------|--------|
-| Cron schedule | `vercel.json`: health-check **once daily at 06:00 UTC** — next natural run **2026-10-04 06:00 UTC** |
-| CRON_SECRET | Not available in agent env; Vercel `filter_project_envs` → 403 wrong OAuth scope |
-| Vercel runtime logs | `get_runtime_logs` → 403 for team `team_WWxoCoCEGaEAK0e2JknuqGxq` |
+| Vercel MCP | `list_teams` empty; runtime logs 403 for `team_WWxoCoCEGaEAK0e2JknuqGxq` |
+| Alert path | Forced-error → Resend/ops not proven without team-scope logs |
 
-## Exact owner action
-
-1. Re-authenticate Vercel MCP/OAuth to team **`team_WWxoCoCEGaEAK0e2JknuqGxq`** (project `bino`), not only personal `yonilevy10s-projects`.  
-2. **Or** provide `CRON_SECRET` once to the agent.  
-3. Then: `curl -H "Authorization: Bearer $CRON_SECRET" https://bino.casa/api/cron/health-check` and confirm new `system_logs` row `db_connected`.  
-4. Confirm the same request appears in Vercel Runtime Logs; if ops SMS/email is enabled, confirm alert path for a forced error insert (separate controlled test).
+**Owner:** re-auth Vercel MCP to team scope (see `OWNER_MANUAL_ONLY_2026-10-04.md` §3). Not required to trust DB-side cron health.
