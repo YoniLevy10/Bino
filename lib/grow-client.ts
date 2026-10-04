@@ -175,7 +175,8 @@ export async function createGrowPaymentLink(
     apiKey: platform.apiKey,
     userId: request.userId.trim(),
     pageCode: platform.pageCode,
-    paymentLinkType: '1',
+    // Grow live checklist (2026-10): paymentLinkType=2 (not 1).
+    paymentLinkType: '2',
     isActive: '1',
     chargeType: '1',
     sum,
