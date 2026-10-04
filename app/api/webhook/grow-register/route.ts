@@ -93,8 +93,8 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString()
+    // clients has created_at only — do not write updated_at (PostgREST schema cache error).
     const patch: Record<string, unknown> = {
-      updated_at: now,
       grow_onboarding_phone: parsed.phone || undefined,
       grow_package_name: parsed.packageName || undefined,
     }
@@ -117,7 +117,6 @@ export async function POST(req: Request) {
           .from('clients')
           .update({
             grow_onboarding_status: 'error',
-            updated_at: now,
           })
           .eq('id', client.id)
         return NextResponse.json({ ok: true, matched: 1, status: 'user_id_conflict' })
@@ -143,7 +142,6 @@ export async function POST(req: Request) {
         grow_onboarding_status: parsed.trackingStatusId
           ? `status_${parsed.trackingStatusId}`
           : 'pending',
-        updated_at: now,
       })
       .eq('id', client.id)
 

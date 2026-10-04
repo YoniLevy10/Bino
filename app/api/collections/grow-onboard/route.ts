@@ -94,7 +94,6 @@ export async function POST(req: Request) {
           grow_onboarding_status: result.code === 'EXISTING_BUSINESS' ? 'existing' : 'pending',
           grow_business_number: validated.data.business_number.replace(/\D/g, ''),
           grow_onboarding_phone: validated.data.phone,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', clientId)
     }
@@ -115,7 +114,6 @@ export async function POST(req: Request) {
       grow_business_number: validated.data.business_number.replace(/\D/g, ''),
       grow_onboarding_started_at: now,
       grow_onboarding_completed_at: null,
-      updated_at: now,
     })
     .eq('id', clientId)
 
