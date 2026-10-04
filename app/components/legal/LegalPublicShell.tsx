@@ -23,7 +23,7 @@ const navStyle: CSSProperties = {
 }
 
 const linkStyle: CSSProperties = {
-  color: '#1e40af',
+  color: '#0B4A45',
   fontWeight: 600,
   textDecoration: 'underline',
 }

@@ -143,7 +143,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
     <div className="resident-shell" style={residentShellStyles.root} dir="rtl">
       <ResidentAmbientWash />
 
-      <header className="lg-chrome" style={residentShellStyles.header}>
+      <header style={residentShellStyles.header}>
         {active?.client_logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

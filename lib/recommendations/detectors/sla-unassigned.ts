@@ -1,10 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { readFixlyMetadata } from '@/lib/fixly-ticket-metadata'
 import { buildDedupeKey } from '../dedupe'
 import type { RecommendationDraft } from '../types'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-
-const FIXLY_ACTIVE = new Set(['claimed', 'assigned', 'en_route', 'arrived', 'in_progress', 'launched'])
 
 function hoursAgo(ts: string): number {
   const t = new Date(ts).getTime()
@@ -13,17 +10,11 @@ function hoursAgo(ts: string): number {
 }
 
 function hasProgressiveAlternative(opts: {
-  status: string
-  ticketMetadata: unknown
   forwardSmsOk: boolean
   escortLogged: boolean
 }): boolean {
-  if (opts.forwardSmsOk) return true
-  if (opts.escortLogged) return true
-  const fixly = readFixlyMetadata(opts.ticketMetadata)
-  if (fixly && FIXLY_ACTIVE.has(String(fixly.last_status))) return true
   // PROFESSIONAL_ESCORT alone is NOT enough without a successful forward/escort log
-  return false
+  return opts.forwardSmsOk || opts.escortLogged
 }
 
 export async function detectSlaUnassigned(
@@ -94,8 +85,6 @@ export async function detectSlaUnassigned(
     const tid = row.id as string
     if (
       hasProgressiveAlternative({
-        status: row.status as string,
-        ticketMetadata: row.ticket_metadata,
         forwardSmsOk: forwardOk.has(tid),
         escortLogged: escortLogged.has(tid),
       })

@@ -40,8 +40,18 @@ const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
 
 type WorkerTabIcon = 'ticket' | 'wrench' | 'map' | 'clock'
 
-function TabIcon({ type, active, color }: { type: WorkerTabIcon; active: boolean; color: string }) {
-  const stroke = active ? theme.colors.primary : color
+function TabIcon({
+  type,
+  active,
+  color,
+  activeColor,
+}: {
+  type: WorkerTabIcon
+  active: boolean
+  color: string
+  activeColor: string
+}) {
+  const stroke = active ? activeColor : color
   const common = {
     width: 22,
     height: 22,
@@ -236,13 +246,18 @@ export function WorkerPortalToolbar({
               className={active ? 'lg-nav-active' : undefined}
               style={{
                 ...styles.tabItem,
-                color: active ? theme.colors.primary : colors.textMuted,
+                color: active ? colors.primary : colors.textMuted,
               }}
               onClick={() => onPortalTabChange(t.id)}
               aria-current={active ? 'page' : undefined}
             >
               <span style={styles.tabIcon}>
-                <TabIcon type={t.icon} active={active} color={colors.textMuted} />
+                <TabIcon
+                  type={t.icon}
+                  active={active}
+                  color={colors.textMuted}
+                  activeColor={colors.primary}
+                />
               </span>
               <span style={styles.tabLabel}>{t.label}</span>
             </button>

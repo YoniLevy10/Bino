@@ -169,7 +169,7 @@ export function ResidentAlert({
   )
 }
 
-/** Auth / join screens — branded hero + glass panel. */
+/** Auth / join screens — Tide branded hero + solid panel. */
 export function ResidentAuthFrame({
   brandName,
   buildingName,
@@ -559,12 +559,14 @@ export const residentShellStyles = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
+    background: theme.colors.sidebar,
+    borderBottom: '1px solid rgba(201, 228, 223, 0.14)',
   } satisfies CSSProperties,
   logoMark: {
     width: 36,
     height: 36,
     borderRadius: theme.radius.md,
-    background: theme.colors.primary,
+    background: theme.colors.accent,
     color: theme.colors.textInverse,
     display: 'grid',
     placeItems: 'center',
@@ -576,18 +578,18 @@ export const residentShellStyles = {
   title: {
     fontWeight: theme.typography.fontWeight.semibold,
     fontSize: theme.typography.fontSize.base,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textInverse,
     lineHeight: 1.25,
   } satisfies CSSProperties,
   subtitle: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textMuted,
+    color: 'rgba(201, 228, 223, 0.85)',
     lineHeight: 1.3,
   } satisfies CSSProperties,
   headerAction: {
     border: 'none',
     background: 'transparent',
-    color: theme.colors.primary,
+    color: theme.colors.brandSoft,
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
     minHeight: 44,

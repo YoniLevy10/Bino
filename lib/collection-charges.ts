@@ -19,11 +19,11 @@ export const COLLECTION_CHARGE_STATUS_LABELS: Record<CollectionChargeStatus, str
 }
 
 export const COLLECTION_CHARGE_STATUS_COLORS: Record<CollectionChargeStatus, string> = {
-  draft: '#64748b',
-  sent: '#2563eb',
-  paid: '#16a34a',
-  failed: '#dc2626',
-  cancelled: '#94a3b8',
+  draft: '#5E6F6F',
+  sent: '#16706A',
+  paid: '#146C38',
+  failed: '#9F1B1B',
+  cancelled: '#9FB0B0',
 }
 
 export type CollectionChargeRow = {
