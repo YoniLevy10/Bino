@@ -434,7 +434,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     width: '40px',
     height: '40px',
     borderRadius: theme.radius.md,
-    background: theme.colors.accent,
+    background: theme.colors.primary,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -450,12 +450,12 @@ const sidebarStyles: Record<string, CSSProperties> = {
   title: {
     fontSize: '17px',
     fontWeight: 700,
-    color: theme.colors.textInverse,
+    color: theme.colors.textPrimary,
     letterSpacing: '-0.02em',
   },
   subtitle: {
     fontSize: '12px',
-    color: 'rgba(183, 212, 209, 0.9)',
+    color: theme.colors.textMuted,
     marginTop: '1px',
   },
   navColumn: {
@@ -491,7 +491,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: 'none',
     background: 'transparent',
-    color: 'rgba(183, 212, 209, 0.75)',
+    color: theme.colors.textMuted,
     fontSize: '12px',
     fontWeight: 700,
     letterSpacing: '0.04em',
@@ -502,7 +502,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     boxSizing: 'border-box' as const,
   },
   opsToggleActive: {
-    color: '#D5EFEA',
+    color: theme.colors.primary,
   },
   opsChevron: {
     fontSize: '12px',
@@ -516,7 +516,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
   settingsNav: {
     paddingTop: '12px',
     marginTop: 'auto',
-    borderTop: '1px solid rgba(213, 239, 234, 0.16)',
+    borderTop: `1px solid ${theme.colors.border}`,
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
@@ -528,7 +528,7 @@ const sidebarStyles: Record<string, CSSProperties> = {
     gap: '12px',
     padding: '10px 12px',
     borderRadius: theme.radius.md,
-    color: 'rgba(231, 242, 240, 0.82)',
+    color: theme.colors.textSecondary,
     textDecoration: 'none',
     fontSize: '14px',
     fontWeight: 500,
@@ -544,20 +544,20 @@ const sidebarStyles: Record<string, CSSProperties> = {
     minWidth: 0,
   },
   navLinkActive: {
-    color: theme.colors.textInverse,
-    background: 'rgba(22, 112, 106, 0.38)',
-    boxShadow: 'inset 0 0 0 1px rgba(201, 228, 223, 0.2)',
+    color: theme.colors.primary,
+    background: theme.colors.primaryMuted,
+    boxShadow: 'inset 0 0 0 1px rgba(0, 122, 255, 0.16)',
   },
   navLinkLocked: {
-    border: '1px dashed rgba(201, 228, 223, 0.28)',
-    background: 'rgba(11, 74, 69, 0.35)',
+    border: `1px dashed ${theme.colors.borderStrong}`,
+    background: theme.colors.muted,
   },
   navLockBadge: {
     display: 'inline-block',
     marginInlineStart: '6px',
     fontSize: '10px',
     fontWeight: 600,
-    color: '#E6C48A',
+    color: theme.colors.warning,
     verticalAlign: 'middle',
   },
   footer: {
@@ -565,20 +565,20 @@ const sidebarStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '12px',
     padding: '16px 12px',
-    borderTop: '1px solid rgba(201, 228, 223, 0.14)',
+    borderTop: `1px solid ${theme.colors.border}`,
     flexShrink: 0,
   },
   footerAvatar: {
     width: '36px',
     height: '36px',
     borderRadius: theme.radius.full,
-    background: 'rgba(22, 112, 106, 0.4)',
+    background: theme.colors.muted,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#C9E4DF',
+    color: theme.colors.textSecondary,
   },
   footerInfo: {
     flex: 1,
@@ -586,11 +586,11 @@ const sidebarStyles: Record<string, CSSProperties> = {
   footerName: {
     fontSize: '14px',
     fontWeight: 600,
-    color: theme.colors.textInverse,
+    color: theme.colors.textPrimary,
   },
   footerRole: {
     fontSize: '12px',
-    color: 'rgba(183, 212, 209, 0.8)',
+    color: theme.colors.textMuted,
   },
 }
 
@@ -778,8 +778,8 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   linkActive: {
     color: theme.colors.primary,
-    background: theme.colors.brandSoft,
-    boxShadow: 'none',
+    background: 'rgba(0, 122, 255, 0.12)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
   },
   iconWrap: {
     display: 'flex',
@@ -1482,7 +1482,7 @@ export function Card({
 
 const cardStyles: Record<string, CSSProperties> = {
   container: {
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     overflow: 'hidden',
   },
   header: {

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { WorkerServiceWorkerRegister } from '../components/worker/WorkerServiceWorkerRegister'
 
 export const viewport: Viewport = {
-  themeColor: '#D9E3E5',
+  themeColor: '#dfe7f2',
 }
 
 export const metadata: Metadata = {

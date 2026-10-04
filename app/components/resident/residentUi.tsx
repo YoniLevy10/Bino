@@ -7,7 +7,7 @@ import { residentDocumentDisplayName } from '@/lib/resident-portal/document-disp
 
 export { residentDocumentDisplayName }
 
-/** Shared Tide v2 surface helpers for the resident portal. */
+/** Shared Live+ surface helpers for the resident portal. */
 export const residentTheme = theme
 
 export const RESIDENT_TABBAR_CLEARANCE =
@@ -169,7 +169,7 @@ export function ResidentAlert({
   )
 }
 
-/** Auth / join screens — Tide branded hero + solid panel. */
+/** Auth / join screens — branded hero + glass panel (Live+). */
 export function ResidentAuthFrame({
   brandName,
   buildingName,
@@ -559,37 +559,36 @@ export const residentShellStyles = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    background: theme.colors.sidebar,
-    borderBottom: '1px solid rgba(201, 228, 223, 0.14)',
   } satisfies CSSProperties,
   logoMark: {
     width: 36,
     height: 36,
     borderRadius: theme.radius.md,
-    background: theme.colors.accent,
+    background: 'linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%)',
     color: theme.colors.textInverse,
     display: 'grid',
     placeItems: 'center',
     fontWeight: 700,
     fontSize: 15,
-    boxShadow: 'none',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.48), inset 0 0 0 0.5px rgba(0,40,100,0.18), 0 8px 20px rgba(0,122,255,0.22)',
     flexShrink: 0,
   } satisfies CSSProperties,
   title: {
     fontWeight: theme.typography.fontWeight.semibold,
     fontSize: theme.typography.fontSize.base,
-    color: theme.colors.textInverse,
+    color: theme.colors.textPrimary,
     lineHeight: 1.25,
   } satisfies CSSProperties,
   subtitle: {
     fontSize: theme.typography.fontSize.sm,
-    color: 'rgba(201, 228, 223, 0.85)',
+    color: theme.colors.textMuted,
     lineHeight: 1.3,
   } satisfies CSSProperties,
   headerAction: {
     border: 'none',
     background: 'transparent',
-    color: theme.colors.brandSoft,
+    color: theme.colors.primary,
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
     minHeight: 44,
@@ -650,8 +649,9 @@ export const residentShellStyles = {
     fontSize: 13,
     color: '#fff',
     zIndex: 40,
-    background: theme.colors.primary,
-    boxShadow: theme.shadows.md,
+    background: 'linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%)',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(0,122,255,0.35)',
   } satisfies CSSProperties,
   balanceValue: {
     fontSize: '2.35rem',

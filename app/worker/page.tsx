@@ -843,9 +843,9 @@ function WorkerPageInner() {
         dir="rtl"
       >
         <div className="worker-ambient-wash" aria-hidden />
-        <header style={styles.glassHeader}>
-          <h1 style={{ ...styles.standaloneTitle, color: theme.colors.textInverse }}>עובדי שטח (קישור)</h1>
-          <p style={{ ...styles.standaloneSub, color: 'rgba(201, 228, 223, 0.85)' }}>
+        <header className="lg-chrome" style={styles.glassHeader}>
+          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>עובדי שטח (קישור)</h1>
+          <p style={{ ...styles.standaloneSub, color: palette.textMuted }}>
             שולחים לכם SMS עם קישור אישי — פתחו אותו מההודעה. אין קישור? בקשו מהמשרד — &quot;שלח קישור ב-SMS&quot; או &quot;העתק קישור&quot; ב«העובדים שלי».
           </p>
         </header>
@@ -862,8 +862,8 @@ function WorkerPageInner() {
         dir="rtl"
       >
         <div className="worker-ambient-wash" aria-hidden />
-        <header style={styles.glassHeader}>
-          <h1 style={{ ...styles.standaloneTitle, color: theme.colors.textInverse }}>
+        <header className="lg-chrome" style={styles.glassHeader}>
+          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>
             שלום {selectedName || 'עובד'}
           </h1>
         </header>
@@ -1222,8 +1222,6 @@ const styles: Record<string, CSSProperties> = {
     padding: '14px 16px 12px',
     position: 'relative',
     zIndex: 30,
-    background: theme.colors.sidebar,
-    borderBottom: '1px solid rgba(201, 228, 223, 0.14)',
   },
   scrollArea: {
     flex: 1,

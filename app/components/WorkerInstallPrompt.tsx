@@ -114,7 +114,7 @@ export function WorkerInstallPrompt({ workerName }: WorkerInstallPromptProps) {
             onClick={() => void install()}
             style={{
               marginTop: 10,
-              background: '#0B4A45',
+              background: '#007AFF',
               color: '#fff',
               border: 'none',
               borderRadius: '9px',

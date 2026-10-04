@@ -1270,10 +1270,9 @@ const styles: Record<string, CSSProperties> = {
   hero: {
     borderRadius: 18,
     padding: '18px 18px 16px',
-    background: theme.colors.sidebar,
-    color: theme.colors.textInverse,
-    boxShadow: theme.shadows.md,
-    border: `1px solid ${theme.colors.border}`,
+    background: 'linear-gradient(145deg, #0B64D9 0%, #007AFF 48%, #0060D6 100%)',
+    color: '#f8fafc',
+    boxShadow: '0 12px 32px rgba(0, 122, 255, 0.28)',
   },
   heroTop: {
     display: 'flex',
@@ -1362,7 +1361,7 @@ const styles: Record<string, CSSProperties> = {
   statusTabActive: {
     background: theme.colors.primary,
     borderColor: theme.colors.primary,
-    color: theme.colors.textInverse,
+    color: '#fff',
   },
   statusCount: {
     fontSize: 11,

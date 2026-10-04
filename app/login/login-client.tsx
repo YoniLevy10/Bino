@@ -38,7 +38,7 @@ const fieldStyle: CSSProperties = {
   minHeight: 48,
   padding: '12px 14px',
   fontSize: 16,
-  color: '#10201F',
+  color: '#1A1A2E',
   outline: 'none',
 }
 
@@ -187,7 +187,7 @@ export function LoginClient() {
           width={88}
           height={88}
           priority
-          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 4px 14px rgba(8, 40, 38, 0.1)' }}
+          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 8px 24px rgba(0, 122, 255, 0.16)' }}
         />
 
         <div style={{ textAlign: 'center' }}>
@@ -196,16 +196,16 @@ export function LoginClient() {
               margin: '0 0 8px 0',
               fontSize: '32px',
               fontWeight: 800,
-              color: '#10201F',
+              color: '#1A1A2E',
               letterSpacing: '-0.02em',
             }}
           >
             Bino
           </h1>
-          <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#5E6F6F', lineHeight: 1.4, fontWeight: 600, letterSpacing: '0.04em' }}>
+          <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#86868B', lineHeight: 1.4, fontWeight: 600, letterSpacing: '0.04em' }}>
             Building Intelligence &amp; Operations
           </p>
-          <p style={{ margin: 0, fontSize: '17px', color: '#2A3A3A', lineHeight: 1.5, fontWeight: 500 }}>
+          <p style={{ margin: 0, fontSize: '17px', color: '#3C3C43', lineHeight: 1.5, fontWeight: 500 }}>
             מערכת ניהול תקלות לבניינים
           </p>
         </div>
@@ -220,7 +220,7 @@ export function LoginClient() {
             flexDirection: 'column',
             gap: 12,
             padding: 20,
-            borderRadius: 16,
+            borderRadius: 22,
             boxSizing: 'border-box',
           }}
         >
@@ -231,7 +231,7 @@ export function LoginClient() {
               gap: 6,
               fontSize: 13,
               fontWeight: 600,
-              color: '#2A3A3A',
+              color: '#3C3C43',
             }}
           >
             אימייל
@@ -255,7 +255,7 @@ export function LoginClient() {
               gap: 6,
               fontSize: 13,
               fontWeight: 600,
-              color: '#2A3A3A',
+              color: '#3C3C43',
             }}
           >
             סיסמה
@@ -299,13 +299,13 @@ export function LoginClient() {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            color: '#5E6F6F',
+            color: '#86868B',
             fontSize: 13,
           }}
         >
-          <div style={{ flex: 1, height: 1, background: '#C5D2D2' }} />
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
           או
-          <div style={{ flex: 1, height: 1, background: '#C5D2D2' }} />
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
         </div>
 
         <button
@@ -324,7 +324,7 @@ export function LoginClient() {
             padding: '14px 22px',
             borderRadius: 14,
             border: 'none',
-            color: '#10201F',
+            color: '#1A1A2E',
             fontSize: '16px',
             fontWeight: 700,
             cursor: loading ? 'wait' : 'pointer',
