@@ -42,6 +42,7 @@ import {
   useTenantOpenTickets,
   type OpenTicketRow,
 } from '@/lib/hooks/use-open-tickets'
+import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
 import { queryKeys } from '@/lib/query-keys'
 import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
@@ -53,7 +54,6 @@ import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
 } from '@/lib/reporter-closed-notify-toast'
-import { type ProfessionalOption } from '@/app/components/tickets/ForwardToProfessionalBlock'
 import {
   MobileHeader,
   useMobileMenu,
@@ -260,7 +260,10 @@ export default function TicketsPage() {
 
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
-  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
+  const {
+    professionals,
+    ensureLoaded: ensureProfessionalsLoaded,
+  } = useActiveProfessionalsForAssign()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [cachePainted, setCachePainted] = useState(false)
   const [pageLoadError, setPageLoadError] = useState(false)
@@ -273,7 +276,6 @@ export default function TicketsPage() {
   const { openMenu } = useMobileMenu()
   const lastFetchAtRef = useRef(0)
   const hasPaintedDataRef = useRef(false)
-  const professionalsLoadedRef = useRef(false)
   const [closeConfirmTicket, setCloseConfirmTicket] = useState<TicketRow | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null)
   const {
@@ -381,27 +383,6 @@ export default function TicketsPage() {
       window.history.replaceState(null, '', newUrl)
     }
   }, [projectFilter, workerFilter, statusFilter, priorityFilter, pendingProjectId])
-
-  const loadProfessionals = useCallback(async () => {
-    if (professionalsLoadedRef.current) return
-    try {
-      const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
-      const { data, error } = await withClientId(
-        supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
-        clientId
-      )
-        .is('deleted_at', null)
-        .eq('is_active', true)
-        .order('full_name', { ascending: true })
-        .limit(200)
-      if (!error) {
-        setProfessionals((data as ProfessionalOption[]) || [])
-        professionalsLoadedRef.current = true
-      }
-    } catch {
-      /* non-critical */
-    }
-  }, [tenantClientId])
 
   const invalidateOpenTickets = useCallback(async () => {
     const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
@@ -933,7 +914,7 @@ export default function TicketsPage() {
       resetTicketDetailData()
       setDescriptionTranslation('')
       setMergeCandidates([])
-      void loadProfessionals()
+      void ensureProfessionalsLoaded()
       void loadTicketAttachments(ticket)
       void loadTicketLogs(ticket.id)
       if (!opts?.skipDeepLink) {
@@ -943,7 +924,7 @@ export default function TicketsPage() {
     [
       selectedTicket?.id,
       closeDrawer,
-      loadProfessionals,
+      ensureProfessionalsLoaded,
       loadTicketAttachments,
       loadTicketLogs,
       resetTicketDetailData,
