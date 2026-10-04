@@ -40,6 +40,7 @@ import {
   Select,
   Drawer,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
@@ -133,11 +134,13 @@ export default function ProjectsPage() {
     isLoading: projectsLoading,
     hasData: projectsHasData,
     refetch: refetchProjects,
+    error: projectsQueryError,
   } = useTenantProjectsList()
   const {
     workers: rqWorkers,
     isLoading: workersLoading,
     hasData: workersHasData,
+    error: workersQueryError,
   } = useTenantWorkersList()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [workers, setWorkers] = useState<WorkerRow[]>([])
@@ -589,6 +592,12 @@ export default function ProjectsPage() {
 
         {loading ? (
           <PageTransitionLoader />
+        ) : !cachePainted && projects.length === 0 && (projectsQueryError || workersQueryError) ? (
+          <ErrorState
+            title="לא הצלחנו לטעון פרויקטים"
+            message="נסו שוב. אם הבעיה נמשכת — רעננו את הדף."
+            onRetry={() => void loadProjects()}
+          />
         ) : (
           <>
         {/* KPI Cards */}
