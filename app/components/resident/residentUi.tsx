@@ -7,7 +7,7 @@ import { residentDocumentDisplayName } from '@/lib/resident-portal/document-disp
 
 export { residentDocumentDisplayName }
 
-/** Shared Apple iOS 27 Liquid Glass tokens for the resident portal. */
+/** Shared Tide v2 surface helpers for the resident portal. */
 export const residentTheme = theme
 
 export const RESIDENT_TABBAR_CLEARANCE =
@@ -564,14 +564,13 @@ export const residentShellStyles = {
     width: 36,
     height: 36,
     borderRadius: theme.radius.md,
-    background: 'linear-gradient(180deg, #2AA396 0%, #1F8A7E 46%, #0F5C56 100%)',
-    color: '#fff',
+    background: theme.colors.primary,
+    color: theme.colors.textInverse,
     display: 'grid',
     placeItems: 'center',
     fontWeight: 700,
     fontSize: 15,
-    boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.48), inset 0 0 0 0.5px rgba(11,58,56,0.28)',
+    boxShadow: 'none',
     flexShrink: 0,
   } satisfies CSSProperties,
   title: {
@@ -649,8 +648,8 @@ export const residentShellStyles = {
     fontSize: 13,
     color: '#fff',
     zIndex: 40,
-    boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(15,92,86,0.32)',
+    background: theme.colors.primary,
+    boxShadow: theme.shadows.md,
   } satisfies CSSProperties,
   balanceValue: {
     fontSize: '2.35rem',

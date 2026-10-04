@@ -6,21 +6,21 @@ import {
 } from '@/lib/worker-theme'
 import { theme } from '@/app/components/ui/theme'
 
-describe('worker liquid-glass theme', () => {
-  it('keeps Tide teal accent in dark outdoor palette', () => {
-    expect(workerDarkColors.primary).toBe('#1F8A7E')
-    expect(theme.colors.primary).toBe('#0F5C56')
+describe('worker Tide theme', () => {
+  it('uses Tide teal accents in dark outdoor palette', () => {
+    expect(workerDarkColors.primary).toBe('#16706A')
+    expect(theme.colors.primary).toBe('#0B4A45')
     expect(workerDarkColors.accent).toBe(theme.colors.accent)
   })
 
-  it('uses charcoal glass wash colors — not slate dashboard', () => {
+  it('uses Tide charcoal wash — not slate dashboard', () => {
     expect(workerDarkColors.background).toBe(WORKER_DARK_THEME_COLOR)
     expect(workerDarkColors.background).not.toBe('#0f172a')
-    expect(WORKER_LIGHT_THEME_COLOR).toBe('#E8EEF0')
+    expect(WORKER_LIGHT_THEME_COLOR).toBe('#D9E3E5')
   })
 
-  it('exposes high-contrast muted fills for outdoor status chips', () => {
-    expect(workerDarkColors.successMuted).toContain('0.18')
-    expect(workerDarkColors.textPrimary).toBe('#F5F5F7')
+  it('exposes muted fills for outdoor status chips', () => {
+    expect(workerDarkColors.successMuted).toContain('0.2')
+    expect(workerDarkColors.textPrimary).toBe('#F3FAF8')
   })
 })

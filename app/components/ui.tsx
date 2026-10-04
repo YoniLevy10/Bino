@@ -544,20 +544,20 @@ const sidebarStyles: Record<string, CSSProperties> = {
     minWidth: 0,
   },
   navLinkActive: {
-    color: '#FFFFFF',
-    background: 'rgba(31, 138, 126, 0.35)',
-    boxShadow: 'inset 0 0 0 1px rgba(213, 239, 234, 0.22)',
+    color: theme.colors.textInverse,
+    background: 'rgba(22, 112, 106, 0.38)',
+    boxShadow: 'inset 0 0 0 1px rgba(201, 228, 223, 0.2)',
   },
   navLinkLocked: {
-    border: '1px dashed rgba(183, 212, 209, 0.35)',
-    background: 'rgba(15, 92, 86, 0.28)',
+    border: '1px dashed rgba(201, 228, 223, 0.28)',
+    background: 'rgba(11, 74, 69, 0.35)',
   },
   navLockBadge: {
     display: 'inline-block',
     marginInlineStart: '6px',
     fontSize: '10px',
     fontWeight: 600,
-    color: '#F6C78A',
+    color: '#E6C48A',
     verticalAlign: 'middle',
   },
   footer: {
@@ -565,20 +565,20 @@ const sidebarStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '12px',
     padding: '16px 12px',
-    borderTop: '1px solid rgba(213, 239, 234, 0.16)',
+    borderTop: '1px solid rgba(201, 228, 223, 0.14)',
     flexShrink: 0,
   },
   footerAvatar: {
     width: '36px',
     height: '36px',
     borderRadius: theme.radius.full,
-    background: 'rgba(31, 138, 126, 0.4)',
+    background: 'rgba(22, 112, 106, 0.4)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#D5EFEA',
+    color: '#C9E4DF',
   },
   footerInfo: {
     flex: 1,
@@ -778,8 +778,8 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   linkActive: {
     color: theme.colors.primary,
-    background: 'rgba(31, 138, 126, 0.14)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
+    background: theme.colors.brandSoft,
+    boxShadow: 'none',
   },
   iconWrap: {
     display: 'flex',
@@ -1482,7 +1482,7 @@ export function Card({
 
 const cardStyles: Record<string, CSSProperties> = {
   container: {
-    borderRadius: theme.radius.xl,
+    borderRadius: theme.radius.lg,
     overflow: 'hidden',
   },
   header: {

@@ -277,7 +277,7 @@ export function WorkerToursPanel({ token, colors, refreshKey = 0 }: WorkerToursP
                   outlineOffset: 0,
                   padding: '10px 12px',
                   fontSize: 14,
-                  background: colors.surface || 'rgba(255,255,255,0.55)',
+                  background: colors.surface || '#F4F7F7',
                   color: colors.textPrimary,
                   fontFamily: 'inherit',
                 }}

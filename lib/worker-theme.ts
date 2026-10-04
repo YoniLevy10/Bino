@@ -1,46 +1,49 @@
 import { theme } from '@/app/components/ui'
 
-/** Light wash — Tide ambient background (matches manager shell). */
-export const WORKER_LIGHT_THEME_COLOR = '#E8EEF0'
-/** Outdoor dark glass surface (higher opacity than manager light materials). */
-export const WORKER_DARK_THEME_COLOR = '#1c1c1e'
+/** Light wash — Tide ambient (matches manager shell). */
+export const WORKER_LIGHT_THEME_COLOR = '#D9E3E5'
+/** Outdoor dark Tide surface. */
+export const WORKER_DARK_THEME_COLOR = '#121C1B'
 
 /**
- * Dark liquid-glass palette for worker portal outdoor use.
- * Tide teal primary — aligned with Penpot Tide v2 preview.
+ * Dark Tide palette for worker portal outdoor use.
+ * Solid materials — no iOS liquid-glass.
  */
 export const workerDarkColors: typeof theme.colors = {
   ...theme.colors,
-  background: '#1c1c1e',
-  surface: 'rgba(44, 44, 46, 0.92)',
-  surfaceElevated: 'rgba(58, 58, 60, 0.95)',
-  surfaceHover: 'rgba(72, 72, 74, 0.9)',
-  surfaceActive: 'rgba(88, 88, 90, 0.9)',
-  muted: 'rgba(58, 58, 60, 0.85)',
-  border: 'rgba(255, 255, 255, 0.14)',
-  borderSubtle: 'rgba(255, 255, 255, 0.08)',
-  borderStrong: 'rgba(255, 255, 255, 0.22)',
-  textPrimary: '#F5F5F7',
-  textSecondary: '#EBEBF5',
-  textMuted: 'rgba(235, 235, 245, 0.6)',
-  textInverse: '#FFFFFF',
-  primary: '#1F8A7E',
-  primaryHover: '#2AA396',
-  primaryActive: '#3BB5A8',
-  primaryMuted: 'rgba(31, 138, 126, 0.28)',
-  primarySubtle: 'rgba(31, 138, 126, 0.38)',
-  primaryText: '#7DD3C7',
-  accent: '#1F8A7E',
-  success: '#30D158',
-  successMuted: 'rgba(48, 209, 88, 0.18)',
-  warning: '#FF9F0A',
-  warningMuted: 'rgba(255, 159, 10, 0.18)',
-  error: '#FF453A',
-  errorMuted: 'rgba(255, 69, 58, 0.18)',
-  info: '#5AC8FA',
-  infoMuted: 'rgba(90, 200, 250, 0.18)',
+  background: '#121C1B',
+  surface: '#1A2726',
+  surfaceElevated: '#1F2E2C',
+  surfaceHover: '#243332',
+  surfaceActive: '#2A3A38',
+  muted: '#1F2A29',
+  border: 'rgba(201, 228, 223, 0.14)',
+  borderSubtle: 'rgba(201, 228, 223, 0.08)',
+  borderStrong: 'rgba(201, 228, 223, 0.22)',
+  textPrimary: '#F3FAF8',
+  textSecondary: '#D5E8E4',
+  textMuted: 'rgba(213, 232, 228, 0.62)',
+  textInverse: '#F3FAF8',
+  primary: '#16706A',
+  primaryHover: '#1C857D',
+  primaryActive: '#23968D',
+  primaryMuted: 'rgba(22, 112, 106, 0.32)',
+  primarySubtle: 'rgba(22, 112, 106, 0.42)',
+  primaryText: '#A8DDD6',
+  accent: '#16706A',
+  success: '#3D9B5F',
+  successMuted: 'rgba(61, 155, 95, 0.2)',
+  warning: '#C9872A',
+  warningMuted: 'rgba(201, 135, 42, 0.2)',
+  error: '#D45A5A',
+  errorMuted: 'rgba(212, 90, 90, 0.2)',
+  info: '#6A9AAB',
+  infoMuted: 'rgba(106, 154, 171, 0.2)',
   overlay: 'rgba(0, 0, 0, 0.55)',
   overlayLight: 'rgba(0, 0, 0, 0.35)',
+  sidebar: '#0A322F',
+  brandSoft: 'rgba(22, 112, 106, 0.35)',
+  sand: '#2A2820',
 }
 
 export const WORKER_DARK_MODE_KEY = 'bamakor_worker_dark_mode'
