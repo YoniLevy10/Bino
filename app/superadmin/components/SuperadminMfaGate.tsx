@@ -257,76 +257,92 @@ export function SuperadminMfaGate({ children }: Props) {
         {phase === 'loading' ? <p className="sa-muted">בודק סשן…</p> : null}
 
         {phase === 'sign_in' ? (
-          <>
-            <form className="sa-lock-form" onSubmit={(e) => void signInWithPassword(e)}>
-              <label className="sa-lock-field">
-                <span>אימייל</span>
+          <div className="sa-lock-stack">
+            <form className="sa-form-stack sa-lock-form" onSubmit={(e) => void signInWithPassword(e)}>
+              <div className="sa-field">
+                <label htmlFor="sa-lock-email">אימייל</label>
                 <input
+                  id="sa-lock-email"
+                  className="sa-input"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="username"
                   required
                 />
-              </label>
-              <label className="sa-lock-field">
-                <span>סיסמה</span>
+              </div>
+              <div className="sa-field">
+                <label htmlFor="sa-lock-password">סיסמה</label>
                 <input
+                  id="sa-lock-password"
+                  className="sa-input"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
                 />
-              </label>
-              <LoadingButton type="submit" loading={busy} className="sa-btn sa-btn-primary">
+              </div>
+              <LoadingButton
+                type="submit"
+                loading={busy}
+                className="sa-btn sa-btn-primary sa-lock-submit"
+                style={{ width: '100%', display: 'flex' }}
+              >
                 התחברות
               </LoadingButton>
             </form>
             <button
               type="button"
-              className="sa-btn sa-btn-ghost"
+              className="sa-btn sa-btn-ghost sa-lock-submit"
               disabled={busy}
               onClick={() => void signInWithGoogle()}
             >
               התחבר עם Google
             </button>
-          </>
+          </div>
         ) : null}
 
         {phase === 'forbidden' ? (
-          <>
+          <div className="sa-lock-stack">
             <p className="sa-banner sa-banner-error">
               החשבון מחובר ({status?.email ?? 'ללא אימייל'}) אינו ברשימת סופר־אדמין.
             </p>
             <p className="sa-muted">
-              הלשוניות (לקוחות, לידים, תפעול…) נשארות אחרי כניסה מורשית + MFA — הן לא נמחקו. החליפו לחשבון מורשה או בקשו להוסיף את המייל ל־allowlist.
+              הלשוניות (לקוחות, לידים, תפעול…) נשארות אחרי כניסה מורשית + MFA — הן לא נמחקו.
+              החליפו לחשבון מורשה או בקשו להוסיף את המייל ל־allowlist.
             </p>
-            <LoadingButton type="button" loading={busy} className="sa-btn sa-btn-primary" onClick={() => void signOut()}>
+            <LoadingButton
+              type="button"
+              loading={busy}
+              className="sa-btn sa-btn-primary sa-lock-submit"
+              style={{ width: '100%', display: 'flex' }}
+              onClick={() => void signOut()}
+            >
               החלף חשבון
             </LoadingButton>
-          </>
+          </div>
         ) : null}
 
         {phase === 'enroll' ? (
-          <>
+          <div className="sa-lock-stack">
             <p className="sa-muted">סרוק את ה-QR באפליקציית Authenticator ואשר בקוד חד-פעמי.</p>
             {totpUri ? (
-              <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
+              <div className="sa-lock-qr">
                 <QRCodeCanvas value={totpUri} size={180} includeMargin />
               </div>
             ) : (
               <p className="sa-muted">מכין גורם TOTP…</p>
             )}
             {totpSecret ? (
-              <p className="sa-muted" style={{ wordBreak: 'break-all', fontSize: 12 }}>
-                מפתח גיבוי: {totpSecret}
-              </p>
+              <p className="sa-muted sa-lock-backup">מפתח גיבוי: {totpSecret}</p>
             ) : null}
-            <form className="sa-lock-form" onSubmit={(e) => void confirmEnroll(e)}>
-              <label className="sa-lock-field">
-                <span>קוד MFA</span>
+            <form className="sa-form-stack sa-lock-form" onSubmit={(e) => void confirmEnroll(e)}>
+              <div className="sa-field">
+                <label htmlFor="sa-lock-enroll-code">קוד MFA</label>
                 <input
+                  id="sa-lock-enroll-code"
+                  className="sa-input"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   value={enrollCode}
@@ -334,21 +350,28 @@ export function SuperadminMfaGate({ children }: Props) {
                   placeholder="000000"
                   required
                 />
-              </label>
-              <LoadingButton type="submit" loading={busy} className="sa-btn sa-btn-primary">
+              </div>
+              <LoadingButton
+                type="submit"
+                loading={busy}
+                className="sa-btn sa-btn-primary sa-lock-submit"
+                style={{ width: '100%', display: 'flex' }}
+              >
                 אשר והפעל MFA
               </LoadingButton>
             </form>
-          </>
+          </div>
         ) : null}
 
         {phase === 'challenge' ? (
-          <>
+          <div className="sa-lock-stack">
             <p className="sa-muted">הזן קוד MFA מהאפליקציה ({status?.email})</p>
-            <form className="sa-lock-form" onSubmit={(e) => void confirmChallenge(e)}>
-              <label className="sa-lock-field">
-                <span>קוד MFA</span>
+            <form className="sa-form-stack sa-lock-form" onSubmit={(e) => void confirmChallenge(e)}>
+              <div className="sa-field">
+                <label htmlFor="sa-lock-challenge-code">קוד MFA</label>
                 <input
+                  id="sa-lock-challenge-code"
+                  className="sa-input"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   value={challengeCode}
@@ -357,27 +380,32 @@ export function SuperadminMfaGate({ children }: Props) {
                   required
                   autoFocus
                 />
-              </label>
-              <LoadingButton type="submit" loading={busy} className="sa-btn sa-btn-primary">
+              </div>
+              <LoadingButton
+                type="submit"
+                loading={busy}
+                className="sa-btn sa-btn-primary sa-lock-submit"
+                style={{ width: '100%', display: 'flex' }}
+              >
                 אימות
               </LoadingButton>
             </form>
             <button
               type="button"
-              className="sa-btn sa-btn-ghost"
+              className="sa-btn sa-btn-ghost sa-lock-submit"
               disabled={busy}
               onClick={() => void startChallenge()}
             >
               קבל אתגר חדש
             </button>
-          </>
+          </div>
         ) : null}
 
         {error ? <div className="sa-banner sa-banner-error">{error}</div> : null}
 
         {phase !== 'sign_in' && phase !== 'loading' ? (
-          <div className="sa-lock-setup" style={{ marginTop: 16 }}>
-            <button type="button" className="sa-btn sa-btn-ghost" onClick={() => void signOut()}>
+          <div className="sa-lock-setup">
+            <button type="button" className="sa-btn sa-btn-ghost sa-lock-submit" onClick={() => void signOut()}>
               יציאה
             </button>
           </div>
@@ -387,6 +415,85 @@ export function SuperadminMfaGate({ children }: Props) {
           <a href="/superadmin/setup">הקמת לקוח חדש</a>
         </div>
       </div>
+
+      {/* Scoped lock-screen layout — survives global label/button quirks on mobile */}
+      <style jsx global>{`
+        .sa-lock-card {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 14px !important;
+          width: 100% !important;
+          max-width: 400px !important;
+          box-sizing: border-box !important;
+        }
+        .sa-lock-stack,
+        .sa-lock-form.sa-form-stack,
+        .sa-lock-card .sa-form-stack {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 12px !important;
+          width: 100% !important;
+          margin: 0 !important;
+        }
+        .sa-lock-card .sa-field {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 6px !important;
+          width: 100% !important;
+        }
+        .sa-lock-card .sa-field > label {
+          display: block !important;
+          width: 100% !important;
+          margin: 0 !important;
+          font-size: 14px !important;
+          font-weight: 600 !important;
+          color: #374151 !important;
+        }
+        .sa-lock-card .sa-field .sa-input,
+        .sa-lock-card input.sa-input {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          min-height: 48px !important;
+          margin: 0 !important;
+          border: 1.5px solid #e5e7eb !important;
+          border-radius: 12px !important;
+          padding: 12px 14px !important;
+          font-size: 16px !important;
+          background: #fff !important;
+          color: #1c2430 !important;
+        }
+        .sa-lock-card .sa-lock-submit,
+        .sa-lock-card .sa-btn {
+          display: flex !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          min-height: 48px !important;
+          justify-content: center !important;
+          align-items: center !important;
+        }
+        .sa-lock-qr {
+          display: flex !important;
+          justify-content: center !important;
+          margin: 4px 0 !important;
+        }
+        .sa-lock-backup {
+          word-break: break-all !important;
+          font-size: 12px !important;
+        }
+        .sa-lock-setup {
+          margin-top: 4px !important;
+          text-align: center !important;
+        }
+        .sa-lock-setup a {
+          font-size: 14px !important;
+          color: #0b3d91 !important;
+        }
+      `}</style>
     </div>
   )
 }

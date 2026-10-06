@@ -937,41 +937,46 @@
 .sa-lock { min-height: 100dvh; display: flex; justify-content: center; padding: 24px 16px; background: #f9fafb; }
 .sa-lock-card { background: #fff; border-radius: 16px; padding: 24px 18px; width: 100%; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,.06); display: flex; flex-direction: column; gap: 12px; }
 .sa-lock-card h1 { margin: 0; font-size: 22px; }
-/* MFA gate forms: labels are inline by default → side-by-side mess on mobile */
-.sa-lock-card form {
+/* MFA lock screen — always stack fields (never side-by-side on mobile) */
+.sa-lock-stack,
+.sa-lock-card .sa-lock-form,
+.sa-lock-card .sa-form-stack {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   width: 100%;
   margin: 0;
 }
-.sa-lock-card label {
+.sa-lock-card .sa-field {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
   width: 100%;
-  font-size: 14px;
-  font-weight: 500;
-  color: #4b5563;
 }
-.sa-lock-card input[type='email'],
-.sa-lock-card input[type='password'],
-.sa-lock-card input[type='text'],
-.sa-lock-card input[inputmode],
-.sa-lock-card input:not([type]) {
+.sa-lock-card .sa-field > label {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+.sa-lock-card .sa-field .sa-input,
+.sa-lock-card input.sa-input {
+  display: block;
   width: 100%;
   box-sizing: border-box;
-  min-height: 44px;
+  min-height: 48px;
   border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
   font-size: 16px;
   background: #fff;
   color: #1c2430;
 }
-.sa-lock-card .sa-btn {
+.sa-lock-card .sa-btn,
+.sa-lock-card .sa-lock-submit {
   width: 100%;
+  box-sizing: border-box;
 }
 .sa-check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: #4b5563; }
 .sa-topbar { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 16px; }
