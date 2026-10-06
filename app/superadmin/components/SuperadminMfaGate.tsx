@@ -258,9 +258,9 @@ export function SuperadminMfaGate({ children }: Props) {
 
         {phase === 'sign_in' ? (
           <>
-            <form onSubmit={(e) => void signInWithPassword(e)}>
-              <label>
-                אימייל
+            <form className="sa-lock-form" onSubmit={(e) => void signInWithPassword(e)}>
+              <label className="sa-lock-field">
+                <span>אימייל</span>
                 <input
                   type="email"
                   value={email}
@@ -269,8 +269,8 @@ export function SuperadminMfaGate({ children }: Props) {
                   required
                 />
               </label>
-              <label>
-                סיסמה
+              <label className="sa-lock-field">
+                <span>סיסמה</span>
                 <input
                   type="password"
                   value={password}
@@ -286,7 +286,6 @@ export function SuperadminMfaGate({ children }: Props) {
             <button
               type="button"
               className="sa-btn sa-btn-ghost"
-              style={{ marginTop: 12, width: '100%' }}
               disabled={busy}
               onClick={() => void signInWithGoogle()}
             >
@@ -321,9 +320,9 @@ export function SuperadminMfaGate({ children }: Props) {
                 מפתח גיבוי: {totpSecret}
               </p>
             ) : null}
-            <form onSubmit={(e) => void confirmEnroll(e)}>
-              <label>
-                קוד MFA
+            <form className="sa-lock-form" onSubmit={(e) => void confirmEnroll(e)}>
+              <label className="sa-lock-field">
+                <span>קוד MFA</span>
                 <input
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -343,9 +342,9 @@ export function SuperadminMfaGate({ children }: Props) {
         {phase === 'challenge' ? (
           <>
             <p className="sa-muted">הזן קוד MFA מהאפליקציה ({status?.email})</p>
-            <form onSubmit={(e) => void confirmChallenge(e)}>
-              <label>
-                קוד MFA
+            <form className="sa-lock-form" onSubmit={(e) => void confirmChallenge(e)}>
+              <label className="sa-lock-field">
+                <span>קוד MFA</span>
                 <input
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -363,7 +362,6 @@ export function SuperadminMfaGate({ children }: Props) {
             <button
               type="button"
               className="sa-btn sa-btn-ghost"
-              style={{ marginTop: 8 }}
               disabled={busy}
               onClick={() => void startChallenge()}
             >
