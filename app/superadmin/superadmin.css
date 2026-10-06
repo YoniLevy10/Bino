@@ -352,8 +352,38 @@
     display: none !important;
   }
 
+  /* Keep top tabs visible on phone — horizontal scroll, not hidden */
   .sa-tab-bar {
-    display: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    margin: 0 0 12px;
+    padding: 4px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+  }
+
+  .sa-tab-bar .sa-tab-btn {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .sa-bottom-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .sa-bottom-nav-btn {
+    flex: 0 0 auto;
+    min-width: 72px;
+    white-space: nowrap;
   }
 
   .sa-ops-main {
@@ -388,7 +418,7 @@
     display: flex !important;
   }
 
-  .sa-tab-bar.sa-desktop-only {
+  .sa-tab-bar {
     display: flex !important;
   }
 }

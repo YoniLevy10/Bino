@@ -299,7 +299,10 @@ export function SuperadminMfaGate({ children }: Props) {
             <p className="sa-banner sa-banner-error">
               החשבון מחובר ({status?.email ?? 'ללא אימייל'}) אינו ברשימת סופר־אדמין.
             </p>
-            <LoadingButton type="button" loading={busy} className="sa-btn sa-btn-ghost" onClick={() => void signOut()}>
+            <p className="sa-muted">
+              הלשוניות (לקוחות, לידים, תפעול…) נשארות אחרי כניסה מורשית + MFA — הן לא נמחקו. החליפו לחשבון מורשה או בקשו להוסיף את המייל ל־allowlist.
+            </p>
+            <LoadingButton type="button" loading={busy} className="sa-btn sa-btn-primary" onClick={() => void signOut()}>
               החלף חשבון
             </LoadingButton>
           </>
