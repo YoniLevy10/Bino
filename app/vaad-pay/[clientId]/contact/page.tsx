@@ -65,7 +65,7 @@ export default async function ClientGrowContactPage({ params }: PageProps) {
 
         <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>טלפון</dt>
         <dd style={{ margin: '0 0 16px' }}>
-          <a href={legalTelHref(cfg.phone)} style={{ color: '#1e40af', fontWeight: 700 }}>
+          <a href={legalTelHref(cfg.phone)} style={{ color: '#007AFF', fontWeight: 700 }}>
             {cfg.phoneDisplay}
           </a>
         </dd>
@@ -77,7 +77,7 @@ export default async function ClientGrowContactPage({ params }: PageProps) {
           <>
             <dt style={{ fontWeight: 700, color: '#64748b', fontSize: 13 }}>מייל</dt>
             <dd style={{ margin: '0 0 16px' }}>
-              <a href={`mailto:${cfg.email}`} style={{ color: '#1e40af', fontWeight: 600 }} dir="ltr">
+              <a href={`mailto:${cfg.email}`} style={{ color: '#007AFF', fontWeight: 600 }} dir="ltr">
                 {cfg.email}
               </a>
             </dd>
@@ -86,10 +86,10 @@ export default async function ClientGrowContactPage({ params }: PageProps) {
       </dl>
 
       <p style={{ marginTop: 28, fontSize: 14 }}>
-        <Link href="/terms" style={{ color: '#1e40af', marginLeft: 12 }}>
+        <Link href="/terms" style={{ color: '#007AFF', marginLeft: 12 }}>
           תקנון
         </Link>
-        <Link href="/privacy" style={{ color: '#1e40af' }}>
+        <Link href="/privacy" style={{ color: '#007AFF' }}>
           מדיניות פרטיות
         </Link>
       </p>

@@ -750,15 +750,21 @@ export function CollectionsBoard() {
         </div>
         <div style={styles.kpiRow}>
           <div style={styles.kpi}>
-            <div style={styles.kpiLabel}>ממתין לתשלום</div>
-            <div style={{ ...styles.kpiValue, color: '#b45309' }}>
+            <div style={styles.kpiLabel}>
+              <span style={styles.kpiDotPending} aria-hidden />
+              ממתין לתשלום
+            </div>
+            <div style={styles.kpiValue}>
               {formatChargeAmountIls(money.outstanding)}
             </div>
             <div style={styles.kpiHint}>{money.open_count} חיובים פתוחים</div>
           </div>
           <div style={styles.kpi}>
-            <div style={styles.kpiLabel}>שולמו</div>
-            <div style={{ ...styles.kpiValue, color: '#15803d' }}>{money.paid_count}</div>
+            <div style={styles.kpiLabel}>
+              <span style={styles.kpiDotPaid} aria-hidden />
+              שולמו
+            </div>
+            <div style={styles.kpiValue}>{money.paid_count}</div>
             <div style={styles.kpiHint}>אישורי תשלום</div>
           </div>
         </div>
@@ -1270,9 +1276,13 @@ const styles: Record<string, CSSProperties> = {
   hero: {
     borderRadius: 18,
     padding: '18px 18px 16px',
-    background: 'linear-gradient(145deg, #0f2744 0%, #1e3a5f 48%, #243b55 100%)',
-    color: '#f8fafc',
-    boxShadow: '0 10px 28px rgba(15, 39, 68, 0.22)',
+    /* Live+ glass summary — soft blue wash, dark readable numbers (no loud blue block) */
+    background:
+      'linear-gradient(155deg, rgba(255,255,255,0.92) 0%, rgba(232,242,255,0.88) 55%, rgba(220,236,255,0.9) 100%)',
+    color: theme.colors.textPrimary,
+    border: '0.5px solid rgba(0, 122, 255, 0.18)',
+    boxShadow:
+      'inset 0 1px 0 rgba(255,255,255,0.95), 0 10px 28px rgba(0, 70, 150, 0.1)',
   },
   heroTop: {
     display: 'flex',
@@ -1284,7 +1294,7 @@ const styles: Record<string, CSSProperties> = {
   heroEyebrow: {
     fontSize: 12,
     fontWeight: 600,
-    opacity: 0.78,
+    color: theme.colors.primary,
     marginBottom: 4,
   },
   heroAmount: {
@@ -1292,16 +1302,17 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 800,
     letterSpacing: '-0.02em',
     lineHeight: 1.1,
+    color: theme.colors.textPrimary,
   },
   heroSub: {
     marginTop: 6,
     fontSize: 13,
-    opacity: 0.8,
+    color: theme.colors.textSecondary,
   },
   refreshBtn: {
-    border: '1px solid rgba(255,255,255,0.28)',
-    background: 'rgba(255,255,255,0.08)',
-    color: '#fff',
+    border: '1px solid rgba(0, 122, 255, 0.22)',
+    background: 'rgba(0, 122, 255, 0.08)',
+    color: theme.colors.primary,
     borderRadius: 10,
     padding: '8px 12px',
     fontSize: 13,
@@ -1314,24 +1325,43 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
   },
   kpi: {
-    background: 'rgba(255,255,255,0.08)',
+    background: 'rgba(255,255,255,0.72)',
+    border: '0.5px solid rgba(0, 60, 140, 0.1)',
     borderRadius: 14,
     padding: '12px 12px 10px',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
   },
   kpiLabel: {
     fontSize: 12,
-    opacity: 0.75,
+    color: theme.colors.textMuted,
     marginBottom: 4,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  kpiDotPending: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    background: '#F59E0B',
+    flexShrink: 0,
+  },
+  kpiDotPaid: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    background: '#34C759',
+    flexShrink: 0,
   },
   kpiValue: {
     fontSize: 20,
     fontWeight: 800,
-    color: '#fff',
+    color: theme.colors.textPrimary,
   },
   kpiHint: {
     marginTop: 4,
     fontSize: 11,
-    opacity: 0.7,
+    color: theme.colors.textMuted,
   },
   primaryActions: {
     display: 'flex',
@@ -1359,8 +1389,8 @@ const styles: Record<string, CSSProperties> = {
     gap: 6,
   },
   statusTabActive: {
-    background: '#1e3a5f',
-    borderColor: '#1e3a5f',
+    background: theme.colors.primary,
+    borderColor: theme.colors.primary,
     color: '#fff',
   },
   statusCount: {

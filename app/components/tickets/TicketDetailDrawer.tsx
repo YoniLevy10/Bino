@@ -8,10 +8,8 @@ import { CollapsibleSection } from '../shared/CollapsibleSection'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
-import { LaunchFixlyBlock } from './LaunchFixlyBlock'
 import { EntityRecommendations } from '@/app/components/recommendations/EntityRecommendations'
 import { MidragSearchPanel, type MidragTicketContext } from '@/app/components/professionals/MidragSearchPanel'
-import { readFixlyMetadata } from '@/lib/fixly-ticket-metadata'
 import { TabBar } from '../ui/TabBar'
 import type {
   TicketDetailAttachment,
@@ -431,14 +429,6 @@ export function TicketDetailDrawer({
 
                   {onTicketForwarded && (
                     <>
-                      <LaunchFixlyBlock
-                        ticketId={selectedTicket.id}
-                        defaultPriority={draftPriority}
-                        fixly={readFixlyMetadata(
-                          (selectedTicket as { ticket_metadata?: unknown }).ticket_metadata
-                        )}
-                        onLaunched={onTicketForwarded}
-                      />
                       <ForwardToProfessionalBlock
                         ticketId={selectedTicket.id}
                         professionals={professionals}

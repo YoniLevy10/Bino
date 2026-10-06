@@ -344,13 +344,6 @@ export const forwardTicketToProfessionalBodySchema = z.object({
   set_status_escort: z.boolean().optional(),
 })
 
-/** הזנקת קריאת Fixly פתוחה (שידור לתפיסה). */
-export const launchFixlyBodySchema = z.object({
-  ticket_id: z.string().uuid(),
-  trade: z.string().min(1).max(80),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-})
-
 export const maintenanceTaskStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'DONE'])
 export const maintenanceTaskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
 

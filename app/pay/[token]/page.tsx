@@ -302,7 +302,7 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'center',
     padding: 20,
     background:
-      'radial-gradient(1200px 500px at 80% -10%, rgba(56,189,248,0.18), transparent 55%), linear-gradient(165deg, #0f2744 0%, #1e3a5f 42%, #e8eef5 42%, #f8fafc 100%)',
+      'radial-gradient(1200px 560px at 85% -12%, rgba(0,122,255,0.28), transparent 55%), linear-gradient(165deg, #0B64D9 0%, #007AFF 40%, #e8eef7 40%, #f8fafc 100%)',
     fontFamily: 'var(--font-heebo), Heebo, Arial, sans-serif',
   },
   card: {
@@ -311,12 +311,12 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 22,
     overflow: 'hidden',
     background: '#fff',
-    boxShadow: '0 18px 50px rgba(15, 39, 68, 0.22)',
+    boxShadow: '0 18px 50px rgba(0, 80, 180, 0.2)',
   },
   heroBand: {
     padding: '28px 24px 22px',
     textAlign: 'center',
-    background: 'linear-gradient(150deg, #0f2744 0%, #1e3a5f 100%)',
+    background: 'linear-gradient(150deg, #0B64D9 0%, #007AFF 100%)',
     color: '#f8fafc',
   },
   body: {
@@ -347,7 +347,7 @@ const styles: Record<string, CSSProperties> = {
     margin: '0 0 8px',
     fontSize: 14,
     fontWeight: 700,
-    color: '#1e3a5f',
+    color: '#007AFF',
     textAlign: 'center',
   },
   brand: {
@@ -440,7 +440,7 @@ const styles: Record<string, CSSProperties> = {
     textAlign: 'center',
   },
   inlineLink: {
-    color: '#1e40af',
+    color: '#007AFF',
     fontWeight: 700,
     textDecoration: 'underline',
   },
@@ -454,7 +454,7 @@ const styles: Record<string, CSSProperties> = {
     display: 'block',
     width: '100%',
     padding: '15px 28px',
-    background: '#1e40af',
+    background: '#007AFF',
     color: '#fff',
     borderRadius: 14,
     fontWeight: 700,

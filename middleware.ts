@@ -145,7 +145,6 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/savings-report/') ||
     pathname.startsWith('/api/webhook/whatsapp') ||
     pathname.startsWith('/api/webhook/grow') ||
-    pathname.startsWith('/api/webhook/fixly') ||
     pathname.startsWith('/api/webhook/document-sign') ||
     pathname === '/api/create-ticket' ||
     pathname.startsWith('/api/create-ticket/') ||

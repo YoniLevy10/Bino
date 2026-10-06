@@ -187,7 +187,7 @@ export function LoginClient() {
           width={88}
           height={88}
           priority
-          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 8px 24px rgba(0, 122, 255, 0.12)' }}
+          style={{ borderRadius: 22, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), 0 8px 24px rgba(0, 122, 255, 0.16)' }}
         />
 
         <div style={{ textAlign: 'center' }}>
@@ -220,7 +220,7 @@ export function LoginClient() {
             flexDirection: 'column',
             gap: 12,
             padding: 20,
-            borderRadius: 28,
+            borderRadius: 22,
             boxSizing: 'border-box',
           }}
         >
@@ -299,7 +299,7 @@ export function LoginClient() {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            color: '#94a3b8',
+            color: '#86868B',
             fontSize: 13,
           }}
         >

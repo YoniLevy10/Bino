@@ -34,7 +34,7 @@ export function VaadPayContent({
           }}
         />
       ) : null}
-      <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: '#1e40af' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: '#007AFF' }}>
         {cfg.businessName}
       </p>
       <h1 style={{ margin: '0 0 16px', fontSize: 30, lineHeight: 1.3 }}>
@@ -83,7 +83,7 @@ export function VaadPayContent({
         <h2 style={{ margin: '0 0 10px', fontSize: 17 }}>יצירת קשר</h2>
         <p style={{ margin: '0 0 6px' }}>
           טלפון:{' '}
-          <a href={legalTelHref(cfg.phone)} style={{ color: '#1e40af', fontWeight: 700 }}>
+          <a href={legalTelHref(cfg.phone)} style={{ color: '#007AFF', fontWeight: 700 }}>
             {cfg.phoneDisplay}
           </a>
         </p>
@@ -91,7 +91,7 @@ export function VaadPayContent({
         {cfg.email ? (
           <p style={{ margin: 0 }}>
             מייל:{' '}
-            <a href={`mailto:${cfg.email}`} dir="ltr" style={{ color: '#1e40af' }}>
+            <a href={`mailto:${cfg.email}`} dir="ltr" style={{ color: '#007AFF' }}>
               {cfg.email}
             </a>
           </p>
@@ -101,13 +101,13 @@ export function VaadPayContent({
       <section style={{ marginBottom: 24 }}>
         <h2 style={{ margin: '0 0 10px', fontSize: 17 }}>מסמכים</h2>
         <p style={{ margin: 0, display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          <Link href={termsHref} style={{ color: '#1e40af', fontWeight: 600 }}>
+          <Link href={termsHref} style={{ color: '#007AFF', fontWeight: 600 }}>
             תקנון (כולל ביטולים)
           </Link>
-          <Link href={privacyHref} style={{ color: '#1e40af', fontWeight: 600 }}>
+          <Link href={privacyHref} style={{ color: '#007AFF', fontWeight: 600 }}>
             מדיניות פרטיות
           </Link>
-          <Link href={contactHref} style={{ color: '#1e40af', fontWeight: 600 }}>
+          <Link href={contactHref} style={{ color: '#007AFF', fontWeight: 600 }}>
             יצירת קשר
           </Link>
         </p>

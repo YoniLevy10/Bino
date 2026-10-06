@@ -2,7 +2,7 @@
  * Buyer fit scoring for BINO sales leads.
  * Prefer organizations that manage multi-site / multi-building operations.
  * Reject solo trades, retail shops, and consumer home-service performers
- * (those belong to Fixly recruitment, not BINO platform sales).
+ * (solo trade recruitment is out of scope for BINO platform sales).
  */
 
 import { BUYER_FIT_WEIGHTS, SEGMENT_MRR_HINT } from '@/lib/sales-leads/config'

@@ -1,4 +1,7 @@
-/** Design tokens — leaf import for pages that only need theme (avoids full ui.tsx graph). */
+/**
+ * Live+ preview — same DNA as production (iOS blue / liquid glass),
+ * with slightly richer wrap tokens for a more designed ambient feel.
+ */
 
 export const theme = {
   colors: {
@@ -18,8 +21,8 @@ export const theme = {
     primary: '#007AFF',
     primaryHover: '#0066E0',
     primaryActive: '#0055C4',
-    primaryMuted: 'rgba(0, 122, 255, 0.12)',
-    primarySubtle: 'rgba(0, 122, 255, 0.18)',
+    primaryMuted: 'rgba(0, 122, 255, 0.14)',
+    primarySubtle: 'rgba(0, 122, 255, 0.22)',
     primaryText: '#007AFF',
     accent: '#007AFF',
     success: '#34C759',
@@ -32,6 +35,10 @@ export const theme = {
     infoMuted: '#E5F2FF',
     overlay: 'rgba(0, 0, 0, 0.4)',
     overlayLight: 'rgba(0, 0, 0, 0.2)',
+    /** Soft blue wash plane (hero / soft chips) — live-adjacent */
+    sidebar: '#0B4F9C',
+    brandSoft: '#E5F2FF',
+    sand: '#FFF4E5',
   },
   radius: {
     xs: '6px',
@@ -71,11 +78,11 @@ export const theme = {
   },
   shadows: {
     none: 'none',
-    xs: '0 1px 2px rgba(0, 0, 0, 0.04)',
-    sm: '0 2px 8px rgba(0, 0, 0, 0.04)',
-    md: '0 4px 12px rgba(0, 0, 0, 0.06)',
-    lg: '0 8px 24px rgba(0, 0, 0, 0.05)',
-    xl: '0 16px 40px rgba(0, 0, 0, 0.08)',
-    focus: '0 0 0 4px rgba(0, 122, 255, 0.18)',
+    xs: '0 1px 2px rgba(0, 40, 100, 0.05)',
+    sm: '0 2px 8px rgba(0, 40, 100, 0.06)',
+    md: '0 4px 14px rgba(0, 40, 100, 0.08)',
+    lg: '0 8px 28px rgba(0, 40, 100, 0.1)',
+    xl: '0 16px 40px rgba(0, 40, 100, 0.12)',
+    focus: '0 0 0 4px rgba(0, 122, 255, 0.2)',
   },
 }

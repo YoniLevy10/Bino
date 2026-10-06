@@ -1,7 +1,7 @@
 /**
  * BINO sales-lead discovery config.
  * Goal: reach ~₪100k MRR by finding buyers who manage multi-building operations —
- * not only classic חברות אחזקה, and not Fixly-style solo trades.
+ * not only classic חברות אחזקה, and not solo trade recruits.
  */
 
 export const DEFAULT_SALES_CITY = 'תל אביב'

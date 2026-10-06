@@ -20,7 +20,7 @@ export const COLLECTION_CHARGE_STATUS_LABELS: Record<CollectionChargeStatus, str
 
 export const COLLECTION_CHARGE_STATUS_COLORS: Record<CollectionChargeStatus, string> = {
   draft: '#64748b',
-  sent: '#2563eb',
+  sent: '#007AFF',
   paid: '#16a34a',
   failed: '#dc2626',
   cancelled: '#94a3b8',

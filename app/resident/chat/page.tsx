@@ -123,9 +123,6 @@ export default function ResidentChatPage() {
                   : `bot-${Date.now()}`,
             })
           }
-          style={{
-            background: 'linear-gradient(180deg, #4cd964 0%, #34C759 46%, #2fb350 100%)',
-          }}
         >
           אישור ופתיחת קריאה
         </ResidentPrimaryButton>

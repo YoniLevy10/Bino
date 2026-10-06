@@ -28,7 +28,7 @@ function formatInline(text: string): ReactNode[] {
             ? href
             : '#'
         nodes.push(
-          <a key={key++} href={safeHref} style={{ color: '#1e40af', fontWeight: 600 }}>
+          <a key={key++} href={safeHref} style={{ color: '#007AFF', fontWeight: 600 }}>
             {m[1]}
           </a>
         )

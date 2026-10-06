@@ -4,14 +4,10 @@ import { verifyCronRequest } from '@/lib/cron-auth'
 import { sendManagerSMS } from '@/lib/sms-send'
 import { getLogger } from '@/lib/logging'
 import { isOutboundMessagingBlocked } from '@/lib/shabbat-messaging-gate'
-import { readFixlyMetadata } from '@/lib/fixly-ticket-metadata'
-
 /** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
 const MAX_FIRST_ALERTS_PER_RUN = 10
 /** Ignore very old open tickets that pre-date SLA tracking. */
 const SLA_TICKET_MAX_AGE_DAYS = 90
-
-const FIXLY_ACTIVE = new Set(['claimed', 'assigned', 'en_route', 'arrived', 'in_progress', 'launched'])
 
 function hoursAgo(ts: string): number {
   const t = new Date(ts).getTime()
@@ -51,18 +47,14 @@ async function sendManagerSlaSms(
 }
 
 /**
- * Progressive alternative path (professional / Fixly) — evidence-based.
+ * Progressive alternative path (professional forward / escort) — evidence-based.
  * PROFESSIONAL_ESCORT status alone is not enough.
  */
 function hasProgressiveAlternative(opts: {
   forwardSmsOk: boolean
   escortLogged: boolean
-  ticketMetadata: unknown
 }): boolean {
-  if (opts.forwardSmsOk || opts.escortLogged) return true
-  const fixly = readFixlyMetadata(opts.ticketMetadata)
-  if (fixly && FIXLY_ACTIVE.has(String(fixly.last_status))) return true
-  return false
+  return opts.forwardSmsOk || opts.escortLogged
 }
 
 export async function GET(req: NextRequest) {
@@ -139,7 +131,6 @@ export async function GET(req: NextRequest) {
         hasProgressiveAlternative({
           forwardSmsOk: forwardOk.has(row.id as string),
           escortLogged: escortLogged.has(row.id as string),
-          ticketMetadata: row.ticket_metadata,
         })
       ) {
         stats.skippedProgressive++

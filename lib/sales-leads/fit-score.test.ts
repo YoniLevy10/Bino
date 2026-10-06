@@ -36,7 +36,7 @@ describe('assessBuyerFit — suitable', () => {
 })
 
 describe('assessBuyerFit — unsuitable (solo trade / retail)', () => {
-  it('rejects Hebrew solo trades (Fixly ICP, not BINO buyers)', () => {
+  it('rejects Hebrew solo trades (not BINO buyers)', () => {
     const a = assessBuyerFit({
       name: 'אינסטלטור דוד כהן',
       phone: '050-1234567',

@@ -1,4 +1,4 @@
-import { theme } from '@/app/components/ui/theme'
+import { theme } from '@/app/components/ui'
 
 /** Light wash — same as manager ambient background. */
 export const WORKER_LIGHT_THEME_COLOR = '#dfe7f2'
@@ -7,7 +7,7 @@ export const WORKER_DARK_THEME_COLOR = '#1c1c1e'
 
 /**
  * Dark liquid-glass palette for worker portal outdoor use.
- * Keeps iOS system blue (#007AFF) — not Tailwind slate/blue-500.
+ * Keeps iOS system blue (#007AFF) — Live+ preview.
  */
 export const workerDarkColors: typeof theme.colors = {
   ...theme.colors,
@@ -41,6 +41,9 @@ export const workerDarkColors: typeof theme.colors = {
   infoMuted: 'rgba(10, 132, 255, 0.18)',
   overlay: 'rgba(0, 0, 0, 0.55)',
   overlayLight: 'rgba(0, 0, 0, 0.35)',
+  sidebar: '#0B4F9C',
+  brandSoft: 'rgba(10, 132, 255, 0.22)',
+  sand: 'rgba(255, 159, 10, 0.18)',
 }
 
 export const WORKER_DARK_MODE_KEY = 'bamakor_worker_dark_mode'

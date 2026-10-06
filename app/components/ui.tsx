@@ -412,7 +412,7 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
 
 const sidebarStyles: Record<string, CSSProperties> = {
   container: {
-    width: '240px',
+    width: '248px',
     padding: '24px 12px',
     position: 'fixed',
     top: 0,
@@ -545,6 +545,8 @@ const sidebarStyles: Record<string, CSSProperties> = {
   },
   navLinkActive: {
     color: theme.colors.primary,
+    background: theme.colors.primaryMuted,
+    boxShadow: 'inset 0 0 0 1px rgba(0, 122, 255, 0.16)',
   },
   navLinkLocked: {
     border: `1px dashed ${theme.colors.borderStrong}`,
@@ -856,7 +858,7 @@ function AppShellInner({
           data-app-main
           style={{
             flex: 1,
-            marginInlineStart: mobile ? 0 : '240px',
+            marginInlineStart: mobile ? 0 : '248px',
             minWidth: 0,
             textAlign: 'right',
               paddingBottom: bottomNav
@@ -1603,10 +1605,10 @@ export function StatusBadge({
   const statusConfig: Record<string, { bg: string; text: string }> = {
     NEW: { bg: theme.colors.warningMuted, text: theme.colors.warning },
     ASSIGNED: { bg: theme.colors.infoMuted, text: theme.colors.info },
-    IN_PROGRESS: { bg: theme.colors.infoMuted, text: theme.colors.info },
+    IN_PROGRESS: { bg: theme.colors.brandSoft, text: theme.colors.accent },
     WAITING_PARTS: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    SITE_TOUR: { bg: '#E0E7FF', text: '#4338CA' },
-    PROFESSIONAL_ESCORT: { bg: '#F3E8FF', text: '#7C3AED' },
+    SITE_TOUR: { bg: theme.colors.brandSoft, text: theme.colors.primary },
+    PROFESSIONAL_ESCORT: { bg: theme.colors.sand, text: theme.colors.primary },
     CLOSED: { bg: theme.colors.successMuted, text: theme.colors.success },
     ACTIVE: { bg: theme.colors.successMuted, text: theme.colors.success },
     INACTIVE: { bg: theme.colors.muted, text: theme.colors.textMuted },
