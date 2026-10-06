@@ -352,8 +352,38 @@
     display: none !important;
   }
 
+  /* Keep top tabs visible on phone — horizontal scroll, not hidden */
   .sa-tab-bar {
-    display: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    margin: 0 0 12px;
+    padding: 4px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+  }
+
+  .sa-tab-bar .sa-tab-btn {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .sa-bottom-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .sa-bottom-nav-btn {
+    flex: 0 0 auto;
+    min-width: 72px;
+    white-space: nowrap;
   }
 
   .sa-ops-main {
@@ -388,7 +418,7 @@
     display: flex !important;
   }
 
-  .sa-tab-bar.sa-desktop-only {
+  .sa-tab-bar {
     display: flex !important;
   }
 }
@@ -907,7 +937,47 @@
 .sa-lock { min-height: 100dvh; display: flex; justify-content: center; padding: 24px 16px; background: #f9fafb; }
 .sa-lock-card { background: #fff; border-radius: 16px; padding: 24px 18px; width: 100%; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,.06); display: flex; flex-direction: column; gap: 12px; }
 .sa-lock-card h1 { margin: 0; font-size: 22px; }
-.sa-lock-card input[type='password'] { min-height: 44px; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; font-size: 16px; }
+/* MFA lock screen — always stack fields (never side-by-side on mobile) */
+.sa-lock-stack,
+.sa-lock-card .sa-lock-form,
+.sa-lock-card .sa-form-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+}
+.sa-lock-card .sa-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+}
+.sa-lock-card .sa-field > label {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+.sa-lock-card .sa-field .sa-input,
+.sa-lock-card input.sa-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  background: #fff;
+  color: #1c2430;
+}
+.sa-lock-card .sa-btn,
+.sa-lock-card .sa-lock-submit {
+  width: 100%;
+  box-sizing: border-box;
+}
 .sa-check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: #4b5563; }
 .sa-topbar { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 16px; }
 .sa-header-title { margin: 0; font-size: 22px; font-weight: 700; }

@@ -12,7 +12,7 @@ const TABS: { id: TabMode; label: string }[] = [
   { id: 'settings', label: 'הגדרות' },
 ]
 
-/** Desktop top tab bar — bottom nav is hidden from 768px up. */
+/** Top tab bar — visible on all viewports (scrollable on phone). */
 export function DesktopTabBar({
   tab,
   opsBadge,
@@ -26,7 +26,7 @@ export function DesktopTabBar({
 }) {
   if (hidden) return null
   return (
-    <nav className="sa-tab-bar sa-desktop-only" aria-label="ניווט Super Admin — דסקטופ">
+    <nav className="sa-tab-bar" aria-label="ניווט Super Admin">
       {TABS.map((item) => (
         <button
           key={item.id}
