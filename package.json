@@ -23,7 +23,8 @@
     "import:residents-sql": "npx tsx scripts/generate-residents-import-sql.ts",
     "demo:opsbrain-user": "npx tsx scripts/ensure-opsbrain-demo-user.ts",
     "load:isolated": "node scripts/load/run.mjs",
-    "load:isolated:guard-test": "vitest run scripts/load/guard.test.mjs"
+    "load:isolated:guard-test": "vitest run scripts/load/guard.test.mjs",
+    "test:bamakor-smoke": "node scripts/agent-bamakor-smoke.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.51.0",

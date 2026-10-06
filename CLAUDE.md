@@ -5,6 +5,25 @@ Multi-tenant SaaS for building maintenance management; SMS via 019SMS, WhatsApp 
 
 ---
 
+## Agent mandatory ops checklist — P0 (ALL agents, EVERY task)
+
+**Hard rule:** no agent may skip this — UI, docs, migrations, perf, sales, or otherwise.
+
+Always-apply Cursor rule (injected every chat): `.cursor/rules/agent-mandatory-ops-checklist.mdc`  
+Playbook: `docs/AGENT_MANDATORY_CHECKLIST.md`  
+Smoke: `npm run test:bamakor-smoke`
+
+Before claiming done:
+
+1. **Profiling** — bound every analysis/query; do not burn agent loops or production time.
+2. **Logs** — after runtime-affecting changes, check Vercel runtime errors for regressions (`CLIENTS_ACTIVE_QUERY_FAILED`, middleware 503, webhook 5xx, etc.).
+3. **Query discipline** — no irrelevant / unbounded live SQL or API sweeps that slow Bamakor.
+4. **Bamakor test gate** — Preview URL alone is **not** enough. Deployable changes must pass smoke against `https://bamakor.vercel.app` **in addition to CI**.
+
+`bamakor.vercel.app` is the agent test environment (live prod alias: browser → 308 `bino.casa`; webhooks/cron stay on alias). Canonical user URLs remain `https://bino.casa`. No load tests / customer writes on Bamakor. No paid Supabase preview branches as fake staging.
+
+---
+
 ## Product differentiation — BINO (Building Intelligence & Operations)
 
 **Hard product rule for all agents:** every product, design, architecture, and engineering decision must strengthen BINO’s differentiation. Do **not** add generic features that only improve ticket CRUD / generic SaaS.
