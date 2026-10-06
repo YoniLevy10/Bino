@@ -3,6 +3,7 @@
 **Origin ראשי (קישורים / SMS / WhatsApp / SEO):** `https://bino.casa`  
 **www:** `https://www.bino.casa` → 308 ל־`bino.casa`  
 **Alias webhook ישן (נשאר פעיל, לא לפרסום):** `https://bamakor.vercel.app` — Meta/Grow שעדיין מצביעים לשם  
+**Agent test gate (סוכנים):** אותו `https://bamakor.vercel.app` — חובת smoke אחרי שינויי קוד (`npm run test:bamakor-smoke`); Preview לבד לא מספיק. ראו `docs/AGENT_MANDATORY_CHECKLIST.md`.  
 **מייל Resend:** `{slug}@bino.casa`
 
 ## למה לא Vercel.app בקישורים
@@ -10,7 +11,7 @@
 כל קישור ציבורי (SMS, WhatsApp, הזמנות, canonical, sitemap) נבנה מ־`NEXT_PUBLIC_APP_URL`.  
 חייב להיות `https://bino.casa` ב-Production — **לא** `*.vercel.app` ולא URL של Preview.
 
-`bamakor.vercel.app` נשאר רק לתאימות webhooks ישנים — לא לפרסום, לא ל-SMS חדש, לא ל-canonical.
+`bamakor.vercel.app` נשאר לתאימות webhooks ישנים **וגם** כשער בדיקה לסוכנים (לא לפרסום, לא ל-SMS חדש, לא ל-canonical למשתמשים).
 
 ב־middleware: ב־Production כל בקשת דפדפן ל־`*.vercel.app` (למשל `bino-…-projects.vercel.app`) מופנית ב־308 ל־`https://bino.casa`, חוץ מ־`/api/webhook/*`, `/api/cron/*`, `/.well-known/*`.  
 כפתור «כניסה למערכת» בנחיתה מצביע ישירות ל־`https://bino.casa/login`.

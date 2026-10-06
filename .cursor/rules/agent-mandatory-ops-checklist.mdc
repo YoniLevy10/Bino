@@ -1,0 +1,109 @@
+---
+description: Mandatory agent ops checklist — profiling, logs, query discipline, Bamakor test gate (always apply)
+alwaysApply: true
+---
+
+# Agent mandatory ops checklist (P0 — every agent, every task)
+
+**Hard rule:** before claiming work done, every agent must walk this checklist — regardless of task type (UI, docs, migrations, perf, sales, etc.). Skipping is not allowed unless the owner explicitly overrides in writing for that turn.
+
+Canonical playbook: `docs/AGENT_MANDATORY_CHECKLIST.md`  
+Smoke runner: `npm run test:bamakor-smoke`
+
+---
+
+## 0) Start-of-task gate (read before coding)
+
+1. Re-read this rule + other always-apply rules (product differentiation, auth middleware, no Supabase preview branches).
+2. State in your plan which north-star / ops risk this change touches (or “none — docs/rules only”).
+3. Prefer the smallest change that proves the outcome. Do **not** start broad audits, full-table scans, or multi-hour analysis loops when a targeted fix/check answers the question.
+
+---
+
+## 1) Profiling — do not burn agent or production time
+
+On **every** meaningful action (query, script, MCP call, deploy verify):
+
+| Do | Do not |
+|----|--------|
+| Bound work: `limit`, time window, single deployment/id, specific path | Open-ended “explore everything” DB/API sweeps |
+| Profile hot paths you change (API latency, N+1, unbounded selects) | Run load tests against `bino.casa` / Bamakor prod |
+| Cap exploratory MCP/SQL to what the task needs | Pull thousands of rows “just to see” |
+| Prefer local unit/e2e + one smoke pass | Re-run the same expensive analysis after a failed attempt without narrowing scope |
+
+**Fail the task** if your own verification introduces production-slowing work (unindexed full scans, repeated EXPLAIN on live, bulk writes, load harness pointed at prod).
+
+---
+
+## 2) Internal logs — prove you did not break the live system
+
+After any change that can affect runtime (code, middleware, API, RLS/GRANTs, webhooks, cron, auth):
+
+1. Check **Vercel runtime errors** for the project (MCP `get_runtime_errors` / CLI logs) in a recent window (e.g. last 30–60m around your deploy/smoke).
+2. Scan for P0 signatures (non-exhaustive):
+   - `CLIENTS_ACTIVE_QUERY_FAILED`
+   - `[middleware] tenant resolution transient failure`
+   - Authenticated routes returning **503** right after login
+   - Spike of **5xx** on `/api/*`, `/login`, `/dashboard`, webhooks
+3. If logs show a new regression attributable to your change → **fix or revert before closing**; do not ship “CI green + preview OK” alone.
+
+Read-only log inspection is required. Do not mute, delete, or “clean” production signal to hide failures.
+
+---
+
+## 3) Query discipline — no irrelevant time-burning queries
+
+- Every SQL / Supabase / PostgREST call must have a **stated purpose** tied to the current task.
+- Default: SELECT only needed columns; use `limit`; filter by `client_id` / primary key / short time range.
+- Forbidden without explicit owner approval: full-table dumps, cross-tenant fan-out, repeated counting of huge tables, write/UPDATE on customer tenants “for testing”.
+- Migrations: put SQL in `supabase/migrations/`; **never** create paid Supabase preview branches (see `no-supabase-preview-branches`).
+- Prefer local Supabase for destructive schema experiments.
+
+---
+
+## 4) Bamakor test environment — Preview alone is NOT enough
+
+**Test / verification host for agents:** `https://bamakor.vercel.app`
+
+| Layer | Required? | Notes |
+|-------|-----------|--------|
+| Local lint / typecheck / unit / relevant e2e | Yes when code changed | Matches CI surface |
+| GitHub CI on the PR | Yes | Must be green or failures explained + fixed |
+| Vercel Preview URL | Optional evidence | **Never** the only proof |
+| **Bamakor smoke** (`npm run test:bamakor-smoke`) | **Yes** after deployable code changes | Agent test gate against live alias |
+
+### What Bamakor means here
+
+- `bamakor.vercel.app` is the **agent test gate** against the live Vercel production deployment alias (webhook/cron passthrough; browser paths 308 → `https://bino.casa`).
+- Canonical product URLs for users/SMS remain `https://bino.casa` (see `docs/DOMAIN.md`).
+- Smoke is **read-only / expected auth failures** — not load testing, not customer data mutation.
+- Do **not** use paid Supabase Branching as a substitute test DB.
+
+### Minimum smoke expectations
+
+Run `npm run test:bamakor-smoke` (or equivalent manual checks documented in the playbook):
+
+1. `GET https://bamakor.vercel.app/login` → **308** to `https://bino.casa/login`
+2. `GET https://bino.casa/login` → **200**
+3. `GET https://bamakor.vercel.app/api/webhook/whatsapp` → **not 5xx** (typically 403 without Meta signature)
+4. `GET https://bamakor.vercel.app/api/cron/health-check` → **401** without secret
+5. Then check Vercel runtime errors (section 2)
+
+Auth/middleware/RLS changes additionally require the login smoke in `.cursor/rules/auth-middleware-login-safety.mdc`.
+
+---
+
+## 5) End-of-task gate (must pass before “done”)
+
+- [ ] Checklist sections 1–4 considered; N/A items explicitly noted with reason
+- [ ] No wasteful unbounded queries / analyses left running
+- [ ] Runtime logs/errors reviewed for regressions when runtime could be affected
+- [ ] CI addressed; Bamakor smoke run for deployable changes
+- [ ] Preview URL (if any) is supplemental evidence only
+- [ ] PR / summary states: smoke result + log check result
+
+---
+
+## Hebrew (owner intent)
+
+כל סוכן — לא משנה מה המשימה — חייב לעבור על רשימת הכללים הזו: לעשות profiling שלא שורף זמן; לבדוק לוגים פנימיים שלא נשבר הייצור; לא להריץ שאילתות לא רלוונטיות שמאיטות; ולא להסתפק ב־Preview — חובה לבדוק מול `https://bamakor.vercel.app` (סביבת בדיקה לסוכנים) בנוסף ל־CI.
