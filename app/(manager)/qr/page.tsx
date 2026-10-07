@@ -151,7 +151,7 @@ export default function QrPage() {
     })
   }
 
-  function downloadQr(projectCode: string) {
+  function downloadQr(projectCode: string, projectName: string) {
     const container = qrRefs.current[projectCode]
     if (!container) return
 
@@ -161,7 +161,8 @@ export default function QrPage() {
     const pngUrl = canvas.toDataURL('image/png')
     const link = document.createElement('a')
     link.href = pngUrl
-    link.download = `${projectCode}-resident-intake-qr.png`
+    const fileName = projectName.replace(/[\\/:*?"<>|]+/g, '').trim() || 'building'
+    link.download = `${fileName}-qr.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -318,11 +319,6 @@ export default function QrPage() {
                       )}
                     </div>
 
-                    <div style={styles.startCodeBox}>
-                      <span style={styles.startCodeLabel}>רישום דיירים</span>
-                      <span style={styles.startCodeValue}>{project.project_code}</span>
-                    </div>
-
                     <div
                       style={{
                         ...styles.qrCardActions,
@@ -341,7 +337,7 @@ export default function QrPage() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => downloadQr(project.project_code)}
+                        onClick={() => downloadQr(project.project_code, project.name)}
                         disabled={inactive}
                       >
                         הורדה
@@ -406,10 +402,6 @@ export default function QrPage() {
 
             <div style={styles.detailSection}>
               <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>קישור רישום</span>
-                <span style={styles.detailCode}>{selectedProject.project_code}</span>
-              </div>
-              <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>כתובת</span>
                 <span style={styles.detailValue}>{selectedProject.address || '-'}</span>
               </div>
@@ -456,7 +448,7 @@ export default function QrPage() {
             <div style={styles.actionButtons}>
               <Button
                 variant="secondary"
-                onClick={() => downloadQr(selectedProject.project_code)}
+                onClick={() => downloadQr(selectedProject.project_code, selectedProject.name)}
                 style={{ flex: 1 }}
               >
                 הורדת QR

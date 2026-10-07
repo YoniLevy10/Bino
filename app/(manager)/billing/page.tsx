@@ -346,7 +346,7 @@ export default function BillingPage() {
                 {!addonsReady ? (
                   <p style={styles.muted}>טוען תוספים...</p>
                 ) : addons.length === 0 ? (
-                  <p style={styles.muted}>אין תוספים במחירון — ודאו שהמיגרציות 046 ו-048 הורצו ב-Supabase.</p>
+                  <p style={styles.muted}>אין תוספים במחירון כרגע.</p>
                 ) : (
                   <p style={styles.note}>
                     {addons.filter((a) => a.enabled).length} מתוך {addons.length} תוספים פעילים בחשבון.

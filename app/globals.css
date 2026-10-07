@@ -311,20 +311,36 @@ select {
 /* WhatsApp inbox — CSS master/detail so mobile layout survives JS hydration timing */
 .wa-inbox-wrap {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) 1fr;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
-  min-height: 480px;
+  height: max(420px, calc(100dvh - 380px));
+  min-height: 0;
+  overflow: hidden;
 }
 
 .wa-inbox-list {
   overflow: auto;
-  max-height: 560px;
+  min-height: 0;
+  height: 100%;
 }
 
 .wa-inbox-thread {
   display: flex;
   flex-direction: column;
-  min-height: 480px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.wa-inbox-messages {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.wa-inbox-compose {
+  flex-shrink: 0;
 }
 
 .wa-inbox-back {
@@ -378,7 +394,9 @@ select {
   .wa-inbox-wrap {
     display: flex;
     flex-direction: column;
+    height: auto;
     min-height: 0;
+    overflow: visible;
   }
 
   .wa-inbox-wrap[data-mobile-pane='list'] .wa-inbox-thread {

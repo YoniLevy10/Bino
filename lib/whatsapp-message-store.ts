@@ -287,6 +287,62 @@ export async function loadWhatsAppThreadForPhone(
 
 const WHATSAPP_SESSION_MS = 24 * 60 * 60 * 1000
 
+export function inboundIsWithinWhatsAppSession(createdAt: string, now = Date.now()): boolean {
+  const ageMs = now - new Date(createdAt).getTime()
+  return Number.isFinite(ageMs) && ageMs >= 0 && ageMs < WHATSAPP_SESSION_MS
+}
+
+async function lastInboundIsWithinSession(
+  admin: SupabaseClient,
+  conversationId: string
+): Promise<boolean> {
+  const { data: lastIn } = await admin
+    .from('whatsapp_messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'in')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return Boolean(
+    lastIn?.created_at && inboundIsWithinWhatsAppSession(lastIn.created_at as string)
+  )
+}
+
+async function hasRecentWhatsAppTicket(
+  admin: SupabaseClient,
+  clientId: string,
+  phone: string
+): Promise<boolean> {
+  const phoneKey = whatsAppConversationPhoneKey(phone)
+  const phoneKeys = [...new Set([phoneKey, phone.trim()].filter(Boolean))]
+  if (phoneKeys.length === 0) return false
+  const sinceIso = new Date(Date.now() - WHATSAPP_SESSION_MS).toISOString()
+  const { data: recentWaTicket } = await admin
+    .from('tickets')
+    .select('id')
+    .eq('client_id', clientId)
+    .in('reporter_phone', phoneKeys)
+    .eq('source', 'whatsapp')
+    .is('deleted_at', null)
+    .gte('created_at', sinceIso)
+    .limit(1)
+    .maybeSingle()
+  return Boolean(recentWaTicket?.id)
+}
+
+/** Session window when the inbox already knows the conversation row. */
+export async function isConversationWithinWhatsAppSession(
+  admin: SupabaseClient,
+  clientId: string,
+  conversationId: string,
+  phone: string
+): Promise<boolean> {
+  if (await lastInboundIsWithinSession(admin, conversationId)) return true
+  return hasRecentWhatsAppTicket(admin, clientId, phone)
+}
+
 /** True if resident messaged within last 24 hours (Meta session window). */
 export async function isWithinWhatsAppSessionWindow(
   admin: SupabaseClient,
@@ -294,41 +350,7 @@ export async function isWithinWhatsAppSessionWindow(
   phone: string
 ): Promise<boolean> {
   const phoneKey = whatsAppConversationPhoneKey(phone)
-  const sinceIso = new Date(Date.now() - WHATSAPP_SESSION_MS).toISOString()
-
   const conversationId = await findConversationIdByPhone(admin, clientId, phoneKey)
-  if (conversationId) {
-    const { data: lastIn } = await admin
-      .from('whatsapp_messages')
-      .select('created_at')
-      .eq('conversation_id', conversationId)
-      .eq('direction', 'in')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (lastIn?.created_at) {
-      const ageMs = Date.now() - new Date(lastIn.created_at as string).getTime()
-      if (ageMs < WHATSAPP_SESSION_MS) return true
-    }
-  }
-
-  // Fallback: resident opened a WhatsApp ticket in the last 24h — free text is allowed on Meta even if inbound log is missing.
-  const phoneKeys =
-    phoneKey === phone.trim() ? [phoneKey] : [phoneKey, phone.trim()].filter(Boolean)
-  for (const key of phoneKeys) {
-    const { data: recentWaTicket } = await admin
-      .from('tickets')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('reporter_phone', key)
-      .eq('source', 'whatsapp')
-      .is('deleted_at', null)
-      .gte('created_at', sinceIso)
-      .limit(1)
-      .maybeSingle()
-    if (recentWaTicket?.id) return true
-  }
-
-  return false
+  if (conversationId && (await lastInboundIsWithinSession(admin, conversationId))) return true
+  return hasRecentWhatsAppTicket(admin, clientId, phone)
 }

@@ -58,3 +58,9 @@ supabase/.temp/
 .agents/
 skills-lock.json
 .env*.local
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+ios/build/
+DerivedData/

@@ -67,7 +67,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         for (const t of (ticketsRes.data || [])) {
           const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects
           const label = `#${t.ticket_number} – ${(t.description || '').slice(0, 60)}`
-          res.push({ id: t.id, label, sub: proj?.name || proj?.project_code || t.status, href: ticketDetailPath(t.id), type: 'ticket' })
+          res.push({ id: t.id, label, sub: proj?.name || t.status, href: ticketDetailPath(t.id), type: 'ticket' })
         }
         for (const r of (residentsRes.data || [])) {
           const sub = [r.phone, r.apartment_number ? `דירה ${r.apartment_number}` : null].filter(Boolean).join(' | ')

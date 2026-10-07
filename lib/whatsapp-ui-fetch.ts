@@ -4,8 +4,12 @@ import {
   FETCH_TIMEOUT_USER_MESSAGE,
 } from '@/lib/fetch-with-timeout'
 
-/** Load inbox / thread history — tolerate slow mobile networks. */
-export const WHATSAPP_READ_TIMEOUT_MS = 25_000
+/**
+ * Load inbox / thread history.
+ * Middleware can sit in a queue for ~20s when several inbox calls overlap;
+ * aborting at 25s drops a thread that the server is about to return.
+ */
+export const WHATSAPP_READ_TIMEOUT_MS = 45_000
 
 /**
  * Send reply / template — server may call Meta twice (template + text fallback).

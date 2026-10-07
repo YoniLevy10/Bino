@@ -7,6 +7,7 @@ import { createProjectBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger, getAuditLogger } from '@/lib/logging'
 import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { nextBmkProjectCode } from '@/lib/project-code'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -84,9 +85,9 @@ export async function POST(req: Request) {
       )
     }
 
+    const requestedCode = sanitizeString(d.project_code || '').toUpperCase()
     const payload: Record<string, unknown> = {
       name: sanitizeString(d.name),
-      project_code: sanitizeString(d.project_code).toUpperCase(),
       address: d.address ? sanitizeString(d.address) || null : null,
       address_en: d.address_en ? sanitizeString(d.address_en) || null : null,
       qr_identifier: d.qr_identifier ? sanitizeString(d.qr_identifier) || null : null,
@@ -98,26 +99,46 @@ export async function POST(req: Request) {
       payload.organization_id = organizationId
     }
 
-    const projectCode = String(payload.project_code || '')
     const projectName = String(payload.name || '')
-    if (!projectName || !projectCode) {
-      return NextResponse.json({ error: 'שם וקוד פרויקט נדרשים', requestId }, { status: 400 })
+    if (!projectName) {
+      return NextResponse.json({ error: 'שם פרויקט נדרש', requestId }, { status: 400 })
     }
-    if (!/^[A-Z0-9_]{2,20}$/.test(projectCode)) {
+    if (requestedCode && !/^[A-Z0-9_]{2,20}$/.test(requestedCode)) {
       return NextResponse.json({ error: 'קוד פרויקט לא תקין', requestId }, { status: 400 })
     }
 
-    const insertPayload = { ...payload, name: projectName, project_code: projectCode }
+    const loadNextCode = async () => {
+      const { data: codeRows, error: codeErr } = await supabase
+        .from('projects')
+        .select('project_code')
+        .eq('client_id', clientId)
+      if (codeErr) throw new Error(codeErr.message)
+      return nextBmkProjectCode((codeRows || []).map((row) => String(row.project_code || '')))
+    }
 
-    const { data: created, error: insErr } = await supabase
-      .from('projects')
-      .insert(insertPayload)
-      .select()
-      .single()
+    let created: { id?: string } | null = null
+    let insErr: { code?: string; message?: string } | null = null
+    let lastAttempt = 0
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      lastAttempt = attempt
+      const projectCode = requestedCode || (await loadNextCode())
+      const insertPayload = { ...payload, name: projectName, project_code: projectCode }
+      const inserted = await supabase.from('projects').insert(insertPayload).select().single()
+      created = inserted.data as { id?: string } | null
+      insErr = inserted.error
+      if (!insErr) break
+      const unique =
+        insErr.code === '23505' || (insErr.message || '').toLowerCase().includes('duplicate key')
+      if (!unique || requestedCode) break
+    }
 
     if (insErr) {
-      logger.error('PROJECT_API', 'Create project failed', new Error(insErr.message), { requestId, clientId })
-      audit.logFailedOperation('CREATE', 'PROJECT', 'unknown', clientId, insErr.message)
+      logger.error('PROJECT_API', 'Create project failed', new Error(insErr.message), {
+        requestId,
+        clientId,
+        attempt: lastAttempt,
+      })
+      audit.logFailedOperation('CREATE', 'PROJECT', 'unknown', clientId, insErr.message || 'insert failed')
       return NextResponse.json({ error: 'Server error', requestId }, { status: 500 })
     }
 

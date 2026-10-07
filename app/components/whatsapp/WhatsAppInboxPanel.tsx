@@ -1,15 +1,17 @@
 'use client'
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
+import { isFetchTimeoutError } from '@/lib/fetch-with-timeout'
+import { whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
 import { toast } from '@/lib/error-handler'
 import { formatWhatsAppInboxDisplayLabel } from '@/lib/whatsapp-inbox-display'
 import {
   buildInboxTemplatePreview,
   inboxTemplateRequiresOpenTicket,
   listInboxReadyTemplates,
+  listInboxUiTemplates,
   type InboxMetaTemplate,
 } from '@/lib/whatsapp-inbox-meta-templates'
 import {
@@ -88,12 +90,19 @@ export function WhatsAppInboxPanel() {
     isLoading: conversationsLoading,
     error: conversationsError,
     invalidate: invalidateConversations,
+    refetch: refetchConversations,
     hasData: conversationsHasData,
   } = useWhatsAppConversations()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const messagesQuery = useWhatsAppMessages(selectedId)
-  const messages = (messagesQuery.data ?? []) as Message[]
+  const messages = (messagesQuery.data?.messages ?? []) as Message[]
+  const [sessionClosedLocally, setSessionClosedLocally] = useState(false)
+  const inSession = sessionClosedLocally ? false : (messagesQuery.data?.inSession ?? true)
+  const inboxContext = messagesQuery.data?.context ?? null
+  const templates = useMemo(() => listInboxUiTemplates(), [])
+  const sessionLoading = Boolean(selectedId) && messagesQuery.isLoading && !messagesQuery.data
+  const contextLoading = sessionLoading
   // Only the initial in-flight load — not background isFetching (avoids eternal "טוען").
   const messagesLoading =
     Boolean(selectedId) &&
@@ -104,18 +113,15 @@ export function WhatsAppInboxPanel() {
   const messagesError =
     messages.length === 0 &&
     (messagesQuery.isError || messagesLoadTimedOut)
-      ? messagesQuery.isError && messagesQuery.error instanceof Error
-        ? messagesQuery.error.message
-        : 'טעינת הודעות נכשלה — נסו שוב'
+      ? messagesQuery.isError && isFetchTimeoutError(messagesQuery.error)
+        ? 'השיחה נטענת לאט. נסו שוב.'
+        : messagesQuery.isError && messagesQuery.error instanceof Error
+          ? messagesQuery.error.message
+          : 'טעינת הודעות נכשלה — נסו שוב'
       : null
 
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
-  const [inSession, setInSession] = useState(true)
-  const [sessionLoading, setSessionLoading] = useState(false)
-  const [templates, setTemplates] = useState<InboxTemplateOption[]>([])
-  const [inboxContext, setInboxContext] = useState<WhatsAppInboxContext | null>(null)
-  const [contextLoading, setContextLoading] = useState(false)
   const [activeQuickAction, setActiveQuickAction] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<string[]>([])
   const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
@@ -124,7 +130,6 @@ export function WhatsAppInboxPanel() {
   const messagesScrollRef = useRef<HTMLDivElement>(null)
 
   const selected = (conversations as Conversation[]).find((c) => c.id === selectedId) ?? null
-  const selectedPhone = selected?.phone ?? null
   const mobilePane = selectedId ? 'thread' : 'list'
   const activeTemplate = templates.find((t) => t.id === activeQuickAction) ?? null
   const readyTemplates = listInboxReadyTemplates(templates)
@@ -157,24 +162,6 @@ export function WhatsAppInboxPanel() {
     }
   }, [useMobileThreadPortal])
 
-  useEffect(() => {
-    if (conversationsError) {
-      toast.error(
-        conversationsError instanceof Error ? conversationsError.message : 'טעינה נכשלה'
-      )
-    }
-  }, [conversationsError])
-
-  useEffect(() => {
-    if (messagesQuery.isError) {
-      toast.error(
-        messagesQuery.error instanceof Error
-          ? messagesQuery.error.message
-          : 'טעינת הודעות נכשלה'
-      )
-    }
-  }, [messagesQuery.isError, messagesQuery.error])
-
   // Belt-and-suspenders: if the request never settles (iOS timer throttle / hung fetch),
   // leave the infinite "טוען הודעות…" state and offer retry.
   useEffect(() => {
@@ -182,7 +169,7 @@ export function WhatsAppInboxPanel() {
       setMessagesLoadTimedOut(false)
       return
     }
-    const t = window.setTimeout(() => setMessagesLoadTimedOut(true), 28_000)
+    const t = window.setTimeout(() => setMessagesLoadTimedOut(true), 50_000)
     return () => window.clearTimeout(t)
   }, [selectedId, messagesLoading])
 
@@ -193,55 +180,19 @@ export function WhatsAppInboxPanel() {
   const refreshMessages = useCallback(async (conversationId: string) => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(conversationId) })
   }, [queryClient])
-
-  const loadSessionStatus = useCallback(async (phone: string) => {
-    setSessionLoading(true)
-    try {
-      const res = await whatsappUiFetch(
-        `/api/whatsapp/session-status?phone=${encodeURIComponent(phone)}`
-      )
-      const json = (await res.json()) as {
-        in_session?: boolean
-        templates?: InboxTemplateOption[]
-        error?: string
-      }
-      if (!res.ok) throw new Error(json.error || 'בדיקה נכשלה')
-      setInSession(json.in_session !== false)
-      setTemplates(json.templates ?? [])
-    } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? `${e.message} — אפשר לנסות לשלוח הודעה בכל זאת`
-          : 'בדיקת חלון 24 שעות נכשלה — אפשר לנסות לשלוח'
-      )
-      // Keep last known inSession/templates — transient network must not block compose.
-    } finally {
-      setSessionLoading(false)
-    }
-  }, [])
-
-  const loadContext = useCallback(async (conversationId: string) => {
-    setContextLoading(true)
-    try {
-      const res = await whatsappUiFetch(
-        `/api/whatsapp/conversation-context?conversation_id=${conversationId}`
-      )
-      const json = (await res.json()) as { context?: WhatsAppInboxContext; error?: string }
-      if (!res.ok) throw new Error(json.error || 'טעינת פרטים נכשלה')
-      setInboxContext(json.context ?? null)
-    } catch {
-      setInboxContext(null)
-    } finally {
-      setContextLoading(false)
-    }
-  }, [])
+  const refreshMessagesRef = useRef(refreshMessages)
+  const refreshConversationsRef = useRef(refreshConversations)
+  refreshMessagesRef.current = refreshMessages
+  refreshConversationsRef.current = refreshConversations
 
   useEffect(() => {
-    if (!selectedId || !selectedPhone) return
+    setSessionClosedLocally(false)
     setActiveQuickAction(null)
     setTemplateParams([])
-    void loadSessionStatus(selectedPhone)
-    void loadContext(selectedId)
+  }, [selectedId])
+
+  useEffect(() => {
+    if (!selectedId) return
 
     const channel = supabase
       .channel(`wa-inbox:${selectedId}`)
@@ -249,8 +200,8 @@ export function WhatsAppInboxPanel() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `conversation_id=eq.${selectedId}` },
         () => {
-          void refreshMessages(selectedId)
-          void refreshConversations()
+          void refreshMessagesRef.current(selectedId)
+          void refreshConversationsRef.current()
         }
       )
       .subscribe()
@@ -258,7 +209,7 @@ export function WhatsAppInboxPanel() {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [selectedId, selectedPhone, refreshMessages, refreshConversations, loadSessionStatus, loadContext])
+  }, [selectedId])
 
   useEffect(() => {
     // Scroll inside the messages pane only — window scrollIntoView breaks iOS portal layout.
@@ -348,7 +299,7 @@ export function WhatsAppInboxPanel() {
       const json = (await res.json()) as { error?: string; code?: string }
       if (!res.ok) {
         if (json.code === 'WA_SESSION_EXPIRED') {
-          setInSession(false)
+          setSessionClosedLocally(true)
 
           const tplRes = await whatsappUiMutate('/api/whatsapp/send-template', {
             method: 'POST',
@@ -544,7 +495,7 @@ export function WhatsAppInboxPanel() {
             </div>
           </div>
         )}
-        <Button onClick={() => void sendReply()} disabled={sending || !reply.trim()}>
+        <Button onClick={() => void sendReply()} disabled={sending || sessionLoading || !reply.trim()}>
           {sending ? 'שולח…' : inSession ? 'שלח הודעה' : 'שלח דרך תבנית Meta'}
         </Button>
         {!inSession && !hasManagerReplyTemplate && (
@@ -641,6 +592,22 @@ export function WhatsAppInboxPanel() {
         <aside className="wa-inbox-list" style={styles.list} aria-label="רשימת דיירים">
           {loading ? (
             <p style={styles.muted}>טוען…</p>
+          ) : conversationsError && conversations.length === 0 ? (
+            <div style={styles.messagesErrorBox}>
+              <p style={styles.messagesErrorText}>
+                {conversationsError instanceof Error
+                  ? conversationsError.message
+                  : 'לא הצלחנו לטעון את השיחות'}
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void refetchConversations()}
+                style={{ alignSelf: 'flex-start' }}
+              >
+                נסו שוב
+              </Button>
+            </div>
           ) : conversations.length === 0 ? (
             <p style={styles.muted}>עדיין אין שיחות — כשדייר/ה יכתוב/תכתוב, השיחה תופיע כאן.</p>
           ) : (
@@ -694,7 +661,8 @@ const styles: Record<string, CSSProperties> = {
   list: {
     borderInlineEnd: `1px solid ${theme.colors.border}`,
     overflow: 'auto',
-    maxHeight: 560,
+    minHeight: 0,
+    height: '100%',
     background: theme.colors.surface,
   },
   listItem: {
@@ -713,7 +681,9 @@ const styles: Record<string, CSSProperties> = {
   thread: {
     display: 'flex',
     flexDirection: 'column',
-    minHeight: 480,
+    minHeight: 0,
+    height: '100%',
+    overflow: 'hidden',
     background: theme.colors.surface,
   },
   threadPortal: {
@@ -766,7 +736,15 @@ const styles: Record<string, CSSProperties> = {
     padding: '3px 10px',
     borderRadius: 999,
   },
-  messages: { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 },
+  messages: {
+    flex: '1 1 0%',
+    overflowY: 'auto',
+    padding: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    minHeight: 0,
+  },
   messagesErrorBox: {
     display: 'flex',
     flexDirection: 'column',
@@ -792,6 +770,7 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
+    flexShrink: 0,
     background: theme.colors.muted,
   },
   composeLabel: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary, display: 'block', marginBottom: 4 },

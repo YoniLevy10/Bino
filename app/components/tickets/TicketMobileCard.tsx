@@ -40,7 +40,7 @@ export function TicketMobileCard({
   selected,
   reporterLabel,
 }: TicketMobileCardProps) {
-  const building = ticket.project_name || ticket.project_code || '—'
+  const building = ticket.project_name || '—'
   const desc = ticket.description?.trim() || 'ללא תיאור'
 
   return (

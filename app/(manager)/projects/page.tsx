@@ -413,8 +413,6 @@ export default function ProjectsPage() {
   function validateForm() {
     const nameError = validateRequired(form.name, 'Project name')
     if (nameError) return nameError.message
-    const codeError = validateRequired(form.project_code, 'Project code')
-    if (codeError) return codeError.message
     if (!clientId) return 'Client ID not found'
     return ''
   }
@@ -431,10 +429,8 @@ export default function ProjectsPage() {
       async () => {
         const payload = {
           name: form.name.trim(),
-          project_code: form.project_code.trim().toUpperCase(),
           address: form.address.trim() || null,
           address_en: form.address_en.trim() || null,
-          qr_identifier: form.qr_identifier.trim() || null,
           is_active: form.is_active,
           client_id: editingProject?.client_id || clientId,
           assigned_worker_id: form.assigned_worker_id.trim() || null,
@@ -449,10 +445,8 @@ export default function ProjectsPage() {
               body: JSON.stringify({
                 project_id: editingProject.id,
                 name: payload.name,
-                project_code: payload.project_code,
                 address: payload.address,
                 address_en: payload.address_en,
-                qr_identifier: payload.qr_identifier,
                 is_active: payload.is_active,
                 assigned_worker_id: payload.assigned_worker_id,
               }),
@@ -470,10 +464,8 @@ export default function ProjectsPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 name: payload.name,
-                project_code: payload.project_code,
                 address: payload.address,
                 address_en: payload.address_en,
-                qr_identifier: payload.qr_identifier,
                 is_active: payload.is_active,
                 assigned_worker_id: payload.assigned_worker_id,
               }),
@@ -727,16 +719,6 @@ export default function ProjectsPage() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.formLabel}>קוד פרויקט *</label>
-            <input
-              value={form.project_code}
-              onChange={(e) => updateForm('project_code', e.target.value.toUpperCase())}
-              placeholder="e.g. PRJ001"
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
             <label style={styles.formLabel}>כתובת (עברית)</label>
             <input
               value={form.address}
@@ -755,17 +737,6 @@ export default function ProjectsPage() {
               style={{ ...styles.input, direction: 'ltr' }}
             />
             <span style={styles.formHint}>אם דיירים שולחים כתובת באנגלית ב-WhatsApp — מלאו כאן</span>
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.formLabel}>מזהה QR</label>
-            <input
-              value={form.qr_identifier}
-              onChange={(e) => updateForm('qr_identifier', e.target.value)}
-              placeholder={`Default: START_${form.project_code || 'CODE'}`}
-              style={styles.input}
-            />
-            <span style={styles.formHint}>השאירו ריק לשימוש בקוד START ברירת מחדל</span>
           </div>
 
           <div style={styles.formGroup}>
@@ -812,7 +783,7 @@ export default function ProjectsPage() {
         open={detailDrawerOpen}
         onClose={closeDetailDrawer}
         title={selectedProject?.name || ''}
-        subtitle={selectedProject?.project_code || selectedProject?.name}
+        subtitle={selectedProject?.address || 'פרטי הבניין'}
         isMobile={isMobile}
       >
         {selectedProject && (
@@ -832,12 +803,6 @@ export default function ProjectsPage() {
                   <span style={{ ...styles.detailValue, direction: 'ltr', textAlign: 'left' }}>{selectedProject.address_en}</span>
                 </div>
               )}
-              <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>קוד התחלה</span>
-                <span style={styles.detailCode}>
-                  {selectedProject.qr_identifier || `START_${selectedProject.project_code}`}
-                </span>
-              </div>
               <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>עובד אחזקה</span>
                 <div style={{ flex: 1, minWidth: 0, maxWidth: '260px' }} onClick={(e) => e.stopPropagation()}>

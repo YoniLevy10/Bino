@@ -364,7 +364,7 @@ export default function DashboardPage() {
                 ticket_id: ticket.id,
                 type: (ticket.status === 'NEW' ? 'created' : 'updated') as ActivityItem['type'],
                 ticket_number: ticket.ticket_number,
-                project_label: ticket.project_name || ticket.project_code || '',
+                project_label: ticket.project_name || '',
                 description: ticket.description,
                 time: formatRelativeTime(ticket.created_at),
               }))
@@ -709,7 +709,7 @@ export default function DashboardPage() {
       if (!ticket || !log.created_at || !log.ticket_id) continue
       const proj = ticket.projects
       const p = Array.isArray(proj) ? proj[0] : proj
-      const project_label = p?.name || p?.project_code || ''
+      const project_label = p?.name || ''
       const at = (log.action_type || '').toUpperCase()
       let type: ActivityItem['type'] = 'updated'
       if (at.includes('CLOSE') || ticket.status === 'CLOSED') type = 'closed'
@@ -1173,7 +1173,7 @@ export default function DashboardPage() {
                     {filteredTickets.map((ticket) => (
                       <tr key={ticket.id} style={styles.tr} onClick={() => openTicket(ticket)}>
                         <td style={styles.td}><span style={styles.ticketNumber}>{ticket.ticket_number}</span></td>
-                        <td style={styles.td}><span style={styles.projectBadge}>{ticket.project_name || ticket.project_code}</span></td>
+                        <td style={styles.td}><span style={styles.projectBadge}>{ticket.project_name || 'בניין'}</span></td>
                         <td style={{ ...styles.td, maxWidth: '300px' }}>
                           <span style={styles.descriptionText}>
                             {ticket.description?.slice(0, 60)}{(ticket.description?.length || 0) > 60 ? '...' : ''}

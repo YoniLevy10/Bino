@@ -104,14 +104,14 @@ export function ShareResidentIntakeLinkModal({
             <option value="">בחרו בניין</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.project_code ? `${p.name} (${p.project_code})` : p.name}
+                {p.name}
               </option>
             ))}
           </select>
         </div>
 
         {selected && !projectCode ? (
-          <p style={styles.warn}>לפרויקט זה חסר קוד בניין — עדכנו אותו בהגדרות הפרויקט.</p>
+          <p style={styles.warn}>לא ניתן לבנות קישור לבניין הזה.</p>
         ) : null}
         {selected && projectCode && !clientId ? (
           <p style={styles.warn}>לא ניתן לזהות את הלקוח — רעננו את העמוד ונסו שוב.</p>

@@ -5,6 +5,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { LoadingButton } from '@/app/components/LoadingButton'
 import { supabase } from '@/lib/supabase'
 import { getClientPublicOrigin } from '@/lib/public-origin'
+import { googleOAuthRedirect, isBinoIosShell, postOAuthURLToNativeShell } from '@/lib/native-shell'
 import { purgeLegacyAdminSecret } from '@/lib/admin-secret-session'
 
 type SessionStatus = {
@@ -103,13 +104,20 @@ export function SuperadminMfaGate({ children }: Props) {
     setBusy(true)
     setError('')
     try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const shell = isBinoIosShell()
+      const { redirectTo, skipBrowserRedirect } = googleOAuthRedirect(
+        '/superadmin',
+        getClientPublicOrigin(),
+        shell,
+      )
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${getClientPublicOrigin()}/auth/callback?next=${encodeURIComponent('/superadmin')}`,
-        },
+        options: { redirectTo, skipBrowserRedirect },
       })
       if (oauthError) throw oauthError
+      if (skipBrowserRedirect && !postOAuthURLToNativeShell(data?.url ?? '')) {
+        throw new Error('לא הצלחנו לפתוח את ההתחברות עם Google')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'התחברות נכשלה')
       setBusy(false)

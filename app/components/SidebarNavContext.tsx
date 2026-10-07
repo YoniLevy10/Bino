@@ -196,16 +196,14 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const skipManagerNav = isWorker || isResident
   const { addons, isBootstrapped: addonsReady } = usePaidAddons()
 
-  const initial = useRef(readInitialNavState()).current
-  const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>(initial.orderIds)
-  const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(
-    initial.enabledFeatures
-  )
-  const [navLabels, setNavLabels] = useState<SidebarNavLabels>(initial.navLabels)
-  const [isBootstrapped, setIsBootstrapped] = useState(initial.isBootstrapped)
+  // First render must match the server. Cache is applied in useLayoutEffect before paint.
+  const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
+  const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(null)
+  const [navLabels, setNavLabels] = useState<SidebarNavLabels>({})
+  const [isBootstrapped, setIsBootstrapped] = useState(false)
 
   const loadGenerationRef = useRef(0)
-  const lastSuccessfulFetchRef = useRef(initial.ts)
+  const lastSuccessfulFetchRef = useRef(0)
   const hasSessionRef = useRef(false)
   const sawInitialSessionRef = useRef(false)
   /** Last known enabled addon keys — never flash to [] while entitlements reload. */
@@ -294,9 +292,9 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         if (generation !== loadGenerationRef.current) return
         const message = e instanceof Error ? e.message : e
         // No session yet (login, public pages, auth still hydrating) is expected.
-        // console.error here opens the Next.js dev overlay on every load.
+        // console.error opens the Next.js dev overlay; a slow nav fetch already falls back.
         if (message !== NAV_AUTH_REQUIRED) {
-          console.error('[SidebarNav] load failed:', message)
+          console.warn('[SidebarNav] load failed:', message)
         }
         if (!hadCachedState) {
           applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {})

@@ -254,7 +254,7 @@ function SettingsPageInner() {
           setGrowWebhookLoadError(null)
         } else {
           setGrowWebhookConfigured(false)
-          setGrowWebhookLoadError(webhookJson.error || 'סוד webhook לא מוגדר בשרת')
+          setGrowWebhookLoadError('חיבור התשלומים בשרת לא הושלם')
         }
 
         const growJson = (await growRes.json().catch(() => ({}))) as {
@@ -284,7 +284,7 @@ function SettingsPageInner() {
       } catch {
         if (!cancelled) {
           setGrowWebhookConfigured(false)
-          setGrowWebhookLoadError('טעינת סטטוס webhook נכשלה')
+          setGrowWebhookLoadError('לא הצלחנו לבדוק את חיבור התשלומים')
           setGrowRegisterReady(false)
           setGrowRegisterWebhookUrl('')
         }
@@ -428,12 +428,12 @@ function SettingsPageInner() {
 
   async function copyGrowRegisterWebhook() {
     if (!growRegisterWebhookUrl) {
-      toast.error('כתובת webhook הרשמה לא זמינה — בדקו הגדרות שרת')
+      toast.error('כתובת ההרשמה לא זמינה. פנו להנהלת Bino.')
       return
     }
     try {
       await navigator.clipboard.writeText(growRegisterWebhookUrl)
-      toast.success('הועתק Webhook הרשמה')
+      toast.success('כתובת ההרשמה הועתקה')
     } catch {
       toast.error('העתקה נכשלה')
     }
@@ -910,7 +910,7 @@ function SettingsPageInner() {
                     <span>שלח SMS בסגירת תקלה</span>
                   </label>
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מספר שולח SMS (019) — אופציונלי</label>
+                    <label style={styles.formLabel}>מספר שולח SMS — אופציונלי</label>
                     <input
                       type="tel"
                       value={smsSenderName}
@@ -921,9 +921,8 @@ function SettingsPageInner() {
                       dir="ltr"
                     />
                     <p style={styles.fieldHint}>
-                      019SMS מקבל רק מספר טלפון מאומת כשולח (למשל 0559899132 / 972559899132). שמות
-                      כמו Bino או מספר שלא אומת ב־019 נכשלים. השאירו ריק לשימוש בשולח ברירת המחדל
-                      של המערכת.
+                      השולח חייב להיות מספר טלפון שאושר לשליחה. שם כמו Bino לא יישלח. השאירו ריק
+                      כדי להשתמש בשולח ברירת המחדל של המערכת.
                     </p>
                     {smsSenderName.trim() &&
                       !/^(\+?972|0)?5\d{8}$/.test(smsSenderName.replace(/[\s-]/g, '')) && (
@@ -1050,7 +1049,7 @@ function SettingsPageInner() {
                       <div>
                         <div style={styles.formLabel}>תבניות הודעות לדיירים</div>
                         <p style={styles.formHint}>
-                          עריכת טקסטים לשלבי onboarding, בחירת בניין, מדיה וסגירה — בדף ייעודי.
+                          עריכת הטקסטים שנשלחים לדיירים — בחירת בניין, מדיה וסגירה — בדף ייעודי.
                         </p>
                       </div>
                       <Link href="/settings/whatsapp-templates" style={styles.waTemplatesLink}>
@@ -1058,7 +1057,7 @@ function SettingsPageInner() {
                       </Link>
                     </div>
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>מספר וואטסאפ לקישורי QR (wa.me)</label>
+                      <label style={styles.formLabel}>מספר וואטסאפ לקישורי QR</label>
                     <input
                       value={waBusinessPhone}
                       onChange={(e) => setWaBusinessPhone(e.target.value)}
@@ -1066,20 +1065,20 @@ function SettingsPageInner() {
                       placeholder="למשל 972501234567 או 050-1234567"
                     />
                     <span style={styles.formHint}>
-                      אם ריק — ייעשה שימוש במספר מנהל או בעובד ברירת מחדל מהתראות. הריצו מיגרציה 023 אם השדה לא קיים.
+                      אם ריק — ייעשה שימוש במספר המנהל או בעובד ברירת המחדל.
                     </span>
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>WhatsApp Phone Number ID</label>
+                    <label style={styles.formLabel}>מזהה מספר בוואטסאפ</label>
                     <input
                       value={waPhoneNumberId}
                       onChange={(e) => setWaPhoneNumberId(e.target.value)}
                       style={styles.input}
-                      placeholder="מזהה מספר מטא"
+                      placeholder="מזהה המספר"
                     />
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>WhatsApp Access Token</label>
+                    <label style={styles.formLabel}>טוקן גישה לוואטסאפ</label>
                     <input
                       type="password"
                       value={waAccessToken}
@@ -1095,7 +1094,7 @@ function SettingsPageInner() {
                     <span style={styles.formHint}>השאירו ריק אם אינכם משנים את הטוקן השמור</span>
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Webhook URL (קריאה בלבד)</label>
+                    <label style={styles.formLabel}>כתובת עדכון לוואטסאפ (קריאה בלבד)</label>
                     <div style={styles.readonlyRow}>
                       <input readOnly value={webhookUrl} style={{ ...styles.input, flex: 1 }} />
                       <Button variant="secondary" type="button" onClick={copyWebhook}>
@@ -1137,26 +1136,25 @@ function SettingsPageInner() {
                   </p>
 
                   <div style={styles.morningSection}>
-                    <div style={styles.morningSectionTitle}>הצטרפות ל-Grow (GetLink)</div>
+                    <div style={styles.morningSectionTitle}>הצטרפות ל-Grow</div>
                     <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
-                      מלאו מספר עוסק ונייד — Bino תפתח קישור הרשמה ב-Grow. אחרי אישור, userId נשמר
-                      אוטומטית דרך Webhook ההרשמה (אם מוגדר אצל Grow לכתובת Bino).
+                      מלאו מספר עוסק ונייד — Bino תפתח קישור הרשמה ב-Grow. אחרי האישור, פרטי החשבון
+                      נשמרים אוטומטית.
                     </p>
                     {growRegisterReady === false ? (
                       <span style={{ ...styles.formHint, color: '#c2410c' }}>
-                        הרשמה אוטומטית לא מוגדרת בשרת — ניתן להדביק userId ידנית למטה, או לפנות להנהלת
-                        Bino להגדרת מפתחות GetLink.
+                        הרשמה אוטומטית לא מוגדרת בשרת. אפשר להדביק את מזהה החשבון למטה, או לפנות להנהלת Bino.
                       </span>
                     ) : null}
                     {growOnboardStatus ? (
                       <span style={styles.formHint}>
                         סטטוס הרשמה:{' '}
                         {growOnboardStatus === 'approved'
-                          ? 'אושר — userId נשמר'
+                          ? 'אושר — המזהה נשמר'
                           : growOnboardStatus === 'pending'
                             ? 'ממתין לאישור Grow'
                             : growOnboardStatus === 'existing'
-                              ? 'עסק קיים — הדביקו userId ידנית או פנו ל-Grow'
+                              ? 'עסק קיים — הדביקו את מזהה החשבון, או פנו ל-Grow'
                               : growOnboardStatus === 'rejected'
                                 ? 'נדחה ב-Grow'
                                 : growOnboardStatus}
@@ -1214,7 +1212,7 @@ function SettingsPageInner() {
                       ) : null}
                     </div>
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Webhook הרשמה ל-Grow (להעתקה)</label>
+                      <label style={styles.formLabel}>כתובת לעדכון הרשמה ב-Grow</label>
                       <div style={styles.readonlyRow}>
                         <input
                           readOnly
@@ -1237,7 +1235,7 @@ function SettingsPageInner() {
                         </Button>
                       </div>
                       <span style={styles.formHint}>
-                        זו הכתובת לשלוח ל-Grow לחיווי על הקמת לקוח (לא webhook התשלום).
+                        זו הכתובת שמעבירים ל-Grow כדי שיעדכנו שהחשבון נפתח.
                       </span>
                     </div>
                   </div>
@@ -1253,7 +1251,7 @@ function SettingsPageInner() {
                   </label>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מזהה לקוח Grow (userId)</label>
+                    <label style={styles.formLabel}>מזהה חשבון ב-Grow</label>
                     <input
                       value={growUserId}
                       onChange={(e) => setGrowUserId(e.target.value)}
@@ -1263,20 +1261,20 @@ function SettingsPageInner() {
                       dir="ltr"
                     />
                     <span style={styles.formHint}>
-                      בלי userId אי אפשר לשלוח דרישות תשלום. המזהה שייך לחשבון שלכם בלבד.
+                      בלי המזהה אי אפשר לשלוח דרישות תשלום. המזהה שייך לחשבון שלכם בלבד.
                     </span>
                   </div>
 
                   <div style={styles.morningSection}>
                     <div style={styles.morningSectionTitle}>סטטוס מערכת</div>
                     <p style={{ margin: 0, fontSize: 13, color: theme.colors.textSecondary, lineHeight: 1.55 }}>
-                      Bino יוצרת דרישת תשלום ב-Grow ושולחת לדייר קישור /pay. סטטוס «שולם» מתעדכן
-                      אוטומטית — אין צורך להדביק webhook ב-Grow.
+                      Bino יוצרת דרישת תשלום ב-Grow ושולחת לדייר קישור לתשלום. סטטוס «שולם» מתעדכן
+                      אוטומטית.
                     </p>
                     {growWebhookConfigured === false ? (
                       <span style={{ ...styles.formHint, color: '#c2410c' }}>
                         {growWebhookLoadError ||
-                          'חסר סוד webhook בשרת — פנו להנהלת Bino לפני שליחת חיובים.'}
+                          'חיבור התשלומים בשרת לא הושלם. פנו להנהלת Bino לפני שליחת חיובים.'}
                       </span>
                     ) : growWebhookConfigured === true ? (
                       <span style={styles.formHint}>חיבור השרת ל-Grow מוכן לקבלת סטטוס תשלום.</span>

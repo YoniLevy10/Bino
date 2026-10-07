@@ -91,6 +91,8 @@ import {
   reporterDisplayNameForNotification,
 } from '@/lib/residents-whatsapp'
 import { isWhatsAppAiIntakeEnabled } from '@/lib/whatsapp-ai'
+import { isClientWhatsAppAiChatEnabled } from '@/lib/whatsapp-ai-chat/gate'
+import { runClientWhatsAppAiChat } from '@/lib/whatsapp-ai-chat/run'
 import { runUnknownResidentAiIntake } from '@/lib/whatsapp-webhook/ai-unknown-resident-intake'
 import { translateToHebrew } from '@/lib/google-translate'
 
@@ -1350,6 +1352,37 @@ export async function runWhatsAppInboundBackground(
       } catch { /* WA send failure is non-fatal */ }
 
       return
+    }
+
+    // Opt-in chatbot for one new tenant. Master env + client row both default off,
+    // so every live number keeps the flow below. Any failure falls through.
+    let clientAiChatOn = false
+    try {
+      clientAiChatOn = await isClientWhatsAppAiChatEnabled(supabaseAdmin, webhookClientId)
+    } catch (chatGateErr) {
+      logger.warn('WEBHOOK', 'WhatsApp AI chat gate failed; using existing flow', {
+        err: chatGateErr instanceof Error ? chatGateErr.message : String(chatGateErr),
+      })
+    }
+    if (clientAiChatOn) {
+      try {
+        const chatResult = await runClientWhatsAppAiChat({
+          supabaseAdmin,
+          clientId: webhookClientId,
+          from,
+          textBody,
+          waCreds: residentWhatsAppCreds,
+        })
+        if (chatResult.kind === 'handled') return
+        if (chatResult.kind === 'open_ticket') {
+          openTicketAfterBuildingSearch = chatResult.description
+          residentLang = chatResult.language
+        }
+      } catch (chatErr) {
+        logger.warn('WEBHOOK', 'WhatsApp AI chat failed; using existing flow', {
+          err: chatErr instanceof Error ? chatErr.message : String(chatErr),
+        })
+      }
     }
 
     const ticketPriority = resolveTicketPriorityFromResidentMessage(textBody)

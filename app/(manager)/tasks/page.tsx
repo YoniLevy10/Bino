@@ -478,7 +478,7 @@ export default function TasksPage() {
       {isMobile && (
         <MobileHeader
           title="משימות"
-          subtitle="רשימת משימות אחזקה"
+          subtitle="רשימת משימות כללית"
           onMenuClick={openMenu}
         />
       )}
@@ -489,7 +489,7 @@ export default function TasksPage() {
         {!isMobile && (
           <PageHeader
             title="משימות"
-            subtitle="רשימת משימות אחזקה — כמו todo"
+            subtitle="רשימת משימות כללית"
             actions={createBtn}
           />
         )}

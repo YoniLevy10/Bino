@@ -1617,7 +1617,7 @@ export default function TicketsPage() {
                         <PriorityDot priority={ticket.priority || 'LOW'} />
                       </td>
                       <td style={styles.td}>
-                        <span style={styles.projectBadge}>{ticket.project_name || ticket.project_code}</span>
+                        <span style={styles.projectBadge}>{ticket.project_name || 'בניין'}</span>
                       </td>
                       <td style={{ ...styles.td, maxWidth: '350px' }}>
                         <span style={styles.descriptionText}>

@@ -202,7 +202,7 @@ export function CollectionsBoard() {
         body.message ||
           (body.ready
             ? 'החשבון מוכן לגבייה.'
-            : 'חסר חיבור Grow. פתחו חשבון והדביקו userId בהגדרות.')
+            : 'חסר חיבור ל-Grow. פתחו חשבון והדביקו את מזהה החשבון בהגדרות.')
       )
     } catch {
       // Soft-fail: board can still show charges; avoid timeout toast spam.
@@ -716,7 +716,7 @@ export function CollectionsBoard() {
           <div style={styles.alertTitle}>חסר חשבון Grow</div>
           <p style={styles.alertText}>
             {accountMessage ||
-              'פתחו חשבון ב-Grow, הדביקו את ה-userId בהגדרות והפעילו חיבור. הכסף נכנס לחשבון שלכם.'}
+              'פתחו חשבון ב-Grow, הדביקו את מזהה החשבון בהגדרות והפעילו את החיבור. הכסף נכנס לחשבון שלכם.'}
           </p>
           <Link href="/settings?tab=grow">
             <Button>להגדרת החשבון</Button>

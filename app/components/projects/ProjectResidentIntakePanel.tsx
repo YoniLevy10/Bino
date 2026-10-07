@@ -100,9 +100,7 @@ export function ProjectResidentIntakePanel({ projectCode, clientId, projectName 
         <p style={styles.hint}>קישור קצר לשליחה לקבוצת הוואטסאפ של הבניין.</p>
       </div>
 
-      <div style={styles.linkBox} dir="ltr">
-        {intakeUrl}
-      </div>
+      <p style={styles.hint}>הקישור מוכן. העתיקו אותו ושלחו לדיירים.</p>
 
       <label style={styles.label} htmlFor={`intake-share-${projectCode}`}>
         הודעה לשליחה

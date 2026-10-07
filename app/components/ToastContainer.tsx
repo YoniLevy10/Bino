@@ -98,7 +98,15 @@ export const ToastContainer = () => {
   React.useEffect(() => {
     registerToastHandler({
       show: (toast: Toast) => {
-        setToasts((prev) => [...prev, toast])
+        setToasts((prev) => {
+          if (
+            toast.type === 'error' &&
+            prev.some((item) => item.type === 'error' && item.message === toast.message)
+          ) {
+            return prev
+          }
+          return [...prev, toast]
+        })
 
         if (toast.duration && toast.duration > 0) {
           setTimeout(() => {

@@ -124,7 +124,7 @@ function AddonsPageInner() {
 
   useEffect(() => {
     if (searchParams.get('blocked') === '1') {
-      toast.info(`פיצ'ר בתשלום. ליצירת קשר: הנהלת ${BINO_BRAND}.`)
+      toast.info(`תוסף בתשלום. ליצירת קשר: הנהלת ${BINO_BRAND}.`)
     }
   }, [searchParams])
 
@@ -178,8 +178,7 @@ function AddonsPageInner() {
         ) : catalogMissing ? (
           <Card>
             <p style={styles.muted}>
-              מערכת התוספים טרם הופעלה בשרת. הריצו מיגרציות <code>046_paid_addons.sql</code>,
-              <code>048_worker_stamp_paid_addon.sql</code> ו-<code>050_paid_addons_full_catalog.sql</code>.
+              התוספים אינם זמינים כרגע. פנו להנהלת {BINO_BRAND}.
             </p>
           </Card>
         ) : addons.length === 0 ? (

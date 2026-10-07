@@ -105,6 +105,25 @@ export function inboxTemplateRequiresOpenTicket(templateId: string): boolean {
   return templateId === 'sla_escalation'
 }
 
+export type InboxUiTemplate = {
+  id: string
+  label: string
+  description: string
+  params: InboxMetaTemplateParam[]
+  preview: string
+}
+
+/** Catalog fields the inbox UI needs. Meta name resolution stays on the server. */
+export function listInboxUiTemplates(): InboxUiTemplate[] {
+  return WHATSAPP_INBOX_META_TEMPLATES.map(({ id, label, description, params, preview }) => ({
+    id,
+    label,
+    description,
+    params,
+    preview,
+  }))
+}
+
 /** Ready-message chips — catalog-driven, not a hardcoded subset. */
 export function listInboxReadyTemplates<T extends { id: string }>(templates: T[]): T[] {
   return templates.filter((t) => !isInboxComposeTemplate(t.id))

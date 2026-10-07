@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { getClientPublicOrigin } from '@/lib/public-origin'
+import { googleOAuthRedirect, isBinoIosShell, postOAuthURLToNativeShell } from '@/lib/native-shell'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
 import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant-access'
@@ -94,15 +95,25 @@ export function LoginClient() {
       clearTenantBrowserCaches()
       const next =
         redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const shell = isBinoIosShell()
+      const { redirectTo: oauthRedirect, skipBrowserRedirect } = googleOAuthRedirect(
+        next,
+        getClientPublicOrigin(),
+        shell,
+      )
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           // Explicit next keeps post-login landings stable; callback attaches cookies
           // onto the redirect response (see app/auth/callback/route.ts).
-          redirectTo: `${getClientPublicOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo: oauthRedirect,
+          skipBrowserRedirect,
         },
       })
       if (oauthError) throw oauthError
+      if (skipBrowserRedirect && !postOAuthURLToNativeShell(data?.url ?? '')) {
+        throw new Error('לא הצלחנו לפתוח את ההתחברות עם Google')
+      }
     } catch (err) {
       const msg =
         err && typeof err === 'object' && 'message' in err

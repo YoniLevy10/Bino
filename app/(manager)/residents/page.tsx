@@ -904,10 +904,7 @@ function ResidentsPageInner() {
         }}
       >
         {!isMobile && (
-          <PageHeader
-            title="דיירים"
-            subtitle="ניהול שמות דיירים לפי בניין (לאחר הרצת מיגרציה ב-Supabase)"
-          />
+          <PageHeader title="דיירים" subtitle="נתוני דיירים" />
         )}
 
         <Card noPadding>
@@ -1027,7 +1024,7 @@ function ResidentsPageInner() {
               <option value="ALL">כל הבניינים</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.project_code ? `${p.name} (${p.project_code})` : p.name}
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -1058,13 +1055,9 @@ function ResidentsPageInner() {
               <div style={styles.intakeBarText}>
                 <span style={styles.intakeBarLabel}>קישור רישום · {selectedIntake.name}</span>
                 {selectedIntake.url ? (
-                  <span style={styles.intakeBarUrl} dir="ltr">{selectedIntake.url}</span>
+                  <span style={styles.intakeBarUrl}>הקישור מוכן להעתקה ולשליחה לדיירים.</span>
                 ) : (
-                  <span style={styles.intakeBarUrl}>
-                    {selectedIntake.missingCode
-                      ? 'לבניין הזה חסר קוד — עדכנו אותו במסך הבניינים.'
-                      : 'לא ניתן לבנות קישור. רעננו את העמוד.'}
-                  </span>
+                  <span style={styles.intakeBarUrl}>לא ניתן לבנות קישור לבניין הזה.</span>
                 )}
               </div>
               <Button

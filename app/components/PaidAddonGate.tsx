@@ -24,7 +24,7 @@ export function PaidAddonGate({ addonKey, children }: Props) {
     return (
       <Card>
         <p style={styles.text}>
-          מערכת התוספים בתשלום טרם הופעלה בשרת. הריצו מיגרציה <code>046_paid_addons.sql</code> ב-Supabase.
+          התוספים אינם זמינים כרגע. פנו לתמיכה.
         </p>
       </Card>
     )

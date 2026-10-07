@@ -192,7 +192,7 @@ export const translateTicketBodySchema = z.object({
 export const createProjectBodySchema = z.object({
   organization_id: z.string().uuid().optional(),
   name: z.string().min(1).max(200),
-  project_code: z.string().min(1).max(40),
+  project_code: z.string().max(40).optional(),
   address: z.string().max(500).nullable().optional(),
   address_en: z.string().max(500).nullable().optional(),
   qr_identifier: z.string().max(200).nullable().optional(),

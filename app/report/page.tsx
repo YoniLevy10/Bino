@@ -115,13 +115,13 @@ function ReportPageContent() {
             const res = await fetchWithTimeout(url.toString())
             if (!res.ok) {
               const j = await res.json().catch(() => ({}))
-              throw new Error((j as { error?: string }).error || 'Failed to load buildings')
+              throw new Error((j as { error?: string }).error || 'טעינת הבניינים נכשלה')
             }
             const j = (await res.json()) as { projects?: ProjectRow[] }
             setProjects(j.projects || [])
           },
           {
-            context: 'Failed to load buildings',
+            context: 'טעינת הבניינים',
             showErrorToast: true,
           }
         )
@@ -171,20 +171,20 @@ function ReportPageContent() {
 
     // Validate file count
     if (selectedFiles.length + files.length > MAX_FILES) {
-      setImageUploadError(`Maximum ${MAX_FILES} files allowed`)
+      setImageUploadError(`אפשר להעלות עד ${MAX_FILES} קבצים`)
       return
     }
 
     // Validate each file
     for (const file of files) {
       if (!SUPPORTED_MIME_TYPES.includes(file.type as (typeof SUPPORTED_MIME_TYPES)[number])) {
-        setImageUploadError('Only JPG, PNG, WebP images and MP4/WebM videos are supported')
+        setImageUploadError('אפשר להעלות תמונות JPG, PNG או WebP, וסרטוני MP4 או WebM')
         return
       }
       const maxSize = file.type.startsWith('video/') ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
       if (file.size > maxSize) {
         const maxMb = Math.round(maxSize / (1024 * 1024))
-        setImageUploadError(`File "${file.name}" is too large (max ${maxMb}MB)`)
+        setImageUploadError(`הקובץ "${file.name}" גדול מדי (עד ${maxMb}MB)`)
         return
       }
     }
@@ -280,7 +280,7 @@ function ReportPageContent() {
   const brandName = branding?.name?.trim() || 'Bino'
 
   return (
-    <main style={styles.page}>
+    <main style={styles.page} dir="rtl">
       <div style={styles.wrapper}>
         <div style={styles.brandRow}>
           {/* Prefer clients.logo_url; otherwise platform Bino icon. */}
@@ -292,27 +292,27 @@ function ReportPageContent() {
           />
           <div>
             <div style={styles.brandTitle}>{brandName}</div>
-            <div style={styles.brandSubtitle}>Maintenance Report Form</div>
+            <div style={styles.brandSubtitle}>דיווח תקלה</div>
           </div>
         </div>
 
         <div style={styles.card}>
           <div style={styles.headerBlock}>
-            <h1 style={styles.title}>Report an Issue</h1>
+            <h1 style={styles.title}>דיווח תקלה</h1>
             <p style={styles.subtitle}>
-              Fill in the details below and we will forward the issue for treatment.
+              מלאו את הפרטים, והפנייה תועבר לטיפול.
             </p>
           </div>
 
           {paramProjectCode && selectedProject ? (
             <div style={styles.projectInfo}>
-              <span style={styles.projectLabel}>Building</span>
+              <span style={styles.projectLabel}>בניין</span>
               <span style={styles.projectValue}>{selectedProject.name}</span>
             </div>
           ) : (
             <div style={styles.field}>
               <label htmlFor="buildingSearch" style={styles.label}>
-                Search Building
+                חיפוש בניין
               </label>
               {loadingProjects && effectiveClientId ? (
                 <div style={{ padding: '12px 0', color: '#6B7280', fontSize: '14px' }} aria-busy>
@@ -329,13 +329,13 @@ function ReportPageContent() {
                     setShowDropdown(true)
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  placeholder="Type building name or address (min 2 characters)"
+                  placeholder="שם הבניין או הכתובת"
                   style={styles.input}
                 />
                 {showDropdown && searchInput.trim().length >= 2 && (
                   <div style={styles.dropdown}>
                     {searchResults.length === 0 ? (
-                      <div style={styles.dropdownItem}>No buildings found</div>
+                      <div style={styles.dropdownItem}>לא נמצאו בניינים</div>
                     ) : (
                       searchResults.slice(0, 5).map((project) => (
                         <button
@@ -349,19 +349,18 @@ function ReportPageContent() {
                           style={styles.dropdownItem}
                         >
                           <div style={styles.dropdownItemName}>{project.name}</div>
-                          <div style={styles.dropdownItemCode}>{project.project_code}</div>
                         </button>
                       ))
                     )}
                   </div>
                 )}
                 {searchInput.trim().length >= 2 && searchResults.length === 1 && (
-                  <div style={styles.autoSelectNote}>Auto-selected: {searchResults[0].name}</div>
+                  <div style={styles.autoSelectNote}>נבחר: {searchResults[0].name}</div>
                 )}
               </div>
               {selectedProjectCode && !paramProjectCode && (
                 <div style={styles.selectedLabel}>
-                  Selected: <strong>{selectedProject?.name || 'בניין נבחר'}</strong>
+                  נבחר: <strong>{selectedProject?.name || 'בניין נבחר'}</strong>
                 </div>
               )}
             </div>
@@ -369,7 +368,7 @@ function ReportPageContent() {
 
           {!selectedProjectCode && !paramProjectCode && searchInput.trim().length === 0 && (
             <div style={styles.infoBox}>
-              Start typing the building name or address to search.
+              התחילו להקליד שם בניין או כתובת.
             </div>
           )}
 
@@ -377,35 +376,34 @@ function ReportPageContent() {
           {errorMessage && <div style={styles.errorBox}>{errorMessage}</div>}
           {!effectiveClientId && (
             <div style={styles.errorBox} role="alert">
-              Open this page from your building QR link. The link must include a tenant id (
-              <code style={{ fontSize: 12 }}>?client=…</code>).
+              פתחו את הדף מהקישור של הבניין. הקישור שקיבלתם מחברת הניהול כולל את פרטי הבניין.
             </div>
           )}
 
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.field}>
               <label htmlFor="reporterName" style={styles.label}>
-                Your Name (optional)
+                השם שלכם (לא חובה)
               </label>
               <input
                 id="reporterName"
                 type="text"
                 value={reporterName}
                 onChange={(e) => setReporterName(e.target.value)}
-                placeholder="Enter your name"
+                placeholder="השם המלא"
                 style={styles.input}
               />
             </div>
 
             <div style={styles.field}>
               <label htmlFor="description" style={styles.label}>
-                Issue Description
+                תיאור התקלה
               </label>
               <textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Example: Water leak near the elevator / electrical issue / broken door..."
+                placeholder="למשל: נזילה ליד המעלית, תקלה בחשמל, דלת שבורה"
                 style={styles.textarea}
                 rows={6}
               />
@@ -413,11 +411,10 @@ function ReportPageContent() {
 
             <div style={styles.field}>
               <label htmlFor="images" style={styles.label}>
-                Upload Photos or Videos (optional)
+                תמונות או סרטונים (לא חובה)
               </label>
               <p style={styles.fieldHint}>
-                Upload up to {MAX_FILES} files to help describe the issue. Photos max 5MB, videos max
-                15MB (MP4/WebM).
+                עד {MAX_FILES} קבצים. תמונה עד 5MB, סרטון עד 15MB.
               </p>
               <input
                 id="images"
@@ -469,17 +466,17 @@ function ReportPageContent() {
                 cursor: !canSubmit || loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Submitting...' : 'Submit Issue'}
+              {loading ? 'שולחים...' : 'שליחת הדיווח'}
             </button>
           </form>
 
           <div style={styles.footerNote}>
-            After submitting, the issue will be recorded in the {brandName} system.
+            אחרי השליחה, התקלה נרשמת במערכת של {brandName}.
           </div>
 
           <div style={styles.backRow}>
             <Link href="/dashboard" style={styles.backLink}>
-              Back to Dashboard
+              חזרה ללוח הבקרה
             </Link>
           </div>
         </div>

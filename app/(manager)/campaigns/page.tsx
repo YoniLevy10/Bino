@@ -94,7 +94,7 @@ function CampaignPanel({ projectId, projectName }: { projectId: string; projectN
   }
 
   async function send() {
-    if (!window.confirm(`לשלוח SMS לדיירי "${projectName}"?\n\nללא אימוג'י — 019SMS.`)) return
+    if (!window.confirm(`לשלוח SMS לדיירי "${projectName}"?\n\nבלי אימוג'י.`)) return
     setSending(true)
     try {
       const res = await fetchWithTimeout('/api/sms/campaigns', {
@@ -148,7 +148,7 @@ function CampaignPanel({ projectId, projectName }: { projectId: string; projectN
   }
 
   return (
-    <Card title="קמפיין SMS" subtitle="הודעה חופשית לכל דיירי הבניין (019SMS — ללא אימוג'י)">
+    <Card title="קמפיין SMS" subtitle="הודעה חופשית לכל דיירי הבניין. בלי אימוג'י.">
       <div style={styles.field}>
         <label htmlFor="campaign-name" style={styles.label}>שם קמפיין</label>
         <input id="campaign-name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} />
@@ -305,9 +305,9 @@ function WaBroadcastPanel({ projectId, projectName }: { projectId: string; proje
   }
 
   return (
-    <Card title="תפוצת WhatsApp" subtitle="תבנית Utility מאושרת ב-Meta — דורש תוסף תיבת WhatsApp">
+    <Card title="תפוצת וואטסאפ" subtitle="הודעת שירות לדיירי הבניין. דורש את תוסף תיבת הוואטסאפ.">
       <p style={styles.policyNote}>
-        שליחה רק בתבניות Utility מאושרות. אין לשלוח הודעות שיווקיות ללא הסכמת דיירים.
+        שליחה רק בהודעות שירות שאושרו. אין לשלוח פרסום בלי הסכמת הדיירים.
         {WHATSAPP_COEXISTENCE_NOTE ? ` ${WHATSAPP_COEXISTENCE_NOTE}` : ''}
       </p>
 
@@ -358,7 +358,7 @@ function WaBroadcastPanel({ projectId, projectName }: { projectId: string; proje
               checked={ackPolicy}
               onChange={(e) => setAckPolicy(e.target.checked)}
             />
-            <span>אני מאשר/ת שליחה לפי מדיניות WhatsApp Business (Utility בלבד, ללא ספאם)</span>
+            <span>אני מאשר/ת שזו הודעת שירות לדיירים, לא פרסום</span>
           </label>
 
           <div style={styles.actions}>
@@ -389,7 +389,7 @@ function CampaignsPageInner() {
       addonKey={PAID_ADDON_KEYS.campaigns}
       title="קמפיינים"
       mobileSubtitle="SMS ו-WhatsApp לדיירי בניין"
-      desktopSubtitle="SMS חופשי (019) ותפוצת WhatsApp בתבניות Meta"
+      desktopSubtitle="הודעות SMS ווואטסאפ לדיירי הבניין"
     >
       <AddonProjectPicker emptyHint="הוסיפו בניין בדף פרויקטים כדי לשלוח קמפיין.">
         {(project) => (

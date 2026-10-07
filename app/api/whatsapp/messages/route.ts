@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { loadWhatsAppInboxContext } from '@/lib/whatsapp-inbox-context'
 import {
+  isConversationWithinWhatsAppSession,
   listWhatsAppMessagesForConversation,
   loadWhatsAppThreadForPhone,
   whatsAppConversationPhoneKey,
@@ -40,12 +42,42 @@ export async function GET(req: Request) {
       if (!parsed.success) {
         return NextResponse.json({ error: 'מזהה שיחה לא תקין' }, { status: 400 })
       }
-      const messages = await listWhatsAppMessagesForConversation(
-        admin,
-        auth.ctx.clientId,
-        parsed.data
-      )
-      return NextResponse.json({ messages, conversation_id: parsed.data })
+      const [messages, convRes] = await Promise.all([
+        listWhatsAppMessagesForConversation(admin, auth.ctx.clientId, parsed.data),
+        admin
+          .from('whatsapp_conversations')
+          .select('phone, resident_id')
+          .eq('id', parsed.data)
+          .eq('client_id', auth.ctx.clientId)
+          .maybeSingle(),
+      ])
+      const conv = convRes.data as { phone?: string; resident_id?: string | null } | null
+      if (convRes.error || !conv?.phone) {
+        return NextResponse.json({
+          messages,
+          conversation_id: parsed.data,
+          in_session: false,
+          context: null,
+        })
+      }
+      const [inSession, context] = await Promise.all([
+        isConversationWithinWhatsAppSession(
+          admin,
+          auth.ctx.clientId,
+          parsed.data,
+          conv.phone
+        ).catch(() => false),
+        loadWhatsAppInboxContext(admin, auth.ctx.clientId, {
+          phone: conv.phone,
+          residentId: conv.resident_id,
+        }).catch(() => null),
+      ])
+      return NextResponse.json({
+        messages,
+        conversation_id: parsed.data,
+        in_session: inSession,
+        context,
+      })
     }
     const thread = await loadWhatsAppThreadForPhone(
       admin,

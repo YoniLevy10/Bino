@@ -370,7 +370,7 @@ export function ImportResidentsModal({
                         <td style={styles.td}>
                           {singleProjectId
                             ? projects.find((p) => p.id === singleProjectId)?.name || ''
-                            : r.project_name || r.project_code || ''}
+                            : r.project_name || ''}
                         </td>
                       </tr>
                     ))}

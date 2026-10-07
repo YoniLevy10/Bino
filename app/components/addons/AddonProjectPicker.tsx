@@ -137,7 +137,7 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
             value={selected.id}
             onChange={handleSelect}
             options={projects.map((p) => ({
-              label: `${p.name} (${p.project_code})`,
+              label: p.name,
               value: p.id,
             }))}
             style={{ flex: 1, minWidth: 200 }}

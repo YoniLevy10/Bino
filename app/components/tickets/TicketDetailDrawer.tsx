@@ -236,7 +236,7 @@ export function TicketDetailDrawer({
       open={!!selectedTicket}
       onClose={onClose}
       title={`תקלה #${selectedTicket?.ticket_number}`}
-      subtitle={selectedTicket?.project_name || selectedTicket?.project_code || 'פרטי בניין'}
+      subtitle={selectedTicket?.project_name || 'פרטי בניין'}
       isMobile={isMobile}
       footer={
         selectedTicket && activeTab === 'details' ? (
@@ -337,7 +337,13 @@ export function TicketDetailDrawer({
               <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
                 <div style={styles.drawerSection}>
                   <div style={styles.drawerLabel}>מדווח</div>
-                  <div style={styles.drawerValue}>{reporterLabel || '—'}</div>
+                  {selectedTicket.reporter_phone ? (
+                    <a href={`tel:${selectedTicket.reporter_phone}`} style={styles.phoneLink}>
+                      {reporterLabel || selectedTicket.reporter_phone}
+                    </a>
+                  ) : (
+                    <div style={styles.drawerValue}>{reporterLabel || '—'}</div>
+                  )}
                 </div>
                 <div style={styles.drawerSection}>
                   <div style={styles.drawerLabel}>נוצר</div>
@@ -354,15 +360,6 @@ export function TicketDetailDrawer({
                   </div>
                 </div>
               </div>
-
-              {selectedTicket.reporter_phone && (
-                <div style={styles.drawerSection}>
-                  <div style={styles.drawerLabel}>טלפון מדווח</div>
-                  <a href={`tel:${selectedTicket.reporter_phone}`} style={styles.phoneLink}>
-                    {reporterLabel || selectedTicket.reporter_phone}
-                  </a>
-                </div>
-              )}
 
               {showAttachmentsBlock && (
                 <div style={styles.drawerSection}>

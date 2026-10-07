@@ -80,7 +80,7 @@ export function ProjectAdvancedActions({
     const rows: MenuRow[] = [
       {
         id: 'resident_join',
-        label: 'קישור לדיירים',
+        label: 'קישור אזור אישי לדיירים',
         onClick: () => setView('resident_join'),
       },
       {
@@ -89,15 +89,6 @@ export function ProjectAdvancedActions({
         onClick: () => setView('resident_intake'),
       },
     ]
-    if (isBootstrapped && hasAddon(PAID_ADDON_KEYS.pilot_sms)) {
-      rows.push({
-        id: 'pilot_sms',
-        label: 'שליחת SMS לדיירים',
-        onClick: () => {
-          router.push(`/pilot-sms?project=${encodeURIComponent(projectId)}`)
-        },
-      })
-    }
     if (isBootstrapped && hasAddon(PAID_ADDON_KEYS.project_documents)) {
       rows.push({
         id: 'project_documents',
@@ -178,7 +169,7 @@ export function ProjectAdvancedActions({
   }
 
   if (view !== 'menu') {
-    const title = view === 'resident_join' ? 'קישור לדיירים' : 'סקר רישום דיירים'
+    const title = view === 'resident_join' ? 'קישור אזור אישי לדיירים' : 'סקר רישום דיירים'
     return (
       <div style={styles.wrap}>
         <button type="button" style={styles.backBtn} onClick={() => setView('menu')}>

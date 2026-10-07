@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from './ui'
 import { toast } from '@/lib/error-handler'
@@ -12,6 +12,8 @@ import {
   subscribeManagerPush,
   syncManagerPushIfGranted,
 } from '@/lib/manager-push-client'
+
+const PUSH_BANNER_DISMISS_KEY = 'bino_manager_push_banner_dismissed'
 
 function shouldSkipManagerPushUi(pathname: string | null): boolean {
   if (!pathname) return true
@@ -41,6 +43,25 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(PUSH_BANNER_DISMISS_KEY) === '1') setDismissed(true)
+    } catch {
+      // Private mode can block sessionStorage; the banner stays until this view unmounts.
+    }
+  }, [])
+
+  function dismissBanner() {
+    try {
+      sessionStorage.setItem(PUSH_BANNER_DISMISS_KEY, '1')
+    } catch {
+      // Ignore storage failures and still hide for this view.
+    }
+    setDismissed(true)
+  }
 
   const refreshState = useCallback(async () => {
     if (skip) {
@@ -76,7 +97,7 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
     }
   }
 
-  if (skip || checking || !visible) return null
+  if (skip || checking || !visible || dismissed) return null
 
   const blocked = getManagerPushBlockedReason()
   const unsupported = !isManagerPushSupported()
@@ -93,10 +114,24 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
         direction: 'rtl',
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, marginBottom: '6px' }}>
-        קבלו התראה על תקלה חדשה
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, flex: 1, minWidth: 0 }}>
+          קבלו התראה על תקלה חדשה
+        </div>
+        <button
+          type="button"
+          aria-label={collapsed ? 'הצג' : 'הסתר'}
+          onClick={() => setCollapsed((value) => !value)}
+          style={bannerIconButton(colors)}
+        >
+          {collapsed ? '▼' : '▲'}
+        </button>
+        <button type="button" aria-label="סגור" onClick={dismissBanner} style={bannerIconButton(colors)}>
+          ×
+        </button>
       </div>
-      <p style={{ fontSize: '13px', color: colors.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
+      {!collapsed ? (
+      <p style={{ fontSize: '13px', color: colors.textSecondary, margin: '8px 0 12px', lineHeight: 1.5 }}>
         {blocked
           ? blocked
           : unsupported
@@ -105,7 +140,8 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
               ? 'ההתראות חסומות. פתחו הגדרות המכשיר והפעילו התראות עבור Bino.'
               : 'כשנפתחת תקלה חדשה תקבלו התראה בטלפון — גם כשהאפליקציה סגורה.'}
       </p>
-      {!unsupported && !denied && !blocked ? (
+      ) : null}
+      {!collapsed && !unsupported && !denied && !blocked ? (
         <button
           type="button"
           onClick={() => void enable()}
@@ -127,6 +163,23 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
       ) : null}
     </div>
   )
+}
+
+function bannerIconButton(colors: typeof theme.colors): CSSProperties {
+  return {
+    width: 32,
+    height: 32,
+    flexShrink: 0,
+    borderRadius: 8,
+    border: `1px solid ${colors.primary}`,
+    background: 'transparent',
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: 700,
+    lineHeight: 1,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  }
 }
 
 /** Background sync of push subscription + navigate on notification open. */

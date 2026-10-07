@@ -713,8 +713,7 @@ export default function SummaryPage() {
 
   function buildTicketExportRows(list: TicketRow[]) {
     return list.map((t) => ({
-      פרויקט: t.project_name || t.project_code || '',
-      'קוד פרויקט': t.project_code || '',
+      פרויקט: t.project_name || '',
       '#': t.ticket_number,
       'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
       'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
@@ -847,7 +846,6 @@ export default function SummaryPage() {
 
       const projectRows = projectStats.map((p) => ({
         פרויקט: p.name,
-        'קוד פרויקט': p.project_code,
         'סה״כ תקלות': p.total,
         פתוחות: p.open,
         בטיפול: p.assigned,
@@ -1138,7 +1136,6 @@ export default function SummaryPage() {
                         <h3 style={styles.historyGroupTitle}>{group.projectName}</h3>
                         <p style={styles.historyGroupMeta}>
                           {group.tickets.length} תקלות סגורות
-                          {group.projectCode ? ` · ${group.projectCode}` : ''}
                         </p>
                       </div>
                       <Button
@@ -1310,7 +1307,7 @@ export default function SummaryPage() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                         <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                          #{t.ticket_number} · {t.project_name || t.project_code}
+                          #{t.ticket_number} · {t.project_name || 'בניין'}
                         </div>
                         <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>
                           {ticketStatusLabelHe(t.status)}

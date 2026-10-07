@@ -28,13 +28,15 @@ function gatewayModelId(envOverride: string | undefined, fallback: string): stri
 }
 
 export function resolveWhatsAppAiModel(
-  kind: 'rewrite' | 'intake' = 'rewrite'
+  kind: 'rewrite' | 'intake' | 'chat' = 'rewrite'
 ): { model: LanguageModel; route: AiRoute; modelId: string } | null {
   if (!hasAiGatewayAuth()) return null
   const envKey =
-    kind === 'intake'
-      ? process.env.WHATSAPP_AI_INTAKE_MODEL || process.env.WHATSAPP_AI_MODEL
-      : process.env.WHATSAPP_AI_MODEL
+    kind === 'chat'
+      ? process.env.WHATSAPP_AI_CHAT_MODEL || process.env.WHATSAPP_AI_MODEL
+      : kind === 'intake'
+        ? process.env.WHATSAPP_AI_INTAKE_MODEL || process.env.WHATSAPP_AI_MODEL
+        : process.env.WHATSAPP_AI_MODEL
   const modelId = gatewayModelId(envKey, DEFAULT_GATEWAY_MODEL)
   return { model: modelId, route: 'gateway', modelId }
 }

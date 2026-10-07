@@ -388,8 +388,7 @@ export default function ProfessionalsPage() {
         {tableMissing && (
           <Card>
             <p style={styles.migrationHint}>
-              טבלת אנשי המקצוע עדיין לא הופעלה ב-Supabase. הריצו את המיגרציה{' '}
-              <code style={styles.code}>045_professionals.sql</code> ב-SQL Editor.
+              פנקס אנשי המקצוע אינו זמין כרגע. פנו לתמיכה.
             </p>
           </Card>
         )}

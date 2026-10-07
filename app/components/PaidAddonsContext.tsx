@@ -110,11 +110,11 @@ export function PaidAddonsProvider({ children }: { children: ReactNode }) {
   const isWorker = isWorkerPortalPath(pathname)
   const isResident = isResidentPortalPath(pathname)
   const skipManagerAddons = isWorker || isResident
-  const initial = useRef(readInitialAddonsState()).current
-  const [isBootstrapped, setIsBootstrapped] = useState(initial.isBootstrapped)
-  const [catalogMissing, setCatalogMissing] = useState(initial.catalogMissing)
-  const [addons, setAddons] = useState<AddonEntitlement[]>(initial.addons)
-  const lastNetworkFetchRef = useRef(initial.ts)
+  // First render must match the server. Cache is applied in useLayoutEffect before paint.
+  const [isBootstrapped, setIsBootstrapped] = useState(false)
+  const [catalogMissing, setCatalogMissing] = useState(false)
+  const [addons, setAddons] = useState<AddonEntitlement[]>([])
+  const lastNetworkFetchRef = useRef(0)
 
   const load = useCallback(async (opts?: LoadOptions) => {
     try {
