@@ -4,13 +4,14 @@ import { sanitizeId } from '@/lib/api-validation'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { clientHasPaidAddon, PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
+import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
 
 function getRequestIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
 }
 
 const WORKER_OPEN_TICKETS_SELECT =
-  'id, ticket_number, description, status, created_at, priority, reporter_phone, reporter_name, building_number, projects(name, address, address_en)'
+  'id, ticket_number, description, status, created_at, priority, reporter_phone, reporter_name, project_id, building_number, projects(name, address, address_en)'
 
 /**
  * Single round-trip for field portal open: worker profile + open tickets + stamp flag.
@@ -66,7 +67,11 @@ export async function GET(req: NextRequest) {
       logo_url: client?.logo_url?.trim() || null,
       worker_stamp_enabled: workerStampEnabled,
       can_mark_professional_escort: worker.can_mark_professional_escort === true,
-      tickets: ticketsResult.data || [],
+      tickets: await attachSavedResidentNames(
+        admin,
+        worker.client_id,
+        ticketsResult.data || []
+      ),
     })
   } catch {
     return NextResponse.json({ error: 'לא נמצא' }, { status: 404 })

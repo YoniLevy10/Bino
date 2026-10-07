@@ -3,6 +3,7 @@ import {
   createWorkbook,
   downloadExcelWorkbook,
 } from '@/lib/excel-workbook'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import { ticketHistoryExportFilename } from '@/lib/export-filename'
 
 export type ClosedTicketExportRow = {
@@ -36,7 +37,7 @@ export function buildClosedTicketExcelRows(tickets: ClosedTicketExportRow[]) {
     תיאור: t.description || '',
     סטטוס: 'סגור',
     עדיפות: PRIORITY_LABEL_HE[(t.priority || 'MEDIUM').toUpperCase()] || (t.priority || ''),
-    מדווח: t.reporter_name || t.reporter_phone || '',
+    מדווח: formatReporterNameAndPhone(t.reporter_name, t.reporter_phone),
   }))
 }
 

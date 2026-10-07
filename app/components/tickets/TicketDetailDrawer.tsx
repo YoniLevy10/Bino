@@ -10,6 +10,13 @@ import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
 import { EntityRecommendations } from '@/app/components/recommendations/EntityRecommendations'
 import { MidragSearchPanel, type MidragTicketContext } from '@/app/components/professionals/MidragSearchPanel'
+import { supabase } from '@/lib/supabase'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
+import {
+  formatReporterNameAndPhone,
+  normalizeReporterPhone,
+  savedResidentDisplayName,
+} from '@/lib/reporter-display'
 import { TabBar } from '../ui/TabBar'
 import type {
   TicketDetailAttachment,
@@ -115,6 +122,8 @@ export function TicketDetailDrawer({
   const [internalTranslation, setInternalTranslation] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [lookedUpName, setLookedUpName] = useState<string | null>(null)
+  const tenantFromSession = useTenantClientId()
 
   useEffect(() => {
     setActiveTab('details')
@@ -122,6 +131,49 @@ export function TicketDetailDrawer({
     setAdvancedOpen(false)
     setHistoryOpen(false)
   }, [selectedTicket?.id])
+
+  const storedReporterName = reporterName || selectedTicket?.reporter_name
+  const reporterClientId = _tenantClientId || selectedTicket?.client_id || tenantFromSession.data || null
+
+  useEffect(() => {
+    const known = savedResidentDisplayName(storedReporterName)
+    setLookedUpName(known)
+    const phone = selectedTicket?.reporter_phone?.trim() || ''
+    if (!selectedTicket || !phone || known || !reporterClientId) return
+
+    let cancelled = false
+    const normalized = normalizeReporterPhone(phone)
+    void supabase
+      .from('residents')
+      .select('full_name, project_id')
+      .eq('client_id', reporterClientId)
+      .eq('normalized_phone', normalized)
+      .is('deleted_at', null)
+      .limit(8)
+      .then(({ data }) => {
+        if (cancelled) return
+        const rows = (data || []) as { full_name: string; project_id: string | null }[]
+        const named = rows.filter((row) => savedResidentDisplayName(row.full_name))
+        const match =
+          named.find((row) => selectedTicket.project_id && row.project_id === selectedTicket.project_id) ||
+          named[0]
+        setLookedUpName(match ? savedResidentDisplayName(match.full_name) : null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    selectedTicket?.id,
+    selectedTicket?.reporter_phone,
+    selectedTicket?.project_id,
+    storedReporterName,
+    reporterClientId,
+  ])
+
+  const reporterLabel = selectedTicket
+    ? formatReporterNameAndPhone(lookedUpName || storedReporterName, selectedTicket.reporter_phone)
+    : ''
 
   const translation = descriptionTranslation || internalTranslation
   const showRecover =
@@ -285,9 +337,7 @@ export function TicketDetailDrawer({
               <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
                 <div style={styles.drawerSection}>
                   <div style={styles.drawerLabel}>מדווח</div>
-                  <div style={styles.drawerValue}>
-                    {reporterName || selectedTicket.reporter_name || selectedTicket.reporter_phone || '—'}
-                  </div>
+                  <div style={styles.drawerValue}>{reporterLabel || '—'}</div>
                 </div>
                 <div style={styles.drawerSection}>
                   <div style={styles.drawerLabel}>נוצר</div>
@@ -309,7 +359,7 @@ export function TicketDetailDrawer({
                 <div style={styles.drawerSection}>
                   <div style={styles.drawerLabel}>טלפון מדווח</div>
                   <a href={`tel:${selectedTicket.reporter_phone}`} style={styles.phoneLink}>
-                    {selectedTicket.reporter_phone}
+                    {reporterLabel || selectedTicket.reporter_phone}
                   </a>
                 </div>
               )}

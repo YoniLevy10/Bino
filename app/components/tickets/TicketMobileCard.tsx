@@ -20,6 +20,7 @@ type TicketMobileCardProps = {
   workerName?: string
   onClick: () => void
   selected?: boolean
+  reporterLabel?: string | null
 }
 
 function formatRelativeAge(createdAt?: string): string {
@@ -37,6 +38,7 @@ export function TicketMobileCard({
   workerName = 'לא משויך',
   onClick,
   selected,
+  reporterLabel,
 }: TicketMobileCardProps) {
   const building = ticket.project_name || ticket.project_code || '—'
   const desc = ticket.description?.trim() || 'ללא תיאור'
@@ -59,6 +61,7 @@ export function TicketMobileCard({
         </div>
       </div>
       <div style={styles.building}>{building}</div>
+      {reporterLabel ? <div style={styles.reporter}>{reporterLabel}</div> : null}
       <div style={styles.description}>{desc}</div>
       <div style={styles.meta}>
         <span>{workerName}</span>
@@ -109,6 +112,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 600,
     color: theme.colors.textSecondary,
+  },
+  reporter: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
   },
   description: {
     fontSize: '14px',

@@ -32,8 +32,10 @@ describe('residentPromptGreetingPrefix', () => {
 })
 
 describe('reporterDisplayNameForNotification', () => {
-  it('shows resident name when known', () => {
-    expect(reporterDisplayNameForNotification('972501234567', 'יוני לוי')).toBe('יוני לוי')
+  it('shows resident name and phone when known', () => {
+    expect(reporterDisplayNameForNotification('972501234567', 'יוני לוי')).toBe(
+      'יוני לוי 972501234567'
+    )
   })
 
   it('falls back to phone when name unknown', () => {

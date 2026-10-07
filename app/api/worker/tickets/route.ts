@@ -5,6 +5,7 @@ import { workerUpdateTicketBodySchema } from '@/lib/api-body-schemas'
 import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { isWorkerSettableStatus } from '@/lib/ticket-status'
+import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const { data: tickets, error } = await admin
       .from('tickets')
       .select(
-        'id, ticket_number, description, status, created_at, priority, reporter_phone, reporter_name, building_number, projects(name, address, address_en)'
+        'id, ticket_number, description, status, created_at, priority, reporter_phone, reporter_name, project_id, building_number, projects(name, address, address_en)'
       )
       .eq('client_id', worker.client_id)
       .eq('assigned_worker_id', worker.id)
@@ -30,7 +31,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
     }
 
-    return NextResponse.json({ tickets: tickets || [], full_name: worker.full_name })
+    const named = await attachSavedResidentNames(admin, worker.client_id, tickets || [])
+    return NextResponse.json({ tickets: named, full_name: worker.full_name })
   } catch {
     return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
   }

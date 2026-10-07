@@ -6,6 +6,7 @@ import { isTicketStatus, ticketStatusLabelHe, type TicketStatus } from '@/lib/ti
 import { formatRelativeTimeHe } from '@/lib/relative-time-he'
 import { telHref, wazeHref } from '@/lib/contact-links'
 import { toast } from '@/lib/error-handler'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 
 export type WorkerTicketCardTicket = {
   id: string
@@ -111,6 +112,7 @@ export function WorkerTicketCard({
   const relativeWhen = formatRelativeTimeHe(ticket.created_at)
   const loc = locationLine(ticket)
   const tel = telHref(ticket.reporter_phone)
+  const reporterLabel = formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone)
   const waze = wazeHref(ticket.project_address)
   const hasResidentPhone = !!ticket.reporter_phone && !!onToggleWa
   const showQuickActions = !!(tel || waze || hasResidentPhone)
@@ -179,9 +181,7 @@ export function WorkerTicketCard({
       </button>
 
       <div style={styles.expandedBody}>
-        {ticket.reporter_name ? (
-          <div style={styles.reporter(colors)}>דיווח: {ticket.reporter_name}</div>
-        ) : null}
+        {reporterLabel ? <div style={styles.reporter(colors)}>דיווח: {reporterLabel}</div> : null}
 
         <p style={descOpen ? styles.descOpen(colors) : styles.descClamp(colors)}>{desc}</p>
 

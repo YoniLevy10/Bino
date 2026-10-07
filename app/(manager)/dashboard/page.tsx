@@ -36,6 +36,8 @@ import {
 import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
 import { queryKeys } from '@/lib/query-keys'
 import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
@@ -99,6 +101,7 @@ type TicketRow = {
   project_name?: string
   client_id?: string | null
   reporter_phone: string
+  reporter_name?: string | null
   description: string
   status: string
   priority?: string
@@ -127,6 +130,7 @@ function mapFetchedTicketRow(fetched: TicketDetailRow): TicketRow {
     project_name: fetched.project_name,
     client_id: fetched.client_id ?? null,
     reporter_phone: fetched.reporter_phone || '',
+    reporter_name: fetched.reporter_name,
     description: fetched.description || '',
     status: fetched.status,
     priority: fetched.priority ?? undefined,
@@ -155,6 +159,7 @@ function formatOpenTicketsForDashboard(rows: OpenTicketRow[]): TicketRow[] {
       project_code: project?.project_code || '',
       project_name: project?.name || '',
       reporter_phone: row.reporter_phone || '',
+      reporter_name: row.reporter_name,
       description: row.description || '',
       status: row.status,
       priority: row.priority ?? undefined,
@@ -466,10 +471,19 @@ export default function DashboardPage() {
   // Sync shared RQ cache → local list state (warm navigation)
   useEffect(() => {
     if (!ticketsHasData) return
-    setTickets(formatOpenTicketsForDashboard(rqTickets))
+    const formatted = formatOpenTicketsForDashboard(rqTickets)
+    setTickets(formatted)
     hasPaintedDataRef.current = true
     setCachePainted(true)
-  }, [rqTickets, ticketsHasData])
+    if (!rqClientId) return
+    let cancelled = false
+    void attachSavedResidentNames(supabase, rqClientId, formatted).then((named) => {
+      if (!cancelled) setTickets(named)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [rqTickets, ticketsHasData, rqClientId])
 
   useEffect(() => {
     if (!projectsHasData) return
@@ -544,6 +558,7 @@ export default function DashboardPage() {
                 client_id: t.client_id,
                 project_id: t.project_id,
                 reporter_phone: t.reporter_phone,
+                reporter_name: t.reporter_name,
                 description: t.description,
                 status: t.status,
                 priority: t.priority,
@@ -1088,6 +1103,7 @@ export default function DashboardPage() {
                       key={ticket.id}
                       ticket={ticket}
                       workerName={ticket.assigned_worker_id ? workersMap[ticket.assigned_worker_id] || 'לא ידוע' : 'לא משויך'}
+                      reporterLabel={formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone)}
                       onClick={() => openTicket(ticket)}
                     />
                   ))}
@@ -1100,6 +1116,7 @@ export default function DashboardPage() {
                       <th style={styles.th}>#</th>
                       <th style={styles.th}>בניין</th>
                       <th style={styles.th}>תיאור</th>
+                      <th style={styles.th}>מדווח</th>
                       <th style={styles.th}>סטטוס</th>
                       <th style={styles.th}>משויך</th>
                       <th style={styles.th}>גיל</th>
@@ -1113,6 +1130,11 @@ export default function DashboardPage() {
                         <td style={{ ...styles.td, maxWidth: '300px' }}>
                           <span style={styles.descriptionText}>
                             {ticket.description?.slice(0, 60)}{(ticket.description?.length || 0) > 60 ? '...' : ''}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={styles.workerName}>
+                            {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
                           </span>
                         </td>
                         <td style={styles.td}><StatusBadge status={ticket.status} size="sm" /></td>
@@ -1174,6 +1196,8 @@ export default function DashboardPage() {
         onCloseTicket={handleCloseTicket}
         getImageUrl={getImageUrl}
         isMobile={isMobile}
+        tenantClientId={rqClientId}
+        reporterName={selectedTicket?.reporter_name}
       />
 
       {/* Add Ticket Modal */}

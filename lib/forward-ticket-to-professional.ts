@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import { sendWorkerSMSAll, type WorkerSmsBatchResult } from '@/lib/sms-send'
 import { collectWorkerPhones, type WorkerPhoneSource } from '@/lib/worker-phones'
 import { getLogger } from '@/lib/logging'
@@ -40,6 +42,8 @@ export async function forwardTicketToProfessional(
       ticket_number,
       description,
       reporter_phone,
+      reporter_name,
+      project_id,
       status,
       client_id,
       projects (name, project_code)
@@ -78,12 +82,21 @@ export async function forwardTicketToProfessional(
   const buildingName = (project as { name?: string } | null)?.name?.trim() || 'ללא שם בניין'
   const ticketNumber = ticket.ticket_number as number
   const description = truncateForSms((ticket.description as string | null) || 'ללא תיאור', 200)
-  const reporterPhone = (ticket.reporter_phone as string | null)?.trim() || 'לא ידוע'
+  const [enrichedReporter] = await attachSavedResidentNames(supabase, clientId, [
+    {
+      reporter_phone: ticket.reporter_phone as string | null,
+      reporter_name: ticket.reporter_name as string | null,
+      project_id: ticket.project_id as string | null,
+    },
+  ])
+  const reporterLabel =
+    formatReporterNameAndPhone(enrichedReporter?.reporter_name, enrichedReporter?.reporter_phone) ||
+    'לא ידוע'
   const proName = (professional as { full_name: string }).full_name
   const trade = (professional as { trade?: string | null }).trade?.trim()
   const noteTrim = note?.trim()
 
-  let smsBody = `הועברה אליכם תקלה #${ticketNumber} ב${buildingName}. ${description}. טלפון מדווח: ${reporterPhone}.`
+  let smsBody = `הועברה אליכם תקלה #${ticketNumber} ב${buildingName}. ${description}. מדווח: ${reporterLabel}.`
   if (trade) smsBody += ` תחום: ${trade}.`
   if (noteTrim) smsBody += ` הערה: ${truncateForSms(noteTrim, 120)}.`
 

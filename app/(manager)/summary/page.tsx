@@ -38,6 +38,7 @@ import {
   theme
 } from '@/app/components/ui'
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import type { SummaryTicketRow } from '@/lib/summary-tickets'
 import {
@@ -717,7 +718,7 @@ export default function SummaryPage() {
       '#': t.ticket_number,
       'תאריך פתיחה': t.created_at ? new Date(t.created_at).toLocaleString('he-IL') : '',
       'תאריך סגירה': t.closed_at ? new Date(t.closed_at).toLocaleString('he-IL') : '',
-      'טלפון מדווח': t.reporter_phone || '',
+      מדווח: formatReporterNameAndPhone(t.reporter_name, t.reporter_phone),
       תיאור: t.description || '',
       סטטוס: ticketStatusLabelHe(t.status),
       עדיפות: t.priority || '',

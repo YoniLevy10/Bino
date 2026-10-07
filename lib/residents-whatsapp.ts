@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { savedResidentDisplayName } from '@/lib/reporter-display'
 import { displayReporterForExternalMessage } from '@/lib/whatsapp-test-phone'
 
 /** Auto-created stub before manager approval — not a listed resident. */
@@ -29,14 +30,16 @@ export function residentPromptGreetingPrefix(fullName: string | null | undefined
   return `שלום ${first}, `
 }
 
-/** Manager/worker notifications — resident name when known, else phone (or test label). */
+/** Manager/worker notifications — saved name + phone, else phone (or test label). */
 export function reporterDisplayNameForNotification(
   phone: string,
   fullName: string | null | undefined
 ): string {
-  const trimmed = (fullName ?? '').trim()
-  if (trimmed && trimmed !== 'דייר WhatsApp') return trimmed
-  return displayReporterForExternalMessage(phone)
+  const phoneLabel = displayReporterForExternalMessage(phone)
+  const name = savedResidentDisplayName(fullName)
+  if (name && phoneLabel) return `${name} ${phoneLabel}`
+  if (name) return name
+  return phoneLabel
 }
 
 export function normalizePhone(phone: string): string {

@@ -1,12 +1,11 @@
 'use client'
 
 /**
- * דף קודי QR – הצגת קודי QR לכל פרויקט עבור דיווח תקלות.
+ * דף קודי QR – קישור רישום דיירים לכל בניין.
  *
- * כל פרויקט מקבל שלושה קישורים:
- *  - WhatsApp QR: https://wa.me/{phone}?text=START_{PROJECT_CODE}  → מתחיל שיחת WhatsApp עם הבוט
- *  - Web QR: {APP_URL}/report?project={code}&client={clientId}  → טופס דיווח ווב
- *  - Intake: {APP_URL}/intake?project={code}&client={clientId}  → סקר רישום דיירים
+ * הקוד הסרוק פותח את דף הרישום:
+ *  - Intake: {APP_URL}/intake?project={code}&client={clientId}
+ * קישור וואטסאפ (START_) ודף דיווח נשארים כפעולות משניות במגירה.
  *
  * מציג: גריד קארדים עם QR גרפי (qrcode.react), כפתורי הורדת PNG, ועמוד הדפסה.
  *
@@ -75,7 +74,6 @@ export default function QrPage() {
   )
   const loading = projectsLoading && !projectsHasData
   const [waMeDigits, setWaMeDigits] = useState<string | null>(null)
-  const [waPhoneLoading, setWaPhoneLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
@@ -92,7 +90,6 @@ export default function QrPage() {
 
   useEffect(() => {
     void (async () => {
-      setWaPhoneLoading(true)
       try {
         const clientId = tenantClientId || (await resolveBinoClientIdForBrowser())
         const { data, error } = await supabase
@@ -115,8 +112,6 @@ export default function QrPage() {
         setWaMeDigits(digitsForWaMeLink(raw))
       } catch {
         setWaMeDigits(null)
-      } finally {
-        setWaPhoneLoading(false)
       }
     })()
   }, [tenantClientId])
@@ -161,7 +156,7 @@ export default function QrPage() {
     const pngUrl = canvas.toDataURL('image/png')
     const link = document.createElement('a')
     link.href = pngUrl
-    link.download = `${projectCode}-whatsapp-qr.png`
+    link.download = `${projectCode}-resident-intake-qr.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -219,7 +214,7 @@ export default function QrPage() {
         {!isMobile && (
           <PageHeader
             title="קודי QR"
-            subtitle="יצירה וניהול קודי QR לוואטסאפ לדיווח מהיר"
+            subtitle="קודי QR לרישום דיירים בכל בניין"
           />
         )}
 
@@ -245,28 +240,10 @@ export default function QrPage() {
           <div>
             <div style={styles.infoBannerTitle}>איך זה עובד</div>
             <div style={styles.infoBannerText}>
-              כל קוד QR פותח את וואטסאפ עם קוד ההתחלה המתאים מראש. הדפיסו את הקודים והציבו בכל נכס לדיווח תקלות נוח.
+              כל קוד QR פותח את דף רישום הדיירים של הבניין. הדפיסו את הקודים והציבו בכל נכס כדי שהדיירים יוכלו להירשם.
             </div>
           </div>
         </div>
-
-        {!waPhoneLoading && !waMeDigits ? (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: '#FEF3C7',
-              border: '1px solid #FCD34D',
-              color: '#92400E',
-              fontWeight: 600,
-              fontSize: 14,
-            }}
-            role="status"
-          >
-            לא הוגדר מספר וואטסאפ — פנה להגדרות (מספר עסקי ל־wa.me או מספר מנהל).
-          </div>
-        ) : null}
 
         {/* Search + Grid */}
         <Card noPadding>
@@ -292,8 +269,7 @@ export default function QrPage() {
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))',
             }}>
               {filteredProjects.map((project) => {
-                const whatsappLink = buildWhatsAppLink(project)
-                const startCode = buildStartCode(project)
+                const intakeLink = buildIntakeLink(project)
                 const inactive = project.is_active === false
 
                 return (
@@ -322,7 +298,7 @@ export default function QrPage() {
                         }}
                       >
                         <QRCodeCanvas
-                          value={whatsappLink}
+                          value={intakeLink}
                           size={140}
                           bgColor="#FFFFFF"
                           fgColor={theme.colors.textPrimary}
@@ -338,8 +314,8 @@ export default function QrPage() {
                     </div>
 
                     <div style={styles.startCodeBox}>
-                      <span style={styles.startCodeLabel}>קוד התחלה</span>
-                      <span style={styles.startCodeValue}>{startCode}</span>
+                      <span style={styles.startCodeLabel}>רישום דיירים</span>
+                      <span style={styles.startCodeValue}>{project.project_code}</span>
                     </div>
 
                     <div
@@ -352,10 +328,10 @@ export default function QrPage() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => copyText(startCode, 'הקוד הועתק')}
+                        onClick={() => copyText(intakeLink, 'קישור הרישום הועתק')}
                         disabled={inactive}
                       >
-                        העתקת קוד
+                        העתקת קישור
                       </Button>
                       <Button
                         variant="secondary"
@@ -366,11 +342,11 @@ export default function QrPage() {
                         הורדה
                       </Button>
                       <a
-                        href={inactive ? '#' : whatsappLink}
+                        href={inactive ? '#' : intakeLink}
                         target="_blank"
                         rel="noreferrer"
                         style={{
-                          ...styles.whatsappButton,
+                          ...styles.intakeButton,
                           ...(inactive ? { pointerEvents: 'none', opacity: 0.5 } : {}),
                         }}
                         aria-disabled={inactive}
@@ -378,7 +354,7 @@ export default function QrPage() {
                           if (inactive) e.preventDefault()
                         }}
                       >
-                        פתיחת וואטסאפ
+                        פתיחת רישום
                       </a>
                     </div>
                   </div>
@@ -410,7 +386,7 @@ export default function QrPage() {
                 }}
               >
                 <QRCodeCanvas
-                  value={buildWhatsAppLink(selectedProject)}
+                  value={buildIntakeLink(selectedProject)}
                   size={isMobile ? 200 : 240}
                   level="H"
                   includeMargin
@@ -425,8 +401,8 @@ export default function QrPage() {
 
             <div style={styles.detailSection}>
               <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>קוד התחלה</span>
-                <span style={styles.detailCode}>{buildStartCode(selectedProject)}</span>
+                <span style={styles.detailLabel}>קישור רישום</span>
+                <span style={styles.detailCode}>{selectedProject.project_code}</span>
               </div>
               <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>כתובת</span>
@@ -441,10 +417,10 @@ export default function QrPage() {
             <div style={styles.actionButtons}>
               <Button
                 variant="secondary"
-                onClick={() => copyText(buildStartCode(selectedProject), 'קוד START הועתק')}
+                onClick={() => copyText(buildIntakeLink(selectedProject), 'קישור הרישום הועתק')}
                 style={{ flex: 1 }}
               >
-                העתקת קוד START
+                העתקת קישור רישום
               </Button>
               <Button
                 variant="secondary"
@@ -492,7 +468,7 @@ export default function QrPage() {
 
             <div style={styles.primaryActions}>
               <a
-                href={drawerInactive ? '#' : buildWhatsAppLink(selectedProject)}
+                href={drawerInactive ? '#' : buildIntakeLink(selectedProject)}
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -503,7 +479,7 @@ export default function QrPage() {
                   if (drawerInactive) e.preventDefault()
                 }}
               >
-                פתיחת וואטסאפ
+                פתיחת דף רישום
               </a>
               <a
                 href={buildReportLink(selectedProject)}
@@ -661,13 +637,13 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'center',
     flexWrap: 'wrap',
   },
-  whatsappButton: {
+  intakeButton: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '8px 14px',
     borderRadius: theme.radius.md,
-    background: '#25D366',
+    background: theme.colors.primary,
     color: '#FFFFFF',
     fontSize: '13px',
     fontWeight: 600,
@@ -737,7 +713,7 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'center',
     padding: '14px 24px',
     borderRadius: theme.radius.md,
-    background: '#25D366',
+    background: theme.colors.primary,
     color: '#FFFFFF',
     fontSize: '15px',
     fontWeight: 600,

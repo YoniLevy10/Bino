@@ -25,6 +25,7 @@ import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-ti
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
 import { ticketDetailPath } from '@/lib/ticket-deep-link'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import { queryKeys } from '@/lib/query-keys'
@@ -84,6 +85,8 @@ type TicketRow = {
   description?: string | null
   created_at?: string | null
   closed_at?: string | null
+  reporter_phone?: string | null
+  reporter_name?: string | null
 }
 
 const emptyForm: ProjectForm = {
@@ -322,7 +325,9 @@ export default function ProjectsPage() {
   async function fetchProjectOpenTickets(projectId: string) {
     const scoped = clientId || (await resolveBinoClientIdForBrowser())
     const { data, error } = await withClientId(
-      supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
+      supabase.from('tickets').select(
+        'id, ticket_number, status, priority, description, created_at, closed_at, reporter_phone, reporter_name'
+      ),
       scoped
     )
       .eq('project_id', projectId)
@@ -338,7 +343,9 @@ export default function ProjectsPage() {
   async function fetchProjectClosedTickets(projectId: string) {
     const scoped = clientId || (await resolveBinoClientIdForBrowser())
     const { data, error } = await withClientId(
-      supabase.from('tickets').select('id, ticket_number, status, priority, description, created_at, closed_at'),
+      supabase.from('tickets').select(
+        'id, ticket_number, status, priority, description, created_at, closed_at, reporter_phone, reporter_name'
+      ),
       scoped
     )
       .eq('project_id', projectId)
@@ -880,6 +887,9 @@ export default function ProjectsPage() {
                     >
                       <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
                       <StatusBadge status={ticket.status} size="sm" />
+                      <span style={styles.ticketHistoryDate}>
+                        {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -915,6 +925,9 @@ export default function ProjectsPage() {
                             {ticket.description?.slice(0, 80)}
                             {(ticket.description?.length || 0) > 80 ? '…' : ''}
                           </p>
+                          <span style={styles.ticketHistoryDate}>
+                            {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
+                          </span>
                           <span style={styles.ticketHistoryDate}>
                             נסגרה: {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('he-IL') : '—'}
                           </span>

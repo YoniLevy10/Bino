@@ -46,6 +46,8 @@ import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-l
 import { queryKeys } from '@/lib/query-keys'
 import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
 import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
+import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { shouldShowPageLoadError } from '@/lib/page-load-error'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -504,7 +506,15 @@ export default function TicketsPage() {
     hasPaintedDataRef.current = true
     lastFetchAtRef.current = Date.now()
     setCachePainted(true)
-  }, [rqTickets, ticketsHasData])
+    if (!tenantClientId) return
+    let cancelled = false
+    void attachSavedResidentNames(supabase, tenantClientId, normalized).then((named) => {
+      if (!cancelled) setTickets(named)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [rqTickets, ticketsHasData, tenantClientId])
 
   useEffect(() => {
     if (!projectsHasData) return
@@ -742,11 +752,12 @@ export default function TicketsPage() {
       'סטטוס': ticketStatusLabelHe(t.status),
       'עובד משויך': getWorkerName(t.assigned_worker_id),
       'ימי טיפול': treatmentDaysForExport(t),
+      מדווח: formatReporterNameAndPhone(t.reporter_name, t.reporter_phone),
     }))
 
     const wb = createWorkbook()
     const ws = addJsonSheet(wb, 'תקלות', rows, {
-      columnWidths: [6, 18, 18, 22, 7, 42, 10, 12, 18, 10],
+      columnWidths: [6, 18, 18, 22, 7, 42, 10, 12, 18, 10, 28],
     })
 
     // צבע עמודת סטטוס (7) ועדיפות (6) — אינדקס 0-based כמו SheetJS
@@ -1478,6 +1489,7 @@ export default function TicketsPage() {
                   <TicketMobileCard
                     ticket={ticket}
                     workerName={getWorkerName(ticket.assigned_worker_id)}
+                    reporterLabel={formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone)}
                     selected={selectedTicket?.id === ticket.id}
                     onClick={() => openTicket(ticket)}
                   />
@@ -1502,7 +1514,7 @@ export default function TicketsPage() {
                   onClick={() => openTicket(ticket)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '56px 72px 1fr 110px 120px 72px',
+                    gridTemplateColumns: '56px 72px 1fr 140px 110px 120px 72px',
                     gap: 8,
                     width: '100%',
                     textAlign: 'right',
@@ -1521,6 +1533,9 @@ export default function TicketsPage() {
                   <PriorityDot priority={ticket.priority || 'LOW'} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {ticket.description || '—'}
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: theme.colors.textSecondary, fontSize: 13 }}>
+                    {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
                   </span>
                   <StatusBadge status={ticket.status} />
                   <span style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
@@ -1550,6 +1565,7 @@ export default function TicketsPage() {
                     <th style={styles.th}>עדיפות</th>
                     <th style={styles.th}>בניין</th>
                     <th style={styles.th}>תיאור</th>
+                    <th style={styles.th}>מדווח</th>
                     <th style={styles.th}>סטטוס</th>
                     <th style={styles.th}>משויך</th>
                     <th style={styles.th}>גיל</th>
@@ -1591,6 +1607,11 @@ export default function TicketsPage() {
                       <td style={{ ...styles.td, maxWidth: '350px' }}>
                         <span style={styles.descriptionText}>
                           {ticket.description?.slice(0, 80)}{(ticket.description?.length || 0) > 80 ? '...' : ''}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={styles.workerName}>
+                          {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
                         </span>
                       </td>
                       <td style={styles.td}>
