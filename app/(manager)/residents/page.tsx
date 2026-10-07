@@ -16,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   Suspense,
   startTransition,
@@ -36,6 +37,7 @@ import {
   useTenantResidentsList,
 } from '@/lib/hooks/use-residents-list'
 import { queryKeys } from '@/lib/query-keys'
+import { buildResidentIntakeUrl } from '@/lib/resident-intake'
 import type { ResidentProjectRow } from '@/app/components/residents/AddResidentModal'
 
 const AddResidentModal = dynamic(
@@ -140,6 +142,7 @@ function ResidentsPageInner() {
     projects: projectRows,
     isLoading: projectsLoading,
     hasData: projectsHasData,
+    refetch: refetchProjects,
   } = useTenantProjectsList()
   const {
     residents: rqResidents,
@@ -265,27 +268,30 @@ function ResidentsPageInner() {
     }
   }
 
+  const directoryFiltersRef = useRef({ projectId: 'ALL', search: '' })
+  directoryFiltersRef.current = {
+    projectId: projectFilter,
+    search: deferredSearchTerm.trim(),
+  }
+  const skipCacheHydrate = useRef(false)
+  const hasDirectoryDataRef = useRef(false)
+  hasDirectoryDataRef.current = hasResidentsData
+  const directoryRequest = useRef(0)
+  const [appliedQuery, setAppliedQuery] = useState({ projectId: 'ALL', search: '' })
+
   async function refreshResidentsQuiet() {
-    try {
-      const tenantId = tenantClientId || (await resolveBinoClientIdForBrowser())
-      const page = await fetchResidentsPage(tenantId, { offset: 0, limit: RESIDENTS_PAGE_SIZE })
-      startTransition(() => {
-        setResidents(page.rows)
-        setResidentsHasMore(page.hasMore)
-        setResidentsOffset(page.rows.length)
-        setHasResidentsData(true)
-      })
-      queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
-    } catch {
-      // keep existing list on background refresh failure
-    }
+    await loadResidentsPage({ append: false, offset: 0 })
   }
 
   async function loadResidentsPage(opts?: { append?: boolean; offset?: number }) {
     const append = opts?.append === true
     const offset = opts?.offset ?? 0
+    const projectId = directoryFiltersRef.current.projectId
+    const search = directoryFiltersRef.current.search
+    const requestId = ++directoryRequest.current
+    skipCacheHydrate.current = true
     if (append) setLoadingMore(true)
-    else if (!hasResidentsData) setResidentsLoading(true)
+    else if (!hasDirectoryDataRef.current) setResidentsLoading(true)
     setResidentsTableMissing(false)
     setLoadError(false)
     try {
@@ -293,16 +299,23 @@ function ResidentsPageInner() {
       const page = await fetchResidentsPage(tenantId, {
         offset,
         limit: RESIDENTS_PAGE_SIZE,
+        projectId: projectId !== 'ALL' ? projectId : undefined,
+        search: search || undefined,
       })
+      if (requestId !== directoryRequest.current) return
       setResidents((prev) => (append ? [...prev, ...page.rows] : page.rows))
       setResidentsHasMore(page.hasMore)
       setResidentsOffset(offset + page.rows.length)
       setHasResidentsData(true)
       setLoadError(false)
       if (!append) {
-        queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
+        setAppliedQuery({ projectId, search })
+        if (projectId === 'ALL' && !search) {
+          queryClient.setQueryData(queryKeys.residents(tenantId, RESIDENTS_PAGE_SIZE), page)
+        }
       }
     } catch (e) {
+      if (requestId !== directoryRequest.current) return
       const err = e as { message?: string }
       if (isResidentsTableMissingError(err)) {
         setResidents([])
@@ -313,23 +326,33 @@ function ResidentsPageInner() {
         toast.error(err?.message || (e instanceof Error ? e.message : TM.genericLoadError))
       }
     }
+    if (requestId !== directoryRequest.current) return
     if (append) setLoadingMore(false)
     else setResidentsLoading(false)
   }
 
   async function load() {
-    if (tenantClientId) {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.residents(tenantClientId, RESIDENTS_PAGE_SIZE),
-      })
-    }
+    await refetchProjects()
     await loadResidentsPage({ append: false, offset: 0 })
   }
 
-  // Prefer shared RQ first page for warm nav
   useEffect(() => {
+    void refetchProjects()
+  }, [refetchProjects])
+
+  // Building filter and search hit the database. The shared cache is only the
+  // first 100 names across every building, so a new building's registration
+  // never showed up when that page was filtered in the browser.
+  useEffect(() => {
+    void loadResidentsPage({ append: false, offset: 0 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectFilter, deferredSearchTerm, tenantClientId])
+
+  // Warm paint from the shared cache only before a direct fetch owns the list.
+  useEffect(() => {
+    if (skipCacheHydrate.current) return
+    if (projectFilter !== 'ALL' || deferredSearchTerm.trim()) return
     if (!rqResidentsHasData) return
-    // Do not clobber pages appended via "load more"
     if (residentsOffset > rqResidents.length) return
     setResidents(rqResidents)
     setResidentsHasMore(rqHasMore)
@@ -337,9 +360,10 @@ function ResidentsPageInner() {
     setHasResidentsData(true)
     setResidentsLoading(false)
     setLoadError(false)
-  }, [rqResidents, rqResidentsHasData, rqHasMore, residentsOffset])
+  }, [rqResidents, rqResidentsHasData, rqHasMore, residentsOffset, projectFilter, deferredSearchTerm])
 
   useEffect(() => {
+    if (skipCacheHydrate.current) return
     if (rqResidentsHasData) return
     if (rqResidentsLoading) {
       setResidentsLoading(true)
@@ -390,6 +414,7 @@ function ResidentsPageInner() {
   }
 
   function openShareIntakeLink() {
+    void refetchProjects()
     setShareIntakeOpen(true)
   }
 
@@ -524,7 +549,7 @@ function ResidentsPageInner() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // First page comes from useTenantResidentsList (shared RQ). load() remains for retry/mutations.
+  // Directory rows come from loadResidentsPage (building + search hit the database).
 
   // Single pending-residents fetch source (badge + pending tab) — avoids double fetch when tab=pending on mount
   useEffect(() => {
@@ -532,9 +557,12 @@ function ResidentsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab])
 
-  // Refresh pending badge whenever the browser tab regains focus
+  // Coming back from the public intake tab should show the registration.
   useEffect(() => {
-    const onFocus = () => void loadPending({ silent: true })
+    const onFocus = () => {
+      void loadPending({ silent: true })
+      void loadResidentsPage({ append: false, offset: 0 })
+    }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -612,6 +640,22 @@ function ResidentsPageInner() {
     return m
   }, [projects])
 
+  const selectedIntake = useMemo(() => {
+    if (projectFilter === 'ALL') return null
+    const project = projects.find((p) => p.id === projectFilter)
+    if (!project) return null
+    const clientId = (project.client_id || tenantClientId || '').trim()
+    const projectCode = project.project_code.trim()
+    if (!clientId || !projectCode) {
+      return { name: project.name, url: '', missingCode: !projectCode }
+    }
+    return {
+      name: project.name,
+      url: buildResidentIntakeUrl({ projectCode, clientId }),
+      missingCode: false,
+    }
+  }, [projectFilter, projects, tenantClientId])
+
   const residentsByPhone = useMemo(() => {
     const m = new Map<string, ResidentRow>()
     for (const r of residents) {
@@ -637,20 +681,32 @@ function ResidentsPageInner() {
     return result
   }, [pendingItems, residentsByPhone, projectName])
 
+  const emptyDirectoryMessage =
+    projectFilter !== 'ALL'
+      ? 'אין דיירים רשומים בבניין הזה.'
+      : deferredSearchTerm.trim()
+        ? 'אין דיירים שתואמים לחיפוש.'
+        : 'אין דיירים להצגה.'
+
   const filtered = useMemo(() => {
     const q = deferredSearchTerm.trim().toLowerCase()
+    const serverSearched =
+      appliedQuery.search.toLowerCase() === q &&
+      q.length > 0 &&
+      appliedQuery.projectId === projectFilter
     return residents.filter((r) => {
       const byProject = projectFilter === 'ALL' || r.project_id === projectFilter
-      const text =
-        !q ||
+      if (!byProject) return false
+      if (serverSearched || !q) return true
+      return (
         r.full_name.toLowerCase().includes(q) ||
         (r.phone || '').includes(q) ||
         (r.email || '').toLowerCase().includes(q) ||
         (r.apartment_number || '').toLowerCase().includes(q) ||
         (r.notes || '').toLowerCase().includes(q)
-      return byProject && text
+      )
     })
-  }, [residents, deferredSearchTerm, projectFilter])
+  }, [residents, deferredSearchTerm, projectFilter, appliedQuery])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -851,29 +907,6 @@ function ResidentsPageInner() {
           <PageHeader
             title="דיירים"
             subtitle="ניהול שמות דיירים לפי בניין (לאחר הרצת מיגרציה ב-Supabase)"
-            actions={
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={openShareIntakeLink}
-                  disabled={residentsTableMissing || projects.length === 0}
-                >
-                  שליחת קישור רישום
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={openImport}
-                  disabled={residentsTableMissing}
-                >
-                  ייבוא דיירים
-                </Button>
-                <Button variant="primary" size="sm" onClick={openAdd} disabled={residentsTableMissing}>
-                  הוספת דייר
-                </Button>
-              </div>
-            }
           />
         )}
 
@@ -994,7 +1027,7 @@ function ResidentsPageInner() {
               <option value="ALL">כל הבניינים</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {p.project_code ? `${p.name} (${p.project_code})` : p.name}
                 </option>
               ))}
             </select>
@@ -1019,6 +1052,40 @@ function ResidentsPageInner() {
               הוספת דייר
             </Button>
           </div>
+
+          {selectedIntake ? (
+            <div style={styles.intakeBar}>
+              <div style={styles.intakeBarText}>
+                <span style={styles.intakeBarLabel}>קישור רישום · {selectedIntake.name}</span>
+                {selectedIntake.url ? (
+                  <span style={styles.intakeBarUrl} dir="ltr">{selectedIntake.url}</span>
+                ) : (
+                  <span style={styles.intakeBarUrl}>
+                    {selectedIntake.missingCode
+                      ? 'לבניין הזה חסר קוד — עדכנו אותו במסך הבניינים.'
+                      : 'לא ניתן לבנות קישור. רעננו את העמוד.'}
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                type="button"
+                disabled={!selectedIntake.url}
+                onClick={() => {
+                  if (!selectedIntake.url) return
+                  void navigator.clipboard.writeText(selectedIntake.url).then(
+                    () => toast.success('קישור הרישום הועתק'),
+                    () => toast.error('ההעתקה נכשלה')
+                  )
+                }}
+              >
+                העתקת קישור
+              </Button>
+            </div>
+          ) : (
+            <p style={styles.intakeHint}>בחרו בניין כדי לראות את קישור הרישום שלו.</p>
+          )}
 
           {loading ? (
             <PageListSkeleton rows={8} />
@@ -1054,7 +1121,7 @@ function ResidentsPageInner() {
               {/* Mobile: card view (virtualized for long lists) */}
               {isMobile ? (
                 sorted.length === 0 ? (
-                  <p style={styles.empty}>אין דיירים להצגה.</p>
+                  <p style={styles.empty}>{emptyDirectoryMessage}</p>
                 ) : (
                   <VirtualizedList
                     items={sorted}
@@ -1177,9 +1244,9 @@ function ResidentsPageInner() {
               </table>
               )}
               {filtered.length === 0 && !isMobile && (
-                <p style={styles.empty}>אין דיירים להצגה. הוסיפו רשומות ב-Supabase.</p>
+                <p style={styles.empty}>{emptyDirectoryMessage}</p>
               )}
-              {residentsHasMore && projectFilter === 'ALL' && !deferredSearchTerm.trim() ? (
+              {residentsHasMore ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
                   <Button
                     variant="secondary"
@@ -1315,6 +1382,40 @@ const styles: Record<string, CSSProperties> = {
     boxSizing: 'border-box',
   },
   pendingActions: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+  intakeBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    flexWrap: 'wrap',
+    margin: '0 20px 12px',
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.muted,
+    border: `1px solid ${theme.colors.border}`,
+  },
+  intakeBarText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    minWidth: 0,
+    flex: 1,
+  },
+  intakeBarLabel: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+  },
+  intakeBarUrl: {
+    fontSize: '12px',
+    color: theme.colors.textSecondary,
+    wordBreak: 'break-all',
+  },
+  intakeHint: {
+    margin: '0 20px 12px',
+    fontSize: '13px',
+    color: theme.colors.textMuted,
+  },
   filters: {
     display: 'flex',
     flexWrap: 'wrap',

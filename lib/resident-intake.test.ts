@@ -44,6 +44,18 @@ describe('resident intake helpers', () => {
     expect(msg).toContain('https://example.com/intake')
   })
 
+  it('replaces a baked-in intake url when the building changes', () => {
+    const msg = resolveResidentIntakeShareMessage(
+      'הירשמו: https://bino.casa/intake?project=OLD&client=c1',
+      {
+        projectName: 'בניין חדש',
+        intakeUrl: 'https://bino.casa/intake?project=NEW&client=c1',
+      }
+    )
+    expect(msg).toContain('project=NEW')
+    expect(msg).not.toContain('project=OLD')
+  })
+
   it('default template keeps {url} placeholder for editing', () => {
     expect(buildResidentIntakeShareTemplate('בניין')).toContain('{url}')
   })

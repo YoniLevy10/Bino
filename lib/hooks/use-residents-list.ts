@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { queryKeys } from '@/lib/query-keys'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
+import { normalizePhone } from '@/lib/residents-whatsapp'
 
 /** First-page size for warm nav — smaller than legacy 500 for faster paint. */
 export const RESIDENTS_PAGE_SIZE = 100
@@ -24,17 +25,47 @@ export type ResidentListRow = {
   notes?: string | null
 }
 
+/** PostgREST `or` filter. Empty when the search has no usable characters. */
+export function buildResidentsDirectoryFilter(search: string | undefined): string | null {
+  const q = (search || '').trim().replace(/[%_,.()"\\]/g, '')
+  if (!q) return null
+  const parts = [
+    `full_name.ilike.%${q}%`,
+    `phone.ilike.%${q}%`,
+    `email.ilike.%${q}%`,
+    `apartment_number.ilike.%${q}%`,
+    `notes.ilike.%${q}%`,
+  ]
+  const digits = q.replace(/\D/g, '')
+  if (digits.length >= 9) {
+    const normalized = normalizePhone(digits)
+    if (/^\d+$/.test(normalized)) parts.push(`normalized_phone.eq.${normalized}`)
+  }
+  return parts.join(',')
+}
+
 export async function fetchResidentsPage(
   clientId: string,
-  opts?: { offset?: number; limit?: number }
+  opts?: { offset?: number; limit?: number; projectId?: string; search?: string }
 ): Promise<{ rows: ResidentListRow[]; hasMore: boolean }> {
   const offset = opts?.offset ?? 0
   const limit = opts?.limit ?? RESIDENTS_PAGE_SIZE
-  const { data, error } = await withClientId(
+  const projectId = (opts?.projectId || '').trim()
+  const directoryOr = buildResidentsDirectoryFilter(opts?.search)
+
+  let query = withClientId(
     supabase.from('residents').select(RESIDENTS_LIST_SELECT),
     clientId
-  )
-    .is('deleted_at', null)
+  ).is('deleted_at', null)
+
+  if (projectId && projectId !== 'ALL') {
+    query = query.eq('project_id', projectId)
+  }
+  if (directoryOr) {
+    query = query.or(directoryOr)
+  }
+
+  const { data, error } = await query
     // Stable order for pagination (audit #45)
     .order('full_name', { ascending: true })
     .order('id', { ascending: true })

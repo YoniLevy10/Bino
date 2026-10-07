@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   decideResidentIntakeUpsert,
+  intakeConflictMessage,
+  intakePhoneLookupValues,
   isPostgresUniqueViolation,
 } from '@/lib/resident-intake-upsert'
 
@@ -64,6 +66,23 @@ describe('decideResidentIntakeUpsert', () => {
         candidates: [{ id: 'r4', project_id: projectB, deleted_at: '2026-01-01T00:00:00Z' }],
       })
     ).toEqual({ action: 'update', residentId: 'r4', revive: true })
+  })
+})
+
+describe('intakePhoneLookupValues', () => {
+  it('includes international and local forms', () => {
+    expect(intakePhoneLookupValues('972501234567')).toEqual([
+      '972501234567',
+      '+972501234567',
+      '0501234567',
+    ])
+  })
+})
+
+describe('intakeConflictMessage', () => {
+  it('names the building that already has the phone', () => {
+    expect(intakeConflictMessage('מגדלי שרה')).toContain('מגדלי שרה')
+    expect(intakeConflictMessage('  ')).toContain('בבניין אחר')
   })
 })
 

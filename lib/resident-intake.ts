@@ -64,6 +64,7 @@ export function resolveResidentIntakeShareMessage(
   let text = (template || '')
     .replaceAll('{project}', name)
     .replaceAll('{url}', url)
+    .replace(/https?:\/\/\S*\/intake\?\S*/gi, (found) => (found === url ? found : url))
     .trim()
 
   if (!text) {

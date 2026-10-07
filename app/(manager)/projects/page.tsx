@@ -269,6 +269,10 @@ export default function ProjectsPage() {
   }
 
   useEffect(() => {
+    void refetchProjects()
+  }, [refetchProjects])
+
+  useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
     check()
     window.addEventListener('resize', check)

@@ -61,6 +61,25 @@ export function decideResidentIntakeUpsert(params: {
   return { action: 'insert' }
 }
 
+/** Phone strings that may already sit on `residents.phone` for the same digits. */
+export function intakePhoneLookupValues(normalizedDigits: string): string[] {
+  const digits = normalizedDigits.replace(/\D/g, '')
+  if (!digits) return []
+  const values = new Set<string>([digits, `+${digits}`])
+  if (digits.startsWith('972') && digits.length > 3) {
+    values.add(`0${digits.slice(3)}`)
+  }
+  return [...values]
+}
+
+export function intakeConflictMessage(otherProjectName: string | null | undefined): string {
+  const name = (otherProjectName || '').trim()
+  if (name) {
+    return `מספר הטלפון כבר רשום בבניין ${name}. הרישום לא עבר לבניין בקישור. פנו להנהלה להעברה.`
+  }
+  return 'מספר הטלפון כבר רשום בבניין אחר אצל אותו לקוח. פנו להנהלה להעברה או עדכון.'
+}
+
 export function isPostgresUniqueViolation(
   error: { code?: string; message?: string } | null | undefined
 ): boolean {

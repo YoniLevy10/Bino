@@ -104,7 +104,7 @@ export function ShareResidentIntakeLinkModal({
             <option value="">בחרו בניין</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {p.project_code ? `${p.name} (${p.project_code})` : p.name}
               </option>
             ))}
           </select>
@@ -119,6 +119,7 @@ export function ShareResidentIntakeLinkModal({
 
         {canShare && selected ? (
           <ProjectResidentIntakePanel
+            key={`${selected.id}:${projectCode}`}
             projectCode={projectCode}
             clientId={clientId}
             projectName={selected.name}

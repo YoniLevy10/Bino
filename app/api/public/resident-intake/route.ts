@@ -7,9 +7,47 @@ import { normalizePhone } from '@/lib/residents-whatsapp'
 import { getLogger } from '@/lib/logging'
 import {
   decideResidentIntakeUpsert,
+  intakeConflictMessage,
+  intakePhoneLookupValues,
   isPostgresUniqueViolation,
   type IntakeResidentRow,
 } from '@/lib/resident-intake-upsert'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+const INTAKE_CANDIDATE_SELECT = 'id, project_id, deleted_at'
+
+async function loadIntakeCandidates(
+  admin: SupabaseClient,
+  clientId: string,
+  normalizedDigits: string
+): Promise<{ error: { message: string } | null; rows: IntakeResidentRow[] }> {
+  const phones = intakePhoneLookupValues(normalizedDigits)
+  const [byNorm, byPhone] = await Promise.all([
+    admin
+      .from('residents')
+      .select(INTAKE_CANDIDATE_SELECT)
+      .eq('client_id', clientId)
+      .eq('normalized_phone', normalizedDigits),
+    admin.from('residents').select(INTAKE_CANDIDATE_SELECT).eq('client_id', clientId).in('phone', phones),
+  ])
+  if (byNorm.error) return { error: byNorm.error, rows: [] }
+  if (byPhone.error) return { error: byPhone.error, rows: [] }
+  const map = new Map<string, IntakeResidentRow>()
+  for (const row of [...(byNorm.data || []), ...(byPhone.data || [])] as IntakeResidentRow[]) {
+    map.set(row.id, row)
+  }
+  return { error: null, rows: [...map.values()] }
+}
+
+async function intakeConflictResponse(
+  admin: SupabaseClient,
+  otherProjectId: string,
+  requestId: string
+) {
+  const { data } = await admin.from('projects').select('name').eq('id', otherProjectId).maybeSingle()
+  const name = (data as { name?: string | null } | null)?.name
+  return NextResponse.json({ error: intakeConflictMessage(name), requestId }, { status: 409 })
+}
 
 /**
  * Public resident intake — unauthenticated, scoped by client_id + project_code.
@@ -104,11 +142,11 @@ export async function POST(req: NextRequest) {
       return updErr
     }
 
-    const { data: candidates, error: existingErr } = await admin
-      .from('residents')
-      .select('id, project_id, deleted_at')
-      .eq('client_id', clientId)
-      .eq('normalized_phone', normalizedDigits)
+    const { rows: candidates, error: existingErr } = await loadIntakeCandidates(
+      admin,
+      clientId,
+      normalizedDigits
+    )
 
     if (existingErr) {
       logger.error('RESIDENT_INTAKE', 'Duplicate lookup failed', new Error(existingErr.message), {
@@ -120,18 +158,11 @@ export async function POST(req: NextRequest) {
 
     const decision = decideResidentIntakeUpsert({
       targetProjectId: project.id,
-      candidates: (candidates || []) as IntakeResidentRow[],
+      candidates,
     })
 
     if (decision.action === 'conflict_other_project') {
-      return NextResponse.json(
-        {
-          error:
-            'מספר הטלפון כבר רשום בבניין אחר אצל אותו לקוח. פנו להנהלה להעברה או עדכון.',
-          requestId,
-        },
-        { status: 409 }
-      )
+      return intakeConflictResponse(admin, decision.otherProjectId, requestId)
     }
 
     if (decision.action === 'update') {
@@ -169,11 +200,11 @@ export async function POST(req: NextRequest) {
 
     if (insErr) {
       if (isPostgresUniqueViolation(insErr)) {
-        const { data: raced, error: racedErr } = await admin
-          .from('residents')
-          .select('id, project_id, deleted_at')
-          .eq('client_id', clientId)
-          .eq('normalized_phone', normalizedDigits)
+        const { rows: raced, error: racedErr } = await loadIntakeCandidates(
+          admin,
+          clientId,
+          normalizedDigits
+        )
 
         if (racedErr) {
           logger.error('RESIDENT_INTAKE', 'Race re-lookup failed', new Error(racedErr.message), {
@@ -185,18 +216,11 @@ export async function POST(req: NextRequest) {
 
         const racedDecision = decideResidentIntakeUpsert({
           targetProjectId: project.id,
-          candidates: (raced || []) as IntakeResidentRow[],
+          candidates: raced,
         })
 
         if (racedDecision.action === 'conflict_other_project') {
-          return NextResponse.json(
-            {
-              error:
-                'מספר הטלפון כבר רשום בבניין אחר אצל אותו לקוח. פנו להנהלה להעברה או עדכון.',
-              requestId,
-            },
-            { status: 409 }
-          )
+          return intakeConflictResponse(admin, racedDecision.otherProjectId, requestId)
         }
 
         if (racedDecision.action === 'update') {

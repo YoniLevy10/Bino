@@ -57,6 +57,7 @@ export default function QrPage() {
     projects: projectRows,
     isLoading: projectsLoading,
     hasData: projectsHasData,
+    refetch: refetchProjects,
   } = useTenantProjectsList()
   const projects: ProjectRow[] = useMemo(
     () =>
@@ -80,6 +81,10 @@ export default function QrPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   const qrRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  useEffect(() => {
+    void refetchProjects()
+  }, [refetchProjects])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
