@@ -13,7 +13,7 @@ import { recordRecommendationEvent } from '@/lib/recommendations/record-event'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 import { runAfterResponse } from '@/lib/run-after-response'
 
-const STALE_MS = 5 * 60_000
+const STALE_MS = 15 * 60_000
 
 export async function GET(req: NextRequest) {
   const auth = await requireSessionClientId()

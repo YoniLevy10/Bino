@@ -10,6 +10,14 @@ import {
 
 export const DASHBOARD_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
+/** Exact residents / open-tasks counts — refresh at most every 5 minutes per tenant. */
+export const DASHBOARD_SECONDARY_COUNT_TTL_MS = 5 * 60_000
+
+export function secondaryCountsAreFresh(countsFetchedAt: number | null | undefined, now = Date.now()): boolean {
+  if (typeof countsFetchedAt !== 'number' || !Number.isFinite(countsFetchedAt)) return false
+  return now - countsFetchedAt < DASHBOARD_SECONDARY_COUNT_TTL_MS
+}
+
 export type DashboardCacheEnvelope<T extends object> = T & {
   savedAt: number
   clientId: string

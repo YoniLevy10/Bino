@@ -45,15 +45,44 @@ function plusDaysIso(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 }
 
+/** Ingest row: dedupe keys + fields previously re-fetched per duplicate. */
+type IngestExistingRow = ExistingLeadLite & {
+  status: string | null
+  sourceRefs: SalesLead['sourceRefs']
+  phone: string | null
+  websiteUrl: string | null
+  fitScore: number | null
+}
+
+const INGEST_UPDATE_CONCURRENCY = 10
+
+async function mapPool<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return
+  let next = 0
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) {
+      const idx = next
+      next += 1
+      await fn(items[idx]!)
+    }
+  })
+  await Promise.all(workers)
+}
+
 /**
  * loadExistingLite pulls up to 8k rows for in-memory dedupe — fine through ~1–5k leads.
  * Revisit DB-level upsert / indexed lookups before ~10k+ (see CLAUDE.md).
+ * Includes status/source_refs/phone/fit so ingest can skip per-duplicate SELECTs.
  */
-async function loadExistingLite(admin: SupabaseClient): Promise<ExistingLeadLite[]> {
+async function loadExistingLite(admin: SupabaseClient): Promise<IngestExistingRow[]> {
   const { data, error } = await admin
     .from('sales_leads')
     .select(
-      'id, phone_normalized, source_name, external_id, business_name, segment_slug, city, website_url, source_url',
+      'id, phone_normalized, source_name, external_id, business_name, segment_slug, city, website_url, source_url, status, source_refs, phone, fit_score',
     )
     .limit(8000)
   if (error) throw error
@@ -68,6 +97,13 @@ async function loadExistingLite(admin: SupabaseClient): Promise<ExistingLeadLite
     websiteHost: normalizeWebsiteHost(
       (r.website_url as string | null) ?? (r.source_url as string | null),
     ),
+    status: (r.status as string | null) ?? null,
+    sourceRefs: Array.isArray(r.source_refs)
+      ? (r.source_refs as SalesLead['sourceRefs'])
+      : [],
+    phone: (r.phone as string | null) ?? null,
+    websiteUrl: (r.website_url as string | null) ?? null,
+    fitScore: typeof r.fit_score === 'number' ? r.fit_score : r.fit_score != null ? Number(r.fit_score) : null,
   }))
 }
 
@@ -94,6 +130,7 @@ export async function ingestFromAdapter(
   result.found = records.length
   const existing = await loadExistingLite(admin)
   const now = new Date().toISOString()
+  const pendingUpdates: Array<{ id: string; patch: Record<string, unknown> }> = []
 
   for (const record of records) {
     const check = assertSourceRecord(record)
@@ -115,12 +152,7 @@ export async function ingestFromAdapter(
     }
 
     if (dup) {
-      const { data: current } = await admin
-        .from('sales_leads')
-        .select('id, status, source_refs, phone, website_url, fit_score')
-        .eq('id', dup.existingId)
-        .maybeSingle()
-
+      const current = existing.find((e) => e.id === dup.existingId)
       if (!current) {
         result.skipped += 1
         continue
@@ -131,19 +163,14 @@ export async function ingestFromAdapter(
       )
       const patch: Record<string, unknown> = {
         last_seen_at: now,
-        source_refs: mergeSourceRefs(
-          Array.isArray(current.source_refs)
-            ? (current.source_refs as SalesLead['sourceRefs'])
-            : [],
-          sourceRef,
-        ),
+        source_refs: mergeSourceRefs(current.sourceRefs ?? [], sourceRef),
       }
       if (!protectedStatus) {
         if (record.phone && !current.phone) patch.phone = record.phone
-        if (website && !current.website_url) patch.website_url = website
+        if (website && !current.websiteUrl) patch.website_url = website
         if (
           typeof record.fitScore === 'number' &&
-          (current.fit_score == null || record.fitScore > Number(current.fit_score))
+          (current.fitScore == null || record.fitScore > Number(current.fitScore))
         ) {
           patch.fit_score = record.fitScore
           patch.fit_class = record.fitClass
@@ -154,13 +181,16 @@ export async function ingestFromAdapter(
         if (record.estimatedMrrIls != null) patch.estimated_mrr_ils = record.estimatedMrrIls
       }
 
-      const { error } = await admin.from('sales_leads').update(patch).eq('id', dup.existingId)
-      if (error) {
-        result.errors.push(error.message)
-        result.skipped += 1
-      } else {
-        result.updated += 1
+      // Keep in-memory index warm for later duplicates in the same run.
+      current.sourceRefs = patch.source_refs as SalesLead['sourceRefs']
+      if (typeof patch.phone === 'string') current.phone = patch.phone
+      if (typeof patch.website_url === 'string') {
+        current.websiteUrl = patch.website_url
+        current.websiteHost = normalizeWebsiteHost(patch.website_url)
       }
+      if (typeof patch.fit_score === 'number') current.fitScore = patch.fit_score
+
+      pendingUpdates.push({ id: dup.existingId, patch })
       continue
     }
 
@@ -223,6 +253,11 @@ export async function ingestFromAdapter(
       segmentSlug: String(created.segment_slug),
       city: String(created.city),
       websiteHost: normalizeWebsiteHost(created.website_url as string | null),
+      status: 'new',
+      sourceRefs: [sourceRef],
+      phone: record.phone ?? null,
+      websiteUrl: website,
+      fitScore: record.fitScore ?? null,
     })
     result.created += 1
 
@@ -244,6 +279,16 @@ export async function ingestFromAdapter(
       city: record.city,
     })
   }
+
+  await mapPool(pendingUpdates, INGEST_UPDATE_CONCURRENCY, async ({ id, patch }) => {
+    const { error } = await admin.from('sales_leads').update(patch).eq('id', id)
+    if (error) {
+      result.errors.push(error.message)
+      result.skipped += 1
+    } else {
+      result.updated += 1
+    }
+  })
 
   return result
 }

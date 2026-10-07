@@ -74,6 +74,21 @@ describe('middleware-tenant-cache', () => {
     expect(MIDDLEWARE_TENANT_TTL_SEC).toBe(300)
   })
 
+  it('home path (/) can reuse a warm cookie written by the protected gate', async () => {
+    const res = NextResponse.next()
+    await writeMiddlewareTenantCache(res, {
+      uid: 'user-home',
+      clientId: 'client-home',
+      enabledNavFeatures: ['dashboard'],
+    })
+    const setCookie = res.cookies.get(MIDDLEWARE_TENANT_COOKIE)?.value
+    const homeReq = new NextRequest('https://bino.casa/', {
+      headers: new Headers({ cookie: `${MIDDLEWARE_TENANT_COOKIE}=${setCookie}` }),
+    })
+    const hit = await readMiddlewareTenantCache(homeReq, 'user-home')
+    expect(hit?.clientId).toBe('client-home')
+  })
+
   it('rejects unsigned / forged payloads', async () => {
     const forged = btoa(
       JSON.stringify({
