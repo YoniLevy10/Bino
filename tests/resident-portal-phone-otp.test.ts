@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { normalizePhone019, resolve019SmsSource, is019UnverifiedSourceError } from '@/lib/sms-019-core'
 import {
   buildResidentPortalOtpSms,
+  RESIDENT_PHONE_NOT_REGISTERED_ERROR,
+  RESIDENT_PHONE_OTP_SENT_MESSAGE,
   residentAuthEmailFromPhone,
+  residentPhoneOtpHttpResult,
 } from '@/lib/resident-portal/phone-otp'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 
@@ -14,6 +17,20 @@ describe('resident phone otp helpers', () => {
 
   it('builds stable synthetic auth email from phone', () => {
     expect(residentAuthEmailFromPhone('972501234567')).toBe('r972501234567@residents.bino.local')
+  })
+
+  it('rejects an unregistered phone with a clear entry error', () => {
+    const http = residentPhoneOtpHttpResult({ ok: true, sent: false, reason: 'not_listed' })
+    expect(http.status).toBe(403)
+    expect(http.body.error).toBe(RESIDENT_PHONE_NOT_REGISTERED_ERROR)
+    expect(http.body.error).toContain('אינו רשום')
+  })
+
+  it('confirms SMS only after the phone is on the building list', () => {
+    const http = residentPhoneOtpHttpResult({ ok: true, sent: true })
+    expect(http.status).toBe(200)
+    expect(http.body.ok).toBe(true)
+    expect(http.body.message).toBe(RESIDENT_PHONE_OTP_SENT_MESSAGE)
   })
 
   it('builds Apple domain-bound OTP SMS with code on the last line', () => {

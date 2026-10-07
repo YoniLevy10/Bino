@@ -36,12 +36,14 @@ test.describe('Soft launch — שערים ומסכים ציבוריים', () => 
     }
   })
 
-  test('פורטל דיירים — מסך כניסה עולה', async ({ page }) => {
+  test('פורטל דיירים — כניסה רק דרך קישור הבניין', async ({ page }) => {
     await gotoOk(page, '/resident/login')
     await expect(page.getByRole('heading', { name: /כניסה לפורטל הדיירים/ })).toBeVisible({
       timeout: 12_000,
     })
-    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.getByText(/הקישור הייעודי לבניין/)).toBeVisible()
+    await expect(page.getByText(/מספר הטלפון הרשום בבניין/)).toBeVisible()
+    await expect(page.locator('input[type="email"]')).toHaveCount(0)
   })
 
   test('דף /vaad-pay הציבורי עולה', async ({ page }) => {

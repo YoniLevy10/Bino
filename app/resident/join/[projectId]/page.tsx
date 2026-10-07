@@ -72,10 +72,7 @@ export default function ResidentJoinPage() {
         setError(json.error || 'שליחת סיסמה נכשלה')
         return
       }
-      setInfo(
-        json.message ||
-          'אם המספר רשום אצל חברת הניהול בבניין זה, נשלחה אליו סיסמה מספרית ב-SMS'
-      )
+      setInfo(json.message || 'נשלחה סיסמה מספרית ב-SMS. בדקו גם במסוננים / הודעות לא רצויות.')
       setStep('code')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאת רשת')
@@ -152,7 +149,7 @@ export default function ResidentJoinPage() {
     >
       <ResidentPageTitle>כניסה לאזור האישי</ResidentPageTitle>
       <ResidentMuted style={{ margin: '10px 0 22px' }}>
-        הזינו את מספר הטלפון הרשום אצל חברת הניהול. בכל כניסה נשלחת סיסמה מספרית חד־פעמית ב-SMS.
+        הזינו את מספר הטלפון הרשום אצל חברת הניהול. בכל כניסה נשלחת סיסמה מספרית חד־פעמית.
       </ResidentMuted>
 
       {step === 'phone' ? (
@@ -181,8 +178,7 @@ export default function ResidentJoinPage() {
       ) : (
         <form onSubmit={verifyCode}>
           <ResidentAlert tone="info">
-            {info ||
-              `אם המספר ${phone} רשום בבניין, נשלחה אליו סיסמה ב-SMS. בדקו גם במסוננים / הודעות לא רצויות.`}
+            {info || 'נשלחה סיסמה ב-SMS. בדקו גם במסוננים / הודעות לא רצויות.'}
           </ResidentAlert>
           <label style={{ ...residentShellStyles.label, marginTop: 18 }}>סיסמה מ-SMS</label>
           <ResidentOtpBoxes value={code} onChange={setCode} disabled={loading} />

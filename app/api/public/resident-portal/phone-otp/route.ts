@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { requestResidentPhoneOtp } from '@/lib/resident-portal/phone-otp'
+import {
+  requestResidentPhoneOtp,
+  residentPhoneOtpHttpResult,
+} from '@/lib/resident-portal/phone-otp'
 import { sanitizeId } from '@/lib/api-validation'
 
 /**
- * Shared join-link step 1.
- * Always returns a generic success message when the phone is unknown (anti-enumeration),
- * except rate limits / invalid input / SMS provider failure.
+ * Building-link login step 1.
+ * An unregistered phone gets an error. SMS is sent only when the number is on that building's list.
  */
 export async function POST(req: Request) {
   let body: { project_id?: unknown; phone?: unknown }
@@ -38,25 +40,6 @@ export async function POST(req: Request) {
   }
 
   const result = await requestResidentPhoneOtp(admin, { projectId, phoneRaw: phone })
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status })
-  }
-
-  // Same client-facing message whether listed or not (except portal_disabled / ambiguous).
-  if (!result.sent) {
-    if (result.reason === 'portal_disabled') {
-      return NextResponse.json({ error: 'פורטל הדיירים אינו פעיל בבניין זה' }, { status: 403 })
-    }
-    if (result.reason === 'ambiguous') {
-      return NextResponse.json(
-        { error: 'המספר משויך ליותר מדירה אחת — פנו לחברת הניהול' },
-        { status: 409 }
-      )
-    }
-  }
-
-  return NextResponse.json({
-    ok: true,
-    message: 'אם המספר רשום בפרויקט, נשלח אליו קוד ב-SMS.',
-  })
+  const http = residentPhoneOtpHttpResult(result)
+  return NextResponse.json(http.body, { status: http.status })
 }

@@ -53,9 +53,39 @@ export type PhoneOtpRequestResult =
   | { ok: true; sent: false; reason: 'not_listed' | 'portal_disabled' | 'ambiguous' }
   | { ok: false; error: string; status: number }
 
+/** Shown on the building link when the phone is not on that project's resident list. */
+export const RESIDENT_PHONE_NOT_REGISTERED_ERROR =
+  'לא ניתן להיכנס — המספר אינו רשום בבניין זה. פנו לחברת הניהול.'
+
+export const RESIDENT_PHONE_OTP_SENT_MESSAGE = 'נשלחה סיסמה מספרית ב-SMS.'
+
 /**
- * Shared-link login step 1: match phone → resident in project → SMS OTP.
- * Anti-enumeration: callers should show the same UX for sent/not_listed.
+ * Public HTTP body for the building-link OTP request.
+ * An unregistered phone is an error — entry is only for numbers on that building's list.
+ */
+export function residentPhoneOtpHttpResult(result: PhoneOtpRequestResult): {
+  status: number
+  body: { ok?: true; message?: string; error?: string }
+} {
+  if (!result.ok) return { status: result.status, body: { error: result.error } }
+  if (!result.sent) {
+    if (result.reason === 'portal_disabled') {
+      return { status: 403, body: { error: 'פורטל הדיירים אינו פעיל בבניין זה' } }
+    }
+    if (result.reason === 'ambiguous') {
+      return {
+        status: 409,
+        body: { error: 'המספר משויך ליותר מדירה אחת — פנו לחברת הניהול' },
+      }
+    }
+    return { status: 403, body: { error: RESIDENT_PHONE_NOT_REGISTERED_ERROR } }
+  }
+  return { status: 200, body: { ok: true, message: RESIDENT_PHONE_OTP_SENT_MESSAGE } }
+}
+
+/**
+ * Building-link login step 1: match phone → resident in that project → SMS OTP.
+ * Unregistered phones stay `not_listed`; the HTTP layer returns an error for them.
  */
 export async function requestResidentPhoneOtp(
   admin: SupabaseClient,

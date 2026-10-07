@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import {
   ResidentAlert,
   ResidentAuthFrame,
@@ -68,22 +67,10 @@ function AcceptInviteInner() {
       {status === 'error' ? (
         <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
           <ResidentAlert tone="error">{error}</ResidentAlert>
-          <ResidentPrimaryButton
-            href={`/resident/login?token=${encodeURIComponent(token)}`}
-          >
-            מעבר להתחברות
-          </ResidentPrimaryButton>
-          <Link
-            href="/resident/login"
-            style={{
-              textAlign: 'center',
-              color: residentTheme.colors.primary,
-              fontWeight: 600,
-              fontSize: 14,
-            }}
-          >
-            חזרה לכניסה
-          </Link>
+          <ResidentMuted>
+            הכניסה לפורטל אפשרית רק דרך הקישור הייעודי לבניין, עם מספר הטלפון הרשום.
+          </ResidentMuted>
+          <ResidentPrimaryButton href="/resident/login">איך נכנסים</ResidentPrimaryButton>
         </div>
       ) : null}
       {status === 'ok' ? (
