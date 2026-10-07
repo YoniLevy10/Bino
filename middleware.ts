@@ -98,11 +98,32 @@ export async function middleware(req: NextRequest) {
       } = await supabase.auth.getUser()
       if (user) {
         try {
+          // Skip org→clients chain when the signed 5-minute tenant cookie is warm
+          // (same cookie as the protected-path gate — Disk IO / nav chatter).
+          const cachedTenant = await readMiddlewareTenantCache(req, user.id)
+          if (cachedTenant?.clientId) {
+            const url = req.nextUrl.clone()
+            url.pathname = '/dashboard'
+            return redirectWithCookies(pending, url)
+          }
+
           // Service role for tenant chain — authenticated JWT cannot filter
           // clients.is_active (078 column grant) and was returning 503 on login.
           const admin = getSupabaseAdmin()
           const clientIds = await listClientIdsForUserId(admin, user.id)
           if (clientIds.length === 1) {
+            const clientId = clientIds[0]!
+            let enabledNavFeatures: SidebarNavItemId[] | null = null
+            try {
+              enabledNavFeatures = await fetchClientEnabledNavFeatures(admin, clientId)
+            } catch {
+              enabledNavFeatures = null
+            }
+            await writeMiddlewareTenantCache(pending.response, {
+              uid: user.id,
+              clientId,
+              enabledNavFeatures,
+            })
             const url = req.nextUrl.clone()
             url.pathname = '/dashboard'
             return redirectWithCookies(pending, url)
@@ -116,7 +137,7 @@ export async function middleware(req: NextRequest) {
             }
           }
         } catch {
-          // fall through to login redirect on transient errors
+          // fall through to login redirect on transient errors — never signOut here
         }
       }
     }

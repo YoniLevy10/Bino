@@ -560,37 +560,52 @@ export default function TicketsPage() {
     }
   }, [ticketsQueryError, ticketsHasData])
 
-  // Supabase Realtime — silent refresh when tickets change (tenant-filtered)
+  // Supabase Realtime — only while the tab is visible (cut WAL fan-out when backgrounded)
   useEffect(() => {
     if (!tenantClientId) return
-    const channel = supabase
-      .channel(`tickets-page-realtime:${tenantClientId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-          filter: `client_id=eq.${tenantClientId}`,
-        },
-        () => {
-          debouncedFetchData(true)
-        }
-      )
-      .subscribe()
-    return () => {
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    const subscribe = () => {
+      if (channel || document.visibilityState !== 'visible') return
+      channel = supabase
+        .channel(`tickets-page-realtime:${tenantClientId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tickets',
+            filter: `client_id=eq.${tenantClientId}`,
+          },
+          () => {
+            debouncedFetchData(true)
+          }
+        )
+        .subscribe()
+    }
+
+    const unsubscribe = () => {
+      if (!channel) return
       void supabase.removeChannel(channel)
+      channel = null
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        subscribe()
+        debouncedFetchData(true)
+      } else {
+        unsubscribe()
+      }
+    }
+
+    subscribe()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      unsubscribe()
     }
   }, [debouncedFetchData, tenantClientId])
-
-  // Visibility API — silent refresh when returning to tab
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') debouncedFetchData(true)
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [debouncedFetchData])
 
   const stats = useMemo(() => {
     const total = tickets.length

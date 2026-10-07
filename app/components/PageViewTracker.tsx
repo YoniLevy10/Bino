@@ -6,11 +6,11 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
 
 /** Same-path dedupe window — reduces feature_page_views write churn. */
-const PAGE_VIEW_DEDUP_MS = 5 * 60_000
+const PAGE_VIEW_DEDUP_MS = 15 * 60_000
 
 /**
  * Fires a lightweight page-view beacon on tenant dashboard navigations.
- * Dedupes same path within 5 minutes in-session to avoid spam on remounts/nav.
+ * Dedupes same path within 15 minutes in-session to avoid spam on remounts/nav.
  */
 export function PageViewTracker() {
   const pathname = usePathname()

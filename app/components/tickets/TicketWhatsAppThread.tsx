@@ -123,6 +123,8 @@ export function TicketWhatsAppThread({
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      // Skip background-tab polls — realtime still covers inserts while visible.
+      if (typeof document !== 'undefined' && document.hidden) return
       void loadMessages({ silent: true })
     }, POLL_MS)
     return () => window.clearInterval(timer)

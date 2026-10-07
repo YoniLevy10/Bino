@@ -73,6 +73,7 @@ import { DraggableFab } from '@/app/components/DraggableFab'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import {
   readTenantDashboardCache,
+  secondaryCountsAreFresh,
   writeTenantDashboardCache,
 } from '@/lib/dashboard-tenant-cache'
 import { isTicketInTreatment } from '@/lib/ticket-status'
@@ -180,6 +181,9 @@ type DashboardCachePayload = {
   residentsCount: number | null
   workersCount: number | null
   recentActivity: unknown[]
+  /** When exact residents / open-tasks counts were last fetched (Disk IO TTL). */
+  countsFetchedAt?: number
+  openTasksCount?: number | null
 }
 
 export default function DashboardPage() {
@@ -295,11 +299,13 @@ export default function DashboardPage() {
     }) => {
       try {
         const { uid, clientId } = await resolveDashboardTenantScope()
-        const [logsResult, resCountResult, openTasksResult] = await Promise.all([
-          supabase
-            .from('ticket_logs')
-            .select(
-              `
+        const cached = readTenantDashboardCache<DashboardCachePayload>(uid, clientId)
+        const reuseCounts = secondaryCountsAreFresh(cached?.countsFetchedAt)
+
+        const logsPromise = supabase
+          .from('ticket_logs')
+          .select(
+            `
               id, ticket_id, action_type, created_at,
               tickets!inner (
                 ticket_number,
@@ -309,25 +315,45 @@ export default function DashboardPage() {
                 projects (name, project_code)
               )
             `
-            )
-            .eq('tickets.client_id', clientId)
-            .order('created_at', { ascending: false })
-            .limit(5),
-          withClientId(supabase.from('residents').select('id', { count: 'exact', head: true }), clientId).is(
-            'deleted_at',
-            null
-          ),
-          withClientId(
-            supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }),
-            clientId
           )
-            .is('deleted_at', null)
-            .neq('status', 'DONE'),
-        ])
+          .eq('tickets.client_id', clientId)
+          .order('created_at', { ascending: false })
+          .limit(5)
 
-        const resCount = resCountResult.count ?? null
+        let resCount: number | null
+        let tasksOpen: number | null
+        let countsFetchedAt: number
+        let logsResult: Awaited<typeof logsPromise>
+
+        if (reuseCounts) {
+          logsResult = await logsPromise
+          resCount = cached?.residentsCount ?? cacheAuxRef.current.residentsCount
+          tasksOpen =
+            cached?.openTasksCount !== undefined
+              ? cached.openTasksCount
+              : null
+          countsFetchedAt = cached!.countsFetchedAt as number
+        } else {
+          const [logs, resCountResult, openTasksResult] = await Promise.all([
+            logsPromise,
+            withClientId(
+              supabase.from('residents').select('id', { count: 'exact', head: true }),
+              clientId
+            ).is('deleted_at', null),
+            withClientId(
+              supabase.from('maintenance_tasks').select('id', { count: 'exact', head: true }),
+              clientId
+            )
+              .is('deleted_at', null)
+              .neq('status', 'DONE'),
+          ])
+          logsResult = logs
+          resCount = resCountResult.count ?? null
+          tasksOpen = openTasksResult.count ?? null
+          countsFetchedAt = Date.now()
+        }
+
         const wCount = Object.keys(ctx.workersMap).length
-        const tasksOpen = openTasksResult.count ?? null
         setOpenTasksCount(tasksOpen)
         const fromLogs = buildActivityFromLogs(logsResult.data, logsResult.error)
         const activity =
@@ -356,6 +382,8 @@ export default function DashboardPage() {
           residentsCount: resCount,
           workersCount: wCount,
           recentActivity: activity,
+          countsFetchedAt,
+          openTasksCount: tasksOpen,
         })
       } catch {
         /* non-critical */
@@ -407,6 +435,7 @@ export default function DashboardPage() {
           setCachePainted(true)
           setKpiReady(true)
 
+          const prevDash = readTenantDashboardCache<DashboardCachePayload>(uid, clientId)
           writeTenantDashboardCache(uid, clientId, {
             tickets: formatted,
             projects: nextProjects,
@@ -416,6 +445,8 @@ export default function DashboardPage() {
             residentsCount: cacheAuxRef.current.residentsCount,
             workersCount: cacheAuxRef.current.workersCount,
             recentActivity: cacheAuxRef.current.recentActivity,
+            countsFetchedAt: prevDash?.countsFetchedAt,
+            openTasksCount: prevDash?.openTasksCount,
           })
 
           // Defer enrichment (activity/logs/counts) until after first useful paint.
@@ -541,6 +572,7 @@ export default function DashboardPage() {
           setKpiReady(true)
           setResidentsCount(cached.residentsCount)
           setWorkersCount(cached.workersCount)
+          if (cached.openTasksCount !== undefined) setOpenTasksCount(cached.openTasksCount)
           setRecentActivity(cached.recentActivity as ActivityItem[])
           cacheAuxRef.current = {
             residentsCount: cached.residentsCount,
@@ -599,37 +631,52 @@ export default function DashboardPage() {
     }
   }, [loadData, queryClient])
 
-  // Supabase Realtime — silent refresh when DB changes (tenant-filtered to cut fan-out)
+  // Supabase Realtime — only while the tab is visible (cut WAL fan-out when backgrounded)
   useEffect(() => {
     if (!rqClientId) return
-    const channel = supabase
-      .channel(`dashboard-tickets-realtime:${rqClientId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-          filter: `client_id=eq.${rqClientId}`,
-        },
-        () => {
-          debouncedLoadData(true)
-        }
-      )
-      .subscribe()
-    return () => {
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    const subscribe = () => {
+      if (channel || document.visibilityState !== 'visible') return
+      channel = supabase
+        .channel(`dashboard-tickets-realtime:${rqClientId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tickets',
+            filter: `client_id=eq.${rqClientId}`,
+          },
+          () => {
+            debouncedLoadData(true)
+          }
+        )
+        .subscribe()
+    }
+
+    const unsubscribe = () => {
+      if (!channel) return
       void supabase.removeChannel(channel)
+      channel = null
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        subscribe()
+        debouncedLoadData(true)
+      } else {
+        unsubscribe()
+      }
+    }
+
+    subscribe()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      unsubscribe()
     }
   }, [debouncedLoadData, rqClientId])
-
-  // Visibility API — silent refresh when returning to tab
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') debouncedLoadData(true)
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [debouncedLoadData])
 
   function buildActivityFromLogs(
     data: unknown,
