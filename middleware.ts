@@ -20,6 +20,7 @@ import {
   buildCanonicalRedirectUrl,
   shouldRedirectVercelAppHostToCanonical,
 } from '@/lib/canonical-host'
+import { applyMiddlewareSupabaseCookies } from '@/lib/middleware-auth-cookies'
 
 type Pending = { response: NextResponse }
 
@@ -35,9 +36,9 @@ function createMiddlewareSupabase(req: NextRequest, pending: Pending) {
         return req.cookies.getAll()
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          pending.response.cookies.set(name, value, options)
-        })
+        // Forward rotated tokens onto this request. Response-only Set-Cookie
+        // leaves route-handler getUser() on the old refresh token → 401.
+        applyMiddlewareSupabaseCookies(req, pending, cookiesToSet)
       },
     },
   })

@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { isResidentPortalPath } from '@/lib/is-resident-portal-path'
 import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
 
 import {
@@ -178,11 +179,21 @@ type LoadNavOptions = {
   skipCache?: boolean
   /** Force network even when localStorage TTL is still valid. */
   forceNetwork?: boolean
+  /** One retry after a 401, once middleware may have rotated the auth cookies. */
+  authRetry?: boolean
+}
+
+const NAV_AUTH_REQUIRED = 'נדרשת התחברות'
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isWorker = isWorkerPortalPath(pathname)
+  const isResident = isResidentPortalPath(pathname)
+  const skipManagerNav = isWorker || isResident
   const { addons, isBootstrapped: addonsReady } = usePaidAddons()
 
   const initial = useRef(readInitialNavState()).current
@@ -195,6 +206,8 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
 
   const loadGenerationRef = useRef(0)
   const lastSuccessfulFetchRef = useRef(initial.ts)
+  const hasSessionRef = useRef(false)
+  const sawInitialSessionRef = useRef(false)
   /** Last known enabled addon keys — never flash to [] while entitlements reload. */
   const stableAddonKeysRef = useRef<string[]>(enabledAddonKeysFromEntitlements(addons))
 
@@ -249,7 +262,16 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
           error?: string
         }
         if (!res.ok) {
-          throw new Error(json.error || `nav-config ${res.status}`)
+          const message = json.error || `nav-config ${res.status}`
+          // Middleware may have rotated the token on this 401 response.
+          // Retry once so the next request sends the fresh cookies.
+          if (res.status === 401 && message === NAV_AUTH_REQUIRED && !options?.authRetry) {
+            await sleep(200)
+            if (generation !== loadGenerationRef.current) return
+            await loadNav({ ...options, authRetry: true })
+            return
+          }
+          throw new Error(message)
         }
 
         const parsedOrder = parseSidebarNavOrderFromDb(json.sidebar_nav_order)
@@ -270,7 +292,12 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         lastSuccessfulFetchRef.current = Date.now()
       } catch (e) {
         if (generation !== loadGenerationRef.current) return
-        console.error('[SidebarNav] load failed:', e instanceof Error ? e.message : e)
+        const message = e instanceof Error ? e.message : e
+        // No session yet (login, public pages, auth still hydrating) is expected.
+        // console.error here opens the Next.js dev overlay on every load.
+        if (message !== NAV_AUTH_REQUIRED) {
+          console.error('[SidebarNav] load failed:', message)
+        }
         if (!hadCachedState) {
           applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {})
         }
@@ -294,52 +321,75 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
 
   // SSR leaves DEFAULT order in useState; re-seed from localStorage before paint.
   useLayoutEffect(() => {
-    if (isWorker) return
+    if (skipManagerNav) return
     const hydrated = readInitialNavState()
     if (!hydrated.isBootstrapped) return
     applyNavState(hydrated.orderIds, hydrated.enabledFeatures, hydrated.navLabels)
     setIsBootstrapped(true)
     lastSuccessfulFetchRef.current = hydrated.ts
-  }, [isWorker, applyNavState])
+  }, [skipManagerNav, applyNavState])
 
+  // Wait for INITIAL_SESSION. Calling getUser() on mount throws «נדרשת התחברות»
+  // before the cookie session is loaded (and on every public page).
+  // Do not call Supabase from inside the callback — it runs under the auth lock.
   useEffect(() => {
-    if (isWorker) {
+    if (skipManagerNav) {
       setIsBootstrapped(true)
       return
     }
-    void loadNav()
-  }, [isWorker, loadNav])
-
-  useEffect(() => {
-    if (isWorker) return
     const supabase = createClient()
+    let cancelled = false
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        void loadNav({ skipCache: true, forceNetwork: true })
+      const authed = Boolean(session?.user)
+      if (event === 'SIGNED_OUT' || !authed) {
+        hasSessionRef.current = false
+      } else {
+        hasSessionRef.current = true
+      }
+
+      if (event === 'INITIAL_SESSION') {
+        sawInitialSessionRef.current = true
+        window.setTimeout(() => {
+          if (cancelled) return
+          if (session?.user) void loadNav()
+          else setIsBootstrapped(true)
+        }, 0)
+        return
+      }
+
+      // Recovery emits SIGNED_IN before INITIAL_SESSION. The first load is
+      // INITIAL_SESSION; a later SIGNED_IN is a real sign-in or tab resume.
+      if (event === 'SIGNED_IN' && session?.user && sawInitialSessionRef.current) {
+        window.setTimeout(() => {
+          if (cancelled) return
+          void loadNav({ skipCache: true, forceNetwork: true })
+        }, 0)
       }
     })
     return () => {
+      cancelled = true
       subscription.unsubscribe()
     }
-  }, [isWorker, loadNav])
+  }, [skipManagerNav, loadNav])
 
   useEffect(() => {
-    if (isWorker) return
+    if (skipManagerNav) return
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
+      if (!hasSessionRef.current) return
       maybeRefetchNav({ forceNetwork: true })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [isWorker, maybeRefetchNav])
+  }, [skipManagerNav, maybeRefetchNav])
 
   useAppRefreshListener(
     useCallback(() => {
-      if (isWorker) return
+      if (skipManagerNav || !hasSessionRef.current) return
       void loadNav({ skipCache: true, forceNetwork: true })
-    }, [isWorker, loadNav])
+    }, [skipManagerNav, loadNav])
   )
 
   const lockedAddonsCount = useMemo(
