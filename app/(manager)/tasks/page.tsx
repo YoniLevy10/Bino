@@ -198,6 +198,22 @@ export default function TasksPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Recommendation links land on /tasks?create=1&project_id=&topic=
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('create') !== '1') return
+    const projectId = (params.get('project_id') || '').trim()
+    const topic = (params.get('topic') || '').trim()
+    setEditingTask(null)
+    setForm({
+      ...emptyForm,
+      projectId,
+      title: topic ? `טיפול מונע — ${topic}` : '',
+    })
+    setCreateFile(null)
+    setDrawerOpen(true)
+  }, [])
+
   useEffect(() => {
     setExtraTasks([])
     setHasMoreTasks(Boolean(tasksQuery.data?.has_more))

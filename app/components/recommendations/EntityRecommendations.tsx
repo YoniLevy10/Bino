@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { useRouter } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { Button, theme } from '@/app/components/ui'
+import { theme } from '@/app/components/ui'
 import type { EntityType, ManagementRecommendationRow } from '@/lib/recommendations/types'
-import { parseActions } from '@/lib/recommendations/entitlements'
+import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
 
 type Props = {
   entityType: EntityType
@@ -13,7 +12,6 @@ type Props = {
 }
 
 export function EntityRecommendations({ entityType, entityId }: Props) {
-  const router = useRouter()
   const [rows, setRows] = useState<ManagementRecommendationRow[]>([])
 
   useEffect(() => {
@@ -41,32 +39,15 @@ export function EntityRecommendations({ entityType, entityId }: Props) {
   return (
     <div style={styles.wrap}>
       <div style={styles.title}>המלצות לישות זו</div>
-      {rows.map((row) => {
-        const actions = parseActions(row.actions)
-        const primary = actions.find((a) => a.id === row.primary_action) || actions[0]
-        return (
-          <div key={row.id} style={styles.item}>
-            <p style={styles.reason}>{row.reason}</p>
-            {primary?.href ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  void fetchWithTimeout('/api/recommendations/action', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: row.id, action_id: primary.id }),
-                  }).finally(() => {
-                    if (primary.href) router.push(primary.href)
-                  })
-                }}
-              >
-                {primary.label}
-              </Button>
-            ) : null}
-          </div>
-        )
-      })}
+      {rows.map((row) => (
+        <div key={row.id} style={styles.item}>
+          <p style={styles.reason}>{row.reason}</p>
+          <RecommendationAlertActions
+            row={row}
+            onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}
+          />
+        </div>
+      ))}
     </div>
   )
 }

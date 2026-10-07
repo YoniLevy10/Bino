@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
+import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
 
 function urgencyLabel(u: string): string {
   if (u === 'critical') return 'דחוף'
@@ -15,7 +16,7 @@ function urgencyLabel(u: string): string {
 
 /**
  * Bell next to the mobile hamburger — opens management recommendations
- * ("דורש תשומת לב") as read-only smart alerts (no action buttons).
+ * ("דורש תשומת לב") with a link to the relevant screen and dismiss.
  */
 export function RecommendationsBell() {
   const panelId = useId()
@@ -99,6 +100,11 @@ export function RecommendationsBell() {
                     <div key={row.id} style={styles.item}>
                       <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
                       <p style={styles.reason}>{row.reason}</p>
+                      <RecommendationAlertActions
+                        row={row}
+                        onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}
+                        onNavigated={() => setOpen(false)}
+                      />
                     </div>
                   ))
                 )}

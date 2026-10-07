@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card, theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
+import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
 
 type Props = {
   /** Max cards on dashboard before "show all" */
@@ -17,7 +18,7 @@ function urgencyLabel(u: string): string {
   return 'בינוני'
 }
 
-/** Dashboard card of smart alerts — read-only (no action buttons). */
+/** Dashboard card of smart alerts — open the relevant screen or dismiss. */
 export function AttentionRequired({ previewLimit = 3 }: Props) {
   const [rows, setRows] = useState<ManagementRecommendationRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +57,10 @@ export function AttentionRequired({ previewLimit = 3 }: Props) {
               <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
             </div>
             <p style={styles.reason}>{row.reason}</p>
+            <RecommendationAlertActions
+              row={row}
+              onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}
+            />
           </div>
         ))}
       </div>
