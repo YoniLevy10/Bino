@@ -61,4 +61,16 @@ describe('readGrowRegisterConfig', () => {
     expect(cfg?.isDirectDebit).toBe(1)
     expect(cfg?.baseUrl).toContain('devregisterapi')
   })
+
+  it('defaults is_direct_debit to 0 in production', () => {
+    for (const key of keys) prev[key] = process.env[key]
+    process.env.GROW_REGISTER_X_API_KEY = 'reg-key'
+    process.env.GROW_MARKETER = 'marketer-1'
+    process.env.GROW_PRICE_QUOTE = 'KKlp53'
+    process.env.GROW_ENV = 'production'
+    delete process.env.GROW_REGISTER_IS_DIRECT_DEBIT
+    const cfg = readGrowRegisterConfig()
+    expect(cfg?.isDirectDebit).toBe(0)
+    expect(cfg?.baseUrl).toContain('registerapi.meshulam')
+  })
 })

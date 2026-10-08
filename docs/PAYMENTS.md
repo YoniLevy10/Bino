@@ -47,6 +47,7 @@ Grow מחברים את Bino כפלטפורמה:
 - `GROW_ENV=sandbox` + מפתחות בדיקה מליאל.
 - **אזהרה:** Bit / Apple Pay / Google Pay עלולים להיות חיוב אמת גם ב-sandbox — לבדוק בסכומים נמוכים בלבד.
 - לייב: `GROW_ENV=production` (או השמטה) + מפתחות Live + `userId` אמיתי לכל לקוח.
+- חיתוך לייב (hosts, env, webhooks, מסלולי price_quote): [`docs/GROW_LIVE_CUTOVER.md`](./GROW_LIVE_CUTOVER.md).
 
 ## Webhooks
 

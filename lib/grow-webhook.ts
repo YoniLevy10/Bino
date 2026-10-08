@@ -125,15 +125,41 @@ export function extractGrowWebhookIds(payload: unknown): GrowWebhookIds {
   }
 }
 
+/**
+ * Grow may configure different `?token=` values for payment vs register during cutover.
+ * `expectedSecret` accepts a single value or comma/whitespace-separated list.
+ */
 export function authorizeGrowWebhook(opts: {
   expectedSecret: string | null | undefined
   tokenFromQuery: string | null | undefined
   tokenFromHeader: string | null | undefined
 }): boolean {
-  const expected = (opts.expectedSecret || '').trim()
-  if (!expected) return false
+  const expectedRaw = (opts.expectedSecret || '').trim()
+  if (!expectedRaw) return false
+  const allowed = expectedRaw
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (allowed.length === 0) return false
   const token = (opts.tokenFromQuery || opts.tokenFromHeader || '').trim()
-  return Boolean(token) && token === expected
+  return Boolean(token) && allowed.includes(token)
+}
+
+/** First token from a comma/whitespace list (used when building notify URLs). */
+export function primaryGrowWebhookToken(raw: string | null | undefined): string {
+  return (
+    (raw || '')
+      .split(/[,\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)[0] || ''
+  )
+}
+
+/** Optional register-only secret; falls back to GROW_WEBHOOK_SECRET. */
+export function readGrowRegisterWebhookSecret(): string {
+  const dedicated = (process.env.GROW_REGISTER_WEBHOOK_SECRET || '').trim()
+  if (dedicated) return dedicated
+  return (process.env.GROW_WEBHOOK_SECRET || '').trim()
 }
 
 /** True when callback sum matches charge amount (ILS). Missing sum → skip check. */

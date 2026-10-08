@@ -144,5 +144,13 @@ describe('authorizeGrowWebhook', () => {
         tokenFromHeader: null,
       })
     ).toBe(false)
+
+    expect(
+      authorizeGrowWebhook({
+        expectedSecret: 'a, b',
+        tokenFromQuery: 'b',
+        tokenFromHeader: null,
+      })
+    ).toBe(true)
   })
 })

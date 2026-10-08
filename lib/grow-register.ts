@@ -5,6 +5,7 @@ import {
   readGrowRegisterConfig,
   type GrowRegisterConfig,
 } from '@/lib/grow-config'
+import { primaryGrowWebhookToken, readGrowRegisterWebhookSecret } from '@/lib/grow-webhook'
 import { normalizePhone019 } from '@/lib/sms-019-core'
 
 const TIMEOUT_MS = 20_000
@@ -163,10 +164,10 @@ export async function createGrowRegistrationLink(
 /** Public URL Grow should call after merchant approval — must be configured at Grow for the marketer. */
 export function buildGrowRegisterWebhookUrl(): string | null {
   const base = getPublicAppUrl()
-  const secret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
-  if (!base || !secret) return null
+  const token = primaryGrowWebhookToken(readGrowRegisterWebhookSecret())
+  if (!base || !token) return null
   const url = new URL(`${base}/api/webhook/grow-register`)
-  url.searchParams.set('token', secret)
+  url.searchParams.set('token', token)
   return url.toString()
 }
 

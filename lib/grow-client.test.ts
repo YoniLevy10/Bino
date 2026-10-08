@@ -4,7 +4,13 @@ import {
   isGrowApiSuccessStatus,
   parseGrowPaymentLinkResponse,
 } from '@/lib/grow-client'
-import { parseGrowEnv, readGrowPlatformConfig, sanitizeGrowPlainText } from '@/lib/grow-config'
+import {
+  growCreatePaymentLinkPath,
+  growPaymentLinkBaseUrl,
+  parseGrowEnv,
+  readGrowPlatformConfig,
+  sanitizeGrowPlainText,
+} from '@/lib/grow-config'
 
 vi.mock('@/lib/fetch-timeout', () => ({
   fetchWithTimeout: vi.fn(),
@@ -18,6 +24,17 @@ describe('parseGrowEnv', () => {
     expect(parseGrowEnv('')).toBe('production')
     expect(parseGrowEnv('production')).toBe('production')
     expect(parseGrowEnv('sandbox')).toBe('sandbox')
+  })
+})
+
+describe('live CreatePaymentLink host', () => {
+  it('uses api.grow.link + CreatePaymentLink casing in production', () => {
+    expect(growPaymentLinkBaseUrl('production')).toBe(
+      'https://api.grow.link/api/light/server/1.0'
+    )
+    expect(growCreatePaymentLinkPath('production')).toBe('/CreatePaymentLink')
+    expect(growPaymentLinkBaseUrl('sandbox')).toContain('sandbox.meshulam')
+    expect(growCreatePaymentLinkPath('sandbox')).toBe('/createPaymentLink')
   })
 })
 

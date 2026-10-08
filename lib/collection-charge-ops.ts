@@ -6,7 +6,7 @@ import {
   type ClientGrowPaymentsRow,
 } from '@/lib/grow-credentials'
 import { isGrowPlatformConfigured } from '@/lib/grow-config'
-import { growCallbackSumMatchesCharge } from '@/lib/grow-webhook'
+import { growCallbackSumMatchesCharge, primaryGrowWebhookToken } from '@/lib/grow-webhook'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { getPublicAppUrl } from '@/lib/public-app-url'
 import {
@@ -36,7 +36,7 @@ function nowIso(): string {
 
 export function buildGrowWebhookNotifyUrl(): string | null {
   const base = getPublicAppUrl()
-  const secret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
+  const secret = primaryGrowWebhookToken(process.env.GROW_WEBHOOK_SECRET)
   if (!base || !secret) return null
   const url = new URL(`${base}/api/webhook/grow`)
   url.searchParams.set('token', secret)

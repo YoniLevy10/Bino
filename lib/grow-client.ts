@@ -2,11 +2,14 @@ import { fetchWithTimeout } from '@/lib/fetch-timeout'
 import { normalizePhone019 } from '@/lib/sms-019-core'
 import {
   growApiBaseUrl,
+  growCreatePaymentLinkPath,
+  growPaymentLinkBaseUrl,
   readGrowPlatformConfig,
   sanitizeGrowPlainText,
   type GrowEnv,
   type GrowPlatformConfig,
 } from '@/lib/grow-config'
+import { primaryGrowWebhookToken } from '@/lib/grow-webhook'
 
 const GROW_TIMEOUT_MS = 20_000
 
@@ -82,14 +85,15 @@ async function postGrowForm(
   env: GrowEnv,
   path: string,
   fields: Record<string, string>,
-  xApiKey: string
+  xApiKey: string,
+  baseUrl: string = growApiBaseUrl(env)
 ): Promise<{ status: number; data: unknown } | { status: 0; data: null }> {
   const body = new FormData()
   for (const [key, value] of Object.entries(fields)) {
     if (value !== '') body.append(key, value)
   }
   const res = await fetchWithTimeout(
-    `${growApiBaseUrl(env)}${path}`,
+    `${baseUrl}${path}`,
     {
       method: 'POST',
       headers: {
@@ -207,7 +211,13 @@ export async function createGrowPaymentLink(
     fields.invoiceNotifyUrl = request.invoiceNotifyUrl.trim()
   }
 
-  const posted = await postGrowForm(platform.env, '/createPaymentLink', fields, platform.xApiKey)
+  const posted = await postGrowForm(
+    platform.env,
+    growCreatePaymentLinkPath(platform.env),
+    fields,
+    platform.xApiKey,
+    growPaymentLinkBaseUrl(platform.env)
+  )
   if (posted.status === 0) {
     return { ok: false, error: 'פסק זמן בחיבור ל-Grow' }
   }
@@ -216,6 +226,7 @@ export async function createGrowPaymentLink(
     console.error('[grow] createPaymentLink failed', {
       httpStatus: posted.status,
       err: growErrorMessage(posted.data, ''),
+      base: growPaymentLinkBaseUrl(platform.env),
     })
     return { ok: false, error: growErrorMessage(posted.data, 'יצירת דרישת תשלום ב-Grow נכשלה') }
   }
@@ -339,7 +350,7 @@ export async function createGrowPaymentProcess(
 
 export function buildGrowInvoiceNotifyUrl(): string | null {
   const base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/$/, '')
-  const secret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
+  const secret = primaryGrowWebhookToken(process.env.GROW_WEBHOOK_SECRET)
   if (!base || !secret) return null
   const url = new URL(`${base}/api/webhook/grow-invoice`)
   url.searchParams.set('token', secret)

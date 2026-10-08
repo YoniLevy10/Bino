@@ -1,8 +1,18 @@
 export type GrowEnv = 'sandbox' | 'production'
 
+/** approveTransaction / createPaymentProcess (and sandbox CreatePaymentLink). */
 export const GROW_API_BASE_URLS: Record<GrowEnv, string> = {
   sandbox: 'https://sandbox.meshulam.co.il/api/light/server/1.0',
   production: 'https://secure.meshulam.co.il/api/light/server/1.0',
+}
+
+/**
+ * Live CreatePaymentLink host from Grow onboarding (2026-10).
+ * Sandbox keeps the meshulam light API base.
+ */
+export const GROW_PAYMENT_LINK_BASE_URLS: Record<GrowEnv, string> = {
+  sandbox: GROW_API_BASE_URLS.sandbox,
+  production: 'https://api.grow.link/api/light/server/1.0',
 }
 
 /**
@@ -22,6 +32,15 @@ export function parseGrowEnv(raw: string | null | undefined): GrowEnv {
 
 export function growApiBaseUrl(env: GrowEnv = 'production'): string {
   return GROW_API_BASE_URLS[env]
+}
+
+export function growPaymentLinkBaseUrl(env: GrowEnv = 'production'): string {
+  return GROW_PAYMENT_LINK_BASE_URLS[env]
+}
+
+/** Path casing differs on live grow.link vs meshulam sandbox. */
+export function growCreatePaymentLinkPath(env: GrowEnv = 'production'): string {
+  return env === 'production' ? '/CreatePaymentLink' : '/createPaymentLink'
 }
 
 /** Platform credentials — Bino as the system. Per-tenant merchant is grow_user_id. */

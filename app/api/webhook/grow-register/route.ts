@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
-import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/grow-webhook'
+import {
+  authorizeGrowWebhook,
+  expandBracketFormKeys,
+  readGrowRegisterWebhookSecret,
+} from '@/lib/grow-webhook'
 import { extractGrowRegisterWebhook } from '@/lib/grow-register'
 import { findOtherClientUsingGrowUserId, normalizeGrowUserId } from '@/lib/grow-credentials'
 
 /**
  * Grow merchant registration webhook (GetLink completion).
  *
- * Auth: shared `GROW_WEBHOOK_SECRET` as `?token=` — Grow must point the marketer
- * webhook to this URL. Grow docs do not document an alternate signature scheme.
+ * Auth: `GROW_REGISTER_WEBHOOK_SECRET` or `GROW_WEBHOOK_SECRET` as `?token=`
+ * (comma-list allowed during cutover). Grow must point the marketer webhook here.
  * Binding: `tracking_code` must match `clients.grow_encrypted_lead`.
  */
 async function parsePayload(req: Request): Promise<unknown> {
@@ -50,7 +54,7 @@ async function parsePayload(req: Request): Promise<unknown> {
 function isAuthorized(req: Request): boolean {
   const url = new URL(req.url)
   return authorizeGrowWebhook({
-    expectedSecret: process.env.GROW_WEBHOOK_SECRET,
+    expectedSecret: readGrowRegisterWebhookSecret(),
     tokenFromQuery: url.searchParams.get('token'),
     tokenFromHeader: req.headers.get('x-webhook-token'),
   })
