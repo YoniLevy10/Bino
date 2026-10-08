@@ -223,6 +223,8 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (server only). On Vercel, OIDC (`VERCEL_OIDC_TOKEN`) also works |
 | `WHATSAPP_AI_INTAKE_ENABLED` | Optional; `false` disables unknown-resident AI intake while keeping rewrite. Default = follow `WHATSAPP_AI_ENABLED` |
 | `WHATSAPP_AI_MODEL` | Optional Gateway model slug (default `anthropic/claude-haiku-4.5`) |
+| `FIXLY_SUPABASE_URL` | Optional. Defaults to Fixly project `https://lfzxvmievofvdhxrwggo.supabase.co` |
+| `FIXLY_SUPABASE_SERVICE_ROLE_KEY` | Server only. Fixly service role — professionals tab reads `pro_waitlist` where `audience=professional` |
 
 ### Still missing
 

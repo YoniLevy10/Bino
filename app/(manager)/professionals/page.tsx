@@ -36,6 +36,7 @@ import {
   MidragSearchPanel,
   focusMidragSearch,
 } from '@/app/components/professionals/MidragSearchPanel'
+import { FixlyDirectoryPanel } from '@/app/components/professionals/FixlyDirectoryPanel'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import {
   PROFESSIONALS_PAGE_SIZE,
@@ -376,7 +377,7 @@ export default function ProfessionalsPage() {
         {!isMobile && (
           <PageHeader
             title="אנשי מקצוע"
-            subtitle="פנקס קבלנים + חיפוש מידרג לפי תחום ואזור — העברת תקלות ב-SMS מדף התקלות"
+            subtitle="מאגר בעלי המקצוע מ-Fixly, ופנקס מקומי להעברת תקלות ב-SMS"
             actions={
               <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
                 איש מקצוע חדש
@@ -394,10 +395,17 @@ export default function ProfessionalsPage() {
         )}
 
         <PaidAddonGate addonKey={PAID_ADDON_KEYS.professionals}>
+        <div style={{ marginBottom: 24 }}>
+          <FixlyDirectoryPanel
+            knownPhones={allRows.map((row) => row.phone)}
+            onAdded={() => void loadProfessionals()}
+          />
+        </div>
         {loading ? (
           <PageTransitionLoader />
         ) : (
           <>
+            <h2 style={styles.sectionTitle}>הפנקס שלי</h2>
             <div style={styles.kpiGrid}>
               <KpiCard label="סה״כ" value={stats.total} accent="primary" />
               <KpiCard label="פעילים" value={stats.active} accent="success" />
@@ -439,7 +447,7 @@ export default function ProfessionalsPage() {
               {filtered.length === 0 ? (
                 <EmptyState
                   title="לא נמצאו אנשי מקצוע"
-                  description="הוסיפו קשרים חיצוניים, או חפשו קבלן במידרג לפי מקצוע ועיר."
+                  description="הוסיפו בעל מקצוע מהמאגר למעלה, או צרו איש קשר ידנית."
                   action={
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
                       <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
@@ -597,6 +605,7 @@ function statusPill(active: boolean): CSSProperties {
 }
 
 const styles: Record<string, CSSProperties> = {
+  sectionTitle: { margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: theme.colors.textPrimary },
   content: { padding: '24px 32px 48px', maxWidth: 1200, margin: '0 auto', width: '100%' },
   contentMobile: { padding: '16px 16px 80px', maxWidth: '100%', boxSizing: 'border-box' },
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
