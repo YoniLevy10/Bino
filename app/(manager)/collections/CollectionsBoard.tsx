@@ -175,8 +175,11 @@ export function CollectionsBoard() {
 
   const loadAccountStatus = useCallback(async () => {
     try {
+      const qs = projectFilter
+        ? `?${new URLSearchParams({ project_id: projectFilter }).toString()}`
+        : ''
       const res = await fetchWithTimeout(
-        '/api/collections/account-status',
+        `/api/collections/account-status${qs}`,
         {},
         MUTATION_FETCH_TIMEOUT_MS
       )
@@ -202,7 +205,7 @@ export function CollectionsBoard() {
         body.message ||
           (body.ready
             ? 'החשבון מוכן לגבייה.'
-            : 'חסר חיבור ל-Grow. פתחו חשבון והדביקו את מזהה החשבון בהגדרות.')
+            : 'חסר חיבור Grow לבניין. היכנסו להגדרות → Grow וחברו userId לבניין.')
       )
     } catch {
       // Soft-fail: board can still show charges; avoid timeout toast spam.
@@ -210,7 +213,7 @@ export function CollectionsBoard() {
       setGrowLegalReady(null)
       setAccountMessage('')
     }
-  }, [])
+  }, [projectFilter])
 
   const loadCharges = useCallback(async () => {
     const params = new URLSearchParams()

@@ -7,6 +7,7 @@ import {
 } from '@/lib/grow-credentials'
 import { isGrowPlatformConfigured } from '@/lib/grow-config'
 import { growCallbackSumMatchesCharge } from '@/lib/grow-webhook'
+import { loadProjectGrowRow, resolveGrowMerchant } from '@/lib/project-grow'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { getPublicAppUrl } from '@/lib/public-app-url'
 import {
@@ -123,10 +124,44 @@ export function requireConfiguredCredentials(row: ClientGrowPaymentsRow): {
     return {
       ok: false,
       error:
-        'חשבון Grow שלכם לא מוגדר. היכנסו להגדרות → Grow, הפעילו חיבור והדביקו את ה-userId אחרי ההצטרפות.',
+        'חשבון Grow של הבניין לא מוגדר. היכנסו לגבייה / הגדרות → Grow, חברו userId לכל בניין.',
     }
   }
   return { ok: true, userId: row.grow_user_id!.trim() }
+}
+
+/** Resolve Grow merchant for a charge: project first, then client fallback. */
+export async function requireGrowMerchantForCharge(
+  admin: SupabaseClient,
+  opts: {
+    clientId: string
+    projectId: string | null | undefined
+    clientRow: ClientGrowPaymentsRow
+  }
+): Promise<{ ok: true; userId: string; source: 'project' | 'client' } | { ok: false; error: string }> {
+  if (!isGrowPlatformConfigured()) {
+    return {
+      ok: false,
+      error: 'חסרים מפתחות Grow של Bino בשרת. פנו להנהלת Bino.',
+    }
+  }
+  const project = opts.projectId
+    ? await loadProjectGrowRow(admin, opts.clientId, opts.projectId)
+    : null
+  const resolved = resolveGrowMerchant({
+    project,
+    client: opts.clientRow,
+    projectId: opts.projectId,
+  })
+  if (!resolved) {
+    return {
+      ok: false,
+      error: opts.projectId
+        ? 'לפניין הזה אין חשבון Grow. חברו userId לבניין בהגדרות → Grow (או השאירו חיבור ברמת הלקוח כגיבוי).'
+        : 'חשבון Grow לא מוגדר. חברו userId לבניין או ללקוח בהגדרות → Grow.',
+    }
+  }
+  return { ok: true, userId: resolved.userId, source: resolved.source }
 }
 
 function residentPhone(resident: ChargeResidentInfo | null | undefined): string | null {
@@ -186,7 +221,11 @@ export async function sendCollectionCharge(
     }
   }
 
-  const creds = requireConfiguredCredentials(clientRow)
+  const creds = await requireGrowMerchantForCharge(admin, {
+    clientId,
+    projectId: charge.project_id,
+    clientRow,
+  })
   if (!creds.ok) return { ok: false, error: creds.error, code: 'NOT_CONFIGURED' }
 
   let paymentUrl = charge.grow_payment_url || charge.greeninvoice_payment_url
@@ -268,6 +307,7 @@ export async function sendCollectionCharge(
       status: 'sent' satisfies CollectionChargeStatus,
       grow_payment_url: paymentUrl,
       grow_payment_link_id: paymentLinkId,
+      grow_user_id: creds.userId,
       sent_at: sentAt,
       updated_at: nowIso(),
     })
@@ -408,7 +448,7 @@ export async function ensureGrowPaymentLinkWithPayerEmail(
     .from('collection_charges')
     .select(
       `
-      id, client_id, title, amount, status, public_token, receipt_email,
+      id, client_id, project_id, title, amount, status, public_token, receipt_email,
       grow_payment_url, greeninvoice_payment_url, grow_payment_link_id,
       residents ( full_name, phone, normalized_phone, apartment_number, email ),
       projects ( name )
@@ -420,6 +460,7 @@ export async function ensureGrowPaymentLinkWithPayerEmail(
   if (error || !charge) return { ok: false, error: 'חיוב לא נמצא' }
   const row = charge as unknown as CollectionChargeRow & {
     client_id: string
+    project_id: string | null
     residents: ChargeResidentInfo | ChargeResidentInfo[] | null
     projects: ChargeProjectInfo | ChargeProjectInfo[] | null
   }
@@ -443,7 +484,11 @@ export async function ensureGrowPaymentLinkWithPayerEmail(
 
   const clientRow = await loadClientCollectionsRow(admin, row.client_id)
   if (!clientRow) return { ok: false, error: 'לקוח לא נמצא' }
-  const creds = requireConfiguredCredentials(clientRow)
+  const creds = await requireGrowMerchantForCharge(admin, {
+    clientId: row.client_id,
+    projectId: row.project_id,
+    clientRow,
+  })
   if (!creds.ok) return { ok: false, error: creds.error }
 
   const notifyUrl = buildGrowWebhookNotifyUrl()
@@ -484,6 +529,7 @@ export async function ensureGrowPaymentLinkWithPayerEmail(
       receipt_email: email,
       grow_payment_url: form.url,
       grow_payment_link_id: form.paymentLinkProcessId || null,
+      grow_user_id: creds.userId,
       updated_at: now,
     })
     .eq('id', row.id)

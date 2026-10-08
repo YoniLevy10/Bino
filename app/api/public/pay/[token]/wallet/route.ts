@@ -5,7 +5,7 @@ import {
   buildGrowWebhookNotifyUrl,
   defaultSuccessFailureUrls,
   loadClientCollectionsRow,
-  requireConfiguredCredentials,
+  requireGrowMerchantForCharge,
 } from '@/lib/collection-charge-ops'
 import {
   buildGrowInvoiceNotifyUrl,
@@ -72,7 +72,7 @@ export async function POST(req: Request, context: RouteContext) {
     .from('collection_charges')
     .select(
       `
-      id, client_id, title, amount, status, public_token,
+      id, client_id, project_id, title, amount, status, public_token,
       residents ( full_name, phone, normalized_phone, email )
     `
     )
@@ -94,7 +94,11 @@ export async function POST(req: Request, context: RouteContext) {
   if (!clientRow) {
     return NextResponse.json({ error: 'לקוח לא נמצא' }, { status: 404 })
   }
-  const creds = requireConfiguredCredentials(clientRow)
+  const creds = await requireGrowMerchantForCharge(admin, {
+    clientId: charge.client_id,
+    projectId: charge.project_id,
+    clientRow,
+  })
   if (!creds.ok) {
     return NextResponse.json({ error: creds.error }, { status: 403 })
   }

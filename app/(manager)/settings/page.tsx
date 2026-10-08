@@ -111,6 +111,23 @@ function SettingsPageInner() {
   const [growRegisterReady, setGrowRegisterReady] = useState<boolean | null>(null)
   const [growRegisterWebhookUrl, setGrowRegisterWebhookUrl] = useState('')
   const [startingGrowOnboard, setStartingGrowOnboard] = useState(false)
+  const [growProjects, setGrowProjects] = useState<
+    Array<{
+      id: string
+      name: string | null
+      grow_enabled?: boolean | null
+      grow_user_id?: string | null
+      grow_onboarding_status?: string | null
+      grow_onboarding_url?: string | null
+      grow_business_number?: string | null
+      grow_onboarding_phone?: string | null
+      status?: { ready?: boolean }
+    }>
+  >([])
+  const [selectedGrowProjectId, setSelectedGrowProjectId] = useState('')
+  const [projectGrowUserId, setProjectGrowUserId] = useState('')
+  const [projectGrowEnabled, setProjectGrowEnabled] = useState(false)
+  const [savingProjectGrow, setSavingProjectGrow] = useState(false)
 
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingNotifications, setSavingNotifications] = useState(false)
@@ -239,9 +256,10 @@ function SettingsPageInner() {
     let cancelled = false
     void (async () => {
       try {
-        const [webhookRes, growRes] = await Promise.all([
+        const [webhookRes, growRes, projectsRes] = await Promise.all([
           fetchWithTimeout('/api/collections/webhook-url'),
           fetchWithTimeout('/api/collections/grow-onboard'),
+          fetchWithTimeout('/api/collections/project-grow'),
         ])
         if (cancelled) return
 
@@ -280,6 +298,17 @@ function SettingsPageInner() {
         } else {
           setGrowRegisterReady(false)
           setGrowRegisterWebhookUrl('')
+        }
+
+        const projectsJson = (await projectsRes.json().catch(() => ({}))) as {
+          projects?: typeof growProjects
+        }
+        if (projectsRes.ok && Array.isArray(projectsJson.projects)) {
+          setGrowProjects(projectsJson.projects)
+          setSelectedGrowProjectId((prev) => {
+            if (prev && projectsJson.projects!.some((p) => p.id === prev)) return prev
+            return projectsJson.projects![0]?.id || ''
+          })
         }
       } catch {
         if (!cancelled) {
@@ -472,8 +501,65 @@ function SettingsPageInner() {
     setSavingGrow(false)
   }
 
+  const selectedGrowProject = growProjects.find((p) => p.id === selectedGrowProjectId) || null
+
+  useEffect(() => {
+    if (!selectedGrowProject) {
+      setProjectGrowUserId('')
+      setProjectGrowEnabled(false)
+      return
+    }
+    setGrowOnboardStatus(selectedGrowProject.grow_onboarding_status || null)
+    setGrowOnboardUrl(selectedGrowProject.grow_onboarding_url || '')
+    setGrowBusinessNumber(selectedGrowProject.grow_business_number || '')
+    setGrowOnboardPhone(selectedGrowProject.grow_onboarding_phone || '')
+    setProjectGrowUserId(selectedGrowProject.grow_user_id || '')
+    setProjectGrowEnabled(selectedGrowProject.grow_enabled === true)
+  }, [selectedGrowProjectId, selectedGrowProject])
+
+  async function saveSelectedProjectGrow() {
+    if (!selectedGrowProjectId) {
+      toast.error('בחרו בניין לחיבור Grow')
+      return
+    }
+    setSavingProjectGrow(true)
+    await asyncHandler(
+      async () => {
+        const res = await fetchWithTimeout(
+          '/api/collections/project-grow',
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              project_id: selectedGrowProjectId,
+              grow_enabled: projectGrowEnabled,
+              grow_user_id: projectGrowUserId.trim() || null,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error((json as { error?: string }).error || 'שמירה נכשלה')
+        const project = (json as { project?: (typeof growProjects)[number] }).project
+        if (project) {
+          setGrowProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, ...project } : p)))
+          setProjectGrowUserId(project.grow_user_id || '')
+          setProjectGrowEnabled(project.grow_enabled === true)
+        }
+        toast.success('חשבון Grow לבניין נשמר')
+        return true
+      },
+      { context: 'שמירת Grow לבניין נכשלה', showErrorToast: true }
+    )
+    setSavingProjectGrow(false)
+  }
+
   async function startGrowOnboarding() {
     if (!clientId) return
+    if (!selectedGrowProjectId) {
+      toast.error('בחרו בניין לפני פתיחת הרשמה ב-Grow')
+      return
+    }
     setStartingGrowOnboard(true)
     await asyncHandler(
       async () => {
@@ -483,6 +569,7 @@ function SettingsPageInner() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              project_id: selectedGrowProjectId,
               business_number: growBusinessNumber.trim(),
               phone: growOnboardPhone.trim() || growLegalPhone.trim(),
               send_sms: true,
@@ -495,6 +582,7 @@ function SettingsPageInner() {
           url?: string
           status?: string
           code?: string
+          project?: (typeof growProjects)[number]
         }
         if (!res.ok) {
           if (json.code === 'EXISTING_BUSINESS') {
@@ -504,11 +592,15 @@ function SettingsPageInner() {
         }
         setGrowOnboardStatus(json.status || 'pending')
         setGrowOnboardUrl(json.url || '')
-        toast.success('קישור הרשמה ל-Grow מוכן')
+        if (json.project) {
+          setGrowProjects((prev) =>
+            prev.map((p) => (p.id === json.project!.id ? { ...p, ...json.project! } : p))
+          )
+        }
+        toast.success('קישור הרשמה ל-Grow מוכן לבניין')
         if (json.url) {
           window.open(json.url, '_blank', 'noopener,noreferrer')
         }
-        await load()
         return true
       },
       { context: 'הזנקת הרשמת Grow נכשלה', showErrorToast: true }
@@ -1129,17 +1221,67 @@ function SettingsPageInner() {
               <Card noPadding>
                 <div style={{ ...styles.cardInner, gap: 16 }}>
                   <p style={{ margin: 0, fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
-                    הכסף נכנס לחשבון Grow שלכם — לא דרך Bino.{' '}
+                    לכל בניין חשבון Grow משלו — הכסף נכנס לחשבון של הבניין, לא דרך Bino.{' '}
                     <Link href="/collections" style={styles.inlineLink}>
                       לגבייה
                     </Link>
                   </p>
 
                   <div style={styles.morningSection}>
-                    <div style={styles.morningSectionTitle}>הצטרפות ל-Grow</div>
+                    <div style={styles.morningSectionTitle}>בניין לחיבור Grow</div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>בחרו בניין</label>
+                      <select
+                        value={selectedGrowProjectId}
+                        onChange={(e) => setSelectedGrowProjectId(e.target.value)}
+                        style={styles.input}
+                      >
+                        {growProjects.length === 0 ? (
+                          <option value="">אין בניינים — הוסיפו בניין קודם</option>
+                        ) : (
+                          growProjects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name || 'בניין'}
+                              {p.status?.ready || (p.grow_enabled && p.grow_user_id)
+                                ? ' — מחובר'
+                                : ' — לא מחובר'}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      <span style={styles.formHint}>
+                        כל בניין פותח חשבון Grow נפרד (לפי דרישת הספק). חיובים לבניין הזה ייכנסו לחשבון שלו.
+                      </span>
+                    </div>
+                    {growProjects.length > 0 ? (
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingInlineStart: 18,
+                          fontSize: 13,
+                          color: theme.colors.textMuted,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {growProjects.map((p) => (
+                          <li key={`sum-${p.id}`}>
+                            {p.name || 'בניין'}:{' '}
+                            {p.grow_user_id
+                              ? `מחובר (${String(p.grow_user_id).slice(0, 8)}…)`
+                              : p.grow_onboarding_status === 'pending'
+                                ? 'ממתין לאישור'
+                                : 'לא מחובר'}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+
+                  <div style={styles.morningSection}>
+                    <div style={styles.morningSectionTitle}>הצטרפות ל-Grow לבניין</div>
                     <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
-                      מלאו מספר עוסק ונייד — Bino תפתח קישור הרשמה ב-Grow. אחרי האישור, פרטי החשבון
-                      נשמרים אוטומטית.
+                      מלאו מספר עוסק ונייד של הוועד/החשבון לבניין שנבחר — Bino תפתח קישור הרשמה ב-Grow.
+                      אחרי האישור, ה-userId נשמר על הבניין.
                     </p>
                     {growRegisterReady === false ? (
                       <span style={{ ...styles.formHint, color: '#c2410c' }}>
@@ -1243,26 +1385,40 @@ function SettingsPageInner() {
                   <label style={styles.checkboxLabel}>
                     <input
                       type="checkbox"
-                      checked={growEnabled}
-                      onChange={(e) => setGrowEnabled(e.target.checked)}
+                      checked={projectGrowEnabled}
+                      onChange={(e) => setProjectGrowEnabled(e.target.checked)}
                       style={styles.checkbox}
+                      disabled={!selectedGrowProjectId}
                     />
-                    הפעל חיבור Grow
+                    הפעל חיבור Grow לבניין הנבחר
                   </label>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>מזהה חשבון ב-Grow</label>
+                    <label style={styles.formLabel}>מזהה חשבון Grow לבניין</label>
                     <input
-                      value={growUserId}
-                      onChange={(e) => setGrowUserId(e.target.value)}
+                      value={projectGrowUserId}
+                      onChange={(e) => setProjectGrowUserId(e.target.value)}
                       style={styles.input}
                       placeholder="נשמר אוטומטית אחרי אישור, או הדבקה ידנית"
                       autoComplete="off"
                       dir="ltr"
+                      disabled={!selectedGrowProjectId}
                     />
                     <span style={styles.formHint}>
-                      בלי המזהה אי אפשר לשלוח דרישות תשלום. המזהה שייך לחשבון שלכם בלבד.
+                      בלי מזהה לבניין אי אפשר לשלוח חיובים לבניין הזה (אלא אם יש גיבוי ברמת לקוח למטה).
                     </span>
+                  </div>
+
+                  <div style={styles.drawerActions}>
+                    <LoadingButton
+                      variant="primary"
+                      onClick={saveSelectedProjectGrow}
+                      loading={savingProjectGrow}
+                      loadingText="שומר..."
+                      disabled={!selectedGrowProjectId}
+                    >
+                      שמור חיבור לבניין
+                    </LoadingButton>
                   </div>
 
                   <div style={styles.morningSection}>
@@ -1351,6 +1507,34 @@ function SettingsPageInner() {
                     </div>
                   </div>
 
+                  <div style={styles.morningSection}>
+                    <div style={styles.morningSectionTitle}>גיבוי ברמת לקוח (אופציונלי)</div>
+                    <p style={{ margin: 0, fontSize: 13, color: theme.colors.textMuted, lineHeight: 1.55 }}>
+                      אם לבניין אין userId, המערכת יכולה ליפול לחיבור הלקוח. מומלץ לחבר לכל בניין חשבון
+                      נפרד.
+                    </p>
+                    <label style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        checked={growEnabled}
+                        onChange={(e) => setGrowEnabled(e.target.checked)}
+                        style={styles.checkbox}
+                      />
+                      הפעל חיבור Grow ברמת לקוח
+                    </label>
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>מזהה Grow לקוח (גיבוי)</label>
+                      <input
+                        value={growUserId}
+                        onChange={(e) => setGrowUserId(e.target.value)}
+                        style={styles.input}
+                        placeholder="אופציונלי — רק כגיבוי"
+                        autoComplete="off"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
                   <div style={styles.drawerActions}>
                     <LoadingButton
                       variant="primary"
@@ -1358,7 +1542,7 @@ function SettingsPageInner() {
                       loading={savingGrow}
                       loadingText="שומר..."
                     >
-                      שמור שינויים
+                      שמור פרטי עסק + גיבוי לקוח
                     </LoadingButton>
                   </div>
                 </div>
