@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error:
-              'מזהה Grow זה כבר משויך ללקוח אחר. כל חברת ניהול חייבת חשבון Grow נפרד.',
+              'מזהה Grow זה כבר משויך ללקוח או לבניין אחר. כל בניין צריך חשבון Grow נפרד.',
           },
           { status: 409 }
         )
