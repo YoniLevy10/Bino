@@ -960,7 +960,7 @@ export default function DashboardPage() {
   const openTicketsCount = stats.open
 
   return (
-    <>
+    <div className="kiss-home">
       {isMobile && (
         <MobileHeader
           title="לוח בקרה"
@@ -1033,20 +1033,19 @@ export default function DashboardPage() {
               ...styles.kpiGrid,
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
             }}>
-              <KpiCard label="פעילות" value={stats.total} accent="primary" onClick={() => setActiveKpi('ALL')} />
-              <KpiCard label="פתוחות" value={stats.open} accent="warning" onClick={() => setActiveKpi('NEW')} />
-              <KpiCard label="בטיפול" value={stats.inProgress} accent="primary" onClick={() => setActiveKpi('IN_PROGRESS')} />
+              <KpiCard label="פעילות" value={stats.total} onClick={() => setActiveKpi('ALL')} />
+              <KpiCard label="פתוחות" value={stats.open} onClick={() => setActiveKpi('NEW')} />
+              <KpiCard label="בטיפול" value={stats.inProgress} onClick={() => setActiveKpi('IN_PROGRESS')} />
               <KpiCard
                 label="משימות"
                 value={openTasksCount ?? 0}
-                accent="warning"
                 onClick={() => router.push('/tasks')}
               />
               {!isMobile && (
-                <KpiCard label="נסגרו" value={stats.closed} accent="success" onClick={() => router.push('/summary?tab=history')} />
+                <KpiCard label="נסגרו" value={stats.closed} onClick={() => router.push('/summary?tab=history')} />
               )}
-              {!isMobile && residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} accent="primary" />}
-              {!isMobile && workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} accent="success" />}
+              {!isMobile && residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} />}
+              {!isMobile && workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} />}
             </div>
 
             <div style={{ ...styles.mainGrid, gridTemplateColumns: isMobile ? '1fr' : '1fr 340px' }}>
@@ -1098,17 +1097,17 @@ export default function DashboardPage() {
                     >
                       <div style={styles.activityIcon}>
                         {activity.type === 'created' && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.success} strokeWidth="2">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
                             <circle cx="12" cy="12" r="10" /><path d="M12 8v8" /><path d="M8 12h8" />
                           </svg>
                         )}
                         {activity.type === 'closed' && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.success} strokeWidth="2">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
                             <path d="M20 6 9 17l-5-5" />
                           </svg>
                         )}
                         {activity.type === 'updated' && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.info} strokeWidth="2">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
                             <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                           </svg>
                         )}
@@ -1290,7 +1289,7 @@ export default function DashboardPage() {
         mediaKind={selectedMediaKind}
         onClose={() => setSelectedImageUrl(null)}
       />
-    </>
+    </div>
   )
 }
 
@@ -1309,7 +1308,7 @@ const styles: Record<string, CSSProperties> = {
   heroTitle: { fontSize: '34px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0, letterSpacing: '-0.02em' },
   heroDate: { fontSize: '17px', color: theme.colors.textMuted, margin: '8px 0 0' },
   heroStatus: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: theme.colors.textSecondary, margin: '16px 0 0' },
-  statusDot: { width: '8px', height: '8px', borderRadius: '50%', background: theme.colors.warning },
+  statusDot: { width: '8px', height: '8px', borderRadius: '50%', background: theme.colors.textMuted },
   heroActions: { display: 'flex', gap: '12px' },
   loadingContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 0' },
   kpiGrid: { display: 'grid', gap: '16px', marginBottom: '32px' },
@@ -1320,10 +1319,10 @@ const styles: Record<string, CSSProperties> = {
   projectName: { fontSize: '15px', fontWeight: 600, color: theme.colors.textPrimary },
   projectCode: { fontSize: '13px', color: theme.colors.textMuted, marginTop: '2px' },
   projectStats: { textAlign: 'right' },
-  projectTicketCount: { fontSize: '13px', fontWeight: 500, color: theme.colors.warning },
+  projectTicketCount: { fontSize: '13px', fontWeight: 500, color: theme.colors.textSecondary },
   progressBarContainer: { display: 'flex', alignItems: 'center', gap: '12px' },
   progressBarBg: { flex: 1, height: '4px', background: theme.colors.muted, borderRadius: '2px', overflow: 'hidden' },
-  progressBarFill: { height: '100%', background: theme.colors.primary, borderRadius: '2px', transition: 'width 0.3s ease' },
+  progressBarFill: { height: '100%', background: theme.colors.borderStrong, borderRadius: '2px', transition: 'width 0.3s ease' },
   progressLabel: { fontSize: '12px', color: theme.colors.textMuted, flexShrink: 0 },
   activityList: { display: 'flex', flexDirection: 'column', gap: '4px' },
   activityItem: { display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: `1px solid ${theme.colors.border}` },
@@ -1334,7 +1333,7 @@ const styles: Record<string, CSSProperties> = {
   activityBadge: { fontSize: '11px', fontWeight: 500, color: theme.colors.textMuted, background: theme.colors.muted, padding: '2px 6px', borderRadius: theme.radius.xs },
   activityDesc: { fontSize: '13px', color: theme.colors.textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   activityTime: { fontSize: '12px', color: theme.colors.textMuted, flexShrink: 0 },
-  viewAllLink: { fontSize: '14px', fontWeight: 500, color: theme.colors.primary, textDecoration: 'none' },
+  viewAllLink: { fontSize: '14px', fontWeight: 500, color: theme.colors.textSecondary, textDecoration: 'none' },
   tableContainer: { overflowX: 'auto' },
   mobileCardList: { display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px 16px 20px' },
   table: { width: '100%', borderCollapse: 'collapse' },

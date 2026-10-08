@@ -261,7 +261,7 @@ function NavSignOutButton({ onAfterSignOut }: { onAfterSignOut?: () => void }) {
 // SIDEBAR
 // ============================================================================
 
-export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
+export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; calmSurface?: boolean } = {}) {
   const pathname = usePathname()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -332,7 +332,21 @@ export function Sidebar({ hidden }: { hidden?: boolean } = {}) {
   }
 
   return (
-    <aside className="lg-sidebar" style={sidebarStyles.container}>
+    <aside
+      className="lg-sidebar"
+      style={{
+        ...sidebarStyles.container,
+        ...(calmSurface
+          ? {
+              background: '#FFFFFF',
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
+              boxShadow: 'none',
+              borderInlineEnd: '1px solid #E8E8ED',
+            }
+          : {}),
+      }}
+    >
       <div style={sidebarStyles.brand}>
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -802,19 +816,24 @@ const bottomNavStyles: Record<string, CSSProperties> = {
 export function AppShell({
   children,
   isMobile,
+  calmSurface = false,
 }: {
   children: ReactNode
   isMobile?: boolean
+  /** Flat gray page and solid cards. Sidebar chrome stays. */
+  calmSurface?: boolean
 }) {
-  return <AppShellInner isMobile={isMobile}>{children}</AppShellInner>
+  return <AppShellInner isMobile={isMobile} calmSurface={calmSurface}>{children}</AppShellInner>
 }
 
 function AppShellInner({
   children,
   isMobile,
+  calmSurface = false,
 }: {
   children: ReactNode
   isMobile?: boolean
+  calmSurface?: boolean
 }) {
   const { isBootstrapped } = useClientBranding()
   const pathname = usePathname()
@@ -849,10 +868,15 @@ function AppShellInner({
       <PageViewTracker />
       <div
         dir="rtl"
-        style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}
+        className={calmSurface ? 'kiss-app' : undefined}
+        style={{
+          display: 'flex',
+          minHeight: '100vh',
+          background: calmSurface ? '#F2F2F7' : 'transparent',
+        }}
         suppressHydrationWarning
       >
-        <Sidebar hidden={mobile} />
+        <Sidebar hidden={mobile} calmSurface={calmSurface} />
         <main
           dir="rtl"
           data-app-main

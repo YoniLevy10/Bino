@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { AppShell } from '@/app/components/ui'
 import { useIsMobile } from '@/lib/use-is-mobile'
 
@@ -10,5 +10,13 @@ import { useIsMobile } from '@/lib/use-is-mobile'
  */
 export default function ManagerLayout({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile()
-  return <AppShell isMobile={isMobile}>{children}</AppShell>
+
+  useEffect(() => {
+    document.documentElement.dataset.kiss = '1'
+    return () => {
+      delete document.documentElement.dataset.kiss
+    }
+  }, [])
+
+  return <AppShell isMobile={isMobile} calmSurface>{children}</AppShell>
 }

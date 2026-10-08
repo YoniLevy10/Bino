@@ -496,6 +496,21 @@ select {
   }
 }
 
+/* Home only: flat gray, solid cards. Severity color stays on the exception list. */
+.kiss-home {
+  background: #F2F2F7;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.kiss-home .lg-glass {
+  background: #ffffff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  border: 1px solid #E8E8ED;
+}
+
 /* Live+ liquid glass — production materials with richer blue tint wrap */
 .lg-glass,
 .lg-chrome,
@@ -920,5 +935,27 @@ select {
   .resident-btn-press:active:not(:disabled) {
     transform: none;
   }
+}
+
+/* Manager shell: flat gray page, solid cards. Sidebar keeps its own chrome. */
+html[data-kiss='1'] body {
+  background: #F2F2F7;
+}
+
+html[data-kiss='1'] .lg-glass,
+.kiss-app .lg-glass {
+  background: #ffffff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  border: 1px solid #E8E8ED;
+}
+
+.kiss-app .lg-sidebar {
+  background: #ffffff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-inline-end: 1px solid #E8E8ED;
 }
 

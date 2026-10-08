@@ -11,11 +11,14 @@ type Props = {
   previewLimit?: number
 }
 
-function urgencyLabel(u: string): string {
-  if (u === 'critical') return 'דחוף'
-  if (u === 'high') return 'גבוה'
-  if (u === 'low') return 'נמוך'
-  return 'בינוני'
+function urgencyTone(u: string): { label: string; color: string; wash: string } {
+  if (u === 'critical' || u === 'high') {
+    return { label: u === 'critical' ? 'עכשיו' : 'דחוף', color: theme.colors.error, wash: theme.colors.errorMuted }
+  }
+  if (u === 'medium') {
+    return { label: 'היום', color: theme.colors.warning, wash: theme.colors.warningMuted }
+  }
+  return { label: 'נמוך', color: theme.colors.textMuted, wash: theme.colors.muted }
 }
 
 /** Dashboard card of smart alerts — open the relevant screen or dismiss. */
@@ -43,26 +46,37 @@ export function AttentionRequired({ previewLimit = 3 }: Props) {
 
   const visible = showAll ? rows : rows.slice(0, previewLimit)
   const hasMore = rows.length > previewLimit
+  const lead = urgencyTone(String(visible[0]?.urgency || rows[0]?.urgency || 'medium'))
 
   return (
-    <Card style={{ marginBottom: 16, borderColor: theme.colors.warning }}>
+    <Card style={{ marginBottom: 16 }}>
       <div style={styles.header}>
         <h3 style={styles.title}>דורש תשומת לב</h3>
-        <span style={styles.count}>{rows.length}</span>
+        <span style={{ ...styles.count, background: lead.color }}>{rows.length}</span>
       </div>
       <div style={styles.list}>
-        {visible.map((row) => (
-          <div key={row.id} style={styles.item}>
-            <div style={styles.meta}>
-              <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
+        {visible.map((row) => {
+          const tone = urgencyTone(String(row.urgency))
+          return (
+            <div
+              key={row.id}
+              style={{
+                ...styles.item,
+                borderInlineStart: `3px solid ${tone.color}`,
+                background: tone.wash,
+              }}
+            >
+              <div style={styles.meta}>
+                <span style={{ ...styles.urgency, color: tone.color }}>{tone.label}</span>
+              </div>
+              <p style={styles.reason}>{row.reason}</p>
+              <RecommendationAlertActions
+                row={row}
+                onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}
+              />
             </div>
-            <p style={styles.reason}>{row.reason}</p>
-            <RecommendationAlertActions
-              row={row}
-              onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}
-            />
-          </div>
-        ))}
+          )
+        })}
       </div>
       {hasMore ? (
         <button type="button" style={styles.showAll} onClick={() => setShowAll((v) => !v)}>
@@ -91,7 +105,6 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 24,
     height: 24,
     borderRadius: 12,
-    background: theme.colors.warning,
     color: theme.colors.textInverse,
     fontSize: 12,
     fontWeight: 700,
@@ -100,16 +113,16 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'center',
     padding: '0 8px',
   },
-  list: { display: 'flex', flexDirection: 'column', gap: 12 },
+  list: { display: 'flex', flexDirection: 'column', gap: 8 },
   item: {
-    paddingBottom: 12,
-    borderBottom: `1px solid ${theme.colors.border}`,
+    padding: '10px 12px',
+    borderRadius: theme.radius.sm,
+    borderBottom: 'none',
   },
   meta: { marginBottom: 4 },
   urgency: {
     fontSize: 11,
     fontWeight: 700,
-    color: theme.colors.warning,
   },
   reason: {
     margin: 0,
@@ -121,7 +134,7 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 8,
     border: 'none',
     background: 'transparent',
-    color: theme.colors.primary,
+    color: theme.colors.textSecondary,
     fontWeight: 600,
     fontSize: 13,
     cursor: 'pointer',
