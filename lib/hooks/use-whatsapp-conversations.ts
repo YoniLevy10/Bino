@@ -88,7 +88,7 @@ export function useWhatsAppConversations(options?: { enabled?: boolean }) {
     invalidate: useCallback(() => {
       if (!clientId) return conversationsQuery.refetch()
       return queryClient.invalidateQueries({ queryKey: queryKeys.whatsappConversations(clientId) })
-    }, [clientId, conversationsQuery.refetch, queryClient]),
+    }, [clientId, conversationsQuery, queryClient]),
     hasData: Boolean(conversationsQuery.data) || conversationsQuery.isSuccess,
   }
 }
