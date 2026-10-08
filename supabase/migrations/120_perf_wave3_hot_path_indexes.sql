@@ -1,6 +1,11 @@
 -- Wave 3: indexes proven/likely hot from manager path evidence
 -- (ticket detail attachments, residents name sort, closed history, open tickets list)
 
+-- Schema drift: closed_at exists on Bamakor but was never in numbered migrations.
+-- Preview DBs need the column before the partial index below.
+ALTER TABLE public.tickets
+  ADD COLUMN IF NOT EXISTS closed_at timestamptz;
+
 CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket_id
   ON public.ticket_attachments (ticket_id);
 

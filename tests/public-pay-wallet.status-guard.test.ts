@@ -40,6 +40,11 @@ vi.mock('@/lib/collection-charge-ops', () => ({
     name: 'Test',
   })),
   requireConfiguredCredentials: () => ({ ok: true, userId: 'grow-user' }),
+  requireGrowMerchantForCharge: vi.fn(async () => ({
+    ok: true,
+    userId: 'grow-user',
+    source: 'client' as const,
+  })),
 }))
 
 vi.mock('@/lib/grow-client', () => ({

@@ -3,14 +3,15 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getLogger } from '@/lib/logging'
 import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/grow-webhook'
 import { extractGrowRegisterWebhook } from '@/lib/grow-register'
-import { findOtherClientUsingGrowUserId, normalizeGrowUserId } from '@/lib/grow-credentials'
+import { normalizeGrowUserId } from '@/lib/grow-credentials'
+import { findOtherUsingGrowUserId } from '@/lib/project-grow'
 
 /**
  * Grow merchant registration webhook (GetLink completion).
  *
- * Auth: shared `GROW_WEBHOOK_SECRET` as `?token=` — Grow must point the marketer
- * webhook to this URL. Grow docs do not document an alternate signature scheme.
- * Binding: `tracking_code` must match `clients.grow_encrypted_lead`.
+ * Auth: shared `GROW_WEBHOOK_SECRET` as `?token=`.
+ * Binding: `tracking_code` matches `projects.grow_encrypted_lead` first,
+ * then falls back to `clients.grow_encrypted_lead` (legacy).
  */
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()
@@ -81,6 +82,90 @@ export async function POST(req: Request) {
     }
 
     const admin = getSupabaseAdmin()
+    const now = new Date().toISOString()
+
+    const { data: project } = await admin
+      .from('projects')
+      .select('id, client_id, grow_user_id, grow_enabled')
+      .eq('grow_encrypted_lead', parsed.trackingCode)
+      .maybeSingle()
+
+    if (project) {
+      const patch: Record<string, unknown> = {
+        grow_onboarding_phone: parsed.phone || undefined,
+        grow_package_name: parsed.packageName || undefined,
+      }
+
+      if (parsed.rejected) {
+        patch.grow_onboarding_status = 'rejected'
+        await admin.from('projects').update(patch).eq('id', project.id)
+        return NextResponse.json({
+          ok: true,
+          matched: 1,
+          scope: 'project',
+          status: 'rejected',
+        })
+      }
+
+      if (parsed.approved && parsed.userId) {
+        const userId = normalizeGrowUserId(parsed.userId)
+        if (!userId) {
+          return NextResponse.json({
+            ok: true,
+            matched: 1,
+            scope: 'project',
+            status: 'missing_user_id',
+          })
+        }
+        const conflict = await findOtherUsingGrowUserId(admin, userId, {
+          excludeProjectId: project.id,
+        })
+        if (conflict) {
+          logger.info('WEBHOOK', 'Grow register userId conflict on project', {
+            projectId: project.id,
+          })
+          await admin
+            .from('projects')
+            .update({ grow_onboarding_status: 'error' })
+            .eq('id', project.id)
+          return NextResponse.json({
+            ok: true,
+            matched: 1,
+            scope: 'project',
+            status: 'user_id_conflict',
+          })
+        }
+
+        patch.grow_user_id = userId
+        patch.grow_enabled = true
+        patch.grow_onboarding_status = 'approved'
+        patch.grow_onboarding_completed_at = now
+        await admin.from('projects').update(patch).eq('id', project.id)
+        return NextResponse.json({
+          ok: true,
+          matched: 1,
+          scope: 'project',
+          status: 'approved',
+        })
+      }
+
+      await admin
+        .from('projects')
+        .update({
+          grow_onboarding_status: parsed.trackingStatusId
+            ? `status_${parsed.trackingStatusId}`
+            : 'pending',
+        })
+        .eq('id', project.id)
+
+      return NextResponse.json({
+        ok: true,
+        matched: 1,
+        scope: 'project',
+        status: 'pending',
+      })
+    }
+
     const { data: client, error } = await admin
       .from('clients')
       .select('id, grow_user_id, grow_enabled, grow_legal_business_name')
@@ -88,12 +173,11 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (error || !client) {
-      logger.info('WEBHOOK', 'Grow register: no client for tracking_code')
+      logger.info('WEBHOOK', 'Grow register: no project/client for tracking_code')
       return NextResponse.json({ ok: true, matched: 0, reason: 'unknown_lead' })
     }
 
-    const now = new Date().toISOString()
-    // clients has created_at only — do not write updated_at (PostgREST schema cache error).
+    // clients has created_at only — do not write updated_at.
     const patch: Record<string, unknown> = {
       grow_onboarding_phone: parsed.phone || undefined,
       grow_package_name: parsed.packageName || undefined,
@@ -102,24 +186,34 @@ export async function POST(req: Request) {
     if (parsed.rejected) {
       patch.grow_onboarding_status = 'rejected'
       await admin.from('clients').update(patch).eq('id', client.id)
-      return NextResponse.json({ ok: true, matched: 1, status: 'rejected' })
+      return NextResponse.json({ ok: true, matched: 1, scope: 'client', status: 'rejected' })
     }
 
     if (parsed.approved && parsed.userId) {
       const userId = normalizeGrowUserId(parsed.userId)
       if (!userId) {
-        return NextResponse.json({ ok: true, matched: 1, status: 'missing_user_id' })
+        return NextResponse.json({
+          ok: true,
+          matched: 1,
+          scope: 'client',
+          status: 'missing_user_id',
+        })
       }
-      const conflict = await findOtherClientUsingGrowUserId(admin, userId, client.id)
+      const conflict = await findOtherUsingGrowUserId(admin, userId, {
+        excludeClientId: client.id,
+      })
       if (conflict) {
         logger.info('WEBHOOK', 'Grow register userId conflict', { clientId: client.id })
         await admin
           .from('clients')
-          .update({
-            grow_onboarding_status: 'error',
-          })
+          .update({ grow_onboarding_status: 'error' })
           .eq('id', client.id)
-        return NextResponse.json({ ok: true, matched: 1, status: 'user_id_conflict' })
+        return NextResponse.json({
+          ok: true,
+          matched: 1,
+          scope: 'client',
+          status: 'user_id_conflict',
+        })
       }
 
       patch.grow_user_id = userId
@@ -129,11 +223,9 @@ export async function POST(req: Request) {
       if (parsed.businessTitle && !client.grow_legal_business_name) {
         patch.grow_legal_business_name = parsed.businessTitle.slice(0, 120)
       }
-      // Do NOT store Grow merchant api_key from webhook into platform env — tenant
-      // money uses platform apiKey + tenant userId per PAYMENTS.md model.
 
       await admin.from('clients').update(patch).eq('id', client.id)
-      return NextResponse.json({ ok: true, matched: 1, status: 'approved' })
+      return NextResponse.json({ ok: true, matched: 1, scope: 'client', status: 'approved' })
     }
 
     await admin
@@ -145,7 +237,7 @@ export async function POST(req: Request) {
       })
       .eq('id', client.id)
 
-    return NextResponse.json({ ok: true, matched: 1, status: 'pending' })
+    return NextResponse.json({ ok: true, matched: 1, scope: 'client', status: 'pending' })
   } catch (e) {
     logger.error('WEBHOOK', 'Grow register webhook failed', e instanceof Error ? e : undefined)
     return NextResponse.json({ error: 'internal' }, { status: 500 })

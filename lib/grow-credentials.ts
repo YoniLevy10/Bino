@@ -88,7 +88,11 @@ export function assertTenantCanEnableGrow(opts: {
   return { ok: true }
 }
 
-/** Ensures Grow userId is not reused across tenants — money settles into that merchant. */
+/**
+ * Ensures Grow userId is not reused across tenants — money settles into that merchant.
+ * Also checks projects (per-building merchants). Prefer `findOtherUsingGrowUserId` from
+ * `@/lib/project-grow` for new call sites.
+ */
 export async function findOtherClientUsingGrowUserId(
   admin: SupabaseClient,
   userId: string,
@@ -109,5 +113,17 @@ export async function findOtherClientUsingGrowUserId(
     console.error('[grow-user-id-unique]', error.message)
     return null
   }
-  return data ?? null
+  if (data) return data
+
+  const { data: project, error: projectErr } = await admin
+    .from('projects')
+    .select('id, name')
+    .eq('grow_user_id', key)
+    .limit(1)
+    .maybeSingle()
+  if (projectErr) {
+    console.error('[grow-user-id-unique-project]', projectErr.message)
+    return null
+  }
+  return project ?? null
 }
