@@ -13,6 +13,7 @@ import { validateRequired, validatePhoneNumber } from '@/lib/validators'
 import {
   sanitizeExtraPhones,
   formatWorkerPhonesDisplay,
+  normalizeWorkerPhone,
   MAX_WORKER_EXTRA_PHONES,
 } from '@/lib/worker-phones'
 import {
@@ -36,8 +37,8 @@ import {
   MidragSearchPanel,
   focusMidragSearch,
 } from '@/app/components/professionals/MidragSearchPanel'
-import { FixlyDirectoryPanel } from '@/app/components/professionals/FixlyDirectoryPanel'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import type { FixlyDirectoryPerson } from '@/lib/fixly/pro-waitlist-directory'
 import {
   PROFESSIONALS_PAGE_SIZE,
   fetchProfessionalsPage,
@@ -56,6 +57,7 @@ type ProfessionalRow = {
   email?: string | null
   notes?: string | null
   is_active: boolean
+  source?: 'local' | 'fixly'
 }
 
 type ProfessionalForm = {
@@ -106,6 +108,8 @@ export default function ProfessionalsPage() {
   const [midragDrawerOpen, setMidragDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<ProfessionalRow | null>(null)
   const [form, setForm] = useState<ProfessionalForm>(emptyForm)
+  const [fixlyPeople, setFixlyPeople] = useState<FixlyDirectoryPerson[]>([])
+  const [fixlyLoading, setFixlyLoading] = useState(true)
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -136,12 +140,45 @@ export default function ProfessionalsPage() {
     }
   }, [rqError])
 
-  const loading = rqLoading && rows.length === 0 && !tableMissing
   const allRows = useMemo(() => {
     if (extraRows.length === 0) return rows
     const seen = new Set(rows.map((r) => r.id))
     return [...rows, ...extraRows.filter((r) => !seen.has(r.id))]
   }, [rows, extraRows])
+
+  const listed = useMemo(() => {
+    const localPhones = new Set(
+      allRows
+        .map((row) => (row.phone ? normalizeWorkerPhone(row.phone) : ''))
+        .filter(Boolean)
+    )
+    const fromFixly: ProfessionalRow[] = fixlyPeople.flatMap((person) => {
+      const phone = person.phone?.trim()
+      const normalized = phone ? normalizeWorkerPhone(phone) : ''
+      if (normalized && localPhones.has(normalized)) return []
+      return [
+        {
+          id: `fixly:${person.id}`,
+          full_name: person.full_name,
+          phone: phone || null,
+          trade: person.category,
+          company_name: person.city,
+          email: person.email,
+          notes: null,
+          is_active: true,
+          source: 'fixly' as const,
+        },
+      ]
+    })
+    return [...allRows.map((row) => ({ ...row, source: row.source ?? ('local' as const) })), ...fromFixly].sort(
+      (a, b) => a.full_name.localeCompare(b.full_name, 'he')
+    )
+  }, [allRows, fixlyPeople])
+
+  const loading =
+    listed.length === 0 &&
+    !tableMissing &&
+    ((rqLoading && rows.length === 0) || fixlyLoading)
 
   async function loadProfessionals() {
     const cid = clientId || rqClientId
@@ -341,18 +378,20 @@ export default function ProfessionalsPage() {
   }
 
   const stats = useMemo(() => {
-    const total = allRows.length
-    const active = allRows.filter((r) => r.is_active).length
+    const total = listed.length
+    const active = listed.filter((r) => r.is_active).length
     return { total, active, inactive: total - active }
-  }, [allRows])
+  }, [listed])
 
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase()
-    return allRows.filter((r) => {
+    return listed.filter((r) => {
+      const phoneDisplay = formatWorkerPhonesDisplay(r).toLowerCase()
       const matchQ =
         !q ||
         r.full_name.toLowerCase().includes(q) ||
         (r.phone || '').toLowerCase().includes(q) ||
+        phoneDisplay.includes(q) ||
         (r.trade || '').toLowerCase().includes(q) ||
         (r.company_name || '').toLowerCase().includes(q)
       const matchStatus =
@@ -361,7 +400,7 @@ export default function ProfessionalsPage() {
         (statusFilter === 'INACTIVE' && !r.is_active)
       return matchQ && matchStatus
     })
-  }, [allRows, searchTerm, statusFilter])
+  }, [listed, searchTerm, statusFilter])
 
   return (
     <>
@@ -377,7 +416,7 @@ export default function ProfessionalsPage() {
         {!isMobile && (
           <PageHeader
             title="אנשי מקצוע"
-            subtitle="מאגר בעלי המקצוע מ-Fixly, ופנקס מקומי להעברת תקלות ב-SMS"
+            subtitle="פנקס קבלנים להעברת תקלות ב-SMS"
             actions={
               <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
                 איש מקצוע חדש
@@ -395,17 +434,11 @@ export default function ProfessionalsPage() {
         )}
 
         <PaidAddonGate addonKey={PAID_ADDON_KEYS.professionals}>
-        <div style={{ marginBottom: 24 }}>
-          <FixlyDirectoryPanel
-            knownPhones={allRows.map((row) => row.phone)}
-            onAdded={() => void loadProfessionals()}
-          />
-        </div>
+        <FixlyDirectoryLoader onPeople={setFixlyPeople} onLoading={setFixlyLoading} />
         {loading ? (
           <PageTransitionLoader />
         ) : (
           <>
-            <h2 style={styles.sectionTitle}>הפנקס שלי</h2>
             <div style={styles.kpiGrid}>
               <KpiCard label="סה״כ" value={stats.total} accent="primary" />
               <KpiCard label="פעילים" value={stats.active} accent="success" />
@@ -425,7 +458,7 @@ export default function ProfessionalsPage() {
                 <SearchInput
                   value={searchTerm}
                   onChange={setSearchTerm}
-                  placeholder="חיפוש לפי שם, תחום, טלפון..."
+                  placeholder="חיפוש לפי שם, תחום, עיר או טלפון..."
                   style={{ flex: 1, maxWidth: isMobile ? '100%' : 320 }}
                 />
                 <Select
@@ -447,7 +480,7 @@ export default function ProfessionalsPage() {
               {filtered.length === 0 ? (
                 <EmptyState
                   title="לא נמצאו אנשי מקצוע"
-                  description="הוסיפו בעל מקצוע מהמאגר למעלה, או צרו איש קשר ידנית."
+                  description="הוסיפו איש קשר, או חפשו קבלן במידרג לפי מקצוע ועיר."
                   action={
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
                       <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
@@ -482,6 +515,7 @@ export default function ProfessionalsPage() {
                       </div>
                       <div style={styles.phone}>{formatWorkerPhonesDisplay(row)}</div>
                       {row.notes ? <div style={styles.notes}>{row.notes}</div> : null}
+                      {row.source === 'fixly' ? null : (
                       <div style={styles.actions}>
                         <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
                           עריכה
@@ -493,6 +527,7 @@ export default function ProfessionalsPage() {
                           הסרה
                         </Button>
                       </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -593,6 +628,42 @@ export default function ProfessionalsPage() {
   )
 }
 
+function FixlyDirectoryLoader({
+  onPeople,
+  onLoading,
+}: {
+  onPeople: (rows: FixlyDirectoryPerson[]) => void
+  onLoading: (loading: boolean) => void
+}) {
+  useEffect(() => {
+    const ac = new AbortController()
+    onLoading(true)
+    void fetchWithTimeout('/api/professionals/fixly-directory', { signal: ac.signal })
+      .then(async (res) => {
+        const json = (await res.json().catch(() => ({}))) as {
+          rows?: FixlyDirectoryPerson[]
+          error?: unknown
+        }
+        if (!res.ok) {
+          throw new Error(errorMessageFromResponseJson(json, TM.genericLoadError))
+        }
+        if (ac.signal.aborted) return
+        onPeople(Array.isArray(json.rows) ? json.rows : [])
+      })
+      .catch((e: unknown) => {
+        if (ac.signal.aborted) return
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        toast.error(e instanceof Error ? e.message : TM.genericLoadError)
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) onLoading(false)
+      })
+    return () => ac.abort()
+  }, [onPeople, onLoading])
+
+  return null
+}
+
 function statusPill(active: boolean): CSSProperties {
   return {
     padding: '4px 10px',
@@ -605,7 +676,6 @@ function statusPill(active: boolean): CSSProperties {
 }
 
 const styles: Record<string, CSSProperties> = {
-  sectionTitle: { margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: theme.colors.textPrimary },
   content: { padding: '24px 32px 48px', maxWidth: 1200, margin: '0 auto', width: '100%' },
   contentMobile: { padding: '16px 16px 80px', maxWidth: '100%', boxSizing: 'border-box' },
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
