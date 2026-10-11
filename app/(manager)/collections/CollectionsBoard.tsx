@@ -45,6 +45,19 @@ import {
   theme,
 } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
+import {
+  GROW_STATUS_TONE_COLOR,
+  growProjectStatusView,
+} from '@/lib/grow-project-status'
+
+type GrowProjectSummary = {
+  id: string
+  name: string | null
+  grow_enabled?: boolean | null
+  grow_user_id?: string | null
+  grow_onboarding_status?: string | null
+  ready?: boolean
+}
 
 /** Board reads — fail faster than mutations so the UI can retry instead of hanging. */
 const BOARD_READ_TIMEOUT_MS = Math.max(DEFAULT_FETCH_TIMEOUT_MS, 15_000)
@@ -165,6 +178,7 @@ export function CollectionsBoard() {
   const [accountReady, setAccountReady] = useState<boolean | null>(null)
   const [accountMessage, setAccountMessage] = useState('')
   const [growLegalReady, setGrowLegalReady] = useState<boolean | null>(null)
+  const [growProjects, setGrowProjects] = useState<GrowProjectSummary[]>([])
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -188,10 +202,12 @@ export function CollectionsBoard() {
         message?: string
         error?: string
         grow_legal_ready?: boolean
+        projects?: GrowProjectSummary[]
       }
       if (!res.ok) {
         setAccountReady(false)
         setGrowLegalReady(null)
+        setGrowProjects([])
         setAccountMessage(
           typeof body.error === 'string'
             ? body.error
@@ -201,6 +217,7 @@ export function CollectionsBoard() {
       }
       setAccountReady(body.ready === true)
       setGrowLegalReady(body.grow_legal_ready === true)
+      setGrowProjects(Array.isArray(body.projects) ? body.projects : [])
       setAccountMessage(
         body.message ||
           (body.ready
@@ -211,6 +228,7 @@ export function CollectionsBoard() {
       // Soft-fail: board can still show charges; avoid timeout toast spam.
       setAccountReady(null)
       setGrowLegalReady(null)
+      setGrowProjects([])
       setAccountMessage('')
     }
   }, [projectFilter])
@@ -690,6 +708,17 @@ export function CollectionsBoard() {
     [projects]
   )
 
+  const growBoardProjects = useMemo(() => {
+    if (!growProjects.length) return []
+    if (!projectFilter) return growProjects
+    return growProjects.filter((p) => p.id === projectFilter)
+  }, [growProjects, projectFilter])
+
+  const growConnectedCount = useMemo(
+    () => growProjects.filter((p) => growProjectStatusView(p).ready).length,
+    [growProjects]
+  )
+
   if (loading) {
     return <PageTransitionLoader />
   }
@@ -714,15 +743,59 @@ export function CollectionsBoard() {
 
   return (
     <div style={styles.page}>
-      {accountReady === false ? (
+      {growBoardProjects.length > 0 ? (
+        <section style={styles.growPanel} aria-label="חשבונות Grow לפי בניין">
+          <div style={styles.growPanelHead}>
+            <div>
+              <div style={styles.growPanelTitle}>Grow לפי בניין</div>
+              <div style={styles.growPanelSub}>
+                {growConnectedCount}/{growProjects.length} מחוברים
+                {accountMessage && !growConnectedCount ? ` · ${accountMessage}` : ''}
+              </div>
+            </div>
+            <Link href="/settings?tab=grow" style={styles.settingsLink}>
+              הגדרות
+            </Link>
+          </div>
+          <div style={styles.growList}>
+            {growBoardProjects.map((p) => {
+              const st = growProjectStatusView(p)
+              const href = `/settings?tab=grow&project_id=${encodeURIComponent(p.id)}`
+              return (
+                <div key={p.id} style={styles.growRow}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={styles.growRowName}>{p.name || 'בניין'}</div>
+                    <div
+                      style={{
+                        ...styles.growRowStatus,
+                        color: GROW_STATUS_TONE_COLOR[st.tone],
+                      }}
+                    >
+                      {st.label}
+                      {st.userIdShort ? (
+                        <span dir="ltr" style={styles.growUserId}>
+                          {st.userIdShort}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <Link href={href} style={styles.growCta}>
+                    {st.ready ? 'עריכה' : 'חיבור'}
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      ) : accountReady === false ? (
         <div style={styles.alertBox}>
           <div style={styles.alertTitle}>חסר חשבון Grow</div>
           <p style={styles.alertText}>
             {accountMessage ||
-              'פתחו חשבון ב-Grow, הדביקו את מזהה החשבון בהגדרות והפעילו את החיבור. הכסף נכנס לחשבון שלכם.'}
+              'חברו userId לכל בניין בהגדרות → Grow. הכסף נכנס לחשבון של הבניין.'}
           </p>
           <Link href="/settings?tab=grow">
-            <Button>להגדרת החשבון</Button>
+            <Button>לחיבור בניינים</Button>
           </Link>
         </div>
       ) : null}
@@ -1043,9 +1116,9 @@ export function CollectionsBoard() {
       )}
 
       <p style={styles.footerNote}>
-        הכסף נכנס לחשבון Grow שלכם.{' '}
+        כל בניין = חשבון Grow נפרד.{' '}
         <Link href="/settings?tab=grow" style={styles.settingsLink}>
-          הגדרות Grow
+          ניהול חיבורים
         </Link>
       </p>
 
@@ -1405,6 +1478,69 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     fontSize: 13,
     fontWeight: 700,
+    textDecoration: 'none',
+  },
+  growPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+  },
+  growPanelHead: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  growPanelTitle: {
+    fontSize: 15,
+    fontWeight: 800,
+    color: theme.colors.textPrimary,
+  },
+  growPanelSub: {
+    marginTop: 2,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    lineHeight: 1.4,
+  },
+  growList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  growRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '10px 12px',
+    borderRadius: 12,
+    border: `1px solid ${theme.colors.border}`,
+    background: '#f8fafc',
+  },
+  growRowName: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+  },
+  growRowStatus: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  growUserId: {
+    marginInlineStart: 8,
+    color: theme.colors.textMuted,
+    fontWeight: 500,
+  },
+  growCta: {
+    flexShrink: 0,
+    fontSize: 13,
+    fontWeight: 700,
+    color: theme.colors.primary,
     textDecoration: 'none',
   },
   alertBox: {
