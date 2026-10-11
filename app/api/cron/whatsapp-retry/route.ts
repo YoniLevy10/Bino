@@ -9,10 +9,13 @@ import {
 import { notifyWhatsAppSendRetriesExhausted } from '@/lib/error-logs-db'
 import { getLogger } from '@/lib/logging'
 import {
+  extractWhatsAppMessageId,
   formatWhatsAppTemplateFailureMessage,
   resolveWhatsAppRetryTemplateName,
 } from '@/lib/whatsapp-meta-errors'
 import { sanitizeWhatsAppTemplateParam } from '@/lib/whatsapp-template-params'
+
+export const maxDuration = 60
 
 type Details = {
   client_id?: string
@@ -179,12 +182,25 @@ export async function GET(req: NextRequest) {
           metaErr
         )
         if (sent) {
+          const nextAttempts = attempts + 1
+          const metaMessageId = extractWhatsAppMessageId(sent)
+          const now = new Date().toISOString()
           await admin
             .from('error_logs')
             .update({
               resolved: true,
-              resolved_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+              resolved_at: now,
+              updated_at: now,
+              whatsapp_attempts: nextAttempts,
+              message: `resolved by whatsapp-retry (attempt ${nextAttempts})${
+                metaMessageId ? ` wamid=${metaMessageId}` : ''
+              }`.slice(0, 8000),
+              details: {
+                ...d,
+                resolved_by: 'whatsapp-retry',
+                resolved_attempt: nextAttempts,
+                meta_message_id: metaMessageId,
+              },
             })
             .eq('id', row.id)
           fixed++
@@ -200,6 +216,13 @@ export async function GET(req: NextRequest) {
             whatsapp_attempts: nextAttempts,
             message: errMsg,
             updated_at: new Date().toISOString(),
+            details: {
+              ...d,
+              meta_error_code: metaErr.current?.metaCode ?? d.meta_error_code,
+              meta_http_status: metaErr.current?.httpStatus ?? d.meta_http_status,
+              meta_error_message: metaErr.current?.message ?? d.meta_error_message,
+              last_retry_at: new Date().toISOString(),
+            },
           })
           .eq('id', row.id)
 
