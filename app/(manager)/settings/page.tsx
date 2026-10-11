@@ -508,6 +508,14 @@ function SettingsPageInner() {
   }
 
   const selectedGrowProject = growProjects.find((p) => p.id === selectedGrowProjectId) || null
+  const selectedGrowStatus = selectedGrowProject
+    ? growProjectStatusView({
+        grow_enabled: selectedGrowProject.grow_enabled,
+        grow_user_id: selectedGrowProject.grow_user_id,
+        grow_onboarding_status: selectedGrowProject.grow_onboarding_status,
+        ready: selectedGrowProject.status?.ready,
+      })
+    : null
 
   useEffect(() => {
     if (!selectedGrowProject) {
@@ -1234,88 +1242,57 @@ function SettingsPageInner() {
                   </p>
 
                   <div style={styles.morningSection}>
-                    <div style={styles.morningSectionTitle}>בניינים</div>
+                    <div style={styles.morningSectionTitle}>בניין</div>
                     {growProjects.length === 0 ? (
                       <span style={styles.formHint}>אין בניינים — הוסיפו בניין קודם.</span>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {growProjects.map((p) => {
-                          const st = growProjectStatusView({
-                            grow_enabled: p.grow_enabled,
-                            grow_user_id: p.grow_user_id,
-                            grow_onboarding_status: p.grow_onboarding_status,
-                            ready: p.status?.ready,
-                          })
-                          const selected = p.id === selectedGrowProjectId
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => setSelectedGrowProjectId(p.id)}
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                gap: 12,
-                                alignItems: 'center',
-                                width: '100%',
-                                textAlign: 'right',
-                                padding: '12px 14px',
-                                borderRadius: theme.radius.md,
-                                border: selected
-                                  ? `2px solid ${theme.colors.primary}`
-                                  : `1px solid ${theme.colors.border}`,
-                                background: selected
-                                  ? theme.colors.surfaceElevated
-                                  : theme.colors.surface,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div
-                                  style={{
-                                    fontWeight: 700,
-                                    fontSize: 15,
-                                    color: theme.colors.textPrimary,
-                                  }}
-                                >
-                                  {p.name || 'בניין'}
-                                </div>
-                                <div
-                                  style={{
-                                    marginTop: 4,
-                                    fontSize: 12,
-                                    color: GROW_STATUS_TONE_COLOR[st.tone],
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {st.label}
-                                  {st.userIdShort ? (
-                                    <span
-                                      dir="ltr"
-                                      style={{
-                                        marginInlineStart: 8,
-                                        color: theme.colors.textMuted,
-                                        fontWeight: 500,
-                                      }}
-                                    >
-                                      {st.userIdShort}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.formLabel}>בחרו בניין</label>
+                        <select
+                          value={selectedGrowProjectId}
+                          onChange={(e) => setSelectedGrowProjectId(e.target.value)}
+                          style={styles.input}
+                        >
+                          {growProjects.map((p) => {
+                            const st = growProjectStatusView({
+                              grow_enabled: p.grow_enabled,
+                              grow_user_id: p.grow_user_id,
+                              grow_onboarding_status: p.grow_onboarding_status,
+                              ready: p.status?.ready,
+                            })
+                            const suffix = st.userIdShort
+                              ? `${st.label} · ${st.userIdShort}`
+                              : st.label
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name || 'בניין'} — {suffix}
+                              </option>
+                            )
+                          })}
+                        </select>
+                        {selectedGrowStatus ? (
+                          <span
+                            style={{
+                              ...styles.formHint,
+                              color: GROW_STATUS_TONE_COLOR[selectedGrowStatus.tone],
+                              fontWeight: 600,
+                            }}
+                          >
+                            {selectedGrowStatus.label}
+                            {selectedGrowStatus.userId ? (
                               <span
+                                dir="ltr"
                                 style={{
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  color: theme.colors.primary,
-                                  flexShrink: 0,
+                                  marginInlineStart: 8,
+                                  color: theme.colors.textMuted,
+                                  fontWeight: 500,
                                 }}
                               >
-                                {selected ? 'נבחר' : st.ready ? 'עריכה' : 'חיבור'}
+                                {selectedGrowStatus.userId}
                               </span>
-                            </button>
-                          )
-                        })}
+                            ) : null}
+                          </span>
+                        ) : null}
                       </div>
                     )}
                   </div>

@@ -179,6 +179,7 @@ export function CollectionsBoard() {
   const [accountMessage, setAccountMessage] = useState('')
   const [growLegalReady, setGrowLegalReady] = useState<boolean | null>(null)
   const [growProjects, setGrowProjects] = useState<GrowProjectSummary[]>([])
+  const [growPanelProjectId, setGrowPanelProjectId] = useState('')
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -217,7 +218,15 @@ export function CollectionsBoard() {
       }
       setAccountReady(body.ready === true)
       setGrowLegalReady(body.grow_legal_ready === true)
-      setGrowProjects(Array.isArray(body.projects) ? body.projects : [])
+      const nextProjects = Array.isArray(body.projects) ? body.projects : []
+      setGrowProjects(nextProjects)
+      setGrowPanelProjectId((prev) => {
+        if (projectFilter && nextProjects.some((p) => p.id === projectFilter)) {
+          return projectFilter
+        }
+        if (prev && nextProjects.some((p) => p.id === prev)) return prev
+        return nextProjects[0]?.id || ''
+      })
       setAccountMessage(
         body.message ||
           (body.ready
@@ -229,6 +238,7 @@ export function CollectionsBoard() {
       setAccountReady(null)
       setGrowLegalReady(null)
       setGrowProjects([])
+      setGrowPanelProjectId('')
       setAccountMessage('')
     }
   }, [projectFilter])
@@ -708,14 +718,24 @@ export function CollectionsBoard() {
     [projects]
   )
 
-  const growBoardProjects = useMemo(() => {
-    if (!growProjects.length) return []
-    if (!projectFilter) return growProjects
-    return growProjects.filter((p) => p.id === projectFilter)
-  }, [growProjects, projectFilter])
+  const growPanelProject = useMemo(
+    () => growProjects.find((p) => p.id === growPanelProjectId) || growProjects[0] || null,
+    [growProjects, growPanelProjectId]
+  )
+  const growPanelStatus = growPanelProject ? growProjectStatusView(growPanelProject) : null
 
   const growConnectedCount = useMemo(
     () => growProjects.filter((p) => growProjectStatusView(p).ready).length,
+    [growProjects]
+  )
+
+  const growSelectOptions = useMemo(
+    () =>
+      growProjects.map((p) => {
+        const st = growProjectStatusView(p)
+        const suffix = st.userIdShort ? `${st.label} · ${st.userIdShort}` : st.label
+        return { label: `${p.name || 'בניין'} — ${suffix}`, value: p.id }
+      }),
     [growProjects]
   )
 
@@ -743,48 +763,41 @@ export function CollectionsBoard() {
 
   return (
     <div style={styles.page}>
-      {growBoardProjects.length > 0 ? (
-        <section style={styles.growPanel} aria-label="חשבונות Grow לפי בניין">
+      {growProjects.length > 0 && growPanelProject && growPanelStatus ? (
+        <section style={styles.growPanel} aria-label="חשבון Grow לבניין">
           <div style={styles.growPanelHead}>
             <div>
               <div style={styles.growPanelTitle}>Grow לפי בניין</div>
               <div style={styles.growPanelSub}>
                 {growConnectedCount}/{growProjects.length} מחוברים
-                {accountMessage && !growConnectedCount ? ` · ${accountMessage}` : ''}
               </div>
             </div>
-            <Link href="/settings?tab=grow" style={styles.settingsLink}>
-              הגדרות
+            <Link
+              href={`/settings?tab=grow&project_id=${encodeURIComponent(growPanelProject.id)}`}
+              style={styles.settingsLink}
+            >
+              {growPanelStatus.ready ? 'עריכה' : 'חיבור'}
             </Link>
           </div>
-          <div style={styles.growList}>
-            {growBoardProjects.map((p) => {
-              const st = growProjectStatusView(p)
-              const href = `/settings?tab=grow&project_id=${encodeURIComponent(p.id)}`
-              return (
-                <div key={p.id} style={styles.growRow}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={styles.growRowName}>{p.name || 'בניין'}</div>
-                    <div
-                      style={{
-                        ...styles.growRowStatus,
-                        color: GROW_STATUS_TONE_COLOR[st.tone],
-                      }}
-                    >
-                      {st.label}
-                      {st.userIdShort ? (
-                        <span dir="ltr" style={styles.growUserId}>
-                          {st.userIdShort}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <Link href={href} style={styles.growCta}>
-                    {st.ready ? 'עריכה' : 'חיבור'}
-                  </Link>
-                </div>
-              )
-            })}
+          <Select
+            value={growPanelProject.id}
+            onChange={setGrowPanelProjectId}
+            options={growSelectOptions}
+            placeholder="בחרו בניין"
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              ...styles.growRowStatus,
+              color: GROW_STATUS_TONE_COLOR[growPanelStatus.tone],
+            }}
+          >
+            {growPanelStatus.label}
+            {growPanelStatus.userId ? (
+              <span dir="ltr" style={styles.growUserId}>
+                {growPanelStatus.userId}
+              </span>
+            ) : null}
           </div>
         </section>
       ) : accountReady === false ? (
