@@ -183,7 +183,7 @@ npm run test:e2e
 |-----|---------|
 | `/api/cron/sla-check` | יומי 07:00 UTC |
 | `/api/cron/health-check` | יומי 06:00 UTC |
-| `/api/cron/whatsapp-retry` | יומי 09:00 UTC |
+| `/api/cron/whatsapp-retry` | כל 15 דקות |
 | `/api/cron/cleanup-webhooks` | שבועי |
 
 ---

@@ -3,6 +3,8 @@ import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
 import { getLogger } from '@/lib/logging'
 import {
   formatWhatsAppTemplateFailureMessage,
+  formatWhatsAppTextFailureMessage,
+  isTransientWhatsAppSendFailure,
   type WhatsAppMetaError,
 } from '@/lib/whatsapp-meta-errors'
 import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
@@ -18,6 +20,10 @@ export type WhatsAppFailureLog = {
 
 /** Task 37: WhatsApp Cloud API outbound timeout */
 const WHATSAPP_API_TIMEOUT_MS = 28_000
+/** Shorter budget for a single immediate retry after timeout/network. */
+const WHATSAPP_API_RETRY_TIMEOUT_MS = 12_000
+/** First attempt + one transient retry (timeout/network only). */
+const WHATSAPP_TRANSIENT_MAX_ATTEMPTS = 2
 
 type WhatsAppTemplateComponent = {
   type: string
@@ -31,6 +37,10 @@ type WhatsAppTemplateComponent = {
 type WhatsAppTemplateBuildOpts = {
   bodyParams?: string[]
   headerImageLink?: string
+}
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function captureMetaError(
@@ -47,20 +57,14 @@ function captureMetaError(
   }
 }
 
-/** Send using explicit Meta credentials (e.g. from Supabase `clients` row). */
-export async function sendRawWhatsAppPayloadWithCredentials(
+async function postWhatsAppCloudMessage(
   phoneNumberId: string,
   accessToken: string,
   payload: Record<string, unknown>,
-  metaErrorOut?: { current?: WhatsAppMetaError }
+  timeoutMs: number,
+  metaErrorOut: { current?: WhatsAppMetaError } | undefined,
+  logSuffix: string
 ): Promise<Record<string, unknown> | null> {
-  const shabbatReason = shabbatMessagingBlockReason()
-  if (shabbatReason) {
-    getLogger().info('WA_SEND', 'shabbat skip (credentials)', { reason: shabbatReason })
-    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: shabbatReason }
-    return null
-  }
-
   try {
     const response = await fetchWithTimeout(
       `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`,
@@ -75,10 +79,10 @@ export async function sendRawWhatsAppPayloadWithCredentials(
           ...payload,
         }),
       },
-      WHATSAPP_API_TIMEOUT_MS
+      timeoutMs
     )
     if (!response) {
-      getLogger().error('WA_SEND', 'timeout or network error (credentials)', new Error('timeout'))
+      getLogger().error('WA_SEND', `timeout or network error${logSuffix}`, new Error('timeout'))
       if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: 'timeout' }
       return null
     }
@@ -89,19 +93,97 @@ export async function sendRawWhatsAppPayloadWithCredentials(
       const metaCode = (data as { error?: { code?: number } }).error?.code
       captureMetaError(response, data, metaErrorOut)
       if (metaCode === 190) {
-        getLogger().error('WA_SEND', 'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately', new Error('token_expired'), { data: JSON.stringify(data) })
+        getLogger().error(
+          'WA_SEND',
+          'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately',
+          new Error('token_expired'),
+          { data: JSON.stringify(data) }
+        )
       } else {
-        getLogger().error('WA_SEND', 'send failed (credentials)', new Error('meta_error'), { data: JSON.stringify(data) })
+        getLogger().error('WA_SEND', `send failed${logSuffix}`, new Error('meta_error'), {
+          data: JSON.stringify(data),
+        })
       }
       return null
     }
 
     return data
   } catch (e) {
-    getLogger().error('WA_SEND', 'send exception (credentials)', e instanceof Error ? e : new Error(String(e)))
-    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: e instanceof Error ? e.message : String(e) }
+    getLogger().error(
+      'WA_SEND',
+      `send exception${logSuffix}`,
+      e instanceof Error ? e : new Error(String(e))
+    )
+    if (metaErrorOut) {
+      metaErrorOut.current = { httpStatus: 0, message: e instanceof Error ? e.message : String(e) }
+    }
     return null
   }
+}
+
+async function sendWhatsAppCloudWithTransientRetry(
+  phoneNumberId: string,
+  accessToken: string,
+  payload: Record<string, unknown>,
+  metaErrorOut?: { current?: WhatsAppMetaError },
+  logSuffix = ''
+): Promise<Record<string, unknown> | null> {
+  for (let attempt = 1; attempt <= WHATSAPP_TRANSIENT_MAX_ATTEMPTS; attempt++) {
+    const attemptMeta: { current?: WhatsAppMetaError } = {}
+    const timeoutMs = attempt === 1 ? WHATSAPP_API_TIMEOUT_MS : WHATSAPP_API_RETRY_TIMEOUT_MS
+    const result = await postWhatsAppCloudMessage(
+      phoneNumberId,
+      accessToken,
+      payload,
+      timeoutMs,
+      attemptMeta,
+      logSuffix
+    )
+    if (metaErrorOut) metaErrorOut.current = attemptMeta.current
+
+    if (result) {
+      if (attempt > 1) {
+        getLogger().info('WA_SEND', 'transient retry succeeded', { attempt, logSuffix })
+      }
+      return result
+    }
+
+    const canRetry =
+      attempt < WHATSAPP_TRANSIENT_MAX_ATTEMPTS && isTransientWhatsAppSendFailure(attemptMeta.current)
+    if (!canRetry) return null
+
+    getLogger().warn('WA_SEND', 'transient failure, retrying once', {
+      attempt,
+      message: attemptMeta.current?.message,
+      logSuffix,
+    })
+    await sleepMs(800 * attempt)
+  }
+
+  return null
+}
+
+/** Send using explicit Meta credentials (e.g. from Supabase `clients` row). */
+export async function sendRawWhatsAppPayloadWithCredentials(
+  phoneNumberId: string,
+  accessToken: string,
+  payload: Record<string, unknown>,
+  metaErrorOut?: { current?: WhatsAppMetaError }
+): Promise<Record<string, unknown> | null> {
+  const shabbatReason = shabbatMessagingBlockReason()
+  if (shabbatReason) {
+    getLogger().info('WA_SEND', 'shabbat skip (credentials)', { reason: shabbatReason })
+    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: shabbatReason }
+    return null
+  }
+
+  return sendWhatsAppCloudWithTransientRetry(
+    phoneNumberId,
+    accessToken,
+    payload,
+    metaErrorOut,
+    ' (credentials)'
+  )
 }
 
 export async function sendWhatsAppTextMessageWithCredentials(
@@ -168,48 +250,14 @@ async function sendRawWhatsAppPayload(
     return null
   }
 
-  try {
-    const response = await fetchWithTimeout(
-      `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          ...payload,
-        }),
-      },
-      WHATSAPP_API_TIMEOUT_MS
-    )
+  return sendWhatsAppCloudWithTransientRetry(phoneNumberId, accessToken, payload, metaErrorOut)
+}
 
-    if (!response) {
-      getLogger().error('WA_SEND', 'timeout or network error', new Error('timeout'))
-      if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: 'timeout' }
-      return null
-    }
-
-    const data = (await response.json()) as Record<string, unknown>
-
-    if (!response.ok) {
-      const metaCode = (data as { error?: { code?: number } }).error?.code
-      captureMetaError(response, data, metaErrorOut)
-      if (metaCode === 190) {
-        getLogger().error('WA_SEND', 'TOKEN_EXPIRED: Meta OAuthException code 190 — update whatsapp_access_token immediately', new Error('token_expired'), { data: JSON.stringify(data) })
-      } else {
-        getLogger().error('WA_SEND', 'send rejected', new Error('meta_error'), { data: JSON.stringify(data) })
-      }
-      return null
-    }
-
-    return data
-  } catch (e) {
-    getLogger().error('WA_SEND', 'send exception', e instanceof Error ? e : new Error(String(e)))
-    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: e instanceof Error ? e.message : String(e) }
-    return null
-  }
+/** Prefer caller bag; otherwise allocate so failureLog always gets Meta details. */
+function resolveMetaErrorBag(
+  metaErrorOut?: { current?: WhatsAppMetaError }
+): { current?: WhatsAppMetaError } {
+  return metaErrorOut ?? {}
 }
 
 export async function sendWhatsAppTextMessage(
@@ -219,6 +267,7 @@ export async function sendWhatsAppTextMessage(
   failureLog?: WhatsAppFailureLog,
   metaErrorOut?: { current?: WhatsAppMetaError }
 ): Promise<Record<string, unknown> | null> {
+  const metaBag = resolveMetaErrorBag(metaErrorOut)
   const result = await sendRawWhatsAppPayload(
     {
       to,
@@ -228,15 +277,22 @@ export async function sendWhatsAppTextMessage(
       },
     },
     creds,
-    metaErrorOut
+    metaBag
   )
 
   if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
-    await insertWhatsAppSendFailure(failureLog.clientId, to, body, 'WhatsApp send returned null (timeout/error)', {
-      send_kind: 'text',
-      meta_http_status: metaErrorOut?.current?.httpStatus,
-      meta_error_code: metaErrorOut?.current?.metaCode,
-    })
+    await insertWhatsAppSendFailure(
+      failureLog.clientId,
+      to,
+      body,
+      formatWhatsAppTextFailureMessage(metaBag.current),
+      {
+        send_kind: 'text',
+        meta_http_status: metaBag.current?.httpStatus,
+        meta_error_code: metaBag.current?.metaCode,
+        meta_error_message: metaBag.current?.message,
+      }
+    )
   }
 
   return result
@@ -319,16 +375,17 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
     return null
   }
 
+  const metaBag = resolveMetaErrorBag(metaErrorOut)
   const result = await sendRawWhatsAppPayloadWithCredentials(
     phoneNumberId,
     accessToken,
     buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode),
-    metaErrorOut
+    metaBag
   )
 
   if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
     const failureMessage =
-      formatWhatsAppTemplateFailureMessage(templateName, metaErrorOut?.current) ||
+      formatWhatsAppTemplateFailureMessage(templateName, metaBag.current) ||
       'WhatsApp template send returned null (timeout/error)'
     await insertWhatsAppSendFailure(
       failureLog.clientId,
@@ -340,9 +397,9 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
         template_name: templateName,
         template_params: bodyParams,
         template_language: languageCode,
-        meta_http_status: metaErrorOut?.current?.httpStatus,
-        meta_error_code: metaErrorOut?.current?.metaCode,
-        meta_error_message: metaErrorOut?.current?.message,
+        meta_http_status: metaBag.current?.httpStatus,
+        meta_error_code: metaBag.current?.metaCode,
+        meta_error_message: metaBag.current?.message,
       }
     )
   }
@@ -367,16 +424,17 @@ export async function sendWhatsAppImageTemplateMessageWithCredentials(
     return null
   }
 
+  const metaBag = resolveMetaErrorBag(metaErrorOut)
   const result = await sendRawWhatsAppPayloadWithCredentials(
     phoneNumberId,
     accessToken,
     buildWhatsAppTemplatePayload(to, templateName, bodyParams, languageCode, { headerImageLink: imageLink }),
-    metaErrorOut
+    metaBag
   )
 
   if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
     const failureMessage =
-      formatWhatsAppTemplateFailureMessage(templateName, metaErrorOut?.current) ||
+      formatWhatsAppTemplateFailureMessage(templateName, metaBag.current) ||
       'WhatsApp image template send returned null (timeout/error)'
     await insertWhatsAppSendFailure(
       failureLog.clientId,
@@ -389,9 +447,9 @@ export async function sendWhatsAppImageTemplateMessageWithCredentials(
         template_params: bodyParams,
         template_language: languageCode,
         header_image_link: imageLink,
-        meta_http_status: metaErrorOut?.current?.httpStatus,
-        meta_error_code: metaErrorOut?.current?.metaCode,
-        meta_error_message: metaErrorOut?.current?.message,
+        meta_http_status: metaBag.current?.httpStatus,
+        meta_error_code: metaBag.current?.metaCode,
+        meta_error_message: metaBag.current?.message,
       }
     )
   }
