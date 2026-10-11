@@ -1027,8 +1027,8 @@ export default function DashboardPage() {
           />
         ) : (
           <>
-            {/* Mobile: recommendations live in the header bell dropdown. */}
-            {!isMobile ? <AttentionRequired previewLimit={3} /> : null}
+            {/* Cross-page ops conclusion — mobile also needs the unified briefing. */}
+            <AttentionRequired previewLimit={isMobile ? 2 : 3} />
             <div style={{
               ...styles.kpiGrid,
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
