@@ -1027,7 +1027,7 @@ export default function DashboardPage() {
           />
         ) : (
           <>
-            {/* Mobile: recommendations live in the header bell dropdown. */}
+            {/* Mobile: ops briefing + alerts live in the header bell. */}
             {!isMobile ? <AttentionRequired previewLimit={3} /> : null}
             <div style={{
               ...styles.kpiGrid,

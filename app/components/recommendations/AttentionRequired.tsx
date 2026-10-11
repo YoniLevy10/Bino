@@ -21,7 +21,7 @@ function urgencyTone(u: string): { label: string; color: string; wash: string } 
   return { label: 'נמוך', color: theme.colors.textMuted, wash: theme.colors.muted }
 }
 
-/** Dashboard card of smart alerts — open the relevant screen or dismiss. */
+/** Desktop dashboard card of focused alerts (ops briefing lives in the bell). */
 export function AttentionRequired({ previewLimit = 3 }: Props) {
   const [rows, setRows] = useState<ManagementRecommendationRow[]>([])
   const [loading, setLoading] = useState(true)

@@ -12,6 +12,8 @@ import {
 import { recordRecommendationEvent } from '@/lib/recommendations/record-event'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 import { runAfterResponse } from '@/lib/run-after-response'
+import { buildTenantOpsSnapshot } from '@/lib/ops-context/tenant-snapshot'
+import { synthesizeOpsBriefing } from '@/lib/ops-context/synthesize-briefing'
 
 const STALE_MS = 15 * 60_000
 
@@ -99,9 +101,24 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Cross-page ops conclusion (tickets + maintenance + collections + Grow).
+  // Bound reads inside buildTenantOpsSnapshot — do not block when entity-filtered.
+  let briefing = null
+  let snapshot = null
+  if (!entityType && !entityId) {
+    try {
+      snapshot = await buildTenantOpsSnapshot(admin, clientId)
+      briefing = synthesizeOpsBriefing(snapshot, ranked)
+    } catch (err) {
+      console.error('[recommendations.briefing]', err instanceof Error ? err.message : err)
+    }
+  }
+
   return NextResponse.json({
     recommendations: ranked,
     total: ranked.length,
     scan,
+    briefing,
+    snapshot,
   })
 }

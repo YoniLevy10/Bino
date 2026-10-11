@@ -2,9 +2,11 @@
 
 import { useEffect, useId, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
+import type { OpsBriefing } from '@/lib/ops-context/synthesize-briefing'
 import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
 
 function urgencyLabel(u: string): string {
@@ -15,22 +17,26 @@ function urgencyLabel(u: string): string {
 }
 
 /**
- * Bell next to the mobile hamburger — opens management recommendations
- * ("דורש תשומת לב") with a link to the relevant screen and dismiss.
+ * Bell — "דורש תשומת לב": cross-page ops briefing + focused recommendations.
  */
 export function RecommendationsBell() {
   const panelId = useId()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [rows, setRows] = useState<ManagementRecommendationRow[]>([])
+  const [briefing, setBriefing] = useState<OpsBriefing | null>(null)
   const [loading, setLoading] = useState(true)
 
   async function load() {
     try {
       const res = await fetchWithTimeout('/api/recommendations?limit=30')
       if (!res.ok) return
-      const body = (await res.json()) as { recommendations?: ManagementRecommendationRow[] }
+      const body = (await res.json()) as {
+        recommendations?: ManagementRecommendationRow[]
+        briefing?: OpsBriefing | null
+      }
       setRows(body.recommendations ?? [])
+      setBriefing(body.briefing ?? null)
     } finally {
       setLoading(false)
     }
@@ -56,7 +62,9 @@ export function RecommendationsBell() {
   }, [open])
 
   const count = rows.length
-  const showBadge = !loading && count > 0
+  const briefingActive = Boolean(briefing && !briefing.quiet)
+  const showBadge = !loading && (count > 0 || briefingActive)
+  const badgeCount = count > 0 ? count : briefingActive ? 1 : 0
 
   const sheet =
     open && mounted
@@ -78,7 +86,7 @@ export function RecommendationsBell() {
               <div style={styles.panelHeader}>
                 <div style={styles.panelTitleRow}>
                   <h3 style={styles.panelTitle}>דורש תשומת לב</h3>
-                  {showBadge ? <span style={styles.panelCount}>{count}</span> : null}
+                  {showBadge ? <span style={styles.panelCount}>{badgeCount}</span> : null}
                 </div>
                 <button
                   type="button"
@@ -93,20 +101,62 @@ export function RecommendationsBell() {
               <div style={styles.panelBody}>
                 {loading ? (
                   <p style={styles.empty}>טוען המלצות…</p>
-                ) : count === 0 ? (
-                  <p style={styles.empty}>אין התראות פעילות כרגע</p>
                 ) : (
-                  rows.map((row) => (
-                    <div key={row.id} style={styles.item}>
-                      <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
-                      <p style={styles.reason}>{row.reason}</p>
-                      <RecommendationAlertActions
-                        row={row}
-                        onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}
-                        onNavigated={() => setOpen(false)}
-                      />
-                    </div>
-                  ))
+                  <>
+                    {briefing ? (
+                      <div
+                        style={{
+                          ...styles.briefing,
+                          borderInlineStart: `3px solid ${
+                            briefing.quiet ? theme.colors.success : theme.colors.warning
+                          }`,
+                        }}
+                      >
+                        <span style={styles.briefingEyebrow}>תמונת מצב תפעולית</span>
+                        <p style={styles.briefingHeadline}>{briefing.headline}</p>
+                        <p style={styles.briefingSummary}>{briefing.summary}</p>
+                        {briefing.priorities.length > 0 ? (
+                          <div style={styles.priorityList}>
+                            {briefing.priorities.map((p) => (
+                              <Link
+                                key={`${p.domain}-${p.href}-${p.label}`}
+                                href={p.href}
+                                style={styles.priorityLink}
+                                onClick={() => setOpen(false)}
+                              >
+                                {p.label}
+                              </Link>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {count === 0 && !briefing ? (
+                      <p style={styles.empty}>אין התראות פעילות כרגע</p>
+                    ) : null}
+
+                    {count > 0 ? (
+                      <>
+                        {briefing ? (
+                          <div style={styles.sectionLabel}>המלצות ממוקדות</div>
+                        ) : null}
+                        {rows.map((row) => (
+                          <div key={row.id} style={styles.item}>
+                            <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
+                            <p style={styles.reason}>{row.reason}</p>
+                            <RecommendationAlertActions
+                              row={row}
+                              onDismissed={(id) =>
+                                setRows((prev) => prev.filter((item) => item.id !== id))
+                              }
+                              onNavigated={() => setOpen(false)}
+                            />
+                          </div>
+                        ))}
+                      </>
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>
@@ -125,7 +175,7 @@ export function RecommendationsBell() {
           ...(open ? styles.bellButtonOpen : null),
         }}
         aria-label={
-          showBadge ? `התראות — ${count} דורשות תשומת לב` : 'התראות'
+          showBadge ? `התראות — ${badgeCount} דורשות תשומת לב` : 'התראות'
         }
         aria-expanded={open}
         aria-controls={panelId}
@@ -146,7 +196,7 @@ export function RecommendationsBell() {
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </svg>
         {showBadge ? (
-          <span style={styles.badge}>{count > 99 ? '99+' : count}</span>
+          <span style={styles.badge}>{badgeCount > 99 ? '99+' : badgeCount}</span>
         ) : null}
       </button>
       {sheet}
@@ -292,6 +342,51 @@ const styles: Record<string, CSSProperties> = {
     padding: '28px 20px',
     textAlign: 'center',
     fontSize: 14,
+    color: theme.colors.textMuted,
+  },
+  briefing: {
+    margin: '8px 12px 4px',
+    padding: '12px 14px',
+    borderRadius: theme.radius.sm,
+    background: theme.colors.muted,
+    boxSizing: 'border-box',
+  },
+  briefingEyebrow: {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 700,
+    color: theme.colors.textMuted,
+    marginBottom: 4,
+  },
+  briefingHeadline: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 700,
+    lineHeight: 1.4,
+    color: theme.colors.textPrimary,
+  },
+  briefingSummary: {
+    margin: '6px 0 0',
+    fontSize: 12,
+    lineHeight: 1.45,
+    color: theme.colors.textSecondary,
+  },
+  priorityList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    marginTop: 10,
+  },
+  priorityLink: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: theme.colors.primary,
+    textDecoration: 'none',
+  },
+  sectionLabel: {
+    padding: '10px 16px 4px',
+    fontSize: 11,
+    fontWeight: 700,
     color: theme.colors.textMuted,
   },
   item: {
