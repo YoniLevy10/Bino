@@ -45,6 +45,19 @@ import {
   theme,
 } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
+import {
+  GROW_STATUS_TONE_COLOR,
+  growProjectStatusView,
+} from '@/lib/grow-project-status'
+
+type GrowProjectSummary = {
+  id: string
+  name: string | null
+  grow_enabled?: boolean | null
+  grow_user_id?: string | null
+  grow_onboarding_status?: string | null
+  ready?: boolean
+}
 
 /** Board reads — fail faster than mutations so the UI can retry instead of hanging. */
 const BOARD_READ_TIMEOUT_MS = Math.max(DEFAULT_FETCH_TIMEOUT_MS, 15_000)
@@ -126,6 +139,8 @@ export function CollectionsBoard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [periodFilter, setPeriodFilter] = useState('')
 
+  const openBulkRequested = searchParams.get('open')?.trim() === 'bulk'
+
   useEffect(() => {
     const status = searchParams.get('status')?.trim()
     const projectId = searchParams.get('project_id')?.trim()
@@ -165,6 +180,8 @@ export function CollectionsBoard() {
   const [accountReady, setAccountReady] = useState<boolean | null>(null)
   const [accountMessage, setAccountMessage] = useState('')
   const [growLegalReady, setGrowLegalReady] = useState<boolean | null>(null)
+  const [growProjects, setGrowProjects] = useState<GrowProjectSummary[]>([])
+  const [growPanelProjectId, setGrowPanelProjectId] = useState('')
 
   useEffect(() => {
     const check = () => setIsMobile(getIsMobileViewport())
@@ -188,10 +205,12 @@ export function CollectionsBoard() {
         message?: string
         error?: string
         grow_legal_ready?: boolean
+        projects?: GrowProjectSummary[]
       }
       if (!res.ok) {
         setAccountReady(false)
         setGrowLegalReady(null)
+        setGrowProjects([])
         setAccountMessage(
           typeof body.error === 'string'
             ? body.error
@@ -201,6 +220,15 @@ export function CollectionsBoard() {
       }
       setAccountReady(body.ready === true)
       setGrowLegalReady(body.grow_legal_ready === true)
+      const nextProjects = Array.isArray(body.projects) ? body.projects : []
+      setGrowProjects(nextProjects)
+      setGrowPanelProjectId((prev) => {
+        if (projectFilter && nextProjects.some((p) => p.id === projectFilter)) {
+          return projectFilter
+        }
+        if (prev && nextProjects.some((p) => p.id === prev)) return prev
+        return nextProjects[0]?.id || ''
+      })
       setAccountMessage(
         body.message ||
           (body.ready
@@ -211,6 +239,8 @@ export function CollectionsBoard() {
       // Soft-fail: board can still show charges; avoid timeout toast spam.
       setAccountReady(null)
       setGrowLegalReady(null)
+      setGrowProjects([])
+      setGrowPanelProjectId('')
       setAccountMessage('')
     }
   }, [projectFilter])
@@ -360,15 +390,33 @@ export function CollectionsBoard() {
     setCResidentQuery('')
   }
 
-  async function openBulk() {
-    if (accountReady === false) {
-      toast.error(accountMessage || 'הגדירו קודם חשבון Grow בהגדרות.')
+  function projectGrowReady(projectId: string): boolean {
+    if (!projectId) return false
+    const row = growProjects.find((p) => p.id === projectId)
+    if (row) return growProjectStatusView(row).ready
+    // No per-building row yet — fall back to tenant-level readiness.
+    return accountReady === true
+  }
+
+  function growConnectHref(projectId: string): string {
+    return `/settings?tab=grow&project_id=${encodeURIComponent(projectId)}`
+  }
+
+  async function openBulk(preferredProjectId?: string) {
+    if (growProjects.length > 0 && growConnectedCount === 0 && accountReady === false) {
+      toast.error(accountMessage || 'חברו Grow לבניין בהגדרות לפני שליחה.')
       return
     }
     setCreateOpen(false)
     setBulkResult(null)
     setBulkOpen(true)
-    const pid = bulkProjectId || projectFilter || projects[0]?.id || ''
+    const pid =
+      preferredProjectId ||
+      bulkProjectId ||
+      projectFilter ||
+      growProjects.find((p) => growProjectStatusView(p).ready)?.id ||
+      projects[0]?.id ||
+      ''
     setBulkProjectId(pid)
     if (pid) {
       await asyncHandler(
@@ -435,6 +483,14 @@ export function CollectionsBoard() {
     const selected = bulkRows.filter((r) => r.selected)
     if (!bulkProjectId) {
       toast.error('בחרו בניין')
+      return
+    }
+    if (!projectGrowReady(bulkProjectId)) {
+      const name =
+        growProjects.find((p) => p.id === bulkProjectId)?.name ||
+        projects.find((p) => p.id === bulkProjectId)?.name ||
+        'הבניין'
+      toast.error(`אי אפשר לשלוח — ל${name} אין חיבור Grow. חברו userId בהגדרות.`)
       return
     }
     if (!bulkTitle.trim()) {
@@ -559,8 +615,8 @@ export function CollectionsBoard() {
   }
 
   async function openCreate() {
-    if (accountReady === false) {
-      toast.error(accountMessage || 'הגדירו קודם חשבון Grow בהגדרות.')
+    if (growProjects.length > 0 && growConnectedCount === 0 && accountReady === false) {
+      toast.error(accountMessage || 'חברו Grow לבניין בהגדרות לפני יצירת חיוב.')
       return
     }
     setBulkOpen(false)
@@ -583,6 +639,14 @@ export function CollectionsBoard() {
     const amount = Number(cAmount)
     if (!cProjectId || !cResidentId || !cTitle.trim() || !Number.isFinite(amount) || amount <= 0) {
       toast.error('בחרו דייר, מלאו כותרת וסכום')
+      return
+    }
+    if (send && !projectGrowReady(cProjectId)) {
+      const name =
+        growProjects.find((p) => p.id === cProjectId)?.name ||
+        projects.find((p) => p.id === cProjectId)?.name ||
+        'הבניין'
+      toast.error(`אי אפשר לשלוח — ל${name} אין חיבור Grow.`)
       return
     }
     setCSaving(true)
@@ -690,6 +754,56 @@ export function CollectionsBoard() {
     [projects]
   )
 
+  const growPanelProject = useMemo(
+    () => growProjects.find((p) => p.id === growPanelProjectId) || growProjects[0] || null,
+    [growProjects, growPanelProjectId]
+  )
+  const growPanelStatus = growPanelProject ? growProjectStatusView(growPanelProject) : null
+
+  const growConnectedCount = useMemo(
+    () => growProjects.filter((p) => growProjectStatusView(p).ready).length,
+    [growProjects]
+  )
+
+  const missingGrowProjects = useMemo(
+    () => growProjects.filter((p) => !growProjectStatusView(p).ready),
+    [growProjects]
+  )
+
+  const growSelectOptions = useMemo(
+    () =>
+      growProjects.map((p) => {
+        const st = growProjectStatusView(p)
+        const suffix = st.userIdShort ? `${st.label} · ${st.userIdShort}` : st.label
+        return { label: `${p.name || 'בניין'} — ${suffix}`, value: p.id }
+      }),
+    [growProjects]
+  )
+
+  const bulkGrowStatus = bulkProjectId
+    ? growProjectStatusView(
+        growProjects.find((p) => p.id === bulkProjectId) || {
+          id: bulkProjectId,
+          name: null,
+          ready: accountReady === true,
+        }
+      )
+    : null
+
+  const canCollectAnything = !(accountReady === false && growConnectedCount === 0)
+
+  const openedBulkFromQuery = useRef(false)
+  // Deep-link from Settings after connect: /collections?project_id=…&open=bulk
+  useEffect(() => {
+    if (!openBulkRequested || boardLoading || !projects.length || openedBulkFromQuery.current) {
+      return
+    }
+    openedBulkFromQuery.current = true
+    const pid = searchParams.get('project_id')?.trim() || projectFilter || ''
+    void openBulk(pid || undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openBulkRequested, boardLoading, projects.length])
+
   if (loading) {
     return <PageTransitionLoader />
   }
@@ -714,15 +828,82 @@ export function CollectionsBoard() {
 
   return (
     <div style={styles.page}>
-      {accountReady === false ? (
+      {missingGrowProjects.length > 0 ? (
+        <div style={styles.alertBox}>
+          <div style={styles.alertTitle}>
+            חסר Grow ב-{missingGrowProjects.length} בניינים
+          </div>
+          <p style={styles.alertText}>
+            בלי userId אי אפשר לשלוח חיובים לבניין. בחרו בניין לחיבור:
+          </p>
+          <Select
+            value={
+              missingGrowProjects.some((p) => p.id === growPanelProjectId)
+                ? growPanelProjectId
+                : missingGrowProjects[0]?.id || ''
+            }
+            onChange={setGrowPanelProjectId}
+            options={missingGrowProjects.map((p) => ({
+              label: p.name || 'בניין',
+              value: p.id,
+            }))}
+            style={{ width: '100%', marginBottom: 10 }}
+          />
+          <Link
+            href={growConnectHref(
+              missingGrowProjects.some((p) => p.id === growPanelProjectId)
+                ? growPanelProjectId
+                : missingGrowProjects[0]?.id || ''
+            )}
+          >
+            <Button>לחיבור הבניין</Button>
+          </Link>
+        </div>
+      ) : null}
+
+      {growProjects.length > 0 && growPanelProject && growPanelStatus ? (
+        <section style={styles.growPanel} aria-label="חשבון Grow לבניין">
+          <div style={styles.growPanelHead}>
+            <div>
+              <div style={styles.growPanelTitle}>סטטוס Grow</div>
+              <div style={styles.growPanelSub}>
+                {growConnectedCount}/{growProjects.length} מחוברים
+              </div>
+            </div>
+            <Link href={growConnectHref(growPanelProject.id)} style={styles.settingsLink}>
+              {growPanelStatus.ready ? 'עריכה' : 'חיבור'}
+            </Link>
+          </div>
+          <Select
+            value={growPanelProject.id}
+            onChange={setGrowPanelProjectId}
+            options={growSelectOptions}
+            placeholder="בחרו בניין"
+            style={{ width: '100%' }}
+          />
+          <div
+            style={{
+              ...styles.growRowStatus,
+              color: GROW_STATUS_TONE_COLOR[growPanelStatus.tone],
+            }}
+          >
+            {growPanelStatus.label}
+            {growPanelStatus.userId ? (
+              <span dir="ltr" style={styles.growUserId}>
+                {growPanelStatus.userId}
+              </span>
+            ) : null}
+          </div>
+        </section>
+      ) : accountReady === false && growProjects.length === 0 ? (
         <div style={styles.alertBox}>
           <div style={styles.alertTitle}>חסר חשבון Grow</div>
           <p style={styles.alertText}>
             {accountMessage ||
-              'פתחו חשבון ב-Grow, הדביקו את מזהה החשבון בהגדרות והפעילו את החיבור. הכסף נכנס לחשבון שלכם.'}
+              'חברו userId לכל בניין בהגדרות → Grow. הכסף נכנס לחשבון של הבניין.'}
           </p>
           <Link href="/settings?tab=grow">
-            <Button>להגדרת החשבון</Button>
+            <Button>לחיבור בניינים</Button>
           </Link>
         </div>
       ) : null}
@@ -776,7 +957,7 @@ export function CollectionsBoard() {
       <div style={styles.primaryActions}>
         <Button
           onClick={() => void openBulk()}
-          disabled={accountReady === false}
+          disabled={!canCollectAnything}
           style={{ flex: 1, minHeight: 48 }}
         >
           שליחה לבניין
@@ -784,7 +965,7 @@ export function CollectionsBoard() {
         <Button
           variant="secondary"
           onClick={() => void openCreate()}
-          disabled={accountReady === false}
+          disabled={!canCollectAnything}
           style={{ flex: 1, minHeight: 48 }}
         >
           חיוב בודד
@@ -1043,9 +1224,9 @@ export function CollectionsBoard() {
       )}
 
       <p style={styles.footerNote}>
-        הכסף נכנס לחשבון Grow שלכם.{' '}
+        כל בניין = חשבון Grow נפרד.{' '}
         <Link href="/settings?tab=grow" style={styles.settingsLink}>
-          הגדרות Grow
+          ניהול חיבורים
         </Link>
       </p>
 
@@ -1059,7 +1240,12 @@ export function CollectionsBoard() {
             <Button variant="secondary" onClick={() => setBulkOpen(false)}>
               סגור
             </Button>
-            <Button disabled={bulkSending} onClick={() => void submitBulk()}>
+            <Button
+              disabled={
+                bulkSending || (Boolean(bulkProjectId) && !projectGrowReady(bulkProjectId))
+              }
+              onClick={() => void submitBulk()}
+            >
               {bulkSending ? 'שולח...' : 'צור ושלח'}
             </Button>
           </div>
@@ -1070,10 +1256,43 @@ export function CollectionsBoard() {
           <Select
             value={bulkProjectId}
             onChange={(v) => void onBulkProjectChange(v)}
-            options={projects.map((p) => ({ label: p.name, value: p.id }))}
+            options={projects.map((p) => {
+              const st = growProjects.find((g) => g.id === p.id)
+              const ready = st ? growProjectStatusView(st).ready : accountReady === true
+              return {
+                label: ready ? p.name : `${p.name} — חסר Grow`,
+                value: p.id,
+              }
+            })}
             placeholder="בחרו בניין"
             style={{ width: '100%' }}
           />
+          {bulkProjectId && bulkGrowStatus ? (
+            bulkGrowStatus.ready ? (
+              <div
+                style={{
+                  ...styles.growRowStatus,
+                  color: GROW_STATUS_TONE_COLOR.ok,
+                }}
+              >
+                Grow מחובר
+                {bulkGrowStatus.userIdShort ? (
+                  <span dir="ltr" style={styles.growUserId}>
+                    {bulkGrowStatus.userIdShort}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <div style={{ ...styles.alertSoft, marginBottom: 4 }}>
+                <span style={{ flex: 1, fontSize: 13, lineHeight: 1.45 }}>
+                  אי אפשר לשלוח — לבניין הזה אין חיבור Grow.
+                </span>
+                <Link href={growConnectHref(bulkProjectId)} style={styles.settingsLink}>
+                  לחיבור
+                </Link>
+              </div>
+            )
+          ) : null}
           <label style={styles.label}>כותרת</label>
           <input
             value={bulkTitle}
@@ -1406,6 +1625,41 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 700,
     textDecoration: 'none',
+  },
+  growPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+  },
+  growPanelHead: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  growPanelTitle: {
+    fontSize: 15,
+    fontWeight: 800,
+    color: theme.colors.textPrimary,
+  },
+  growPanelSub: {
+    marginTop: 2,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    lineHeight: 1.4,
+  },
+  growRowStatus: {
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  growUserId: {
+    marginInlineStart: 8,
+    color: theme.colors.textMuted,
+    fontWeight: 500,
   },
   alertBox: {
     padding: 14,
