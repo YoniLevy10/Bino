@@ -56,6 +56,11 @@ describe('019SMS token auth', () => {
     expect(auth).toEqual({ mode: 'token', username: 'user1', token: 'alias-tok' })
   })
 
+  it('normalizes pasted Bearer prefix and surrounding quotes', () => {
+    expect(read019SmsTokenFromEnv({ SMS_019_TOKEN: 'Bearer tok-abc' })).toBe('tok-abc')
+    expect(read019SmsTokenFromEnv({ SMS_019_TOKEN: '"tok-abc"' })).toBe('tok-abc')
+  })
+
   it('falls back to password when token missing', () => {
     const auth = get019SmsAuth({
       SMS_019_USERNAME: 'user1',

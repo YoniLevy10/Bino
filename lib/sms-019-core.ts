@@ -8,11 +8,18 @@ export const SMS_019_FALLBACK_SENDER = '972559899132'
 
 type Sms019Env = Record<string, string | undefined>
 
+/** Strip accidental `Bearer ` / quotes when pasting into Vercel. */
+export function normalize019SmsToken(raw: string | undefined): string {
+  let t = (raw ?? '').trim().replace(/^["']|["']$/g, '').trim()
+  if (/^bearer\s+/i.test(t)) t = t.replace(/^bearer\s+/i, '').trim()
+  return t
+}
+
 /** Primary env; also accept SMS_019_API_TOKEN if already set in Vercel. */
 export function read019SmsTokenFromEnv(env: Sms019Env = process.env): string {
-  const primary = env.SMS_019_TOKEN?.trim()
+  const primary = normalize019SmsToken(env.SMS_019_TOKEN)
   if (primary) return primary
-  return env.SMS_019_API_TOKEN?.trim() || ''
+  return normalize019SmsToken(env.SMS_019_API_TOKEN)
 }
 
 export type Sms019Auth =
