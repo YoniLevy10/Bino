@@ -6,10 +6,10 @@ export const SMS_019_ENDPOINT = 'https://019sms.co.il/api'
 export const SMS_019_SENDER = process.env.SMS_019_SENDER || '972559899132'
 export const SMS_019_FALLBACK_SENDER = '972559899132'
 
+type Sms019Env = Record<string, string | undefined>
+
 /** Primary env; also accept SMS_019_API_TOKEN if already set in Vercel. */
-export function read019SmsTokenFromEnv(
-  env: NodeJS.ProcessEnv = process.env
-): string {
+export function read019SmsTokenFromEnv(env: Sms019Env = process.env): string {
   const primary = env.SMS_019_TOKEN?.trim()
   if (primary) return primary
   return env.SMS_019_API_TOKEN?.trim() || ''
@@ -59,7 +59,7 @@ export function is019UnverifiedSourceError(error: string): boolean {
  * Prefer Bearer API token (required by 019SMS after 2027-01-01).
  * Password in XML is a temporary fallback until cutover is verified.
  */
-export function get019SmsAuth(env: NodeJS.ProcessEnv = process.env): Sms019Auth | null {
+export function get019SmsAuth(env: Sms019Env = process.env): Sms019Auth | null {
   const username = env.SMS_019_USERNAME?.trim() || ''
   if (!username) return null
 
@@ -81,7 +81,7 @@ export function get019SmsEnv(): Sms019Auth | null {
   return get019SmsAuth()
 }
 
-export function is019SmsConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+export function is019SmsConfigured(env: Sms019Env = process.env): boolean {
   return get019SmsAuth(env) != null
 }
 
