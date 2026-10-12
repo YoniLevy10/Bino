@@ -116,7 +116,7 @@ npm run db:types             # lib/database.types.ts אחרי שינוי סכמ�
 | `WHATSAPP_ACCESS_TOKEN` | שליחת הודעות (גם נשמר per-tenant ב-DB) |
 | `WHATSAPP_PHONE_NUMBER_ID` | מזהה מספר Meta (גם ב-DB) |
 | `WHATSAPP_APP_SECRET` | חתימת webhook — **מומלץ בפרודקשן** |
-| `SMS_019_USERNAME` / `SMS_019_PASSWORD` | 019SMS |
+| `SMS_019_USERNAME` / `SMS_019_TOKEN` | 019SMS (Bearer API token; `SMS_019_PASSWORD` רק fallback זמני עד 1.1.2027) |
 | `SMS_019_SENDER` | שולח SMS — **חייב** `972xxxxxxxxx` (לא שם טקסט) |
 | `CRON_SECRET` | אימות `/api/cron/*` |
 | `VAPID_*` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push (מנהל + עובד) |

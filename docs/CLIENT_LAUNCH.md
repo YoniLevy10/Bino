@@ -29,7 +29,7 @@
 | אפליקציה | Vercel project `bino` | אין פרויקט פר-לקוח |
 | Meta App | Meta Developer | Verify token + App secret משותפים |
 | Webhook WhatsApp | `/api/webhook/whatsapp` | כתובת אחת; זיהוי לקוח לפי `phone_number_id` |
-| 019SMS API | `SMS_019_USERNAME` / `PASSWORD` | חשבון API אחד |
+| 019SMS API | `SMS_019_USERNAME` / `SMS_019_TOKEN` | חשבון API אחד (Bearer; סיסמה רק fallback זמני) |
 | Grow platform | `GROW_*` (+ GetLink: `GROW_REGISTER_*`) | סליקה כפלטפורמה |
 | Resend | `RESEND_API_KEY` + דומיין `bino.casa` | From פר-לקוח: `{slug}@bino.casa` |
 | Push | `VAPID_*` | משותף |

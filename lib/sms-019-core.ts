@@ -3,10 +3,23 @@
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 
 export const SMS_019_ENDPOINT = 'https://019sms.co.il/api'
-const SMS_019_USERNAME = process.env.SMS_019_USERNAME
-const SMS_019_PASSWORD = process.env.SMS_019_PASSWORD
 export const SMS_019_SENDER = process.env.SMS_019_SENDER || '972559899132'
 export const SMS_019_FALLBACK_SENDER = '972559899132'
+
+/** Primary env; also accept SMS_019_API_TOKEN if already set in Vercel. */
+export function read019SmsTokenFromEnv(
+  env: NodeJS.ProcessEnv = process.env
+): string {
+  const primary = env.SMS_019_TOKEN?.trim()
+  if (primary) return primary
+  return env.SMS_019_API_TOKEN?.trim() || ''
+}
+
+export type Sms019Auth =
+  | { mode: 'token'; username: string; token: string }
+  | { mode: 'password'; username: string; password: string }
+
+let passwordFallbackWarned = false
 
 /** נרמול מספר טלפון לפורמט 019SMS: 972xxxxxxxxx */
 export function normalizePhone019(phoneNumber: string): string {
@@ -41,17 +54,53 @@ export function is019UnverifiedSourceError(error: string): boolean {
   return /019SMS status 51[25]\b/i.test(error) || /unverified source/i.test(error)
 }
 
-export function get019SmsEnv(): { username: string; password: string } | null {
-  if (!SMS_019_USERNAME || !SMS_019_PASSWORD) return null
-  return { username: SMS_019_USERNAME, password: SMS_019_PASSWORD }
+/**
+ * Resolve 019SMS credentials.
+ * Prefer Bearer API token (required by 019SMS after 2027-01-01).
+ * Password in XML is a temporary fallback until cutover is verified.
+ */
+export function get019SmsAuth(env: NodeJS.ProcessEnv = process.env): Sms019Auth | null {
+  const username = env.SMS_019_USERNAME?.trim() || ''
+  if (!username) return null
+
+  const token = read019SmsTokenFromEnv(env)
+  if (token) {
+    return { mode: 'token', username, token }
+  }
+
+  const password = env.SMS_019_PASSWORD?.trim() || ''
+  if (password) {
+    return { mode: 'password', username, password }
+  }
+
+  return null
 }
 
-function buildXml(username: string, password: string, source: string, destination: string, message: string): string {
+/** @deprecated Use get019SmsAuth — kept for call sites that only need presence. */
+export function get019SmsEnv(): Sms019Auth | null {
+  return get019SmsAuth()
+}
+
+export function is019SmsConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+  return get019SmsAuth(env) != null
+}
+
+export function build019SmsXml(
+  auth: Sms019Auth,
+  source: string,
+  destination: string,
+  message: string
+): string {
+  const userBlock =
+    auth.mode === 'token'
+      ? `        <username>${auth.username}</username>`
+      : `        <username>${auth.username}</username>
+        <password>${auth.password}</password>`
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sms>
     <user>
-        <username>${username}</username>
-        <password>${password}</password>
+${userBlock}
     </user>
     <source>${source}</source>
     <destinations>
@@ -70,6 +119,19 @@ function parseXmlStatus(xml: string): { status: number; message: string } {
   }
 }
 
+function warnPasswordFallbackOnce(auth: Sms019Auth): void {
+  if (auth.mode !== 'password' || passwordFallbackWarned) return
+  passwordFallbackWarned = true
+  console.warn(
+    '⚠️ SMS_019_PASSWORD_FALLBACK: using XML password auth. Set SMS_019_TOKEN (Bearer) before 2027-01-01 — 019SMS ends password API support.'
+  )
+}
+
+/** Test helper — reset one-shot warn latch. */
+export function reset019SmsPasswordFallbackWarnForTests(): void {
+  passwordFallbackWarned = false
+}
+
 /**
  * Single HTTP attempt to 019SMS. Uses 10s timeout.
  * Success = XML status 0. Anything else = error.
@@ -79,21 +141,30 @@ export async function post019SmsOnce(
   message: string,
   source: string
 ): Promise<{ ok: boolean; error: string }> {
-  const env = get019SmsEnv()
-  if (!env) {
-    return { ok: false, error: '019SMS env missing (SMS_019_USERNAME / SMS_019_PASSWORD)' }
+  const auth = get019SmsAuth()
+  if (!auth) {
+    return {
+      ok: false,
+      error: '019SMS env missing (SMS_019_USERNAME + SMS_019_TOKEN, or temporary SMS_019_PASSWORD)',
+    }
   }
 
-  const payload = buildXml(env.username, env.password, source, normalizedPhone, message)
+  warnPasswordFallbackOnce(auth)
+
+  const payload = build019SmsXml(auth, source, normalizedPhone, message)
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/xml; charset=UTF-8',
+    'User-Agent': 'Bino/1.0',
+  }
+  if (auth.mode === 'token') {
+    headers.Authorization = `Bearer ${auth.token}`
+  }
 
   const response = await fetchWithTimeout(
     SMS_019_ENDPOINT,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/xml; charset=UTF-8',
-        'User-Agent': 'Bino/1.0',
-      },
+      headers,
       body: payload,
     },
     10_000

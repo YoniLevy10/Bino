@@ -115,6 +115,7 @@ Canonical: `.cursor/rules/auth-middleware-login-safety.mdc`.
 
 ## SMS Rules (019SMS)
 
+- **Auth:** Prefer `SMS_019_TOKEN` (Bearer header) + `SMS_019_USERNAME` in XML — no password in body. Alias `SMS_019_API_TOKEN` also accepted. `SMS_019_PASSWORD` is a temporary XML fallback only; 019SMS ends password API support on **2027-01-01**.
 - **No emoji in messages.** 019SMS returns HTTP 200 but a non-zero XML status for emoji — triggers all 3 retries and ultimate failure. Use plain Hebrew + ASCII only.
 - **019SMS only accepts phone numbers as sender** (`972xxxxxxxxx`), NOT alphanumeric names like "Bino". Alphabetic senders return HTTP 200 but XML status 515 — silent failure, all 3 retries fire, SMS never sent. The hardcoded fallback sender is `'972559899132'` in `lib/sms.ts` and `lib/sms-019-core.ts`. Do NOT change this to any name string. Keep `sms_sender_name = null` in DB unless you have a registered alphanumeric sender ID from 019SMS.
 - **Retry config** (`lib/sms.ts`): 3 attempts, 2 s backoff, 10 s timeout each. After all 3 fail, inserts to `failed_notifications`.
@@ -207,7 +208,8 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `NEXT_PUBLIC_SOCIAL_FACEBOOK` | Optional live Facebook page URL → Organization `sameAs` |
 | `NEXT_PUBLIC_SOCIAL_INSTAGRAM` | Optional live Instagram profile URL → Organization `sameAs` |
 | `SMS_019_USERNAME` | 019SMS API username |
-| `SMS_019_PASSWORD` | 019SMS API password |
+| `SMS_019_TOKEN` | 019SMS Bearer API token (preferred; also accepts `SMS_019_API_TOKEN`) |
+| `SMS_019_PASSWORD` | Legacy XML password — temporary fallback only; 019SMS ends password API support on 2027-01-01 |
 | `SMS_019_SENDER` | SMS sender phone (`972xxxxxxxxx`) |
 | `WHATSAPP_VERIFY_TOKEN` | Meta webhook verification token |
 | `WHATSAPP_ACCESS_TOKEN` | Meta API access token (also stored in DB) |
