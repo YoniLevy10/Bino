@@ -218,6 +218,8 @@ export function TicketDetailDrawer({
         return 'תקלה נסגרה'
       case 'AUTO_ASSIGNED':
         return 'שיוך אוטומטי'
+      case 'RESIDENT_STATUS_NOTIFY':
+        return 'נשלח לדייר'
       default:
         return actionType
     }

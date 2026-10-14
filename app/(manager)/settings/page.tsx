@@ -92,6 +92,7 @@ function SettingsPageInner() {
   const [smsSenderName, setSmsSenderName] = useState('')
   const [smsOnOpen, setSmsOnOpen] = useState(true)
   const [smsOnClose, setSmsOnClose] = useState(true)
+  const [waOnStatusChange, setWaOnStatusChange] = useState(false)
   const [clientName, setClientName] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
@@ -204,6 +205,7 @@ function SettingsPageInner() {
     setSmsSenderName(row.sms_sender_name || '')
     setSmsOnOpen(row.sms_on_ticket_open !== false)
     setSmsOnClose(row.sms_on_ticket_close !== false)
+    setWaOnStatusChange(row.wa_notify_resident_on_status_change === true)
 
     setWaBusinessPhone(row.whatsapp_business_phone || '')
     setWaPhoneNumberId(row.whatsapp_phone_number_id || '')
@@ -390,6 +392,7 @@ function SettingsPageInner() {
           sms_sender_name: senderTrimmed || null,
           sms_on_ticket_open: smsOnOpen,
           sms_on_ticket_close: smsOnClose,
+          wa_notify_resident_on_status_change: waOnStatusChange,
         }
         const res = await fetchWithTimeout(
           '/api/settings/update',
@@ -1059,6 +1062,19 @@ function SettingsPageInner() {
                     />
                     <span>שלח SMS בסגירת תקלה</span>
                   </label>
+                  <label style={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={waOnStatusChange}
+                      onChange={(e) => setWaOnStatusChange(e.target.checked)}
+                      style={styles.checkbox}
+                    />
+                    <span>עדכן דייר בשינוי סטטוס (WhatsApp)</span>
+                  </label>
+                  <p style={{ ...styles.fieldHint, marginTop: -4, marginBottom: 8 }}>
+                    כבוי כברירת מחדל. כשדולק — נשלחת הודעה אחת לדייר רק במעבר ל«בטיפול» או «ממתין
+                    לחלקים» (בלי כפילויות ב־retry).
+                  </p>
                   <div style={styles.formGroup}>
                     <label style={styles.formLabel}>מספר שולח SMS — אופציונלי</label>
                     <input
