@@ -8,6 +8,7 @@ import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { logAudit } from '@/lib/audit'
 import { isTicketStatus } from '@/lib/ticket-status'
 import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
+import { notifyReporterOnStatusChange } from '@/lib/reporter-ticket-status-notify'
 import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
 import { assertWorkerOwnedByClient } from '@/lib/tenant-owned-refs'
 
@@ -146,11 +147,11 @@ export async function POST(req: Request) {
     }
 
     const previousStatus = (ticket as { status?: string | null }).status
-    const closedNow =
-      status !== undefined &&
-      status !== null &&
-      sanitizeString(status).toUpperCase() === 'CLOSED' &&
-      previousStatus !== 'CLOSED'
+    const nextStatus =
+      status !== undefined && status !== null ? sanitizeString(status).toUpperCase() : null
+    const closedNow = nextStatus === 'CLOSED' && previousStatus !== 'CLOSED'
+    const statusChangedForResident =
+      nextStatus != null && nextStatus !== (previousStatus || '').toUpperCase()
 
     let reporterHasPhone = false
     let whatsappSent = false
@@ -186,6 +187,39 @@ export async function POST(req: Request) {
       } else {
         notificationsQueued = true
         runAfterResponse('update-ticket-close-notify', runUpdateCloseNotify)
+      }
+    } else if (statusChangedForResident && nextStatus) {
+      reporterHasPhone = Boolean((ticket as { reporter_phone?: string | null }).reporter_phone?.trim())
+      const runStatusNotify = async () => {
+        const notify = await notifyReporterOnStatusChange(supabaseAdmin, clientId, {
+          ticketId: ticket_id,
+          newStatus: nextStatus,
+          previousStatus,
+        })
+        logger.info('TICKET_API', 'Reporter WhatsApp on status change (update-ticket)', {
+          requestId,
+          ticket_id,
+          status: nextStatus,
+          skipped: notify.skipped,
+          reason: notify.reason,
+          whatsappSent: notify.whatsappSent,
+          alreadySent: notify.alreadySent,
+        })
+        if (notify.whatsappError) {
+          logger.warn('TICKET_API', 'Reporter WhatsApp on status change failed', {
+            requestId,
+            ticket_id,
+            error: notify.whatsappError,
+          })
+        }
+        whatsappSent = notify.whatsappSent
+      }
+
+      if (shouldSyncTicketNotifications()) {
+        await runStatusNotify()
+      } else {
+        notificationsQueued = true
+        runAfterResponse('update-ticket-status-notify', runStatusNotify, { clientId })
       }
     }
 

@@ -27,6 +27,22 @@ export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
     href: 'https://business.facebook.com/wa/manage/message-templates/',
   },
   {
+    id: 'ticket_status_in_progress',
+    title: 'יצירת תבנית ticket_status_in_progress',
+    description:
+      'Utility · עברית · {{1}}=שם בניין, {{2}}=מספר תקלה, {{3}}=סטטוס. נשלח רק כשמתג «עדכן דייר בשינוי סטטוס» דלוק.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'ticket_status_waiting_parts',
+    title: 'יצירת תבנית ticket_status_waiting_parts',
+    description:
+      'Utility · עברית · {{1}}=שם בניין, {{2}}=מספר תקלה, {{3}}=סטטוס. נשלח רק כשמתג «עדכן דייר בשינוי סטטוס» דלוק.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
     id: 'manager_reply',
     title: 'יצירת תבנית manager_reply',
     description:
@@ -96,4 +112,17 @@ export function metaTemplateNameManagerReply(): string {
 
 export function metaTemplateNameWorkerCompletionPhoto(): string {
   return process.env.WHATSAPP_META_TEMPLATE_WORKER_COMPLETION_PHOTO?.trim() || 'worker_completion_photo'
+}
+
+export function metaTemplateNameTicketStatusInProgress(): string {
+  return (
+    process.env.WHATSAPP_META_TEMPLATE_TICKET_STATUS_IN_PROGRESS?.trim() || 'ticket_status_in_progress'
+  )
+}
+
+export function metaTemplateNameTicketStatusWaitingParts(): string {
+  return (
+    process.env.WHATSAPP_META_TEMPLATE_TICKET_STATUS_WAITING_PARTS?.trim() ||
+    'ticket_status_waiting_parts'
+  )
 }

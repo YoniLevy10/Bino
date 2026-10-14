@@ -23,6 +23,7 @@ export const CLIENT_SETTINGS_SAFE_SELECT = [
   'default_worker_phone',
   'sms_on_ticket_open',
   'sms_on_ticket_close',
+  'wa_notify_resident_on_status_change',
   'whatsapp_phone_number_id',
   'sms_sender_name',
   'sidebar_nav_order',
