@@ -52,6 +52,13 @@ const ImportResidentsModal = dynamic(
     })),
   { loading: () => null }
 )
+const LegacyImportDryRunModal = dynamic(
+  () =>
+    import('@/app/components/residents/LegacyImportDryRunModal').then((m) => ({
+      default: m.LegacyImportDryRunModal,
+    })),
+  { loading: () => null }
+)
 const ShareResidentIntakeLinkModal = dynamic(
   () =>
     import('@/app/components/residents/ShareResidentIntakeLinkModal').then((m) => ({
@@ -187,6 +194,7 @@ function ResidentsPageInner() {
   const [addNotes, setAddNotes] = useState('')
 
   const [importOpen, setImportOpen] = useState(false)
+  const [legacyDryRunOpen, setLegacyDryRunOpen] = useState(false)
   const [shareIntakeOpen, setShareIntakeOpen] = useState(false)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -412,6 +420,10 @@ function ResidentsPageInner() {
 
   function openImport() {
     setImportOpen(true)
+  }
+
+  function openLegacyDryRun() {
+    setLegacyDryRunOpen(true)
   }
 
   function openShareIntakeLink() {
@@ -880,11 +892,12 @@ function ResidentsPageInner() {
       if (e.key !== 'Escape') return
       if (addOpen) { closeResidentModal(); return }
       if (importOpen) { setImportOpen(false); return }
+      if (legacyDryRunOpen) { setLegacyDryRunOpen(false); return }
       if (shareIntakeOpen) { setShareIntakeOpen(false); return }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [addOpen, importOpen, shareIntakeOpen])
+  }, [addOpen, importOpen, legacyDryRunOpen, shareIntakeOpen])
 
   return (
     <>
@@ -1042,6 +1055,14 @@ function ResidentsPageInner() {
             </Button>
             <Button variant="secondary" size="sm" onClick={openImport} disabled={residentsTableMissing}>
               ייבוא דיירים
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={openLegacyDryRun}
+              disabled={residentsTableMissing}
+            >
+              ייבוא ממערכת קודמת (בדיקה)
             </Button>
             <Button variant="secondary" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
               ייצוא Excel
@@ -1311,6 +1332,14 @@ function ResidentsPageInner() {
         onImported={(newRows) => {
           setResidents((prev) => [...(newRows as ResidentRow[]), ...prev])
         }}
+      />
+
+      <LegacyImportDryRunModal
+        open={legacyDryRunOpen}
+        onClose={() => setLegacyDryRunOpen(false)}
+        isMobile={isMobile}
+        projects={projects}
+        defaultProjectId={projectFilter !== 'ALL' ? projectFilter : ''}
       />
 
       <ShareResidentIntakeLinkModal
