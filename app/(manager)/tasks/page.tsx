@@ -32,8 +32,13 @@ type TaskRow = {
   notes: string | null
   project_id: string | null
   assigned_worker_id: string | null
+  source_ticket_id?: string | null
   projects?: { name?: string | null; address?: string | null } | { name?: string | null; address?: string | null }[] | null
   workers?: { full_name?: string | null } | { full_name?: string | null }[] | null
+  tickets?:
+    | { id?: string | null; ticket_number?: number | null }
+    | { id?: string | null; ticket_number?: number | null }[]
+    | null
 }
 
 type TaskAttachment = {
@@ -101,6 +106,16 @@ const emptyForm = {
   workerId: '',
   priority: 'MEDIUM',
   dueAt: '',
+  sourceTicketId: '',
+  sourceTicketNumber: '',
+}
+
+function ticketLinkMeta(row: TaskRow): { id: string; number: number | null } | null {
+  const ticketId = row.source_ticket_id?.trim()
+  if (!ticketId) return null
+  const t = Array.isArray(row.tickets) ? row.tickets[0] : row.tickets
+  const num = typeof t?.ticket_number === 'number' ? t.ticket_number : null
+  return { id: ticketId, number: num }
 }
 
 type MaintenanceTasksPayload = {
@@ -198,17 +213,27 @@ export default function TasksPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Recommendation links land on /tasks?create=1&project_id=&topic=
+  // Recommendation / ticket-hub links: /tasks?create=1&project_id=&topic=&source_ticket_id=
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('create') !== '1') return
     const projectId = (params.get('project_id') || '').trim()
     const topic = (params.get('topic') || '').trim()
+    const sourceTicketId = (params.get('source_ticket_id') || '').trim()
+    const sourceTicketNumber = (params.get('ticket_number') || '').trim()
+    const titleParam = (params.get('title') || '').trim()
+    const descriptionParam = (params.get('description') || '').trim()
     setEditingTask(null)
     setForm({
       ...emptyForm,
       projectId,
-      title: topic ? `טיפול מונע — ${topic}` : '',
+      sourceTicketId,
+      sourceTicketNumber,
+      title:
+        titleParam ||
+        (topic ? `טיפול מונע — ${topic}` : '') ||
+        (sourceTicketNumber ? `אחזקה — תקלה #${sourceTicketNumber}` : ''),
+      description: descriptionParam,
     })
     setCreateFile(null)
     setDrawerOpen(true)
@@ -301,6 +326,7 @@ export default function TasksPage() {
   }
 
   function openEdit(t: TaskRow) {
+    const link = ticketLinkMeta(t)
     setEditingTask(t)
     setForm({
       title: t.title,
@@ -310,6 +336,8 @@ export default function TasksPage() {
       workerId: t.assigned_worker_id || '',
       priority: t.priority || 'MEDIUM',
       dueAt: toLocalInput(t.due_at),
+      sourceTicketId: link?.id || '',
+      sourceTicketNumber: link?.number != null ? String(link.number) : '',
     })
     setCreateFile(null)
     if (createFileRef.current) createFileRef.current.value = ''
@@ -345,6 +373,7 @@ export default function TasksPage() {
               assigned_worker_id: form.workerId || null,
               priority: form.priority,
               due_at: form.dueAt ? new Date(form.dueAt).toISOString() : null,
+              source_ticket_id: form.sourceTicketId || null,
             }),
           },
           MUTATION_FETCH_TIMEOUT_MS
@@ -369,6 +398,7 @@ export default function TasksPage() {
               assigned_worker_id: form.workerId || null,
               priority: form.priority,
               due_at: form.dueAt ? new Date(form.dueAt).toISOString() : null,
+              source_ticket_id: form.sourceTicketId || null,
             }),
           },
           MUTATION_FETCH_TIMEOUT_MS
@@ -599,6 +629,19 @@ export default function TasksPage() {
 
                       {expanded ? (
                         <div style={styles.expand}>
+                          {(() => {
+                            const link = ticketLinkMeta(t)
+                            if (!link) return null
+                            const label =
+                              link.number != null
+                                ? `מקושר לתקלה #${link.number}`
+                                : 'מקושר לתקלה'
+                            return (
+                              <a href={`/tickets?ticket=${link.id}`} style={styles.ticketChip}>
+                                {label}
+                              </a>
+                            )
+                          })()}
                           {t.description ? <p style={styles.desc}>{t.description}</p> : null}
                           {t.notes ? <p style={styles.notesLine}>הערות: {t.notes}</p> : null}
                           {atts.length > 0 ? (
@@ -720,6 +763,18 @@ export default function TasksPage() {
         }
       >
         <div style={styles.formGrid}>
+          {form.sourceTicketId ? (
+            <div style={styles.ticketLinkBanner}>
+              <span style={styles.ticketChip}>
+                {form.sourceTicketNumber
+                  ? `מקושר לתקלה #${form.sourceTicketNumber}`
+                  : 'מקושר לתקלה'}
+              </span>
+              <a href={`/tickets?ticket=${form.sourceTicketId}`} style={styles.ticketBackLink}>
+                חזרה לתקלה
+              </a>
+            </div>
+          ) : null}
           <Field label="כותרת" full>
             <input
               style={styles.input}
@@ -984,6 +1039,36 @@ const styles = {
     gap: 12,
     gridTemplateColumns: '1fr',
     minWidth: 0,
+  } as CSSProperties,
+  ticketLinkBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+    padding: '10px 12px',
+    borderRadius: 12,
+    background: theme.colors.primaryMuted,
+    border: `1px solid ${theme.colors.primary}`,
+  } as CSSProperties,
+  ticketChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 10px',
+    borderRadius: 999,
+    background: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: 800,
+    textDecoration: 'none',
+    marginBottom: 8,
+  } as CSSProperties,
+  ticketBackLink: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: theme.colors.primary,
+    textDecoration: 'underline',
   } as CSSProperties,
   field: {
     display: 'flex',

@@ -355,6 +355,7 @@ export const createMaintenanceTaskBodySchema = z.object({
   priority: maintenanceTaskPrioritySchema.optional(),
   due_at: z.string().min(10).max(40).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  source_ticket_id: z.string().uuid().nullable().optional(),
 })
 
 export const updateMaintenanceTaskBodySchema = z.object({
@@ -367,6 +368,7 @@ export const updateMaintenanceTaskBodySchema = z.object({
   status: maintenanceTaskStatusSchema.optional(),
   due_at: z.string().min(10).max(40).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  source_ticket_id: z.string().uuid().nullable().optional(),
 })
 
 export const workerMaintenanceTaskUpdateBodySchema = z.object({
