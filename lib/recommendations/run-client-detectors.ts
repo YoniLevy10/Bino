@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { formatUnknownErrorMessage } from '@/lib/format-unknown-error'
 import { detectSlaUnassigned } from './detectors/sla-unassigned'
 import { detectMaintenanceOverdue } from './detectors/maintenance-overdue'
 import { detectProfessionalFollowup } from './detectors/professional-followup'
@@ -14,20 +15,36 @@ export type DetectorRunResult = {
   cleared: number
 }
 
+async function safeDetect(
+  name: string,
+  run: () => Promise<RecommendationDraft[]>
+): Promise<RecommendationDraft[]> {
+  try {
+    return await run()
+  } catch (err) {
+    console.error(
+      `[recommendations.detectors] ${name} failed:`,
+      formatUnknownErrorMessage(err)
+    )
+    return []
+  }
+}
+
 /**
  * Run all detectors for a single tenant and upsert results.
  * Also resolves previously active rows whose dedupe_key was not re-detected.
+ * Individual detector failures are isolated so one flaky query cannot abort the scan.
  */
 export async function runClientDetectors(
   admin: SupabaseClient,
   clientId: string
 ): Promise<DetectorRunResult> {
   const draftLists = await Promise.all([
-    detectSlaUnassigned(admin, clientId),
-    detectMaintenanceOverdue(admin, clientId),
-    detectProfessionalFollowup(admin, clientId),
-    detectBuildingVolumeAndTopics(admin, clientId),
-    detectCollectionsFollowup(admin, clientId),
+    safeDetect('sla_unassigned', () => detectSlaUnassigned(admin, clientId)),
+    safeDetect('maintenance_overdue', () => detectMaintenanceOverdue(admin, clientId)),
+    safeDetect('professional_followup', () => detectProfessionalFollowup(admin, clientId)),
+    safeDetect('building_volume', () => detectBuildingVolumeAndTopics(admin, clientId)),
+    safeDetect('collections', () => detectCollectionsFollowup(admin, clientId)),
   ])
 
   const drafts: RecommendationDraft[] = draftLists.flat()

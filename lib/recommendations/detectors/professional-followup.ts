@@ -44,6 +44,8 @@ export async function detectProfessionalFollowup(
   if (error || !tickets?.length) return []
 
   const ticketIds = tickets.map((t) => t.id as string)
+  if (!ticketIds.length) return []
+
   const { data: logs } = await admin
     .from('ticket_logs')
     .select('ticket_id, action_type, meta, created_at, notes')
