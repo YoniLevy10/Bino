@@ -44,3 +44,38 @@ export async function assertWorkerOwnedByClient(
   if (row.is_active === false) return { ok: false, error: 'עובד אינו פעיל' }
   return { ok: true }
 }
+
+/**
+ * Ensure a ticket_id belongs to the authenticated tenant (and is not soft-deleted).
+ * Used when linking maintenance_tasks.source_ticket_id.
+ */
+export async function assertTicketOwnedByClient(
+  admin: SupabaseClient,
+  clientId: string,
+  ticketId: string | null | undefined
+): Promise<
+  | { ok: true; ticketNumber: number | null; projectId: string | null }
+  | { ok: false; error: string }
+> {
+  if (ticketId == null || ticketId === '') {
+    return { ok: true, ticketNumber: null, projectId: null }
+  }
+  const { data, error } = await admin
+    .from('tickets')
+    .select('id, ticket_number, project_id')
+    .eq('id', ticketId)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) return { ok: false, error: error.message }
+  if (!data) return { ok: false, error: 'תקלה לא נמצאה בחשבון' }
+  const row = data as {
+    ticket_number?: number | null
+    project_id?: string | null
+  }
+  return {
+    ok: true,
+    ticketNumber: typeof row.ticket_number === 'number' ? row.ticket_number : null,
+    projectId: row.project_id ?? null,
+  }
+}

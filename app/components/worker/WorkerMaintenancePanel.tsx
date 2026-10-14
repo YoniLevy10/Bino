@@ -13,7 +13,12 @@ type MaintenanceTask = {
   status: string
   due_at: string | null
   notes: string | null
+  source_ticket_id?: string | null
   projects?: { name?: string | null; address?: string | null } | { name?: string | null; address?: string | null }[] | null
+  tickets?:
+    | { id?: string | null; ticket_number?: number | null }
+    | { id?: string | null; ticket_number?: number | null }[]
+    | null
 }
 
 type Props = {
@@ -33,6 +38,15 @@ function projectLabel(t: MaintenanceTask): string {
   const p = Array.isArray(t.projects) ? t.projects[0] : t.projects
   if (!p?.name) return 'ללא בניין'
   return p.address ? `${p.name} · ${p.address}` : p.name
+}
+
+function sourceTicketLabel(t: MaintenanceTask): string | null {
+  if (!t.source_ticket_id) return null
+  const ticket = Array.isArray(t.tickets) ? t.tickets[0] : t.tickets
+  if (typeof ticket?.ticket_number === 'number') {
+    return `מקושר לתקלה #${ticket.ticket_number}`
+  }
+  return 'מקושר לתקלה'
 }
 
 export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props) {
@@ -159,6 +173,9 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
               {t.due_at ? ` · ${new Date(t.due_at).toLocaleString('he-IL')}` : ' · ללא תאריך יעד'}
               {` · עדיפות ${PRIORITY_HE[t.priority] || t.priority}`}
             </div>
+            {sourceTicketLabel(t) ? (
+              <div style={cardStyles(colors).ticketLink}>{sourceTicketLabel(t)}</div>
+            ) : null}
             {t.description ? <p style={cardStyles(colors).desc}>{t.description}</p> : null}
 
             <label style={cardStyles(colors).field}>
@@ -275,6 +292,17 @@ function cardStyles(colors: typeof theme.colors): Record<string, CSSProperties> 
       marginBottom: 8,
       lineHeight: 1.4,
       wordBreak: 'break-word',
+    },
+    ticketLink: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      marginBottom: 8,
+      padding: '4px 10px',
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 800,
+      color: colors.primary,
+      background: colors.primaryMuted,
     },
     desc: { fontSize: 14, margin: '0 0 12px', lineHeight: 1.45, wordBreak: 'break-word' },
     field: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 },

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
+import { useRouter } from 'next/navigation'
 import { Drawer, Button, Select, theme } from '../ui'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
@@ -118,12 +119,26 @@ export function TicketDetailDrawer({
   onDelete,
   onCancel,
 }: TicketDetailDrawerProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [internalTranslation, setInternalTranslation] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [lookedUpName, setLookedUpName] = useState<string | null>(null)
   const tenantFromSession = useTenantClientId()
+
+  function goCreateMaintenanceTask() {
+    if (!selectedTicket) return
+    const params = new URLSearchParams({ create: '1', source_ticket_id: selectedTicket.id })
+    if (selectedTicket.project_id) params.set('project_id', selectedTicket.project_id)
+    if (selectedTicket.ticket_number) {
+      params.set('ticket_number', String(selectedTicket.ticket_number))
+    }
+    params.set('title', `אחזקה — תקלה #${selectedTicket.ticket_number}`)
+    const desc = (selectedTicket.description || '').trim().slice(0, 500)
+    if (desc) params.set('description', desc)
+    router.push(`/tasks?${params.toString()}`)
+  }
 
   useEffect(() => {
     setActiveTab('details')
@@ -333,6 +348,19 @@ export function TicketDetailDrawer({
                   ))}
                 </select>
               </div>
+
+              {selectedTicket.status !== 'CLOSED' && (
+                <div style={styles.drawerSection}>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={goCreateMaintenanceTask}
+                    style={{ width: '100%' }}
+                  >
+                    יצירת משימת אחזקה
+                  </Button>
+                </div>
+              )}
 
               <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
                 <div style={styles.drawerSection}>
