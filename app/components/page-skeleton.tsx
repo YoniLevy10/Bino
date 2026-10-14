@@ -28,7 +28,8 @@ export function PageListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <div
       role="status"
-      aria-label="טוען"
+      aria-busy="true"
+      aria-label="טוען רשימה"
       style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 0' }}
     >
       <style>{`@keyframes bino-skel { 0% { background-position: 100% 0 } 100% { background-position: -100% 0 } }`}</style>

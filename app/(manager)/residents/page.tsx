@@ -65,6 +65,7 @@ import {
   PageHeader,
   Card,
   Button,
+  EmptyState,
   ErrorState,
   SearchInput,
   LoadingSpinner,
@@ -1085,13 +1086,14 @@ function ResidentsPageInner() {
           ) : loadError && residents.length === 0 && !residentsTableMissing ? (
             <ErrorState
               title="לא הצלחנו לטעון את הדיירים"
-              message="בדקו חיבור לאינטרנט ונסו שוב."
+              message="נסו שוב בעוד רגע. אם הבעיה נמשכת — סגרו את האפליקציה ופתחו מחדש."
               onRetry={() => void load()}
             />
           ) : residentsTableMissing ? (
-            <div style={styles.friendlyEmpty}>
-              <p style={styles.friendlyEmptyTitle}>טבלת הדיירים עדיין לא הוגדרה במערכת.</p>
-            </div>
+            <EmptyState
+              title="טבלת הדיירים עדיין לא הוגדרה"
+              description="פנו לתמיכה כדי להפעיל את מודול הדיירים בחשבון."
+            />
           ) : (
             <div style={styles.tableWrap}>
               {selectedIds.size > 0 && (
@@ -1114,7 +1116,15 @@ function ResidentsPageInner() {
               {/* Mobile: card view (virtualized for long lists) */}
               {isMobile ? (
                 sorted.length === 0 ? (
-                  <p style={styles.empty}>{emptyDirectoryMessage}</p>
+                  <EmptyState
+                    title={emptyDirectoryMessage}
+                    description="אפשר להוסיף דייר חדש או לשנות סינון בניין / חיפוש."
+                    action={
+                      <Button variant="primary" onClick={openAdd} disabled={residentsTableMissing}>
+                        הוספת דייר
+                      </Button>
+                    }
+                  />
                 ) : (
                   <VirtualizedList
                     items={sorted}
@@ -1237,7 +1247,15 @@ function ResidentsPageInner() {
               </table>
               )}
               {filtered.length === 0 && !isMobile && (
-                <p style={styles.empty}>{emptyDirectoryMessage}</p>
+                <EmptyState
+                  title={emptyDirectoryMessage}
+                  description="אפשר להוסיף דייר חדש או לשנות סינון בניין / חיפוש."
+                  action={
+                    <Button variant="primary" onClick={openAdd} disabled={residentsTableMissing}>
+                      הוספת דייר
+                    </Button>
+                  }
+                />
               )}
               {residentsHasMore ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
