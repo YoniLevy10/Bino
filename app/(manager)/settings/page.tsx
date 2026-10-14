@@ -41,6 +41,7 @@ const TABS = [
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
   { id: 'grow', label: 'Grow' },
+  { id: 'ios', label: 'iOS' },
   { id: 'team', label: 'משתמשי משרד' },
 ] as const
 
@@ -136,6 +137,16 @@ function SettingsPageInner() {
   /** Wizard path after picking a building: paste userId or start registration. */
   const [growConnectPath, setGrowConnectPath] = useState<'paste' | 'register' | null>(null)
   const [growJustConnectedId, setGrowJustConnectedId] = useState<string | null>(null)
+
+  const [iosReport, setIosReport] = useState<{
+    bundleId: string
+    teamIdConfigured: boolean
+    aasaBuildable: boolean
+    readyForTestFlight: boolean
+    items: Array<{ id: string; labelHe: string; status: string; detailHe: string }>
+  } | null>(null)
+  const [iosLoading, setIosLoading] = useState(false)
+  const [iosError, setIosError] = useState<string | null>(null)
 
   const [savingGeneral, setSavingGeneral] = useState(false)
   const [savingNotifications, setSavingNotifications] = useState(false)
@@ -336,6 +347,21 @@ function SettingsPageInner() {
 
   useEffect(() => {
     if (activeTab === 'team') void loadTeam()
+    if (activeTab === 'ios') {
+      setIosLoading(true)
+      setIosError(null)
+      void fetchWithTimeout('/api/settings/ios-readiness')
+        .then(async (res) => {
+          if (!res.ok) throw new Error('טעינת מוכנות iOS נכשלה')
+          const body = await res.json()
+          setIosReport(body)
+        })
+        .catch((e) => {
+          setIosReport(null)
+          setIosError(e instanceof Error ? e.message : 'טעינה נכשלה')
+        })
+        .finally(() => setIosLoading(false))
+    }
   }, [activeTab])
 
   async function saveGeneral() {
@@ -1762,6 +1788,85 @@ function SettingsPageInner() {
                       </div>
                     </div>
                   </details>
+                </div>
+              </Card>
+            )}
+
+            {activeTab === 'ios' && (
+              <Card noPadding>
+                <div style={styles.cardInner}>
+                  <div style={{ fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
+                    מוכנות מעטפת iOS (WKWebView) — Universal Links / AASA. בלי הגשת App Store ובלי Capacitor.
+                  </div>
+                  {iosLoading ? (
+                    <LoadingSpinner />
+                  ) : iosError ? (
+                    <p style={{ color: theme.colors.error, margin: 0 }}>{iosError}</p>
+                  ) : iosReport ? (
+                    <>
+                      <div style={{ fontSize: 13, color: theme.colors.textSecondary }}>
+                        Bundle: <span dir="ltr">{iosReport.bundleId}</span>
+                        {' · '}
+                        Team ID: {iosReport.teamIdConfigured ? 'מוגדר' : 'חסר'}
+                        {' · '}
+                        AASA: {iosReport.aasaBuildable ? 'ניתן לבנייה' : 'ממתין'}
+                      </div>
+                      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {iosReport.items.map((item) => {
+                          const tone =
+                            item.status === 'ok'
+                              ? theme.colors.success
+                              : item.status === 'todo'
+                                ? theme.colors.warning
+                                : theme.colors.textMuted
+                          const statusHe =
+                            item.status === 'ok' ? 'מוכן' : item.status === 'todo' ? 'חסר' : 'מידע'
+                          return (
+                            <li
+                              key={item.id}
+                              style={{
+                                border: `1px solid ${theme.colors.border}`,
+                                borderRadius: 12,
+                                padding: '12px 14px',
+                                borderInlineStart: `3px solid ${tone}`,
+                              }}
+                            >
+                              <div style={{ fontWeight: 800, fontSize: 14 }}>
+                                {item.labelHe}
+                                <span style={{ marginInlineStart: 8, fontSize: 12, fontWeight: 700, color: tone }}>
+                                  {statusHe}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 4, lineHeight: 1.45 }}>
+                                {item.detailHe}
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                      <p style={{ margin: 0, fontSize: 13, color: theme.colors.textSecondary }}>
+                        הגשת App Store / TestFlight מחוץ לסקופ עד גישת Apple Developer.
+                      </p>
+                      <LoadingButton
+                        variant="secondary"
+                        type="button"
+                        loading={iosLoading}
+                        onClick={() => {
+                          setIosLoading(true)
+                          void fetchWithTimeout('/api/settings/ios-readiness')
+                            .then(async (res) => {
+                              if (!res.ok) throw new Error('רענון נכשל')
+                              setIosReport(await res.json())
+                              setIosError(null)
+                            })
+                            .catch((e) => setIosError(e instanceof Error ? e.message : 'רענון נכשל'))
+                            .finally(() => setIosLoading(false))
+                        }}
+                      >
+                        רענון סטטוס
+                      </LoadingButton>
+                    </>
+                  ) : null}
                 </div>
               </Card>
             )}
