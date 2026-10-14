@@ -1,4 +1,5 @@
 import { after } from 'next/server'
+import { formatUnknownError } from '@/lib/format-unknown-error'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 /**
@@ -38,14 +39,18 @@ export async function logRunAfterFailure(
   err: unknown,
   options?: RunAfterResponseOptions
 ): Promise<void> {
-  const message = err instanceof Error ? err.message : String(err)
+  const formatted = formatUnknownError(err)
+  const message = formatted.message
   const source = (options?.logSource || defaultLogSource(taskName)).slice(0, 120)
   const payload: Record<string, unknown> = {
     taskName,
     error: message,
   }
-  if (err instanceof Error && err.stack) {
-    payload.stack = err.stack.slice(0, 4000)
+  if (formatted.stack) {
+    payload.stack = formatted.stack.slice(0, 4000)
+  }
+  if (formatted.meta) {
+    payload.errorMeta = formatted.meta
   }
   if (options?.clientId) {
     payload.clientId = options.clientId
@@ -65,7 +70,7 @@ export async function logRunAfterFailure(
   } catch (e) {
     console.error(
       `[runAfterResponse:${taskName}] system_logs insert threw:`,
-      e instanceof Error ? e.message : String(e)
+      formatUnknownError(e).message
     )
   }
 
@@ -78,12 +83,16 @@ export async function logRunAfterFailure(
       title: options.alertTitle || `Background task failed: ${taskName}`,
       message,
       clientId: options.clientId,
-      details: { context: source, taskName },
+      details: {
+        context: source,
+        taskName,
+        ...(formatted.meta || {}),
+      },
     })
   } catch (e) {
     console.error(
       `[runAfterResponse:${taskName}] ops alert threw:`,
-      e instanceof Error ? e.message : String(e)
+      formatUnknownError(e).message
     )
   }
 }
@@ -112,7 +121,7 @@ export function runAfterResponse(
     try {
       await work()
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = formatUnknownError(err).message
       console.error(`[runAfterResponse:${taskName}]`, message, err)
       await logRunAfterFailure(taskName, err, options)
     }

@@ -38,25 +38,30 @@ export async function detectSlaUnassigned(
   if (error || !tickets?.length) return []
 
   const projectIds = [...new Set(tickets.map((t) => t.project_id as string).filter(Boolean))]
-  const { data: projects } = await admin
-    .from('projects')
-    .select('id, name, sla_hours')
-    .eq('client_id', clientId)
-    .in('id', projectIds)
-
-  const projectMap = new Map(
-    (projects || []).map((p) => [
-      p.id as string,
-      { name: (p.name as string) || '', slaHours: typeof p.sla_hours === 'number' ? p.sla_hours : 24 },
-    ])
-  )
+  const projectMap = new Map<string, { name: string; slaHours: number }>()
+  if (projectIds.length) {
+    const { data: projects } = await admin
+      .from('projects')
+      .select('id, name, sla_hours')
+      .eq('client_id', clientId)
+      .in('id', projectIds)
+    for (const p of projects || []) {
+      projectMap.set(p.id as string, {
+        name: (p.name as string) || '',
+        slaHours: typeof p.sla_hours === 'number' ? p.sla_hours : 24,
+      })
+    }
+  }
 
   const ticketIds = tickets.map((t) => t.id as string)
-  const { data: logs } = await admin
-    .from('ticket_logs')
-    .select('ticket_id, action_type, meta, created_at')
-    .in('ticket_id', ticketIds)
-    .in('action_type', ['FORWARDED_TO_PROFESSIONAL', 'WORKER_PROFESSIONAL_ESCORT'])
+  const { data: logs } =
+    ticketIds.length === 0
+      ? { data: [] as { ticket_id: string; action_type: string; meta: unknown; created_at: string }[] }
+      : await admin
+          .from('ticket_logs')
+          .select('ticket_id, action_type, meta, created_at')
+          .in('ticket_id', ticketIds)
+          .in('action_type', ['FORWARDED_TO_PROFESSIONAL', 'WORKER_PROFESSIONAL_ESCORT'])
 
   const forwardOk = new Set<string>()
   const escortLogged = new Set<string>()

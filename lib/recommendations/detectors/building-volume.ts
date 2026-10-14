@@ -34,16 +34,19 @@ export async function detectBuildingVolumeAndTopics(
   }
 
   const projectIds = [...byProject.keys()]
-  const { data: projects } = await admin
-    .from('projects')
-    .select('id, name, project_code')
-    .eq('client_id', clientId)
-    .in('id', projectIds)
-
-  const nameMap = new Map((projects || []).map((p) => [p.id as string, (p.name as string) || '']))
-  const codeMap = new Map(
-    (projects || []).map((p) => [p.id as string, ((p.project_code as string) || '').trim()])
-  )
+  const nameMap = new Map<string, string>()
+  const codeMap = new Map<string, string>()
+  if (projectIds.length) {
+    const { data: projects } = await admin
+      .from('projects')
+      .select('id, name, project_code')
+      .eq('client_id', clientId)
+      .in('id', projectIds)
+    for (const p of projects || []) {
+      nameMap.set(p.id as string, (p.name as string) || '')
+      codeMap.set(p.id as string, ((p.project_code as string) || '').trim())
+    }
+  }
 
   const drafts: RecommendationDraft[] = []
 

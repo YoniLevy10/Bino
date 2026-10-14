@@ -109,6 +109,52 @@ describe('runAfterResponse', () => {
     )
   })
 
+  it('stringifies plain PostgREST-style objects instead of [object Object]', async () => {
+    afterMock.mockImplementation((fn: () => Promise<void>) => {
+      void fn()
+    })
+
+    runAfterResponse(
+      'recommendations-detectors:client-2',
+      async () => {
+        throw {
+          message: 'AbortError: This operation was aborted',
+          details: 'fetch failed',
+          hint: 'Request was aborted (timeout or manual cancellation)',
+          code: '',
+        }
+      },
+      {
+        logSource: 'recommendations.detectors',
+        clientId: 'client-2',
+        alertOps: true,
+        alertTitle: 'Recommendations detector scan failed',
+      }
+    )
+
+    await vi.waitFor(() => {
+      expect(systemLogsInsert).toHaveBeenCalled()
+    })
+
+    const insertArg = systemLogsInsert.mock.calls[0][0] as {
+      message: string
+      payload: { error: string }
+    }
+    expect(insertArg.message).not.toBe('[object Object]')
+    expect(insertArg.message).toContain('AbortError: This operation was aborted')
+    expect(insertArg.payload.error).toContain('AbortError: This operation was aborted')
+
+    await vi.waitFor(() => {
+      expect(notifyPlatformOps).toHaveBeenCalled()
+    })
+    expect(notifyPlatformOps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('AbortError: This operation was aborted'),
+      })
+    )
+    expect(notifyPlatformOps.mock.calls[0][0].message).not.toBe('[object Object]')
+  })
+
   it('falls back to fire-and-forget when after() throws (non-request scope)', async () => {
     afterMock.mockImplementation(() => {
       throw new Error('after() outside request scope')

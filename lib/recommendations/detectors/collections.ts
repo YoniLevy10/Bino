@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { formatUnknownErrorMessage } from '@/lib/format-unknown-error'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { clientHasPaidAddon } from '@/lib/paid-addons'
 import { buildDedupeKey } from '../dedupe'
@@ -86,7 +87,17 @@ export async function detectCollectionsFollowup(
   admin: SupabaseClient,
   clientId: string
 ): Promise<RecommendationDraft[]> {
-  const has = await clientHasPaidAddon(admin, clientId, PAID_ADDON_KEYS.collections)
+  // Soft-fail like other detectors: addon/check query errors must not abort the whole scan.
+  let has = false
+  try {
+    has = await clientHasPaidAddon(admin, clientId, PAID_ADDON_KEYS.collections)
+  } catch (err) {
+    console.error(
+      '[recommendations.detectors] collections addon check failed',
+      formatUnknownErrorMessage(err)
+    )
+    return []
+  }
   if (!has) return []
 
   const { data: charges, error } = await admin

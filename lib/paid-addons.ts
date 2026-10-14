@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { toError } from '@/lib/format-unknown-error'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
 /** Stable keys for paid add-ons — add new keys here when shipping features. */
@@ -58,7 +59,7 @@ export async function listActiveAddonsCatalog(
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
 
-  if (error) throw error
+  if (error) throw toError(error)
   return (data as PaidAddonCatalogRow[]) || []
 }
 
@@ -70,7 +71,7 @@ export async function listAllAddonsCatalogAdmin(
     .select('addon_key, name_he, description_he, price_ils_monthly, is_active, sort_order')
     .order('sort_order', { ascending: true })
 
-  if (error) throw error
+  if (error) throw toError(error)
   return (data as PaidAddonCatalogRow[]) || []
 }
 
@@ -84,7 +85,7 @@ export async function getClientEnabledAddonKeys(
     .eq('client_id', clientId)
     .eq('enabled', true)
 
-  if (error) throw error
+  if (error) throw toError(error)
   return new Set((data || []).map((r) => (r as { addon_key: string }).addon_key))
 }
 
@@ -111,9 +112,10 @@ export async function clientHasPaidAddon(
       .maybeSingle(),
   ])
 
-  if (catalogRes.error) throw catalogRes.error
+  // PostgREST/fetch failures are plain objects — wrap so ops alerts never show [object Object].
+  if (catalogRes.error) throw toError(catalogRes.error)
   if (!catalogRes.data) return false
-  if (entitlementRes.error) throw entitlementRes.error
+  if (entitlementRes.error) throw toError(entitlementRes.error)
   return !!entitlementRes.data
 }
 
@@ -127,7 +129,7 @@ export async function getCatalogRowForAddon(
     .eq('addon_key', addonKey)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) throw toError(error)
   return (data as PaidAddonCatalogRow | null) ?? null
 }
 
