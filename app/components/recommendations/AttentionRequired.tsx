@@ -5,6 +5,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card, theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
+import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
 
 type Props = {
   /** Max cards on dashboard before "show all" */
@@ -70,6 +71,9 @@ export function AttentionRequired({ previewLimit = 3 }: Props) {
                 <span style={{ ...styles.urgency, color: tone.color }}>{tone.label}</span>
               </div>
               <p style={styles.reason}>{row.reason}</p>
+              {row.entity_type === 'ticket' && row.entity_id ? (
+                <SuggestWorkerAssignButton ticketId={row.entity_id} />
+              ) : null}
               <RecommendationAlertActions
                 row={row}
                 onDismissed={(id) => setRows((prev) => prev.filter((item) => item.id !== id))}

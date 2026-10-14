@@ -9,6 +9,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
 import { EntityRecommendations } from '@/app/components/recommendations/EntityRecommendations'
+import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
 import { MidragSearchPanel, type MidragTicketContext } from '@/app/components/professionals/MidragSearchPanel'
 import { supabase } from '@/lib/supabase'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
@@ -332,6 +333,14 @@ export function TicketDetailDrawer({
                     </option>
                   ))}
                 </select>
+                {selectedTicket.status !== 'CLOSED' ? (
+                  <SuggestWorkerAssignButton
+                    ticketId={selectedTicket.id}
+                    assignedWorkerId={draftWorkerId || selectedTicket.assigned_worker_id}
+                    ticketCreatedAt={selectedTicket.created_at}
+                    onAssigned={(workerId) => onWorkerChange(workerId)}
+                  />
+                ) : null}
               </div>
 
               <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>

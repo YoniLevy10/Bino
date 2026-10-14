@@ -8,6 +8,7 @@ import { theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 import type { OpsBriefing } from '@/lib/ops-context/synthesize-briefing'
 import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
+import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
 
 function urgencyLabel(u: string): string {
   if (u === 'critical') return 'דחוף'
@@ -145,6 +146,9 @@ export function RecommendationsBell() {
                           <div key={row.id} style={styles.item}>
                             <span style={styles.urgency}>{urgencyLabel(String(row.urgency))}</span>
                             <p style={styles.reason}>{row.reason}</p>
+                            {row.entity_type === 'ticket' && row.entity_id ? (
+                              <SuggestWorkerAssignButton ticketId={row.entity_id} />
+                            ) : null}
                             <RecommendationAlertActions
                               row={row}
                               onDismissed={(id) =>
