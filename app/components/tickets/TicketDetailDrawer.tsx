@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
+import { useRouter } from 'next/navigation'
 import { Drawer, Button, Select, theme } from '../ui'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
@@ -9,6 +10,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
 import { EntityRecommendations } from '@/app/components/recommendations/EntityRecommendations'
+import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
 import { MidragSearchPanel, type MidragTicketContext } from '@/app/components/professionals/MidragSearchPanel'
 import { supabase } from '@/lib/supabase'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
@@ -118,12 +120,26 @@ export function TicketDetailDrawer({
   onDelete,
   onCancel,
 }: TicketDetailDrawerProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [internalTranslation, setInternalTranslation] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [lookedUpName, setLookedUpName] = useState<string | null>(null)
   const tenantFromSession = useTenantClientId()
+
+  function goCreateMaintenanceTask() {
+    if (!selectedTicket) return
+    const params = new URLSearchParams({ create: '1', source_ticket_id: selectedTicket.id })
+    if (selectedTicket.project_id) params.set('project_id', selectedTicket.project_id)
+    if (selectedTicket.ticket_number) {
+      params.set('ticket_number', String(selectedTicket.ticket_number))
+    }
+    params.set('title', `אחזקה — תקלה #${selectedTicket.ticket_number}`)
+    const desc = (selectedTicket.description || '').trim().slice(0, 500)
+    if (desc) params.set('description', desc)
+    router.push(`/tasks?${params.toString()}`)
+  }
 
   useEffect(() => {
     setActiveTab('details')
@@ -218,6 +234,8 @@ export function TicketDetailDrawer({
         return 'תקלה נסגרה'
       case 'AUTO_ASSIGNED':
         return 'שיוך אוטומטי'
+      case 'RESIDENT_STATUS_NOTIFY':
+        return 'נשלח לדייר'
       default:
         return actionType
     }
@@ -332,7 +350,28 @@ export function TicketDetailDrawer({
                     </option>
                   ))}
                 </select>
+                {selectedTicket.status !== 'CLOSED' ? (
+                  <SuggestWorkerAssignButton
+                    ticketId={selectedTicket.id}
+                    assignedWorkerId={draftWorkerId || selectedTicket.assigned_worker_id}
+                    ticketCreatedAt={selectedTicket.created_at}
+                    onAssigned={(workerId) => onWorkerChange(workerId)}
+                  />
+                ) : null}
               </div>
+
+              {selectedTicket.status !== 'CLOSED' && (
+                <div style={styles.drawerSection}>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={goCreateMaintenanceTask}
+                    style={{ width: '100%' }}
+                  >
+                    יצירת משימת אחזקה
+                  </Button>
+                </div>
+              )}
 
               <div style={{ ...styles.formRow, ...(isMobile ? styles.formRowMobile : {}) }}>
                 <div style={styles.drawerSection}>

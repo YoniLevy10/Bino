@@ -15,7 +15,7 @@ function clientIp(req: NextRequest): string {
 }
 
 const TASK_SELECT =
-  'id, title, description, priority, status, due_at, notes, project_id, projects(name, address)'
+  'id, title, description, priority, status, due_at, notes, project_id, source_ticket_id, projects(name, address), tickets:source_ticket_id(id, ticket_number)'
 
 export async function GET(req: NextRequest) {
   try {

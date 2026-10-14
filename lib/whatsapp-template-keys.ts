@@ -48,6 +48,8 @@ export const WHATSAPP_TEMPLATE_KEYS = [
   'duplicate_ticket',      // תקלה כפולה
   'no_open_tickets',       // אין תקלות פתוחות (שאלת סטטוס)
   'ticket_status_list',    // רשימת סטטוס תקלות פתוחות (שאלת סטטוס)
+  'ticket_status_in_progress', // עדכון דייר — תקלה בטיפול (אופציונלי בהגדרות)
+  'ticket_status_waiting_parts', // עדכון דייר — ממתין לחלקים (אופציונלי בהגדרות)
   'sla_escalation_resident', // SLA — עדכון לדייר שתקלה עדיין בטיפול
   'pending_approval_note', // הערת אישור מנהלת (נוספת לסוף ticket_opened)
 ] as const
@@ -113,6 +115,8 @@ export const WHATSAPP_TEMPLATE_CATEGORIES: Record<
   duplicate_ticket: 'flow',
   no_open_tickets: 'flow',
   ticket_status_list: 'flow',
+  ticket_status_in_progress: 'flow',
+  ticket_status_waiting_parts: 'flow',
   sla_escalation_resident: 'flow',
   pending_approval_note: 'flow',
 }
@@ -166,7 +170,14 @@ export const WHATSAPP_TEMPLATE_JOURNEY: {
     step: 4,
     title: 'מעקב וסגירה',
     description: 'שאילת סטטוס, SLA וסגירת תקלה',
-    keys: ['ticket_status_list', 'no_open_tickets', 'ticket_closed', 'sla_escalation_resident'],
+    keys: [
+      'ticket_status_list',
+      'ticket_status_in_progress',
+      'ticket_status_waiting_parts',
+      'no_open_tickets',
+      'ticket_closed',
+      'sla_escalation_resident',
+    ],
   },
   {
     step: 5,
@@ -210,6 +221,10 @@ export const WHATSAPP_TEMPLATE_WHEN_SENT: Record<WhatsAppTemplateKey, string> = 
   worker_assigned:         'נשלח לעובד (SMS) כשתקלה משויכת אליו',
   no_open_tickets:         'דייר שאל "מה הסטטוס?" אך אין לו תקלה פתוחה',
   ticket_status_list:      'דייר שאל על סטטוס — יש לו תקלות פתוחות ({{list}})',
+  ticket_status_in_progress:
+    'אופציונלי (מתג בהגדרות) — עדכון דייר כשסטטוס עובר ל־בטיפול',
+  ticket_status_waiting_parts:
+    'אופציונלי (מתג בהגדרות) — עדכון דייר כשסטטוס עובר ל־ממתין לחלקים',
   sla_escalation_resident: 'תיבת WhatsApp ידנית — לא נשלח אוטומטית (תזכורות SLA רק למנהל)',
   ticket_closed:           'המנהלת סגרה תקלה — נשלח לדייר שדיווח עליה',
   image_stashed:           'דייר שלח תמונה לפני שפתח תקלה — מבקשים תיאור טקסט',
@@ -261,6 +276,8 @@ export const WHATSAPP_TEMPLATE_LABELS: Record<WhatsAppTemplateKey, string> = {
   duplicate_ticket: 'תקלה כפולה ({{ticket_number}})',
   no_open_tickets: 'אין תקלות פתוחות (תגובה לשאלת סטטוס)',
   ticket_status_list: 'סטטוס תקלות פתוחות ({{list}})',
+  ticket_status_in_progress: 'עדכון דייר — תקלה בטיפול',
+  ticket_status_waiting_parts: 'עדכון דייר — ממתין לחלקים',
   sla_escalation_resident: 'SLA — עדכון לדייר (תקלה עדיין בטיפול)',
   pending_approval_note: 'הערת אישור מנהלת (נוספת לסוף אישור תקלה)',
 }
@@ -493,6 +510,16 @@ export const WHATSAPP_TEMPLATE_EDITOR_DEFAULTS: Record<WhatsAppTemplateKey, stri
     'התקלות הפתוחות שלך:\n\n{{list}}',
     'Vos demandes ouvertes :\n\n{{list}}',
     'Your open requests:\n\n{{list}}'
+  ),
+  ticket_status_in_progress: joinTrilingualTemplate(
+    'שלום! תקלה #{{ticket_number}} בבניין {{project_name}} בטיפול. נעדכן בהמשך.',
+    'Bonjour ! La demande #{{ticket_number}} pour {{project_name}} est en cours. Nous vous tiendrons informés.',
+    'Hello! Request #{{ticket_number}} at {{project_name}} is in progress. We will update you.'
+  ),
+  ticket_status_waiting_parts: joinTrilingualTemplate(
+    'שלום! תקלה #{{ticket_number}} בבניין {{project_name}} ממתינה לחלקים. נעדכן כשיתאפשר להמשיך.',
+    'Bonjour ! La demande #{{ticket_number}} pour {{project_name}} attend des pièces. Nous vous tiendrons informés.',
+    'Hello! Request #{{ticket_number}} at {{project_name}} is waiting for parts. We will update you.'
   ),
   sla_escalation_resident: joinTrilingualTemplate(
     'שלום, הפנייה שלך #{{ticket_number}} בנושא "{{description}}" עדיין בטיפול.\n' +

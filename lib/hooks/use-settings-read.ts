@@ -14,6 +14,7 @@ export type SettingsReadRow = {
   default_worker_phone?: string | null
   sms_on_ticket_open?: boolean | null
   sms_on_ticket_close?: boolean | null
+  wa_notify_resident_on_status_change?: boolean | null
   whatsapp_phone_number_id?: string | null
   whatsapp_access_token_set?: boolean
   sms_sender_name?: string | null

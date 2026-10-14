@@ -137,6 +137,7 @@ export const settingsUpdateBodySchema = z
     sms_sender_name: z.string().max(80).nullable().optional(),
     sms_on_ticket_open: z.boolean().optional(),
     sms_on_ticket_close: z.boolean().optional(),
+    wa_notify_resident_on_status_change: z.boolean().optional(),
     whatsapp_business_phone: z.string().max(40).nullable().optional(),
     whatsapp_phone_number_id: z.string().max(80).nullable().optional(),
     whatsapp_access_token: z.string().max(500).nullable().optional(),
@@ -355,6 +356,7 @@ export const createMaintenanceTaskBodySchema = z.object({
   priority: maintenanceTaskPrioritySchema.optional(),
   due_at: z.string().min(10).max(40).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  source_ticket_id: z.string().uuid().nullable().optional(),
 })
 
 export const updateMaintenanceTaskBodySchema = z.object({
@@ -367,6 +369,7 @@ export const updateMaintenanceTaskBodySchema = z.object({
   status: maintenanceTaskStatusSchema.optional(),
   due_at: z.string().min(10).max(40).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  source_ticket_id: z.string().uuid().nullable().optional(),
 })
 
 export const workerMaintenanceTaskUpdateBodySchema = z.object({
