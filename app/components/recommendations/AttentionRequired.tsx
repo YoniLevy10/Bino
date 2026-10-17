@@ -12,14 +12,29 @@ type Props = {
   previewLimit?: number
 }
 
-function urgencyTone(u: string): { label: string; color: string; wash: string } {
+function urgencyTone(u: string): { label: string; color: string; wash: string; border: string } {
   if (u === 'critical' || u === 'high') {
-    return { label: u === 'critical' ? 'עכשיו' : 'דחוף', color: theme.colors.error, wash: theme.colors.errorMuted }
+    return {
+      label: u === 'critical' ? 'עכשיו' : 'דחוף',
+      color: theme.colors.error,
+      wash: theme.colors.errorMuted,
+      border: theme.colors.error,
+    }
   }
   if (u === 'medium') {
-    return { label: 'היום', color: theme.colors.warning, wash: theme.colors.warningMuted }
+    return {
+      label: 'היום',
+      color: theme.colors.warning,
+      wash: theme.colors.warningMuted,
+      border: theme.colors.primary,
+    }
   }
-  return { label: 'נמוך', color: theme.colors.textMuted, wash: theme.colors.muted }
+  return {
+    label: 'נמוך',
+    color: theme.colors.textMuted,
+    wash: theme.colors.muted,
+    border: theme.colors.border,
+  }
 }
 
 /** Desktop dashboard card of focused alerts (ops briefing lives in the bell). */
@@ -47,32 +62,44 @@ export function AttentionRequired({ previewLimit = 3 }: Props) {
 
   const visible = showAll ? rows : rows.slice(0, previewLimit)
   const hasMore = rows.length > previewLimit
-  const lead = urgencyTone(String(visible[0]?.urgency || rows[0]?.urgency || 'medium'))
 
   return (
-    <Card style={{ marginBottom: 16 }}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>דורש תשומת לב</h3>
-        <span style={{ ...styles.count, background: lead.color }}>{rows.length}</span>
-      </div>
-      <div style={styles.list}>
-        {visible.map((row) => {
+    <Card
+      title="מה צריך לקדם עכשיו"
+      subtitle="מבוסס על כללי המערכת והמלצות קיימות בלבד"
+      actions={
+        hasMore ? (
+          <button type="button" style={styles.showAll} onClick={() => setShowAll((v) => !v)}>
+            {showAll ? 'הצג פחות' : `הצג הכול (${rows.length})`}
+          </button>
+        ) : undefined
+      }
+      style={{ marginBottom: 24 }}
+    >
+      <div style={styles.grid}>
+        {visible.map((row, index) => {
           const tone = urgencyTone(String(row.urgency))
+          const highlighted = index === 0
           return (
             <div
               key={row.id}
               style={{
                 ...styles.item,
-                borderInlineStart: `3px solid ${tone.color}`,
-                background: tone.wash,
+                background: highlighted ? theme.colors.surface : theme.colors.mutedSurface,
+                borderColor: highlighted ? theme.colors.primary : theme.colors.border,
+                borderWidth: highlighted ? 1.25 : 1,
               }}
             >
               <div style={styles.meta}>
-                <span style={{ ...styles.urgency, color: tone.color }}>{tone.label}</span>
+                <span style={{ ...styles.urgency, background: tone.wash, color: tone.color }}>
+                  {tone.label}
+                </span>
               </div>
               <p style={styles.reason}>{row.reason}</p>
               {row.entity_type === 'ticket' && row.entity_id ? (
-                <SuggestWorkerAssignButton ticketId={row.entity_id} />
+                <div style={styles.actions}>
+                  <SuggestWorkerAssignButton ticketId={row.entity_id} />
+                </div>
               ) : null}
               <RecommendationAlertActions
                 row={row}
@@ -82,66 +109,60 @@ export function AttentionRequired({ previewLimit = 3 }: Props) {
           )
         })}
       </div>
-      {hasMore ? (
-        <button type="button" style={styles.showAll} onClick={() => setShowAll((v) => !v)}>
-          {showAll ? 'הצג פחות' : `הצג הכול (${rows.length})`}
-        </button>
-      ) : null}
     </Card>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  header: {
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: 12,
+  },
+  item: {
+    padding: '18px 19px',
+    borderRadius: theme.radius.lg,
+    borderStyle: 'solid',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    minHeight: 140,
+    transition: `border-color ${theme.motion.base} ease, background ${theme.motion.base} ease`,
+  },
+  meta: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 12,
+    justifyContent: 'flex-start',
   },
-  title: {
-    margin: 0,
-    fontSize: 16,
-    fontWeight: 700,
-    color: theme.colors.textPrimary,
-  },
-  count: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    color: theme.colors.textInverse,
-    fontSize: 12,
-    fontWeight: 700,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '0 8px',
-  },
-  list: { display: 'flex', flexDirection: 'column', gap: 8 },
-  item: {
-    padding: '10px 12px',
-    borderRadius: theme.radius.sm,
-    borderBottom: 'none',
-  },
-  meta: { marginBottom: 4 },
   urgency: {
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '5px 10px',
+    borderRadius: theme.radius.sm,
+    lineHeight: 1.45,
   },
   reason: {
     margin: 0,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: 600,
     lineHeight: 1.45,
     color: theme.colors.textPrimary,
+    flex: 1,
+  },
+  actions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 'auto',
   },
   showAll: {
-    marginTop: 8,
     border: 'none',
     background: 'transparent',
-    color: theme.colors.textSecondary,
+    color: theme.colors.primary,
     fontWeight: 600,
     fontSize: 13,
     cursor: 'pointer',
     padding: 0,
+    fontFamily: 'inherit',
   },
 }

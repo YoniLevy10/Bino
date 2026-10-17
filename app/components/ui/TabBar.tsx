@@ -47,8 +47,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     gap: '4px',
     padding: '4px',
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
   },
   tab: {
     flex: 1,
@@ -59,13 +60,14 @@ const styles: Record<string, CSSProperties> = {
     border: 'none',
     borderRadius: theme.radius.sm,
     cursor: 'pointer',
-    transition: 'all 0.15s',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
     fontFamily: 'inherit',
   },
   tabActive: {
     background: theme.colors.surface,
     color: theme.colors.primary,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    fontWeight: 600,
+    boxShadow: theme.shadows.xs,
   },
   tabInactive: {
     background: 'transparent',

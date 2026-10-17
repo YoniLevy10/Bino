@@ -88,8 +88,23 @@ export function useMobileMenuOptional() {
   return useContext(MobileMenuContext)
 }
 
-function NavIcon({ type, active }: { type: string; active?: boolean }) {
-  const color = active ? theme.colors.primary : theme.colors.textMuted
+function NavIcon({
+  type,
+  active,
+  onDark,
+}: {
+  type: string
+  active?: boolean
+  /** Icons on navy sidebar — inactive = navText, active = white */
+  onDark?: boolean
+}) {
+  const color = onDark
+    ? active
+      ? theme.colors.textInverse
+      : theme.colors.navText
+    : active
+      ? theme.colors.primary
+      : theme.colors.textMuted
 
   const icons: Record<string, ReactNode> = {
     home: (
@@ -306,6 +321,10 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
   if (hidden) return null
   if (!mounted) return <aside style={{ display: 'none' }} aria-hidden="true" />
 
+  const navy = calmSurface
+  const navLinkBase = navy ? sidebarStyles.navLinkNavy : sidebarStyles.navLink
+  const navLinkActive = navy ? sidebarStyles.navLinkActiveNavy : sidebarStyles.navLinkActive
+
   function renderNavLink(item: (typeof navItems)[number]) {
     const isActive = isNavItemActive(pathname, item)
     return (
@@ -315,12 +334,12 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
         {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
         className={isActive ? 'lg-nav-active' : undefined}
         style={{
-          ...sidebarStyles.navLink,
-          ...(isActive ? sidebarStyles.navLinkActive : {}),
+          ...navLinkBase,
+          ...(isActive ? navLinkActive : {}),
           ...(item.locked ? sidebarStyles.navLinkLocked : {}),
         }}
       >
-        <NavIcon type={item.icon} active={isActive} />
+        <NavIcon type={item.icon} active={isActive} onDark={navy} />
         <span style={sidebarStyles.navLabel}>
           {item.label}
           {item.locked && (
@@ -336,13 +355,14 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
       className="lg-sidebar"
       style={{
         ...sidebarStyles.container,
-        ...(calmSurface
+        ...(navy
           ? {
-              background: '#FFFFFF',
+              background: theme.colors.navy,
               backdropFilter: 'none',
               WebkitBackdropFilter: 'none',
               boxShadow: 'none',
-              borderInlineEnd: '1px solid #E8E8ED',
+              borderInlineEnd: 'none',
+              color: theme.colors.navText,
             }
           : {}),
       }}
@@ -367,8 +387,12 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           />
         )}
         <div style={sidebarStyles.brandText}>
-          <div style={sidebarStyles.title}>{displayName}</div>
-          <div style={sidebarStyles.subtitle}>ניהול אחזקה</div>
+          <div style={{ ...sidebarStyles.title, ...(navy ? { color: theme.colors.textInverse } : {}) }}>
+            {displayName}
+          </div>
+          <div style={{ ...sidebarStyles.subtitle, ...(navy ? { color: theme.colors.navText } : {}) }}>
+            ניהול אחזקה
+          </div>
         </div>
       </div>
 
@@ -382,7 +406,12 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
                 onClick={() => setOpsOpen((v) => !v)}
                 style={{
                   ...sidebarStyles.opsToggle,
-                  ...(opsHasActive ? sidebarStyles.opsToggleActive : {}),
+                  ...(navy ? { color: theme.colors.navText } : {}),
+                  ...(opsHasActive
+                    ? navy
+                      ? { color: theme.colors.textInverse }
+                      : sidebarStyles.opsToggleActive
+                    : {}),
                 }}
                 aria-expanded={opsOpen}
               >
@@ -396,28 +425,58 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           )}
           {addons ? renderNavLink(addons) : null}
         </nav>
-        <div style={sidebarStyles.settingsNav}>
+        <div
+          style={{
+            ...sidebarStyles.settingsNav,
+            ...(navy ? { borderTopColor: 'rgba(180, 199, 219, 0.2)' } : {}),
+          }}
+        >
           <Link
             href="/settings"
             {...navLinkPrefetchHandlers('/settings', router.prefetch, prefetchOpts)}
             className={pathname === '/settings' ? 'lg-nav-active' : undefined}
             style={{
-              ...sidebarStyles.navLink,
-              ...(pathname === '/settings' ? sidebarStyles.navLinkActive : {}),
+              ...navLinkBase,
+              ...(pathname === '/settings' ? navLinkActive : {}),
             }}
           >
-            <NavIcon type="settings" active={pathname === '/settings'} />
+            <NavIcon type="settings" active={pathname === '/settings'} onDark={navy} />
             <span style={sidebarStyles.navLabel}>הגדרות</span>
           </Link>
           <NavSignOutButton />
         </div>
       </div>
 
-      <div style={sidebarStyles.footer}>
-        <div style={sidebarStyles.footerAvatar}>{userInitials}</div>
+      <div
+        style={{
+          ...sidebarStyles.footer,
+          ...(navy
+            ? {
+                borderTopColor: 'rgba(180, 199, 219, 0.2)',
+                background: theme.colors.navySoft,
+                borderRadius: theme.radius.lg,
+                margin: '8px 4px 0',
+                padding: '14px 12px',
+                borderTop: 'none',
+              }
+            : {}),
+        }}
+      >
+        <div
+          style={{
+            ...sidebarStyles.footerAvatar,
+            ...(navy ? { background: 'rgba(255,255,255,0.12)', color: theme.colors.textInverse } : {}),
+          }}
+        >
+          {userInitials}
+        </div>
         <div style={sidebarStyles.footerInfo}>
-          <div style={sidebarStyles.footerName}>{userEmail || '—'}</div>
-          <div style={sidebarStyles.footerRole}>מנהל מערכת</div>
+          <div style={{ ...sidebarStyles.footerName, ...(navy ? { color: theme.colors.textInverse } : {}) }}>
+            {userEmail || '—'}
+          </div>
+          <div style={{ ...sidebarStyles.footerRole, ...(navy ? { color: theme.colors.navText } : {}) }}>
+            מנהל מערכת
+          </div>
         </div>
       </div>
     </aside>
@@ -548,7 +607,21 @@ const sidebarStyles: Record<string, CSSProperties> = {
     fontWeight: 500,
     minHeight: '44px',
     boxSizing: 'border-box',
-    transition: 'all 0.15s ease',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
+  },
+  navLinkNavy: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    color: theme.colors.navText,
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: 500,
+    minHeight: '44px',
+    boxSizing: 'border-box',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
   },
   navLabel: {
     fontSize: '14px',
@@ -561,6 +634,12 @@ const sidebarStyles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     background: theme.colors.primaryMuted,
     boxShadow: 'inset 0 0 0 1px rgba(0, 122, 255, 0.16)',
+  },
+  navLinkActiveNavy: {
+    color: theme.colors.textInverse,
+    background: theme.colors.navySoft,
+    boxShadow: 'none',
+    fontWeight: 600,
   },
   navLinkLocked: {
     border: `1px dashed ${theme.colors.borderStrong}`,
@@ -745,9 +824,11 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
     gap: 0,
-    paddingTop: '6px',
-    paddingBottom: '6px',
-    paddingInline: '6px',
+    paddingTop: '8px',
+    paddingBottom: '8px',
+    paddingInline: '8px',
+    height: '64px',
+    boxSizing: 'border-box',
   },
   scroll: {
     flex: 1,
@@ -755,7 +836,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
-    gap: '2px',
+    gap: '4px',
     overflowX: 'auto',
     WebkitOverflowScrolling: 'touch',
     scrollbarWidth: 'none',
@@ -769,21 +850,22 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   link: {
-    flex: '0 0 auto',
-    width: '68px',
-    maxWidth: '68px',
+    flex: '1 1 0',
+    width: 'auto',
+    maxWidth: '84px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '2px',
+    gap: '3px',
     minWidth: 0,
-    minHeight: '52px',
+    minHeight: '48px',
     padding: '6px 4px',
     textDecoration: 'none',
     color: theme.colors.textMuted,
     borderRadius: theme.radius.md,
     boxSizing: 'border-box',
+    transition: `color ${theme.motion.fast} ease, background ${theme.motion.fast} ease`,
   },
   settingsLink: {
     flex: '0 0 auto',
@@ -792,8 +874,8 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   linkActive: {
     color: theme.colors.primary,
-    background: 'rgba(0, 122, 255, 0.12)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
+    background: 'transparent',
+    boxShadow: 'none',
   },
   iconWrap: {
     display: 'flex',
@@ -803,7 +885,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   label: {
     fontSize: '11px',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.25,
     textAlign: 'center',
     maxWidth: '100%',
@@ -872,7 +954,7 @@ function AppShellInner({
         style={{
           display: 'flex',
           minHeight: '100vh',
-          background: calmSurface ? '#F2F2F7' : 'transparent',
+          background: calmSurface ? theme.colors.background : 'transparent',
         }}
         suppressHydrationWarning
       >
@@ -1378,22 +1460,22 @@ const pageHeaderStyles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: '24px',
-    marginBottom: '32px',
+    marginBottom: '28px',
     flexWrap: 'wrap',
   },
   title: {
-    fontSize: '34px',
+    fontSize: '28px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
     letterSpacing: '-0.02em',
-    lineHeight: 1.2,
+    lineHeight: 1.25,
   },
   subtitle: {
-    fontSize: '15px',
-    color: theme.colors.textMuted,
-    margin: '8px 0 0 0',
-    lineHeight: 1.5,
+    fontSize: '14px',
+    color: theme.colors.textSecondary,
+    margin: '6px 0 0 0',
+    lineHeight: 1.45,
   },
   actions: {
     display: 'flex',
@@ -1411,11 +1493,14 @@ export function KpiCard({
   value,
   accent,
   onClick,
+  hint,
 }: {
   label: string
   value: string | number
   accent?: 'primary' | 'success' | 'warning' | 'error'
   onClick?: () => void
+  /** Optional secondary line under the label (Figma KPI captions) */
+  hint?: string
 }) {
   const accentColors = {
     primary: theme.colors.primary,
@@ -1424,7 +1509,7 @@ export function KpiCard({
     error: theme.colors.error,
   }
 
-  const accentColor = accent ? accentColors[accent] : theme.colors.border
+  const accentColor = accent ? accentColors[accent] : undefined
 
   return (
     <button
@@ -1434,38 +1519,62 @@ export function KpiCard({
       className="lg-glass"
       style={{
         ...kpiStyles.card,
-        borderInlineStartColor: accentColor,
         cursor: onClick ? 'pointer' : 'default',
+        ...(accentColor ? { boxShadow: `inset 0 -3px 0 0 ${accentColor}` } : {}),
       }}
     >
-      <div style={kpiStyles.value}>{value}</div>
-      <div style={kpiStyles.label}>{label}</div>
+      <div style={kpiStyles.row}>
+        <div style={kpiStyles.value}>{value}</div>
+        <div style={kpiStyles.labelCol}>
+          <div style={kpiStyles.label}>{label}</div>
+          {hint ? <div style={kpiStyles.hint}>{hint}</div> : null}
+        </div>
+      </div>
     </button>
   )
 }
 
 const kpiStyles: Record<string, CSSProperties> = {
   card: {
-    border: 'none',
-    borderInlineStart: '3px solid',
-    borderRadius: theme.radius.lg,
-    padding: '24px',
+    borderRadius: theme.radius.xl,
+    padding: '24px 23px',
     textAlign: 'start',
-    transition: 'all 0.2s ease',
+    transition: `background ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
+    width: '100%',
+    minHeight: '96px',
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    flexDirection: 'row-reverse',
     width: '100%',
   },
   value: {
-    fontSize: '40px',
+    fontSize: '32px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     letterSpacing: '-0.03em',
-    lineHeight: 1,
-    marginBottom: '8px',
+    lineHeight: 1.15,
+    flexShrink: 0,
+  },
+  labelCol: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'right',
   },
   label: {
-    fontSize: '13px',
-    color: theme.colors.textMuted,
+    fontSize: '14px',
+    color: theme.colors.textSecondary,
     fontWeight: 500,
+    lineHeight: 1.45,
+  },
+  hint: {
+    fontSize: '12px',
+    color: theme.colors.textMuted,
+    marginTop: '4px',
+    lineHeight: 1.4,
   },
 }
 
@@ -1513,18 +1622,18 @@ const cardStyles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: '24px 24px 0',
+    padding: '23px 23px 0',
     gap: '16px',
   },
   title: {
     fontSize: '17px',
-    fontWeight: 600,
+    fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
   },
   subtitle: {
-    fontSize: '14px',
-    color: theme.colors.textMuted,
+    fontSize: '13px',
+    color: theme.colors.textSecondary,
     margin: '4px 0 0',
   },
   actions: {
@@ -1532,7 +1641,7 @@ const cardStyles: Record<string, CSSProperties> = {
     gap: '8px',
   },
   content: {
-    padding: '24px',
+    padding: '20px 23px 23px',
   },
 }
 
@@ -1558,16 +1667,29 @@ export function Button({
   loading?: boolean
 }) {
   const variantStyles: Record<string, CSSProperties> = {
-    primary: { color: theme.colors.textInverse, border: 'none' },
-    secondary: { color: theme.colors.textPrimary, border: 'none' },
+    primary: {
+      color: theme.colors.textInverse,
+      border: 'none',
+      background: theme.colors.primary,
+      boxShadow: theme.shadows.primaryBtn,
+    },
+    secondary: {
+      color: theme.colors.textPrimary,
+      border: `1px solid ${theme.colors.border}`,
+      background: theme.colors.surface,
+    },
     ghost: { background: 'transparent', color: theme.colors.textSecondary, border: 'none' },
-    danger: { background: theme.colors.errorMuted, color: theme.colors.error, border: `1px solid ${theme.colors.error}` },
+    danger: {
+      background: theme.colors.errorMuted,
+      color: theme.colors.error,
+      border: `1px solid ${theme.colors.error}`,
+    },
   }
 
   const sizeStyles: Record<string, CSSProperties> = {
-    sm: { padding: '10px 16px', fontSize: '14px', minHeight: '44px', height: 'auto' },
-    md: { padding: '10px 18px', fontSize: '15px', minHeight: '44px', height: 'auto' },
-    lg: { padding: '12px 24px', fontSize: '16px', minHeight: '48px', height: 'auto' },
+    sm: { padding: '8px 14px', fontSize: '13px', minHeight: '40px', height: 'auto' },
+    md: { padding: '10px 18px', fontSize: '14px', minHeight: '44px', height: 'auto' },
+    lg: { padding: '12px 22px', fontSize: '15px', minHeight: '46px', height: 'auto' },
   }
 
   return (
@@ -1599,9 +1721,9 @@ const buttonStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    borderRadius: 14,
+    borderRadius: theme.radius.md,
     fontWeight: 600,
-    transition: 'all 0.15s ease',
+    transition: `opacity ${theme.motion.fast} ease, background ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
     whiteSpace: 'nowrap',
     cursor: 'pointer',
   },
@@ -1628,23 +1750,24 @@ export function StatusBadge({
 }) {
   const statusConfig: Record<string, { bg: string; text: string }> = {
     NEW: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    ASSIGNED: { bg: theme.colors.infoMuted, text: theme.colors.info },
-    IN_PROGRESS: { bg: theme.colors.brandSoft, text: theme.colors.accent },
+    ASSIGNED: { bg: theme.colors.blueSoft, text: theme.colors.primary },
+    IN_PROGRESS: { bg: theme.colors.blueSoft, text: theme.colors.primary },
     WAITING_PARTS: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    SITE_TOUR: { bg: theme.colors.brandSoft, text: theme.colors.primary },
-    PROFESSIONAL_ESCORT: { bg: theme.colors.sand, text: theme.colors.primary },
-    CLOSED: { bg: theme.colors.successMuted, text: theme.colors.success },
+    SITE_TOUR: { bg: theme.colors.blueSoft, text: theme.colors.primary },
+    PROFESSIONAL_ESCORT: { bg: theme.colors.sand, text: theme.colors.warning },
+    CLOSED: { bg: theme.colors.muted, text: theme.colors.textMuted },
     ACTIVE: { bg: theme.colors.successMuted, text: theme.colors.success },
     INACTIVE: { bg: theme.colors.muted, text: theme.colors.textMuted },
+    URGENT: { bg: theme.colors.errorMuted, text: theme.colors.error },
     HIGH: { bg: theme.colors.errorMuted, text: theme.colors.error },
-    MEDIUM: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    LOW: { bg: theme.colors.infoMuted, text: theme.colors.info },
+    MEDIUM: { bg: theme.colors.blueSoft, text: theme.colors.primary },
+    LOW: { bg: theme.colors.muted, text: theme.colors.textMuted },
   }
 
   const config = statusConfig[status] || { bg: theme.colors.muted, text: theme.colors.textMuted }
   const sizeStyles = {
-    sm: { padding: '4px 10px', fontSize: '11px' },
-    md: { padding: '5px 12px', fontSize: '12px' },
+    sm: { padding: '5px 10px', fontSize: '11px' },
+    md: { padding: '6px 12px', fontSize: '12px' },
   }
 
   return (
@@ -1658,9 +1781,11 @@ const badgeStyles: Record<string, CSSProperties> = {
   base: {
     display: 'inline-flex',
     alignItems: 'center',
-    borderRadius: theme.radius.full,
+    justifyContent: 'center',
+    borderRadius: theme.radius.sm,
     fontWeight: 600,
     letterSpacing: '0.01em',
+    lineHeight: 1.45,
   },
 }
 
@@ -1945,7 +2070,7 @@ export function Drawer({
             }
           : {}),
       }
-    : { ...drawerStyles.panelSide, width: '480px' }
+    : { ...drawerStyles.panelSide, width: '560px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
     paddingBottom: footer

@@ -29,7 +29,7 @@ import type {
 
 export type { TicketDetailRow, TicketDetailAttachment, TicketDetailLog }
 
-type Tab = 'details' | 'whatsapp'
+type Tab = 'details' | 'activity' | 'whatsapp'
 
 const PRIORITY_OPTIONS = [
   { label: 'נמוכה', value: 'LOW' },
@@ -124,7 +124,6 @@ export function TicketDetailDrawer({
   const [activeTab, setActiveTab] = useState<Tab>('details')
   const [internalTranslation, setInternalTranslation] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
   const [lookedUpName, setLookedUpName] = useState<string | null>(null)
   const tenantFromSession = useTenantClientId()
 
@@ -145,7 +144,6 @@ export function TicketDetailDrawer({
     setActiveTab('details')
     setInternalTranslation('')
     setAdvancedOpen(false)
-    setHistoryOpen(false)
   }, [selectedTicket?.id])
 
   const storedReporterName = reporterName || selectedTicket?.reporter_name
@@ -279,7 +277,11 @@ export function TicketDetailDrawer({
                 id: 'details' as const,
                 label: `פרטים${hasAttachments ? ` · ${selectedTicketAttachments.length}` : ''}`,
               },
-              { id: 'whatsapp' as const, label: 'WhatsApp דייר' },
+              {
+                id: 'activity' as const,
+                label: `פעילות${ticketLogs.length > 0 ? ` · ${ticketLogs.length}` : ''}`,
+              },
+              { id: 'whatsapp' as const, label: 'צ׳אט' },
             ]}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -524,38 +526,6 @@ export function TicketDetailDrawer({
                     </>
                   )}
 
-                  <CollapsibleSection
-                    title="היסטוריה"
-                    badge={ticketLogs.length > 0 ? String(ticketLogs.length) : undefined}
-                    open={historyOpen}
-                    onToggle={() => setHistoryOpen((v) => !v)}
-                  >
-                    {drawerLoading ? (
-                      <div style={styles.loadingState}>טוען...</div>
-                    ) : ticketLogs.length === 0 ? (
-                      <div style={styles.emptyLogs}>אין היסטוריה</div>
-                    ) : (
-                      <div style={styles.logsList}>
-                        {ticketLogs.map((log) => (
-                          <div key={log.id} style={styles.logItem}>
-                            <div style={styles.logHeader}>
-                              <span style={styles.logAction}>{formatLogTitle(log.action_type)}</span>
-                              <span style={styles.logTime}>
-                                {new Date(log.created_at).toLocaleDateString('he-IL', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                            {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CollapsibleSection>
-
                   {(onCancel || onDelete) && (
                     <div style={styles.advancedDanger}>
                       {onCancel && (
@@ -578,6 +548,36 @@ export function TicketDetailDrawer({
                 </CollapsibleSection>
               )}
             </>
+          )}
+
+          {activeTab === 'activity' && (
+            <div style={styles.drawerSection}>
+              <div style={styles.drawerLabel}>היסטוריית פעולות</div>
+              {drawerLoading ? (
+                <div style={styles.loadingState}>טוען...</div>
+              ) : ticketLogs.length === 0 ? (
+                <div style={styles.emptyLogs}>אין פעילות עדיין</div>
+              ) : (
+                <div style={styles.logsList}>
+                  {ticketLogs.map((log) => (
+                    <div key={log.id} style={styles.logItem}>
+                      <div style={styles.logHeader}>
+                        <span style={styles.logAction}>{formatLogTitle(log.action_type)}</span>
+                        <span style={styles.logTime}>
+                          {new Date(log.created_at).toLocaleDateString('he-IL', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      {log.notes && <div style={styles.logNotes}>{log.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'whatsapp' && selectedTicket.reporter_phone && (

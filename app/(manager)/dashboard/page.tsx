@@ -959,17 +959,19 @@ export default function DashboardPage() {
 
   const openTicketsCount = stats.open
 
+  const nextActionTicket =
+    filteredTickets.find((t) => !t.assigned_worker_id) || filteredTickets[0] || null
+
   return (
     <div className="kiss-home">
       {isMobile && (
         <MobileHeader
           title="לוח בקרה"
-          subtitle={formatDate()}
+          subtitle="BINO"
           subtitleSuppressHydrationWarning
           onMenuClick={openMenu}
         />
       )}
-
 
       <div
         style={{
@@ -979,6 +981,14 @@ export default function DashboardPage() {
             : {}),
         }}
       >
+        {!isMobile && (
+          <div style={styles.desktopToolbar}>
+            <p style={styles.desktopDate} suppressHydrationWarning>
+              {formatDate()}
+            </p>
+          </div>
+        )}
+
         <div style={styles.hero}>
           <div
             style={{
@@ -986,28 +996,20 @@ export default function DashboardPage() {
               ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch' } : {}),
             }}
           >
-         <div style={styles.heroText}>
-  {!isMobile && (
-    <h1 style={styles.heroTitle} suppressHydrationWarning>
-      {getGreeting()}
-    </h1>
-  )}
-  {openTicketsCount > 0 && (
-    <p style={styles.heroStatus}>
-      <span style={styles.statusDot} />
-      {openTicketsCount} תקלות פתוחות דורשות טיפול
-    </p>
-  )}
-  {isMobile && (
-    <Link href="/tickets" style={styles.viewAllLink}>
-      לכל התקלות והפעולות ←
-    </Link>
-  )}
-</div>
+            <div style={styles.heroText}>
+              {!isMobile && (
+                <>
+                  <h1 style={styles.heroTitle}>לוח בקרה</h1>
+                  <p style={styles.heroSubtitle} suppressHydrationWarning>
+                    {getGreeting()} · תמונת מצב תפעולית מהנתונים החיים
+                  </p>
+                </>
+              )}
+            </div>
             {!isMobile && (
               <div style={styles.heroActions}>
                 <Button variant="primary" size="lg" onClick={() => setShowAddTicketModal(true)}>
-                  תקלה חדשה
+                  + תקלה חדשה
                 </Button>
               </div>
             )}
@@ -1027,176 +1029,295 @@ export default function DashboardPage() {
           />
         ) : (
           <>
-            {/* Mobile: ops briefing + alerts live in the header bell. */}
-            {!isMobile ? <AttentionRequired previewLimit={3} /> : null}
-            <div style={{
-              ...styles.kpiGrid,
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            }}>
-              <KpiCard label="פעילות" value={stats.total} onClick={() => setActiveKpi('ALL')} />
-              <KpiCard label="פתוחות" value={stats.open} onClick={() => setActiveKpi('NEW')} />
-              <KpiCard label="בטיפול" value={stats.inProgress} onClick={() => setActiveKpi('IN_PROGRESS')} />
-              <KpiCard
-                label="משימות"
-                value={openTasksCount ?? 0}
-                onClick={() => router.push('/tasks')}
-              />
-              {!isMobile && (
-                <KpiCard label="נסגרו" value={stats.closed} onClick={() => router.push('/summary?tab=history')} />
-              )}
-              {!isMobile && residentsCount !== null && <KpiCard label="דיירים רשומים" value={residentsCount} />}
-              {!isMobile && workersCount !== null && <KpiCard label="עובדים פעילים" value={workersCount} />}
-            </div>
-
-            <div style={{ ...styles.mainGrid, gridTemplateColumns: isMobile ? '1fr' : '1fr 340px' }}>
-              {(!isMobile || mobileMoreOpen) && (
+            {isMobile ? (
               <>
-              <Card
-                title="סטטוס פרויקטים"
-                subtitle="בניינים עם עבודה פתוחה"
-                actions={
-                  <Link href="/projects" style={styles.viewAllLink}>
-                    הצג הכל ←
-                  </Link>
-                }
+                <div style={styles.mobileHeroCard}>
+                  <p style={styles.mobileHeroEyebrow}>מה דורש טיפול היום</p>
+                  <div style={styles.mobileHeroRow}>
+                    <p style={styles.mobileHeroLabel}>תקלות פתוחות</p>
+                    <p style={styles.mobileHeroValue}>{openTicketsCount}</p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => router.push('/tickets')}
+                    style={{ width: '100%' }}
+                  >
+                    צפייה בתקלות הפתוחות
+                  </Button>
+                </div>
+                <div style={styles.mobileKpiRow}>
+                  <KpiCard label="פעילות" value={stats.total} onClick={() => setActiveKpi('ALL')} />
+                  <KpiCard
+                    label="בטיפול"
+                    value={stats.inProgress}
+                    onClick={() => setActiveKpi('IN_PROGRESS')}
+                  />
+                </div>
+                {nextActionTicket ? (
+                  <div style={styles.nextActionBlock}>
+                    <h2 style={styles.nextActionTitle}>הפעולה הבאה שלך</h2>
+                    <button
+                      type="button"
+                      style={styles.nextActionCard}
+                      onClick={() => openTicket(nextActionTicket)}
+                    >
+                      <div style={styles.nextActionMeta}>
+                        <StatusBadge status={nextActionTicket.status} size="sm" />
+                        <span style={styles.nextActionId}>#{nextActionTicket.ticket_number}</span>
+                      </div>
+                      <p style={styles.nextActionDesc}>
+                        {nextActionTicket.description?.slice(0, 80)}
+                        {(nextActionTicket.description?.length || 0) > 80 ? '…' : ''}
+                      </p>
+                      <p style={styles.nextActionSub}>
+                        {nextActionTicket.project_name || 'בניין'}
+                        {' · '}
+                        {formatRelativeTime(nextActionTicket.created_at)}
+                      </p>
+                      <div style={styles.nextActionFooter}>
+                        {!nextActionTicket.assigned_worker_id ? (
+                          <>
+                            <span style={styles.unassigned}>לא משויך</span>
+                            <span style={styles.assignChip}>שיוך עובד</span>
+                          </>
+                        ) : (
+                          <span style={styles.workerName}>
+                            {workersMap[nextActionTicket.assigned_worker_id] || 'משויך'}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  onClick={() => setMobileMoreOpen((v) => !v)}
+                  style={{ width: '100%', marginBottom: 12 }}
+                >
+                  {mobileMoreOpen ? 'הסתר פרויקטים ופעילות' : 'פרויקטים ופעילות אחרונה'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => router.push('/tasks')}
+                  style={{ width: '100%', marginBottom: 16 }}
+                >
+                  {openTasksCount ?? 0} משימות אחזקה פתוחות
+                </Button>
+              </>
+            ) : (
+              <>
+                <div style={{ ...styles.kpiGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                  <KpiCard
+                    label="תקלות פעילות"
+                    value={stats.total}
+                    hint="סה״כ פתוחות בכל הבניינים"
+                    onClick={() => setActiveKpi('ALL')}
+                  />
+                  <KpiCard
+                    label="פתוחות"
+                    value={stats.open}
+                    hint="ממתינות לטיפול"
+                    onClick={() => setActiveKpi('NEW')}
+                  />
+                  <KpiCard
+                    label="בטיפול"
+                    value={stats.inProgress}
+                    hint="בעבודה או במעקב"
+                    onClick={() => setActiveKpi('IN_PROGRESS')}
+                  />
+                </div>
+                <AttentionRequired previewLimit={3} />
+              </>
+            )}
+
+            {(!isMobile || mobileMoreOpen) && (
+              <div
+                style={{
+                  ...styles.mainGrid,
+                  gridTemplateColumns: isMobile ? '1fr' : '360px 1fr',
+                }}
               >
-                <div style={styles.projectList}>
-                  {projectStats.length === 0 ? (
-                    <p style={styles.emptyText}>אין עדיין פרויקטים עם תקלות</p>
-                  ) : (
-                    projectStats.map((project) => (
-                      <Link href={`/tickets?project=${encodeURIComponent(project.project_code)}`} key={project.id} style={styles.projectCard}>
-                        <div style={styles.projectHeader}>
-                          <div>
-                            <div style={styles.projectName}>{project.name}</div>
+                <Card title="פעילות אחרונה" subtitle="עדכוני תקלות אחרונים">
+                  <div style={styles.activityList}>
+                    {recentActivity.length === 0 ? (
+                      <p style={styles.emptyText}>אין פעילות אחרונה</p>
+                    ) : (
+                      recentActivity.map((activity) => (
+                        <button
+                          key={activity.id}
+                          type="button"
+                          style={{ ...styles.activityItem, ...styles.activityButton }}
+                          onClick={() => openTicketById(activity.ticket_id)}
+                        >
+                          <div style={styles.activityContent}>
+                            <div style={styles.activityTitle}>
+                              תקלה #{activity.ticket_number}
+                              <span style={styles.activityBadge}>{activity.project_label}</span>
+                            </div>
+                            <div style={styles.activityDesc}>
+                              {activity.description?.slice(0, 50)}
+                              {(activity.description?.length || 0) > 50 ? '...' : ''}
+                            </div>
                           </div>
-                          <div style={styles.projectStats}>
+                          <div style={styles.activityTime}>{activity.time}</div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </Card>
+
+                <Card
+                  title="בניינים במעקב"
+                  subtitle="בניינים עם עבודה פתוחה"
+                  actions={
+                    <Link href="/projects" style={styles.viewAllLink}>
+                      הצג הכל
+                    </Link>
+                  }
+                >
+                  <div style={styles.projectList}>
+                    {projectStats.length === 0 ? (
+                      <p style={styles.emptyText}>אין עדיין פרויקטים עם תקלות</p>
+                    ) : (
+                      projectStats.map((project) => (
+                        <Link
+                          href={`/tickets?project=${encodeURIComponent(project.project_code)}`}
+                          key={project.id}
+                          style={styles.projectCard}
+                        >
+                          <div style={styles.projectHeader}>
+                            <div style={styles.projectName}>{project.name}</div>
                             <span style={styles.projectTicketCount}>{project.open} פתוחות</span>
                           </div>
-                        </div>
-                        <div style={styles.progressBarContainer}>
-                          <div style={styles.progressBarBg}>
-                            <div style={{ ...styles.progressBarFill, width: `${project.progress}%` }} />
-                          </div>
-                          <span style={styles.progressLabel}>{project.progress}% הושלמו</span>
-                        </div>
-                      </Link>
-                    ))
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {!isMobile && (
+              <>
+                <div style={styles.tasksShortcut}>
+                  <div>
+                    <div style={styles.tasksShortcutTitle}>משימות אחזקה</div>
+                    <div style={styles.tasksShortcutSub}>
+                      {openTasksCount ?? 0} משימות פתוחות לטיפול
+                    </div>
+                  </div>
+                  <Button variant="secondary" onClick={() => router.push('/tasks')}>
+                    פתיחת המשימות
+                  </Button>
+                </div>
+                <div style={{ ...styles.kpiGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                  <KpiCard
+                    label="נסגרו"
+                    value={stats.closed}
+                    onClick={() => router.push('/summary?tab=history')}
+                  />
+                  {residentsCount !== null && (
+                    <KpiCard label="דיירים רשומים" value={residentsCount} />
+                  )}
+                  {workersCount !== null && (
+                    <KpiCard label="עובדים פעילים" value={workersCount} />
                   )}
                 </div>
-              </Card>
-
-              <Card title="פעילות אחרונה" subtitle="עדכוני תקלות אחרונים">
-                <div style={styles.activityList}>
-                  {recentActivity.map((activity) => (
-                    <button
-                      key={activity.id}
-                      type="button"
-                      style={{ ...styles.activityItem, ...styles.activityButton }}
-                      onClick={() => openTicketById(activity.ticket_id)}
-                    >
-                      <div style={styles.activityIcon}>
-                        {activity.type === 'created' && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" /><path d="M12 8v8" /><path d="M8 12h8" />
-                          </svg>
-                        )}
-                        {activity.type === 'closed' && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
-                            <path d="M20 6 9 17l-5-5" />
-                          </svg>
-                        )}
-                        {activity.type === 'updated' && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="2">
-                            <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                          </svg>
-                        )}
-                      </div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityTitle}>
-                          תקלה #{activity.ticket_number}
-                          <span style={styles.activityBadge}>{activity.project_label}</span>
-                        </div>
-                        <div style={styles.activityDesc}>
-                          {activity.description?.slice(0, 50)}{(activity.description?.length || 0) > 50 ? '...' : ''}
-                        </div>
-                      </div>
-                      <div style={styles.activityTime}>{activity.time}</div>
-                    </button>
-                  ))}
-                </div>
-              </Card>
               </>
-              )}
+            )}
 
-              {isMobile && !mobileMoreOpen && (
-                <Button variant="ghost" size="sm" onClick={() => setMobileMoreOpen(true)} style={{ marginBottom: '12px' }}>
-                  הצג עוד — פרויקטים ופעילות
-                </Button>
-              )}
-            </div>
-
-            <Card
-              title="תקלות פעילות"
-              subtitle={activeKpi === 'ALL' ? 'תקלות פתוחות' : `מסונן לפי ${activeKpi}`}
-              actions={<Link href="/tickets" style={styles.viewAllLink}>הצג הכל</Link>}
-              noPadding
-            >
-              {isMobile ? (
-                <div style={styles.mobileCardList}>
-                  {filteredTickets.map((ticket) => (
-                    <TicketMobileCard
-                      key={ticket.id}
-                      ticket={ticket}
-                      workerName={ticket.assigned_worker_id ? workersMap[ticket.assigned_worker_id] || 'לא ידוע' : 'לא משויך'}
-                      reporterLabel={formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone)}
-                      onClick={() => openTicket(ticket)}
-                    />
-                  ))}
-                </div>
-              ) : (
-              <div style={styles.tableContainer}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>#</th>
-                      <th style={styles.th}>בניין</th>
-                      <th style={styles.th}>תיאור</th>
-                      <th style={styles.th}>מדווח</th>
-                      <th style={styles.th}>סטטוס</th>
-                      <th style={styles.th}>משויך</th>
-                      <th style={styles.th}>גיל</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTickets.map((ticket) => (
-                      <tr key={ticket.id} style={styles.tr} onClick={() => openTicket(ticket)}>
-                        <td style={styles.td}><span style={styles.ticketNumber}>{ticket.ticket_number}</span></td>
-                        <td style={styles.td}><span style={styles.projectBadge}>{ticket.project_name || 'בניין'}</span></td>
-                        <td style={{ ...styles.td, maxWidth: '300px' }}>
-                          <span style={styles.descriptionText}>
-                            {ticket.description?.slice(0, 60)}{(ticket.description?.length || 0) > 60 ? '...' : ''}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          <span style={styles.workerName}>
-                            {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
-                          </span>
-                        </td>
-                        <td style={styles.td}><StatusBadge status={ticket.status} size="sm" /></td>
-                        <td style={styles.td}>
-                          <span style={styles.workerName}>
-                            {ticket.assigned_worker_id ? workersMap[ticket.assigned_worker_id] || 'לא ידוע' : '—'}
-                          </span>
-                        </td>
-                        <td style={styles.td}><span style={styles.ageText}>{formatRelativeTime(ticket.created_at)}</span></td>
+            {!isMobile && (
+              <Card
+                title="תקלות פעילות"
+                subtitle={activeKpi === 'ALL' ? 'תקלות פתוחות' : `מסונן לפי ${activeKpi}`}
+                actions={
+                  <Link href="/tickets" style={styles.viewAllLink}>
+                    הצג הכל
+                  </Link>
+                }
+                noPadding
+              >
+                <div style={styles.tableContainer}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>#</th>
+                        <th style={styles.th}>התקלה והבניין</th>
+                        <th style={styles.th}>סטטוס</th>
+                        <th style={styles.th}>עדיפות</th>
+                        <th style={styles.th}>אחראי</th>
+                        <th style={styles.th}>זמן פתיחה</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredTickets.map((ticket) => (
+                        <tr key={ticket.id} style={styles.tr} onClick={() => openTicket(ticket)}>
+                          <td style={styles.td}>
+                            <span style={styles.ticketNumber}>{ticket.ticket_number}</span>
+                          </td>
+                          <td style={{ ...styles.td, maxWidth: '360px' }}>
+                            <div style={styles.ticketPrimary}>
+                              {ticket.description?.slice(0, 60)}
+                              {(ticket.description?.length || 0) > 60 ? '...' : ''}
+                            </div>
+                            <div style={styles.ticketSecondary}>
+                              {ticket.project_name || 'בניין'}
+                              {ticket.reporter_name
+                                ? ` · ${formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone)}`
+                                : ''}
+                            </div>
+                          </td>
+                          <td style={styles.td}>
+                            <StatusBadge status={ticket.status} size="sm" />
+                          </td>
+                          <td style={styles.td}>
+                            {ticket.priority ? (
+                              <StatusBadge status={ticket.priority} size="sm" />
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td style={styles.td}>
+                            <span style={styles.workerName}>
+                              {ticket.assigned_worker_id
+                                ? workersMap[ticket.assigned_worker_id] || 'לא ידוע'
+                                : 'לא משויך'}
+                            </span>
+                          </td>
+                          <td style={styles.td}>
+                            <span style={styles.ageText}>
+                              {formatRelativeTime(ticket.created_at)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {isMobile && (
+              <div style={styles.mobileCardList}>
+                {filteredTickets.slice(0, 8).map((ticket) => (
+                  <TicketMobileCard
+                    key={ticket.id}
+                    ticket={ticket}
+                    workerName={
+                      ticket.assigned_worker_id
+                        ? workersMap[ticket.assigned_worker_id] || 'לא ידוע'
+                        : 'לא משויך'
+                    }
+                    reporterLabel={formatReporterNameAndPhone(
+                      ticket.reporter_name,
+                      ticket.reporter_phone
+                    )}
+                    onClick={() => openTicket(ticket)}
+                  />
+                ))}
               </div>
-              )}
-            </Card>
+            )}
           </>
         )}
       </div>
@@ -1295,7 +1416,18 @@ export default function DashboardPage() {
 
 const styles: Record<string, CSSProperties> = {
   content: { padding: '32px 40px', maxWidth: '1400px', margin: '0 auto' },
-  hero: { marginBottom: '40px' },
+  desktopToolbar: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginBottom: 12,
+  },
+  desktopDate: {
+    margin: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    color: theme.colors.textMuted,
+  },
+  hero: { marginBottom: 28 },
   heroTop: {
     display: 'flex',
     flexDirection: 'row',
@@ -1305,45 +1437,236 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: 'wrap',
   },
   heroText: { flex: 1, minWidth: 0 },
-  heroTitle: { fontSize: '34px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0, letterSpacing: '-0.02em' },
-  heroDate: { fontSize: '17px', color: theme.colors.textMuted, margin: '8px 0 0' },
-  heroStatus: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: theme.colors.textSecondary, margin: '16px 0 0' },
-  statusDot: { width: '8px', height: '8px', borderRadius: '50%', background: theme.colors.textMuted },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+    margin: 0,
+    letterSpacing: '-0.02em',
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    margin: '6px 0 0',
+    lineHeight: 1.45,
+  },
   heroActions: { display: 'flex', gap: '12px' },
-  loadingContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 0' },
-  kpiGrid: { display: 'grid', gap: '16px', marginBottom: '32px' },
-  mainGrid: { display: 'grid', gap: '24px', marginBottom: '32px' },
-  projectList: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  projectCard: { display: 'block', padding: '16px', borderRadius: theme.radius.md, border: `1px solid ${theme.colors.border}`, textDecoration: 'none', transition: 'all 0.2s ease', cursor: 'pointer' },
-  projectHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' },
-  projectName: { fontSize: '15px', fontWeight: 600, color: theme.colors.textPrimary },
-  projectCode: { fontSize: '13px', color: theme.colors.textMuted, marginTop: '2px' },
-  projectStats: { textAlign: 'right' },
-  projectTicketCount: { fontSize: '13px', fontWeight: 500, color: theme.colors.textSecondary },
-  progressBarContainer: { display: 'flex', alignItems: 'center', gap: '12px' },
-  progressBarBg: { flex: 1, height: '4px', background: theme.colors.muted, borderRadius: '2px', overflow: 'hidden' },
-  progressBarFill: { height: '100%', background: theme.colors.borderStrong, borderRadius: '2px', transition: 'width 0.3s ease' },
-  progressLabel: { fontSize: '12px', color: theme.colors.textMuted, flexShrink: 0 },
-  activityList: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  activityItem: { display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: `1px solid ${theme.colors.border}` },
-  activityButton: { width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'right' as const, fontFamily: 'inherit' },
-  activityIcon: { width: '32px', height: '32px', borderRadius: theme.radius.full, background: theme.colors.muted, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  kpiGrid: { display: 'grid', gap: 16, marginBottom: 24 },
+  mainGrid: { display: 'grid', gap: 16, marginBottom: 24 },
+  projectList: { display: 'flex', flexDirection: 'column', gap: 0 },
+  projectCard: {
+    display: 'block',
+    padding: '12px 0',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    textDecoration: 'none',
+    transition: `background ${theme.motion.fast} ease`,
+    cursor: 'pointer',
+  },
+  projectHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  projectName: { fontSize: 15, fontWeight: 600, color: theme.colors.textPrimary },
+  projectTicketCount: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.colors.primary,
+    background: theme.colors.blueSoft,
+    padding: '5px 10px',
+    borderRadius: theme.radius.sm,
+  },
+  activityList: { display: 'flex', flexDirection: 'column', gap: 0 },
+  activityItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: '12px 0',
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  activityButton: {
+    width: '100%',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'right' as const,
+    fontFamily: 'inherit',
+  },
   activityContent: { flex: 1, minWidth: 0 },
-  activityTitle: { fontSize: '14px', fontWeight: 500, color: theme.colors.textPrimary, display: 'flex', alignItems: 'center', gap: '8px' },
-  activityBadge: { fontSize: '11px', fontWeight: 500, color: theme.colors.textMuted, background: theme.colors.muted, padding: '2px 6px', borderRadius: theme.radius.xs },
-  activityDesc: { fontSize: '13px', color: theme.colors.textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  activityTime: { fontSize: '12px', color: theme.colors.textMuted, flexShrink: 0 },
-  viewAllLink: { fontSize: '14px', fontWeight: 500, color: theme.colors.textSecondary, textDecoration: 'none' },
+  activityTitle: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: theme.colors.textPrimary,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activityBadge: {
+    fontSize: 11,
+    fontWeight: 500,
+    color: theme.colors.textMuted,
+    background: theme.colors.muted,
+    padding: '2px 6px',
+    borderRadius: theme.radius.xs,
+  },
+  activityDesc: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  activityTime: { fontSize: 12, color: theme.colors.textMuted, flexShrink: 0 },
+  viewAllLink: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: theme.colors.primary,
+    textDecoration: 'none',
+  },
+  tasksShortcut: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    padding: '20px 23px',
+    marginBottom: 24,
+    borderRadius: theme.radius.xl,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+  },
+  tasksShortcutTitle: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+  },
+  tasksShortcutSub: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
   tableContainer: { overflowX: 'auto' },
-  mobileCardList: { display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px 16px 20px' },
+  mobileCardList: { display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0 20px' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'start', padding: '14px 20px', fontSize: '12px', fontWeight: 600, color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${theme.colors.border}`, background: theme.colors.muted },
-  tr: { cursor: 'pointer', transition: 'background 0.15s ease' },
-  td: { padding: '16px 20px', fontSize: '14px', color: theme.colors.textPrimary, borderBottom: `1px solid ${theme.colors.border}`, verticalAlign: 'middle' },
+  th: {
+    textAlign: 'start',
+    padding: '12px 16px',
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.colors.textMuted,
+    borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
+  },
+  tr: {
+    cursor: 'pointer',
+    transition: `background ${theme.motion.fast} ease`,
+  },
+  td: {
+    padding: '16px',
+    fontSize: 14,
+    color: theme.colors.textPrimary,
+    borderBottom: `1px solid ${theme.colors.border}`,
+    verticalAlign: 'middle',
+  },
   ticketNumber: { fontWeight: 600, fontVariantNumeric: 'tabular-nums' },
-  projectBadge: { fontSize: '12px', fontWeight: 500, color: theme.colors.textMuted, background: theme.colors.muted, padding: '4px 8px', borderRadius: theme.radius.sm },
-  descriptionText: { color: theme.colors.textSecondary },
+  ticketPrimary: {
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  ticketSecondary: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
   workerName: { color: theme.colors.textSecondary },
-  ageText: { color: theme.colors.textMuted, fontSize: '13px' },
-  emptyText: { textAlign: 'center', color: theme.colors.textMuted, padding: '32px 0' },
+  ageText: { color: theme.colors.textMuted, fontSize: 13 },
+  emptyText: { textAlign: 'center', color: theme.colors.textMuted, padding: '24px 0' },
+  mobileHeroCard: {
+    background: theme.colors.navy,
+    borderRadius: theme.radius.xl,
+    padding: 20,
+    marginBottom: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  mobileHeroEyebrow: {
+    margin: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    color: theme.colors.navText,
+    textAlign: 'right',
+  },
+  mobileHeroRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    color: theme.colors.textInverse,
+  },
+  mobileHeroLabel: { margin: 0, fontSize: 17, fontWeight: 500 },
+  mobileHeroValue: { margin: 0, fontSize: 40, fontWeight: 700, lineHeight: 1 },
+  mobileKpiRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 12,
+    marginBottom: 20,
+  },
+  nextActionBlock: { marginBottom: 16 },
+  nextActionTitle: {
+    margin: '0 0 12px',
+    fontSize: 18,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+    textAlign: 'right',
+  },
+  nextActionCard: {
+    width: '100%',
+    textAlign: 'right',
+    background: theme.colors.surface,
+    border: `1.25px solid ${theme.colors.primary}`,
+    borderRadius: theme.radius.xl,
+    padding: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  nextActionMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nextActionId: { fontSize: 12, fontWeight: 500, color: theme.colors.textMuted },
+  nextActionDesc: {
+    margin: 0,
+    fontSize: 17,
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+    lineHeight: 1.45,
+  },
+  nextActionSub: {
+    margin: 0,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  nextActionFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 4,
+  },
+  unassigned: { fontSize: 13, fontWeight: 500, color: theme.colors.warning },
+  assignChip: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: theme.colors.textInverse,
+    background: theme.colors.primary,
+    padding: '10px 16px',
+    borderRadius: theme.radius.md,
+    boxShadow: theme.shadows.primaryBtn,
+  },
 }

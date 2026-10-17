@@ -1244,8 +1244,8 @@ export default function TicketsPage() {
       >
         {!isMobile && (
           <PageHeader
-            title="תקלות"
-            subtitle="ניהול ומעקב אחר תקלות אחזקה פעילות"
+            title="ניהול תקלות"
+            subtitle="חיפוש, סינון ושיוך — אותן יכולות, פריסה לפי עיצוב המסירה"
             actions={
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', position: 'relative' }}>
                 <div style={{ position: 'relative' }}>

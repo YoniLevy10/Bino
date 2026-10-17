@@ -10,8 +10,8 @@ function CollectionsPageInner() {
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.collections}
       title="גבייה"
-      mobileSubtitle="כסף שנכנס · ממתינים · שליחה"
-      desktopSubtitle="דשבורד גבייה — כמה נגבה, מה פתוח, ושליחה לדיירים"
+      mobileSubtitle="Grow · נגבה · יתרה · חיובים"
+      desktopSubtitle="גביית ועד דרך Grow — סכומים וסטטוסים מהמערכת"
     >
       <CollectionsBoard />
     </AddonFeaturePageShell>
