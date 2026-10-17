@@ -550,6 +550,33 @@ export const markCollectionChargePaidBodySchema = z.object({
   charge_id: z.string().uuid(),
 })
 
+/** כרטסת דירה — תשלום חלקי / מלא מול חיוב קיים. */
+export const postUnitLedgerPaymentBodySchema = z.object({
+  charge_id: z.string().uuid(),
+  amount: z.number().positive().max(1_000_000),
+  payment_method: z
+    .enum(['cash', 'transfer', 'check', 'other', 'grow'])
+    .optional()
+    .nullable(),
+  receipt_note: z.string().max(500).optional().nullable(),
+  idempotency_key: z.string().min(1).max(128).optional().nullable(),
+})
+
+/** כרטסת דירה — יתרת זכות (זיכוי) ליחידה / דייר. */
+export const postUnitLedgerCreditBodySchema = z
+  .object({
+    project_id: z.string().uuid(),
+    unit_id: z.string().uuid().optional().nullable(),
+    resident_id: z.string().uuid().optional().nullable(),
+    amount: z.number().positive().max(1_000_000),
+    description: z.string().max(300).optional().nullable(),
+    receipt_note: z.string().max(500).optional().nullable(),
+    idempotency_key: z.string().min(1).max(128).optional().nullable(),
+  })
+  .refine((v) => Boolean(v.unit_id || v.resident_id), {
+    message: 'נא לבחור דירה (unit_id) או דייר',
+  })
+
 /** Public /pay page — contact for email receipt (Resend; no SMS cost). */
 export const publicPayReceiptContactBodySchema = z
   .object({

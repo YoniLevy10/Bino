@@ -16,6 +16,11 @@ import {
   type CollectionChargeStatus,
 } from '@/lib/collection-charges'
 import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collection-receipt-email'
+import {
+  chargeAnchorFromRow,
+  ensureLedgerChargeEntry,
+  postLedgerFullPaymentForCharge,
+} from '@/lib/unit-ledger'
 
 export type ChargeResidentInfo = {
   id: string
@@ -328,9 +333,16 @@ export async function sendCollectionCharge(
     }
   }
 
+  const sentCharge = updated as CollectionChargeRow
+  // כרטסת דירה: charge line when payment request goes live (idempotent).
+  const ledgerCharge = await ensureLedgerChargeEntry(admin, chargeAnchorFromRow(sentCharge))
+  if (!ledgerCharge.ok) {
+    console.error('[collections] ledger charge entry failed', sentCharge.id, ledgerCharge.error)
+  }
+
   return {
     ok: true,
-    charge: updated as CollectionChargeRow,
+    charge: sentCharge,
     smsSent,
     payUrl: publicPayUrl,
   }
@@ -564,6 +576,13 @@ export async function markCollectionChargePaidManual(
     return { ok: false, error: 'לא ניתן לסמן חיוב מבוטל כשולם' }
   }
   if (row.status === 'paid') {
+    const ledgerPay = await postLedgerFullPaymentForCharge(admin, {
+      charge: chargeAnchorFromRow(row),
+      source: 'manual',
+    })
+    if (!ledgerPay.ok) {
+      console.error('[collections] ledger payment after mark-paid (already paid)', opts.chargeId, ledgerPay.error)
+    }
     return { ok: true, charge: row }
   }
 
@@ -583,12 +602,20 @@ export async function markCollectionChargePaidManual(
   if (updErr || !updated) {
     return { ok: false, error: updErr?.message || 'עדכון ל«שולם» נכשל' }
   }
+  const paidRow = updated as CollectionChargeRow
+  const ledgerPay = await postLedgerFullPaymentForCharge(admin, {
+    charge: chargeAnchorFromRow(paidRow),
+    source: 'manual',
+  })
+  if (!ledgerPay.ok) {
+    console.error('[collections] ledger payment after mark-paid', opts.chargeId, ledgerPay.error)
+  }
   // Await — fire-and-forget is dropped on Vercel after the webhook/response ends.
   const receipt = await sendCollectionReceiptEmailIfNeeded(admin, opts.chargeId)
   if (!receipt.sent && receipt.error) {
     console.error('[collections] receipt email after mark-paid', opts.chargeId, receipt.error)
   }
-  return { ok: true, charge: updated as CollectionChargeRow }
+  return { ok: true, charge: paidRow }
 }
 
 /**
@@ -685,7 +712,9 @@ export async function markChargePaidByGrowIds(
   const applyPaid = async (filter: { column: string; values: string[] }) => {
     const { data: candidates, error: selErr } = await admin
       .from('collection_charges')
-      .select('id, amount, status')
+      .select(
+        'id, client_id, project_id, resident_id, unit_id, title, amount, period_label, status, paid_at, created_at'
+      )
       .in(filter.column, filter.values)
       .neq('status', 'paid')
       .neq('status', 'cancelled')
@@ -695,6 +724,7 @@ export async function markChargePaidByGrowIds(
     }
 
     const allowedIds: string[] = []
+    const candidateById = new Map<string, CollectionChargeRow>()
     for (const row of candidates ?? []) {
       if (!growCallbackSumMatchesCharge(ids.sum, row.amount)) {
         sumRejected += 1
@@ -706,6 +736,7 @@ export async function markChargePaidByGrowIds(
         continue
       }
       allowedIds.push(row.id)
+      candidateById.set(row.id, row as CollectionChargeRow)
     }
     if (allowedIds.length === 0) return
 
@@ -720,13 +751,28 @@ export async function markChargePaidByGrowIds(
       .in('id', allowedIds)
       .neq('status', 'paid')
       .neq('status', 'cancelled')
-      .select('id')
+      .select(
+        'id, client_id, project_id, resident_id, unit_id, title, amount, period_label, status, paid_at, created_at'
+      )
     if (updErr) {
       throw new Error(`grow_mark_paid_update_failed: ${updErr.message}`)
     }
     matched += data?.length ?? 0
     for (const row of data ?? []) {
       if (!newlyPaidIds.includes(row.id)) newlyPaidIds.push(row.id)
+      const anchor = chargeAnchorFromRow({
+        ...(candidateById.get(row.id) || row),
+        ...row,
+        status: 'paid',
+        paid_at: paidAt,
+      } as CollectionChargeRow)
+      const ledgerPay = await postLedgerFullPaymentForCharge(admin, {
+        charge: anchor,
+        source: 'grow',
+      })
+      if (!ledgerPay.ok) {
+        console.error('[grow-webhook] ledger payment failed', row.id, ledgerPay.error)
+      }
     }
   }
 

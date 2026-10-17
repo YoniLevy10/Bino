@@ -534,6 +534,102 @@ export type Database = {
           },
         ]
       }
+      unit_ledger_entries: {
+        Row: {
+          id: string
+          client_id: string
+          project_id: string
+          unit_id: string | null
+          resident_id: string | null
+          entry_type: string
+          amount: number
+          signed_amount: number
+          currency: string
+          charge_id: string | null
+          period_label: string | null
+          description: string | null
+          payment_method: string | null
+          receipt_note: string | null
+          idempotency_key: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          project_id: string
+          unit_id?: string | null
+          resident_id?: string | null
+          entry_type: string
+          amount: number
+          signed_amount: number
+          currency?: string
+          charge_id?: string | null
+          period_label?: string | null
+          description?: string | null
+          payment_method?: string | null
+          receipt_note?: string | null
+          idempotency_key: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          project_id?: string
+          unit_id?: string | null
+          resident_id?: string | null
+          entry_type?: string
+          amount?: number
+          signed_amount?: number
+          currency?: string
+          charge_id?: string | null
+          period_label?: string | null
+          description?: string | null
+          payment_method?: string | null
+          receipt_note?: string | null
+          idempotency_key?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_ledger_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_ledger_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_ledger_entries_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "project_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_ledger_entries_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_ledger_entries_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "collection_charges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_sign_requests: {
         Row: {
           client_id: string
