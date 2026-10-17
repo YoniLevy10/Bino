@@ -39,7 +39,11 @@ export async function POST() {
 
     if (!ok) {
       return NextResponse.json(
-        { error: 'שליחת SMS נכשלה — בדוק את SMS_019_USERNAME ו-SMS_019_PASSWORD ב-Vercel', requestId },
+        {
+          error:
+            'שליחת SMS נכשלה — בדוק את SMS_019_USERNAME ו-SMS_019_TOKEN ב-Vercel (Bearer API token)',
+          requestId,
+        },
         { status: 502 }
       )
     }

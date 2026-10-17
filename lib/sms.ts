@@ -4,6 +4,7 @@ import {
   post019SmsOnce,
   resolve019SmsSource,
   is019UnverifiedSourceError,
+  is019SmsConfigured,
   SMS_019_FALLBACK_SENDER,
   SMS_019_SENDER,
 } from '@/lib/sms-019-core'
@@ -153,15 +154,17 @@ export async function send019StaffSms(
 
   const isProduction = process.env.NODE_ENV === 'production'
 
-  if (!isProduction && !get019SmsEnvPresent()) {
+  if (!isProduction && !is019SmsConfigured()) {
     console.log('📱 SMS_DEVELOPMENT: Not sending SMS in development mode (missing credentials)')
     console.log('📱 SMS_RECIPIENT:', phoneNumber)
     console.log('📱 SMS_MESSAGE_LENGTH:', message.length)
     return true
   }
 
-  if (!get019SmsEnvPresent()) {
-    console.error('❌ SMS_SEND_FAILURE: 019SMS credentials not configured (SMS_019_USERNAME / SMS_019_PASSWORD)')
+  if (!is019SmsConfigured()) {
+    console.error(
+      '❌ SMS_SEND_FAILURE: 019SMS credentials not configured (SMS_019_USERNAME + SMS_019_TOKEN)'
+    )
     return false
   }
 
@@ -247,6 +250,3 @@ async function persistSmsFailure(
   }
 }
 
-function get019SmsEnvPresent(): boolean {
-  return !!(process.env.SMS_019_USERNAME && process.env.SMS_019_PASSWORD)
-}
