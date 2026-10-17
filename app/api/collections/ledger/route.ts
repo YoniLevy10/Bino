@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   let unitLabel: string | null = null
   let residentName: string | null = null
   let resolvedUnitId = unitId || null
-  let resolvedResidentId = residentId || null
+  const resolvedResidentId = residentId || null
   let resolvedProjectId = projectId || null
 
   if (residentId) {

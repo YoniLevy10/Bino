@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   }
 
   let unitId = body.unit_id || null
-  let residentId = body.resident_id || null
+  const residentId = body.resident_id || null
 
   if (residentId) {
     const { data: resident } = await admin
