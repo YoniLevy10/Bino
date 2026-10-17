@@ -72,8 +72,8 @@ export function InstallPromptBanner() {
       style={{
         position: 'fixed',
         bottom: updatePending
-          ? 'calc(env(safe-area-inset-bottom, 0px) + 64px + 60px)'
-          : 'calc(env(safe-area-inset-bottom, 0px) + 64px)',
+          ? 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-bottom-nav-height, 80px) + 60px)'
+          : 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-bottom-nav-height, 80px) + 12px)',
         right: '16px',
         left: '16px',
         zIndex: 9998,

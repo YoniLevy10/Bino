@@ -1,5 +1,5 @@
-/* Bino PWA — v11: manager V2 UI tokens (navy shell / soft page) */
-const CACHE_VERSION = 'bino-v11'
+/* Bino PWA — v12: standalone shell clip fix (dvh / tabbar / safe-area / no 100vw) */
+const CACHE_VERSION = 'bino-v12'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']

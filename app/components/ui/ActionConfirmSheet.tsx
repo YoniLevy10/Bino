@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Button, theme, useMobileMenuOptional } from '../ui'
 
 const MOBILE_BOTTOM_NAV_CLEARANCE =
-  'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
+  'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))'
 const WORKER_TABBAR_CLEARANCE =
   'calc(var(--worker-tabbar-height, 78px) + env(safe-area-inset-bottom, 0px))'
 
@@ -126,7 +126,7 @@ const styles: Record<string, CSSProperties> = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: 'min(440px, calc(100vw - 32px))',
+    width: 'min(440px, calc(100% - 32px))',
     borderRadius: 20,
   },
   title: {

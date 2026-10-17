@@ -827,8 +827,11 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     paddingTop: '8px',
     paddingBottom: '8px',
     paddingInline: '8px',
-    height: '64px',
+    /* minHeight only — fixed height + border clipped labels/icons in standalone PWA */
+    minHeight: 'var(--mobile-bottom-nav-bar-height, 64px)',
+    height: 'auto',
     boxSizing: 'border-box',
+    overflow: 'visible',
   },
   scroll: {
     flex: 1,
@@ -838,6 +841,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     alignItems: 'stretch',
     gap: '4px',
     overflowX: 'auto',
+    overflowY: 'visible',
     WebkitOverflowScrolling: 'touch',
     scrollbarWidth: 'none',
     msOverflowStyle: 'none',
@@ -850,9 +854,10 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   link: {
-    flex: '1 1 0',
-    width: 'auto',
-    maxWidth: '84px',
+    /* Fixed flex-basis — flex-grow squeezed tabs until labels/icons clipped */
+    flex: '0 0 auto',
+    width: '68px',
+    maxWidth: '68px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -882,6 +887,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     height: '24px',
+    flexShrink: 0,
   },
   label: {
     fontSize: '11px',
@@ -953,7 +959,10 @@ function AppShellInner({
         className={calmSurface ? 'kiss-app' : undefined}
         style={{
           display: 'flex',
-          minHeight: '100vh',
+          /* 100vh is wrong on iOS standalone (large/small viewport mismatch) → clips shell */
+          minHeight: '100dvh',
+          width: '100%',
+          maxWidth: '100%',
           background: calmSurface ? theme.colors.background : 'transparent',
         }}
         suppressHydrationWarning
@@ -966,12 +975,16 @@ function AppShellInner({
             flex: 1,
             marginInlineStart: mobile ? 0 : '248px',
             minWidth: 0,
+            width: '100%',
+            maxWidth: '100%',
             textAlign: 'right',
-              paddingBottom: bottomNav
-                ? 'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
-                : undefined,
-              overflowX: mobile ? 'hidden' : undefined,
-              maxWidth: mobile ? '100%' : undefined,
+            paddingBottom: bottomNav
+              ? 'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))'
+              : undefined,
+            /* Landscape notch / fold — keep content inside safe area without using 100vw */
+            paddingLeft: mobile ? 'env(safe-area-inset-left, 0px)' : undefined,
+            paddingRight: mobile ? 'env(safe-area-inset-right, 0px)' : undefined,
+            boxSizing: 'border-box',
           }}
         >
           <PullToRefresh enabled={mobile}>
@@ -2031,8 +2044,9 @@ function useFocusTrap(
   }, [active, containerRef])
 }
 
+/** Space above home indicator reserved for floating tab bar (var excludes safe-area). */
 const MOBILE_BOTTOM_NAV_CLEARANCE =
-  'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
+  'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))'
 
 export function Drawer({
   open,
@@ -2073,15 +2087,22 @@ export function Drawer({
     : { ...drawerStyles.panelSide, width: '560px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
-    paddingBottom: footer
-      ? '24px'
-      : bottomNavVisible
-        ? `calc(24px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`
+    paddingBottom:
+      footer || bottomNavVisible
+        ? '24px'
         : 'calc(24px + env(safe-area-inset-bottom, 0px))',
   }
   const footerStyle: CSSProperties = {
     ...drawerStyles.footer,
-    paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+    /* Panel already sits above nav+safe-area when bottomNavVisible — don't double-pad */
+    paddingBottom: bottomNavVisible
+      ? '16px'
+      : 'calc(16px + env(safe-area-inset-bottom, 0px))',
+  }
+  const headerStyle: CSSProperties = {
+    ...drawerStyles.header,
+    /* Bottom sheet is not under the status bar; side drawer may be (iPad notch). */
+    paddingTop: mobile ? '16px' : 'calc(24px + env(safe-area-inset-top, 0px))',
   }
 
   return (
@@ -2095,7 +2116,7 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby="drawer-title"
       >
-        <div style={drawerStyles.header}>
+        <div style={headerStyle}>
           {mobile && (
             <div style={drawerStyles.dragHandleWrap} aria-hidden>
               <div style={drawerStyles.dragHandle} />
@@ -2145,7 +2166,7 @@ const drawerStyles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-    maxWidth: '100vw',
+    maxWidth: '100%',
   },
   panelMobile: {
     position: 'fixed',
@@ -2162,7 +2183,7 @@ const drawerStyles: Record<string, CSSProperties> = {
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.12)',
-    maxWidth: '100vw',
+    maxWidth: '100%',
     boxSizing: 'border-box',
     WebkitOverflowScrolling: 'touch',
   },
@@ -2171,7 +2192,6 @@ const drawerStyles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: '24px',
-    paddingTop: 'calc(24px + env(safe-area-inset-top))',
     borderBottom: `1px solid ${theme.colors.border}`,
     flexShrink: 0,
     flexWrap: 'wrap',
