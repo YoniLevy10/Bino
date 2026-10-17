@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientIdLite } from '@/lib/api-auth'
 import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
 import { parseSidebarNavOrderFromDb, parseSidebarNavLabelsFromDb } from '@/lib/sidebar-nav'
 
 /** Tenant nav order + feature flags (server-side read; reliable vs browser RLS). */
 export async function GET() {
-  const auth = await requireSessionClientId()
+  // Role unused — skip resolveOrgRoleForUserClient RTT (Tokyo).
+  const auth = await requireSessionClientIdLite()
   if (!auth.ok) return auth.response
 
   const { data, error } = await auth.ctx.admin

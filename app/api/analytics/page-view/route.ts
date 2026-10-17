@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientIdLite } from '@/lib/api-auth'
 import { checkRateLimitMemoryOnly } from '@/lib/rate-limit'
 import { pageViewBodySchema } from '@/lib/api-body-schemas'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
 
 export async function POST(req: Request) {
-  const auth = await requireSessionClientId()
+  // Telemetry only needs userId + clientId; skip unused role resolve RTT.
+  const auth = await requireSessionClientIdLite()
   if (!auth.ok) return auth.response
 
   // Telemetry beacon: memory-only limit — avoid api_rate_limits UPSERT on every nav
