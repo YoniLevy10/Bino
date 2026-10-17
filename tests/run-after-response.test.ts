@@ -109,6 +109,44 @@ describe('runAfterResponse', () => {
     )
   })
 
+  it('awaits ops alert inside after() so waitUntil tracks alert settle', async () => {
+    let alertResolve!: () => void
+    const alertSettled = new Promise<void>((resolve) => {
+      alertResolve = resolve
+    })
+    let alertStarted = false
+    notifyPlatformOps.mockImplementation(async () => {
+      alertStarted = true
+      await alertSettled
+    })
+
+    afterMock.mockImplementation(() => undefined)
+
+    runAfterResponse(
+      'await-ops-task',
+      async () => {
+        throw new Error('boom for await')
+      },
+      { alertOps: true, alertTitle: 'Await ops' }
+    )
+
+    const scheduled = afterMock.mock.calls[0][0] as () => Promise<void>
+    let afterDone = false
+    const afterPromise = scheduled().then(() => {
+      afterDone = true
+    })
+
+    await vi.waitFor(() => {
+      expect(alertStarted).toBe(true)
+    })
+    expect(afterDone).toBe(false)
+
+    alertResolve()
+    await afterPromise
+    expect(afterDone).toBe(true)
+    expect(notifyPlatformOps).toHaveBeenCalledTimes(1)
+  })
+
   it('stringifies plain PostgREST-style objects instead of [object Object]', async () => {
     afterMock.mockImplementation((fn: () => Promise<void>) => {
       void fn()

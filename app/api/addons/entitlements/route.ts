@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientIdLite } from '@/lib/api-auth'
 import { getClientEnabledAddonKeys, listActiveAddonsCatalog } from '@/lib/paid-addons'
 
 /** Tenant dashboard: catalog prices + which add-ons are enabled for this client. */
 export async function GET() {
   try {
-    const auth = await requireSessionClientId()
+    // Role unused — only clientId + admin reads for catalog/enabled keys.
+    const auth = await requireSessionClientIdLite()
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()
