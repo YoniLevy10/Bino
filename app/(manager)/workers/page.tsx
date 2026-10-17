@@ -766,7 +766,7 @@ export default function WorkersPage() {
         {!isMobile && (
           <PageHeader
             title="העובדים שלי"
-            subtitle="מי מטפל בתקלות"
+            subtitle="שיוך, פורטל שטח והתראות תקלה"
             actions={
               <>
               {isBootstrapped && hasAddon(PAID_ADDON_KEYS.worker_stamp) ? (

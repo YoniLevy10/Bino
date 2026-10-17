@@ -918,7 +918,7 @@ function ResidentsPageInner() {
         }}
       >
         {!isMobile && (
-          <PageHeader title="דיירים" subtitle="נתוני דיירים" />
+          <PageHeader title="דיירים" subtitle="פנקס דיירים לפי בניין — חיפוש, ייבוא והוספה" />
         )}
 
         <Card noPadding>

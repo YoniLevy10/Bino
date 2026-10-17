@@ -519,7 +519,7 @@ export default function TasksPage() {
         {!isMobile && (
           <PageHeader
             title="משימות"
-            subtitle="רשימת משימות כללית"
+            subtitle="משימות אחזקה — פתוחות, להיום והיסטוריה"
             actions={createBtn}
           />
         )}

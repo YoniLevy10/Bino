@@ -1026,7 +1026,7 @@ export function CollectionsBoard() {
         <div style={styles.list}>
           {items.map((row) => {
             const status = row.status as CollectionChargeStatus
-            const color = COLLECTION_CHARGE_STATUS_COLORS[status] || '#64748b'
+            const color = COLLECTION_CHARGE_STATUS_COLORS[status] || theme.colors.textMuted
             const busy = busyId === row.id
             const primarySend = status === 'draft' || status === 'failed'
             const canResend = status === 'sent' || status === 'draft'
@@ -1609,7 +1609,7 @@ const styles: Record<string, CSSProperties> = {
   statusTabActive: {
     background: theme.colors.primary,
     borderColor: theme.colors.primary,
-    color: '#fff',
+    color: theme.colors.textInverse,
   },
   statusCount: {
     fontSize: 11,
@@ -1658,29 +1658,30 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 500,
   },
   alertBox: {
-    padding: 14,
-    borderRadius: 14,
-    border: '1px solid #fdba74',
-    background: '#fff7ed',
+    padding: 16,
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.warning}`,
+    background: theme.colors.warningMuted,
   },
   alertTitle: {
     fontWeight: 700,
     marginBottom: 6,
-    color: '#9a3412',
+    color: theme.colors.warning,
   },
   alertText: {
     margin: '0 0 12px',
     fontSize: 14,
-    color: '#9a3412',
+    color: theme.colors.warning,
     lineHeight: 1.55,
   },
   alertSoft: {
     display: 'flex',
     gap: 10,
     alignItems: 'center',
-    padding: '10px 12px',
-    borderRadius: 12,
-    background: '#f1f5f9',
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.mutedSurface,
+    border: `1px solid ${theme.colors.border}`,
     color: theme.colors.textSecondary,
   },
   filters: {
@@ -1705,13 +1706,14 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
   },
   row: {
-    padding: '14px 14px 12px',
-    borderRadius: 16,
+    padding: '20px 23px',
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 14,
+    boxShadow: theme.shadows.xs,
   },
   rowMain: {
     display: 'flex',
@@ -1743,12 +1745,15 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textPrimary,
   },
   badge: {
-    display: 'inline-block',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 6,
-    padding: '3px 8px',
-    borderRadius: 8,
+    padding: '6px 12px',
+    borderRadius: theme.radius.sm,
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 600,
+    lineHeight: 1.45,
   },
   cardDates: {
     fontSize: 12,
@@ -1849,9 +1854,9 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: 10,
     padding: '12px 14px',
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
-    background: '#f8fafc',
+    background: theme.colors.mutedSurface,
   },
   selectedResidentName: {
     fontSize: 15,

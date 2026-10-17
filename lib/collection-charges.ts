@@ -18,12 +18,13 @@ export const COLLECTION_CHARGE_STATUS_LABELS: Record<CollectionChargeStatus, str
   cancelled: 'בוטל',
 }
 
+/** Presentation colors only (Figma V2) — not payment/business rules. */
 export const COLLECTION_CHARGE_STATUS_COLORS: Record<CollectionChargeStatus, string> = {
-  draft: '#64748b',
+  draft: '#718197',
   sent: '#007AFF',
-  paid: '#16a34a',
-  failed: '#dc2626',
-  cancelled: '#94a3b8',
+  paid: '#34C759',
+  failed: '#c33532',
+  cancelled: '#718197',
 }
 
 export type CollectionChargeRow = {

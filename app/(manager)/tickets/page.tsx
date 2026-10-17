@@ -1348,16 +1348,16 @@ export default function TicketsPage() {
 
         {ticketsTruncated && (
           <div style={{
-            background: '#FFF4E5',
-            border: '1.5px solid #FF9500',
-            borderRadius: '10px',
+            background: theme.colors.warningMuted,
+            border: `1px solid ${theme.colors.warning}`,
+            borderRadius: theme.radius.md,
             padding: '10px 16px',
             fontSize: '13px',
-            color: '#7D4700',
+            color: theme.colors.warning,
             marginBottom: '12px',
             direction: 'rtl',
           }}>
-            ⚠️ מציג עד 200 תקלות פעילות אחרונות. תקלות סגורות — בדף הסיכום, לשונית היסטוריה.
+            מציג עד 200 תקלות פעילות אחרונות. תקלות סגורות — בדף הסיכום, לשונית היסטוריה.
           </div>
         )}
 

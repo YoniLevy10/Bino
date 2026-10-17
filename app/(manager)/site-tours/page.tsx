@@ -42,7 +42,10 @@ export default function SiteToursPage() {
       )}
       <div style={styles.wrap(isMobile)}>
         {!isMobile && (
-          <PageHeader title="סיורים" subtitle="היסטוריית סיורים, הערות, תמונות וממצאים מהשטח" />
+          <PageHeader
+            title="סיורים"
+            subtitle="היסטוריית סיורים מהשטח — הערות, תמונות וממצאים"
+          />
         )}
         {showSpinner ? (
           <LoadingSpinner />

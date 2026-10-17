@@ -584,7 +584,7 @@ export default function ProjectsPage() {
         {!isMobile && (
           <PageHeader
             title="פרויקטים"
-            subtitle="ניהול בניינים ומיקומים"
+            subtitle="בניינים במעקב — קודים, דיירים ועבודה פתוחה"
             actions={
               <Button variant="primary" onClick={openCreateDrawer}>
                 פרויקט חדש
