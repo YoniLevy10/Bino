@@ -14,6 +14,27 @@ function setCookieName(header: string): string {
 }
 
 /**
+ * When middleware redirects (e.g. missing/invalid session → `/login`), copy any
+ * Set-Cookie already queued on the pending response (rotated refresh/access,
+ * tenant-cache clear) onto the redirect so tokens are not dropped mid-nav.
+ *
+ * Preserve full Set-Cookie (incl. Max-Age) — dropping options turns them into
+ * session cookies that iOS standalone PWA wipes when the app is backgrounded.
+ */
+export function redirectWithMiddlewareCookies(pending: PendingResponse, url: URL): NextResponse {
+  const redirect = NextResponse.redirect(url)
+  const setCookies =
+    typeof pending.response.headers.getSetCookie === 'function'
+      ? pending.response.headers.getSetCookie()
+      : []
+  for (const cookie of setCookies) {
+    redirect.headers.append('Set-Cookie', cookie)
+  }
+  pending.response = redirect
+  return redirect
+}
+
+/**
  * `getUser()` in middleware may rotate the Supabase access token.
  * Route handlers read the *request* cookies, not `Set-Cookie` on the response.
  * If only the response is updated, the handler refreshes the same token again

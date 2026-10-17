@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { NextRequest, NextResponse } from 'next/server'
-import { applyMiddlewareSupabaseCookies } from '@/lib/middleware-auth-cookies'
+import {
+  applyMiddlewareSupabaseCookies,
+  redirectWithMiddlewareCookies,
+} from '@/lib/middleware-auth-cookies'
 import { MIDDLEWARE_TENANT_COOKIE } from '@/lib/middleware-tenant-cache'
 
 function cookieNames(response: NextResponse): string[] {
@@ -53,4 +56,47 @@ describe('applyMiddlewareSupabaseCookies', () => {
     expect(req.cookies.get('sb-access-token')).toBeUndefined()
     expect(cookieNames(pending.response).filter((name) => name === 'sb-access-token')).toHaveLength(1)
   })
+
+  it('forwards rotated refresh onto request so handlers do not 401 on stale token', () => {
+    const req = new NextRequest('https://bino.casa/dashboard', {
+      headers: { cookie: 'sb-refresh-token=old-refresh' },
+    })
+    const pending = { response: NextResponse.next() }
+
+    applyMiddlewareSupabaseCookies(req, pending, [
+      { name: 'sb-refresh-token', value: 'rotated-refresh', options: { path: '/', maxAge: 3600 } },
+      { name: 'sb-access-token', value: 'rotated-access', options: { path: '/', maxAge: 3600 } },
+    ])
+
+    expect(req.cookies.get('sb-refresh-token')?.value).toBe('rotated-refresh')
+    expect(req.cookies.get('sb-access-token')?.value).toBe('rotated-access')
+  })
 })
+
+describe('redirectWithMiddlewareCookies', () => {
+  it('preserves queued Set-Cookie on login redirect (invalid/missing session)', () => {
+    const pending = { response: NextResponse.next() }
+    pending.response.cookies.set('sb-access-token', 'rotated', {
+      path: '/',
+      maxAge: 3600,
+      httpOnly: true,
+    })
+    pending.response.cookies.set(MIDDLEWARE_TENANT_COOKIE, '', {
+      path: '/',
+      maxAge: 0,
+    })
+
+    const url = new URL('https://bino.casa/login?redirectTo=%2Fdashboard')
+    const redirect = redirectWithMiddlewareCookies(pending, url)
+
+    expect(redirect.status).toBeGreaterThanOrEqual(300)
+    expect(redirect.status).toBeLessThan(400)
+    expect(redirect.headers.get('location')).toContain('/login')
+    const names = cookieNames(redirect)
+    expect(names).toContain('sb-access-token')
+    expect(names).toContain(MIDDLEWARE_TENANT_COOKIE)
+    const accessHeader = redirect.headers.getSetCookie().find((h) => h.startsWith('sb-access-token='))
+    expect(accessHeader).toMatch(/Max-Age=3600/i)
+  })
+})
+
