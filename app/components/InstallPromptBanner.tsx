@@ -15,7 +15,6 @@ export function InstallPromptBanner() {
   const { displayName, logoUrl } = useClientBranding()
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
-  const [updatePending, setUpdatePending] = useState(false)
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) return
@@ -25,12 +24,9 @@ export function InstallPromptBanner() {
       e.preventDefault()
       setPrompt(e as BeforeInstallPromptEvent)
     }
-    const updateHandler = () => setUpdatePending(true)
     window.addEventListener('beforeinstallprompt', handler)
-    window.addEventListener('sw-update-waiting', updateHandler)
     return () => {
       window.removeEventListener('beforeinstallprompt', handler)
-      window.removeEventListener('sw-update-waiting', updateHandler)
     }
   }, [])
 
@@ -71,9 +67,8 @@ export function InstallPromptBanner() {
     <div
       style={{
         position: 'fixed',
-        bottom: updatePending
-          ? 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-bottom-nav-height, 80px) + 60px)'
-          : 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-bottom-nav-height, 80px) + 12px)',
+        // Keep #272 safe-area + tabbar clearance (no update-banner offset — banner removed).
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-bottom-nav-height, 80px) + 12px)',
         right: '16px',
         left: '16px',
         zIndex: 9998,

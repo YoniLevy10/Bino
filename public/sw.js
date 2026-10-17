@@ -1,5 +1,5 @@
-/* Bino PWA — v13: KPI row no clipped 3rd square (KpiRow scroll/wrap) */
-const CACHE_VERSION = 'bino-v13'
+/* Bino PWA — v14: quiet SW activate (no update banner); keep ≥v13 KPI/shell fixes */
+const CACHE_VERSION = 'bino-v14'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
@@ -9,7 +9,7 @@ self.addEventListener('install', (event) => {
     caches
       .open(STATIC_CACHE)
       .then((cache) => cache.addAll(PRECACHE_URLS))
-    // No skipWaiting() — let the app decide when to activate (shows update banner)
+    // No skipWaiting() here — RegisterServiceWorker activates waiting workers quietly
   )
 })
 

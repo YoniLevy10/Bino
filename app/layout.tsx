@@ -5,7 +5,6 @@ import { ToastContainer } from "./components/ToastContainer";
 import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
 import { ClearAppBadgeOnActivate } from "./components/ClearAppBadgeOnActivate";
 import { PwaSessionResume } from "./components/PwaSessionResume";
-import { UpdateNotification } from "./components/UpdateNotification";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { InstallPromptBanner } from "./components/InstallPromptBanner";
 import { initializeLogger } from "@/lib/logging";
@@ -138,7 +137,6 @@ export default function RootLayout({
         <PwaSessionResume />
         <OfflineIndicator />
         <InstallPromptBanner />
-        <UpdateNotification />
         <AppProviders>
           {children}
         </AppProviders>
