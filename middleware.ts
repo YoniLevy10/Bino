@@ -20,7 +20,11 @@ import {
   buildCanonicalRedirectUrl,
   shouldRedirectVercelAppHostToCanonical,
 } from '@/lib/canonical-host'
-import { applyMiddlewareSupabaseCookies } from '@/lib/middleware-auth-cookies'
+import {
+  applyMiddlewareSupabaseCookies,
+  redirectWithMiddlewareCookies,
+} from '@/lib/middleware-auth-cookies'
+import { shouldSignOutForTenantGate } from '@/lib/middleware-tenant-gate'
 
 type Pending = { response: NextResponse }
 
@@ -46,18 +50,7 @@ function createMiddlewareSupabase(req: NextRequest, pending: Pending) {
 
 /** Keep auth cookies that getUser() may have refreshed when swapping to a redirect. */
 function redirectWithCookies(pending: Pending, url: URL) {
-  const redirect = NextResponse.redirect(url)
-  // Preserve full Set-Cookie (incl. Max-Age) — dropping options turns them into
-  // session cookies that iOS standalone PWA wipes when the app is backgrounded.
-  const setCookies =
-    typeof pending.response.headers.getSetCookie === 'function'
-      ? pending.response.headers.getSetCookie()
-      : []
-  for (const cookie of setCookies) {
-    redirect.headers.append('Set-Cookie', cookie)
-  }
-  pending.response = redirect
-  return redirect
+  return redirectWithMiddlewareCookies(pending, url)
 }
 
 export async function middleware(req: NextRequest) {
@@ -286,7 +279,10 @@ export async function middleware(req: NextRequest) {
       const clientIds = await listClientIdsForUserId(admin, user.id)
       if (clientIds.length === 0) {
         clearMiddlewareTenantCache(pending.response)
-        await supabase.auth.signOut()
+        // Access control only — shouldSignOutForTenantGate('no_access') === true
+        if (shouldSignOutForTenantGate('no_access')) {
+          await supabase.auth.signOut()
+        }
         if (pathname.startsWith('/api/')) {
           return NextResponse.json(
             { error: 'אין גישה — חשבון לא משויך לארגון' },
@@ -300,7 +296,10 @@ export async function middleware(req: NextRequest) {
       }
       if (clientIds.length > 1) {
         clearMiddlewareTenantCache(pending.response)
-        await supabase.auth.signOut()
+        // Access control only — never used for transient DB failures.
+        if (shouldSignOutForTenantGate('multi_tenant')) {
+          await supabase.auth.signOut()
+        }
         if (pathname.startsWith('/api/')) {
           return NextResponse.json(
             { error: 'החשבון משויך ליותר מלקוח אחד — פנו לתמיכה' },
@@ -327,7 +326,8 @@ export async function middleware(req: NextRequest) {
         enabledNavFeatures: enabledNavFeatures ?? null,
       })
     } catch (err) {
-      // Transient DB / admin / network failure — NEVER signOut.
+      // Transient DB / admin / network failure — NEVER signOut
+      // (shouldSignOutForTenantGate('transient') === false).
       // Signing out here was wiping iOS PWA sessions on resume flakes.
       console.error('[middleware] tenant resolution transient failure — keeping session', err)
       if (pathname.startsWith('/api/')) {
