@@ -19,6 +19,8 @@ import {
   cancelCollectionChargeBodySchema,
   resendCollectionChargeBodySchema,
   markCollectionChargePaidBodySchema,
+  postUnitLedgerPaymentBodySchema,
+  postUnitLedgerCreditBodySchema,
 } from '@/lib/api-body-schemas'
 import { navItemIdForPathname } from '@/lib/client-nav-features'
 
@@ -198,6 +200,33 @@ describe('collections zod schemas', () => {
     expect(cancelCollectionChargeBodySchema.safeParse({ charge_id: chargeId }).success).toBe(true)
     expect(markCollectionChargePaidBodySchema.safeParse({ charge_id: chargeId }).success).toBe(true)
   })
+
+  it('accepts ledger partial payment and credit bodies', () => {
+    expect(
+      postUnitLedgerPaymentBodySchema.safeParse({
+        charge_id: chargeId,
+        amount: 50,
+        payment_method: 'transfer',
+        receipt_note: 'העברה 123',
+      }).success
+    ).toBe(true)
+    expect(
+      postUnitLedgerPaymentBodySchema.safeParse({ charge_id: chargeId, amount: 0 }).success
+    ).toBe(false)
+    expect(
+      postUnitLedgerCreditBodySchema.safeParse({
+        project_id: chargeId,
+        resident_id: chargeId,
+        amount: 20,
+      }).success
+    ).toBe(true)
+    expect(
+      postUnitLedgerCreditBodySchema.safeParse({
+        project_id: chargeId,
+        amount: 20,
+      }).success
+    ).toBe(false)
+  })
 })
 
 describe('collections nav mapping', () => {
@@ -210,27 +239,73 @@ describe('markChargePaidByGrowIds', () => {
   it('updates by public token and skips empty', async () => {
     const { markChargePaidByGrowIds } = await import('@/lib/collection-charge-ops')
 
+    const chargeRow = {
+      id: '1',
+      client_id: 'c1',
+      project_id: 'p1',
+      resident_id: 'r1',
+      unit_id: 'u1',
+      title: 'ועד',
+      amount: 1,
+      period_label: '2026-07',
+      status: 'sent',
+      paid_at: null,
+      created_at: '2026-07-01T00:00:00.000Z',
+    }
     const calls: Array<{ table: string; op: string }> = []
-    const makeChain = (mode: 'selectCandidates' | 'updatePaid') => {
+    const makeChain = (table: string, mode: 'select' | 'update' | 'insert') => {
       const c: Record<string, unknown> = {}
       const terminal = () => {
-        if (mode === 'selectCandidates') {
-          return Promise.resolve({
-            data: [{ id: '1', amount: 1, status: 'sent' }],
-            error: null,
-          })
+        if (table === 'unit_ledger_entries') {
+          if (mode === 'insert') {
+            return Promise.resolve({
+              data: {
+                id: 'le1',
+                client_id: 'c1',
+                project_id: 'p1',
+                unit_id: 'u1',
+                resident_id: 'r1',
+                entry_type: 'payment',
+                amount: 1,
+                signed_amount: -1,
+                currency: 'ILS',
+                charge_id: '1',
+                period_label: '2026-07',
+                description: 'תשלום',
+                payment_method: 'grow',
+                receipt_note: null,
+                idempotency_key: 'grow_paid:1',
+                created_by: null,
+                created_at: '2026-07-02T00:00:00.000Z',
+              },
+              error: null,
+            })
+          }
+          // paid-toward / idempotency lookups
+          return Promise.resolve({ data: [], error: null })
         }
-        return Promise.resolve({ data: [{ id: '1' }], error: null })
+        if (mode === 'select') {
+          return Promise.resolve({ data: [{ ...chargeRow }], error: null })
+        }
+        return Promise.resolve({
+          data: [{ ...chargeRow, status: 'paid', paid_at: '2026-07-02T00:00:00.000Z' }],
+          error: null,
+        })
       }
       c.update = () => {
-        calls.push({ table: 'collection_charges', op: 'update' })
-        return makeChain('updatePaid')
+        calls.push({ table, op: 'update' })
+        return makeChain(table, 'update')
+      }
+      c.insert = () => {
+        calls.push({ table, op: 'insert' })
+        return makeChain(table, 'insert')
       }
       c.select = () => c
       c.in = () => c
       c.neq = () => c
       c.eq = () => c
       c.is = () => c
+      c.single = async () => terminal()
       c.maybeSingle = async () => ({ data: null, error: null })
       c.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
         terminal().then(resolve, reject)
@@ -239,7 +314,7 @@ describe('markChargePaidByGrowIds', () => {
     const admin = {
       from: (table: string) => {
         calls.push({ table, op: 'from' })
-        return makeChain('selectCandidates')
+        return makeChain(table, 'select')
       },
     }
 
@@ -258,7 +333,8 @@ describe('markChargePaidByGrowIds', () => {
     })
     expect(matched.matched).toBe(1)
     expect(matched.sumRejected).toBe(0)
-    expect(calls.some((c) => c.op === 'update')).toBe(true)
+    expect(calls.some((c) => c.table === 'collection_charges' && c.op === 'update')).toBe(true)
+    expect(calls.some((c) => c.table === 'unit_ledger_entries' && c.op === 'insert')).toBe(true)
   })
 
   it('idempotent when candidates already paid (select returns empty)', async () => {

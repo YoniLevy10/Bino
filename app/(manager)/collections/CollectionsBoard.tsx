@@ -49,6 +49,7 @@ import {
   GROW_STATUS_TONE_COLOR,
   growProjectStatusView,
 } from '@/lib/grow-project-status'
+import { UnitLedgerDrawer } from '@/app/(manager)/collections/UnitLedgerDrawer'
 
 type GrowProjectSummary = {
   id: string
@@ -152,6 +153,7 @@ export function CollectionsBoard() {
 
   const [bulkOpen, setBulkOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [ledgerCharge, setLedgerCharge] = useState<CollectionChargeListItem | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   // Bulk form
@@ -1199,6 +1201,16 @@ export function CollectionsBoard() {
                       ידני
                     </Button>
                   ) : null}
+                  {row.resident_id || row.unit_id ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => setLedgerCharge(row)}
+                    >
+                      כרטסת
+                    </Button>
+                  ) : null}
                   {row.grow_invoice_url ? (
                     <a
                       href={row.grow_invoice_url}
@@ -1229,6 +1241,16 @@ export function CollectionsBoard() {
           ניהול חיבורים
         </Link>
       </p>
+
+      <UnitLedgerDrawer
+        open={Boolean(ledgerCharge)}
+        onClose={() => setLedgerCharge(null)}
+        isMobile={isMobile}
+        charge={ledgerCharge}
+        onChanged={async () => {
+          await loadCharges()
+        }}
+      />
 
       <Drawer
         open={bulkOpen}
