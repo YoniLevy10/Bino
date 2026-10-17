@@ -78,7 +78,9 @@ export async function logRunAfterFailure(
 
   try {
     const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
-    void notifyPlatformOps({
+    // Await so Fluid/serverless waitUntil (via after()) keeps the isolate alive
+    // until the ops email/send settles — void risked freeze drop.
+    await notifyPlatformOps({
       kind: 'operational_error',
       title: options.alertTitle || `Background task failed: ${taskName}`,
       message,

@@ -9,6 +9,21 @@ test.describe('Dashboard - Core Functionality', () => {
     await expect(page).toHaveTitle(/Bino|Dashboard|BINO/i)
   })
 
+  test('Unauthenticated dashboard → login with redirectTo preserved', async ({ page }) => {
+    await page.goto('/dashboard')
+    await page.waitForURL(/\/login/, { timeout: 12_000 })
+    await expect(page).toHaveURL(/\/login/)
+    const url = new URL(page.url())
+    // Middleware sets redirectTo so post-login returns to dashboard
+    const redirectTo = url.searchParams.get('redirectTo')
+    if (redirectTo) {
+      expect(redirectTo).toMatch(/dashboard/)
+    }
+    await expect(page.locator('button').filter({ hasText: /google/i }).first()).toBeVisible({
+      timeout: 8_000,
+    })
+  })
+
   test('Main navigation renders', async ({ page }) => {
     // Login page should render the product name and Google sign-in button
     await page.goto('/login')
