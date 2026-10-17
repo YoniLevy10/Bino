@@ -21,6 +21,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   SearchInput,
@@ -439,11 +440,11 @@ export default function ProfessionalsPage() {
           <PageTransitionLoader />
         ) : (
           <>
-            <div style={styles.kpiGrid}>
+            <KpiRow columns={3} isMobile={isMobile}>
               <KpiCard label="סה״כ" value={stats.total} accent="primary" />
               <KpiCard label="פעילים" value={stats.active} accent="success" />
               <KpiCard label="לא פעילים" value={stats.inactive} />
-            </div>
+            </KpiRow>
 
             <div style={{ marginBottom: 24 }}>
               <MidragSearchPanel

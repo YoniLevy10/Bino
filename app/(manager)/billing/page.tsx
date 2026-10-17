@@ -21,6 +21,7 @@ import {
   PageHeader,
   Card,
   KpiCard,
+  KpiRow,
   ErrorState,
   LoadingSpinner,
   theme
@@ -207,16 +208,11 @@ export default function BillingPage() {
               </Card>
             )}
 
-            <div
-              style={{
-                ...styles.kpiGrid,
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-              }}
-            >
+            <KpiRow columns={3} isMobile={isMobile}>
               <KpiCard label="טיקטים החודש" value={data.ticketsThisMonth} accent="primary" />
               <KpiCard label="דיירים (סה״כ ברשומה)" value={data.residentsTotal} accent="success" />
               <KpiCard label="עובדים פעילים" value={data.workersActive} />
-            </div>
+            </KpiRow>
 
             {data.plans && data.plans.length > 0 && (
               <Card noPadding style={{ marginTop: 20 }}>

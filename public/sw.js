@@ -1,5 +1,5 @@
-/* Bino PWA — v12: standalone shell clip fix (dvh / tabbar / safe-area / no 100vw) */
-const CACHE_VERSION = 'bino-v12'
+/* Bino PWA — v13: KPI row no clipped 3rd square (KpiRow scroll/wrap) */
+const CACHE_VERSION = 'bino-v13'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']

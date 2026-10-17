@@ -195,9 +195,14 @@ export default function AttendancePage() {
 
   const currentTabContent = (
     <>
-      <div style={{ ...styles.kpiGrid, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)' }}>
+      <div
+        style={{
+          ...styles.kpiGrid,
+          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+        }}
+      >
         {kpiTiles.map((tile) => (
-          <Card key={tile.key} style={styles.kpiCard}>
+          <Card key={tile.key} style={{ ...styles.kpiCard, minWidth: 0 }}>
             <div style={{ ...styles.kpiValue, color: tile.accent }}>{loading ? '—' : tile.value}</div>
             <div style={styles.kpiLabel}>{tile.label}</div>
           </Card>

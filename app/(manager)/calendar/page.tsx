@@ -27,6 +27,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   Drawer,
@@ -418,11 +419,11 @@ function CalendarPageInner() {
                 {gcal.google_email ? ` (${gcal.google_email})` : ''} — אירועים שנשמרים כאן מתווספים אוטומטית ליומן.
               </p>
             ) : null}
-            <div style={{ ...styles.kpiGrid, gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)' }}>
+            <KpiRow columns={3} isMobile={isMobile}>
               <KpiCard label="היום" value={kpi.today} accent="primary" />
               <KpiCard label="השבוע" value={kpi.week} accent="warning" />
               <KpiCard label="בטווח" value={kpi.month} accent="success" />
-            </div>
+            </KpiRow>
 
             <Card noPadding style={{ marginBottom: '16px' }}>
               <div style={styles.filtersRow}>

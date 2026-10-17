@@ -147,16 +147,31 @@ function AddonsPageInner() {
         )}
 
         {!loading && !catalogMissing && addons.length > 0 && (
-          <div style={styles.statsRow}>
-            <div style={styles.statChip}>
+          <div
+            style={isMobile ? styles.statsRowMobile : styles.statsRow}
+            data-ui={isMobile ? 'kpi-row' : undefined}
+          >
+            <div style={{ ...styles.statChip, ...(isMobile ? styles.statChipMobile : {}) }}>
               <span style={styles.statValue}>{stats.total}</span>
               <span style={styles.statLabel}>תוספים בקטלוג</span>
             </div>
-            <div style={{ ...styles.statChip, background: theme.colors.successMuted }}>
+            <div
+              style={{
+                ...styles.statChip,
+                ...(isMobile ? styles.statChipMobile : {}),
+                background: theme.colors.successMuted,
+              }}
+            >
               <span style={{ ...styles.statValue, color: theme.colors.success }}>{stats.active}</span>
               <span style={styles.statLabel}>פעילים</span>
             </div>
-            <div style={{ ...styles.statChip, background: theme.colors.warningMuted }}>
+            <div
+              style={{
+                ...styles.statChip,
+                ...(isMobile ? styles.statChipMobile : {}),
+                background: theme.colors.warningMuted,
+              }}
+            >
               <span style={{ ...styles.statValue, color: theme.colors.warning }}>{stats.locked}</span>
               <span style={styles.statLabel}>לרכישה</span>
             </div>
@@ -233,6 +248,19 @@ const styles: Record<string, CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     gap: 12,
+    width: '100%',
+    minWidth: 0,
+  },
+  statsRowMobile: {
+    display: 'flex',
+    flexDirection: 'row-reverse',
+    gap: 10,
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    WebkitOverflowScrolling: 'touch',
+    maxWidth: '100%',
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
   },
   statChip: {
     padding: '14px 16px',
@@ -243,6 +271,13 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
+    minWidth: 0,
+  },
+  statChipMobile: {
+    flex: '0 0 auto',
+    width: 'calc((100% - 20px) / 3)',
+    minWidth: 112,
+    boxSizing: 'border-box',
   },
   statValue: {
     fontSize: '22px',

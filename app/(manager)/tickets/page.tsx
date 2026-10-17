@@ -61,6 +61,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   StatusBadge,
@@ -1332,15 +1333,11 @@ export default function TicketsPage() {
           />
         )}
 
-        {/* KPI Cards */}
-        <div style={{
-          ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-        }}>
+        <KpiRow columns={isMobile ? 2 : 3} isMobile={isMobile}>
           <KpiCard label="סה״כ פעילות" value={stats.total} accent="primary" />
           <KpiCard label="פתוחות" value={stats.open} accent="warning" />
           <KpiCard label="בטיפול" value={stats.assigned} accent="primary" />
-        </div>
+        </KpiRow>
 
         <p style={styles.closedHint}>
           תקלות סגורות מופיעות בדף הסיכום, בלשונית היסטוריה ובהיסטוריית הפרויקט.

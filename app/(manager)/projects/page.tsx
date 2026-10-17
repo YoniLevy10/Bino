@@ -34,6 +34,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   StatusBadge,
@@ -603,15 +604,11 @@ export default function ProjectsPage() {
           />
         ) : (
           <>
-        {/* KPI Cards */}
-        <div style={{
-          ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
-        }}>
+        <KpiRow columns={3} isMobile={isMobile}>
           <KpiCard label="סה״כ פרויקטים" value={stats.total} accent="primary" />
           <KpiCard label="פעילים" value={stats.active} accent="success" />
           <KpiCard label="לא פעילים" value={stats.inactive} />
-        </div>
+        </KpiRow>
 
         {/* Filters + Grid */}
         <Card noPadding>

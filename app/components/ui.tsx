@@ -5,8 +5,12 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   type ReactNode,
+  type ReactElement,
   type CSSProperties,
+  Children,
+  cloneElement,
   createContext,
+  isValidElement,
   useCallback,
   useContext,
   useEffect,
@@ -1507,6 +1511,7 @@ export function KpiCard({
   accent,
   onClick,
   hint,
+  compact,
 }: {
   label: string
   value: string | number
@@ -1514,6 +1519,8 @@ export function KpiCard({
   onClick?: () => void
   /** Optional secondary line under the label (Figma KPI captions) */
   hint?: string
+  /** Denser padding/type for narrow KPI rows (mobile 3-up) */
+  compact?: boolean
 }) {
   const accentColors = {
     primary: theme.colors.primary,
@@ -1529,22 +1536,137 @@ export function KpiCard({
       type="button"
       onClick={onClick}
       data-ui="kpi-card"
+      data-compact={compact ? '1' : undefined}
       className="lg-glass"
       style={{
         ...kpiStyles.card,
+        ...(compact ? kpiStyles.cardCompact : {}),
         cursor: onClick ? 'pointer' : 'default',
         ...(accentColor ? { boxShadow: `inset 0 -3px 0 0 ${accentColor}` } : {}),
       }}
     >
-      <div style={kpiStyles.row}>
-        <div style={kpiStyles.value}>{value}</div>
+      <div style={{ ...kpiStyles.row, ...(compact ? kpiStyles.rowCompact : {}) }}>
+        <div style={{ ...kpiStyles.value, ...(compact ? kpiStyles.valueCompact : {}) }}>{value}</div>
         <div style={kpiStyles.labelCol}>
-          <div style={kpiStyles.label}>{label}</div>
+          <div style={{ ...kpiStyles.label, ...(compact ? kpiStyles.labelCompact : {}) }}>{label}</div>
           {hint ? <div style={kpiStyles.hint}>{hint}</div> : null}
         </div>
       </div>
     </button>
   )
+}
+
+/**
+ * Top metric squares row. Mobile: local horizontal scroll with fixed card
+ * floors so the 3rd square is never clipped by page overflow-x:clip.
+ * Desktop: equal grid with minmax(0,1fr) so content min-size cannot blow the row.
+ */
+export function KpiRow({
+  children,
+  columns = 3,
+  isMobile = false,
+  style,
+}: {
+  children: ReactNode
+  columns?: number
+  isMobile?: boolean
+  style?: CSSProperties
+}) {
+  const renderCompact = (child: ReactNode) =>
+    isValidElement(child)
+      ? cloneElement(child as ReactElement<{ compact?: boolean }>, { compact: true })
+      : child
+
+  if (isMobile && columns <= 2) {
+    /* 2-up wrap (tickets/summary) — minmax(0,1fr) prevents content-min blowout */
+    return (
+      <div
+        style={{
+          ...kpiRowStyles.mobileWrapGrid,
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          ...style,
+        }}
+        data-ui="kpi-row"
+      >
+        {Children.map(children, (child) => (child == null ? null : renderCompact(child)))}
+      </div>
+    )
+  }
+
+  if (isMobile) {
+    const gapPx = 10
+    const gaps = Math.max(0, columns - 1) * gapPx
+    const itemStyle: CSSProperties = {
+      ...kpiRowStyles.mobileItem,
+      width: `calc((100% - ${gaps}px) / ${columns})`,
+      minWidth: columns >= 4 ? 100 : 112,
+    }
+    return (
+      <div style={{ ...kpiRowStyles.mobileWrap, ...style }} data-ui="kpi-row">
+        <div style={kpiRowStyles.mobileTrack} data-kpi-track>
+          {Children.map(children, (child) =>
+            child == null ? null : <div style={itemStyle}>{renderCompact(child)}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        ...kpiRowStyles.desktopGrid,
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        ...style,
+      }}
+      data-ui="kpi-row"
+    >
+      {children}
+    </div>
+  )
+}
+
+const kpiRowStyles: Record<string, CSSProperties> = {
+  desktopGrid: {
+    display: 'grid',
+    gap: 16,
+    marginBottom: 24,
+    width: '100%',
+    minWidth: 0,
+  },
+  mobileWrap: {
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    /* Contain scroll — do not let the page gain horizontal overflow */
+    overflow: 'hidden',
+  },
+  mobileWrapGrid: {
+    display: 'grid',
+    gap: 10,
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+  },
+  mobileTrack: {
+    display: 'flex',
+    flexDirection: 'row-reverse',
+    gap: 10,
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    WebkitOverflowScrolling: 'touch',
+    scrollSnapType: 'x proximity',
+    paddingBottom: 2,
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
+    maxWidth: '100%',
+  },
+  mobileItem: {
+    flex: '0 0 auto',
+    scrollSnapAlign: 'start',
+  },
 }
 
 const kpiStyles: Record<string, CSSProperties> = {
@@ -1555,6 +1677,13 @@ const kpiStyles: Record<string, CSSProperties> = {
     transition: `background ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     width: '100%',
     minHeight: '96px',
+    minWidth: 0,
+    boxSizing: 'border-box',
+  },
+  cardCompact: {
+    padding: '14px 12px',
+    minHeight: '84px',
+    borderRadius: theme.radius.lg,
   },
   row: {
     display: 'flex',
@@ -1563,6 +1692,12 @@ const kpiStyles: Record<string, CSSProperties> = {
     gap: '12px',
     flexDirection: 'row-reverse',
     width: '100%',
+    minWidth: 0,
+  },
+  rowCompact: {
+    gap: '8px',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
   },
   value: {
     fontSize: '32px',
@@ -1571,6 +1706,11 @@ const kpiStyles: Record<string, CSSProperties> = {
     letterSpacing: '-0.03em',
     lineHeight: 1.15,
     flexShrink: 0,
+  },
+  valueCompact: {
+    fontSize: '26px',
+    flexShrink: 1,
+    minWidth: 0,
   },
   labelCol: {
     flex: 1,
@@ -1582,6 +1722,10 @@ const kpiStyles: Record<string, CSSProperties> = {
     color: theme.colors.textSecondary,
     fontWeight: 500,
     lineHeight: 1.45,
+  },
+  labelCompact: {
+    fontSize: '12px',
+    lineHeight: 1.35,
   },
   hint: {
     fontSize: '12px',

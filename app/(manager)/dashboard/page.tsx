@@ -47,6 +47,7 @@ import {
   MobileHeader,
   useMobileMenu,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   StatusBadge,
@@ -1046,14 +1047,14 @@ export default function DashboardPage() {
                     צפייה בתקלות הפתוחות
                   </Button>
                 </div>
-                <div style={styles.mobileKpiRow}>
+                <KpiRow columns={2} isMobile>
                   <KpiCard label="פעילות" value={stats.total} onClick={() => setActiveKpi('ALL')} />
                   <KpiCard
                     label="בטיפול"
                     value={stats.inProgress}
                     onClick={() => setActiveKpi('IN_PROGRESS')}
                   />
-                </div>
+                </KpiRow>
                 {nextActionTicket ? (
                   <div style={styles.nextActionBlock}>
                     <h2 style={styles.nextActionTitle}>הפעולה הבאה שלך</h2>
@@ -1107,7 +1108,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <div style={{ ...styles.kpiGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                <KpiRow columns={3} isMobile={false}>
                   <KpiCard
                     label="תקלות פעילות"
                     value={stats.total}
@@ -1126,7 +1127,7 @@ export default function DashboardPage() {
                     hint="בעבודה או במעקב"
                     onClick={() => setActiveKpi('IN_PROGRESS')}
                   />
-                </div>
+                </KpiRow>
                 <AttentionRequired previewLimit={3} />
               </>
             )}
@@ -1211,7 +1212,7 @@ export default function DashboardPage() {
                     פתיחת המשימות
                   </Button>
                 </div>
-                <div style={{ ...styles.kpiGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                <KpiRow columns={3} isMobile={false}>
                   <KpiCard
                     label="נסגרו"
                     value={stats.closed}
@@ -1223,7 +1224,7 @@ export default function DashboardPage() {
                   {workersCount !== null && (
                     <KpiCard label="עובדים פעילים" value={workersCount} />
                   )}
-                </div>
+                </KpiRow>
               </>
             )}
 

@@ -28,6 +28,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   Select,
@@ -1255,11 +1256,7 @@ export default function SummaryPage() {
           </Card>
         ) : (
           <>
-            {/* KPI Cards */}
-            <div style={{
-              ...styles.kpiGrid,
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            }}>
+            <KpiRow columns={isMobile ? 2 : 4} isMobile={isMobile}>
               <KpiCard
                 label="פתוחות כעת"
                 value={summary.openNow}
@@ -1284,7 +1281,7 @@ export default function SummaryPage() {
                 accent="success"
                 onClick={() => setPageTab('history')}
               />
-            </div>
+            </KpiRow>
 
             {ticketsInRangeSorted.length > 0 && (
               <Card

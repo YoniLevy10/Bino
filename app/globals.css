@@ -175,6 +175,11 @@ select {
   min-width: 0;
 }
 
+/* KPI strip — hide scrollbar chrome; scrolling still works */
+[data-ui='kpi-row'] [data-kpi-track]::-webkit-scrollbar {
+  display: none;
+}
+
 @media (max-width: 768px) {
   html,
   body {
