@@ -162,7 +162,7 @@ const styles: Record<string, CSSProperties> = {
   code: {
     fontFamily: 'ui-monospace, monospace',
     fontSize: 13,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     padding: '2px 6px',
     borderRadius: 4,
   },

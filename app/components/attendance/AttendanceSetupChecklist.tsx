@@ -154,7 +154,7 @@ const styles: Record<string, CSSProperties> = {
     height: 24,
     borderRadius: '50%',
     background: theme.colors.success,
-    color: '#fff',
+    color: theme.colors.textInverse,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',

@@ -969,9 +969,11 @@ const styles: Record<string, CSSProperties> = {
   filtersRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    padding: '20px 24px',
+    gap: '12px',
+    flexWrap: 'wrap',
+    padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
   },
   loadingContainer: {
     display: 'flex',
@@ -981,22 +983,24 @@ const styles: Record<string, CSSProperties> = {
   },
   projectGrid: {
     display: 'grid',
-    gap: '20px',
-    padding: '16px 24px 24px',
+    gap: '16px',
+    padding: '16px 20px 24px',
   },
   projectCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
-    padding: '24px',
+    borderRadius: theme.radius.xl,
+    padding: '20px 22px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    boxShadow: theme.shadows.xs,
+    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
   },
   projectHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: '16px',
+    marginBottom: '14px',
+    gap: '12px',
   },
   projectName: {
     fontSize: '17px',
@@ -1011,8 +1015,8 @@ const styles: Record<string, CSSProperties> = {
   projectMeta: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
-    marginBottom: '20px',
+    gap: '10px',
+    marginBottom: '18px',
   },
   metaItem: {
     display: 'flex',
@@ -1032,13 +1036,14 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontFamily: 'monospace',
     color: theme.colors.textSecondary,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     padding: '4px 8px',
     borderRadius: theme.radius.sm,
   },
   projectActions: {
     display: 'flex',
     gap: '8px',
+    flexWrap: 'wrap',
   },
   drawerContent: {
     display: 'flex',
@@ -1062,6 +1067,7 @@ const styles: Record<string, CSSProperties> = {
     background: theme.colors.surface,
     fontSize: '15px',
     color: theme.colors.textPrimary,
+    fontFamily: 'inherit',
   },
   formHint: {
     fontSize: '12px',

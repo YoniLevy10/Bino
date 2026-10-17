@@ -1780,7 +1780,7 @@ const styles: Record<string, CSSProperties> = {
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 12,
   },
   label: {
     fontSize: 13,
@@ -1801,8 +1801,9 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 8,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.md,
-    padding: 10,
+    borderRadius: theme.radius.xl,
+    background: theme.colors.mutedSurface,
+    padding: 12,
   },
   previewRow: {
     display: 'flex',
@@ -1817,9 +1818,9 @@ const styles: Record<string, CSSProperties> = {
   },
   result: {
     margin: 0,
-    padding: 10,
+    padding: 12,
     borderRadius: theme.radius.md,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
     color: theme.colors.primary,
     fontWeight: 600,
     fontSize: 14,
@@ -1835,6 +1836,10 @@ const styles: Record<string, CSSProperties> = {
     gap: 6,
     maxHeight: 240,
     overflowY: 'auto',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.lg,
+    padding: 8,
+    background: theme.colors.mutedSurface,
   },
   residentResultBtn: {
     display: 'flex',

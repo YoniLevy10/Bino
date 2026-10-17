@@ -220,12 +220,14 @@ export default function AddonsPage() {
 
 const styles: Record<string, CSSProperties> = {
   content: {
-    padding: '24px 40px 48px',
+    padding: '32px 40px 48px',
     maxWidth: '1120px',
     margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: 24,
+    gap: 20,
+    width: '100%',
+    boxSizing: 'border-box',
   },
   statsRow: {
     display: 'grid',
@@ -234,9 +236,10 @@ const styles: Record<string, CSSProperties> = {
   },
   statChip: {
     padding: '14px 16px',
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
+    boxShadow: theme.shadows.xs,
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
@@ -254,8 +257,8 @@ const styles: Record<string, CSSProperties> = {
   },
   heroBanner: {
     padding: '18px 20px',
-    borderRadius: theme.radius.lg,
-    background: `linear-gradient(135deg, ${theme.colors.primaryMuted} 0%, ${theme.colors.surface} 55%)`,
+    borderRadius: theme.radius.xl,
+    background: theme.colors.blueSoft,
     border: `1px solid ${theme.colors.border}`,
   },
   heroText: {
@@ -277,13 +280,13 @@ const styles: Record<string, CSSProperties> = {
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-    gap: 20,
+    gap: 16,
   },
   lockedBadge: {
     fontSize: '11px',
     fontWeight: 700,
     padding: '3px 8px',
-    borderRadius: theme.radius.full,
+    borderRadius: theme.radius.sm,
     background: theme.colors.warningMuted,
     color: theme.colors.warning,
   },
@@ -291,7 +294,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '11px',
     fontWeight: 700,
     padding: '3px 8px',
-    borderRadius: theme.radius.full,
+    borderRadius: theme.radius.sm,
     background: theme.colors.successMuted,
     color: theme.colors.success,
   },
@@ -316,14 +319,15 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     overflow: 'hidden',
-    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+    boxShadow: theme.shadows.xs,
+    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
   },
   cardBody: {
-    padding: '14px 16px 18px',
+    padding: '16px 18px 18px',
     display: 'flex',
     flexDirection: 'column',
     gap: 6,

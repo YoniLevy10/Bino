@@ -479,9 +479,10 @@ const styles: Record<string, CSSProperties> = {
   },
   group: {
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     overflow: 'hidden',
     background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
   },
   groupHeader: {
     display: 'flex',
@@ -490,7 +491,7 @@ const styles: Record<string, CSSProperties> = {
     gap: '12px',
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     flexWrap: 'wrap',
   },
   groupTitle: {
@@ -533,15 +534,15 @@ const styles: Record<string, CSSProperties> = {
   },
   th: {
     textAlign: 'right',
-    padding: '10px 20px',
+    padding: '10px 16px',
     fontSize: '12px',
     fontWeight: 600,
     color: theme.colors.textMuted,
     borderBottom: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
   },
   td: {
-    padding: '12px 20px',
+    padding: '12px 16px',
     borderBottom: `1px solid ${theme.colors.border}`,
     color: theme.colors.textPrimary,
   },
@@ -553,9 +554,10 @@ const styles: Record<string, CSSProperties> = {
   },
   shiftCard: {
     padding: '12px 14px',
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.background,
+    background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
   },
   shiftCardRow: {
     display: 'flex',
@@ -579,18 +581,18 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 10,
     padding: 10,
     borderRadius: theme.radius.md,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
   },
   editCell: {
-    padding: '12px 20px',
-    background: theme.colors.primaryMuted,
+    padding: '12px 16px',
+    background: theme.colors.blueSoft,
     borderBottom: `1px solid ${theme.colors.border}`,
   },
   createPanel: {
     margin: '0 16px 16px',
     padding: 14,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
   },
 }

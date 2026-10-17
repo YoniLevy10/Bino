@@ -2075,6 +2075,10 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: 'wrap',
     gap: '8px',
     marginBottom: '24px',
+    padding: '12px 14px',
+    background: theme.colors.mutedSurface,
+    borderRadius: theme.radius.xl,
+    border: `1px solid ${theme.colors.border}`,
     position: 'relative',
     zIndex: 2,
   },
@@ -2101,6 +2105,7 @@ const styles: Record<string, CSSProperties> = {
     position: 'relative',
     zIndex: 2,
     minHeight: 44,
+    fontFamily: 'inherit',
     transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
   },
   tabBtnActive: {
@@ -2110,10 +2115,10 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
   },
   cardInner: {
-    padding: '24px',
+    padding: '22px 24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '18px',
   },
   teamModeChip: {
     padding: '8px 14px',
@@ -2122,6 +2127,8 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
+    minHeight: 40,
+    fontFamily: 'inherit',
   },
   formGroup: {
     display: 'flex',

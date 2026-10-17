@@ -1383,9 +1383,10 @@ const styles: Record<string, CSSProperties> = {
   filtersRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '12px',
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
     flexWrap: 'wrap',
   },
   filtersEnd: {
@@ -1408,15 +1409,16 @@ const styles: Record<string, CSSProperties> = {
   },
   workerGrid: {
     display: 'grid',
-    gap: '16px',
+    gap: '14px',
   },
   workerCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
-    padding: '18px',
+    borderRadius: theme.radius.xl,
+    padding: '18px 20px',
     cursor: 'pointer',
-    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+    boxShadow: theme.shadows.xs,
+    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     display: 'flex',
     flexDirection: 'column',
     minWidth: 0,

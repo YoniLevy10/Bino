@@ -1823,7 +1823,7 @@ const styles: Record<string, CSSProperties> = {
   chip: {
     flex: '0 0 auto',
     padding: '8px 14px',
-    minHeight: '36px',
+    minHeight: '40px',
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
@@ -1831,10 +1831,12 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
   },
   chipActive: {
     borderColor: theme.colors.primary,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
     color: theme.colors.primary,
   },
   mobileCardList: {

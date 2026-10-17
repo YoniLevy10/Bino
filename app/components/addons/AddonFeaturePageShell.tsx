@@ -88,6 +88,6 @@ const styles: Record<string, CSSProperties> = {
   body: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 20,
+    gap: 16,
   },
 }

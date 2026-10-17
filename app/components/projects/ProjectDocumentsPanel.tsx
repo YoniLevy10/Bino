@@ -323,11 +323,12 @@ const styles: Record<string, CSSProperties> = {
   },
   modal: {
     background: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: 20,
     maxWidth: 420,
     width: '100%',
     border: `1px solid ${theme.colors.border}`,
+    boxShadow: theme.shadows.md,
   },
   modalMobile: {
     background: theme.colors.surface,
@@ -339,16 +340,25 @@ const styles: Record<string, CSSProperties> = {
   modalScroll: {
     paddingBottom: 8,
   },
-  modalTitle: { margin: '0 0 12px', fontSize: 15, fontWeight: 600 },
-  modalLabel: { display: 'block', fontSize: 12, marginBottom: 4, color: theme.colors.textMuted },
+  modalTitle: { margin: '0 0 12px', fontSize: 15, fontWeight: 600, color: theme.colors.textPrimary },
+  modalLabel: {
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 600,
+    marginBottom: 6,
+    color: theme.colors.textSecondary,
+  },
   modalInput: {
     width: '100%',
     marginBottom: 12,
-    padding: '8px 10px',
+    padding: '12px 14px',
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
-    fontSize: 14,
+    fontSize: 15,
     boxSizing: 'border-box',
+    background: theme.colors.surface,
+    color: theme.colors.textPrimary,
+    fontFamily: 'inherit',
   },
   modalActions: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 },
 }
