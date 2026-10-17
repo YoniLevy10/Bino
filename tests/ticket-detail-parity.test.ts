@@ -45,7 +45,8 @@ describe('ticket detail parity contract', () => {
   it('TicketDetailDrawer exposes recover, logs, and WhatsApp thread props', () => {
     const drawer = readRepoFile('app/components/tickets/TicketDetailDrawer.tsx')
     expect(drawer).toContain('שחזר תמונה/וידאו מ-WhatsApp')
-    expect(drawer).toContain('היסטוריה')
+    expect(drawer).toContain('היסטוריית פעולות')
+    expect(drawer).toContain("id: 'activity'")
     expect(drawer).toContain('TicketWhatsAppThread')
     expect(drawer).toContain('onRecoverMedia')
   })
