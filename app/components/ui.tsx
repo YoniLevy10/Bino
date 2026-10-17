@@ -5,8 +5,12 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   type ReactNode,
+  type ReactElement,
   type CSSProperties,
+  Children,
+  cloneElement,
   createContext,
+  isValidElement,
   useCallback,
   useContext,
   useEffect,
@@ -88,8 +92,23 @@ export function useMobileMenuOptional() {
   return useContext(MobileMenuContext)
 }
 
-function NavIcon({ type, active }: { type: string; active?: boolean }) {
-  const color = active ? theme.colors.primary : theme.colors.textMuted
+function NavIcon({
+  type,
+  active,
+  onDark,
+}: {
+  type: string
+  active?: boolean
+  /** Icons on navy sidebar — inactive = navText, active = white */
+  onDark?: boolean
+}) {
+  const color = onDark
+    ? active
+      ? theme.colors.textInverse
+      : theme.colors.navText
+    : active
+      ? theme.colors.primary
+      : theme.colors.textMuted
 
   const icons: Record<string, ReactNode> = {
     home: (
@@ -306,6 +325,10 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
   if (hidden) return null
   if (!mounted) return <aside style={{ display: 'none' }} aria-hidden="true" />
 
+  const navy = calmSurface
+  const navLinkBase = navy ? sidebarStyles.navLinkNavy : sidebarStyles.navLink
+  const navLinkActive = navy ? sidebarStyles.navLinkActiveNavy : sidebarStyles.navLinkActive
+
   function renderNavLink(item: (typeof navItems)[number]) {
     const isActive = isNavItemActive(pathname, item)
     return (
@@ -315,12 +338,12 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
         {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
         className={isActive ? 'lg-nav-active' : undefined}
         style={{
-          ...sidebarStyles.navLink,
-          ...(isActive ? sidebarStyles.navLinkActive : {}),
+          ...navLinkBase,
+          ...(isActive ? navLinkActive : {}),
           ...(item.locked ? sidebarStyles.navLinkLocked : {}),
         }}
       >
-        <NavIcon type={item.icon} active={isActive} />
+        <NavIcon type={item.icon} active={isActive} onDark={navy} />
         <span style={sidebarStyles.navLabel}>
           {item.label}
           {item.locked && (
@@ -336,13 +359,14 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
       className="lg-sidebar"
       style={{
         ...sidebarStyles.container,
-        ...(calmSurface
+        ...(navy
           ? {
-              background: '#FFFFFF',
+              background: theme.colors.navy,
               backdropFilter: 'none',
               WebkitBackdropFilter: 'none',
               boxShadow: 'none',
-              borderInlineEnd: '1px solid #E8E8ED',
+              borderInlineEnd: 'none',
+              color: theme.colors.navText,
             }
           : {}),
       }}
@@ -367,8 +391,12 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           />
         )}
         <div style={sidebarStyles.brandText}>
-          <div style={sidebarStyles.title}>{displayName}</div>
-          <div style={sidebarStyles.subtitle}>ניהול אחזקה</div>
+          <div style={{ ...sidebarStyles.title, ...(navy ? { color: theme.colors.textInverse } : {}) }}>
+            {displayName}
+          </div>
+          <div style={{ ...sidebarStyles.subtitle, ...(navy ? { color: theme.colors.navText } : {}) }}>
+            ניהול אחזקה
+          </div>
         </div>
       </div>
 
@@ -382,7 +410,12 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
                 onClick={() => setOpsOpen((v) => !v)}
                 style={{
                   ...sidebarStyles.opsToggle,
-                  ...(opsHasActive ? sidebarStyles.opsToggleActive : {}),
+                  ...(navy ? { color: theme.colors.navText } : {}),
+                  ...(opsHasActive
+                    ? navy
+                      ? { color: theme.colors.textInverse }
+                      : sidebarStyles.opsToggleActive
+                    : {}),
                 }}
                 aria-expanded={opsOpen}
               >
@@ -396,28 +429,58 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           )}
           {addons ? renderNavLink(addons) : null}
         </nav>
-        <div style={sidebarStyles.settingsNav}>
+        <div
+          style={{
+            ...sidebarStyles.settingsNav,
+            ...(navy ? { borderTopColor: 'rgba(180, 199, 219, 0.2)' } : {}),
+          }}
+        >
           <Link
             href="/settings"
             {...navLinkPrefetchHandlers('/settings', router.prefetch, prefetchOpts)}
             className={pathname === '/settings' ? 'lg-nav-active' : undefined}
             style={{
-              ...sidebarStyles.navLink,
-              ...(pathname === '/settings' ? sidebarStyles.navLinkActive : {}),
+              ...navLinkBase,
+              ...(pathname === '/settings' ? navLinkActive : {}),
             }}
           >
-            <NavIcon type="settings" active={pathname === '/settings'} />
+            <NavIcon type="settings" active={pathname === '/settings'} onDark={navy} />
             <span style={sidebarStyles.navLabel}>הגדרות</span>
           </Link>
           <NavSignOutButton />
         </div>
       </div>
 
-      <div style={sidebarStyles.footer}>
-        <div style={sidebarStyles.footerAvatar}>{userInitials}</div>
+      <div
+        style={{
+          ...sidebarStyles.footer,
+          ...(navy
+            ? {
+                borderTopColor: 'rgba(180, 199, 219, 0.2)',
+                background: theme.colors.navySoft,
+                borderRadius: theme.radius.lg,
+                margin: '8px 4px 0',
+                padding: '14px 12px',
+                borderTop: 'none',
+              }
+            : {}),
+        }}
+      >
+        <div
+          style={{
+            ...sidebarStyles.footerAvatar,
+            ...(navy ? { background: 'rgba(255,255,255,0.12)', color: theme.colors.textInverse } : {}),
+          }}
+        >
+          {userInitials}
+        </div>
         <div style={sidebarStyles.footerInfo}>
-          <div style={sidebarStyles.footerName}>{userEmail || '—'}</div>
-          <div style={sidebarStyles.footerRole}>מנהל מערכת</div>
+          <div style={{ ...sidebarStyles.footerName, ...(navy ? { color: theme.colors.textInverse } : {}) }}>
+            {userEmail || '—'}
+          </div>
+          <div style={{ ...sidebarStyles.footerRole, ...(navy ? { color: theme.colors.navText } : {}) }}>
+            מנהל מערכת
+          </div>
         </div>
       </div>
     </aside>
@@ -548,7 +611,21 @@ const sidebarStyles: Record<string, CSSProperties> = {
     fontWeight: 500,
     minHeight: '44px',
     boxSizing: 'border-box',
-    transition: 'all 0.15s ease',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
+  },
+  navLinkNavy: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    color: theme.colors.navText,
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: 500,
+    minHeight: '44px',
+    boxSizing: 'border-box',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
   },
   navLabel: {
     fontSize: '14px',
@@ -561,6 +638,12 @@ const sidebarStyles: Record<string, CSSProperties> = {
     color: theme.colors.primary,
     background: theme.colors.primaryMuted,
     boxShadow: 'inset 0 0 0 1px rgba(0, 122, 255, 0.16)',
+  },
+  navLinkActiveNavy: {
+    color: theme.colors.textInverse,
+    background: theme.colors.navySoft,
+    boxShadow: 'none',
+    fontWeight: 600,
   },
   navLinkLocked: {
     border: `1px dashed ${theme.colors.borderStrong}`,
@@ -745,9 +828,14 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
     gap: 0,
-    paddingTop: '6px',
-    paddingBottom: '6px',
-    paddingInline: '6px',
+    paddingTop: '8px',
+    paddingBottom: '8px',
+    paddingInline: '8px',
+    /* minHeight only — fixed height + border clipped labels/icons in standalone PWA */
+    minHeight: 'var(--mobile-bottom-nav-bar-height, 64px)',
+    height: 'auto',
+    boxSizing: 'border-box',
+    overflow: 'visible',
   },
   scroll: {
     flex: 1,
@@ -755,8 +843,9 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
-    gap: '2px',
+    gap: '4px',
     overflowX: 'auto',
+    overflowY: 'visible',
     WebkitOverflowScrolling: 'touch',
     scrollbarWidth: 'none',
     msOverflowStyle: 'none',
@@ -769,6 +858,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   link: {
+    /* Fixed flex-basis — flex-grow squeezed tabs until labels/icons clipped */
     flex: '0 0 auto',
     width: '68px',
     maxWidth: '68px',
@@ -776,14 +866,15 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '2px',
+    gap: '3px',
     minWidth: 0,
-    minHeight: '52px',
+    minHeight: '48px',
     padding: '6px 4px',
     textDecoration: 'none',
     color: theme.colors.textMuted,
     borderRadius: theme.radius.md,
     boxSizing: 'border-box',
+    transition: `color ${theme.motion.fast} ease, background ${theme.motion.fast} ease`,
   },
   settingsLink: {
     flex: '0 0 auto',
@@ -792,18 +883,19 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
   linkActive: {
     color: theme.colors.primary,
-    background: 'rgba(0, 122, 255, 0.12)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
+    background: 'transparent',
+    boxShadow: 'none',
   },
   iconWrap: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     height: '24px',
+    flexShrink: 0,
   },
   label: {
     fontSize: '11px',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.25,
     textAlign: 'center',
     maxWidth: '100%',
@@ -871,8 +963,11 @@ function AppShellInner({
         className={calmSurface ? 'kiss-app' : undefined}
         style={{
           display: 'flex',
-          minHeight: '100vh',
-          background: calmSurface ? '#F2F2F7' : 'transparent',
+          /* 100vh is wrong on iOS standalone (large/small viewport mismatch) → clips shell */
+          minHeight: '100dvh',
+          width: '100%',
+          maxWidth: '100%',
+          background: calmSurface ? theme.colors.background : 'transparent',
         }}
         suppressHydrationWarning
       >
@@ -884,12 +979,16 @@ function AppShellInner({
             flex: 1,
             marginInlineStart: mobile ? 0 : '248px',
             minWidth: 0,
+            width: '100%',
+            maxWidth: '100%',
             textAlign: 'right',
-              paddingBottom: bottomNav
-                ? 'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
-                : undefined,
-              overflowX: mobile ? 'hidden' : undefined,
-              maxWidth: mobile ? '100%' : undefined,
+            paddingBottom: bottomNav
+              ? 'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))'
+              : undefined,
+            /* Landscape notch / fold — keep content inside safe area without using 100vw */
+            paddingLeft: mobile ? 'env(safe-area-inset-left, 0px)' : undefined,
+            paddingRight: mobile ? 'env(safe-area-inset-right, 0px)' : undefined,
+            boxSizing: 'border-box',
           }}
         >
           <PullToRefresh enabled={mobile}>
@@ -1378,22 +1477,22 @@ const pageHeaderStyles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: '24px',
-    marginBottom: '32px',
+    marginBottom: '28px',
     flexWrap: 'wrap',
   },
   title: {
-    fontSize: '34px',
+    fontSize: '28px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
     letterSpacing: '-0.02em',
-    lineHeight: 1.2,
+    lineHeight: 1.25,
   },
   subtitle: {
-    fontSize: '15px',
-    color: theme.colors.textMuted,
-    margin: '8px 0 0 0',
-    lineHeight: 1.5,
+    fontSize: '14px',
+    color: theme.colors.textSecondary,
+    margin: '6px 0 0 0',
+    lineHeight: 1.45,
   },
   actions: {
     display: 'flex',
@@ -1411,11 +1510,17 @@ export function KpiCard({
   value,
   accent,
   onClick,
+  hint,
+  compact,
 }: {
   label: string
   value: string | number
   accent?: 'primary' | 'success' | 'warning' | 'error'
   onClick?: () => void
+  /** Optional secondary line under the label (Figma KPI captions) */
+  hint?: string
+  /** Denser padding/type for narrow KPI rows (mobile 3-up) */
+  compact?: boolean
 }) {
   const accentColors = {
     primary: theme.colors.primary,
@@ -1424,48 +1529,209 @@ export function KpiCard({
     error: theme.colors.error,
   }
 
-  const accentColor = accent ? accentColors[accent] : theme.colors.border
+  const accentColor = accent ? accentColors[accent] : undefined
 
   return (
     <button
       type="button"
       onClick={onClick}
       data-ui="kpi-card"
+      data-compact={compact ? '1' : undefined}
       className="lg-glass"
       style={{
         ...kpiStyles.card,
-        borderInlineStartColor: accentColor,
+        ...(compact ? kpiStyles.cardCompact : {}),
         cursor: onClick ? 'pointer' : 'default',
+        ...(accentColor ? { boxShadow: `inset 0 -3px 0 0 ${accentColor}` } : {}),
       }}
     >
-      <div style={kpiStyles.value}>{value}</div>
-      <div style={kpiStyles.label}>{label}</div>
+      <div style={{ ...kpiStyles.row, ...(compact ? kpiStyles.rowCompact : {}) }}>
+        <div style={{ ...kpiStyles.value, ...(compact ? kpiStyles.valueCompact : {}) }}>{value}</div>
+        <div style={kpiStyles.labelCol}>
+          <div style={{ ...kpiStyles.label, ...(compact ? kpiStyles.labelCompact : {}) }}>{label}</div>
+          {hint ? <div style={kpiStyles.hint}>{hint}</div> : null}
+        </div>
+      </div>
     </button>
   )
 }
 
+/**
+ * Top metric squares row. Mobile: local horizontal scroll with fixed card
+ * floors so the 3rd square is never clipped by page overflow-x:clip.
+ * Desktop: equal grid with minmax(0,1fr) so content min-size cannot blow the row.
+ */
+export function KpiRow({
+  children,
+  columns = 3,
+  isMobile = false,
+  style,
+}: {
+  children: ReactNode
+  columns?: number
+  isMobile?: boolean
+  style?: CSSProperties
+}) {
+  const renderCompact = (child: ReactNode) =>
+    isValidElement(child)
+      ? cloneElement(child as ReactElement<{ compact?: boolean }>, { compact: true })
+      : child
+
+  if (isMobile && columns <= 2) {
+    /* 2-up wrap (tickets/summary) — minmax(0,1fr) prevents content-min blowout */
+    return (
+      <div
+        style={{
+          ...kpiRowStyles.mobileWrapGrid,
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          ...style,
+        }}
+        data-ui="kpi-row"
+      >
+        {Children.map(children, (child) => (child == null ? null : renderCompact(child)))}
+      </div>
+    )
+  }
+
+  if (isMobile) {
+    const gapPx = 10
+    const gaps = Math.max(0, columns - 1) * gapPx
+    const itemStyle: CSSProperties = {
+      ...kpiRowStyles.mobileItem,
+      width: `calc((100% - ${gaps}px) / ${columns})`,
+      minWidth: columns >= 4 ? 100 : 112,
+    }
+    return (
+      <div style={{ ...kpiRowStyles.mobileWrap, ...style }} data-ui="kpi-row">
+        <div style={kpiRowStyles.mobileTrack} data-kpi-track>
+          {Children.map(children, (child) =>
+            child == null ? null : <div style={itemStyle}>{renderCompact(child)}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        ...kpiRowStyles.desktopGrid,
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        ...style,
+      }}
+      data-ui="kpi-row"
+    >
+      {children}
+    </div>
+  )
+}
+
+const kpiRowStyles: Record<string, CSSProperties> = {
+  desktopGrid: {
+    display: 'grid',
+    gap: 16,
+    marginBottom: 24,
+    width: '100%',
+    minWidth: 0,
+  },
+  mobileWrap: {
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    /* Contain scroll — do not let the page gain horizontal overflow */
+    overflow: 'hidden',
+  },
+  mobileWrapGrid: {
+    display: 'grid',
+    gap: 10,
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+  },
+  mobileTrack: {
+    display: 'flex',
+    flexDirection: 'row-reverse',
+    gap: 10,
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    WebkitOverflowScrolling: 'touch',
+    scrollSnapType: 'x proximity',
+    paddingBottom: 2,
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
+    maxWidth: '100%',
+  },
+  mobileItem: {
+    flex: '0 0 auto',
+    scrollSnapAlign: 'start',
+  },
+}
+
 const kpiStyles: Record<string, CSSProperties> = {
   card: {
-    border: 'none',
-    borderInlineStart: '3px solid',
-    borderRadius: theme.radius.lg,
-    padding: '24px',
+    borderRadius: theme.radius.xl,
+    padding: '24px 23px',
     textAlign: 'start',
-    transition: 'all 0.2s ease',
+    transition: `background ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     width: '100%',
+    minHeight: '96px',
+    minWidth: 0,
+    boxSizing: 'border-box',
+  },
+  cardCompact: {
+    padding: '14px 12px',
+    minHeight: '84px',
+    borderRadius: theme.radius.lg,
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    flexDirection: 'row-reverse',
+    width: '100%',
+    minWidth: 0,
+  },
+  rowCompact: {
+    gap: '8px',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
   },
   value: {
-    fontSize: '40px',
+    fontSize: '32px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     letterSpacing: '-0.03em',
-    lineHeight: 1,
-    marginBottom: '8px',
+    lineHeight: 1.15,
+    flexShrink: 0,
+  },
+  valueCompact: {
+    fontSize: '26px',
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  labelCol: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'right',
   },
   label: {
-    fontSize: '13px',
-    color: theme.colors.textMuted,
+    fontSize: '14px',
+    color: theme.colors.textSecondary,
     fontWeight: 500,
+    lineHeight: 1.45,
+  },
+  labelCompact: {
+    fontSize: '12px',
+    lineHeight: 1.35,
+  },
+  hint: {
+    fontSize: '12px',
+    color: theme.colors.textMuted,
+    marginTop: '4px',
+    lineHeight: 1.4,
   },
 }
 
@@ -1513,18 +1779,18 @@ const cardStyles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: '24px 24px 0',
+    padding: '23px 23px 0',
     gap: '16px',
   },
   title: {
     fontSize: '17px',
-    fontWeight: 600,
+    fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
   },
   subtitle: {
-    fontSize: '14px',
-    color: theme.colors.textMuted,
+    fontSize: '13px',
+    color: theme.colors.textSecondary,
     margin: '4px 0 0',
   },
   actions: {
@@ -1532,7 +1798,7 @@ const cardStyles: Record<string, CSSProperties> = {
     gap: '8px',
   },
   content: {
-    padding: '24px',
+    padding: '20px 23px 23px',
   },
 }
 
@@ -1558,16 +1824,29 @@ export function Button({
   loading?: boolean
 }) {
   const variantStyles: Record<string, CSSProperties> = {
-    primary: { color: theme.colors.textInverse, border: 'none' },
-    secondary: { color: theme.colors.textPrimary, border: 'none' },
+    primary: {
+      color: theme.colors.textInverse,
+      border: 'none',
+      background: theme.colors.primary,
+      boxShadow: theme.shadows.primaryBtn,
+    },
+    secondary: {
+      color: theme.colors.textPrimary,
+      border: `1px solid ${theme.colors.border}`,
+      background: theme.colors.surface,
+    },
     ghost: { background: 'transparent', color: theme.colors.textSecondary, border: 'none' },
-    danger: { background: theme.colors.errorMuted, color: theme.colors.error, border: `1px solid ${theme.colors.error}` },
+    danger: {
+      background: theme.colors.errorMuted,
+      color: theme.colors.error,
+      border: `1px solid ${theme.colors.error}`,
+    },
   }
 
   const sizeStyles: Record<string, CSSProperties> = {
-    sm: { padding: '10px 16px', fontSize: '14px', minHeight: '44px', height: 'auto' },
-    md: { padding: '10px 18px', fontSize: '15px', minHeight: '44px', height: 'auto' },
-    lg: { padding: '12px 24px', fontSize: '16px', minHeight: '48px', height: 'auto' },
+    sm: { padding: '8px 14px', fontSize: '13px', minHeight: '40px', height: 'auto' },
+    md: { padding: '10px 18px', fontSize: '14px', minHeight: '44px', height: 'auto' },
+    lg: { padding: '12px 22px', fontSize: '15px', minHeight: '46px', height: 'auto' },
   }
 
   return (
@@ -1599,9 +1878,9 @@ const buttonStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    borderRadius: 14,
+    borderRadius: theme.radius.md,
     fontWeight: 600,
-    transition: 'all 0.15s ease',
+    transition: `opacity ${theme.motion.fast} ease, background ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
     whiteSpace: 'nowrap',
     cursor: 'pointer',
   },
@@ -1628,23 +1907,24 @@ export function StatusBadge({
 }) {
   const statusConfig: Record<string, { bg: string; text: string }> = {
     NEW: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    ASSIGNED: { bg: theme.colors.infoMuted, text: theme.colors.info },
-    IN_PROGRESS: { bg: theme.colors.brandSoft, text: theme.colors.accent },
+    ASSIGNED: { bg: theme.colors.blueSoft, text: theme.colors.primary },
+    IN_PROGRESS: { bg: theme.colors.blueSoft, text: theme.colors.primary },
     WAITING_PARTS: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    SITE_TOUR: { bg: theme.colors.brandSoft, text: theme.colors.primary },
-    PROFESSIONAL_ESCORT: { bg: theme.colors.sand, text: theme.colors.primary },
-    CLOSED: { bg: theme.colors.successMuted, text: theme.colors.success },
+    SITE_TOUR: { bg: theme.colors.blueSoft, text: theme.colors.primary },
+    PROFESSIONAL_ESCORT: { bg: theme.colors.sand, text: theme.colors.warning },
+    CLOSED: { bg: theme.colors.muted, text: theme.colors.textMuted },
     ACTIVE: { bg: theme.colors.successMuted, text: theme.colors.success },
     INACTIVE: { bg: theme.colors.muted, text: theme.colors.textMuted },
+    URGENT: { bg: theme.colors.errorMuted, text: theme.colors.error },
     HIGH: { bg: theme.colors.errorMuted, text: theme.colors.error },
-    MEDIUM: { bg: theme.colors.warningMuted, text: theme.colors.warning },
-    LOW: { bg: theme.colors.infoMuted, text: theme.colors.info },
+    MEDIUM: { bg: theme.colors.blueSoft, text: theme.colors.primary },
+    LOW: { bg: theme.colors.muted, text: theme.colors.textMuted },
   }
 
   const config = statusConfig[status] || { bg: theme.colors.muted, text: theme.colors.textMuted }
   const sizeStyles = {
-    sm: { padding: '4px 10px', fontSize: '11px' },
-    md: { padding: '5px 12px', fontSize: '12px' },
+    sm: { padding: '5px 10px', fontSize: '11px' },
+    md: { padding: '6px 12px', fontSize: '12px' },
   }
 
   return (
@@ -1658,9 +1938,11 @@ const badgeStyles: Record<string, CSSProperties> = {
   base: {
     display: 'inline-flex',
     alignItems: 'center',
-    borderRadius: theme.radius.full,
+    justifyContent: 'center',
+    borderRadius: theme.radius.sm,
     fontWeight: 600,
     letterSpacing: '0.01em',
+    lineHeight: 1.45,
   },
 }
 
@@ -1906,8 +2188,9 @@ function useFocusTrap(
   }, [active, containerRef])
 }
 
+/** Space above home indicator reserved for floating tab bar (var excludes safe-area). */
 const MOBILE_BOTTOM_NAV_CLEARANCE =
-  'calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px))'
+  'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))'
 
 export function Drawer({
   open,
@@ -1945,18 +2228,25 @@ export function Drawer({
             }
           : {}),
       }
-    : { ...drawerStyles.panelSide, width: '480px' }
+    : { ...drawerStyles.panelSide, width: '560px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
-    paddingBottom: footer
-      ? '24px'
-      : bottomNavVisible
-        ? `calc(24px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`
+    paddingBottom:
+      footer || bottomNavVisible
+        ? '24px'
         : 'calc(24px + env(safe-area-inset-bottom, 0px))',
   }
   const footerStyle: CSSProperties = {
     ...drawerStyles.footer,
-    paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+    /* Panel already sits above nav+safe-area when bottomNavVisible — don't double-pad */
+    paddingBottom: bottomNavVisible
+      ? '16px'
+      : 'calc(16px + env(safe-area-inset-bottom, 0px))',
+  }
+  const headerStyle: CSSProperties = {
+    ...drawerStyles.header,
+    /* Bottom sheet is not under the status bar; side drawer may be (iPad notch). */
+    paddingTop: mobile ? '16px' : 'calc(24px + env(safe-area-inset-top, 0px))',
   }
 
   return (
@@ -1970,7 +2260,7 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby="drawer-title"
       >
-        <div style={drawerStyles.header}>
+        <div style={headerStyle}>
           {mobile && (
             <div style={drawerStyles.dragHandleWrap} aria-hidden>
               <div style={drawerStyles.dragHandle} />
@@ -2020,7 +2310,7 @@ const drawerStyles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-    maxWidth: '100vw',
+    maxWidth: '100%',
   },
   panelMobile: {
     position: 'fixed',
@@ -2037,7 +2327,7 @@ const drawerStyles: Record<string, CSSProperties> = {
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.12)',
-    maxWidth: '100vw',
+    maxWidth: '100%',
     boxSizing: 'border-box',
     WebkitOverflowScrolling: 'touch',
   },
@@ -2046,7 +2336,6 @@ const drawerStyles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: '24px',
-    paddingTop: 'calc(24px + env(safe-area-inset-top))',
     borderBottom: `1px solid ${theme.colors.border}`,
     flexShrink: 0,
     flexWrap: 'wrap',

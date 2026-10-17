@@ -1026,7 +1026,7 @@ export function CollectionsBoard() {
         <div style={styles.list}>
           {items.map((row) => {
             const status = row.status as CollectionChargeStatus
-            const color = COLLECTION_CHARGE_STATUS_COLORS[status] || '#64748b'
+            const color = COLLECTION_CHARGE_STATUS_COLORS[status] || theme.colors.textMuted
             const busy = busyId === row.id
             const primarySend = status === 'draft' || status === 'failed'
             const canResend = status === 'sent' || status === 'draft'
@@ -1496,15 +1496,12 @@ const styles: Record<string, CSSProperties> = {
     paddingBottom: 28,
   },
   hero: {
-    borderRadius: 18,
-    padding: '18px 18px 16px',
-    /* Live+ glass summary — soft blue wash, dark readable numbers (no loud blue block) */
-    background:
-      'linear-gradient(155deg, rgba(255,255,255,0.92) 0%, rgba(232,242,255,0.88) 55%, rgba(220,236,255,0.9) 100%)',
-    color: theme.colors.textPrimary,
-    border: '0.5px solid rgba(0, 122, 255, 0.18)',
-    boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.95), 0 10px 28px rgba(0, 70, 150, 0.1)',
+    borderRadius: theme.radius.xl,
+    padding: '23px',
+    background: theme.colors.navy,
+    color: theme.colors.textInverse,
+    border: `1px solid ${theme.colors.navySoft}`,
+    boxShadow: theme.shadows.sm,
   },
   heroTop: {
     display: 'flex',
@@ -1514,9 +1511,9 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 14,
   },
   heroEyebrow: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: theme.colors.primary,
+    fontSize: 13,
+    fontWeight: 500,
+    color: theme.colors.navText,
     marginBottom: 4,
   },
   heroAmount: {
@@ -1524,18 +1521,18 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 800,
     letterSpacing: '-0.02em',
     lineHeight: 1.1,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textInverse,
   },
   heroSub: {
     marginTop: 6,
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: theme.colors.navText,
   },
   refreshBtn: {
-    border: '1px solid rgba(0, 122, 255, 0.22)',
-    background: 'rgba(0, 122, 255, 0.08)',
-    color: theme.colors.primary,
-    borderRadius: 10,
+    border: '1px solid rgba(180, 199, 219, 0.35)',
+    background: theme.colors.navySoft,
+    color: theme.colors.textInverse,
+    borderRadius: theme.radius.md,
     padding: '8px 12px',
     fontSize: 13,
     fontWeight: 600,
@@ -1547,15 +1544,14 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
   },
   kpi: {
-    background: 'rgba(255,255,255,0.72)',
-    border: '0.5px solid rgba(0, 60, 140, 0.1)',
-    borderRadius: 14,
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(180, 199, 219, 0.25)',
+    borderRadius: theme.radius.lg,
     padding: '12px 12px 10px',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
   },
   kpiLabel: {
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: theme.colors.navText,
     marginBottom: 4,
     display: 'inline-flex',
     alignItems: 'center',
@@ -1565,25 +1561,25 @@ const styles: Record<string, CSSProperties> = {
     width: 7,
     height: 7,
     borderRadius: 999,
-    background: '#F59E0B',
+    background: theme.colors.warning,
     flexShrink: 0,
   },
   kpiDotPaid: {
     width: 7,
     height: 7,
     borderRadius: 999,
-    background: '#34C759',
+    background: theme.colors.success,
     flexShrink: 0,
   },
   kpiValue: {
     fontSize: 20,
     fontWeight: 800,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textInverse,
   },
   kpiHint: {
     marginTop: 4,
     fontSize: 11,
-    color: theme.colors.textMuted,
+    color: theme.colors.navText,
   },
   primaryActions: {
     display: 'flex',
@@ -1613,7 +1609,7 @@ const styles: Record<string, CSSProperties> = {
   statusTabActive: {
     background: theme.colors.primary,
     borderColor: theme.colors.primary,
-    color: '#fff',
+    color: theme.colors.textInverse,
   },
   statusCount: {
     fontSize: 11,
@@ -1662,29 +1658,30 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 500,
   },
   alertBox: {
-    padding: 14,
-    borderRadius: 14,
-    border: '1px solid #fdba74',
-    background: '#fff7ed',
+    padding: 16,
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.warning}`,
+    background: theme.colors.warningMuted,
   },
   alertTitle: {
     fontWeight: 700,
     marginBottom: 6,
-    color: '#9a3412',
+    color: theme.colors.warning,
   },
   alertText: {
     margin: '0 0 12px',
     fontSize: 14,
-    color: '#9a3412',
+    color: theme.colors.warning,
     lineHeight: 1.55,
   },
   alertSoft: {
     display: 'flex',
     gap: 10,
     alignItems: 'center',
-    padding: '10px 12px',
-    borderRadius: 12,
-    background: '#f1f5f9',
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.mutedSurface,
+    border: `1px solid ${theme.colors.border}`,
     color: theme.colors.textSecondary,
   },
   filters: {
@@ -1709,13 +1706,14 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
   },
   row: {
-    padding: '14px 14px 12px',
-    borderRadius: 16,
+    padding: '20px 23px',
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 14,
+    boxShadow: theme.shadows.xs,
   },
   rowMain: {
     display: 'flex',
@@ -1747,12 +1745,15 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textPrimary,
   },
   badge: {
-    display: 'inline-block',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 6,
-    padding: '3px 8px',
-    borderRadius: 8,
+    padding: '6px 12px',
+    borderRadius: theme.radius.sm,
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 600,
+    lineHeight: 1.45,
   },
   cardDates: {
     fontSize: 12,
@@ -1779,7 +1780,7 @@ const styles: Record<string, CSSProperties> = {
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 12,
   },
   label: {
     fontSize: 13,
@@ -1800,8 +1801,9 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 8,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.md,
-    padding: 10,
+    borderRadius: theme.radius.xl,
+    background: theme.colors.mutedSurface,
+    padding: 12,
   },
   previewRow: {
     display: 'flex',
@@ -1816,9 +1818,9 @@ const styles: Record<string, CSSProperties> = {
   },
   result: {
     margin: 0,
-    padding: 10,
+    padding: 12,
     borderRadius: theme.radius.md,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
     color: theme.colors.primary,
     fontWeight: 600,
     fontSize: 14,
@@ -1834,6 +1836,10 @@ const styles: Record<string, CSSProperties> = {
     gap: 6,
     maxHeight: 240,
     overflowY: 'auto',
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.lg,
+    padding: 8,
+    background: theme.colors.mutedSurface,
   },
   residentResultBtn: {
     display: 'flex',
@@ -1853,9 +1859,9 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: 10,
     padding: '12px 14px',
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
-    background: '#f8fafc',
+    background: theme.colors.mutedSurface,
   },
   selectedResidentName: {
     fontSize: 15,

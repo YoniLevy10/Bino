@@ -21,6 +21,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   SearchInput,
@@ -439,11 +440,11 @@ export default function ProfessionalsPage() {
           <PageTransitionLoader />
         ) : (
           <>
-            <div style={styles.kpiGrid}>
+            <KpiRow columns={3} isMobile={isMobile}>
               <KpiCard label="סה״כ" value={stats.total} accent="primary" />
               <KpiCard label="פעילים" value={stats.active} accent="success" />
               <KpiCard label="לא פעילים" value={stats.inactive} />
-            </div>
+            </KpiRow>
 
             <div style={{ marginBottom: 24 }}>
               <MidragSearchPanel
@@ -676,16 +677,30 @@ function statusPill(active: boolean): CSSProperties {
 }
 
 const styles: Record<string, CSSProperties> = {
-  content: { padding: '24px 32px 48px', maxWidth: 1200, margin: '0 auto', width: '100%' },
+  content: {
+    padding: '32px 40px 48px',
+    maxWidth: 1200,
+    margin: '0 auto',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
   contentMobile: { padding: '16px 16px 80px', maxWidth: '100%', boxSizing: 'border-box' },
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
-  filters: { display: 'flex', gap: 12, padding: '16px 20px', borderBottom: `1px solid ${theme.colors.border}` },
-  list: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, padding: 20 },
+  filters: {
+    display: 'flex',
+    gap: 12,
+    flexWrap: 'wrap',
+    padding: '16px 20px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
+  },
+  list: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14, padding: 20 },
   card: {
-    padding: 16,
-    borderRadius: theme.radius.lg,
+    padding: '16px 18px',
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
   },
   cardHeader: { display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
   name: { fontSize: 16, fontWeight: 600, color: theme.colors.textPrimary },
@@ -694,17 +709,24 @@ const styles: Record<string, CSSProperties> = {
   notes: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 12, lineHeight: 1.4 },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   form: { display: 'flex', flexDirection: 'column', gap: 12 },
-  label: { fontSize: 12, fontWeight: 600, color: theme.colors.textMuted },
+  label: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary },
   input: {
     width: '100%',
-    padding: '10px 12px',
+    padding: '12px 14px',
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+    background: theme.colors.surface,
+    color: theme.colors.textPrimary,
   },
   checkRow: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' },
   migrationHint: { margin: 0, fontSize: 14, lineHeight: 1.5, color: theme.colors.textSecondary },
-  code: { fontSize: 13, background: theme.colors.muted, padding: '2px 6px', borderRadius: 4 },
+  code: {
+    fontSize: 13,
+    background: theme.colors.mutedSurface,
+    padding: '2px 6px',
+    borderRadius: theme.radius.xs,
+  },
 }

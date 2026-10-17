@@ -28,6 +28,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   Select,
@@ -1255,11 +1256,7 @@ export default function SummaryPage() {
           </Card>
         ) : (
           <>
-            {/* KPI Cards */}
-            <div style={{
-              ...styles.kpiGrid,
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            }}>
+            <KpiRow columns={isMobile ? 2 : 4} isMobile={isMobile}>
               <KpiCard
                 label="פתוחות כעת"
                 value={summary.openNow}
@@ -1284,7 +1281,7 @@ export default function SummaryPage() {
                 accent="success"
                 onClick={() => setPageTab('history')}
               />
-            </div>
+            </KpiRow>
 
             {ticketsInRangeSorted.length > 0 && (
               <Card
@@ -1814,21 +1811,21 @@ const styles: Record<string, CSSProperties> = {
   },
   th: {
     textAlign: 'start',
-    padding: '14px 20px',
+    padding: '12px 16px',
     fontSize: '12px',
     fontWeight: 600,
     color: theme.colors.textMuted,
     textTransform: 'none',
     letterSpacing: '0.02em',
     borderBottom: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
   },
   tr: {
     cursor: 'pointer',
-    transition: 'background 0.15s ease',
+    transition: `background ${theme.motion.fast} ease`,
   },
   td: {
-    padding: '16px 20px',
+    padding: '14px 16px',
     fontSize: '14px',
     color: theme.colors.textPrimary,
     borderBottom: `1px solid ${theme.colors.border}`,
@@ -1840,7 +1837,7 @@ const styles: Record<string, CSSProperties> = {
   projectCode: {
     fontSize: '12px',
     color: theme.colors.textMuted,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     padding: '4px 8px',
     borderRadius: theme.radius.sm,
   },
@@ -1849,11 +1846,12 @@ const styles: Record<string, CSSProperties> = {
   },
   pageTabBar: {
     display: 'flex',
-    gap: '4px',
+    gap: '8px',
     padding: '4px',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.md,
+    background: theme.colors.mutedSurface,
+    borderRadius: theme.radius.lg,
     marginBottom: '20px',
+    border: `1px solid ${theme.colors.border}`,
   },
   pageTab: {
     flex: 1,
@@ -1862,15 +1860,15 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     fontWeight: 600,
     border: 'none',
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
     cursor: 'pointer',
-    transition: 'all 0.15s',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
     fontFamily: 'inherit',
   },
   pageTabActive: {
     background: theme.colors.surface,
     color: theme.colors.primary,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    boxShadow: theme.shadows.xs,
   },
   pageTabInactive: {
     background: 'transparent',
@@ -1880,8 +1878,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '16px',
+    padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
     flexWrap: 'wrap',
   },
   historyRangeHint: {
@@ -1891,28 +1890,29 @@ const styles: Record<string, CSSProperties> = {
     textAlign: 'right',
   },
   historyTruncationBanner: {
-    background: '#FFF4E5',
-    border: '1.5px solid #FF9500',
-    borderRadius: '10px',
+    background: theme.colors.warningMuted,
+    border: `1px solid ${theme.colors.warning}`,
+    borderRadius: theme.radius.md,
     padding: '10px 16px',
     fontSize: '13px',
-    color: '#7D4700',
+    color: theme.colors.warning,
     margin: '0 16px 12px',
     direction: 'rtl',
   },
   historyGroups: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '16px',
     padding: '16px',
     maxWidth: '100%',
     boxSizing: 'border-box',
   },
   historyGroup: {
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     overflow: 'hidden',
     background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
   },
   historyGroupHeader: {
     display: 'flex',
@@ -1921,7 +1921,7 @@ const styles: Record<string, CSSProperties> = {
     gap: '12px',
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     flexWrap: 'wrap',
   },
   historyGroupTitle: {

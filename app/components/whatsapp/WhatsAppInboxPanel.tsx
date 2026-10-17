@@ -655,7 +655,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     lineHeight: 1.45,
     color: theme.colors.textSecondary,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     borderBottom: `1px solid ${theme.colors.border}`,
   },
   list: {
@@ -674,8 +674,10 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: `background ${theme.motion.fast} ease`,
   },
-  listItemActive: { background: theme.colors.muted },
+  listItemActive: { background: theme.colors.blueSoft },
   listTitle: { fontWeight: 600, fontSize: 14, color: theme.colors.textPrimary },
   listPreview: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
   thread: {
@@ -706,7 +708,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     flexShrink: 0,
-    background: theme.colors.surface,
+    background: theme.colors.mutedSurface,
   },
   backBtn: {
     border: 'none',
@@ -726,7 +728,7 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.success,
     background: theme.colors.successMuted,
     padding: '3px 10px',
-    borderRadius: 999,
+    borderRadius: theme.radius.sm,
   },
   badgeClosed: {
     fontSize: 11,
@@ -734,7 +736,7 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.warning,
     background: theme.colors.warningMuted,
     padding: '3px 10px',
-    borderRadius: 999,
+    borderRadius: theme.radius.sm,
   },
   messages: {
     flex: '1 1 0%',
@@ -744,6 +746,7 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 8,
     minHeight: 0,
+    background: theme.colors.background,
   },
   messagesErrorBox: {
     display: 'flex',

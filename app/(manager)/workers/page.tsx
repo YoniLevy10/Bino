@@ -35,6 +35,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   StatusBadge,
@@ -766,7 +767,7 @@ export default function WorkersPage() {
         {!isMobile && (
           <PageHeader
             title="העובדים שלי"
-            subtitle="מי מטפל בתקלות"
+            subtitle="שיוך, פורטל שטח והתראות תקלה"
             actions={
               <>
               {isBootstrapped && hasAddon(PAID_ADDON_KEYS.worker_stamp) ? (
@@ -812,15 +813,11 @@ export default function WorkersPage() {
           />
         ) : (
           <>
-        {/* KPI Cards */}
-        <div style={{
-          ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
-        }}>
+        <KpiRow columns={3} isMobile={isMobile}>
           <KpiCard label="סה״כ עובדים" value={stats.total} accent="primary" />
           <KpiCard label="פעילים" value={stats.active} accent="success" />
           <KpiCard label="לא פעילים" value={stats.inactive} />
-        </div>
+        </KpiRow>
 
         {isMobile && (
           <Button variant="primary" onClick={openCreateDrawer} style={styles.mobileCreateBtn}>
@@ -1383,9 +1380,10 @@ const styles: Record<string, CSSProperties> = {
   filtersRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '12px',
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
     flexWrap: 'wrap',
   },
   filtersEnd: {
@@ -1408,15 +1406,16 @@ const styles: Record<string, CSSProperties> = {
   },
   workerGrid: {
     display: 'grid',
-    gap: '16px',
+    gap: '14px',
   },
   workerCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
-    padding: '18px',
+    borderRadius: theme.radius.xl,
+    padding: '18px 20px',
     cursor: 'pointer',
-    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+    boxShadow: theme.shadows.xs,
+    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     display: 'flex',
     flexDirection: 'column',
     minWidth: 0,

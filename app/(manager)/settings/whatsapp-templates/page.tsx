@@ -54,7 +54,16 @@ const SMS_PREVIEW_SAMPLE: Record<(typeof SMS_TEMPLATE_VAR_NAMES)[number], string
   client_name: 'ועד הבית',
 }
 
-const STEP_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#0d9488', '#0891b2', '#dc2626']
+/** V2 accents — keep WA bubble greens intentional for chat preview only. */
+const STEP_COLORS = [
+  theme.colors.primary,
+  theme.colors.navySoft,
+  theme.colors.success,
+  theme.colors.warning,
+  theme.colors.info,
+  theme.colors.navy,
+  theme.colors.error,
+]
 
 const PREVIEW_LANG_TABS: { id: ResidentLang; label: string }[] = [
   { id: 'he', label: 'עברית' },
@@ -63,9 +72,9 @@ const PREVIEW_LANG_TABS: { id: ResidentLang; label: string }[] = [
 ]
 
 const LANG_FIELD_STYLES: Record<ResidentLang, CSSProperties> = {
-  he: { borderRight: '4px solid #2563eb' },
-  fr: { borderRight: '4px solid #7c3aed' },
-  en: { borderRight: '4px solid #059669' },
+  he: { borderRight: `4px solid ${theme.colors.primary}` },
+  fr: { borderRight: `4px solid ${theme.colors.navySoft}` },
+  en: { borderRight: `4px solid ${theme.colors.success}` },
 }
 
 function buildWaTrilingualFromDrafts(
@@ -447,7 +456,7 @@ export default function WhatsappTemplatesPage() {
             {/* SMS Templates Section */}
             <div style={styles.stepSection}>
               <div style={styles.stepHeader}>
-                <div style={{ ...styles.stepBadge, background: '#16a34a' }}>📱</div>
+                <div style={{ ...styles.stepBadge, background: theme.colors.success }}>📱</div>
                 <div>
                   <div style={styles.stepTitle}>תבניות SMS</div>
                   <div style={styles.stepDesc}>הודעות SMS שנשלחות למנהל/ת ולעובד בפתיחת תקלה חדשה</div>
@@ -527,7 +536,7 @@ export default function WhatsappTemplatesPage() {
               <div key={step.step} style={styles.stepSection}>
                 {/* Step header */}
                 <div style={styles.stepHeader}>
-                  <div style={{ ...styles.stepBadge, background: STEP_COLORS[si] ?? '#6b7280' }}>
+                  <div style={{ ...styles.stepBadge, background: STEP_COLORS[si] ?? theme.colors.textMuted }}>
                     {step.step}
                   </div>
                   <div>
@@ -648,7 +657,7 @@ export default function WhatsappTemplatesPage() {
             {Object.keys(extraDrafts).length > 0 ? (
               <div style={styles.stepSection}>
                 <div style={styles.stepHeader}>
-                  <div style={{ ...styles.stepBadge, background: '#64748b' }}>+</div>
+                  <div style={{ ...styles.stepBadge, background: theme.colors.textMuted }}>+</div>
                   <div>
                     <div style={styles.stepTitle}>תבניות נוספות מהמסד</div>
                     <div style={styles.stepDesc}>
@@ -730,55 +739,66 @@ const styles: Record<string, CSSProperties> = {
   previewLangLabel: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary },
   previewLangTabs: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   previewLangTab: {
-    border: `1px solid ${theme.colors.borderStrong}`,
+    border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
-    borderRadius: theme.radius.full,
-    padding: '6px 14px',
+    borderRadius: theme.radius.md,
+    padding: '8px 14px',
     fontSize: 13,
     cursor: 'pointer',
     color: theme.colors.textSecondary,
     fontWeight: 600,
+    minHeight: 40,
+    fontFamily: 'inherit',
   },
   previewLangTabActive: {
-    background: theme.colors.primary,
-    color: '#fff',
+    background: theme.colors.blueSoft,
+    color: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
-  inlineCode: { fontSize: 12, background: '#f3f4f6', padding: '1px 6px', borderRadius: 4 },
-  journey: { display: 'flex', flexDirection: 'column', gap: 40 },
+  inlineCode: {
+    fontSize: 12,
+    background: theme.colors.mutedSurface,
+    padding: '1px 6px',
+    borderRadius: theme.radius.xs,
+    color: theme.colors.textSecondary,
+  },
+  journey: { display: 'flex', flexDirection: 'column', gap: 32 },
 
   stepSection: { display: 'flex', flexDirection: 'column', gap: 12 },
   stepHeader: { display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 4 },
   stepBadge: {
     width: 32, height: 32, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontWeight: 700, fontSize: 15, flexShrink: 0, marginTop: 2,
+    color: theme.colors.textInverse, fontWeight: 700, fontSize: 15, flexShrink: 0, marginTop: 2,
   },
   stepTitle: { fontSize: 17, fontWeight: 700, color: theme.colors.textPrimary },
   stepDesc: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
 
-  templateList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  templateList: { display: 'flex', flexDirection: 'column', gap: 10 },
   templateCard: {
     background: theme.colors.surface,
-    border: `1.5px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.xl,
     overflow: 'hidden',
+    boxShadow: theme.shadows.xs,
   },
   templateCardHeader: {
     width: '100%', display: 'flex', alignItems: 'center', gap: 16,
     padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer',
     borderBottom: `1px solid ${theme.colors.borderSubtle}`,
     textAlign: 'right',
+    fontFamily: 'inherit',
   },
   templateLabel: { fontSize: 14, fontWeight: 600, color: theme.colors.textPrimary },
   whenSent: { fontSize: 12, color: theme.colors.textMuted, marginTop: 3 },
   keyCode: {
-    fontSize: 11, color: theme.colors.textMuted, background: theme.colors.muted,
+    fontSize: 11, color: theme.colors.textMuted, background: theme.colors.mutedSurface,
     padding: '2px 8px', borderRadius: theme.radius.xs, fontFamily: 'monospace',
     whiteSpace: 'nowrap',
   },
 
-  previewStrip: { padding: '12px 18px', background: theme.colors.muted },
+  previewStrip: { padding: '12px 18px', background: theme.colors.mutedSurface },
+  /** Intentional WhatsApp chrome (not BINO surface tokens). */
   waChrome: {
     background: '#ECE5DD', borderRadius: theme.radius.md,
     padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
@@ -787,7 +807,7 @@ const styles: Record<string, CSSProperties> = {
   waBubble: {
     maxWidth: '88%', background: '#DCF8C6',
     borderRadius: '12px 12px 4px 12px', padding: '8px 12px 20px',
-    position: 'relative', boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+    position: 'relative', boxShadow: theme.shadows.xs,
   },
   waText: { margin: 0, fontSize: 14, lineHeight: 1.45, color: '#111', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
   waLangTag: {
@@ -801,16 +821,19 @@ const styles: Record<string, CSSProperties> = {
   waTime: { position: 'absolute', bottom: 5, left: 10, fontSize: 11, color: 'rgba(0,0,0,0.45)' },
 
   smsChrome: {
-    background: '#f0f4f8', borderRadius: theme.radius.md,
+    background: theme.colors.mutedSurface, borderRadius: theme.radius.md,
     padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
     border: `1px solid ${theme.colors.border}`,
   },
   smsBubble: {
-    maxWidth: '88%', background: '#e2e8f0',
+    maxWidth: '88%', background: theme.colors.border,
     borderRadius: '4px 18px 18px 18px', padding: '10px 14px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+    boxShadow: theme.shadows.xs,
   },
-  smsText: { margin: 0, fontSize: 14, lineHeight: 1.5, color: '#1e293b', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace' },
+  smsText: {
+    margin: 0, fontSize: 14, lineHeight: 1.5, color: theme.colors.textPrimary,
+    whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace',
+  },
 
   editPanel: {
     padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12,

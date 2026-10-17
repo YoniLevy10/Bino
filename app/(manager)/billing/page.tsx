@@ -21,6 +21,7 @@ import {
   PageHeader,
   Card,
   KpiCard,
+  KpiRow,
   ErrorState,
   LoadingSpinner,
   theme
@@ -207,16 +208,11 @@ export default function BillingPage() {
               </Card>
             )}
 
-            <div
-              style={{
-                ...styles.kpiGrid,
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-              }}
-            >
+            <KpiRow columns={3} isMobile={isMobile}>
               <KpiCard label="טיקטים החודש" value={data.ticketsThisMonth} accent="primary" />
               <KpiCard label="דיירים (סה״כ ברשומה)" value={data.residentsTotal} accent="success" />
               <KpiCard label="עובדים פעילים" value={data.workersActive} />
-            </div>
+            </KpiRow>
 
             {data.plans && data.plans.length > 0 && (
               <Card noPadding style={{ marginTop: 20 }}>
@@ -377,10 +373,15 @@ const styles: Record<string, CSSProperties> = {
     padding: '32px 40px',
     maxWidth: '1000px',
     margin: '0 auto',
+    width: '100%',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
   },
   loading: { padding: '64px', display: 'flex', justifyContent: 'center' },
   kpiGrid: { display: 'grid', gap: '16px' },
-  cardPad: { padding: '20px 24px' },
+  cardPad: { padding: '20px 22px' },
   h2: {
     fontSize: '16px',
     fontWeight: 600,
@@ -409,16 +410,16 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-end',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.sm,
+    background: theme.colors.mutedSurface,
+    borderRadius: theme.radius.md,
     overflow: 'hidden',
   },
   barFill: {
     width: '100%',
     background: theme.colors.primary,
-    borderRadius: `${theme.radius.sm} ${theme.radius.sm} 0 0`,
+    borderRadius: `${theme.radius.md} ${theme.radius.md} 0 0`,
     minHeight: '4px',
-    transition: 'height 0.2s ease',
+    transition: `height ${theme.motion.base} ease`,
   },
   barLabel: { fontSize: '10px', color: theme.colors.textMuted },
   barCount: { fontSize: '12px', fontWeight: 600, color: theme.colors.textPrimary },
@@ -442,10 +443,10 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 16,
-    padding: 14,
-    borderRadius: theme.radius.md,
+    padding: 16,
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
   },
   planCurrentTitle: { fontSize: 17, fontWeight: 700, color: theme.colors.textPrimary },
   planCurrentDesc: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4 },
@@ -455,7 +456,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 11,
     fontWeight: 600,
     padding: '4px 10px',
-    borderRadius: theme.radius.full,
+    borderRadius: theme.radius.sm,
     background: theme.colors.surface,
     color: theme.colors.textMuted,
     textTransform: 'uppercase',
@@ -464,11 +465,21 @@ const styles: Record<string, CSSProperties> = {
   planCatalogRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '10px 12px',
+    padding: '12px 14px',
     borderRadius: theme.radius.md,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
+    border: `1px solid ${theme.colors.border}`,
     fontSize: 14,
   },
   planCatalogName: { fontWeight: 500 },
   planCatalogPrice: { color: theme.colors.textSecondary, fontSize: 13 },
+  th: {
+    textAlign: 'start',
+    padding: '12px 16px',
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.colors.textMuted,
+    background: theme.colors.mutedSurface,
+    borderBottom: `1px solid ${theme.colors.border}`,
+  },
 }

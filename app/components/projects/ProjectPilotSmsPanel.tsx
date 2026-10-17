@@ -201,9 +201,10 @@ export function ProjectPilotSmsPanel({ projectId, projectName }: Props) {
 const styles: Record<string, CSSProperties> = {
   warn: {
     margin: '0 0 12px',
-    padding: '10px 12px',
-    borderRadius: theme.radius.md,
+    padding: '12px 14px',
+    borderRadius: theme.radius.xl,
     background: theme.colors.warningMuted,
+    border: `1px solid ${theme.colors.warning}`,
     color: theme.colors.textPrimary,
     fontSize: 13,
     lineHeight: 1.45,
@@ -212,7 +213,7 @@ const styles: Record<string, CSSProperties> = {
     display: 'block',
     fontSize: 13,
     fontWeight: 600,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   textarea: {
@@ -220,7 +221,7 @@ const styles: Record<string, CSSProperties> = {
     boxSizing: 'border-box',
     margin: '0 0 8px',
     padding: 14,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 1.55,
     fontFamily: 'inherit',
     whiteSpace: 'pre-wrap',

@@ -195,9 +195,14 @@ export default function AttendancePage() {
 
   const currentTabContent = (
     <>
-      <div style={{ ...styles.kpiGrid, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)' }}>
+      <div
+        style={{
+          ...styles.kpiGrid,
+          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+        }}
+      >
         {kpiTiles.map((tile) => (
-          <Card key={tile.key} style={styles.kpiCard}>
+          <Card key={tile.key} style={{ ...styles.kpiCard, minWidth: 0 }}>
             <div style={{ ...styles.kpiValue, color: tile.accent }}>{loading ? '—' : tile.value}</div>
             <div style={styles.kpiLabel}>{tile.label}</div>
           </Card>
@@ -416,10 +421,11 @@ export default function AttendancePage() {
 const styles: Record<string, CSSProperties> = {
   pageTabBar: {
     display: 'flex',
-    gap: '4px',
+    gap: '8px',
     padding: '4px',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.md,
+    background: theme.colors.mutedSurface,
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.border}`,
     marginBottom: '20px',
   },
   pageTab: {
@@ -429,15 +435,15 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     fontWeight: 600,
     border: 'none',
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
     cursor: 'pointer',
-    transition: 'all 0.15s',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
     fontFamily: 'inherit',
   },
   pageTabActive: {
     background: theme.colors.surface,
     color: theme.colors.primary,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    boxShadow: theme.shadows.xs,
   },
   pageTabInactive: {
     background: 'transparent',
@@ -474,32 +480,40 @@ const styles: Record<string, CSSProperties> = {
   sectionTitle: { margin: '0 0 8px', fontSize: 16, fontWeight: 600 },
   hint: { margin: '0 0 12px', fontSize: 13, color: theme.colors.textMuted },
   input: {
-    padding: '8px 12px',
-    borderRadius: 8,
+    padding: '12px 14px',
+    borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     fontSize: 14,
     minWidth: 120,
     minHeight: 44,
+    background: theme.colors.surface,
+    color: theme.colors.textPrimary,
+    fontFamily: 'inherit',
   },
   filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'stretch' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
   th: {
     textAlign: 'right',
-    padding: '8px 10px',
-    borderBottom: `2px solid ${theme.colors.border}`,
+    padding: '12px 16px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
     color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: 600,
   },
   td: {
-    padding: '10px',
+    padding: '12px 16px',
     borderBottom: `1px solid ${theme.colors.border}`,
     verticalAlign: 'top',
+    color: theme.colors.textPrimary,
   },
   mobileList: { display: 'flex', flexDirection: 'column', gap: 10 },
   eventCard: {
-    padding: 14,
-    borderRadius: 10,
+    padding: '14px 16px',
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.background,
+    background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
   },
   eventCardTop: {
     display: 'flex',

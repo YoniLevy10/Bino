@@ -126,13 +126,13 @@ export const ToastContainer = () => {
       style={{
         position: 'fixed',
         insetInlineEnd: 16,
-        bottom: 'calc(74px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px) + 12px)',
         zIndex: TOAST_Z_INDEX,
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
         maxWidth: 384,
-        width: 'calc(100vw - 32px)',
+        width: 'calc(100% - 32px)',
         pointerEvents: 'none',
       }}
     >

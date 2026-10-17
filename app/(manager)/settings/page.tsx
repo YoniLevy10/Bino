@@ -1433,17 +1433,17 @@ function SettingsPageInner() {
                     <div
                       style={{
                         ...styles.morningSection,
-                        border: '1px solid #bbf7d0',
-                        background: '#f0fdf4',
+                        border: `1px solid ${theme.colors.success}`,
+                        background: theme.colors.successMuted,
                         borderRadius: theme.radius.md,
                         padding: 14,
                       }}
                     >
-                      <div style={{ ...styles.morningSectionTitle, color: '#15803d' }}>
+                      <div style={{ ...styles.morningSectionTitle, color: theme.colors.success }}>
                         3 · הבניין מחובר
                         {growJustConnectedId === selectedGrowProject.id ? ' ✓' : ''}
                       </div>
-                      <p style={{ margin: 0, fontSize: 13, color: '#166534', lineHeight: 1.5 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
                         הכסף מחיובים לבניין הזה ייכנס לחשבון Grow שלו.
                       </p>
                       <div style={{ ...styles.drawerActions, marginTop: 8 }}>
@@ -1493,7 +1493,7 @@ function SettingsPageInner() {
                             אין userId — התחלת הרשמה
                           </Button>
                           {growRegisterReady === false ? (
-                            <span style={{ ...styles.formHint, color: '#c2410c' }}>
+                            <span style={{ ...styles.formHint, color: theme.colors.warning }}>
                               הרשמה אוטומטית לא מוגדרת — אפשר רק להדביק userId, או לפנות ל-Bino.
                             </span>
                           ) : null}
@@ -1721,7 +1721,7 @@ function SettingsPageInner() {
                         </div>
                       </div>
                       {growWebhookConfigured === false ? (
-                        <span style={{ ...styles.formHint, color: '#c2410c' }}>
+                        <span style={{ ...styles.formHint, color: theme.colors.warning }}>
                           {growWebhookLoadError || 'חיבור התשלומים בשרת לא הושלם.'}
                         </span>
                       ) : null}
@@ -2075,6 +2075,10 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: 'wrap',
     gap: '8px',
     marginBottom: '24px',
+    padding: '12px 14px',
+    background: theme.colors.mutedSurface,
+    borderRadius: theme.radius.xl,
+    border: `1px solid ${theme.colors.border}`,
     position: 'relative',
     zIndex: 2,
   },
@@ -2100,17 +2104,21 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     position: 'relative',
     zIndex: 2,
+    minHeight: 44,
+    fontFamily: 'inherit',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
   },
   tabBtnActive: {
     border: `1px solid ${theme.colors.primary}`,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
     color: theme.colors.primary,
+    fontWeight: 600,
   },
   cardInner: {
-    padding: '24px',
+    padding: '22px 24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '18px',
   },
   teamModeChip: {
     padding: '8px 14px',
@@ -2119,6 +2127,8 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
+    minHeight: 40,
+    fontFamily: 'inherit',
   },
   formGroup: {
     display: 'flex',

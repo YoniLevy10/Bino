@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Live+ preview — production blue DNA, richer ambient wrap */
+  /* Manager V2 — Figma delivery tokens (BINO · גרסה סופית למסירה) */
   
-  --font-sans: var(--font-heebo), 'Heebo', 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-sans: var(--font-heebo), 'Heebo', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
   
-  --color-background: #F9F9FB;
-  --color-foreground: #1A1A2E;
+  --color-background: #f4f7fb;
+  --color-foreground: #14283f;
   
   --color-surface: #FFFFFF;
   --color-surface-elevated: #FFFFFF;
-  --color-surface-hover: #F5F5F7;
-  --color-surface-active: #EEEEEF;
-  --color-muted: #F5F5F7;
+  --color-surface-hover: #f7f9fc;
+  --color-surface-active: #eaf3ff;
+  --color-muted: #f7f9fc;
   
-  --color-border: #E8E8ED;
-  --color-border-subtle: #F0F0F2;
-  --color-border-strong: #D1D1D6;
+  --color-border: #e1e8f0;
+  --color-border-subtle: #eef2f7;
+  --color-border-strong: #c5d0dc;
   
-  --color-text-primary: #1A1A2E;
-  --color-text-secondary: #3C3C43;
-  --color-text-muted: #86868B;
+  --color-text-primary: #14283f;
+  --color-text-secondary: #52657a;
+  --color-text-muted: #718197;
   --color-text-inverse: #FFFFFF;
   
   --color-primary: #007AFF;
@@ -33,12 +33,12 @@
   
   --color-success: #34C759;
   --color-success-muted: #E8F9ED;
-  --color-warning: #FF9500;
-  --color-warning-muted: #FFF4E5;
-  --color-error: #FF3B30;
-  --color-error-muted: #FFEBE9;
+  --color-warning: #a95f00;
+  --color-warning-muted: #fff3dc;
+  --color-error: #c33532;
+  --color-error-muted: #fff0ee;
   --color-info: #007AFF;
-  --color-info-muted: #E5F2FF;
+  --color-info-muted: #eaf3ff;
   
   --radius: 12px;
   --radius-sm: 8px;
@@ -49,7 +49,13 @@
 :root {
   --background: #dfe7f2;
   --foreground: #1A1A2E;
-  --mobile-bottom-nav-height: 78px;
+  /*
+   * Floating mobile tab bar clearance ABOVE the home indicator.
+   * = float gap (8) + bar min-height (64) + content breathing (8).
+   * Safe-area-inset-bottom is added separately at each call site — do not fold it in here.
+   */
+  --mobile-bottom-nav-bar-height: 64px;
+  --mobile-bottom-nav-height: 80px;
   /* Live+ — same DNA as production, denser ambient wrap */
   --live-wrap-a: rgba(0, 122, 255, 0.42);
   --live-wrap-b: rgba(90, 200, 250, 0.38);
@@ -158,24 +164,53 @@ select {
   touch-action: manipulation;
 }
 
+/*
+ * overflow-x:hidden alone forces overflow-y to compute to auto (CSS overflow quirk),
+ * which turns [data-app-main] into a nested scrollport that clips PWA/standalone layouts.
+ * Prefer clip (x only) so the document remains the vertical scroller.
+ */
 [data-app-main] {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100%;
+  min-width: 0;
+}
+
+/* KPI strip — hide scrollbar chrome; scrolling still works */
+[data-ui='kpi-row'] [data-kpi-track]::-webkit-scrollbar {
+  display: none;
 }
 
 @media (max-width: 768px) {
   html,
   body {
-    overflow-x: hidden;
+    /* 100vw includes scrollbar/gutter and fights viewport-fit=cover — clips sides in PWA */
+    overflow-x: clip;
     width: 100%;
-    max-width: 100vw;
+    max-width: 100%;
   }
 
   body {
     position: relative;
     min-height: 100svh;
     min-height: 100dvh;
+    /* fixed backgrounds break scroll/paint on iOS standalone PWAs */
+    background-attachment: scroll;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Installed PWA / home-screen — lock shell metrics to dynamic viewport */
+@media (display-mode: standalone), (display-mode: minimal-ui) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-attachment: scroll;
   }
 }
 
@@ -431,13 +466,13 @@ select {
   top: auto !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: calc(var(--mobile-bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px)) !important;
   transform: none !important;
   width: 100% !important;
   max-width: 100% !important;
   max-height: min(
-    calc(92dvh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px)),
-    calc(100svh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px))
+    calc(92dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px)),
+    calc(100svh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px))
   ) !important;
   border-radius: 16px 16px 0 0 !important;
   display: flex !important;
@@ -490,15 +525,15 @@ select {
     position: relative !important;
     bottom: auto !important;
     max-height: min(
-      calc(88dvh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px)),
-      calc(100svh - var(--mobile-bottom-nav-height, 64px) - env(safe-area-inset-bottom, 0px))
+      calc(88dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px)),
+      calc(100svh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px))
     ) !important;
   }
 }
 
-/* Home only: flat gray, solid cards. Severity color stays on the exception list. */
+/* Home only: V2 soft page, solid cards. Severity color stays on the exception list. */
 .kiss-home {
-  background: #F2F2F7;
+  background: #f4f7fb;
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -507,8 +542,8 @@ select {
   background: #ffffff;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  box-shadow: none;
-  border: 1px solid #E8E8ED;
+  box-shadow: 0 2px 8px rgba(16, 43, 70, 0.04);
+  border: 1px solid #e1e8f0;
 }
 
 /* Live+ liquid glass — production materials with richer blue tint wrap */
@@ -937,9 +972,9 @@ select {
   }
 }
 
-/* Manager shell: flat gray page, solid cards. Sidebar keeps its own chrome. */
+/* Manager V2 shell: soft blue-gray page, solid cards, navy sidebar. */
 html[data-kiss='1'] body {
-  background: #F2F2F7;
+  background: #f4f7fb;
 }
 
 html[data-kiss='1'] .lg-glass,
@@ -947,15 +982,51 @@ html[data-kiss='1'] .lg-glass,
   background: #ffffff;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  box-shadow: none;
-  border: 1px solid #E8E8ED;
+  box-shadow: 0 2px 8px rgba(16, 43, 70, 0.04);
+  border: 1px solid #e1e8f0;
 }
 
 .kiss-app .lg-sidebar {
-  background: #ffffff;
+  background: #102b46;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
-  border-inline-end: 1px solid #E8E8ED;
+  border-inline-end: none;
+  color: #b4c7db;
+}
+
+.kiss-app .lg-sidebar a,
+.kiss-app .lg-sidebar button {
+  color: inherit;
+}
+
+.kiss-app .lg-sidebar .lg-nav-active {
+  background: #1d4266 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.kiss-app .lg-btn-primary {
+  box-shadow: 0 2px 6px rgba(0, 64, 166, 0.16);
+}
+
+.kiss-app .lg-tabbar {
+  background: #ffffff;
+  border: 1px solid #e1e8f0;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(16, 43, 70, 0.08);
+  /* Never clip tab labels/icons inside the floating pill */
+  overflow: visible;
+  min-height: var(--mobile-bottom-nav-bar-height, 64px);
+  height: auto;
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiss-app *,
+  .kiss-home * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 

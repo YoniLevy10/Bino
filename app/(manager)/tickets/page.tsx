@@ -61,6 +61,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   StatusBadge,
@@ -1244,8 +1245,8 @@ export default function TicketsPage() {
       >
         {!isMobile && (
           <PageHeader
-            title="תקלות"
-            subtitle="ניהול ומעקב אחר תקלות אחזקה פעילות"
+            title="ניהול תקלות"
+            subtitle="חיפוש, סינון ושיוך — אותן יכולות, פריסה לפי עיצוב המסירה"
             actions={
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', position: 'relative' }}>
                 <div style={{ position: 'relative' }}>
@@ -1332,15 +1333,11 @@ export default function TicketsPage() {
           />
         )}
 
-        {/* KPI Cards */}
-        <div style={{
-          ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-        }}>
+        <KpiRow columns={isMobile ? 2 : 3} isMobile={isMobile}>
           <KpiCard label="סה״כ פעילות" value={stats.total} accent="primary" />
           <KpiCard label="פתוחות" value={stats.open} accent="warning" />
           <KpiCard label="בטיפול" value={stats.assigned} accent="primary" />
-        </div>
+        </KpiRow>
 
         <p style={styles.closedHint}>
           תקלות סגורות מופיעות בדף הסיכום, בלשונית היסטוריה ובהיסטוריית הפרויקט.
@@ -1348,16 +1345,16 @@ export default function TicketsPage() {
 
         {ticketsTruncated && (
           <div style={{
-            background: '#FFF4E5',
-            border: '1.5px solid #FF9500',
-            borderRadius: '10px',
+            background: theme.colors.warningMuted,
+            border: `1px solid ${theme.colors.warning}`,
+            borderRadius: theme.radius.md,
             padding: '10px 16px',
             fontSize: '13px',
-            color: '#7D4700',
+            color: theme.colors.warning,
             marginBottom: '12px',
             direction: 'rtl',
           }}>
-            ⚠️ מציג עד 200 תקלות פעילות אחרונות. תקלות סגורות — בדף הסיכום, לשונית היסטוריה.
+            מציג עד 200 תקלות פעילות אחרונות. תקלות סגורות — בדף הסיכום, לשונית היסטוריה.
           </div>
         )}
 
@@ -1823,7 +1820,7 @@ const styles: Record<string, CSSProperties> = {
   chip: {
     flex: '0 0 auto',
     padding: '8px 14px',
-    minHeight: '36px',
+    minHeight: '40px',
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
@@ -1831,10 +1828,12 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
   },
   chipActive: {
     borderColor: theme.colors.primary,
-    background: theme.colors.primaryMuted,
+    background: theme.colors.blueSoft,
     color: theme.colors.primary,
   },
   mobileCardList: {

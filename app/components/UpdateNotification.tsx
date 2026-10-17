@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { theme } from './ui/theme'
 
 export function UpdateNotification() {
   const [show, setShow] = useState(false)
@@ -27,26 +28,35 @@ export function UpdateNotification() {
       role="alert"
       style={{
         position: 'fixed',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-bottom-nav-height, 80px) + 12px)',
         right: '16px',
         left: '16px',
         zIndex: 9999,
-        background: '#1e293b',
-        color: '#f8fafc',
-        borderRadius: '12px',
+        background: theme.colors.navy,
+        color: theme.colors.textInverse,
+        borderRadius: theme.radius.xl,
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+        boxShadow: theme.shadows.lg,
         direction: 'rtl',
         fontSize: '14px',
+        border: `1px solid ${theme.colors.navySoft}`,
       }}
     >
-      <span style={{ flex: 1 }}>עדכון חדש זמין 🎉</span>
+      <span style={{ flex: 1 }}>עדכון חדש זמין — רעננו כדי לטעון את העיצוב העדכני</span>
       <button
         onClick={() => setShow(false)}
-        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', fontSize: '18px', lineHeight: 1 }}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: theme.colors.navText,
+          cursor: 'pointer',
+          padding: '4px',
+          fontSize: '18px',
+          lineHeight: 1,
+        }}
         aria-label="סגור"
       >
         ✕
@@ -54,15 +64,17 @@ export function UpdateNotification() {
       <button
         onClick={applyUpdate}
         style={{
-          background: '#2563eb',
-          color: '#fff',
+          background: theme.colors.primary,
+          color: theme.colors.textInverse,
           border: 'none',
-          borderRadius: '8px',
+          borderRadius: theme.radius.md,
           padding: '6px 14px',
           cursor: 'pointer',
           fontWeight: 600,
           fontSize: '13px',
           whiteSpace: 'nowrap',
+          boxShadow: theme.shadows.primaryBtn,
+          minHeight: 40,
         }}
       >
         רענן

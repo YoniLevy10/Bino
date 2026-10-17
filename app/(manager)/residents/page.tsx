@@ -84,17 +84,20 @@ import { pickResidentToKeep } from '@/lib/merge-residents'
 import { PageListSkeleton } from '@/app/components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
-  padding: '10px 18px',
+  padding: '10px 16px',
   borderRadius: theme.radius.md,
   border: `1px solid ${theme.colors.primary}`,
-  background: theme.colors.primaryMuted,
-  color: theme.colors.primaryText,
+  background: theme.colors.blueSoft,
+  color: theme.colors.primary,
   fontWeight: 600,
   fontSize: '14px',
   cursor: 'pointer',
   display: 'inline-flex',
   alignItems: 'center',
   gap: '8px',
+  minHeight: 44,
+  fontFamily: 'inherit',
+  transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
 }
 
 const MAIN_TAB_INACTIVE: CSSProperties = {
@@ -102,6 +105,7 @@ const MAIN_TAB_INACTIVE: CSSProperties = {
   border: `1px solid ${theme.colors.border}`,
   background: theme.colors.surface,
   color: theme.colors.textSecondary,
+  fontWeight: 500,
 }
 
 type ResidentRow = {
@@ -918,7 +922,7 @@ function ResidentsPageInner() {
         }}
       >
         {!isMobile && (
-          <PageHeader title="דיירים" subtitle="נתוני דיירים" />
+          <PageHeader title="דיירים" subtitle="פנקס דיירים לפי בניין — חיפוש, ייבוא והוספה" />
         )}
 
         <Card noPadding>
@@ -1354,19 +1358,20 @@ function ResidentsPageInner() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  content: { padding: '32px 40px', maxWidth: '1200px', margin: '0 auto' },
+  content: { padding: '32px 40px', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
   mainTabs: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: '10px',
+    gap: '8px',
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
   },
   renterBadge: {
     background: theme.colors.warningMuted,
     color: theme.colors.warning,
     border: `1px solid ${theme.colors.warning}`,
-    borderRadius: '999px',
+    borderRadius: theme.radius.sm,
     fontSize: '11px',
     fontWeight: 600,
     padding: '2px 8px',
@@ -1374,11 +1379,11 @@ const styles: Record<string, CSSProperties> = {
   },
   pendingBadge: {
     background: theme.colors.warning,
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: '11px',
     minWidth: '22px',
     height: '22px',
-    borderRadius: '11px',
+    borderRadius: theme.radius.full,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1387,15 +1392,16 @@ const styles: Record<string, CSSProperties> = {
   pendingWrap: { padding: '0 0 8px' },
   pendingList: { padding: '16px 20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' },
   pendingCard: {
-    padding: '16px',
-    borderRadius: theme.radius.md,
+    padding: '16px 18px',
+    borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
+    background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
   },
   pendingConflict: {
     marginBottom: '12px',
     padding: '10px 14px',
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
     background: theme.colors.warningMuted,
     border: `1px solid ${theme.colors.warning}`,
     fontSize: '13px',
@@ -1461,8 +1467,9 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: 'wrap',
     gap: '12px',
     alignItems: 'center',
-    padding: '20px 24px',
+    padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
   },
   select: {
     padding: '10px 14px',
@@ -1470,6 +1477,9 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.border}`,
     fontSize: '15px',
     minWidth: '200px',
+    background: theme.colors.surface,
+    color: theme.colors.textPrimary,
+    fontFamily: 'inherit',
   },
   loading: { padding: '48px', display: 'flex', justifyContent: 'center' },
   tableWrap: { padding: '0 0 24px', overflowX: 'auto' },
@@ -1478,23 +1488,24 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '10px',
     padding: '10px 20px',
-    background: theme.colors.primaryMuted,
-    borderBottom: `1px solid ${theme.colors.primary}44`,
+    background: theme.colors.blueSoft,
+    borderBottom: `1px solid ${theme.colors.border}`,
     flexWrap: 'wrap' as const,
   },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: {
     textAlign: 'start',
-    padding: '12px 20px',
+    padding: '12px 16px',
     fontSize: '12px',
     fontWeight: 600,
     color: theme.colors.textMuted,
-    background: theme.colors.muted,
+    background: theme.colors.mutedSurface,
     borderBottom: `1px solid ${theme.colors.border}`,
   },
   td: {
-    padding: '14px 20px',
+    padding: '14px 16px',
     fontSize: '14px',
+    color: theme.colors.textPrimary,
     borderBottom: `1px solid ${theme.colors.border}`,
   },
   empty: { padding: '32px 24px', color: theme.colors.textMuted, textAlign: 'center' },

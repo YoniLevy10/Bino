@@ -22,6 +22,7 @@ import {
   useMobileMenu,
   PageHeader,
   KpiCard,
+  KpiRow,
   Card,
   Button,
   StatusBadge,
@@ -224,15 +225,11 @@ export default function QrPage() {
           />
         )}
 
-        {/* KPI Cards */}
-        <div style={{
-          ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
-        }}>
+        <KpiRow columns={3} isMobile={isMobile}>
           <KpiCard label="סה״כ פרויקטים" value={stats.total} accent="primary" />
           <KpiCard label="פעילים" value={stats.active} accent="success" />
           <KpiCard label="לא פעילים" value={stats.inactive} />
-        </div>
+        </KpiRow>
 
         {/* Info Banner */}
         <div style={styles.infoBanner}>
@@ -518,10 +515,11 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '14px',
-    padding: '20px',
-    background: theme.colors.infoMuted,
-    borderRadius: theme.radius.lg,
-    marginBottom: '24px',
+    padding: '18px 20px',
+    background: theme.colors.blueSoft,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.xl,
+    marginBottom: '20px',
   },
   infoBannerIcon: {
     color: theme.colors.info,
@@ -540,8 +538,9 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.5,
   },
   filtersRow: {
-    padding: '20px 24px',
+    padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
   },
   loadingContainer: {
     display: 'flex',
@@ -551,16 +550,17 @@ const styles: Record<string, CSSProperties> = {
   },
   qrGrid: {
     display: 'grid',
-    gap: '20px',
-    padding: '24px',
+    gap: '16px',
+    padding: '20px',
   },
   qrCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.lg,
-    padding: '24px',
+    borderRadius: theme.radius.xl,
+    padding: '20px 22px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    boxShadow: theme.shadows.xs,
+    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     textAlign: 'center',
   },
   qrCardInactive: {
