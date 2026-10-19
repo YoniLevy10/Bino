@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type MouseEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import {
@@ -49,6 +49,15 @@ const NAV = [
   },
 ] as const
 
+async function persistMembershipContext(membershipId: string): Promise<boolean> {
+  const res = await fetch('/api/resident/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ membershipId }),
+  })
+  return res.ok
+}
+
 export function ResidentShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -56,6 +65,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [contextReady, setContextReady] = useState(false)
 
   const hideChrome =
     pathname === '/resident/login' ||
@@ -64,13 +74,17 @@ export function ResidentShell({ children }: { children: ReactNode }) {
     pathname.startsWith('/resident/accept-invite') ||
     pathname.startsWith('/resident/sandbox')
 
+  const onChat = (pathname || '').startsWith('/resident/chat')
+
   const loadMemberships = useCallback(async () => {
     if (hideChrome) {
       setLoading(false)
+      setContextReady(true)
       return
     }
     setLoading(true)
     setError('')
+    setContextReady(false)
     try {
       const res = await fetch('/api/resident/memberships')
       const json = (await res.json()) as {
@@ -90,19 +104,26 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       setMemberships(list)
       if (list.length === 0) {
         setError('אין חברות פעילה בפורטל. פנו לחברת הניהול לקבלת הזמנה.')
-      } else if (list.length === 1) {
-        setActiveId(list[0].id)
-        await fetch('/api/resident/context', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ membershipId: list[0].id }),
-        })
+        return
       }
+      // Always bind a membership cookie so bot/home/tickets APIs resolve.
+      // Prefer previously selected id when still in the list; else first.
+      const preferred =
+        (activeId && list.find((m) => m.id === activeId)?.id) || list[0].id
+      setActiveId(preferred)
+      const ok = await persistMembershipContext(preferred)
+      if (!ok) {
+        setError('בחירת דירה נכשלה — נסו שוב או פנו לחברת הניהול')
+        return
+      }
+      setContextReady(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאת רשת')
     } finally {
       setLoading(false)
     }
+    // activeId intentionally omitted — only seed from prior selection once per load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideChrome, router])
 
   useEffect(() => {
@@ -111,16 +132,13 @@ export function ResidentShell({ children }: { children: ReactNode }) {
 
   async function selectMembership(id: string) {
     setActiveId(id)
-    const res = await fetch('/api/resident/context', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ membershipId: id }),
-    })
-    if (!res.ok) {
-      const json = (await res.json()) as { error?: string }
-      setError(json.error || 'בחירת דירה נכשלה')
+    setContextReady(false)
+    const ok = await persistMembershipContext(id)
+    if (!ok) {
+      setError('בחירת דירה נכשלה')
       return
     }
+    setContextReady(true)
     router.refresh()
     window.location.href = pathname || '/resident'
   }
@@ -133,11 +151,17 @@ export function ResidentShell({ children }: { children: ReactNode }) {
     router.replace('/resident/login')
   }
 
+  function openBot(e?: MouseEvent) {
+    e?.preventDefault()
+    router.push('/resident/chat')
+  }
+
   if (hideChrome) {
     return <>{children}</>
   }
 
   const active = memberships.find((m) => m.id === activeId) || memberships[0]
+  const showChildren = !loading && !(error && memberships.length === 0) && contextReady
 
   return (
     <div className="resident-shell" style={residentShellStyles.root} dir="rtl">
@@ -203,9 +227,11 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       ) : null}
 
       <main style={residentShellStyles.main}>
-        {loading ? (
+        {loading || (!contextReady && memberships.length > 0 && !error) ? (
           <ResidentMuted>טוען…</ResidentMuted>
         ) : error && memberships.length === 0 ? (
+          <ResidentAlert tone="error">{error}</ResidentAlert>
+        ) : error && !showChildren ? (
           <ResidentAlert tone="error">{error}</ResidentAlert>
         ) : (
           children
@@ -232,14 +258,47 @@ export function ResidentShell({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      <Link
-        href="/resident/chat"
-        aria-label="שיחה עם הבוט"
-        className="lg-btn lg-btn-primary"
-        style={residentShellStyles.fab}
-      >
-        בוט
-      </Link>
+      {/* Bot FAB — always wired to in-app deterministic portal chat (not WhatsApp). */}
+      {!onChat ? (
+        <Link
+          href="/resident/chat"
+          aria-label="שיחה עם הבוט — פתיחת תקלה, תשלומים ומידע"
+          title="שיחה עם הבוט"
+          className="lg-btn lg-btn-primary resident-bot-fab"
+          style={residentShellStyles.fab}
+          onClick={openBot}
+        >
+          <span aria-hidden style={{ display: 'grid', gap: 1, placeItems: 'center', lineHeight: 1.1 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M12 3a7 7 0 0 0-7 7v1.5A2.5 2.5 0 0 0 7.5 14H8v3l3.2-2.4c.26-.2.58-.3.9-.3H12a7 7 0 0 0 0-14Z"
+                fill="currentColor"
+                opacity="0.95"
+              />
+              <circle cx="9.2" cy="10.2" r="1" fill="#007aff" />
+              <circle cx="12" cy="10.2" r="1" fill="#007aff" />
+              <circle cx="14.8" cy="10.2" r="1" fill="#007aff" />
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700 }}>בוט</span>
+          </span>
+        </Link>
+      ) : (
+        <Link
+          href="/resident/tickets"
+          aria-label="מעבר לטופס תקלות"
+          className="lg-btn resident-bot-fab"
+          style={{
+            ...residentShellStyles.fab,
+            background: 'rgba(255,255,255,0.85)',
+            color: residentTheme.colors.primary,
+            fontSize: 12,
+            boxShadow:
+              'inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 22px rgba(0,70,150,0.12)',
+          }}
+        >
+          טופס
+        </Link>
+      )}
     </div>
   )
 }

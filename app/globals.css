@@ -970,6 +970,19 @@ select {
   .resident-btn-press:active:not(:disabled) {
     transform: none;
   }
+
+  .resident-bot-fab {
+    transition: none !important;
+  }
+}
+
+.resident-bot-fab {
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.resident-bot-fab:active {
+  transform: scale(0.96);
+  filter: brightness(1.05);
 }
 
 /* Manager V2 shell: soft blue-gray page, solid cards, navy sidebar. */
