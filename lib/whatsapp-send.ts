@@ -7,7 +7,6 @@ import {
   isTransientWhatsAppSendFailure,
   type WhatsAppMetaError,
 } from '@/lib/whatsapp-meta-errors'
-import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
 import { sanitizeWhatsAppTemplateParam } from '@/lib/whatsapp-template-params'
 
 export type { WhatsAppMetaError }
@@ -170,13 +169,6 @@ export async function sendRawWhatsAppPayloadWithCredentials(
   payload: Record<string, unknown>,
   metaErrorOut?: { current?: WhatsAppMetaError }
 ): Promise<Record<string, unknown> | null> {
-  const shabbatReason = shabbatMessagingBlockReason()
-  if (shabbatReason) {
-    getLogger().info('WA_SEND', 'shabbat skip (credentials)', { reason: shabbatReason })
-    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: shabbatReason }
-    return null
-  }
-
   return sendWhatsAppCloudWithTransientRetry(
     phoneNumberId,
     accessToken,
@@ -240,13 +232,6 @@ async function sendRawWhatsAppPayload(
 
   if (!accessToken || !phoneNumberId) {
     getLogger().warn('WA_SEND', 'send skipped: missing credentials (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)')
-    return null
-  }
-
-  const shabbatReason = shabbatMessagingBlockReason()
-  if (shabbatReason) {
-    getLogger().info('WA_SEND', 'shabbat skip', { reason: shabbatReason })
-    if (metaErrorOut) metaErrorOut.current = { httpStatus: 0, message: shabbatReason }
     return null
   }
 

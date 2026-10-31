@@ -4,10 +4,6 @@ vi.mock('@/lib/fetch-timeout', () => ({
   fetchWithTimeout: vi.fn(),
 }))
 
-vi.mock('@/lib/shabbat-messaging-gate', () => ({
-  shabbatMessagingBlockReason: () => null,
-}))
-
 vi.mock('@/lib/error-logs-db', () => ({
   insertWhatsAppSendFailure: vi.fn().mockResolvedValue(undefined),
 }))
@@ -58,6 +54,31 @@ describe('whatsapp-send transient retry + meta capture', () => {
     expect(result).toEqual({ messages: [{ id: 'wamid.RETRY_OK' }] })
     expect(fetchWithTimeout).toHaveBeenCalledTimes(2)
     expect(meta.current).toBeUndefined()
+  })
+
+  it('sends on Saturday Israel time (no Shabbat early exit)', async () => {
+    // 2026-07-11 10:00 Asia/Jerusalem is Saturday
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-11T07:00:00.000Z'))
+    try {
+      vi.mocked(fetchWithTimeout).mockResolvedValueOnce(
+        jsonResponse({ messages: [{ id: 'wamid.SAT_OK' }] })
+      )
+
+      const meta: { current?: { httpStatus: number; message?: string } } = {}
+      const result = await sendRawWhatsAppPayloadWithCredentials(
+        'phone-id',
+        'token',
+        { to: '972500000000', type: 'text', text: { body: 'שבת שלום' } },
+        meta
+      )
+
+      expect(result).toEqual({ messages: [{ id: 'wamid.SAT_OK' }] })
+      expect(fetchWithTimeout).toHaveBeenCalledTimes(1)
+      expect(meta.current).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does not retry non-transient Meta template errors', async () => {
