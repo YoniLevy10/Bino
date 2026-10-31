@@ -6,6 +6,8 @@ import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 import { workerWhatsappReplyBodySchema } from '@/lib/api-body-schemas'
 import { listTicketWhatsAppMessages, sendTicketResidentWhatsAppReply } from '@/lib/whatsapp-ticket-reply'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { isShabbatMessagingSkipMessage } from '@/lib/shabbat-messaging-gate'
+import { WHATSAPP_SKIP_STATUS_SHABBAT } from '@/lib/whatsapp-meta-errors'
 
 function clientIp(req: Request): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
@@ -62,12 +64,19 @@ export async function POST(req: NextRequest) {
 
     if (!result.sent) {
       if (result.reporterPhone) {
+        const errMsg = result.errorMessage ?? 'worker ticket reply failed'
+        const shabbat = isShabbatMessagingSkipMessage(errMsg)
         await insertWhatsAppSendFailure(
           worker.client_id,
           result.reporterPhone,
           parsed.data.body,
-          result.errorMessage ?? 'worker ticket reply failed',
-          { send_kind: 'worker_ticket_reply', ticket_id: parsed.data.ticket_id, worker_id: worker.id }
+          errMsg,
+          {
+            send_kind: 'worker_ticket_reply',
+            ticket_id: parsed.data.ticket_id,
+            worker_id: worker.id,
+            ...(shabbat ? { skip_status: WHATSAPP_SKIP_STATUS_SHABBAT } : {}),
+          }
         )
       }
       return NextResponse.json(

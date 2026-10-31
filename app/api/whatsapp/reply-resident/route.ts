@@ -5,6 +5,8 @@ import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { whatsappReplyResidentBodySchema } from '@/lib/whatsapp-api-schemas'
 import { sendTicketResidentWhatsAppReply } from '@/lib/whatsapp-ticket-reply'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { isShabbatMessagingSkipMessage } from '@/lib/shabbat-messaging-gate'
+import { WHATSAPP_SKIP_STATUS_SHABBAT } from '@/lib/whatsapp-meta-errors'
 
 export async function POST(req: Request) {
   const auth = await requireSessionWriteAccess()
@@ -41,16 +43,19 @@ export async function POST(req: Request) {
 
   if (!result.sent) {
     if (result.reporterPhone) {
+      const errMsg = result.errorMessage ?? 'ticket reply failed'
+      const shabbat = isShabbatMessagingSkipMessage(errMsg)
       await insertWhatsAppSendFailure(
         auth.ctx.clientId,
         result.reporterPhone,
         parsed.data.body,
-        result.errorMessage ?? 'ticket reply failed',
+        errMsg,
         {
           send_kind: 'ticket_reply',
           ticket_id: parsed.data.ticket_id,
           meta_error_code: result.metaErrorCode,
           meta_http_status: result.metaHttpStatus,
+          ...(shabbat ? { skip_status: WHATSAPP_SKIP_STATUS_SHABBAT } : {}),
         }
       )
     }

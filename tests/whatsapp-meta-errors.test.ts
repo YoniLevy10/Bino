@@ -101,10 +101,26 @@ describe('whatsapp-meta-errors', () => {
 
     expect(
       isWhatsAppFreeTextRetry({
+        send_kind: 'image_template',
+        body: 'caption',
+        template_name: 'worker_completion_photo',
+      })
+    ).toBe(false)
+
+    expect(
+      isWhatsAppFreeTextRetry({
         send_kind: 'ticket_reply',
         body: '',
       })
     ).toBe(false)
+
+    // Free-text kinds ignore stray template_name-looking body slugs when send_kind is ticket_reply
+    expect(
+      isWhatsAppFreeTextRetry({
+        send_kind: 'ticket_reply',
+        body: 'ok_status_update',
+      })
+    ).toBe(true)
   })
 
   it('formats template failure with Meta code', () => {

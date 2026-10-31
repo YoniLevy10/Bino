@@ -5,6 +5,8 @@ import {
   formatWhatsAppTemplateFailureMessage,
   formatWhatsAppTextFailureMessage,
   isTransientWhatsAppSendFailure,
+  isWhatsAppShabbatSkip,
+  WHATSAPP_SKIP_STATUS_SHABBAT,
   type WhatsAppMetaError,
 } from '@/lib/whatsapp-meta-errors'
 import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
@@ -281,6 +283,7 @@ export async function sendWhatsAppTextMessage(
   )
 
   if (!result && failureLog?.clientId && failureLog.logOnFailure !== false) {
+    const shabbat = isWhatsAppShabbatSkip(metaBag.current)
     await insertWhatsAppSendFailure(
       failureLog.clientId,
       to,
@@ -291,6 +294,7 @@ export async function sendWhatsAppTextMessage(
         meta_http_status: metaBag.current?.httpStatus,
         meta_error_code: metaBag.current?.metaCode,
         meta_error_message: metaBag.current?.message,
+        ...(shabbat ? { skip_status: WHATSAPP_SKIP_STATUS_SHABBAT } : {}),
       }
     )
   }
@@ -387,6 +391,7 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
     const failureMessage =
       formatWhatsAppTemplateFailureMessage(templateName, metaBag.current) ||
       'WhatsApp template send returned null (timeout/error)'
+    const shabbat = isWhatsAppShabbatSkip(metaBag.current)
     await insertWhatsAppSendFailure(
       failureLog.clientId,
       to,
@@ -400,6 +405,7 @@ export async function sendWhatsAppTemplateMessageWithCredentials(
         meta_http_status: metaBag.current?.httpStatus,
         meta_error_code: metaBag.current?.metaCode,
         meta_error_message: metaBag.current?.message,
+        ...(shabbat ? { skip_status: WHATSAPP_SKIP_STATUS_SHABBAT } : {}),
       }
     )
   }
@@ -436,6 +442,7 @@ export async function sendWhatsAppImageTemplateMessageWithCredentials(
     const failureMessage =
       formatWhatsAppTemplateFailureMessage(templateName, metaBag.current) ||
       'WhatsApp image template send returned null (timeout/error)'
+    const shabbat = isWhatsAppShabbatSkip(metaBag.current)
     await insertWhatsAppSendFailure(
       failureLog.clientId,
       to,
@@ -450,6 +457,7 @@ export async function sendWhatsAppImageTemplateMessageWithCredentials(
         meta_http_status: metaBag.current?.httpStatus,
         meta_error_code: metaBag.current?.metaCode,
         meta_error_message: metaBag.current?.message,
+        ...(shabbat ? { skip_status: WHATSAPP_SKIP_STATUS_SHABBAT } : {}),
       }
     )
   }

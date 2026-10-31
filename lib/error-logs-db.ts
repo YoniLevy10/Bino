@@ -1,6 +1,10 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { PlatformOpsAlertKind } from '@/lib/platform-ops-alert'
-import { isNonRetryableWhatsAppMetaError } from '@/lib/whatsapp-meta-errors'
+import { isShabbatMessagingSkipMessage } from '@/lib/shabbat-messaging-gate'
+import {
+  isNonRetryableWhatsAppMetaError,
+  WHATSAPP_SKIP_STATUS_SHABBAT,
+} from '@/lib/whatsapp-meta-errors'
 
 export async function insertOperationalErrorLog(args: {
   context: string
@@ -54,6 +58,16 @@ export async function logCriticalOperationalFailure(args: {
   })
 }
 
+function isWhatsAppShabbatDeferDetails(
+  errorMessage: string,
+  detailsExtra?: Record<string, unknown>
+): boolean {
+  if (detailsExtra?.skip_status === WHATSAPP_SKIP_STATUS_SHABBAT) return true
+  if (isShabbatMessagingSkipMessage(errorMessage)) return true
+  if (isShabbatMessagingSkipMessage(String(detailsExtra?.meta_error_message ?? ''))) return true
+  return false
+}
+
 /** Persist a failed WhatsApp send for cron retry (context whatsapp_send). */
 export async function insertWhatsAppSendFailure(
   clientId: string,
@@ -67,12 +81,17 @@ export async function insertWhatsAppSendFailure(
     const metaErrorCode =
       typeof detailsExtra?.meta_error_code === 'number' ? detailsExtra.meta_error_code : undefined
     const skipRetry = isNonRetryableWhatsAppMetaError(metaErrorCode)
+    const shabbatDefer = isWhatsAppShabbatDeferDetails(errorMessage, detailsExtra)
     const details = {
       client_id: clientId,
       to: to.slice(0, 64),
       body: body.slice(0, 4000),
       ...detailsExtra,
+      ...(shabbatDefer ? { skip_status: WHATSAPP_SKIP_STATUS_SHABBAT } : {}),
     }
+
+    // Shabbat: queue for whatsapp-retry after Saturday (Israel day); do not burn attempts / alert.
+    const whatsappAttempts = skipRetry && !shabbatDefer ? 3 : 1
 
     const { error } = await admin.from('error_logs').insert({
       context: 'whatsapp_send',
@@ -80,14 +99,14 @@ export async function insertWhatsAppSendFailure(
       client_id: clientId,
       details,
       resolved: false,
-      whatsapp_attempts: skipRetry ? 3 : 1,
+      whatsapp_attempts: whatsappAttempts,
     })
     if (error) {
       console.error('insertWhatsAppSendFailure:', error.message)
       return
     }
 
-    if (skipRetry) {
+    if (skipRetry && !shabbatDefer) {
       void notifyWhatsAppSendRetriesExhausted(clientId, to, errorMessage, details)
     }
   } catch (e) {
@@ -95,13 +114,17 @@ export async function insertWhatsAppSendFailure(
   }
 }
 
-/** Called when whatsapp-retry cron exhausts all attempts. */
+/** Called when whatsapp-retry cron exhausts all attempts. Never alerts for Shabbat skips. */
 export async function notifyWhatsAppSendRetriesExhausted(
   clientId: string,
   to: string,
   errorMessage: string,
   detailsExtra?: Record<string, unknown>
 ): Promise<void> {
+  if (isWhatsAppShabbatDeferDetails(errorMessage, detailsExtra)) {
+    return
+  }
+
   const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
   void notifyPlatformOps({
     kind: 'whatsapp_failure',

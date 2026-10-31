@@ -12,7 +12,7 @@ import {
 } from '@/lib/whatsapp-message-store'
 import { normalizePhone } from '@/lib/residents-whatsapp'
 import { getLogger } from '@/lib/logging'
-import { whatsAppMetaErrorHint } from '@/lib/whatsapp-meta-errors'
+import { isWhatsAppShabbatSkip, whatsAppMetaErrorHint } from '@/lib/whatsapp-meta-errors'
 
 export type ResidentOutboundResult = {
   sent: boolean
@@ -33,7 +33,9 @@ function metaFailureFields(err?: WhatsAppMetaError) {
   return {
     metaErrorCode: err?.metaCode,
     metaHttpStatus: err?.httpStatus,
-    errorMessage: whatsAppMetaErrorHint(err?.metaCode, err?.httpStatus),
+    errorMessage: isWhatsAppShabbatSkip(err)
+      ? (err?.message?.trim() || whatsAppMetaErrorHint(err?.metaCode, err?.httpStatus))
+      : whatsAppMetaErrorHint(err?.metaCode, err?.httpStatus),
   }
 }
 

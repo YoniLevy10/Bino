@@ -6,6 +6,9 @@ vi.mock('@/lib/fetch-timeout', () => ({
 
 vi.mock('@/lib/shabbat-messaging-gate', () => ({
   shabbatMessagingBlockReason: () => null,
+  isShabbatMessagingSkipMessage: () => false,
+  isIsraelShabbat: () => false,
+  isOutboundMessagingBlocked: () => false,
 }))
 
 vi.mock('@/lib/error-logs-db', () => ({

@@ -8,10 +8,17 @@ import {
 import { notifyWhatsAppSendRetriesExhausted } from '@/lib/error-logs-db'
 import { getLogger } from '@/lib/logging'
 import {
+  isOutboundMessagingBlocked,
+  isShabbatMessagingSkipMessage,
+  shabbatMessagingBlockReason,
+} from '@/lib/shabbat-messaging-gate'
+import {
   extractWhatsAppMessageId,
   formatWhatsAppTemplateFailureMessage,
   isWhatsAppFreeTextRetry,
+  isWhatsAppShabbatSkip,
   resolveWhatsAppRetryTemplateName,
+  WHATSAPP_SKIP_STATUS_SHABBAT,
 } from '@/lib/whatsapp-meta-errors'
 import {
   buildWhatsAppRetryPayload,
@@ -20,7 +27,10 @@ import {
 
 export const maxDuration = 60
 
-type Details = WhatsAppRetryDetails
+type Details = WhatsAppRetryDetails & {
+  skip_status?: string
+  last_shabbat_defer_at?: string
+}
 
 function formatRetryFailureMessage(d: Details, meta?: WhatsAppMetaError): string {
   const templateName = resolveWhatsAppRetryTemplateName(d)
@@ -35,6 +45,19 @@ export async function GET(req: NextRequest) {
   const logger = getLogger()
   if (!verifyCronRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Match sla-check / weekly-ops-digest: do not call Meta or burn attempts on Saturday (Israel).
+  if (isOutboundMessagingBlocked()) {
+    const reason = shabbatMessagingBlockReason()
+    logger.info('CRON', 'whatsapp-retry deferred for Shabbat', { reason })
+    return NextResponse.json({
+      ok: true,
+      skipped: 'shabbat',
+      reason,
+      retried: 0,
+      fixed: 0,
+    })
   }
 
   try {
@@ -66,6 +89,10 @@ export async function GET(req: NextRequest) {
           d.send_kind === 'image_template' ||
           Boolean(templateName))
       if (!d.client_id || !d.to || (!hasTextBody && !isTemplateSend)) {
+        // Free-text kinds must not be burned for missing template names.
+        if (isFreeText) {
+          logger.warn('CRON', 'whatsapp-retry free-text row missing client/to', { id: row.id })
+        }
         await admin
           .from('error_logs')
           .update({ whatsapp_attempts: 3, updated_at: new Date().toISOString() })
@@ -102,6 +129,7 @@ export async function GET(req: NextRequest) {
 
       const payload = buildWhatsAppRetryPayload(d)
       if (!payload) {
+        // Template-only path: free-text classification already returned a text payload above.
         const errMsg = 'WhatsApp retry skipped: missing or invalid template name in error_logs'
         await admin
           .from('error_logs')
@@ -144,16 +172,54 @@ export async function GET(req: NextRequest) {
                 resolved_by: 'whatsapp-retry',
                 resolved_attempt: nextAttempts,
                 meta_message_id: metaMessageId,
+                skip_status: undefined,
               },
             })
             .eq('id', row.id)
           fixed++
+        } else if (isWhatsAppShabbatSkip(metaErr.current)) {
+          // Defense: gate should have exited cron already; never burn attempts or alert.
+          const now = new Date().toISOString()
+          const reason = metaErr.current?.message || shabbatMessagingBlockReason() || ''
+          await admin
+            .from('error_logs')
+            .update({
+              message: reason.slice(0, 8000),
+              updated_at: now,
+              details: {
+                ...d,
+                skip_status: WHATSAPP_SKIP_STATUS_SHABBAT,
+                last_shabbat_defer_at: now,
+                meta_error_message: reason,
+                meta_http_status: metaErr.current?.httpStatus ?? d.meta_http_status,
+              },
+            })
+            .eq('id', row.id)
         } else {
           throw new Error(formatRetryFailureMessage(d, metaErr.current))
         }
       } catch (e) {
-        const nextAttempts = attempts + 1
         const errMsg = e instanceof Error ? e.message.slice(0, 8000) : String(e).slice(0, 8000)
+        if (isShabbatMessagingSkipMessage(errMsg) || isWhatsAppShabbatSkip(metaErr.current)) {
+          const now = new Date().toISOString()
+          await admin
+            .from('error_logs')
+            .update({
+              message: errMsg,
+              updated_at: now,
+              details: {
+                ...d,
+                skip_status: WHATSAPP_SKIP_STATUS_SHABBAT,
+                last_shabbat_defer_at: now,
+                meta_error_message: metaErr.current?.message ?? d.meta_error_message,
+                meta_http_status: metaErr.current?.httpStatus ?? d.meta_http_status,
+              },
+            })
+            .eq('id', row.id)
+          continue
+        }
+
+        const nextAttempts = attempts + 1
         await admin
           .from('error_logs')
           .update({

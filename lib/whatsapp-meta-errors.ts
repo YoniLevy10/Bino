@@ -1,8 +1,13 @@
+import { isShabbatMessagingSkipMessage } from '@/lib/shabbat-messaging-gate'
+
 export type WhatsAppMetaError = {
   httpStatus: number
   metaCode?: number
   message?: string
 }
+
+/** error_logs.details.skip_status when deferring send until after Shabbat. */
+export const WHATSAPP_SKIP_STATUS_SHABBAT = 'skipped_shabbat' as const
 
 export function whatsAppMetaErrorHint(code: number | undefined, httpStatus?: number): string {
   if (httpStatus === 404) return 'Meta החזיר 404 — בדקו whatsapp_phone_number_id או שם תבנית'
@@ -17,6 +22,10 @@ export function whatsAppMetaErrorHint(code: number | undefined, httpStatus?: num
   }
   if (code === 132015) return 'תבנית paused או disabled ב-Meta'
   return 'שליחת WhatsApp נכשלה'
+}
+
+export function isWhatsAppShabbatSkip(meta?: WhatsAppMetaError | null): boolean {
+  return isShabbatMessagingSkipMessage(meta?.message)
 }
 
 /** Meta errors that cron retry cannot fix without manual intervention. */
@@ -34,6 +43,9 @@ export function isTransientWhatsAppSendFailure(meta?: WhatsAppMetaError): boolea
 }
 
 export function formatWhatsAppTextFailureMessage(meta?: WhatsAppMetaError): string {
+  if (isWhatsAppShabbatSkip(meta) && meta?.message?.trim()) {
+    return meta.message.trim()
+  }
   const hint = whatsAppMetaErrorHint(meta?.metaCode, meta?.httpStatus)
   if (meta?.httpStatus === 0 || meta?.message === 'timeout') {
     return 'WhatsApp send returned null (timeout/error)'
@@ -48,6 +60,9 @@ export function formatWhatsAppTemplateFailureMessage(
   templateName: string,
   meta?: WhatsAppMetaError
 ): string {
+  if (isWhatsAppShabbatSkip(meta) && meta?.message?.trim()) {
+    return `תבנית "${templateName}": ${meta.message.trim()}`
+  }
   const hint = whatsAppMetaErrorHint(meta?.metaCode, meta?.httpStatus)
   const parts = [`תבנית "${templateName}": ${hint}`]
   if (meta?.metaCode != null) parts.push(`(קוד Meta ${meta.metaCode})`)
