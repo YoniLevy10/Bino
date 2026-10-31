@@ -5,6 +5,7 @@ import {
   formatWhatsAppTextFailureMessage,
   isNonRetryableWhatsAppMetaError,
   isTransientWhatsAppSendFailure,
+  isWhatsAppFreeTextRetry,
   resolveWhatsAppRetryTemplateName,
   whatsAppMetaErrorHint,
 } from '@/lib/whatsapp-meta-errors'
@@ -66,6 +67,44 @@ describe('whatsapp-meta-errors', () => {
         send_kind: 'template',
       })
     ).toBe('')
+  })
+
+  it('classifies ticket_reply / worker_ticket_reply as free-text retry (not template)', () => {
+    expect(
+      isWhatsAppFreeTextRetry({
+        send_kind: 'ticket_reply',
+        body: 'הנושא יבדק מחר',
+      })
+    ).toBe(true)
+
+    expect(
+      isWhatsAppFreeTextRetry({
+        send_kind: 'worker_ticket_reply',
+        body: 'סיימתי את העבודה',
+      })
+    ).toBe(true)
+
+    expect(
+      isWhatsAppFreeTextRetry({
+        send_kind: 'text',
+        body: 'שלום',
+      })
+    ).toBe(true)
+
+    expect(
+      isWhatsAppFreeTextRetry({
+        send_kind: 'template',
+        body: 'שלום',
+        template_name: 'manager_reply',
+      })
+    ).toBe(false)
+
+    expect(
+      isWhatsAppFreeTextRetry({
+        send_kind: 'ticket_reply',
+        body: '',
+      })
+    ).toBe(false)
   })
 
   it('formats template failure with Meta code', () => {

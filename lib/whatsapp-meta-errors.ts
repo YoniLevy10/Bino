@@ -77,3 +77,39 @@ export function resolveWhatsAppRetryTemplateName(details: {
   if (body && /^[a-z0-9_]+$/.test(body)) return body
   return ''
 }
+
+/** Free-text outbound kinds logged to error_logs — retry as Cloud API text, not Meta templates. */
+const FREE_TEXT_WHATSAPP_SEND_KINDS = new Set([
+  'text',
+  'ticket_reply',
+  'worker_ticket_reply',
+])
+
+const TEMPLATE_WHATSAPP_SEND_KINDS = new Set(['template', 'image_template'])
+
+/**
+ * Whether whatsapp-retry should rebuild a text message from `details.body`.
+ * Template names are only required for template / image_template (or legacy body=slug) rows.
+ */
+export function isWhatsAppFreeTextRetry(details: {
+  body?: string
+  template_name?: string
+  send_kind?: string
+}): boolean {
+  const body = details.body?.trim() ?? ''
+  if (!body) return false
+
+  const sendKind = details.send_kind?.trim() ?? ''
+  if (TEMPLATE_WHATSAPP_SEND_KINDS.has(sendKind)) return false
+
+  if (FREE_TEXT_WHATSAPP_SEND_KINDS.has(sendKind)) return true
+
+  // Explicit template_name means template retry even if send_kind was omitted/unknown.
+  if (resolveWhatsAppRetryTemplateName({ ...details, body: undefined })) return false
+
+  // Legacy rows without send_kind: Hebrew/free text body → text; ascii slug → template.
+  if (!sendKind) return !/^[a-z0-9_]+$/.test(body)
+
+  // Unknown send_kind with a free-text body and no template name (e.g. worker_completion_image caption).
+  return !resolveWhatsAppRetryTemplateName(details)
+}
