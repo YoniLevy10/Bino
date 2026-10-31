@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sendManagerSMS } from '@/lib/sms-send'
-import { isOutboundMessagingBlocked } from '@/lib/shabbat-messaging-gate'
 import { getLogger } from '@/lib/logging'
 import { normalizePhone019 } from '@/lib/sms-019-core'
 import {
@@ -127,11 +126,6 @@ export async function GET(request: NextRequest) {
   }
 
   const dryRun = request.nextUrl.searchParams.get('dryRun') === '1'
-
-  if (!dryRun && isOutboundMessagingBlocked()) {
-    logger.info('CRON', 'weekly-ops-digest skipped — Shabbat')
-    return NextResponse.json({ ok: true, skipped: 'shabbat', sent: 0 })
-  }
 
   try {
     const admin = getSupabaseAdmin()

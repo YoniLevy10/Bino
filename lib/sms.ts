@@ -8,7 +8,6 @@ import {
   SMS_019_FALLBACK_SENDER,
   SMS_019_SENDER,
 } from '@/lib/sms-019-core'
-import { shabbatMessagingBlockReason } from '@/lib/shabbat-messaging-gate'
 import { sanitizeSmsCampaignBody } from '@/lib/sms-campaign-message'
 
 const RETRIES = 3
@@ -143,12 +142,6 @@ export async function send019StaffSms(
   message = sanitizeSmsCampaignBody(message)
   if (!message) {
     console.error('❌ SMS_SEND_FAILURE: message empty after emoji sanitize')
-    return false
-  }
-
-  const shabbatReason = shabbatMessagingBlockReason()
-  if (shabbatReason) {
-    console.log('📱 SMS_SHABBAT_SKIP', { channel: ctx.channel, destination: phoneNumber, reason: shabbatReason })
     return false
   }
 

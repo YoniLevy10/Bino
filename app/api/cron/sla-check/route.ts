@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { sendManagerSMS } from '@/lib/sms-send'
 import { getLogger } from '@/lib/logging'
-import { isOutboundMessagingBlocked } from '@/lib/shabbat-messaging-gate'
 /** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
 const MAX_FIRST_ALERTS_PER_RUN = 10
 /** Ignore very old open tickets that pre-date SLA tracking. */
@@ -61,11 +60,6 @@ export async function GET(req: NextRequest) {
   const logger = getLogger()
   if (!verifyCronRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (isOutboundMessagingBlocked()) {
-    logger.info('CRON', 'sla-check skipped — Shabbat')
-    return NextResponse.json({ ok: true, skipped: 'shabbat', firstAlerts: 0, managerReminders: 0, smsSent: 0, smsFailed: 0 })
   }
 
   try {
