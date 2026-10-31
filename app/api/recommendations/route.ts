@@ -3,7 +3,10 @@ import { requireSessionClientId } from '@/lib/api-auth'
 import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { runClientDetectors } from '@/lib/recommendations/run-client-detectors'
-import { filterRelevantRecommendations } from '@/lib/recommendations/validate-recommendation'
+import {
+  filterRelevantRecommendations,
+  RecommendationValidationFetchError,
+} from '@/lib/recommendations/validate-recommendation'
 import { rankRecommendations } from '@/lib/recommendations/rank'
 import {
   loadEnabledAddonKeys,
@@ -85,7 +88,16 @@ export async function GET(req: NextRequest) {
 
   const enabledAddons = await loadEnabledAddonKeys(admin, clientId)
   const rows = (data || []) as ManagementRecommendationRow[]
-  const relevant = await filterRelevantRecommendations(admin, rows)
+  let relevant: ManagementRecommendationRow[]
+  try {
+    relevant = await filterRelevantRecommendations(admin, rows)
+  } catch (err) {
+    if (err instanceof RecommendationValidationFetchError) {
+      console.error('[recommendations.validate]', err.table, err.message)
+      return NextResponse.json({ error: 'לא ניתן לאמת התראות כרגע' }, { status: 500 })
+    }
+    throw err
+  }
   const presented = relevant
     .map((r) => presentRecommendation(r, enabledAddons))
     .filter((r): r is ManagementRecommendationRow => !!r)
