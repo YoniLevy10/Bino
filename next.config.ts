@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Keep web-push as a Node require. Bundling it makes Node 24 treat
+  // its legacy url.parse() as app code and print DEP0169 on the WhatsApp webhook.
+  serverExternalPackages: ['web-push'],
 };
 
 export default withSentryConfig(nextConfig, {
