@@ -638,10 +638,10 @@ export const residentShellStyles = {
   fab: {
     position: 'fixed',
     bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
-    left: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    insetInlineStart: 16,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     display: 'grid',
     placeItems: 'center',
     textDecoration: 'none',
@@ -649,6 +649,8 @@ export const residentShellStyles = {
     fontSize: 13,
     color: '#fff',
     zIndex: 40,
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
     background: 'linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%)',
     boxShadow:
       'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(0,122,255,0.35)',

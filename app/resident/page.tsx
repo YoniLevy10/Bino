@@ -119,16 +119,21 @@ export default function ResidentHomePage() {
         )}
       </ResidentCard>
 
-      <ResidentPrimaryButton
-        href="/resident/tickets"
-        style={{
-          background: 'linear-gradient(180deg, #3a3a4a 0%, #1A1A2E 46%, #12121f 100%)',
-          boxShadow:
-            'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(0,0,0,0.25)',
-        }}
-      >
-        פתיחת תקלה
-      </ResidentPrimaryButton>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <ResidentPrimaryButton href="/resident/chat">
+          שיחה עם הבוט — פתיחת תקלה מהירה
+        </ResidentPrimaryButton>
+        <ResidentPrimaryButton
+          href="/resident/tickets"
+          style={{
+            background: 'linear-gradient(180deg, #3a3a4a 0%, #1A1A2E 46%, #12121f 100%)',
+            boxShadow:
+              'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(0,0,0,0.25)',
+          }}
+        >
+          טופס תקלה מלא
+        </ResidentPrimaryButton>
+      </div>
     </div>
   )
 }
