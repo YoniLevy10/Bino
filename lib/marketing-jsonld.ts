@@ -1,21 +1,21 @@
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_TITLE,
-  BINO_MARKETING_TITLE_EN,
   getMarketingSiteOrigin,
 } from '@/lib/marketing-site'
-import { MARKETING_COPY, type MarketingLocale } from '@/lib/marketing-copy'
+import { MARKETING_COPY, waDemoUrl } from '@/lib/marketing-copy'
 import { getLegalSiteConfig } from '@/lib/legal-site-config'
 import { getMarketingSocialSameAs } from '@/lib/marketing-social'
 
-export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
+export function buildMarketingJsonLd() {
   const origin = getMarketingSiteOrigin()
-  const copy = MARKETING_COPY[locale]
-  const pageUrl = locale === 'en' ? `${origin}/en` : `${origin}/`
-  const inLanguage = locale === 'en' ? 'en' : 'he'
+  const copy = MARKETING_COPY.he
+  const pageUrl = `${origin}/`
+  const inLanguage = 'he'
   const legal = getLegalSiteConfig()
   const social = getMarketingSocialSameAs()
-  const sameAs = [`https://wa.me/972548102688`, ...social]
+  const whatsappUrl = waDemoUrl('he', legal.phoneConfigured ? legal.phone : undefined)
+  const sameAs = [whatsappUrl.split('?')[0], ...social]
 
   const graph: Record<string, unknown>[] = [
     {
@@ -38,15 +38,15 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
           name: 'Israel',
         },
       ],
-      knowsLanguage: ['he', 'en'],
+      knowsLanguage: ['he'],
       contactPoint: [
         {
           '@type': 'ContactPoint',
           contactType: 'sales',
-          availableLanguage: ['Hebrew', 'English'],
+          availableLanguage: ['Hebrew'],
           areaServed: 'IL',
           url: `${origin}/contact`,
-          telephone: legal.readyForGrowAudit ? legal.phone : '+972-54-810-2688',
+          telephone: legal.phoneConfigured ? legal.phone : '+972-54-810-2688',
         },
       ],
       sameAs,
@@ -58,14 +58,14 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
       name: 'BINO',
       alternateName: 'Building Intelligence & Operations',
       description: BINO_MARKETING_DESCRIPTION,
-      inLanguage: ['he', 'en'],
+      inLanguage: 'he',
       publisher: { '@id': `${origin}/#organization` },
     },
     {
       '@type': 'WebPage',
       '@id': `${pageUrl}#webpage`,
       url: pageUrl,
-      name: locale === 'en' ? BINO_MARKETING_TITLE_EN : BINO_MARKETING_TITLE,
+      name: BINO_MARKETING_TITLE,
       description: copy.support,
       isPartOf: { '@id': `${origin}/#website` },
       about: { '@id': `${origin}/#software` },
@@ -90,18 +90,16 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
       operatingSystem: 'Web',
       url: `${origin}/`,
       description: BINO_MARKETING_DESCRIPTION,
-      inLanguage: ['he', 'en'],
+      inLanguage: 'he',
       offers: {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'ILS',
-        description: locale === 'en' ? 'Book a demo' : 'תיאום הדגמה',
+        description: 'תיאום הדגמה',
       },
       featureList: [
         ...copy.steps.map((s) => s.title),
-        locale === 'en'
-          ? 'Operational memory for projects, buildings, and spaces'
-          : 'זיכרון תפעולי לפרויקטים, בניינים ושטחים',
+        'זיכרון תפעולי לפרויקטים, בניינים ושטחים',
       ],
       publisher: { '@id': `${origin}/#organization` },
     },
@@ -118,28 +116,6 @@ export function buildMarketingJsonLd(locale: MarketingLocale = 'he') {
       })),
     },
   ]
-
-  if (legal.readyForGrowAudit) {
-    graph.push({
-      '@type': 'LocalBusiness',
-      '@id': `${origin}/#localbusiness`,
-      name: legal.businessName || 'BINO',
-      url: `${origin}/`,
-      telephone: legal.phone,
-      email: legal.email || undefined,
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: legal.address,
-        addressCountry: 'IL',
-      },
-      areaServed: {
-        '@type': 'Country',
-        name: 'Israel',
-      },
-      parentOrganization: { '@id': `${origin}/#organization` },
-      sameAs,
-    })
-  }
 
   return {
     '@context': 'https://schema.org',

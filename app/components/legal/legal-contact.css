@@ -4,48 +4,107 @@
 }
 
 .legal-contact__intro {
+  max-width: 52ch;
   margin: 0 0 24px;
   color: #475569;
   font-size: 15px;
+  line-height: 1.7;
 }
 
-.legal-contact__warn {
-  padding: 12px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
-  font-size: 14px;
-  color: #9a3412;
-  margin-bottom: 20px;
+.legal-contact__channels {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 560px);
 }
 
-.legal-contact__dl {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.8;
+.legal-contact__whatsapp {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 16px 18px;
+  border: 1px solid #0b6245;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0b704b, #095d43);
+  box-shadow: 0 12px 28px rgba(9, 93, 67, 0.18);
+  color: #fff;
+  text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
-.legal-contact__dt {
-  font-weight: 700;
+.legal-contact__whatsapp:hover {
+  transform: translateY(-1px);
+  background: #084c38;
+  box-shadow: 0 16px 32px rgba(9, 93, 67, 0.24);
+}
+
+.legal-contact__whatsapp:focus-visible {
+  outline: 3px solid #30b778;
+  outline-offset: 3px;
+}
+
+.legal-contact__whatsapp-icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.legal-contact__whatsapp-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.legal-contact__whatsapp-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.legal-contact__whatsapp-copy strong {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.legal-contact__whatsapp-copy span {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.legal-contact__whatsapp-arrow {
+  margin-inline-start: auto;
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.legal-contact__email {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #dce3ea;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.legal-contact__email-label {
   color: #64748b;
   font-size: 13px;
-}
-
-.legal-contact__dd {
-  margin: 0 0 16px;
-}
-
-.legal-contact__link {
-  color: #007AFF;
-  font-weight: 700;
-}
-
-.legal-contact__link--email {
   font-weight: 600;
 }
 
-.legal-contact__muted {
-  color: #94a3b8;
+.legal-contact__email-link {
+  width: fit-content;
+  color: #16324a;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.legal-contact__email-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .legal-contact__links {
@@ -54,9 +113,15 @@
 }
 
 .legal-contact__links a {
-  color: #007AFF;
+  color: #007aff;
 }
 
 .legal-contact__links a + a {
   margin-inline-start: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legal-contact__whatsapp {
+    transition: none;
+  }
 }

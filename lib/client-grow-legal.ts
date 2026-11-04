@@ -85,6 +85,7 @@ export function growLegalToSiteConfig(legal: ClientGrowLegal): LegalSiteConfig {
     businessName: legal.businessName || 'שם העסק יושלם בהגדרות',
     phone: phone || 'טלפון יושלם בהגדרות הלקוח',
     phoneDisplay: phone ? formatLegalPhoneDisplay(phone) : 'טלפון יושלם בהגדרות הלקוח',
+    phoneConfigured: Boolean(phone),
     address: legal.address || 'כתובת יושלם בהגדרות הלקוח',
     email: legal.email || '',
     logoUrl: legal.logoUrl,

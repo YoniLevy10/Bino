@@ -1,7 +1,5 @@
 export type MarketingLocale = 'he' | 'en'
 
-export const MARKETING_LOCALE_STORAGE_KEY = 'bino.marketing.locale'
-
 type MetricCopy = {
   label: string
   before: string
@@ -181,7 +179,7 @@ const HE: MarketingCopy = {
     },
     {
       q: 'איך דיירים מדווחים?',
-      a: 'דרך WhatsApp או טופס ווב אחרי סריקת QR לפרויקט. המנהל מקבל את התקלה עם הקשר תפעולי של הבניין.',
+      a: 'דרך וואטסאפ או טופס ווב אחרי סריקת QR לפרויקט. המנהל מקבל את התקלה עם הקשר תפעולי של הבניין.',
     },
     {
       q: 'האם אפשר להתחיל בהדגמה?',
@@ -189,7 +187,7 @@ const HE: MarketingCopy = {
     },
   ],
   closingTitle: 'מוכנים לראות BINO על הפרויקטים והשטחים שלכם?',
-  footerTagline: 'BINO — Building Intelligence & Operations',
+  footerTagline: 'BINO — זיכרון תפעולי לפרויקטים, בניינים ושטחים',
   privacy: 'פרטיות',
   terms: 'תקנון',
   contact: 'יצירת קשר',
@@ -329,25 +327,20 @@ export const MARKETING_COPY: Record<MarketingLocale, MarketingCopy> = {
   en: EN,
 }
 
-export function waDemoUrl(locale: MarketingLocale): string {
-  return 'https://wa.me/972548102688?text=' + encodeURIComponent(MARKETING_COPY[locale].waDemoText)
+function normalizeWhatsAppNumber(phone?: string): string {
+  const digits = (phone || '').replace(/\D/g, '')
+  if (!digits) return '972548102688'
+
+  const normalized = digits.startsWith('00')
+    ? digits.slice(2)
+    : digits.startsWith('0')
+      ? `972${digits.slice(1)}`
+      : digits
+
+  return /^\d{10,15}$/.test(normalized) ? normalized : '972548102688'
 }
 
-export function readStoredMarketingLocale(): MarketingLocale {
-  if (typeof window === 'undefined') return 'he'
-  try {
-    const raw = window.localStorage.getItem(MARKETING_LOCALE_STORAGE_KEY)
-    if (raw === 'en' || raw === 'he') return raw
-  } catch {
-    /* ignore */
-  }
-  return 'he'
-}
-
-export function storeMarketingLocale(locale: MarketingLocale): void {
-  try {
-    window.localStorage.setItem(MARKETING_LOCALE_STORAGE_KEY, locale)
-  } catch {
-    /* ignore */
-  }
+export function waDemoUrl(locale: MarketingLocale, phone?: string): string {
+  const number = normalizeWhatsAppNumber(phone)
+  return `https://wa.me/${number}?text=${encodeURIComponent(MARKETING_COPY[locale].waDemoText)}`
 }

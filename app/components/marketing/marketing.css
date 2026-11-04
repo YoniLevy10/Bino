@@ -129,42 +129,6 @@
   animation: bino-fade-in 0.6s ease-out both;
 }
 
-.bino-lang {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: var(--bino-glass);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-}
-
-.bino-lang__btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.62);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 2px 4px;
-  cursor: pointer;
-  transition: color 0.18s ease;
-}
-
-.bino-lang__btn.is-active,
-.bino-lang__btn:hover {
-  color: #fff;
-}
-
-.bino-lang__sep {
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 0.85rem;
-}
-
 .bino-hero__stage {
   flex: 1;
   display: flex;
@@ -242,6 +206,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 9px;
   min-height: 54px;
   padding: 14px 24px;
   border-radius: 16px;
@@ -260,6 +225,13 @@
   background: #fff;
   transform: translateY(-2px);
   box-shadow: 0 14px 34px -14px rgba(0, 20, 60, 0.55);
+}
+
+.bino-whatsapp-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
 }
 
 .bino-cta__secondary {
@@ -853,34 +825,6 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 14px;
-}
-
-.bino-marketing--refresh .bino-lang {
-  gap: 3px;
-  padding: 5px 8px;
-  border: 1px solid var(--bino-line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.bino-marketing--refresh .bino-lang__btn {
-  padding: 4px 5px;
-  color: #758195;
-  font-size: 0.76rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.bino-marketing--refresh .bino-lang__btn.is-active,
-.bino-marketing--refresh .bino-lang__btn:hover {
-  color: var(--bino-ink);
-}
-
-.bino-marketing--refresh .bino-lang__sep {
-  color: #aab3bd;
-  font-size: 0.74rem;
 }
 
 .bino-marketing--refresh .bino-header-login {
@@ -1754,17 +1698,6 @@
   text-underline-offset: 3px;
 }
 
-.bino-marketing--refresh .bino-footer-refresh__nap {
-  flex-basis: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 14px;
-  border-top: 1px solid var(--bino-line);
-}
-
 @media (max-width: 1020px) {
   .bino-marketing--refresh .bino-page-nav {
     gap: 16px;
@@ -1864,15 +1797,6 @@
 
   .bino-marketing--refresh .bino-page-header__actions {
     gap: 8px;
-  }
-
-  .bino-marketing--refresh .bino-lang {
-    padding: 4px 5px;
-  }
-
-  .bino-marketing--refresh .bino-lang__btn {
-    padding-inline: 3px;
-    font-size: 0.68rem;
   }
 
   .bino-marketing--refresh .bino-header-login {

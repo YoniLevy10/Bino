@@ -95,7 +95,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "he_IL",
-    alternateLocale: ["en_US"],
     url: siteOrigin,
     siteName: "BINO",
     title: BINO_MARKETING_TITLE,

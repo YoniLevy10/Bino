@@ -1,32 +1,25 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import './marketing.css'
 import {
   MARKETING_COPY,
   type MarketingCopy,
   type MarketingLocale,
-  storeMarketingLocale,
-  waDemoUrl,
 } from '@/lib/marketing-copy'
 import { trackMarketingEvent } from '@/lib/marketing-analytics'
 import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
 import { BINO_PUBLIC_HOST } from '@/lib/marketing-site'
 import { MarketingLeadLink } from './MarketingLeadLink'
-
-export type MarketingNap = {
-  phoneDisplay: string
-  phoneHref: string
-  address: string
-}
+import { WhatsAppIcon } from './WhatsAppIcon'
 
 function CtaPair({
   locale,
+  whatsappHref,
   variant = 'hero',
 }: {
   locale: MarketingLocale
+  whatsappHref: string
   variant?: 'hero' | 'closing'
 }) {
   const copy = MARKETING_COPY[locale]
@@ -35,13 +28,14 @@ function CtaPair({
     <div className="bino-cta">
       <MarketingLeadLink
         className="bino-cta__primary"
-        href={waDemoUrl(locale)}
+        href={whatsappHref}
         target="_blank"
         rel="noopener noreferrer"
         method="whatsapp_demo"
         locale={locale}
         placement={variant}
       >
+        <WhatsAppIcon className="bino-whatsapp-icon" />
         {copy.ctaDemo}
       </MarketingLeadLink>
       <Link
@@ -64,53 +58,11 @@ function CtaPair({
   )
 }
 
-function LangSwitch({
-  locale,
-  onChange,
-}: {
-  locale: MarketingLocale
-  onChange: (next: MarketingLocale) => void
-}) {
-  const copy = MARKETING_COPY[locale]
-
-  return (
-    <div className="bino-lang" role="group" aria-label={copy.langSwitchAria}>
-      <button
-        type="button"
-        className={locale === 'he' ? 'bino-lang__btn is-active' : 'bino-lang__btn'}
-        aria-pressed={locale === 'he'}
-        onClick={() => onChange('he')}
-      >
-        {copy.langHe}
-      </button>
-      <span className="bino-lang__sep" aria-hidden="true">
-        /
-      </span>
-      <button
-        type="button"
-        className={locale === 'en' ? 'bino-lang__btn is-active' : 'bino-lang__btn'}
-        aria-pressed={locale === 'en'}
-        onClick={() => onChange('en')}
-      >
-        {copy.langEn}
-      </button>
-    </div>
-  )
-}
-
-function MarketingHeader({
-  locale,
-  copy,
-  onLocaleChange,
-}: {
-  locale: MarketingLocale
-  copy: MarketingCopy
-  onLocaleChange: (next: MarketingLocale) => void
-}) {
+function MarketingHeader({ copy }: { copy: MarketingCopy }) {
   return (
     <header className="bino-page-header">
       <div className="bino-page-header__inner">
-        <Link className="bino-brand-lockup" href={locale === 'en' ? '/en' : '/'} aria-label="BINO">
+        <Link className="bino-brand-lockup" href="/" aria-label="BINO">
           <span className="bino-brand-lockup__mark" aria-hidden="true">
             B
           </span>
@@ -125,13 +77,12 @@ function MarketingHeader({
         </nav>
 
         <div className="bino-page-header__actions">
-          <LangSwitch locale={locale} onChange={onLocaleChange} />
           <Link
             className="bino-header-login"
             href={`${BINO_PUBLIC_ORIGIN}/login`}
             onClick={() =>
               trackMarketingEvent('login_click', {
-                locale,
+                locale: 'he',
                 placement: 'header',
               })
             }
@@ -192,32 +143,13 @@ function HeroVisual({ copy }: { copy: MarketingCopy }) {
   )
 }
 
-export function MarketingLanding({
-  initialLocale = 'he',
-  nap = null,
-}: {
-  initialLocale?: MarketingLocale
-  nap?: MarketingNap | null
-}) {
-  const router = useRouter()
-  const [locale, setLocale] = useState<MarketingLocale>(initialLocale)
-
-  useEffect(() => {
-    setLocale(initialLocale)
-    storeMarketingLocale(initialLocale)
-  }, [initialLocale])
-
-  function changeLocale(next: MarketingLocale) {
-    storeMarketingLocale(next)
-    setLocale(next)
-    router.push(next === 'en' ? '/en' : '/')
-  }
-
-  const copy = MARKETING_COPY[locale]
+export function MarketingLanding({ whatsappHref }: { whatsappHref: string }) {
+  const locale: MarketingLocale = 'he'
+  const copy = MARKETING_COPY.he
 
   return (
     <div className="bino-marketing bino-marketing--refresh" lang={copy.lang} dir={copy.dir}>
-      <MarketingHeader locale={locale} copy={copy} onLocaleChange={changeLocale} />
+      <MarketingHeader copy={copy} />
 
       <main>
         <section className="bino-home-hero" aria-labelledby="bino-home-title">
@@ -231,7 +163,7 @@ export function MarketingLanding({
                 {copy.headline}
               </h1>
               <p className="bino-home-hero__support">{copy.support}</p>
-              <CtaPair locale={locale} />
+              <CtaPair locale={locale} whatsappHref={whatsappHref} />
             </div>
             <HeroVisual copy={copy} />
           </div>
@@ -276,7 +208,7 @@ export function MarketingLanding({
           <div className="bino-content-width">
             <div className="bino-section-heading bino-section-heading--split">
               <div>
-                <p className="bino-section-kicker">{copy.brand} / OPERATIONS</p>
+                <p className="bino-section-kicker">{copy.brand} / תפעול</p>
                 <h2 id="bino-product-heading">{copy.showcaseTitle}</h2>
               </div>
               <p className="bino-section-lead">{copy.showcaseLead}</p>
@@ -315,7 +247,7 @@ export function MarketingLanding({
           <div className="bino-content-width bino-results__inner">
             <div className="bino-results__heading">
               <div>
-                <p className="bino-section-kicker">{copy.brand} / IMPACT</p>
+                <p className="bino-section-kicker">{copy.brand} / השפעה</p>
                 <h2 id="bino-results-heading">{copy.metricsTitle}</h2>
                 <p className="bino-results__lead">{copy.metricsLead}</p>
               </div>
@@ -332,7 +264,7 @@ export function MarketingLanding({
                   <div className="bino-result-card__comparison">
                     <span className="bino-result-card__before">{metric.before}</span>
                     <span className="bino-result-card__arrow" aria-hidden="true">
-                      {locale === 'he' ? '←' : '→'}
+                      ←
                     </span>
                     <strong>{metric.after}</strong>
                   </div>
@@ -352,7 +284,7 @@ export function MarketingLanding({
         <section id="how" className="bino-how-section" aria-labelledby="bino-how-heading">
           <div className="bino-content-width">
             <div className="bino-section-heading">
-              <p className="bino-section-kicker">{copy.brand} / WORKFLOW</p>
+              <p className="bino-section-kicker">{copy.brand} / תהליך העבודה</p>
               <h2 id="bino-how-heading">{copy.howTitle}</h2>
               <p className="bino-section-lead">{copy.howLead}</p>
             </div>
@@ -373,7 +305,7 @@ export function MarketingLanding({
         <section className="bino-faq-section" aria-labelledby="bino-faq-heading">
           <div className="bino-content-width bino-faq-section__inner">
             <div className="bino-faq-section__heading">
-              <p className="bino-section-kicker">{copy.brand} / FAQ</p>
+              <p className="bino-section-kicker">{copy.brand} / שאלות נפוצות</p>
               <h2 id="bino-faq-heading">{copy.faqTitle}</h2>
               <p className="bino-section-lead">{copy.faqLead}</p>
             </div>
@@ -393,16 +325,16 @@ export function MarketingLanding({
 
         <section className="bino-closing-section" aria-labelledby="bino-closing-heading">
           <div className="bino-closing-panel">
-            <p className="bino-section-kicker">{copy.brand} / NEXT STEP</p>
+            <p className="bino-section-kicker">{copy.brand} / הצעד הבא</p>
             <h2 id="bino-closing-heading">{copy.closingTitle}</h2>
-            <CtaPair locale={locale} variant="closing" />
+            <CtaPair locale={locale} whatsappHref={whatsappHref} variant="closing" />
           </div>
         </section>
       </main>
 
       <footer className="bino-footer-refresh">
         <div className="bino-footer-refresh__inner">
-          <span dir="ltr">{copy.footerTagline}</span>
+          <span>{copy.footerTagline}</span>
           <nav aria-label={copy.navLabel}>
             <Link href="/guides">{copy.guides}</Link>
             <Link href="/privacy">{copy.privacy}</Link>
@@ -411,15 +343,6 @@ export function MarketingLanding({
               {copy.contact}
             </MarketingLeadLink>
           </nav>
-          {nap ? (
-            <div className="bino-footer-refresh__nap">
-              <MarketingLeadLink href={nap.phoneHref} method="contact_phone" placement="footer">
-                {nap.phoneDisplay}
-              </MarketingLeadLink>
-              <span aria-hidden="true">·</span>
-              <span>{nap.address}</span>
-            </div>
-          ) : null}
         </div>
       </footer>
     </div>

@@ -1,22 +1,23 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getLegalSiteConfig, legalTelHref } from '@/lib/legal-site-config'
+import { getLegalSiteConfig } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { MarketingLeadLink } from '@/app/components/marketing/MarketingLeadLink'
+import { WhatsAppIcon } from '@/app/components/marketing/WhatsAppIcon'
 import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { waDemoUrl } from '@/lib/marketing-copy'
 import '@/app/components/legal/legal-contact.css'
 
 const origin = getMarketingSiteOrigin()
 
 export const metadata: Metadata = {
-  title: 'יצירת קשר',
-  description:
-    'טלפון, כתובת ומייל ליצירת קשר עם BINO — זיכרון תפעולי לניהול פרויקטים, בניינים ושטחים.',
+  title: 'יצירת קשר | BINO',
+  description: 'לתיאום הדגמה או לשאלה על BINO — שלחו לנו הודעה בוואטסאפ.',
   alternates: { canonical: `${origin}/contact` },
   openGraph: {
     title: 'יצירת קשר | BINO',
-    description: 'פרטי קשר לתיאום הדגמה ותמיכה — BINO',
+    description: 'לתיאום הדגמה ותמיכה — BINO',
     url: `${origin}/contact`,
     locale: 'he_IL',
   },
@@ -24,7 +25,9 @@ export const metadata: Metadata = {
 }
 
 export default function ContactPage() {
-  const cfg = getLegalSiteConfig()
+  const legal = getLegalSiteConfig()
+  const { email } = legal
+  const whatsappHref = waDemoUrl('he', legal.phoneConfigured ? legal.phone : undefined)
 
   return (
     <>
@@ -32,53 +35,46 @@ export default function ContactPage() {
       <LegalPublicShell backHref="/" backLabel="← חזרה לדף הבית">
         <h1 className="legal-contact__h1">יצירת קשר</h1>
         <p className="legal-contact__intro">
-          פרטי בית העסק לצורך שירות תשלומים ותמיכה. לתיאום הדגמה לחברות ניהול — השאירו פרטים בטלפון או
-          במייל.
+          לתיאום הדגמה או לשאלה על BINO — שלחו לנו הודעה, ונשמח לדבר.
         </p>
 
-        {!cfg.readyForGrowAudit ? (
-          <p className="legal-contact__warn">
-            חסרים טלפון ו/או כתובת בהגדרות השרת (`LEGAL_PHONE`, `LEGAL_ADDRESS`). יש להשלים ב־Vercel לפני
-            הגשה ל־Grow.
-          </p>
-        ) : null}
+        <div className="legal-contact__channels">
+          <MarketingLeadLink
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            method="whatsapp_demo"
+            locale="he"
+            placement="contact"
+            className="legal-contact__whatsapp"
+          >
+            <span className="legal-contact__whatsapp-icon-wrap">
+              <WhatsAppIcon className="legal-contact__whatsapp-icon" />
+            </span>
+            <span className="legal-contact__whatsapp-copy">
+              <strong>שלחו לנו הודעה בוואטסאפ</strong>
+              <span>לתיאום הדגמה או לשאלה על BINO</span>
+            </span>
+            <span className="legal-contact__whatsapp-arrow" aria-hidden="true">
+              ↗
+            </span>
+          </MarketingLeadLink>
 
-        <dl className="legal-contact__dl">
-          <dt className="legal-contact__dt">שם העסק</dt>
-          <dd className="legal-contact__dd">{cfg.businessName}</dd>
-
-          <dt className="legal-contact__dt">טלפון</dt>
-          <dd className="legal-contact__dd">
-            <MarketingLeadLink
-              href={legalTelHref(cfg.phone)}
-              method="contact_phone"
-              placement="contact"
-              className="legal-contact__link"
-            >
-              {cfg.phoneDisplay}
-            </MarketingLeadLink>
-          </dd>
-
-          <dt className="legal-contact__dt">כתובת בית העסק</dt>
-          <dd className="legal-contact__dd">{cfg.address}</dd>
-
-          <dt className="legal-contact__dt">מייל</dt>
-          <dd className="legal-contact__dd">
-            {cfg.email ? (
+          {email ? (
+            <div className="legal-contact__email">
+              <span className="legal-contact__email-label">אפשר גם במייל</span>
               <MarketingLeadLink
-                href={`mailto:${cfg.email}`}
+                href={`mailto:${email}`}
                 method="contact_email"
                 placement="contact"
-                className="legal-contact__link legal-contact__link--email"
+                className="legal-contact__email-link"
                 dir="ltr"
               >
-                {cfg.email}
+                {email}
               </MarketingLeadLink>
-            ) : (
-              <span className="legal-contact__muted">יש להגדיר LEGAL_EMAIL</span>
-            )}
-          </dd>
-        </dl>
+            </div>
+          ) : null}
+        </div>
 
         <p className="legal-contact__links">
           <Link href="/terms">תקנון</Link>
