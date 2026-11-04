@@ -781,16 +781,19 @@
 }
 
 .bino-marketing--refresh .bino-brand-lockup__mark {
+  position: relative;
   width: 38px;
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--bino-ink);
-  color: var(--bino-teal);
-  font-size: 1.08rem;
-  font-weight: 800;
-  letter-spacing: -0.05em;
+  height: 38px;
+  flex: 0 0 auto;
+  display: block;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #061433;
+}
+
+.bino-marketing--refresh .bino-brand-lockup__logo {
+  object-fit: cover;
+  transform: scale(1.16);
 }
 
 .bino-marketing--refresh .bino-brand-lockup__word {
@@ -1788,7 +1791,8 @@
 
   .bino-marketing--refresh .bino-brand-lockup__mark {
     width: 33px;
-    border-radius: 10px;
+    height: 33px;
+    border-radius: 9px;
   }
 
   .bino-marketing--refresh .bino-brand-lockup__word {

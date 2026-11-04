@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import './marketing.css'
 import {
@@ -64,7 +65,14 @@ function MarketingHeader({ copy }: { copy: MarketingCopy }) {
       <div className="bino-page-header__inner">
         <Link className="bino-brand-lockup" href="/" aria-label="BINO">
           <span className="bino-brand-lockup__mark" aria-hidden="true">
-            B
+            <Image
+              src="/icon.png"
+              alt=""
+              fill
+              priority
+              sizes="38px"
+              className="bino-brand-lockup__logo"
+            />
           </span>
           <span className="bino-brand-lockup__word">BINO</span>
         </Link>
