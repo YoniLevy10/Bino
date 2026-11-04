@@ -1,0 +1,14 @@
+{
+  "title": "BINO",
+  "description": "Operating system for building-management companies: tickets, residents, field workers, WhatsApp intake, attendance, and billing in one place.",
+  "status": "Production",
+  "visibility": true,
+  "featured": true,
+  "category": "ERP",
+  "website": "https://bino.casa",
+  "logo": "",
+  "cover": "",
+  "video": "",
+  "technologies": ["Next.js", "TypeScript", "Supabase", "Vercel"],
+  "tags": ["operations", "property", "whatsapp"]
+}
