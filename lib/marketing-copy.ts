@@ -29,6 +29,16 @@ export type MarketingCopy = {
   dir: 'rtl' | 'ltr'
   lang: MarketingLocale
   brand: string
+  heroEyebrow: string
+  heroVisualLabel: string
+  heroBadgeTitle: string
+  heroBadgeText: string
+  navLabel: string
+  navProduct: string
+  navImpact: string
+  navHow: string
+  proofAria: string
+  proofPoints: readonly { title: string; body: string }[]
   headline: string
   support: string
   ctaDemo: string
@@ -66,9 +76,23 @@ const HE: MarketingCopy = {
   dir: 'rtl',
   lang: 'he',
   brand: 'BINO',
-  headline: 'זיכרון תפעולי לכל פרויקט, בניין ושטח',
+  heroEyebrow: 'זיכרון תפעולי לחברות ניהול',
+  heroVisualLabel: 'כך נראית המלצה בתוך BINO',
+  heroBadgeTitle: 'ההמלצה מתחילה בהיסטוריה של הבניין',
+  heroBadgeText: 'מי טיפל, באיזה ציוד, ומה עבד בפעם הקודמת.',
+  navLabel: 'ניווט ראשי',
+  navProduct: 'המערכת',
+  navImpact: 'התוצאות',
+  navHow: 'איך זה עובד',
+  proofAria: 'היתרונות המרכזיים של BINO',
+  proofPoints: [
+    { title: 'הבניין זוכר', body: 'ציוד, ספקים, תקלות וזמני טיפול נשמרים בהקשר אחד.' },
+    { title: 'הצעד הבא ברור', body: 'המלצות לשיוך, זיהוי תקלות חוזרות והתרעות SLA.' },
+    { title: 'רואים את ההשפעה', body: 'זמן, עלות ועומס תפעולי — לא רק מספר הקריאות.' },
+  ],
+  headline: 'לא רק מטפלים בתקלות בבניין. לומדים למנוע את הבאה.',
   support:
-    'מערכת ניהול פרויקטים, בניינים ושטחים לחברות ניהול בישראל — לא תוכנת ועד בלבד ולא עוד מערכת תקלות. BINO לומדת את האתר, מחליטה מי מטפל, מונעת כשלים חוזרים ומוכיחה חיסכון.',
+    'BINO בונה זיכרון תפעולי לכל בניין, ממליצה מי יטפל ומראה לחברת הניהול כמה זמן וכסף נחסכו.',
   ctaDemo: 'לתיאום הדגמה בוואטסאפ',
   ctaLogin: 'כניסה למערכת',
   langSwitchAria: 'בחירת שפה',
@@ -178,9 +202,23 @@ const EN: MarketingCopy = {
   dir: 'ltr',
   lang: 'en',
   brand: 'BINO',
-  headline: 'Operational memory for every project, building, and space',
+  heroEyebrow: 'Operational memory for management companies',
+  heroVisualLabel: 'A recommendation inside BINO',
+  heroBadgeTitle: 'The recommendation starts with the building’s history',
+  heroBadgeText: 'Who handled it, which equipment was involved, and what worked before.',
+  navLabel: 'Main navigation',
+  navProduct: 'The system',
+  navImpact: 'Impact',
+  navHow: 'How it works',
+  proofAria: 'BINO’s core benefits',
+  proofPoints: [
+    { title: 'The building remembers', body: 'Equipment, vendors, issues, and response times stay connected.' },
+    { title: 'The next step is clear', body: 'Assignment recommendations, recurring-issue detection, and SLA alerts.' },
+    { title: 'The impact is visible', body: 'Time, cost, and operational load — not just ticket volume.' },
+  ],
+  headline: 'Don’t just resolve issues. Learn how to prevent the next one.',
   support:
-    'A management system for projects, buildings, and spaces in Israel — not a committee-only app and not another ticketing tool. BINO learns each site, decides who handles it, prevents recurring failures, and proves savings.',
+    'BINO builds operational memory for every building, recommends who should handle the work, and shows management the time and money saved.',
   ctaDemo: 'Book a WhatsApp demo',
   ctaLogin: 'Sign in',
   langSwitchAria: 'Language',

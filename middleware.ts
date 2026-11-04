@@ -79,7 +79,7 @@ export async function middleware(req: NextRequest) {
     )
   }
 
-  // Temporary: marketing landing is down — bino.casa / and /en go to /login.
+  // Guests can view the public marketing home.
   // Logged-in managers (esp. iOS PWA with old start_url "/") → dashboard.
   // Resident-only accounts → /resident (never mix manager + resident authz).
   if (pathname === '/' || pathname === '/en') {
@@ -132,11 +132,12 @@ export async function middleware(req: NextRequest) {
         } catch {
           // fall through to login redirect on transient errors — never signOut here
         }
+        const url = req.nextUrl.clone()
+        url.pathname = '/login'
+        return redirectWithCookies(pending, url)
       }
     }
-    const url = req.nextUrl.clone()
-    url.pathname = '/login'
-    return redirectWithCookies(pending, url)
+    return pending.response
   }
 
   // Resident login / shared join link / UX sandbox are public. Other /resident* need session below.
