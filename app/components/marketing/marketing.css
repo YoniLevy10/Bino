@@ -129,42 +129,6 @@
   animation: bino-fade-in 0.6s ease-out both;
 }
 
-.bino-lang {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: var(--bino-glass);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-}
-
-.bino-lang__btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.62);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 2px 4px;
-  cursor: pointer;
-  transition: color 0.18s ease;
-}
-
-.bino-lang__btn.is-active,
-.bino-lang__btn:hover {
-  color: #fff;
-}
-
-.bino-lang__sep {
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 0.85rem;
-}
-
 .bino-hero__stage {
   flex: 1;
   display: flex;
@@ -242,6 +206,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 9px;
   min-height: 54px;
   padding: 14px 24px;
   border-radius: 16px;
@@ -260,6 +225,13 @@
   background: #fff;
   transform: translateY(-2px);
   box-shadow: 0 14px 34px -14px rgba(0, 20, 60, 0.55);
+}
+
+.bino-whatsapp-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
 }
 
 .bino-cta__secondary {
@@ -758,5 +730,1311 @@
   .bino-showcase__item,
   .bino-hero__plane {
     animation: none !important;
+  }
+}
+
+/* BINO marketing refresh */
+.bino-marketing--refresh {
+  --bino-blue: var(--color-marketing-primary);
+  --bino-blue-deep: var(--color-marketing-primary-strong);
+  --bino-teal: var(--color-marketing-accent);
+  --bino-ink: var(--color-marketing-ink);
+  --bino-ink-soft: var(--color-marketing-ink-soft);
+  --bino-muted: var(--color-marketing-muted);
+  --bino-paper: var(--color-marketing-paper);
+  --bino-surface: var(--color-marketing-surface);
+  --bino-line: var(--color-marketing-border);
+  background: var(--bino-paper);
+  color: var(--bino-ink);
+}
+
+.bino-marketing--refresh :focus-visible {
+  outline: 3px solid var(--bino-blue);
+  outline-offset: 4px;
+}
+
+.bino-marketing--refresh .bino-page-header {
+  position: relative;
+  z-index: 2;
+  border-bottom: 1px solid var(--bino-line);
+  background: rgba(246, 246, 240, 0.92);
+}
+
+.bino-marketing--refresh .bino-page-header__inner {
+  width: min(100%, 1440px);
+  min-height: 78px;
+  margin-inline: auto;
+  padding: 12px clamp(20px, 5.4vw, 82px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(16px, 3vw, 44px);
+}
+
+.bino-marketing--refresh .bino-brand-lockup {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--bino-ink);
+  text-decoration: none;
+}
+
+.bino-marketing--refresh .bino-brand-lockup__mark {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: block;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #061433;
+}
+
+.bino-marketing--refresh .bino-brand-lockup__logo {
+  object-fit: cover;
+  transform: scale(1.16);
+}
+
+.bino-marketing--refresh .bino-brand-lockup__word {
+  direction: ltr;
+  font-size: 1.12rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.bino-marketing--refresh .bino-page-nav {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 2.6vw, 38px);
+}
+
+.bino-marketing--refresh .bino-page-nav a {
+  color: var(--bino-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.bino-marketing--refresh .bino-page-nav a:hover {
+  color: var(--bino-blue);
+}
+
+.bino-marketing--refresh .bino-page-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.bino-marketing--refresh .bino-header-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bino-ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bino-marketing--refresh .bino-header-login span {
+  color: var(--bino-blue);
+  font-size: 1.05rem;
+  transition: transform 160ms ease;
+}
+
+.bino-marketing--refresh .bino-header-login:hover span {
+  transform: translate(2px, -2px);
+}
+
+.bino-marketing--refresh .bino-home-hero {
+  position: relative;
+  background:
+    radial-gradient(ellipse 42% 72% at 4% 12%, rgba(155, 228, 197, 0.35), transparent 72%),
+    var(--bino-paper);
+}
+
+.bino-marketing--refresh .bino-home-hero__grid {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+  padding: clamp(52px, 7.5vw, 106px) clamp(20px, 5.4vw, 82px) clamp(76px, 9vw, 126px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  align-items: center;
+  gap: clamp(44px, 7vw, 104px);
+}
+
+.bino-marketing--refresh .bino-home-hero__copy {
+  max-width: 590px;
+}
+
+.bino-marketing--refresh .bino-eyebrow,
+.bino-marketing--refresh .bino-section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 20px;
+  color: var(--bino-blue-deep);
+  font-size: 0.82rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+}
+
+.bino-marketing--refresh .bino-eyebrow__mark,
+.bino-marketing--refresh .bino-status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #4aaf8b;
+  box-shadow: 0 0 0 4px rgba(74, 175, 139, 0.13);
+}
+
+.bino-marketing--refresh .bino-home-hero__title {
+  max-width: 12ch;
+  margin: 0;
+  color: var(--bino-ink);
+  font-size: clamp(2.8rem, 5.5vw, 5.25rem);
+  font-weight: 750;
+  letter-spacing: -0.055em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.bino-marketing--refresh .bino-home-hero__support {
+  max-width: 49ch;
+  margin: 22px 0 0;
+  color: var(--bino-muted);
+  font-size: clamp(1.04rem, 1.5vw, 1.18rem);
+  line-height: 1.75;
+}
+
+.bino-marketing--refresh .bino-cta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+  animation: none;
+}
+
+.bino-marketing--refresh .bino-cta__primary,
+.bino-marketing--refresh .bino-cta__secondary {
+  min-height: 54px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.bino-marketing--refresh .bino-cta__primary {
+  border: 1px solid var(--bino-blue);
+  background: var(--bino-blue);
+  color: #fff;
+  box-shadow: 0 12px 28px -16px rgba(23, 105, 239, 0.72);
+}
+
+.bino-marketing--refresh .bino-cta__primary:hover {
+  transform: translateY(-2px);
+  background: var(--bino-blue-deep);
+  box-shadow: 0 16px 32px -17px rgba(23, 105, 239, 0.75);
+}
+
+.bino-marketing--refresh .bino-cta__secondary {
+  border: 1px solid var(--bino-line);
+  background: rgba(255, 255, 255, 0.48);
+  color: var(--bino-ink-soft);
+}
+
+.bino-marketing--refresh .bino-cta__secondary:hover {
+  transform: translateY(-1px);
+  background: #fff;
+}
+
+.bino-marketing--refresh .bino-home-hero__visual {
+  position: relative;
+  min-width: 0;
+  padding: clamp(18px, 3vw, 34px);
+  border: 1px solid rgba(16, 32, 51, 0.07);
+  border-radius: 30px;
+  background: linear-gradient(145deg, #e2eee8, #e9eff0 72%);
+  isolation: isolate;
+}
+
+.bino-marketing--refresh .bino-home-hero__visual::before {
+  position: absolute;
+  z-index: -1;
+  inset: 8% 12% auto auto;
+  width: 54%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
+  content: '';
+  filter: blur(1px);
+}
+
+.bino-marketing--refresh .bino-home-hero__visual-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  color: var(--bino-ink-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.bino-marketing--refresh .bino-status-dot {
+  width: 7px;
+  height: 7px;
+  box-shadow: none;
+}
+
+.bino-marketing--refresh .bino-hero-window {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border: 1px solid rgba(16, 32, 51, 0.1);
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 28px 65px -35px rgba(16, 32, 51, 0.55);
+}
+
+.bino-marketing--refresh .bino-hero-window__chrome {
+  min-height: 42px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(16, 32, 51, 0.08);
+  background: #fff;
+}
+
+.bino-marketing--refresh .bino-hero-window__traffic {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.bino-marketing--refresh .bino-hero-window__traffic i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d5dce3;
+}
+
+.bino-marketing--refresh .bino-hero-window__url {
+  overflow: hidden;
+  color: #758195;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bino-marketing--refresh .bino-hero-window__brand {
+  color: var(--bino-ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.bino-marketing--refresh .bino-hero-window__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.bino-marketing--refresh .bino-hero-visual__callout {
+  position: absolute;
+  z-index: 2;
+  inset-block-end: 15px;
+  inset-inline-end: -24px;
+  max-width: min(310px, 70%);
+  padding: 14px 17px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(16, 32, 51, 0.08);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 36px -22px rgba(16, 32, 51, 0.5);
+}
+
+.bino-marketing--refresh .bino-hero-visual__callout-mark {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #e8f7ef;
+  color: #287b5b;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.bino-marketing--refresh .bino-hero-visual__callout strong,
+.bino-marketing--refresh .bino-hero-visual__callout small {
+  display: block;
+}
+
+.bino-marketing--refresh .bino-hero-visual__callout strong {
+  color: var(--bino-ink);
+  font-size: 0.83rem;
+  line-height: 1.35;
+}
+
+.bino-marketing--refresh .bino-hero-visual__callout small {
+  margin-top: 4px;
+  color: var(--bino-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.bino-marketing--refresh .bino-principles {
+  border-block: 1px solid var(--bino-line);
+  background: #fff;
+}
+
+.bino-marketing--refresh .bino-principles__inner {
+  width: min(100%, 1320px);
+  margin-inline: auto;
+  padding: 6px clamp(20px, 5.4vw, 82px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bino-marketing--refresh .bino-principle {
+  min-width: 0;
+  padding: 25px clamp(14px, 2.5vw, 34px);
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  border-inline-start: 1px solid var(--bino-line);
+}
+
+.bino-marketing--refresh .bino-principle:first-child {
+  border-inline-start: 0;
+}
+
+.bino-marketing--refresh .bino-principle__index {
+  flex: 0 0 auto;
+  padding-top: 2px;
+  color: var(--bino-blue);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.bino-marketing--refresh .bino-principle h2 {
+  margin: 0;
+  color: var(--bino-ink);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.bino-marketing--refresh .bino-principle p {
+  max-width: 34ch;
+  margin: 6px 0 0;
+  color: var(--bino-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.bino-marketing--refresh .bino-audience-section,
+.bino-marketing--refresh .bino-content-width {
+  width: min(100%, 1320px);
+  margin-inline: auto;
+}
+
+.bino-marketing--refresh .bino-audience-section {
+  padding: clamp(72px, 9vw, 120px) clamp(20px, 5.4vw, 82px);
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(36px, 7vw, 100px);
+}
+
+.bino-marketing--refresh .bino-section-kicker {
+  margin-bottom: 14px;
+  color: var(--bino-blue-deep);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.bino-marketing--refresh .bino-audience-section h2,
+.bino-marketing--refresh .bino-section-heading h2,
+.bino-marketing--refresh .bino-results__heading h2,
+.bino-marketing--refresh .bino-faq-section__heading h2 {
+  max-width: 17ch;
+  margin: 0;
+  color: var(--bino-ink);
+  font-size: clamp(2rem, 3.7vw, 3.35rem);
+  font-weight: 730;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.bino-marketing--refresh .bino-section-lead {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--bino-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.bino-marketing--refresh .bino-audience-section__body > .bino-section-lead {
+  margin-bottom: 22px;
+  color: var(--bino-ink-soft);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.bino-marketing--refresh .bino-audience-section__paragraphs {
+  display: grid;
+  gap: 14px;
+}
+
+.bino-marketing--refresh .bino-audience-section__paragraphs p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--bino-muted);
+  font-size: 0.97rem;
+  line-height: 1.78;
+}
+
+.bino-marketing--refresh .bino-product-section {
+  padding: clamp(72px, 9vw, 112px) clamp(20px, 5.4vw, 82px);
+  border-block: 1px solid var(--bino-line);
+  background: #fff;
+}
+
+.bino-marketing--refresh .bino-section-heading--split {
+  margin-bottom: 42px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.72fr);
+  align-items: end;
+  gap: clamp(28px, 5vw, 72px);
+}
+
+.bino-marketing--refresh .bino-section-heading--split .bino-section-lead {
+  padding-bottom: 4px;
+}
+
+.bino-marketing--refresh .bino-product-grid {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  list-style: none;
+}
+
+.bino-marketing--refresh .bino-product-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--bino-line);
+  border-radius: 21px;
+  background: #fbfcfa;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.bino-marketing--refresh .bino-product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 38px -30px rgba(16, 32, 51, 0.5);
+}
+
+.bino-marketing--refresh .bino-product-card figure {
+  margin: 0;
+}
+
+.bino-marketing--refresh .bino-product-card__image-wrap {
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+  background: #eef2f5;
+}
+
+.bino-marketing--refresh .bino-product-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 260ms ease;
+}
+
+.bino-marketing--refresh .bino-product-card:hover .bino-product-card__image {
+  transform: scale(1.025);
+}
+
+.bino-marketing--refresh .bino-product-card__caption {
+  min-height: 70px;
+  padding: 17px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--bino-ink);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.bino-marketing--refresh .bino-product-card__index {
+  color: var(--bino-blue);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.bino-marketing--refresh .bino-results {
+  padding: clamp(72px, 9vw, 112px) clamp(20px, 5.4vw, 82px);
+  background:
+    radial-gradient(ellipse 45% 55% at 4% 100%, rgba(23, 105, 239, 0.18), transparent 75%),
+    #102033;
+  color: #fff;
+}
+
+.bino-marketing--refresh .bino-results__heading {
+  margin-bottom: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.bino-marketing--refresh .bino-results__heading .bino-section-kicker {
+  color: var(--bino-teal);
+}
+
+.bino-marketing--refresh .bino-results__heading h2 {
+  max-width: 19ch;
+  color: #fff;
+}
+
+.bino-marketing--refresh .bino-results__lead {
+  max-width: 56ch;
+  margin: 14px 0 0;
+  color: #b7c4d2;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.bino-marketing--refresh .bino-results__sample-note {
+  max-width: 285px;
+  flex: 0 0 auto;
+  margin: 0 0 3px;
+  padding: 11px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid rgba(155, 228, 197, 0.24);
+  border-radius: 12px;
+  background: rgba(155, 228, 197, 0.08);
+  color: #d4e4e1;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.bino-marketing--refresh .bino-results__sample-note > span {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(155, 228, 197, 0.17);
+  color: var(--bino-teal);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.bino-marketing--refresh .bino-results-grid {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+  list-style: none;
+}
+
+.bino-marketing--refresh .bino-result-card {
+  position: relative;
+  min-width: 0;
+  min-height: 170px;
+  padding: 25px 22px 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.bino-marketing--refresh .bino-result-card__label {
+  display: block;
+  max-width: 80%;
+  color: #c4cfda;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.bino-marketing--refresh .bino-result-card__comparison {
+  margin-top: 19px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 9px;
+  direction: inherit;
+}
+
+.bino-marketing--refresh .bino-result-card__before {
+  color: #91a0b1;
+  font-size: 0.94rem;
+  text-decoration: line-through;
+  text-decoration-color: rgba(196, 207, 218, 0.45);
+}
+
+.bino-marketing--refresh .bino-result-card__arrow {
+  color: #7d91a6;
+  font-size: 0.9rem;
+}
+
+.bino-marketing--refresh .bino-result-card__comparison strong {
+  color: var(--bino-teal);
+  font-size: clamp(1.3rem, 2vw, 1.75rem);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.bino-marketing--refresh .bino-result-card__note {
+  display: block;
+  margin-top: 8px;
+  color: #9eafc0;
+  font-size: 0.78rem;
+}
+
+.bino-marketing--refresh .bino-result-card__index {
+  position: absolute;
+  inset-block-start: 17px;
+  inset-inline-end: 18px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.bino-marketing--refresh .bino-results__more {
+  margin: 23px 0 0;
+}
+
+.bino-marketing--refresh .bino-results__more a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.4);
+  text-underline-offset: 4px;
+}
+
+.bino-marketing--refresh .bino-results__more a span {
+  color: var(--bino-teal);
+}
+
+.bino-marketing--refresh .bino-how-section {
+  padding: clamp(72px, 9vw, 112px) clamp(20px, 5.4vw, 82px);
+}
+
+.bino-marketing--refresh .bino-how-section .bino-section-heading {
+  margin-bottom: 36px;
+}
+
+.bino-marketing--refresh .bino-how-section .bino-section-lead {
+  margin-top: 13px;
+}
+
+.bino-marketing--refresh .bino-how-grid {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  list-style: none;
+}
+
+.bino-marketing--refresh .bino-how-card {
+  min-height: 230px;
+  padding: 25px 24px;
+  border: 1px solid var(--bino-line);
+  border-radius: 19px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.bino-marketing--refresh .bino-how-card__number {
+  width: 37px;
+  height: 37px;
+  margin-bottom: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #e8f4ef;
+  color: #287b5b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.bino-marketing--refresh .bino-how-card h3 {
+  margin: 0;
+  color: var(--bino-ink);
+  font-size: 1.13rem;
+  font-weight: 750;
+}
+
+.bino-marketing--refresh .bino-how-card p {
+  max-width: 42ch;
+  margin: 9px 0 0;
+  color: var(--bino-muted);
+  font-size: 0.91rem;
+  line-height: 1.65;
+}
+
+.bino-marketing--refresh .bino-faq-section {
+  padding: clamp(70px, 9vw, 108px) clamp(20px, 5.4vw, 82px);
+  border-top: 1px solid var(--bino-line);
+  background: #edf2ef;
+}
+
+.bino-marketing--refresh .bino-faq-section__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: clamp(32px, 6vw, 84px);
+}
+
+.bino-marketing--refresh .bino-faq-section__heading .bino-section-lead {
+  margin-top: 16px;
+}
+
+.bino-marketing--refresh .bino-faq-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bino-marketing--refresh .bino-faq-item {
+  padding: 0 18px;
+  border: 1px solid rgba(16, 32, 51, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.bino-marketing--refresh .bino-faq-item summary {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: var(--bino-ink);
+  cursor: pointer;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.bino-marketing--refresh .bino-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.bino-marketing--refresh .bino-faq-item__toggle {
+  position: relative;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  border: 1px solid var(--bino-line);
+  border-radius: 50%;
+}
+
+.bino-marketing--refresh .bino-faq-item__toggle::before,
+.bino-marketing--refresh .bino-faq-item__toggle::after {
+  position: absolute;
+  inset: 0;
+  width: 9px;
+  height: 1px;
+  margin: auto;
+  background: var(--bino-blue);
+  content: '';
+  transition: transform 160ms ease;
+}
+
+.bino-marketing--refresh .bino-faq-item__toggle::after {
+  transform: rotate(90deg);
+}
+
+.bino-marketing--refresh .bino-faq-item[open] .bino-faq-item__toggle::after {
+  transform: rotate(0);
+}
+
+.bino-marketing--refresh .bino-faq-item > p {
+  max-width: 70ch;
+  margin: -1px 0 18px;
+  color: var(--bino-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.bino-marketing--refresh .bino-closing-section {
+  padding: clamp(24px, 5vw, 60px) clamp(16px, 4vw, 56px);
+  background: #edf2ef;
+}
+
+.bino-marketing--refresh .bino-closing-panel {
+  position: relative;
+  width: min(100%, 1320px);
+  margin-inline: auto;
+  padding: clamp(46px, 7vw, 82px) 24px;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse 45% 85% at 8% 110%, rgba(23, 105, 239, 0.28), transparent 75%),
+    #102033;
+  color: #fff;
+  text-align: center;
+  isolation: isolate;
+}
+
+.bino-marketing--refresh .bino-closing-panel::before {
+  position: absolute;
+  z-index: -1;
+  inset: -65% 35% auto;
+  height: 120%;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+  content: '';
+}
+
+.bino-marketing--refresh .bino-closing-panel .bino-section-kicker {
+  color: var(--bino-teal);
+}
+
+.bino-marketing--refresh .bino-closing-panel h2 {
+  max-width: 19ch;
+  margin: 0 auto;
+  color: #fff;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 730;
+  letter-spacing: -0.045em;
+  line-height: 1.16;
+  text-wrap: balance;
+}
+
+.bino-marketing--refresh .bino-closing-panel .bino-cta {
+  justify-content: center;
+  margin-top: 25px;
+}
+
+.bino-marketing--refresh .bino-closing-panel .bino-cta__primary {
+  border-color: #fff;
+  background: #fff;
+  color: var(--bino-blue-deep);
+  box-shadow: none;
+}
+
+.bino-marketing--refresh .bino-closing-panel .bino-cta__primary:hover {
+  background: #eaf3ff;
+}
+
+.bino-marketing--refresh .bino-closing-panel .bino-cta__secondary--dark {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.bino-marketing--refresh .bino-closing-panel .bino-cta__secondary--dark:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.bino-marketing--refresh .bino-footer-refresh {
+  padding: 24px clamp(20px, 5.4vw, 82px) 30px;
+  background: #edf2ef;
+  color: var(--bino-muted);
+  font-size: 0.82rem;
+}
+
+.bino-marketing--refresh .bino-footer-refresh__inner {
+  width: min(100%, 1320px);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+}
+
+.bino-marketing--refresh .bino-footer-refresh__inner > span {
+  color: var(--bino-ink-soft);
+  font-weight: 650;
+}
+
+.bino-marketing--refresh .bino-footer-refresh nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px 18px;
+}
+
+.bino-marketing--refresh .bino-footer-refresh a {
+  color: var(--bino-muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bino-marketing--refresh .bino-footer-refresh a:hover {
+  color: var(--bino-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 1020px) {
+  .bino-marketing--refresh .bino-page-nav {
+    gap: 16px;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__grid {
+    gap: 42px;
+  }
+
+  .bino-marketing--refresh .bino-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bino-marketing--refresh .bino-product-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .bino-marketing--refresh .bino-product-card:last-child .bino-product-card__image-wrap {
+    aspect-ratio: 2.4 / 1;
+  }
+}
+
+@media (max-width: 820px) {
+  .bino-marketing--refresh .bino-page-nav {
+    display: none;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+    padding-top: 58px;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__copy {
+    max-width: 660px;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__title {
+    max-width: 15ch;
+    font-size: clamp(2.8rem, 8.5vw, 4.6rem);
+  }
+
+  .bino-marketing--refresh .bino-home-hero__visual {
+    width: min(100%, 650px);
+    justify-self: center;
+  }
+
+  .bino-marketing--refresh .bino-audience-section,
+  .bino-marketing--refresh .bino-section-heading--split,
+  .bino-marketing--refresh .bino-faq-section__inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bino-marketing--refresh .bino-audience-section {
+    gap: 24px;
+  }
+
+  .bino-marketing--refresh .bino-results__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .bino-marketing--refresh .bino-results__sample-note {
+    max-width: 420px;
+  }
+
+  .bino-marketing--refresh .bino-faq-section__inner {
+    gap: 30px;
+  }
+
+  .bino-marketing--refresh .bino-footer-refresh__inner {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 620px) {
+  .bino-marketing--refresh .bino-page-header__inner {
+    min-height: 68px;
+    padding-inline: 16px;
+    gap: 8px;
+  }
+
+  .bino-marketing--refresh .bino-brand-lockup {
+    gap: 7px;
+  }
+
+  .bino-marketing--refresh .bino-brand-lockup__mark {
+    width: 33px;
+    height: 33px;
+    border-radius: 9px;
+  }
+
+  .bino-marketing--refresh .bino-brand-lockup__word {
+    font-size: 1rem;
+  }
+
+  .bino-marketing--refresh .bino-page-header__actions {
+    gap: 8px;
+  }
+
+  .bino-marketing--refresh .bino-header-login {
+    gap: 4px;
+    font-size: 0.8rem;
+  }
+
+  .bino-marketing--refresh .bino-header-login span {
+    display: none;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__grid {
+    gap: 34px;
+    padding: 46px 18px 64px;
+  }
+
+  .bino-marketing--refresh .bino-eyebrow {
+    margin-bottom: 16px;
+    font-size: 0.76rem;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__title {
+    max-width: 13ch;
+    font-size: clamp(2.45rem, 11.5vw, 3.65rem);
+    line-height: 1.1;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__support {
+    margin-top: 17px;
+    font-size: 1rem;
+    line-height: 1.68;
+  }
+
+  .bino-marketing--refresh .bino-cta {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 22px;
+  }
+
+  .bino-marketing--refresh .bino-cta__primary,
+  .bino-marketing--refresh .bino-cta__secondary {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__visual {
+    padding: 14px 13px 18px;
+    border-radius: 22px;
+  }
+
+  .bino-marketing--refresh .bino-home-hero__visual-label {
+    font-size: 0.76rem;
+  }
+
+  .bino-marketing--refresh .bino-hero-window {
+    border-radius: 12px;
+  }
+
+  .bino-marketing--refresh .bino-hero-window__chrome {
+    min-height: 34px;
+    padding-inline: 9px;
+    gap: 7px;
+  }
+
+  .bino-marketing--refresh .bino-hero-window__traffic {
+    gap: 3px;
+  }
+
+  .bino-marketing--refresh .bino-hero-window__traffic i {
+    width: 5px;
+    height: 5px;
+  }
+
+  .bino-marketing--refresh .bino-hero-window__url {
+    font-size: 0.62rem;
+  }
+
+  .bino-marketing--refresh .bino-hero-window__brand {
+    font-size: 0.64rem;
+  }
+
+  .bino-marketing--refresh .bino-hero-visual__callout {
+    position: relative;
+    inset: auto;
+    max-width: calc(100% - 18px);
+    margin: -11px 9px 0 auto;
+    padding: 11px 12px;
+    border-radius: 13px;
+  }
+
+  .bino-marketing--refresh .bino-hero-visual__callout-mark {
+    width: 29px;
+    height: 29px;
+    border-radius: 9px;
+  }
+
+  .bino-marketing--refresh .bino-hero-visual__callout strong {
+    font-size: 0.76rem;
+  }
+
+  .bino-marketing--refresh .bino-hero-visual__callout small {
+    font-size: 0.68rem;
+  }
+
+  .bino-marketing--refresh .bino-principles__inner {
+    padding: 7px 18px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bino-marketing--refresh .bino-principle {
+    padding: 18px 2px;
+    border-inline-start: 0;
+    border-bottom: 1px solid var(--bino-line);
+  }
+
+  .bino-marketing--refresh .bino-principle:last-child {
+    border-bottom: 0;
+  }
+
+  .bino-marketing--refresh .bino-audience-section,
+  .bino-marketing--refresh .bino-product-section,
+  .bino-marketing--refresh .bino-results,
+  .bino-marketing--refresh .bino-how-section,
+  .bino-marketing--refresh .bino-faq-section {
+    padding: 64px 20px;
+  }
+
+  .bino-marketing--refresh .bino-audience-section h2,
+  .bino-marketing--refresh .bino-section-heading h2,
+  .bino-marketing--refresh .bino-results__heading h2,
+  .bino-marketing--refresh .bino-faq-section__heading h2 {
+    font-size: clamp(1.85rem, 8vw, 2.55rem);
+  }
+
+  .bino-marketing--refresh .bino-section-heading--split {
+    margin-bottom: 28px;
+    gap: 14px;
+  }
+
+  .bino-marketing--refresh .bino-product-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  .bino-marketing--refresh .bino-product-card:last-child {
+    grid-column: auto;
+  }
+
+  .bino-marketing--refresh .bino-product-card:last-child .bino-product-card__image-wrap {
+    aspect-ratio: 3 / 2;
+  }
+
+  .bino-marketing--refresh .bino-product-card__caption {
+    min-height: 61px;
+    padding: 13px 15px;
+  }
+
+  .bino-marketing--refresh .bino-results__heading {
+    margin-bottom: 26px;
+  }
+
+  .bino-marketing--refresh .bino-results-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .bino-marketing--refresh .bino-result-card {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .bino-marketing--refresh .bino-result-card__comparison {
+    margin-top: 12px;
+  }
+
+  .bino-marketing--refresh .bino-how-section .bino-section-heading {
+    margin-bottom: 26px;
+  }
+
+  .bino-marketing--refresh .bino-how-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .bino-marketing--refresh .bino-how-card {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .bino-marketing--refresh .bino-how-card__number {
+    margin-bottom: 18px;
+  }
+
+  .bino-marketing--refresh .bino-faq-item {
+    padding-inline: 14px;
+  }
+
+  .bino-marketing--refresh .bino-faq-item summary {
+    min-height: 54px;
+    font-size: 0.88rem;
+  }
+
+  .bino-marketing--refresh .bino-closing-section {
+    padding: 16px;
+  }
+
+  .bino-marketing--refresh .bino-closing-panel {
+    padding: 48px 18px;
+    border-radius: 22px;
+  }
+
+  .bino-marketing--refresh .bino-closing-panel .bino-cta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bino-marketing--refresh .bino-footer-refresh {
+    padding: 22px 18px 26px;
+  }
+
+  .bino-marketing--refresh .bino-footer-refresh nav {
+    justify-content: center;
+    gap: 9px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bino-marketing--refresh *,
+  .bino-marketing--refresh *::before,
+  .bino-marketing--refresh *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

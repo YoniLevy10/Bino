@@ -47,7 +47,6 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: [
           '/',
-          '/en',
           '/contact',
           '/savings-report',
           '/guides',
@@ -60,7 +59,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: 'GPTBot',
-        allow: ['/', '/en', '/contact', '/savings-report', '/guides', '/guides/', '/privacy', '/terms'],
+        allow: ['/', '/contact', '/savings-report', '/guides', '/guides/', '/privacy', '/terms'],
         disallow: [...DISALLOW],
       },
     ],

@@ -23,6 +23,16 @@ function formatHours(totalSec: number): string {
 export function WorkTimer() {
   const pathname = usePathname()
   const skip =
+    pathname === '/' ||
+    pathname === '/en' ||
+    pathname === '/contact' ||
+    pathname === '/terms' ||
+    pathname === '/privacy' ||
+    pathname === '/guides' ||
+    pathname?.startsWith('/guides/') ||
+    pathname === '/savings-report' ||
+    pathname === '/vaad-pay' ||
+    pathname?.startsWith('/vaad-pay/') ||
     isResidentPortalPath(pathname) ||
     isWorkerPortalPath(pathname) ||
     pathname?.startsWith('/login') ||

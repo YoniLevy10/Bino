@@ -76,8 +76,8 @@ export function LegalPublicShell({
         }}
       >
         {cfg.businessName}
-        {cfg.phoneDisplay ? ` · ${cfg.phoneDisplay}` : ''}
-        {cfg.address ? ` · ${cfg.address}` : ''}
+        {merchant?.phoneDisplay ? ` · ${merchant.phoneDisplay}` : ''}
+        {merchant?.address ? ` · ${merchant.address}` : ''}
       </footer>
     </main>
   )

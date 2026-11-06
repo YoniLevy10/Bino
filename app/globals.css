@@ -39,6 +39,17 @@
   --color-error-muted: #fff0ee;
   --color-info: #007AFF;
   --color-info-muted: #eaf3ff;
+
+  /* Marketing-only semantic palette; authenticated product surfaces keep their existing theme. */
+  --color-marketing-paper: #f6f6f0;
+  --color-marketing-surface: #ffffff;
+  --color-marketing-ink: #102033;
+  --color-marketing-ink-soft: #27384b;
+  --color-marketing-muted: #657386;
+  --color-marketing-primary: #1769ef;
+  --color-marketing-primary-strong: #0d54cd;
+  --color-marketing-accent: #9be4c5;
+  --color-marketing-border: rgba(16, 32, 51, 0.12);
   
   --radius: 12px;
   --radius-sm: 8px;

@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import { MarketingLanding } from './components/marketing/MarketingLanding'
 import { MarketingAnalytics } from './components/marketing/MarketingAnalytics'
 import { buildMarketingJsonLd } from '@/lib/marketing-jsonld'
-import { getLegalSiteConfig, legalTelHref } from '@/lib/legal-site-config'
+import { getLegalSiteConfig } from '@/lib/legal-site-config'
+import { waDemoUrl } from '@/lib/marketing-copy'
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
@@ -30,19 +31,11 @@ export const metadata: Metadata = {
     'SLA תחזוקה',
     'תוכנה לחברת ניהול',
   ],
-  alternates: {
-    canonical: `${origin}/`,
-    languages: {
-      he: `${origin}/`,
-      en: `${origin}/en`,
-      'x-default': `${origin}/`,
-    },
-  },
+  alternates: { canonical: `${origin}/` },
   openGraph: {
     title: BINO_MARKETING_TITLE,
     description: BINO_MARKETING_OG_DESCRIPTION,
     locale: 'he_IL',
-    alternateLocale: ['en_US'],
     url: `${origin}/`,
     type: 'website',
     siteName: 'BINO',
@@ -66,15 +59,9 @@ export const metadata: Metadata = {
 }
 
 export default function MarketingHomePage() {
-  const jsonLd = buildMarketingJsonLd('he')
+  const jsonLd = buildMarketingJsonLd()
   const legal = getLegalSiteConfig()
-  const nap = legal.readyForGrowAudit
-    ? {
-        phoneDisplay: legal.phoneDisplay,
-        phoneHref: legalTelHref(legal.phone),
-        address: legal.address,
-      }
-    : null
+  const whatsappHref = waDemoUrl('he', legal.phoneConfigured ? legal.phone : undefined)
 
   return (
     <>
@@ -83,7 +70,7 @@ export default function MarketingHomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <MarketingLanding initialLocale="he" nap={nap} />
+      <MarketingLanding whatsappHref={whatsappHref} />
     </>
   )
 }

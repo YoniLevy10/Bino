@@ -27,24 +27,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: 'weekly',
       priority: 1,
-      alternates: {
-        languages: {
-          he: `${origin}/`,
-          en: `${origin}/en`,
-        },
-      },
-    },
-    {
-      url: `${origin}/en`,
-      lastModified,
-      changeFrequency: 'weekly',
-      priority: 0.95,
-      alternates: {
-        languages: {
-          he: `${origin}/`,
-          en: `${origin}/en`,
-        },
-      },
     },
     ...guides,
     {

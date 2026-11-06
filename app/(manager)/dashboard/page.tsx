@@ -958,7 +958,9 @@ export default function DashboardPage() {
     setAddingTicket(false)
   }
 
-  const openTicketsCount = stats.open
+  // "Open" on the mobile hero means still not closed. `stats.open` is only status NEW,
+  // which stays 0 once a ticket is assigned — the rest of the screen already shows those.
+  const openTicketsCount = stats.total
 
   const nextActionTicket =
     filteredTickets.find((t) => !t.assigned_worker_id) || filteredTickets[0] || null
@@ -1039,6 +1041,7 @@ export default function DashboardPage() {
                     <p style={styles.mobileHeroLabel}>תקלות פתוחות</p>
                     <p style={styles.mobileHeroValue}>{openTicketsCount}</p>
                   </div>
+                  <p style={styles.mobileHeroHint}>כל מה שעדיין לא נסגר, כולל מה שכבר בטיפול</p>
                   <Button
                     variant="primary"
                     size="lg"
@@ -1049,7 +1052,12 @@ export default function DashboardPage() {
                   </Button>
                 </div>
                 <KpiRow columns={2} isMobile>
-                  <KpiCard label="פעילות" value={stats.total} onClick={() => setActiveKpi('ALL')} />
+                  <KpiCard
+                    label="חדשות"
+                    value={stats.open}
+                    hint="עדיין בלי שיוך"
+                    onClick={() => setActiveKpi('NEW')}
+                  />
                   <KpiCard
                     label="בטיפול"
                     value={stats.inProgress}
@@ -1626,6 +1634,14 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textInverse,
   },
   mobileHeroLabel: { margin: 0, fontSize: 17, fontWeight: 500 },
+  mobileHeroHint: {
+    margin: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 1.4,
+    color: theme.colors.navText,
+    textAlign: 'right',
+  },
   mobileHeroValue: { margin: 0, fontSize: 40, fontWeight: 700, lineHeight: 1 },
   mobileKpiRow: {
     display: 'grid',

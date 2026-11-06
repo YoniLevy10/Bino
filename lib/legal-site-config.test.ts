@@ -25,6 +25,7 @@ describe('getLegalSiteConfig', () => {
     const cfg = getLegalSiteConfig()
     expect(cfg.businessName).toBe('Bino')
     expect(cfg.readyForGrowAudit).toBe(false)
+    expect(cfg.phoneConfigured).toBe(false)
     // No hardcoded legacy brand email — empty until LEGAL_EMAIL / RESEND_FROM_EMAIL is set
     expect(cfg.email.includes('bamakor')).toBe(false)
 
@@ -39,6 +40,7 @@ describe('getLegalSiteConfig', () => {
     process.env.LEGAL_ADDRESS = 'רחוב הרצל 1, תל אביב'
     const cfg = getLegalSiteConfig()
     expect(cfg.readyForGrowAudit).toBe(true)
+    expect(cfg.phoneConfigured).toBe(true)
     expect(cfg.businessName).toBe('Bino ניהול')
     expect(cfg.phoneDisplay).toMatch(/050/)
   })
