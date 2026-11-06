@@ -990,7 +990,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div style={styles.hero}>
+        <div style={isMobile ? styles.heroMobileWrapper : styles.hero}>
           <div
             style={{
               ...styles.heroTop,
@@ -1000,6 +1000,7 @@ export default function DashboardPage() {
             <div style={styles.heroText}>
               {!isMobile && (
                 <>
+                  <p style={styles.heroEyebrow}>BINO · סביבת ניהול</p>
                   <h1 style={styles.heroTitle}>לוח בקרה</h1>
                   <p style={styles.heroSubtitle} suppressHydrationWarning>
                     {getGreeting()} · תמונת מצב תפעולית מהנתונים החיים
@@ -1428,30 +1429,46 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 500,
     color: theme.colors.textMuted,
   },
-  hero: { marginBottom: 28 },
+  hero: {
+    marginBottom: 24,
+    padding: '28px 32px',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: theme.radius.xl,
+    background: `linear-gradient(125deg, ${theme.colors.navy} 0%, ${theme.colors.navySoft} 100%)`,
+    boxShadow: theme.shadows.lg,
+  },
+  heroMobileWrapper: { marginBottom: 12 },
   heroTop: {
     display: 'flex',
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: '20px',
     flexWrap: 'wrap',
   },
   heroText: { flex: 1, minWidth: 0 },
-  heroTitle: {
-    fontSize: 28,
+  heroEyebrow: {
+    margin: '0 0 8px',
+    color: theme.colors.navText,
+    fontSize: 12,
     fontWeight: 700,
-    color: theme.colors.textPrimary,
+    letterSpacing: '0.04em',
+  },
+  heroTitle: {
+    fontSize: 34,
+    fontWeight: 700,
+    color: theme.colors.textInverse,
     margin: 0,
-    letterSpacing: '-0.02em',
+    letterSpacing: '-0.035em',
+    lineHeight: 1.2,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
-    margin: '6px 0 0',
-    lineHeight: 1.45,
+    color: theme.colors.navText,
+    margin: '8px 0 0',
+    lineHeight: 1.55,
   },
-  heroActions: { display: 'flex', gap: '12px' },
+  heroActions: { display: 'flex', gap: '12px', alignItems: 'center' },
   kpiGrid: { display: 'grid', gap: 16, marginBottom: 24 },
   mainGrid: { display: 'grid', gap: 16, marginBottom: 24 },
   projectList: { display: 'flex', flexDirection: 'column', gap: 0 },
@@ -1584,13 +1601,15 @@ const styles: Record<string, CSSProperties> = {
   ageText: { color: theme.colors.textMuted, fontSize: 13 },
   emptyText: { textAlign: 'center', color: theme.colors.textMuted, padding: '24px 0' },
   mobileHeroCard: {
-    background: theme.colors.navy,
+    background: `linear-gradient(135deg, ${theme.colors.navy} 0%, ${theme.colors.navySoft} 100%)`,
+    border: '1px solid rgba(255, 255, 255, 0.12)',
     borderRadius: theme.radius.xl,
     padding: 20,
     marginBottom: 16,
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
+    boxShadow: theme.shadows.md,
   },
   mobileHeroEyebrow: {
     margin: 0,

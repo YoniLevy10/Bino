@@ -1128,11 +1128,14 @@ const mobileHeaderStyles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '20px 20px',
-    paddingTop: 'calc(20px + env(safe-area-inset-top))',
+    padding: '16px 20px',
+    paddingTop: 'calc(16px + env(safe-area-inset-top))',
     position: 'sticky',
     top: 0,
     zIndex: 40,
+    background: 'rgba(255, 255, 255, 0.96)',
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    backdropFilter: 'blur(14px)',
   },
   left: {
     display: 'flex',
@@ -1462,7 +1465,13 @@ export function PageHeader({
 }) {
   return (
     <div style={pageHeaderStyles.container}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={pageHeaderStyles.copy}>
+        <div style={pageHeaderStyles.eyebrow}>
+          <span aria-hidden="true" style={pageHeaderStyles.eyebrowDot} />
+          <span>מרכז הניהול</span>
+          <span aria-hidden="true">·</span>
+          <span dir="ltr">BINO</span>
+        </div>
         <h1 style={pageHeaderStyles.title}>{title}</h1>
         {subtitle && <p style={pageHeaderStyles.subtitle}>{subtitle}</p>}
       </div>
@@ -1475,28 +1484,58 @@ const pageHeaderStyles: Record<string, CSSProperties> = {
   container: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: '24px',
-    marginBottom: '28px',
+    marginBottom: '24px',
+    padding: '24px 28px',
     flexWrap: 'wrap',
+    border: `1px solid ${theme.colors.border}`,
+    borderInlineStart: `4px solid ${theme.colors.primary}`,
+    borderRadius: theme.radius.xl,
+    background: `linear-gradient(110deg, ${theme.colors.surfaceActive} 0%, ${theme.colors.surface} 62%, ${theme.colors.background} 100%)`,
+    boxShadow: theme.shadows.xs,
+  },
+  copy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eyebrow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '9px',
+    color: theme.colors.primary,
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.03em',
+    lineHeight: 1,
+  },
+  eyebrowDot: {
+    width: '7px',
+    height: '7px',
+    flexShrink: 0,
+    borderRadius: '50%',
+    background: theme.colors.primary,
+    boxShadow: '0 0 0 4px rgba(0, 122, 255, 0.12)',
   },
   title: {
-    fontSize: '28px',
+    fontSize: '30px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
-    letterSpacing: '-0.02em',
-    lineHeight: 1.25,
+    letterSpacing: '-0.035em',
+    lineHeight: 1.2,
   },
   subtitle: {
     fontSize: '14px',
     color: theme.colors.textSecondary,
-    margin: '6px 0 0 0',
-    lineHeight: 1.45,
+    margin: '7px 0 0',
+    lineHeight: 1.55,
   },
   actions: {
     display: 'flex',
-    gap: '12px',
+    alignItems: 'center',
+    gap: '10px',
     flexWrap: 'wrap',
   },
 }
@@ -1551,7 +1590,18 @@ export function KpiCard({
       <div style={{ ...kpiStyles.row, ...(compact ? kpiStyles.rowCompact : {}) }}>
         <div style={{ ...kpiStyles.value, ...(compact ? kpiStyles.valueCompact : {}) }}>{value}</div>
         <div style={kpiStyles.labelCol}>
-          <div style={{ ...kpiStyles.label, ...(compact ? kpiStyles.labelCompact : {}) }}>{label}</div>
+          <div style={kpiStyles.labelRow}>
+            <span
+              aria-hidden="true"
+              style={{
+                ...kpiStyles.labelDot,
+                background: accentColor ?? theme.colors.borderStrong,
+              }}
+            />
+            <div style={{ ...kpiStyles.label, ...(compact ? kpiStyles.labelCompact : {}) }}>
+              {label}
+            </div>
+          </div>
           {hint ? <div style={kpiStyles.hint}>{hint}</div> : null}
         </div>
       </div>
