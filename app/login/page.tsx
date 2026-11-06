@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { LoginClient } from './login-client'
+import styles from './login.module.css'
 
 export const metadata: Metadata = {
   title: 'כניסה',
@@ -9,15 +10,13 @@ export const metadata: Metadata = {
 }
 
 function LoginFallback() {
-  return <LoginClientFallback />
-}
-
-function LoginClientFallback() {
-  // Minimal fallback: avoid useSearchParams during prerender
   return (
-    <div style={{ padding: '40px 16px', textAlign: 'center' }}>
-      טוען…
-    </div>
+    <main className={styles.page} aria-busy="true">
+      <div className={styles.loadingShell} role="status">
+        <span className={styles.loadingMark} aria-hidden="true">B</span>
+        <p>טוען את סביבת הכניסה…</p>
+      </div>
+    </main>
   )
 }
 
