@@ -226,6 +226,7 @@ export async function middleware(req: NextRequest) {
     pathname === '/favicon.ico' ||
     pathname === '/icon.png' ||
     pathname === '/apple-icon.png' ||
+    pathname === '/bino-mark.png' ||
     pathname === '/manifest.json' ||
     pathname === '/manifest.worker.json' ||
     pathname === '/manifest.superadmin.json' ||
@@ -398,6 +399,6 @@ export async function middleware(req: NextRequest) {
 export const config = {
   // Exclude static/SEO/PWA assets from Edge middleware invocation (no tenant/auth change).
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest\\.json|manifest\\.worker\\.json|manifest\\.superadmin\\.json|sw\\.js|offline\\.html|robots\\.txt|sitemap\\.xml|llms\\.txt|marketing/|opengraph-image|twitter-image|\\.well-known/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|bino-mark\\.png|manifest\\.json|manifest\\.worker\\.json|manifest\\.superadmin\\.json|sw\\.js|offline\\.html|robots\\.txt|sitemap\\.xml|llms\\.txt|marketing/|opengraph-image|twitter-image|\\.well-known/).*)',
   ],
 }

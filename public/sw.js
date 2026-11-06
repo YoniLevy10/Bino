@@ -2,7 +2,7 @@
 const CACHE_VERSION = 'bino-v14'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
-const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/worker', '/worker/nfc']
+const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/bino-mark.png', '/worker', '/worker/nfc']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

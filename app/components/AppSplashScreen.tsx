@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useClientBranding } from './ClientBrandingContext'
 import { markAppSplashComplete, shouldShowAppSplash } from '@/lib/app-splash-session'
 
-/** Keep short so Speed Insights LCP is not blocked on repeat visits. */
-const MIN_VISIBLE_MS = 350
-const EXIT_MS = 320
-const DEFAULT_SPLASH_LOGO = '/apple-icon.png'
+/** No extra hold. A short fade only, so the splash does not stay the largest paint. */
+const MIN_VISIBLE_MS = 0
+const EXIT_MS = 160
+const DEFAULT_SPLASH_LOGO = '/bino-mark.png'
 
 const splashLogoStyle = {
   width: 80,

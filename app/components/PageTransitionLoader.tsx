@@ -6,7 +6,7 @@ import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
 import { tryReadWorkerPortalBranding } from '@/lib/worker-branding'
 import { useClientBranding, tryReadBrandingFromSessionCache } from './ClientBrandingContext'
 
-const DEFAULT_LOGO = '/apple-icon.png'
+const DEFAULT_LOGO = '/bino-mark.png'
 
 const logoStyle = {
   width: 72,
