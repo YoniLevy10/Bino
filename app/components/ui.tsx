@@ -998,7 +998,7 @@ function AppShellInner({
           </PullToRefresh>
         </main>
         {bottomNav ? <MobileBottomNav /> : null}
-        <BackToTop />
+        <BackToTop mobile={mobile} />
         {mounted && (
           <Suspense fallback={null}>
             <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
@@ -1009,7 +1009,7 @@ function AppShellInner({
   )
 }
 
-function BackToTop() {
+function BackToTop({ mobile }: { mobile: boolean }) {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
     function onScroll() {
@@ -1028,7 +1028,11 @@ function BackToTop() {
       style={{
         position: 'fixed',
         bottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
-        left: '28px',
+        // Mobile + sits on the left. Keep this control on the right so they don't stack.
+        // Desktop sidebar is on the right, so stay on the left there.
+        ...(mobile
+          ? { right: 'calc(env(safe-area-inset-right, 0px) + 20px)' }
+          : { left: '28px' }),
         zIndex: 96,
         width: '48px',
         height: '48px',

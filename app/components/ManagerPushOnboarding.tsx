@@ -14,6 +14,8 @@ import {
 } from '@/lib/manager-push-client'
 
 const PUSH_BANNER_DISMISS_KEY = 'bino_manager_push_banner_dismissed'
+/** Hide the prompt when it is ignored, until the next visit (sessionStorage). */
+const BANNER_AUTO_DISMISS_MS = 20_000
 
 function shouldSkipManagerPushUi(pathname: string | null): boolean {
   if (!pathname) return true
@@ -45,6 +47,7 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
   const [checking, setChecking] = useState(true)
   const [collapsed, setCollapsed] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [engaged, setEngaged] = useState(false)
 
   useEffect(() => {
     try {
@@ -54,14 +57,20 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
     }
   }, [])
 
-  function dismissBanner() {
+  const dismissBanner = useCallback(() => {
     try {
       sessionStorage.setItem(PUSH_BANNER_DISMISS_KEY, '1')
     } catch {
       // Ignore storage failures and still hide for this view.
     }
     setDismissed(true)
-  }
+  }, [])
+
+  useEffect(() => {
+    if (skip || checking || !visible || dismissed || engaged || loading) return
+    const timer = window.setTimeout(dismissBanner, BANNER_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [skip, checking, visible, dismissed, engaged, loading, dismissBanner])
 
   const refreshState = useCallback(async () => {
     if (skip) {
@@ -105,6 +114,7 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
 
   return (
     <div
+      onPointerDown={() => setEngaged(true)}
       style={{
         margin: '12px 16px 0',
         padding: '14px',
@@ -122,9 +132,9 @@ export function ManagerPushOnboarding({ colors = theme.colors }: { colors?: type
           type="button"
           aria-label={collapsed ? 'הצג' : 'הסתר'}
           onClick={() => setCollapsed((value) => !value)}
-          style={bannerIconButton(colors)}
+          style={{ ...bannerIconButton(colors), color: colors.primary }}
         >
-          {collapsed ? '▼' : '▲'}
+          <BannerChevron up={!collapsed} />
         </button>
         <button type="button" aria-label="סגור" onClick={dismissBanner} style={bannerIconButton(colors)}>
           ×
@@ -170,6 +180,10 @@ function bannerIconButton(colors: typeof theme.colors): CSSProperties {
     width: 32,
     height: 32,
     flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
     borderRadius: 8,
     border: `1px solid ${colors.primary}`,
     background: 'transparent',
@@ -180,6 +194,31 @@ function bannerIconButton(colors: typeof theme.colors): CSSProperties {
     cursor: 'pointer',
     fontFamily: 'inherit',
   }
+}
+
+function BannerChevron({ up }: { up: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      style={{
+        display: 'block',
+        transform: up ? 'rotate(180deg)' : undefined,
+        transition: 'transform 160ms ease',
+      }}
+    >
+      <path
+        d="M3.25 6.1 8 10.4 12.75 6.1"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 /** Background sync of push subscription + navigate on notification open. */
