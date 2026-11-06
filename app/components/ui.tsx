@@ -1536,13 +1536,16 @@ export function KpiCard({
       type="button"
       onClick={onClick}
       data-ui="kpi-card"
+      data-interactive={onClick ? 'true' : undefined}
       data-compact={compact ? '1' : undefined}
       className="lg-glass"
       style={{
         ...kpiStyles.card,
         ...(compact ? kpiStyles.cardCompact : {}),
         cursor: onClick ? 'pointer' : 'default',
-        ...(accentColor ? { boxShadow: `inset 0 -3px 0 0 ${accentColor}` } : {}),
+        ...(accentColor
+          ? { boxShadow: `inset 0 -3px 0 0 ${accentColor}, ${theme.shadows.xs}` }
+          : {}),
       }}
     >
       <div style={{ ...kpiStyles.row, ...(compact ? kpiStyles.rowCompact : {}) }}>
@@ -1671,10 +1674,10 @@ const kpiRowStyles: Record<string, CSSProperties> = {
 
 const kpiStyles: Record<string, CSSProperties> = {
   card: {
-    borderRadius: theme.radius.xl,
-    padding: '24px 23px',
+    borderRadius: theme.radius.lg,
+    padding: '24px',
     textAlign: 'start',
-    transition: `background ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
+    transition: `transform ${theme.motion.fast} ease, background ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     width: '100%',
     minHeight: '96px',
     minWidth: 0,
@@ -1772,14 +1775,14 @@ export function Card({
 
 const cardStyles: Record<string, CSSProperties> = {
   container: {
-    borderRadius: theme.radius.xl,
+    borderRadius: theme.radius.lg,
     overflow: 'hidden',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: '23px 23px 0',
+    padding: '24px 24px 0',
     gap: '16px',
   },
   title: {
@@ -1798,7 +1801,7 @@ const cardStyles: Record<string, CSSProperties> = {
     gap: '8px',
   },
   content: {
-    padding: '20px 23px 23px',
+    padding: '20px 24px 24px',
   },
 }
 
@@ -1856,6 +1859,7 @@ export function Button({
       disabled={disabled || loading}
       data-ui="button"
       data-size={size}
+      data-variant={variant}
       className={['lg-btn', variant === 'primary' ? 'lg-btn-primary' : '', variant === 'secondary' ? 'lg-glass' : '', className].filter(Boolean).join(' ') || undefined}
       style={{
         ...buttonStyles.base,
@@ -1880,7 +1884,7 @@ const buttonStyles: Record<string, CSSProperties> = {
     gap: '8px',
     borderRadius: theme.radius.md,
     fontWeight: 600,
-    transition: `opacity ${theme.motion.fast} ease, background ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
+    transition: `opacity ${theme.motion.fast} ease, background ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease, transform ${theme.motion.fast} ease, filter ${theme.motion.fast} ease`,
     whiteSpace: 'nowrap',
     cursor: 'pointer',
   },

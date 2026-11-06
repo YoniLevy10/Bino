@@ -47,8 +47,8 @@
 }
 
 :root {
-  --background: #dfe7f2;
-  --foreground: #1A1A2E;
+  --background: #f4f7fb;
+  --foreground: #14283f;
   /*
    * Floating mobile tab bar clearance ABOVE the home indicator.
    * = float gap (8) + bar min-height (64) + content breathing (8).
@@ -1003,7 +1003,7 @@ html[data-kiss='1'] .lg-glass,
 .kiss-app .lg-sidebar .lg-nav-active {
   background: #1d4266 !important;
   color: #ffffff !important;
-  box-shadow: none !important;
+  box-shadow: inset -3px 0 0 #007AFF !important;
 }
 
 .kiss-app .lg-btn-primary {
@@ -1030,3 +1030,46 @@ html[data-kiss='1'] .lg-glass,
   }
 }
 
+.kiss-app [data-ui='card'] {
+  box-shadow: 0 1px 2px rgba(16, 43, 70, 0.035), 0 8px 22px rgba(16, 43, 70, 0.035);
+}
+
+.kiss-app [data-ui='button'],
+.kiss-app [data-ui='kpi-card'] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kiss-app :is(a, button, [role='button'], [role='tab']):focus-visible {
+  outline: 3px solid rgba(0, 122, 255, 0.38);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .kiss-app .lg-sidebar a:not(.lg-nav-active):hover,
+  .kiss-app .lg-sidebar button:not(.lg-nav-active):hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .kiss-app [data-ui='button']:not(:disabled):hover,
+  .kiss-app [data-ui='kpi-card'][data-interactive='true']:hover {
+    transform: translateY(-1px);
+  }
+
+  .kiss-app [data-ui='button'][data-variant='primary']:not(:disabled):hover {
+    filter: brightness(0.96);
+  }
+
+  .kiss-app [data-ui='button'][data-variant='secondary']:not(:disabled):hover {
+    box-shadow: 0 3px 10px rgba(16, 43, 70, 0.08);
+  }
+
+  .kiss-app [data-ui='kpi-card'][data-interactive='true']:hover {
+    box-shadow: 0 6px 18px rgba(16, 43, 70, 0.08);
+  }
+}
+
+.kiss-app [data-ui='button']:not(:disabled):active,
+.kiss-app [data-ui='kpi-card'][data-interactive='true']:active {
+  transform: translateY(0);
+}
