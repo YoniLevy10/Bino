@@ -159,6 +159,7 @@ export async function POST(req: Request) {
       const reporterTask = notifyReporterTicketClosed(supabaseAdmin, clientId, {
         reporterPhone: trow.reporter_phone,
         projectName: projectName || 'הבניין',
+        ticketId: ticket_id,
       })
 
       const [managerSettled, reporterSettled] = await Promise.allSettled([managerSmsTask, reporterTask])

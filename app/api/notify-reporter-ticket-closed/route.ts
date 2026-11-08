@@ -67,6 +67,7 @@ export async function POST(req: Request) {
     const notify = await notifyReporterTicketClosed(supabaseAdmin, clientId, {
       reporterPhone: t.reporter_phone,
       projectName: projectName || 'הבניין',
+      ticketId: ticket_id,
     })
 
     logger.info('NOTIFY_CLOSED', 'Reporter notify after close', {
