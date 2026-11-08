@@ -489,7 +489,7 @@ const styles = {
     textAlign: 'right',
     padding: '12px 14px',
     borderRadius: 16,
-    border: 'none',
+    border: `1px solid ${c.border}`,
     borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     cursor: 'pointer',
   }),
@@ -527,7 +527,7 @@ const styles = {
   card: (c: typeof theme.colors, priority: string): CSSProperties => ({
     padding: 0,
     borderRadius: 16,
-    border: 'none',
+    border: `1px solid ${c.border}`,
     borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     overflow: 'hidden',
   }),

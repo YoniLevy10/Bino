@@ -1,7 +1,7 @@
 import { theme } from '@/app/components/ui'
 
 /** Light wash — same as manager ambient background. */
-export const WORKER_LIGHT_THEME_COLOR = '#dfe7f2'
+export const WORKER_LIGHT_THEME_COLOR = '#f4f7fb'
 /** Outdoor dark glass surface (higher opacity than manager light materials). */
 export const WORKER_DARK_THEME_COLOR = '#1c1c1e'
 

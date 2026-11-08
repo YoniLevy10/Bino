@@ -171,14 +171,13 @@ function WorkerPageInner() {
   const [closePhotoUploading, setClosePhotoUploading] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
-  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(
-    () => tryReadWorkerPortalBranding()?.logoUrl ?? null
-  )
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null)
 
   const palette = darkMode ? workerDarkColors : theme.colors
 
   useEffect(() => {
     setDarkMode(readWorkerDarkMode())
+    setClientLogoUrl(tryReadWorkerPortalBranding()?.logoUrl ?? null)
   }, [])
 
   useEffect(() => {
@@ -862,10 +861,16 @@ function WorkerPageInner() {
         dir="rtl"
       >
         <div className="worker-ambient-wash" aria-hidden />
-        <header className="lg-chrome" style={styles.glassHeader}>
-          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>
-            שלום {selectedName || 'עובד'}
-          </h1>
+        <header className="worker-portal-header">
+          <div className="worker-portal-identity">
+            <span className="worker-portal-avatar" aria-hidden="true">
+              {selectedName.trim().charAt(0) || 'ע'}
+            </span>
+            <div className="worker-portal-copy">
+              <p className="worker-portal-eyebrow">האזור האישי שלך</p>
+              <h1 className="worker-portal-title">שלום, {selectedName || 'עובד'}</h1>
+            </div>
+          </div>
         </header>
 
         <WorkerPushOnboarding
