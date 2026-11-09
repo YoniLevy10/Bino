@@ -863,8 +863,15 @@ function WorkerPageInner() {
       >
         <div className="worker-ambient-wash" aria-hidden />
         <header className="lg-chrome" style={styles.glassHeader}>
-          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary }}>
+          <p style={{ ...styles.standaloneSub, color: palette.textMuted }}>
             שלום {selectedName || 'עובד'}
+          </p>
+          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary, fontSize: 'clamp(22px, 7vw, 28px)', letterSpacing: '-0.03em' }}>
+            {openTickets.length === 0
+              ? 'אין עבודות פתוחות'
+              : openTickets.length === 1
+                ? 'עבודה אחת'
+                : `${openTickets.length} עבודות`}
           </h1>
         </header>
 
@@ -977,6 +984,7 @@ function WorkerPageInner() {
                         ticketId={t.id}
                         mode="worker"
                         workerToken={tokenSession.token}
+                        onClose={() => setExpandedWaId(null)}
                       />
                     ) : null
                   }
@@ -984,7 +992,6 @@ function WorkerPageInner() {
                   attachmentsLoading={attachmentsLoadingId === t.id}
                   onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
                   uploadingPhoto={uploadingPhotoId === t.id}
-                  showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
                   canMarkEscort={tokenSession.canMarkProfessionalEscort}
                   onEscort={(note, file) => void markProfessionalEscort(t.id, note, file)}
                   escortBusy={busyKey === `${t.id}:ESCORT`}
@@ -1233,7 +1240,9 @@ const styles: Record<string, CSSProperties> = {
   scrollAreaGlass: {
     position: 'relative',
     zIndex: 1,
-    padding: '10px 12px 0',
+    paddingTop: 6,
+    paddingInline: 12,
+    paddingBottom: 'calc(108px + env(safe-area-inset-bottom, 0px))',
   },
   emptyStateGlass: {
     margin: '24px 4px',
@@ -1262,7 +1271,7 @@ const styles: Record<string, CSSProperties> = {
   },
   muted: { color: theme.colors.textMuted, fontSize: '14px', margin: 0 },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '2px' },
   officeChatWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
   officeChatBanner: {
     margin: 0,

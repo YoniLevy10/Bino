@@ -61,6 +61,7 @@ const MOBILE_BOTTOM_NAV_LABELS: Partial<Record<string, string>> = {
   '/attendance': 'שעון',
   '/settings/whatsapp-templates': 'תבניות',
   '/pending-residents': 'ממתינים',
+  '/whatsapp-inbox': 'וואטסאפ',
 }
 
 function mobileBottomNavLabel(href: string, fallback: string): string {

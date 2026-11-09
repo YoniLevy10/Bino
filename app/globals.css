@@ -354,15 +354,38 @@ select {
   }
 }
 
+.wa-ticket-frame {
+  margin-bottom: 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e9edef;
+  background: #fff;
+}
+
+.wa-ticket-log {
+  min-height: 240px;
+  max-height: min(52vh, 440px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  -webkit-overflow-scrolling: touch;
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23d9d0c5' stroke-width='1'%3E%3Ccircle cx='18' cy='22' r='6'/%3E%3Cpath d='M64 28h14M71 21v14'/%3E%3Ccircle cx='128' cy='46' r='4'/%3E%3Cpath d='M24 86c10 0 10 14 20 14'/%3E%3Crect x='104' y='96' width='14' height='10' rx='2'/%3E%3Ccircle cx='52' cy='136' r='5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 /* WhatsApp inbox — CSS master/detail so mobile layout survives JS hydration timing */
 .wa-inbox-wrap {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  grid-template-columns: clamp(240px, 34%, 400px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
-  height: max(420px, calc(100dvh - 380px));
+  height: max(560px, calc(100dvh - 168px));
   min-height: 0;
   overflow: hidden;
+  background: #fff;
 }
 
 .wa-inbox-list {
@@ -377,12 +400,16 @@ select {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23d9d0c5' stroke-width='1'%3E%3Ccircle cx='18' cy='22' r='6'/%3E%3Cpath d='M64 28h14M71 21v14'/%3E%3Ccircle cx='128' cy='46' r='4'/%3E%3Cpath d='M24 86c10 0 10 14 20 14'/%3E%3Crect x='104' y='96' width='14' height='10' rx='2'/%3E%3Ccircle cx='52' cy='136' r='5'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .wa-inbox-messages {
   flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23d9d0c5' stroke-width='1'%3E%3Ccircle cx='18' cy='22' r='6'/%3E%3Cpath d='M64 28h14M71 21v14'/%3E%3Ccircle cx='128' cy='46' r='4'/%3E%3Cpath d='M24 86c10 0 10 14 20 14'/%3E%3Crect x='104' y='96' width='14' height='10' rx='2'/%3E%3Ccircle cx='52' cy='136' r='5'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .wa-inbox-compose {
@@ -391,20 +418,87 @@ select {
 
 .wa-inbox-back {
   display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* After a chat is picked, the list collapses so the thread can use the full width. */
+.wa-inbox-wrap[data-mobile-pane='thread'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.wa-inbox-wrap[data-mobile-pane='thread'] .wa-inbox-list {
+  display: none;
+}
+
+.wa-inbox-wrap[data-mobile-pane='thread'] .wa-inbox-back {
+  display: inline-flex;
 }
 
 /* Immersive thread via portal (outside .lg-glass) — backdrop-filter on Card
    creates a containing block that breaks position:fixed inside the card. */
+.wa-ticket-sheet {
+  position: fixed;
+  z-index: 140;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: #efeae2;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;
+  overscroll-behavior: none;
+}
+
+.wa-ticket-sheet[data-keyboard='open'],
+.wa-inbox-portal-overlay[data-keyboard='open'] {
+  padding-bottom: 0;
+}
+
+.wa-ticket-sheet .wa-ticket {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.wa-ticket-sheet .wa-ticket-header,
+.wa-ticket-sheet .wa-ticket-compose {
+  flex-shrink: 0;
+}
+
+.wa-ticket-sheet .wa-ticket-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+body.wa-sheet-open {
+  overflow: hidden;
+}
+
+body.wa-sheet-open .worker-shell-scroll,
+body.wa-sheet-open [data-app-main] {
+  overflow: hidden;
+}
+
 .wa-inbox-portal-overlay {
   position: fixed;
   inset: 0;
   z-index: 120;
   display: flex;
   flex-direction: column;
-  background: #f9f9fb;
+  background: #efeae2;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   box-sizing: border-box;
+  overscroll-behavior: none;
 }
 
 .wa-inbox-portal-overlay .wa-inbox-thread-portal {
@@ -433,31 +527,50 @@ select {
 }
 
 .wa-inbox-portal-overlay .wa-inbox-back {
-  display: inline-block;
+  display: inline-flex;
 }
 
 @media (max-width: 768px) {
+  .wa-app,
+  .wa-app .lg-glass {
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100dvh;
+  }
+
   .wa-inbox-wrap {
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: 100dvh;
+    max-height: 100dvh;
     min-height: 0;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .wa-inbox-wrap[data-mobile-pane='list'] .wa-inbox-thread {
-    display: none;
+    display: none !important;
   }
 
   .wa-inbox-wrap[data-mobile-pane='thread'] .wa-inbox-list {
-    display: none;
+    display: none !important;
   }
 
   .wa-inbox-list {
     border-inline-end: none !important;
-    max-height: none;
+    max-height: 100%;
+    height: 100% !important;
     flex: 1;
-    min-height: min(72vh, 560px);
+    min-height: 0;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .wa-app .lg-glass {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
   }
 
   .wa-inbox-thread {
@@ -467,7 +580,7 @@ select {
   }
 
   .wa-inbox-back {
-    display: inline-block;
+    display: inline-flex;
   }
 }
 
@@ -750,7 +863,10 @@ select {
 .resident-shell {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 100%;
   min-height: 100dvh;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   --worker-tabbar-height: 78px;
