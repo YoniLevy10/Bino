@@ -5,7 +5,7 @@
  *
  *   BASE_URL=http://127.0.0.1:3000 k6 run scripts/load/k6-login.js
  *
- * Safety: refuses bino.casa / supabase hosts (same policy as guard.mjs).
+ * Safety: refuses bino.casa / bamakor.vercel.app / supabase hosts (same policy as guard.mjs).
  */
 
 import http from 'k6/http'
@@ -19,10 +19,13 @@ function assertSafeBaseUrl(url) {
   if (lower.includes('bino.casa')) {
     throw new Error('HARD FAIL: BASE_URL targets bino.casa — refused always')
   }
+  if (lower.includes('bamakor.vercel.app')) {
+    throw new Error('HARD FAIL: BASE_URL targets bamakor.vercel.app — refused always')
+  }
   if (lower.includes('.supabase.co') || lower.includes('jsliqlmjksintyigkulq')) {
     if (__ENV.ALLOW_PROD_LOAD !== 'I_UNDERSTAND') {
       throw new Error(
-        'HARD FAIL: BASE_URL looks like Supabase/Bamakor host. Use local only, or ALLOW_PROD_LOAD=I_UNDERSTAND (still refuses bino.casa).',
+        'HARD FAIL: BASE_URL looks like Supabase/Bamakor host. Use local only, or ALLOW_PROD_LOAD=I_UNDERSTAND (still refuses bino.casa and bamakor.vercel.app).',
       )
     }
   }
