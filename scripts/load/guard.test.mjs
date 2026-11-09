@@ -27,6 +27,30 @@ describe('load guard — BASE_URL', () => {
     }
   })
 
+  it('hard-fails bamakor.vercel.app always (even with ALLOW_PROD_LOAD)', () => {
+    for (const url of [
+      'https://bamakor.vercel.app',
+      'http://bamakor.vercel.app',
+      'https://bamakor.vercel.app/',
+      'https://bamakor.vercel.app/login',
+      'https://www.bamakor.vercel.app',
+      'https://www.bamakor.vercel.app/login',
+    ]) {
+      const r = assertSafeBaseUrl(url, { allowProdLoad: 'I_UNDERSTAND' })
+      expect(r.ok).toBe(false)
+      expect(r.reason).toMatch(/bamakor\.vercel\.app/)
+    }
+  })
+
+  it('resolveBaseUrlOrExit throws on bamakor.vercel.app even with allowProdLoad', () => {
+    expect(() =>
+      resolveBaseUrlOrExit({
+        BASE_URL: 'https://bamakor.vercel.app',
+        ALLOW_PROD_LOAD: 'I_UNDERSTAND',
+      }),
+    ).toThrow(/HARD FAIL|bamakor\.vercel\.app/)
+  })
+
   it('hard-fails supabase host without override', () => {
     const r = assertSafeBaseUrl('https://jsliqlmjksintyigkulq.supabase.co')
     expect(r.ok).toBe(false)

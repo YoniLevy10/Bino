@@ -10,9 +10,10 @@
 
 1. **Default target is local only:** `BASE_URL=http://127.0.0.1:3000`.
 2. **`https://bino.casa` is always refused**, including when `ALLOW_PROD_LOAD=I_UNDERSTAND`.
-3. **Supabase project hosts** (`.supabase.co`, Bamakor project ref `jsliqlmjksintyigkulq`) hard-fail unless `ALLOW_PROD_LOAD=I_UNDERSTAND` — and that override is only for exceptional non-`bino.casa` staging experiments, **not** for Bamakor production load.
-4. **Sandbox-on-prod-DB is not a load target.** The sandbox client UUID below may exist in production for soft-launch practice; **do not** point this harness at production (or a Vercel preview that shares the prod DB) to generate tickets against it.
-5. Prefer **local Next + local Supabase** (`supabase start`) for any write scenario.
+3. **`https://bamakor.vercel.app` is always refused** (same absolute ban as `bino.casa`; no `ALLOW_PROD_LOAD` override).
+4. **Supabase project hosts** (`.supabase.co`, Bamakor project ref `jsliqlmjksintyigkulq`) hard-fail unless `ALLOW_PROD_LOAD=I_UNDERSTAND` — and that override is only for exceptional non-`bino.casa` / non-`bamakor.vercel.app` staging experiments, **not** for Bamakor production load.
+5. **Sandbox-on-prod-DB is not a load target.** The sandbox client UUID below may exist in production for soft-launch practice; **do not** point this harness at production (or a Vercel preview that shares the prod DB) to generate tickets against it.
+6. Prefer **local Next + local Supabase** (`supabase start`) for any write scenario.
 
 Sandbox client id used by the write gate:
 
