@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
 import type { ResidentProjectRow } from './AddResidentModal'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import {
   buildResidentsImportPayload,
   parseResidentsWorkbook,
@@ -13,6 +13,17 @@ import {
   type ResidentsImportPayloadRow,
 } from '@/lib/import-residents-excel'
 import { TM } from '@/lib/toast-messages'
+
+type DryRunSummary = {
+  totalRows: number
+  validRows: number
+  skipped: number
+  failed: number
+  warnings: number
+  dryRun: boolean
+}
+
+type DryRunError = { rowIndex: number; error: string; severity: 'error' | 'warning' }
 
 export function ImportResidentsModal({
   open,
@@ -40,7 +51,11 @@ export function ImportResidentsModal({
 
   const [singleProjectId, setSingleProjectId] = useState<string>(defaultProjectId || '')
   const [importing, setImporting] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [summary, setSummary] = useState<DryRunSummary | null>(null)
+  const [checkErrors, setCheckErrors] = useState<DryRunError[]>([])
+  const checkGen = useRef(0)
 
   const preview = useMemo(() => {
     const project = singleProjectId ? projects.find((p) => p.id === singleProjectId) : null
@@ -57,6 +72,13 @@ export function ImportResidentsModal({
     return hasProjectMapping
   }, [rows.length, mapping, singleProjectId])
 
+  useEffect(() => {
+    checkGen.current += 1
+    setChecking(false)
+    setSummary(null)
+    setCheckErrors([])
+  }, [mapping, singleProjectId, rows])
+
   if (!open) return null
 
   function reset() {
@@ -67,6 +89,8 @@ export function ImportResidentsModal({
     setApiError('')
     setMapping({ full_name: '' })
     setSingleProjectId(defaultProjectId || '')
+    setSummary(null)
+    setCheckErrors([])
   }
 
   function close() {
@@ -111,6 +135,47 @@ export function ImportResidentsModal({
       forcedProjectCode: project?.project_code || null,
       forcedProjectName: project?.name || null,
     })
+  }
+
+  async function runCheck() {
+    if (!canImport) return
+    const gen = ++checkGen.current
+    setChecking(true)
+    setApiError('')
+    try {
+      const payloadRows = buildPayload()
+      const res = await fetchWithTimeout(
+        '/api/import-residents',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ rows: payloadRows, dryRun: true }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: unknown
+        summary?: DryRunSummary
+        errors?: DryRunError[]
+      }
+      if (gen !== checkGen.current) return
+      if (!res.ok) {
+        const errMsg = errorMessageFromResponseJson(json, 'בדיקת הייבוא נכשלה')
+        setApiError(errMsg)
+        toast.error(errMsg)
+        return
+      }
+      setSummary(json.summary ?? null)
+      setCheckErrors(Array.isArray(json.errors) ? json.errors : [])
+      toast.success('הבדיקה הסתיימה — עדיין לא נכתב דבר')
+    } catch (e) {
+      if (gen !== checkGen.current) return
+      const msg = e instanceof Error ? e.message : 'שגיאת חיבור'
+      setApiError(msg)
+      toast.error(msg)
+    } finally {
+      if (gen === checkGen.current) setChecking(false)
+    }
   }
 
   async function doImport() {
@@ -380,6 +445,37 @@ export function ImportResidentsModal({
             </div>
           )}
 
+          {summary ? (
+            <div style={styles.previewCard}>
+              <div style={styles.previewTitle}>בדיקה לפני ייבוא — לא נכתב דבר</div>
+              <ul style={styles.reportList}>
+                <li>סה״כ שורות: {summary.totalRows}</li>
+                <li>מוכנות לייבוא: {summary.validRows}</li>
+                <li>כפילויות / דילוגים: {summary.skipped}</li>
+                <li>חוסמים: {summary.failed}</li>
+                <li>אזהרות: {summary.warnings}</li>
+              </ul>
+              {checkErrors.length > 0 ? (
+                <div style={styles.errorList}>
+                  {checkErrors.slice(0, 40).map((e, i) => (
+                    <div key={`${e.rowIndex}-${i}`} style={styles.errorRow}>
+                      <span style={{ color: e.severity === 'error' ? theme.colors.error : theme.colors.warning }}>
+                        {e.severity === 'error' ? 'חוסם' : 'אזהרה'}
+                      </span>
+                      {' · '}
+                      שורה {e.rowIndex + 1}: {e.error}
+                    </div>
+                  ))}
+                  {checkErrors.length > 40 ? (
+                    <div style={styles.hint}>…ועוד {checkErrors.length - 40}</div>
+                  ) : null}
+                </div>
+              ) : (
+                <p style={styles.hint}>אין חוסמים או אזהרות.</p>
+              )}
+            </div>
+          ) : null}
+
           {apiError && <div style={styles.errorBox}>{apiError}</div>}
         </div>
         </div>
@@ -389,10 +485,19 @@ export function ImportResidentsModal({
             ביטול
           </Button>
           <Button
+            variant="secondary"
+            onClick={() => void runCheck()}
+            loading={checking}
+            disabled={!canImport || importing}
+            type="button"
+          >
+            בדיקה
+          </Button>
+          <Button
             variant="primary"
             onClick={doImport}
             loading={importing}
-            disabled={!canImport}
+            disabled={!canImport || checking}
             type="button"
           >
             ייבוא
@@ -502,6 +607,9 @@ const styles: Record<string, CSSProperties> = {
   },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' },
   hint: { marginTop: '10px', fontSize: '12px', color: theme.colors.textMuted },
+  reportList: { margin: '8px 0 0', paddingInlineStart: 18, lineHeight: 1.6, fontSize: 14 },
+  errorList: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflow: 'auto' },
+  errorRow: { fontSize: 12, lineHeight: 1.4 },
   previewCard: {
     border: `1px solid ${theme.colors.border}`,
     borderRadius: theme.radius.lg,

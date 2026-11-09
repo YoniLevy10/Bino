@@ -16,6 +16,24 @@ export async function GET(req: NextRequest) {
     }
 
     const admin = getSupabaseAdmin()
+    const history = req.nextUrl.searchParams.get('scope') === 'history'
+
+    if (history) {
+      const { data: closed, error } = await admin
+        .from('tickets')
+        .select('id, ticket_number, description, status, created_at, closed_at, project_id, projects(name)')
+        .eq('client_id', worker.client_id)
+        .eq('assigned_worker_id', worker.id)
+        .is('deleted_at', null)
+        .eq('status', 'CLOSED')
+        .order('closed_at', { ascending: false, nullsFirst: false })
+        .limit(60)
+      if (error) {
+        return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
+      }
+      return NextResponse.json({ tickets: closed || [] })
+    }
+
     const { data: tickets, error } = await admin
       .from('tickets')
       .select(

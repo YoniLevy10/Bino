@@ -9,6 +9,9 @@ import {
   subscribeWorkerPush,
 } from '@/lib/worker-push-client'
 
+const PUSH_BANNER_DISMISS_KEY = 'bino_worker_push_banner_dismissed'
+const BANNER_AUTO_DISMISS_MS = 10_000
+
 type WorkerPushOnboardingProps = {
   token: string
   colors?: typeof theme.colors
@@ -28,6 +31,24 @@ export function WorkerPushOnboarding({
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(PUSH_BANNER_DISMISS_KEY) === '1') setDismissed(true)
+    } catch {
+      // Private mode can block sessionStorage; the banner still hides for this view.
+    }
+  }, [])
+
+  const dismissBanner = useCallback(() => {
+    try {
+      sessionStorage.setItem(PUSH_BANNER_DISMISS_KEY, '1')
+    } catch {
+      // Ignore storage failures and still hide for this view.
+    }
+    setDismissed(true)
+  }, [])
 
   const refreshState = useCallback(async () => {
     setChecking(true)
@@ -48,6 +69,12 @@ export function WorkerPushOnboarding({
     void refreshState()
   }, [refreshState, token])
 
+  useEffect(() => {
+    if (checking || !visible || dismissed || loading) return
+    const timer = window.setTimeout(dismissBanner, BANNER_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [checking, visible, dismissed, loading, dismissBanner])
+
   async function enable() {
     setLoading(true)
     try {
@@ -64,7 +91,7 @@ export function WorkerPushOnboarding({
     }
   }
 
-  if (checking || !visible) return null
+  if (checking || !visible || dismissed) return null
 
   const unsupported = !isWorkerPushSupported()
   const denied = typeof Notification !== 'undefined' && Notification.permission === 'denied'
@@ -81,16 +108,45 @@ export function WorkerPushOnboarding({
         direction: 'rtl',
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, marginBottom: '6px' }}>
-        קבלו התראה על תקלות חדשות
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, marginBottom: '6px' }}>
+            קבלו התראה על תקלות חדשות
+          </div>
+          <p style={{ fontSize: '13px', color: colors.textSecondary, margin: 0, lineHeight: 1.5 }}>
+            {unsupported
+              ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
+              : denied
+                ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
+                : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label="הסתר"
+          onClick={dismissBanner}
+          style={{
+            width: 44,
+            height: 44,
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            borderRadius: 10,
+            border: 'none',
+            background: 'transparent',
+            color: colors.textPrimary,
+            fontSize: 22,
+            fontWeight: 500,
+            lineHeight: 1,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          ×
+        </button>
       </div>
-      <p style={{ fontSize: '13px', color: colors.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
-        {unsupported
-          ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
-          : denied
-            ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
-            : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
-      </p>
       {!unsupported && !denied ? (
         <button
           type="button"
@@ -99,6 +155,7 @@ export function WorkerPushOnboarding({
           disabled={loading}
           style={{
             width: '100%',
+            marginTop: 12,
             padding: '12px 16px',
             borderRadius: 14,
             border: 'none',

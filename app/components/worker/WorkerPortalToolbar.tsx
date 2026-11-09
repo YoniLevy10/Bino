@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { theme } from '../ui'
 
 export type WorkerTicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
-export type WorkerPortalTab = 'TICKETS' | 'TOURS' | 'ATTENDANCE' | 'MAINTENANCE'
+export type WorkerPortalTab = 'TICKETS' | 'WHATSAPP' | 'TOURS' | 'HISTORY' | 'MAINTENANCE'
 
 type WorkerPortalToolbarProps = {
   colors: typeof theme.colors
@@ -21,24 +21,23 @@ type WorkerPortalToolbarProps = {
   onToggleDark: () => void
   onEnablePush?: () => void
   pushEnabling?: boolean
-  /** תוסף חתמת עובדים — מציג לשונית נוכחות */
-  showAttendanceTab?: boolean
 }
 
 const PORTAL_TABS: { id: WorkerPortalTab; label: string; icon: WorkerTabIcon }[] = [
-  { id: 'TICKETS', label: 'תקלות', icon: 'ticket' },
-  { id: 'MAINTENANCE', label: 'אחזקה', icon: 'wrench' },
   { id: 'TOURS', label: 'סיורים', icon: 'map' },
-  { id: 'ATTENDANCE', label: 'שעות', icon: 'clock' },
+  { id: 'MAINTENANCE', label: 'אחזקה', icon: 'wrench' },
+  { id: 'WHATSAPP', label: 'וואטסאפ', icon: 'chat' },
+  { id: 'TICKETS', label: 'תקלות', icon: 'ticket' },
+  { id: 'HISTORY', label: 'היסטוריה', icon: 'clock' },
 ]
 
 const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
   { id: 'ALL', label: 'הכל' },
-  { id: 'NEW', label: 'חדש' },
+  { id: 'NEW', label: 'משויך' },
   { id: 'IN_TREATMENT', label: 'בטיפול' },
 ]
 
-type WorkerTabIcon = 'ticket' | 'wrench' | 'map' | 'clock'
+type WorkerTabIcon = 'ticket' | 'wrench' | 'map' | 'clock' | 'chat'
 
 function TabIcon({
   type,
@@ -82,6 +81,13 @@ function TabIcon({
       <svg {...common}>
         <path d="M14 7c0 2.2-1.8 4.5-2 5-.2-.5-2-2.8-2-5a2 2 0 1 1 4 0Z" />
         <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z" />
+      </svg>
+    )
+  }
+  if (type === 'chat') {
+    return (
+      <svg {...common}>
+        <path d="M21 11.5a8.4 8.4 0 0 1-9.2 8.4 8.4 8.4 0 0 1-3.5-.8L3 21l1.9-5.1a8.4 8.4 0 1 1 16.1-4.4Z" />
       </svg>
     )
   }
@@ -156,20 +162,19 @@ export function WorkerPortalToolbar({
   onToggleDark,
   onEnablePush,
   pushEnabling,
-  showAttendanceTab = false,
 }: WorkerPortalToolbarProps) {
-  const tabs = showAttendanceTab
-    ? PORTAL_TABS
-    : PORTAL_TABS.filter((t) => t.id !== 'ATTENDANCE')
+  const tabs = PORTAL_TABS
 
   const subtitle =
     portalTab === 'TOURS'
       ? 'רישום סיורים בפרויקטים'
       : portalTab === 'MAINTENANCE'
         ? 'משימות אחזקה להיום'
-        : portalTab === 'ATTENDANCE'
-          ? 'הצמידו את הטלפון למדבקה'
-          : filteredCount === ticketCount
+        :     portalTab === 'HISTORY'
+          ? 'תקלות שנסגרו, לפי בניין'
+          : portalTab === 'WHATSAPP'
+            ? 'שיחות עם דיירים מהתקלות הפתוחות'
+            : filteredCount === ticketCount
             ? `${ticketCount} תקלות פתוחות`
             : `${filteredCount} מתוך ${ticketCount}`
 
@@ -364,6 +369,10 @@ const styles = {
     justifyContent: 'center',
   } as CSSProperties,
   tabLabel: {
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     fontSize: 11,
     fontWeight: 600,
     letterSpacing: '-0.01em',

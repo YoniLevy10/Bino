@@ -246,7 +246,7 @@ export function TicketWhatsAppThread({
               className="wa-ticket-back"
               style={workerStyles.back}
               onClick={onClose}
-              aria-label="חזרה לתקלה"
+              aria-label="חזרה"
             >
               <WaBackIcon />
             </button>

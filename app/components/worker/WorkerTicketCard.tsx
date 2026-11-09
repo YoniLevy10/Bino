@@ -142,7 +142,7 @@ export function WorkerTicketCard({
   const urgent = priority === 'URGENT' || priority === 'HIGH'
   const started = ticket.status === 'IN_PROGRESS' || ticket.status === 'WAITING_PARTS'
 
-  if (!isActive && !expandedWa && !expandedChat) {
+  if (!isActive && !expandedChat && !expandedWa) {
     return (
       <button
         type="button"
@@ -294,11 +294,11 @@ export function WorkerTicketCard({
                   onClick={onToggleWa}
                   className="lg-glass"
                   style={styles.quickBtn(colors, 'whatsapp', expandedWa)}
-                  aria-label="WhatsApp לדייר"
+                  aria-label="וואטסאפ לדייר"
                 >
                   <span style={styles.quickBtnIcon} aria-hidden>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      <path d="M21 11.5a8.4 8.4 0 0 1-9.2 8.4 8.4 8.4 0 0 1-3.5-.8L3 21l1.9-5.1a8.4 8.4 0 1 1 16.1-4.4Z" />
                     </svg>
                   </span>
                   <span>וואטסאפ</span>
@@ -793,10 +793,10 @@ const styles = {
   ): CSSProperties => {
     const palette =
       kind === 'call'
-        ? { border: c.success, bg: c.successMuted, text: c.success }
+        ? { bg: c.successMuted, text: c.success }
         : kind === 'whatsapp'
-          ? { border: '#25D366', bg: active ? '#dcf8c6' : '#e8f8ee', text: '#128C7E' }
-          : { border: c.primary, bg: c.primaryMuted, text: c.primary }
+          ? { bg: active ? '#dcf8c6' : '#e8f8ee', text: '#128C7E' }
+          : { bg: c.primaryMuted, text: c.primary }
     return {
       display: 'flex',
       flexDirection: 'column',

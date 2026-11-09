@@ -382,7 +382,9 @@ select {
   grid-template-columns: clamp(240px, 34%, 400px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
-  height: max(560px, calc(100dvh - 168px));
+  /* Immersive page padding is 12px + 16px. A larger offset left a gray band under the card. */
+  height: calc(100dvh - 28px);
+  max-height: calc(100dvh - 28px);
   min-height: 0;
   overflow: hidden;
   background: #fff;
