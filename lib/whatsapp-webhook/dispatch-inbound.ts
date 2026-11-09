@@ -1845,6 +1845,7 @@ export async function runWhatsAppInboundBackground(
         projectId: session.project_id as string,
         ticketId: createdTicket.id,
         waFrom: waRecipient,
+        suggestedName: parsedMessage.profileName ?? null,
       })
     }
 

@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { isWhatsAppTestSender, normalizeWhatsAppPhoneDigits } from '@/lib/whatsapp-test-phone'
 import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
+import { sanitizeWhatsAppProfileName } from '@/lib/whatsapp-profile-name'
 
 function stripLeadingCountry(d: string): string {
   let x = d
@@ -45,6 +46,12 @@ export async function reporterListedInProjectResidents(
   })
 }
 
+function missingSuggestedNameColumn(err: { code?: string; message?: string; details?: string } | null): boolean {
+  if (!err) return false
+  const text = `${err.message || ''} ${err.details || ''}`.toLowerCase()
+  return text.includes('suggested_name') && (text.includes('does not exist') || text.includes('schema cache') || err.code === '42703' || err.code === 'PGRST204')
+}
+
 /** Returns true if a new pending row was created (not duplicate / error). */
 export async function queuePendingResidentApproval(params: {
   supabase: SupabaseClient
@@ -52,23 +59,44 @@ export async function queuePendingResidentApproval(params: {
   projectId: string
   ticketId: string
   waFrom: string
+  /** WhatsApp profile name. Stored as a suggestion; the manager confirms before it is saved. */
+  suggestedName?: string | null
 }): Promise<boolean> {
   const { supabase, clientId, projectId, ticketId, waFrom } = params
+  const suggestedName = sanitizeWhatsAppProfileName(params.suggestedName)
   if (isWhatsAppTestSender(waFrom)) return false
   if (await reporterListedInProjectResidents(supabase, clientId, projectId, waFrom)) return false
 
   const digits = normalizeWhatsAppPhoneDigits(waFrom)
   if (!digits) return false
 
-  const { error } = await supabase.from('pending_resident_join_requests').insert({
+  const row = {
     client_id: clientId,
     project_id: projectId,
     ticket_id: ticketId,
     reporter_phone_normalized: digits,
-    status: 'pending',
-  })
+    status: 'pending' as const,
+  }
+
+  let { error } = await supabase.from('pending_resident_join_requests').insert(
+    suggestedName ? { ...row, suggested_name: suggestedName } : row
+  )
+
+  if (error && suggestedName && missingSuggestedNameColumn(error)) {
+    ;({ error } = await supabase.from('pending_resident_join_requests').insert(row))
+  }
 
   if (error?.code === '23505') {
+    if (suggestedName) {
+      await supabase
+        .from('pending_resident_join_requests')
+        .update({ suggested_name: suggestedName })
+        .eq('client_id', clientId)
+        .eq('project_id', projectId)
+        .eq('reporter_phone_normalized', digits)
+        .eq('status', 'pending')
+        .is('suggested_name', null)
+    }
     return false
   }
   if (error) {

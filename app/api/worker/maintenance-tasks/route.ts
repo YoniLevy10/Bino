@@ -3,7 +3,11 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
 import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { workerMaintenanceTaskUpdateBodySchema } from '@/lib/api-body-schemas'
+import {
+  workerMaintenanceTaskCreateBodySchema,
+  workerMaintenanceTaskUpdateBodySchema,
+} from '@/lib/api-body-schemas'
+import { assertProjectOwnedByClient } from '@/lib/tenant-owned-refs'
 import {
   TICKET_ATTACHMENT_WORKER_MIME_TYPES,
   TICKET_ATTACHMENT_MAX_WORKER_BYTES,
@@ -105,8 +109,75 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-/** Upload a photo onto a maintenance task (worker). */
+/** Create a task (JSON) or upload a photo (multipart). The task is the same row the manager dashboard lists. */
 export async function POST(req: NextRequest) {
+  const contentType = req.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    return createWorkerTask(req)
+  }
+  return uploadWorkerTaskPhoto(req)
+}
+
+async function createWorkerTask(req: NextRequest) {
+  try {
+    const admin = getSupabaseAdmin()
+    const ip = clientIp(req)
+    const rl = await checkIpPostRouteLimit(admin, ip, 'worker-maintenance-tasks-create')
+    if (rl.isLimited) {
+      return NextResponse.json({ error: 'יותר מדי נסיונות' }, { status: 429 })
+    }
+
+    const raw = await req.json().catch(() => null)
+    const parsed = workerMaintenanceTaskCreateBodySchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
+    }
+
+    const worker = await resolveWorkerFromToken(parsed.data.token)
+    if (!worker) return NextResponse.json({ error: 'אין גישה' }, { status: 401 })
+
+    const projectOk = await assertProjectOwnedByClient(admin, worker.client_id, parsed.data.project_id)
+    if (!projectOk.ok) {
+      return NextResponse.json({ error: projectOk.error }, { status: 400 })
+    }
+
+    let sourceTicketId: string | null = parsed.data.source_ticket_id || null
+    if (sourceTicketId) {
+      const { data: ticket } = await admin
+        .from('tickets')
+        .select('id')
+        .eq('id', sourceTicketId)
+        .eq('client_id', worker.client_id)
+        .eq('assigned_worker_id', worker.id)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (!ticket) sourceTicketId = null
+    }
+
+    const { data, error } = await admin
+      .from('maintenance_tasks')
+      .insert({
+        client_id: worker.client_id,
+        project_id: parsed.data.project_id,
+        assigned_worker_id: worker.id,
+        source_ticket_id: sourceTicketId,
+        title: parsed.data.title.trim(),
+        description: parsed.data.description?.trim() || null,
+        priority: parsed.data.priority || 'MEDIUM',
+        status: 'PENDING',
+        created_by: `worker:${worker.id}`,
+      })
+      .select(TASK_SELECT)
+      .single()
+
+    if (error) return NextResponse.json({ error: 'שמירת המשימה נכשלה' }, { status: 500 })
+    return NextResponse.json({ task: data })
+  } catch {
+    return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
+  }
+}
+
+async function uploadWorkerTaskPhoto(req: NextRequest) {
   try {
     const admin = getSupabaseAdmin()
     const ip = clientIp(req)

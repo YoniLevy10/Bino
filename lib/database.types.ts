@@ -1000,6 +1000,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           status: string
+          suggested_name: string | null
           ticket_id: string | null
         }
         Insert: {
@@ -1013,6 +1014,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
+          suggested_name?: string | null
           ticket_id?: string | null
         }
         Update: {
@@ -1026,6 +1028,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
+          suggested_name?: string | null
           ticket_id?: string | null
         }
         Relationships: [

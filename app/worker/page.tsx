@@ -39,10 +39,17 @@ const TicketWhatsAppThread = dynamic(
   () => import('../components/tickets/TicketWhatsAppThread').then((m) => ({ default: m.TicketWhatsAppThread })),
   { loading: () => <LoadingSpinner size="sm" /> }
 )
+const WorkerWhatsAppPanel = dynamic(
+  () => import('../components/worker/WorkerWhatsAppPanel').then((m) => ({ default: m.WorkerWhatsAppPanel })),
+  { loading: () => null }
+)
 import { WorkerPushOnboarding, WorkerPushSync } from '../components/worker/WorkerPushOnboarding'
-const WorkerAttendancePanel = dynamic(
-  () => import('../components/worker/WorkerAttendancePanel').then((m) => ({ default: m.WorkerAttendancePanel })),
-  { loading: () => null, ssr: false }
+const WorkerTicketHistoryPanel = dynamic(
+  () =>
+    import('../components/worker/WorkerTicketHistoryPanel').then((m) => ({
+      default: m.WorkerTicketHistoryPanel,
+    })),
+  { loading: () => null }
 )
 const WorkerMaintenancePanel = dynamic(
   () =>
@@ -51,7 +58,6 @@ const WorkerMaintenancePanel = dynamic(
     })),
   { loading: () => null }
 )
-import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
 import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
 import {
   clearWorkerToken,
@@ -153,11 +159,13 @@ function WorkerPageInner() {
   const [portalTab, setPortalTab] = useState<WorkerPortalTab>('TICKETS')
   const [visitedTabs, setVisitedTabs] = useState<Record<WorkerPortalTab, boolean>>({
     TICKETS: true,
+    WHATSAPP: false,
     TOURS: false,
     MAINTENANCE: false,
-    ATTENDANCE: false,
+    HISTORY: false,
   })
   const [toursRefreshKey, setToursRefreshKey] = useState(0)
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [usingCache, setUsingCache] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
@@ -901,29 +909,40 @@ function WorkerPageInner() {
               setToursRefreshKey((k) => k + 1)
               return
             }
-            if (portalTab === 'ATTENDANCE') return
+            if (portalTab === 'HISTORY') {
+              setHistoryRefreshKey((k) => k + 1)
+              return
+            }
             void loadTicketsToken(tokenSession.token, tokenSession.workerId, { silent: true })
           }}
           onToggleDark={toggleDarkMode}
           onEnablePush={pushEnabled ? undefined : () => void enablePush()}
           pushEnabling={pushEnabling}
-          showAttendanceTab={tokenSession.workerStampEnabled}
         />
 
         <div className="worker-shell-scroll" style={styles.scrollAreaGlass}>
-          {visitedTabs.ATTENDANCE ? (
+          {visitedTabs.WHATSAPP ? (
             <div
               className="worker-tab-fade"
-              style={{ display: portalTab === 'ATTENDANCE' ? 'block' : 'none' }}
+              style={{ display: portalTab === 'WHATSAPP' ? 'block' : 'none' }}
             >
-              <WorkerAttendancePanel
+              <WorkerWhatsAppPanel
                 token={tokenSession.token}
-                workerId={tokenSession.workerId}
                 colors={palette}
+                tickets={openTickets}
               />
-              <div style={{ padding: '0 16px' }}>
-                <AttendanceHelpContact />
-              </div>
+            </div>
+          ) : null}
+          {visitedTabs.HISTORY ? (
+            <div
+              className="worker-tab-fade"
+              style={{ display: portalTab === 'HISTORY' ? 'block' : 'none' }}
+            >
+              <WorkerTicketHistoryPanel
+                token={tokenSession.token}
+                colors={palette}
+                refreshKey={historyRefreshKey}
+              />
             </div>
           ) : null}
           {visitedTabs.TOURS ? (

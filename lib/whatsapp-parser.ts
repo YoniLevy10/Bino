@@ -1,3 +1,5 @@
+import { sanitizeWhatsAppProfileName } from '@/lib/whatsapp-profile-name'
+
 export type ParsedWhatsAppMessage = {
   from: string
   messageType: string
@@ -11,6 +13,8 @@ export type ParsedWhatsAppMessage = {
   interactiveReplyTitle?: string
   /** Present when Meta sends type=unsupported (e.g. 131060 placeholder before real media). */
   unsupportedErrorCode?: number
+  /** Display name from the webhook contacts array. Suggestion only, not a saved resident name. */
+  profileName?: string
 }
 
 /**
@@ -174,10 +178,35 @@ export function parseAllIncomingWhatsAppMessages(body: unknown): ParsedWhatsAppM
       const messages = Array.isArray(value?.messages) ? (value.messages as unknown[]) : []
       for (const msgUnknown of messages) {
         if (!msgUnknown || typeof msgUnknown !== 'object') continue
-        out.push(parseWhatsAppMessageRecord(msgUnknown as Record<string, unknown>))
+        const parsed = parseWhatsAppMessageRecord(msgUnknown as Record<string, unknown>)
+        const profileName = whatsAppProfileNameForSender(value, parsed.from)
+        if (profileName) parsed.profileName = profileName
+        out.push(parsed)
       }
     }
   }
 
   return out
+}
+
+function whatsAppProfileNameForSender(
+  value: Record<string, unknown> | undefined,
+  from: string
+): string | null {
+  if (!value) return null
+  const fromDigits = from.replace(/\D/g, '')
+  if (!fromDigits) return null
+  const contacts = Array.isArray(value.contacts) ? value.contacts : []
+  for (const contactUnknown of contacts) {
+    if (!contactUnknown || typeof contactUnknown !== 'object') continue
+    const contact = contactUnknown as Record<string, unknown>
+    const waId = String(contact.wa_id || '').replace(/\D/g, '')
+    if (!waId || waId !== fromDigits) continue
+    const profile = contact.profile
+    const rawName =
+      profile && typeof profile === 'object' ? (profile as Record<string, unknown>).name : undefined
+    const name = sanitizeWhatsAppProfileName(rawName)
+    if (name) return name
+  }
+  return null
 }

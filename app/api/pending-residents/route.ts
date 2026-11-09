@@ -4,7 +4,7 @@ import { normalizeWhatsAppPhoneDigits } from '@/lib/whatsapp-test-phone'
 import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
 import { requireSessionClientIdWithNavFeature } from '@/lib/api-nav-guard'
 import { pendingResidentsQueryUnavailable } from '@/lib/supabase-table-errors'
-import { checkRateLimitDistributed, sanitizeId, sanitizeString } from '@/lib/api-validation'
+import { checkRateLimitDistributed, sanitizeString } from '@/lib/api-validation'
 import { pendingResidentsApproveBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { formatZodError } from '@/lib/format-zod-error'
@@ -29,6 +29,18 @@ type PendingRow = {
   reporter_phone_normalized: string
   status: string
   created_at: string
+  suggested_name?: string | null
+}
+
+const PENDING_LIST_COLUMNS =
+  'id, client_id, project_id, ticket_id, reporter_phone_normalized, status, created_at, suggested_name'
+const PENDING_LIST_COLUMNS_LEGACY =
+  'id, client_id, project_id, ticket_id, reporter_phone_normalized, status, created_at'
+
+function missingSuggestedNameColumn(err: { code?: string; message?: string; details?: string } | null): boolean {
+  if (!err) return false
+  const text = `${err.message || ''} ${err.details || ''}`.toLowerCase()
+  return text.includes('suggested_name') && (text.includes('does not exist') || text.includes('schema cache') || err.code === '42703' || err.code === 'PGRST204')
 }
 
 export async function GET() {
@@ -51,12 +63,27 @@ export async function GET() {
       return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.', requestId }, { status: 429 })
     }
 
-    const { data: rows, error } = await supabase
+    let rows: PendingRow[] | null = null
+    let error: { message: string; code?: string; details?: string } | null = null
+    const first = await supabase
       .from('pending_resident_join_requests')
-      .select('id, client_id, project_id, ticket_id, reporter_phone_normalized, status, created_at')
+      .select(PENDING_LIST_COLUMNS)
       .eq('client_id', clientId)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
+    rows = first.data
+    error = first.error
+
+    if (error && missingSuggestedNameColumn(error)) {
+      const legacy = await supabase
+        .from('pending_resident_join_requests')
+        .select(PENDING_LIST_COLUMNS_LEGACY)
+        .eq('client_id', clientId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+      rows = (legacy.data || []).map((row) => ({ ...row, suggested_name: null }))
+      error = legacy.error
+    }
 
     if (error) {
       if (pendingResidentsQueryUnavailable(error)) {
