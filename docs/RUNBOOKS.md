@@ -4,6 +4,14 @@ Operational guides for platform and tenant features.
 
 ---
 
+## Production deploy gate (`quality` only)
+
+Gate Production aliasing on GitHub Actions job **`quality`**. Never require Supabase Preview.
+
+Owner clicks + checklist: [`DEPLOY_GATE_QUALITY.md`](DEPLOY_GATE_QUALITY.md)
+
+---
+
 ## גבייה ותשלומים (Grow)
 
 צ׳קליסט מלא: [`COLLECTIONS_GO_LIVE.md`](COLLECTIONS_GO_LIVE.md)
