@@ -67,8 +67,20 @@ export type SidebarNavItem = {
   locked?: boolean
 }
 
-/** Daily-use items pinned to the mobile bottom bar (order among them follows sidebar order). */
+/**
+ * Daily-use items pinned to the mobile bottom bar.
+ * WhatsApp chats are the busiest screen, then projects (buildings).
+ * When the inbox addon is off, `splitMobileBottomNav` falls back to workers.
+ */
 export const MOBILE_BOTTOM_PRIMARY_IDS: readonly SidebarNavItemId[] = [
+  'dashboard',
+  'tickets',
+  'whatsapp_inbox',
+  'projects',
+]
+
+/** Bottom bar when WhatsApp inbox is not in the visible nav. */
+export const MOBILE_BOTTOM_PRIMARY_FALLBACK_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
   'tickets',
   'projects',
@@ -378,11 +390,14 @@ export function splitMobileBottomNav(items: SidebarNavItem[]): {
   primary: SidebarNavItem[]
   more: SidebarNavItem[]
 } {
-  const primaryIdSet = new Set<string>(MOBILE_BOTTOM_PRIMARY_IDS)
   const byId = new Map(items.map((item) => [item.id, item]))
-  const primary = MOBILE_BOTTOM_PRIMARY_IDS.map((id) => byId.get(id)).filter(
-    (item): item is SidebarNavItem => item != null
-  )
+  const slotIds = byId.has('whatsapp_inbox')
+    ? MOBILE_BOTTOM_PRIMARY_IDS
+    : MOBILE_BOTTOM_PRIMARY_FALLBACK_IDS
+  const primaryIdSet = new Set<string>(slotIds)
+  const primary = slotIds
+    .map((id) => byId.get(id))
+    .filter((item): item is SidebarNavItem => item != null)
   const more = items.filter((item) => !primaryIdSet.has(item.id))
   return { primary, more }
 }
