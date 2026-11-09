@@ -294,7 +294,7 @@ export function WorkerTicketCard({
                   onClick={onToggleWa}
                   className="lg-glass"
                   style={styles.quickBtn(colors, 'whatsapp', expandedWa)}
-                  aria-label="וואטסאפ לדייר"
+                  aria-label="WhatsApp לדייר"
                 >
                   <span style={styles.quickBtnIcon} aria-hidden>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
