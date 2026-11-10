@@ -24,7 +24,8 @@ import {
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
-import { WorkerPortalToolbar, type WorkerTicketFilter, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
+import { WorkerTicketsScreen } from '../components/worker/WorkerTicketsScreen'
+import { WorkerPortalToolbar, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
 import { ActionConfirmSheet } from '../components/ui/ActionConfirmSheet'
 
 const WorkerTicketCard = dynamic(
@@ -68,7 +69,7 @@ import {
   writeWorkerToken,
 } from '@/lib/worker-portal-storage'
 import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker-offline-cache'
-import { isTicketInTreatment, WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
+import { WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
 import {
   applyWorkerThemeColor,
   readWorkerDarkMode,
@@ -128,12 +129,6 @@ function normalizeApiTickets(raw: ApiTicketRow[]): Ticket[] {
   )
 }
 
-function filterWorkerTickets(list: Ticket[], filter: WorkerTicketFilter): Ticket[] {
-  if (filter === 'ALL') return list
-  if (filter === 'NEW') return list.filter((t) => t.status === 'NEW' || t.status === 'ASSIGNED')
-  return list.filter((t) => isTicketInTreatment(t.status))
-}
-
 function WorkerPageInner() {
   const searchParams = useSearchParams()
   const [tokenSession, setTokenSession] = useState<TokenSession | null>(null)
@@ -155,7 +150,6 @@ function WorkerPageInner() {
   const [chatSending, setChatSending] = useState(false)
   const [translations, setTranslations] = useState<Record<string, string>>({})
   const [translatingId, setTranslatingId] = useState<string | null>(null)
-  const [ticketFilter, setTicketFilter] = useState<WorkerTicketFilter>('ALL')
   const [portalTab, setPortalTab] = useState<WorkerPortalTab>('TICKETS')
   const [visitedTabs, setVisitedTabs] = useState<Record<WorkerPortalTab, boolean>>({
     TICKETS: true,
@@ -179,14 +173,13 @@ function WorkerPageInner() {
   const [closePhotoUploading, setClosePhotoUploading] = useState(false)
   const [pushEnabling, setPushEnabling] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
-  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(
-    () => tryReadWorkerPortalBranding()?.logoUrl ?? null
-  )
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null)
 
   const palette = darkMode ? workerDarkColors : theme.colors
 
   useEffect(() => {
     setDarkMode(readWorkerDarkMode())
+    setClientLogoUrl(tryReadWorkerPortalBranding()?.logoUrl ?? null)
   }, [])
 
   useEffect(() => {
@@ -441,11 +434,6 @@ function WorkerPageInner() {
   }, [workers, workerId, tokenSession])
 
   const openTickets = useMemo(() => filterOpenWorkerTickets(tickets), [tickets])
-
-  const filteredTickets = useMemo(
-    () => filterWorkerTickets(openTickets, ticketFilter),
-    [openTickets, ticketFilter]
-  )
 
   function removeClosedTicketFromView(ticketId: string) {
     setTickets((prev) => {
@@ -870,32 +858,21 @@ function WorkerPageInner() {
         dir="rtl"
       >
         <div className="worker-ambient-wash" aria-hidden />
-        <header className="lg-chrome" style={styles.glassHeader}>
-          <p style={{ ...styles.standaloneSub, color: palette.textMuted }}>
-            שלום {selectedName || 'עובד'}
-          </p>
-          <h1 style={{ ...styles.standaloneTitle, color: palette.textPrimary, fontSize: 'clamp(22px, 7vw, 28px)', letterSpacing: '-0.03em' }}>
-            {openTickets.length === 0
-              ? 'אין עבודות פתוחות'
-              : openTickets.length === 1
-                ? 'עבודה אחת'
-                : `${openTickets.length} עבודות`}
-          </h1>
+        <header className="worker-portal-header">
+          <div className="worker-portal-identity">
+            <span className="worker-portal-avatar" aria-hidden="true">
+              {selectedName.trim().charAt(0) || 'ע'}
+            </span>
+            <div className="worker-portal-copy">
+              <p className="worker-portal-eyebrow">האזור האישי שלך</p>
+              <h1 className="worker-portal-title">שלום, {selectedName || 'עובד'}</h1>
+            </div>
+          </div>
         </header>
-
-        <WorkerPushOnboarding
-          token={tokenSession.token}
-          colors={palette}
-          openTicketCount={openTickets.length}
-          onEnabled={() => setPushEnabled(true)}
-        />
 
         <WorkerPortalToolbar
           colors={palette}
           portalTab={portalTab}
-          filter={ticketFilter}
-          ticketCount={openTickets.length}
-          filteredCount={filteredTickets.length}
           refreshing={refreshing}
           usingCache={usingCache}
           darkMode={darkMode}
@@ -903,7 +880,6 @@ function WorkerPageInner() {
             setPortalTab(tab)
             setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }))
           }}
-          onFilterChange={setTicketFilter}
           onRefresh={() => {
             if (portalTab === 'TOURS') {
               setToursRefreshKey((k) => k + 1)
@@ -969,18 +945,20 @@ function WorkerPageInner() {
             className="worker-tab-fade"
             style={{ display: portalTab === 'TICKETS' ? 'block' : 'none' }}
           >
-          {loadingTickets ? (
-            <PageTransitionLoader compact logoUrl={clientLogoUrl} />
-          ) : filteredTickets.length === 0 ? (
-            <div className="lg-glass" style={styles.emptyStateGlass}>
-              <div style={{ ...styles.emptyIcon, background: palette.successMuted, color: palette.success }}>✓</div>
-              <p style={{ ...styles.emptyText, color: palette.textMuted }}>
-                {openTickets.length === 0 ? 'הכל מטופל' : 'אין תקלות בסינון זה'}
-              </p>
-            </div>
-          ) : (
-            <div style={styles.tokenTicketList}>
-              {filteredTickets.map((t) => (
+            <WorkerTicketsScreen
+              tickets={openTickets}
+              loading={loadingTickets}
+              logoUrl={clientLogoUrl}
+              colors={palette}
+              pushOnboarding={
+                <WorkerPushOnboarding
+                  token={tokenSession.token}
+                  colors={palette}
+                  openTicketCount={openTickets.length}
+                  onEnabled={() => setPushEnabled(true)}
+                />
+              }
+              renderTicket={(t) => (
                 <WorkerTicketCard
                   key={t.id}
                   ticket={t}
@@ -997,7 +975,7 @@ function WorkerPageInner() {
                   expandedWa={expandedWaId === t.id}
                   onToggleWa={t.reporter_phone ? () => openWa(t.id) : undefined}
                   waSlot={
-                    expandedWaId === t.id && t.reporter_phone && tokenSession ? (
+                    expandedWaId === t.id && t.reporter_phone ? (
                       <TicketWhatsAppThread
                         reporterPhone={t.reporter_phone}
                         ticketId={t.id}
@@ -1011,6 +989,7 @@ function WorkerPageInner() {
                   attachmentsLoading={attachmentsLoadingId === t.id}
                   onUploadPhoto={(file) => void uploadWorkerPhoto(t.id, file)}
                   uploadingPhoto={uploadingPhotoId === t.id}
+                  showAttendanceHint={tokenSession.workerStampEnabled && !!t.project_name}
                   canMarkEscort={tokenSession.canMarkProfessionalEscort}
                   onEscort={(note, file) => void markProfessionalEscort(t.id, note, file)}
                   escortBusy={busyKey === `${t.id}:ESCORT`}
@@ -1081,9 +1060,8 @@ function WorkerPageInner() {
                     ) : null
                   }
                 />
-              ))}
-            </div>
-          )}
+              )}
+            />
           </div>
         </div>
 
@@ -1259,19 +1237,7 @@ const styles: Record<string, CSSProperties> = {
   scrollAreaGlass: {
     position: 'relative',
     zIndex: 1,
-    paddingTop: 6,
-    paddingInline: 12,
-    paddingBottom: 'calc(108px + env(safe-area-inset-bottom, 0px))',
-  },
-  emptyStateGlass: {
-    margin: '24px 4px',
-    padding: '36px 20px',
-    borderRadius: 20,
-    textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 12,
+    padding: '10px 12px calc(78px + env(safe-area-inset-bottom, 0px) + 18px)',
   },
   standaloneTitle: {
     fontSize: '20px',
@@ -1290,7 +1256,6 @@ const styles: Record<string, CSSProperties> = {
   },
   muted: { color: theme.colors.textMuted, fontSize: '14px', margin: 0 },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '2px' },
   officeChatWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
   officeChatBanner: {
     margin: 0,
@@ -1345,19 +1310,6 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '8px',
   },
-  emptyIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    background: theme.colors.successMuted,
-    color: theme.colors.success,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '20px',
-    fontWeight: 700,
-  },
-  emptyText: { fontSize: '14px', color: theme.colors.textMuted, margin: 0 },
   confirmOverlay: {
     position: 'fixed',
     inset: 0,

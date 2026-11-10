@@ -1,5 +1,5 @@
-/* Bino PWA — v14: quiet SW activate (no update banner); keep ≥v13 KPI/shell fixes */
-const CACHE_VERSION = 'bino-v14'
+/* Bino PWA — v15: refresh worker portal styles and assets */
+const CACHE_VERSION = 'bino-v15'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/bino-mark.png', '/worker', '/worker/nfc']

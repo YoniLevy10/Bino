@@ -15,7 +15,7 @@ describe('worker liquid-glass theme', () => {
   it('uses charcoal glass wash colors — not slate dashboard', () => {
     expect(workerDarkColors.background).toBe(WORKER_DARK_THEME_COLOR)
     expect(workerDarkColors.background).not.toBe('#0f172a')
-    expect(WORKER_LIGHT_THEME_COLOR).toBe('#dfe7f2')
+    expect(WORKER_LIGHT_THEME_COLOR).toBe('#f4f7fb')
   })
 
   it('exposes high-contrast muted fills for outdoor status chips', () => {

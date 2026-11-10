@@ -3,20 +3,15 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { theme } from '../ui'
 
-export type WorkerTicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
 export type WorkerPortalTab = 'TICKETS' | 'WHATSAPP' | 'TOURS' | 'HISTORY' | 'MAINTENANCE'
 
 type WorkerPortalToolbarProps = {
   colors: typeof theme.colors
   portalTab: WorkerPortalTab
-  filter: WorkerTicketFilter
-  ticketCount: number
-  filteredCount: number
   refreshing: boolean
   usingCache: boolean
   darkMode: boolean
   onPortalTabChange: (tab: WorkerPortalTab) => void
-  onFilterChange: (f: WorkerTicketFilter) => void
   onRefresh: () => void
   onToggleDark: () => void
   onEnablePush?: () => void
@@ -29,12 +24,6 @@ const PORTAL_TABS: { id: WorkerPortalTab; label: string; icon: WorkerTabIcon }[]
   { id: 'WHATSAPP', label: 'וואטסאפ', icon: 'chat' },
   { id: 'TICKETS', label: 'תקלות', icon: 'ticket' },
   { id: 'HISTORY', label: 'היסטוריה', icon: 'clock' },
-]
-
-const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
-  { id: 'ALL', label: 'הכל' },
-  { id: 'NEW', label: 'משויך' },
-  { id: 'IN_TREATMENT', label: 'בטיפול' },
 ]
 
 type WorkerTabIcon = 'ticket' | 'wrench' | 'map' | 'clock' | 'chat'
@@ -150,14 +139,10 @@ function ChromeIcon({
 export function WorkerPortalToolbar({
   colors,
   portalTab,
-  filter,
-  ticketCount,
-  filteredCount,
   refreshing,
   usingCache,
   darkMode,
   onPortalTabChange,
-  onFilterChange,
   onRefresh,
   onToggleDark,
   onEnablePush,
@@ -170,28 +155,31 @@ export function WorkerPortalToolbar({
       ? 'רישום סיורים בפרויקטים'
       : portalTab === 'MAINTENANCE'
         ? 'משימות אחזקה להיום'
-        :     portalTab === 'HISTORY'
+        : portalTab === 'HISTORY'
           ? 'תקלות שנסגרו, לפי בניין'
           : portalTab === 'WHATSAPP'
             ? 'שיחות עם דיירים מהתקלות הפתוחות'
-            : filteredCount === ticketCount
-            ? `${ticketCount} תקלות פתוחות`
-            : `${filteredCount} מתוך ${ticketCount}`
+            : null
 
   return (
     <>
       <div className="lg-chrome" style={styles.chrome}>
         <div style={styles.chromeRow}>
-          <span style={styles.count(colors)}>{subtitle}</span>
+          {subtitle ? (
+            <span style={styles.count(colors)}>{subtitle}</span>
+          ) : (
+            <span className="sr-only">פעולות אזור עובד</span>
+          )}
           <div style={styles.actions}>
             {onEnablePush ? (
               <button
                 type="button"
-                className="lg-glass"
+                className="lg-glass worker-push-trigger"
                 style={styles.iconBtn(colors)}
                 onClick={onEnablePush}
                 disabled={pushEnabling}
                 aria-label="הפעל התראות"
+                title="הפעל התראות"
               >
                 <ChromeIcon kind="bell" color={colors.textSecondary} />
               </button>
@@ -224,21 +212,6 @@ export function WorkerPortalToolbar({
           </div>
         ) : null}
 
-        {portalTab === 'TICKETS' ? (
-          <div style={styles.chips}>
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={filter === f.id ? 'lg-chip-active' : 'lg-chip'}
-                style={styles.chip}
-                onClick={() => onFilterChange(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
 
       <nav className="lg-tabbar" style={styles.tabbar} aria-label="ניווט אזור עובד">
@@ -276,8 +249,8 @@ export function WorkerPortalToolbar({
 const styles = {
   chrome: {
     flexShrink: 0,
-    paddingTop: '8px',
-    paddingBottom: '10px',
+    paddingTop: '6px',
+    paddingBottom: '8px',
     paddingInline: '14px',
     position: 'sticky',
     top: 0,
@@ -291,9 +264,9 @@ const styles = {
     marginBottom: '8px',
   } as CSSProperties,
   count: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '13px',
-    fontWeight: 600,
-    color: c.textMuted,
+    fontSize: '15px',
+    fontWeight: 700,
+    color: c.textPrimary,
     margin: 0,
     letterSpacing: '-0.01em',
   }),
@@ -302,10 +275,10 @@ const styles = {
     gap: '8px',
   } as CSSProperties,
   iconBtn: (c: typeof theme.colors): CSSProperties => ({
-    width: 48,
-    height: 48,
-    minWidth: 48,
-    minHeight: 48,
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 14,
     border: 'none',
     cursor: 'pointer',
@@ -323,19 +296,6 @@ const styles = {
     borderRadius: 12,
     marginBottom: 8,
   }),
-  chips: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-  } as CSSProperties,
-  chip: {
-    padding: '10px 14px',
-    minHeight: 44,
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-  } as CSSProperties,
   tabbar: {
     position: 'fixed',
     insetInline: 12,
