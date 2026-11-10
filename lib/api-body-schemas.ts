@@ -372,6 +372,15 @@ export const updateMaintenanceTaskBodySchema = z.object({
   source_ticket_id: z.string().uuid().nullable().optional(),
 })
 
+export const workerMaintenanceTaskCreateBodySchema = z.object({
+  token: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(4000).nullable().optional(),
+  project_id: z.string().uuid(),
+  priority: maintenanceTaskPrioritySchema.optional(),
+  source_ticket_id: z.string().uuid().nullable().optional(),
+})
+
 export const workerMaintenanceTaskUpdateBodySchema = z.object({
   token: z.string().uuid(),
   task_id: z.string().uuid(),

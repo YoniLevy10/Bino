@@ -27,7 +27,7 @@
     "test:bamakor-smoke": "node scripts/agent-bamakor-smoke.mjs"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.51.0",
+    "@sentry/nextjs": "^10.78.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.101.0",
     "@tanstack/react-query": "^5.103.2",
@@ -36,26 +36,37 @@
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^7.0.93",
     "exceljs": "^4.4.0",
-    "next": "16.3.8",
+    "next": "16.4.5",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "web-push": "^3.6.7",
-    "zod": "^4.4.2"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "autocannon": "^8.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.5",
     "pg": "^8.21.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.5"
+  },
+  "overrides": {
+    "brace-expansion@1": "1.1.21",
+    "brace-expansion@5": "5.0.12",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "js-yaml@4": "4.3.2",
+    "source-map-js": "1.2.2",
+    "undici": "7.30.2",
+    "vite": "8.1.7",
+    "ws": "8.22.2"
   }
 }

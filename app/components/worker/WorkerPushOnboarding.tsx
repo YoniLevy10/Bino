@@ -9,6 +9,9 @@ import {
   subscribeWorkerPush,
 } from '@/lib/worker-push-client'
 
+const PUSH_BANNER_DISMISS_KEY = 'bino_worker_push_banner_dismissed'
+const BANNER_AUTO_DISMISS_MS = 10_000
+
 type WorkerPushOnboardingProps = {
   token: string
   colors?: typeof theme.colors
@@ -28,6 +31,24 @@ export function WorkerPushOnboarding({
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(PUSH_BANNER_DISMISS_KEY) === '1') setDismissed(true)
+    } catch {
+      // Private mode can block sessionStorage; the banner still hides for this view.
+    }
+  }, [])
+
+  const dismissBanner = useCallback(() => {
+    try {
+      sessionStorage.setItem(PUSH_BANNER_DISMISS_KEY, '1')
+    } catch {
+      // Ignore storage failures and still hide for this view.
+    }
+    setDismissed(true)
+  }, [])
 
   const refreshState = useCallback(async () => {
     setChecking(true)
@@ -48,6 +69,12 @@ export function WorkerPushOnboarding({
     void refreshState()
   }, [refreshState, token])
 
+  useEffect(() => {
+    if (checking || !visible || dismissed || loading) return
+    const timer = window.setTimeout(dismissBanner, BANNER_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [checking, visible, dismissed, loading, dismissBanner])
+
   async function enable() {
     setLoading(true)
     try {
@@ -64,7 +91,7 @@ export function WorkerPushOnboarding({
     }
   }
 
-  if (checking || !visible) return null
+  if (checking || !visible || dismissed) return null
 
   const unsupported = !isWorkerPushSupported()
   const denied = typeof Notification !== 'undefined' && Notification.permission === 'denied'
@@ -80,7 +107,7 @@ export function WorkerPushOnboarding({
         border: `1px solid ${colors.border}`,
         direction: 'rtl',
         display: 'grid',
-        gridTemplateColumns: unsupported || denied ? '38px minmax(0, 1fr)' : '38px minmax(0, 1fr) auto',
+        gridTemplateColumns: unsupported || denied ? '38px minmax(0, 1fr) auto' : '38px minmax(0, 1fr) auto',
         alignItems: 'center',
         gap: 10,
       }}
@@ -135,7 +162,33 @@ export function WorkerPushOnboarding({
         >
           {loading ? 'מפעיל…' : 'הפעל התראות'}
         </button>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          aria-label="הסתר"
+          onClick={dismissBanner}
+          style={{
+            width: 44,
+            height: 44,
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            borderRadius: 10,
+            border: 'none',
+            background: 'transparent',
+            color: colors.textPrimary,
+            fontSize: 22,
+            fontWeight: 500,
+            lineHeight: 1,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          ×
+        </button>
+      )}
     </div>
   )
 }

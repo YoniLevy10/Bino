@@ -1003,7 +1003,7 @@ export default function SummaryPage() {
               ...(pageTab === 'history' ? styles.pageTabActive : styles.pageTabInactive),
             }}
           >
-            היסטוריה ({historyLoaded ? historyClosedTickets.length : '…'})
+            היסטוריה
           </button>
         </div>
 

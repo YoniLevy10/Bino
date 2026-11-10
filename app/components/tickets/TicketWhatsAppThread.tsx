@@ -1,9 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/use-visual-viewport-frame'
 import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
 import { toast } from '@/lib/error-handler'
+import { formatPhoneLocalIl } from '@/lib/sales-leads/phone'
 import { Button, theme } from '../ui'
 import {
   threadHasUnrecoveredMedia,
@@ -20,6 +24,20 @@ type Message = {
   created_at: string
 }
 
+function waClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+}
+
+function waDayLabel(iso: string): string {
+  const date = new Date(iso)
+  const now = new Date()
+  if (date.toDateString() === now.toDateString()) return 'היום'
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) return 'אתמול'
+  return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })
+}
+
 function displayWhatsAppBody(m: Message): string {
   if (m.body?.trim()) return m.body
   if (m.message_type === 'image') return '📷 תמונה'
@@ -33,6 +51,7 @@ type Props = {
   ticketId: string
   mode?: 'manager' | 'worker'
   workerToken?: string
+  onClose?: () => void
   attachments?: TicketAttachmentSummary[]
   onRecoverMedia?: () => void | Promise<void>
   recoveringMedia?: boolean
@@ -42,10 +61,11 @@ type Props = {
 const POLL_MS = 60_000
 
 export function TicketWhatsAppThread({
-  reporterPhone: _reporterPhone,
+  reporterPhone,
   ticketId,
   mode = 'manager',
   workerToken,
+  onClose,
   attachments = [],
   onRecoverMedia,
   recoveringMedia = false,
@@ -57,6 +77,21 @@ export function TicketWhatsAppThread({
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const loadSeq = useRef(0)
+  const logRef = useRef<HTMLDivElement>(null)
+  const [mobileSheet, setMobileSheet] = useState(false)
+  const [sheetReady, setSheetReady] = useState(false)
+  const workerSheet = mode === 'worker' && mobileSheet
+  const sheetFrame = useVisualViewportFrame(workerSheet)
+  useChatSheetScrollLock(workerSheet)
+
+  useEffect(() => {
+    if (mode !== 'worker') return
+    const check = () => setMobileSheet(getIsMobileViewport())
+    check()
+    setSheetReady(true)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [mode])
 
   const loadMessages = useCallback(async (opts?: { silent?: boolean }) => {
     const seq = ++loadSeq.current
@@ -122,6 +157,12 @@ export function TicketWhatsAppThread({
   }, [conversationId, ticketId, loadMessages])
 
   useEffect(() => {
+    const pane = logRef.current
+    if (!pane) return
+    pane.scrollTop = pane.scrollHeight
+  }, [messages.length, loading])
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       // Skip background-tab polls — realtime still covers inserts while visible.
       if (typeof document !== 'undefined' && document.hidden) return
@@ -183,12 +224,131 @@ export function TicketWhatsAppThread({
   }
 
   const isWorker = mode === 'worker'
+  const phoneLabel = formatPhoneLocalIl(reporterPhone) ?? reporterPhone
   const needsMediaRecover =
     !isWorker &&
     !!onRecoverMedia &&
     threadHasUnrecoveredMedia(messages, attachments)
 
   const showEmptyThread = !loading && !loadError && messages.length === 0
+
+  if (isWorker) {
+    if (!sheetReady) {
+      return <div className="wa-ticket" style={{ minHeight: 160 }} aria-hidden />
+    }
+
+    const thread: ReactNode = (
+      <div className="wa-ticket" style={workerStyles.shell}>
+        <div className="wa-ticket-header" style={workerStyles.header}>
+          {workerSheet ? (
+            <button
+              type="button"
+              className="wa-ticket-back"
+              style={workerStyles.back}
+              onClick={onClose}
+              aria-label="חזרה"
+            >
+              <WaBackIcon />
+            </button>
+          ) : null}
+          <span style={workerStyles.avatar} aria-hidden>ד</span>
+          <span style={workerStyles.identity}>
+            <span style={workerStyles.title}>הדייר</span>
+            <span style={workerStyles.sub}>{phoneLabel}</span>
+          </span>
+        </div>
+
+        {loadError ? (
+          <div style={styles.loadErrorBar}>
+            <span style={styles.loadErrorText}>{loadError}</span>
+            <button type="button" style={styles.retryBtn} onClick={() => void loadMessages()}>
+              נסו שוב
+            </button>
+          </div>
+        ) : null}
+
+        <div
+          ref={logRef}
+          className="wa-ticket-log"
+          role="log"
+          aria-label="שיחת WhatsApp עם הדייר"
+          aria-live="polite"
+        >
+          {loading && messages.length === 0 ? (
+            <p style={workerStyles.chip}>טוען הודעות…</p>
+          ) : showEmptyThread ? (
+            <p style={workerStyles.chip}>אין הודעות עדיין. כתבו למטה.</p>
+          ) : (
+            messages.map((m, index) => {
+              const day = waDayLabel(m.created_at)
+              const prev = index > 0 ? messages[index - 1] : null
+              const showDay = !prev || waDayLabel(prev.created_at) !== day
+              const outgoing = m.direction === 'out'
+              return (
+                <div key={m.id} style={workerStyles.block}>
+                  {showDay ? <div style={workerStyles.chip}>{day}</div> : null}
+                  <div style={{ ...workerStyles.bubble, ...(outgoing ? workerStyles.out : workerStyles.in) }}>
+                    <span style={workerStyles.body}>{displayWhatsAppBody(m)}</span>
+                    <span style={workerStyles.time}>{waClock(m.created_at)}</span>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        <div className="wa-ticket-compose" style={workerStyles.compose}>
+          <label htmlFor={`wa-worker-${ticketId}`} style={workerStyles.srOnly}>
+            הודעה לדייר
+          </label>
+          <textarea
+            id={`wa-worker-${ticketId}`}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="הודעה"
+            rows={1}
+            maxLength={4096}
+            style={workerStyles.input}
+            disabled={sending}
+          />
+          <button
+            type="button"
+            aria-label="שלח לדייר"
+            disabled={sending || !draft.trim()}
+            onClick={() => void sendReply()}
+            style={{
+              ...workerStyles.send,
+              ...((sending || !draft.trim()) ? workerStyles.sendOff : {}),
+            }}
+          >
+            {sending ? <span style={workerStyles.sendWait}>…</span> : <WaSendIcon />}
+          </button>
+        </div>
+      </div>
+    )
+
+    if (workerSheet && typeof document !== 'undefined') {
+      return createPortal(
+        <div
+          className="wa-ticket-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label="שיחת WhatsApp עם הדייר"
+          data-keyboard={sheetFrame?.keyboardOpen ? 'open' : 'closed'}
+          style={
+            sheetFrame
+              ? { top: sheetFrame.top, height: sheetFrame.height, bottom: 'auto' }
+              : undefined
+          }
+        >
+          {thread}
+        </div>,
+        document.body
+      )
+    }
+
+    return thread
+  }
 
   return (
     <div style={styles.root}>
@@ -370,4 +530,138 @@ const styles: Record<string, CSSProperties> = {
     border: `1px solid ${theme.colors.warning}`,
   },
   recoverText: { fontSize: 13, color: theme.colors.textPrimary, fontWeight: 500 },
+}
+
+const workerStyles: Record<string, CSSProperties> = {
+  shell: { display: 'flex', flexDirection: 'column', background: '#fff', minHeight: 0, flex: '1 1 auto' },
+  back: {
+    width: 44,
+    height: 44,
+    border: 'none',
+    background: 'transparent',
+    color: '#54656f',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    flexShrink: 0,
+    cursor: 'pointer',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 58,
+    padding: '8px 12px',
+    background: '#f0f2f5',
+    borderBottom: '1px solid #e9edef',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    background: '#00a884',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  identity: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  title: { fontSize: 16, fontWeight: 600, color: '#111b21' },
+  sub: { fontSize: 12, color: '#667781' },
+  block: { display: 'flex', flexDirection: 'column' },
+  chip: {
+    alignSelf: 'center',
+    margin: '8px 0',
+    padding: '5px 12px',
+    borderRadius: 8,
+    background: '#fff',
+    color: '#54656f',
+    fontSize: 12.5,
+    boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+  },
+  bubble: {
+    maxWidth: '82%',
+    margin: '1px 0',
+    padding: '6px 8px 4px 9px',
+    borderRadius: 8,
+    fontSize: 14.5,
+    lineHeight: 1.35,
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    columnGap: 8,
+    boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+  },
+  body: { whiteSpace: 'pre-wrap', minWidth: 0 },
+  in: { alignSelf: 'flex-start', background: '#fff', color: '#111b21', borderEndStartRadius: 2 },
+  out: { alignSelf: 'flex-end', background: '#d9fdd3', color: '#111b21', borderEndEndRadius: 2 },
+  time: { marginInlineStart: 'auto', fontSize: 11, lineHeight: 1, color: '#667781', paddingBottom: 2, whiteSpace: 'nowrap' },
+  compose: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: 8,
+    padding: '8px 10px',
+    background: '#f0f2f5',
+  },
+  input: {
+    flex: 1,
+    width: '100%',
+    resize: 'none',
+    minHeight: 42,
+    maxHeight: 120,
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: 'none',
+    background: '#fff',
+    fontFamily: 'inherit',
+    fontSize: 16,
+    lineHeight: 1.35,
+    color: '#111b21',
+    boxSizing: 'border-box',
+  },
+  send: {
+    width: 44,
+    height: 44,
+    borderRadius: '50%',
+    border: 'none',
+    background: '#00a884',
+    color: '#fff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  sendOff: { background: '#8696a0', cursor: 'default' },
+  sendWait: { fontSize: 18, lineHeight: 1 },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    border: 0,
+  },
+}
+
+function WaBackIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  )
+}
+
+function WaSendIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M3.2 11.3 20.4 3.1c.7-.3 1.4.4 1.1 1.1l-8.2 17.2c-.3.7-1.3.6-1.5-.1l-1.8-6.4-6.4-1.8c-.7-.2-.8-1.2-.1-1.5Z" />
+    </svg>
+  )
 }

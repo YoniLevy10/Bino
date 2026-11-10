@@ -52,13 +52,6 @@ const ImportResidentsModal = dynamic(
     })),
   { loading: () => null }
 )
-const LegacyImportDryRunModal = dynamic(
-  () =>
-    import('@/app/components/residents/LegacyImportDryRunModal').then((m) => ({
-      default: m.LegacyImportDryRunModal,
-    })),
-  { loading: () => null }
-)
 const ShareResidentIntakeLinkModal = dynamic(
   () =>
     import('@/app/components/residents/ShareResidentIntakeLinkModal').then((m) => ({
@@ -198,7 +191,6 @@ function ResidentsPageInner() {
   const [addNotes, setAddNotes] = useState('')
 
   const [importOpen, setImportOpen] = useState(false)
-  const [legacyDryRunOpen, setLegacyDryRunOpen] = useState(false)
   const [shareIntakeOpen, setShareIntakeOpen] = useState(false)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -252,6 +244,7 @@ function ResidentsPageInner() {
       project_name: string
       project_code: string
       ticket_number?: number
+      suggested_name?: string | null
     }>
   >([])
   const [pendingLoading, setPendingLoading] = useState(false)
@@ -270,6 +263,18 @@ function ResidentsPageInner() {
       startTransition(() => {
         setPendingItems(items)
         setPendingBadge(items.length)
+        setPendingNames((prev) => {
+          let changed = false
+          const next = { ...prev }
+          for (const item of items) {
+            const suggestion = item.suggested_name?.trim()
+            if (suggestion && next[item.id] === undefined) {
+              next[item.id] = suggestion
+              changed = true
+            }
+          }
+          return changed ? next : prev
+        })
       })
     } catch {
       startTransition(() => {
@@ -424,10 +429,6 @@ function ResidentsPageInner() {
 
   function openImport() {
     setImportOpen(true)
-  }
-
-  function openLegacyDryRun() {
-    setLegacyDryRunOpen(true)
   }
 
   function openShareIntakeLink() {
@@ -896,12 +897,11 @@ function ResidentsPageInner() {
       if (e.key !== 'Escape') return
       if (addOpen) { closeResidentModal(); return }
       if (importOpen) { setImportOpen(false); return }
-      if (legacyDryRunOpen) { setLegacyDryRunOpen(false); return }
       if (shareIntakeOpen) { setShareIntakeOpen(false); return }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [addOpen, importOpen, legacyDryRunOpen, shareIntakeOpen])
+  }, [addOpen, importOpen, shareIntakeOpen])
 
   return (
     <>
@@ -982,6 +982,9 @@ function ResidentsPageInner() {
                         <label style={styles.pendingNameLab}>
                           שם דייר <span style={{ color: theme.colors.error }}>*</span>
                         </label>
+                        {p.suggested_name?.trim() ? (
+                          <p style={styles.pendingHint}>הצעה מוואטסאפ. אפשר לערוך לפני האישור.</p>
+                        ) : null}
                         <input
                           value={pendingNames[p.id] || ''}
                           onChange={(e) => setPendingNames((prev) => ({ ...prev, [p.id]: e.target.value }))}
@@ -1059,14 +1062,6 @@ function ResidentsPageInner() {
             </Button>
             <Button variant="secondary" size="sm" onClick={openImport} disabled={residentsTableMissing}>
               ייבוא דיירים
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={openLegacyDryRun}
-              disabled={residentsTableMissing}
-            >
-              ייבוא ממערכת קודמת (בדיקה)
             </Button>
             <Button variant="secondary" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
               ייצוא Excel
@@ -1338,14 +1333,6 @@ function ResidentsPageInner() {
         }}
       />
 
-      <LegacyImportDryRunModal
-        open={legacyDryRunOpen}
-        onClose={() => setLegacyDryRunOpen(false)}
-        isMobile={isMobile}
-        projects={projects}
-        defaultProjectId={projectFilter !== 'ALL' ? projectFilter : ''}
-      />
-
       <ShareResidentIntakeLinkModal
         open={shareIntakeOpen}
         onClose={() => setShareIntakeOpen(false)}
@@ -1417,6 +1404,11 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textSecondary,
     marginTop: '8px',
     marginBottom: '6px',
+  },
+  pendingHint: {
+    margin: '0 0 6px',
+    fontSize: '12px',
+    color: theme.colors.textMuted,
   },
   pendingInput: {
     width: '100%',

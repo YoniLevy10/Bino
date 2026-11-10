@@ -9,6 +9,7 @@ import {
   parseSidebarNavOrderFromDb,
   resolveSidebarNavItems,
   shouldShowMobileBottomNav,
+  MOBILE_BOTTOM_PRIMARY_IDS,
   splitMobileBottomNav,
   splitSidebarNavSections,
 } from '@/lib/sidebar-nav'
@@ -127,6 +128,15 @@ describe('splitMobileBottomNav', () => {
     expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'projects', 'workers'])
     expect(more.some((i) => i.id === 'summary')).toBe(true)
     expect(more.some((i) => i.id === 'dashboard')).toBe(false)
+  })
+
+  it('pins WhatsApp chats and projects when the inbox is visible', () => {
+    const items = resolveSidebarNavItems(DEFAULT_SIDEBAR_NAV_ORDER, null, new Set(['whatsapp_inbox']))
+    const { primary, more } = splitMobileBottomNav(items)
+    expect(MOBILE_BOTTOM_PRIMARY_IDS).toEqual(['dashboard', 'tickets', 'whatsapp_inbox', 'projects'])
+    expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'whatsapp_inbox', 'projects'])
+    expect(more.some((i) => i.id === 'workers')).toBe(true)
+    expect(more.some((i) => i.id === 'whatsapp_inbox')).toBe(false)
   })
 })
 

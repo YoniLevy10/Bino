@@ -15,6 +15,8 @@ type Props = {
   headerActions?: ReactNode
   contentMaxWidth?: number
   narrow?: boolean
+  /** Edge-to-edge chat layout. The page owns its own header. */
+  immersive?: boolean
   /** When false, skip AppShell (parent manager layout already provides it). Default false under (manager). */
   wrapAppShell?: boolean
 }
@@ -28,6 +30,7 @@ export function AddonFeaturePageShell({
   headerActions,
   contentMaxWidth,
   narrow = false,
+  immersive = false,
   wrapAppShell = false,
 }: Props) {
   const [isMobile, setIsMobile] = useState(false)
@@ -43,7 +46,7 @@ export function AddonFeaturePageShell({
 
   const body = (
     <PaidAddonGate addonKey={addonKey}>
-      {isMobile && (
+      {isMobile && !immersive && (
         <MobileHeader
           title={title}
           subtitle={mobileSubtitle}
@@ -54,18 +57,19 @@ export function AddonFeaturePageShell({
       <div
         style={{
           ...styles.content,
-          maxWidth,
+          maxWidth: immersive ? '100%' : maxWidth,
           ...(isMobile ? styles.contentMobile : {}),
+          ...(immersive ? (isMobile ? styles.contentImmersiveMobile : styles.contentImmersive) : {}),
         }}
       >
-        {!isMobile && (
+        {!isMobile && !immersive && (
           <PageHeader
             title={title}
             subtitle={desktopSubtitle ?? mobileSubtitle}
             actions={headerActions}
           />
         )}
-        <div style={styles.body}>{children}</div>
+        <div style={{ ...styles.body, ...(immersive ? styles.bodyImmersive : {}) }}>{children}</div>
       </div>
     </PaidAddonGate>
   )
@@ -89,5 +93,15 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
+  },
+  contentImmersive: {
+    padding: '12px 16px 16px',
+  },
+  contentImmersiveMobile: {
+    padding: 0,
+    maxWidth: '100%',
+  },
+  bodyImmersive: {
+    gap: 0,
   },
 }

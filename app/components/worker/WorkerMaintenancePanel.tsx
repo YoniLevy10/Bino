@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
 import { toast } from '@/lib/error-handler'
 import { Button, LoadingSpinner, type theme } from '../ui'
+import { WorkerMaintenanceCreate } from './WorkerMaintenanceCreate'
 
 type MaintenanceTask = {
   id: string
@@ -145,19 +146,16 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
     }
   }
 
-  if (loading) return <LoadingSpinner />
-
-  if (tasks.length === 0) {
-    return (
-      <div style={emptyStyles(colors).box} className="lg-glass">
-        <p style={emptyStyles(colors).title}>אין משימות אחזקה להיום</p>
-        <p style={emptyStyles(colors).sub}>כשהמנהלת תשייך משימה — היא תופיע כאן</p>
-      </div>
-    )
-  }
-
-  return (
+  const list = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '0 12px 28px' }}>
+      <WorkerMaintenanceCreate token={token} colors={colors} onCreated={() => void load({ silent: true })} />
+      {loading ? <LoadingSpinner /> : null}
+      {!loading && tasks.length === 0 ? (
+        <div style={emptyStyles(colors).box} className="lg-glass">
+          <p style={emptyStyles(colors).title}>אין משימות אחזקה להיום</p>
+          <p style={emptyStyles(colors).sub}>אפשר לפתוח משימה מכאן, או לחכות לשיוך מהמנהל.</p>
+        </div>
+      ) : null}
       {tasks.map((t) => {
         const busy = busyId === t.id
         const statusLabel =
@@ -244,6 +242,8 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
       })}
     </div>
   )
+
+  return list
 }
 
 function emptyStyles(colors: typeof theme.colors): Record<string, CSSProperties> {

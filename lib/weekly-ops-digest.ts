@@ -102,7 +102,7 @@ export function israelWeekStartIso(now = new Date()): string {
   const daysBack: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
   const back = daysBack[p.weekday] ?? 0
   const civilMidnightUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day) - back)
-  let offset = tzOffsetMs(new Date(civilMidnightUtc), timeZone)
+  const offset = tzOffsetMs(new Date(civilMidnightUtc), timeZone)
   let instant = civilMidnightUtc - offset
   const offsetAtInstant = tzOffsetMs(new Date(instant), timeZone)
   if (offsetAtInstant !== offset) instant = civilMidnightUtc - offsetAtInstant

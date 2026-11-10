@@ -1,7 +1,8 @@
 /**
  * Safety gate for isolated load tests.
- * NEVER allow load against bino.casa. Block Supabase project hosts unless
- * ALLOW_PROD_LOAD=I_UNDERSTAND (still refuses bino.casa).
+ * NEVER allow load against bino.casa or bamakor.vercel.app.
+ * Block Supabase project hosts unless ALLOW_PROD_LOAD=I_UNDERSTAND
+ * (still refuses bino.casa and bamakor.vercel.app).
  */
 
 export const SANDBOX_LOAD_CLIENT_ID = 'a1111111-1111-4111-8111-111111111111'
@@ -46,6 +47,32 @@ export function assertSafeBaseUrl(baseUrl, opts = {}) {
     return { ok: false, reason: 'BASE_URL must not equal https://bino.casa (or http).' }
   }
 
+  // Absolute ban — bamakor.vercel.app (prod alias) never overridden, same as bino.casa.
+  if (
+    host === 'bamakor.vercel.app' ||
+    host === 'www.bamakor.vercel.app' ||
+    host.endsWith('.bamakor.vercel.app') ||
+    href.includes('bamakor.vercel.app')
+  ) {
+    return {
+      ok: false,
+      reason:
+        'BASE_URL targets bamakor.vercel.app — refused always (even with ALLOW_PROD_LOAD). Use local Next (http://127.0.0.1:3000) or a dedicated non-prod host.',
+    }
+  }
+
+  if (
+    origin === 'https://bamakor.vercel.app' ||
+    origin === 'http://bamakor.vercel.app' ||
+    origin === 'https://www.bamakor.vercel.app' ||
+    origin === 'http://www.bamakor.vercel.app'
+  ) {
+    return {
+      ok: false,
+      reason: 'BASE_URL must not equal https://bamakor.vercel.app (or http / www).',
+    }
+  }
+
   const supabaseHits = collectSupabaseHits(raw, host, opts.envSupabaseUrl)
   const allowProd = (opts.allowProdLoad ?? '').trim() === ALLOW_PROD_TOKEN
 
@@ -54,7 +81,7 @@ export function assertSafeBaseUrl(baseUrl, opts = {}) {
       ok: false,
       reason:
         `BASE_URL appears to target a Supabase / Bamakor project host (${supabaseHits.join(', ')}). ` +
-        'Load tests must use local app + local Supabase. To override a non-bino.casa staging host only, set ALLOW_PROD_LOAD=I_UNDERSTAND (still refuses bino.casa).',
+        'Load tests must use local app + local Supabase. To override a non-bino.casa / non-bamakor.vercel.app staging host only, set ALLOW_PROD_LOAD=I_UNDERSTAND (still refuses bino.casa and bamakor.vercel.app).',
     }
   }
 

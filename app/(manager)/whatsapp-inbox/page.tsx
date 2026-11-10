@@ -10,9 +10,10 @@ function WhatsAppInboxInner() {
   return (
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.whatsapp_inbox}
-      title="תיבת WhatsApp"
-      mobileSubtitle="שיחות עם דיירים בזמן אמת"
-      desktopSubtitle="בחרו דייר מהרשימה וכתבו — בלי להקליד טלפון"
+      title="שיחות"
+      mobileSubtitle="וואטסאפ"
+      desktopSubtitle="שיחות עם דיירים"
+      immersive
     >
       <WhatsAppInboxPanel />
     </AddonFeaturePageShell>
