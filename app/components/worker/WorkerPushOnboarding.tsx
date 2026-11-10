@@ -71,26 +71,32 @@ export function WorkerPushOnboarding({
 
   return (
     <div
-      className="lg-glass"
+      className="lg-glass worker-push-onboarding"
       style={{
-        margin: '0 12px 10px',
-        padding: '14px',
+        margin: '0 12px 8px',
+        padding: '10px 12px',
         borderRadius: 16,
         background: 'transparent',
         border: 'none',
         direction: 'rtl',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, marginBottom: '6px' }}>
-        קבלו התראה על תקלות חדשות
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: '14px', color: colors.textPrimary, marginBottom: '3px' }}>
+          קבלו התראה על תקלות חדשות
+        </div>
+        <p style={{ fontSize: '13px', color: colors.textSecondary, margin: 0, lineHeight: 1.4 }}>
+          {unsupported
+            ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
+            : denied
+              ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
+              : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
+        </p>
       </div>
-      <p style={{ fontSize: '13px', color: colors.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
-        {unsupported
-          ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
-          : denied
-            ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
-            : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
-      </p>
       {!unsupported && !denied ? (
         <button
           type="button"
@@ -98,14 +104,16 @@ export function WorkerPushOnboarding({
           onClick={() => void enable()}
           disabled={loading}
           style={{
-            width: '100%',
-            padding: '12px 16px',
+            width: 'auto',
+            flexShrink: 0,
+            padding: '10px 12px',
             borderRadius: 14,
             border: 'none',
             fontWeight: 800,
-            fontSize: '15px',
+            fontSize: '14px',
             cursor: loading ? 'wait' : 'pointer',
-            minHeight: 48,
+            minHeight: 44,
+            whiteSpace: 'nowrap',
           }}
         >
           {loading ? 'מפעיל…' : 'הפעל התראות'}

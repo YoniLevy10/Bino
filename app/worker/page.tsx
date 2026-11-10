@@ -1238,7 +1238,7 @@ const styles: Record<string, CSSProperties> = {
   scrollAreaGlass: {
     position: 'relative',
     zIndex: 1,
-    padding: '10px 12px 0',
+    padding: '10px 12px calc(78px + env(safe-area-inset-bottom, 0px) + 18px)',
   },
   emptyStateGlass: {
     margin: '24px 4px',
@@ -1267,7 +1267,7 @@ const styles: Record<string, CSSProperties> = {
   },
   muted: { color: theme.colors.textMuted, fontSize: '14px', margin: 0 },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   officeChatWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
   officeChatBanner: {
     margin: 0,

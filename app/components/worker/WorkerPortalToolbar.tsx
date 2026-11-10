@@ -182,7 +182,7 @@ export function WorkerPortalToolbar({
             {onEnablePush ? (
               <button
                 type="button"
-                className="lg-glass"
+                className="lg-glass worker-push-trigger"
                 style={styles.iconBtn(colors)}
                 onClick={onEnablePush}
                 disabled={pushEnabling}
@@ -220,13 +220,19 @@ export function WorkerPortalToolbar({
         ) : null}
 
         {portalTab === 'TICKETS' ? (
-          <div style={styles.chips}>
+          <div
+            className="worker-ticket-filters"
+            style={styles.chips}
+            role="group"
+            aria-label="סינון תקלות"
+          >
             {FILTERS.map((f) => (
               <button
                 key={f.id}
                 type="button"
                 className={filter === f.id ? 'lg-chip-active' : 'lg-chip'}
                 style={styles.chip}
+                aria-pressed={filter === f.id}
                 onClick={() => onFilterChange(f.id)}
               >
                 {f.label}
@@ -271,8 +277,8 @@ export function WorkerPortalToolbar({
 const styles = {
   chrome: {
     flexShrink: 0,
-    paddingTop: '8px',
-    paddingBottom: '10px',
+    paddingTop: '6px',
+    paddingBottom: '8px',
     paddingInline: '14px',
     position: 'sticky',
     top: 0,
@@ -286,9 +292,9 @@ const styles = {
     marginBottom: '8px',
   } as CSSProperties,
   count: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '13px',
-    fontWeight: 600,
-    color: c.textMuted,
+    fontSize: '15px',
+    fontWeight: 700,
+    color: c.textPrimary,
     margin: 0,
     letterSpacing: '-0.01em',
   }),
@@ -297,10 +303,10 @@ const styles = {
     gap: '8px',
   } as CSSProperties,
   iconBtn: (c: typeof theme.colors): CSSProperties => ({
-    width: 48,
-    height: 48,
-    minWidth: 48,
-    minHeight: 48,
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 14,
     border: 'none',
     cursor: 'pointer',
@@ -321,13 +327,15 @@ const styles = {
   chips: {
     display: 'flex',
     gap: '8px',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
   } as CSSProperties,
   chip: {
     padding: '10px 14px',
     minHeight: 44,
     borderRadius: 999,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
   } as CSSProperties,
