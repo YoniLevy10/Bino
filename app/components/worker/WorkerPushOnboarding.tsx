@@ -20,7 +20,7 @@ type WorkerPushOnboardingProps = {
 }
 
 /**
- * Prominent prompt — hidden permanently after worker enables push notifications.
+ * Compact prompt — hidden once the worker enables push notifications.
  */
 export function WorkerPushOnboarding({
   token,
@@ -98,29 +98,71 @@ export function WorkerPushOnboarding({
 
   return (
     <div
-      className="lg-glass"
+      className="lg-glass worker-push-onboarding"
       style={{
-        margin: '0 12px 10px',
-        padding: '14px',
-        borderRadius: 16,
-        background: 'transparent',
-        border: 'none',
+        margin: 0,
+        padding: '12px',
+        borderRadius: 18,
+        background: colors.surface,
+        border: `1px solid ${colors.border}`,
         direction: 'rtl',
+        display: 'grid',
+        gridTemplateColumns: unsupported || denied ? '38px minmax(0, 1fr) auto' : '38px minmax(0, 1fr) auto',
+        alignItems: 'center',
+        gap: 10,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: '15px', color: colors.textPrimary, marginBottom: '6px' }}>
-            קבלו התראה על תקלות חדשות
-          </div>
-          <p style={{ fontSize: '13px', color: colors.textSecondary, margin: 0, lineHeight: 1.5 }}>
-            {unsupported
-              ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
-              : denied
-                ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
-                : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
-          </p>
+      <span
+        aria-hidden="true"
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 13,
+          display: 'grid',
+          placeItems: 'center',
+          background: colors.primaryMuted,
+          color: colors.primary,
+        }}
+      >
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M10 21h4" />
+        </svg>
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: '14px', color: colors.textPrimary, marginBottom: '3px' }}>
+          קבלו התראה על תקלות חדשות
         </div>
+        <p style={{ fontSize: '13px', color: colors.textSecondary, margin: 0, lineHeight: 1.4 }}>
+          {unsupported
+            ? 'הוסיפו את האפליקציה למסך הבית (Android: תפריט → הוסף / iPhone: שיתוף → למסך הבית), ואז הפעילו התראות.'
+            : denied
+              ? 'ההתראות חסומות. פתחו הגדרות הדפדפן / האפליקציה והפעילו התראות עבור «אזור עובד».'
+              : `בכל תקלה חדשה ובכל שיבוץ תקבלו הודעה${openTicketCount > 0 ? ' + מספר על האייקון' : ''} — גם כשהאפליקציה סגורה.`}
+        </p>
+      </div>
+      {!unsupported && !denied ? (
+        <button
+          type="button"
+          className="lg-btn-primary"
+          onClick={() => void enable()}
+          disabled={loading}
+          style={{
+            width: 'auto',
+            flexShrink: 0,
+            padding: '10px 12px',
+            borderRadius: 14,
+            border: 'none',
+            fontWeight: 800,
+            fontSize: '14px',
+            cursor: loading ? 'wait' : 'pointer',
+            minHeight: 44,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {loading ? 'מפעיל…' : 'הפעל התראות'}
+        </button>
+      ) : (
         <button
           type="button"
           aria-label="הסתר"
@@ -146,28 +188,7 @@ export function WorkerPushOnboarding({
         >
           ×
         </button>
-      </div>
-      {!unsupported && !denied ? (
-        <button
-          type="button"
-          className="lg-btn-primary"
-          onClick={() => void enable()}
-          disabled={loading}
-          style={{
-            width: '100%',
-            marginTop: 12,
-            padding: '12px 16px',
-            borderRadius: 14,
-            border: 'none',
-            fontWeight: 800,
-            fontSize: '15px',
-            cursor: loading ? 'wait' : 'pointer',
-            minHeight: 48,
-          }}
-        >
-          {loading ? 'מפעיל…' : 'הפעל התראות'}
-        </button>
-      ) : null}
+      )}
     </div>
   )
 }

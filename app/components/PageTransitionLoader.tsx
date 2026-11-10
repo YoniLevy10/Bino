@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
 import { tryReadWorkerPortalBranding } from '@/lib/worker-branding'
 import { useClientBranding, tryReadBrandingFromSessionCache } from './ClientBrandingContext'
 
 const DEFAULT_LOGO = '/bino-mark.png'
+const subscribeToClientCache = () => () => {}
+const getServerLogoSnapshot = () => null
 
 const logoStyle = {
   width: 72,
@@ -27,17 +29,19 @@ export function PageTransitionLoader({
   const pathname = usePathname()
   const isWorker = isWorkerPortalPath(pathname)
   const { logoUrl: ctxLogoUrl, isBootstrapped } = useClientBranding()
-  const [managerCached] = useState(() => (isWorker ? null : tryReadBrandingFromSessionCache()))
-
-  // Live-read worker cache so logo appears as soon as bootstrap writes it.
-  const workerCached = isWorker ? tryReadWorkerPortalBranding() : null
+  const cachedLogoUrl = useSyncExternalStore(
+    subscribeToClientCache,
+    () =>
+      isWorker
+        ? tryReadWorkerPortalBranding()?.logoUrl ?? null
+        : tryReadBrandingFromSessionCache()?.logoUrl ?? null,
+    getServerLogoSnapshot,
+  )
 
   const src =
     (logoUrlOverride && logoUrlOverride.trim()) ||
-    (isWorker ? workerCached?.logoUrl : null) ||
-    (!isWorker && isBootstrapped && (ctxLogoUrl || managerCached?.logoUrl)
-      ? ctxLogoUrl || managerCached!.logoUrl!
-      : null) ||
+    (isWorker ? cachedLogoUrl : null) ||
+    (!isWorker && isBootstrapped ? ctxLogoUrl || cachedLogoUrl : null) ||
     DEFAULT_LOGO
 
   return (

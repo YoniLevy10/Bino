@@ -50,6 +50,7 @@ type WorkerTicketCardProps = {
   attachmentsLoading?: boolean
   onUploadPhoto?: (file: File) => void
   uploadingPhoto?: boolean
+  showAttendanceHint?: boolean
   canMarkEscort?: boolean
   onEscort?: (note: string, file: File | null) => void
   escortBusy?: boolean
@@ -73,10 +74,11 @@ function locationLine(ticket: WorkerTicketCardTicket): string {
   return parts.join(' · ')
 }
 
-function shortProblem(desc: string): string {
-  const line = desc.replace(/\s+/g, ' ').trim()
-  if (line.length <= 68) return line
-  return `${line.slice(0, 66).trim()}…`
+function priorityLabel(priority: string): string {
+  if (priority === 'URGENT') return 'דחופה'
+  if (priority === 'HIGH') return 'גבוהה'
+  if (priority === 'LOW') return 'נמוכה'
+  return 'רגילה'
 }
 
 export function WorkerTicketCard({
@@ -99,6 +101,7 @@ export function WorkerTicketCard({
   attachmentsLoading = false,
   onUploadPhoto,
   uploadingPhoto = false,
+  showAttendanceHint = false,
   canMarkEscort = false,
   onEscort,
   escortBusy = false,
@@ -139,47 +142,76 @@ export function WorkerTicketCard({
     }
   }
 
-  const urgent = priority === 'URGENT' || priority === 'HIGH'
-  const started = ticket.status === 'IN_PROGRESS' || ticket.status === 'WAITING_PARTS'
-
-  if (!isActive && !expandedChat && !expandedWa) {
+  if (!isActive && !expandedWa && !expandedChat) {
     return (
       <button
         type="button"
-        className="worker-card-expand"
+        className="lg-glass worker-card-expand worker-ticket-card"
         style={styles.compact(colors, priority)}
         onClick={onActivate}
         aria-expanded={false}
+        aria-label={`פתיחת תקלה מספר ${ticket.ticket_number}, ${ticketStatusLabelHe(ticket.status)}, עדיפות ${priorityLabel(priority)}${loc ? `, ${loc}` : ''}`}
       >
-        <span style={styles.rowBody}>
-          <span style={styles.compactLoc(colors)}>{loc || `#${ticket.ticket_number}`}</span>
-          <span style={styles.compactDesc(colors)}>{shortProblem(desc)}</span>
+        <span className="worker-ticket-card__top">
+          <span className="worker-ticket-card__identity">
+            <span className="worker-ticket-card__number" style={{ color: colors.primary }}>
+              #{ticket.ticket_number}
+            </span>
+            <StatusBadge status={ticket.status} size="sm" />
+          </span>
+          <span className="worker-ticket-card__meta" style={{ color: colors.textMuted }}>
+            <span>{relativeWhen}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </span>
         </span>
-        <span style={styles.rowMeta}>
-          {urgent ? <PriorityDot priority={priority} /> : null}
-          {started ? <StatusBadge status={ticket.status} size="sm" /> : null}
-          <span style={styles.when(colors)}>{relativeWhen}</span>
+        {loc ? (
+          <span className="worker-ticket-card__location" style={{ color: colors.textMuted }} title={loc}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            <span>{loc}</span>
+          </span>
+        ) : null}
+        <span className="worker-ticket-card__description" style={{ color: colors.textPrimary }}>
+          {desc}
+        </span>
+        <span className="worker-ticket-card__footer" style={{ borderColor: colors.border }}>
+          <span className="worker-ticket-card__priority" style={{ color: colors.textSecondary }}>
+            <PriorityDot priority={priority} />
+            עדיפות {priorityLabel(priority)}
+          </span>
+          <span className="worker-ticket-card__open" style={{ color: colors.primary }}>
+            פרטים ועדכון
+          </span>
         </span>
       </button>
     )
   }
 
   return (
-    <article className="worker-card-expand" style={styles.card(colors, priority)}>
+    <article className="lg-glass worker-card-expand" style={styles.card(colors, priority)}>
       <button
         type="button"
         style={styles.collapseHeader(colors)}
         onClick={onActivate}
         aria-expanded={true}
-        aria-label={`כווץ תקלה ${ticket.ticket_number}`}
+        aria-label={`צמצום פרטי תקלה ${ticket.ticket_number}`}
       >
-        <div style={styles.jobKicker(colors)}>
-          <span>#{ticket.ticket_number}</span>
-          <span>{relativeWhen}</span>
-          {started ? <StatusBadge status={ticket.status} size="sm" /> : null}
-          <span style={styles.collapseHint(colors)}>כווץ</span>
-        </div>
-        <div style={styles.jobTitle(colors)}>{loc || `תקלה ${ticket.ticket_number}`}</div>
+        <span style={styles.compactRow}>
+          <span style={styles.num(colors)}>#{ticket.ticket_number}</span>
+          <StatusBadge status={ticket.status} size="sm" />
+          <span style={styles.when(colors)} title={new Date(ticket.created_at).toLocaleString('he-IL')}>
+            {relativeWhen}
+          </span>
+          <span style={styles.collapseHint(colors)}>צמצום</span>
+        </span>
+        {loc ? <span style={styles.compactLoc(colors)}>{loc}</span> : null}
+        {showAttendanceHint && loc ? (
+          <span style={styles.attendanceHint(colors)}>כניסה ויציאה מהמשמרת — הצמידו את הטלפון למדבקת NFC בבניין</span>
+        ) : null}
       </button>
 
       <div style={styles.expandedBody}>
@@ -187,13 +219,18 @@ export function WorkerTicketCard({
 
         <p style={descOpen ? styles.descOpen(colors) : styles.descClamp(colors)}>{desc}</p>
 
-        {longDesc ? (
-          <div style={styles.toolRow}>
+        <div style={styles.toolRow}>
+          {longDesc ? (
             <button type="button" style={styles.linkBtn(colors)} onClick={() => setDescOpen((v) => !v)}>
               {descOpen ? 'פחות' : 'קרא עוד'}
             </button>
-          </div>
-        ) : null}
+          ) : null}
+          {desc !== '—' ? (
+            <button type="button" style={styles.linkBtn(colors)} onClick={onTranslate} disabled={translating}>
+              {translating ? 'מתרגם…' : 'תרגום לעברית'}
+            </button>
+          ) : null}
+        </div>
 
         {translation ? (
           <div style={styles.translationBox(colors)}>
@@ -202,57 +239,9 @@ export function WorkerTicketCard({
           </div>
         ) : null}
 
-        {attachmentsLoading ? (
-          <p style={styles.attachMuted(colors)}>טוען תמונות…</p>
-        ) : otherMedia.length > 0 || completionPhotos.length > 0 ? (
-          <div style={styles.attachSection}>
-            {otherMedia.length > 0 ? (
-              <div style={styles.gallery}>
-                {otherMedia.map((a) =>
-                  a.mime_type?.startsWith('video/') ? (
-                    <div key={a.id} style={styles.videoWrap}>
-                      <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
-                      <span style={styles.videoLabel}>סרטון</span>
-                    </div>
-                  ) : (
-                    <a
-                      key={a.id}
-                      href={a.public_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.thumbWrap}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
-                    </a>
-                  )
-                )}
-              </div>
-            ) : null}
-            {completionPhotos.length > 0 ? (
-              <>
-                <p style={styles.attachReady(colors)}>תמונה שמורה — תישלח לדייר בסגירה</p>
-                <div style={styles.gallery}>
-                  {completionPhotos.map((a) => (
-                    <a
-                      key={a.id}
-                      href={a.public_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.thumbWrap}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
-                    </a>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-
         {showQuickActions ? (
-          <div style={styles.actionsBlock}>
+          <div style={styles.section(colors)}>
+            <div style={styles.sectionTitle(colors)}>מה לעשות?</div>
             <div
               style={
                 tel && waze && hasResidentPhone
@@ -261,13 +250,13 @@ export function WorkerTicketCard({
               }
             >
               {tel ? (
-                <a href={tel} className="lg-glass" style={styles.quickBtn(colors, 'call')} aria-label="התקשר לדייר">
+                <a href={tel} className="lg-glass" style={styles.quickBtn(colors, 'call')}>
                   <span style={styles.quickBtnIcon} aria-hidden>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.74.34 1.53.57 2.34.7A2 2 0 0 1 22 16.92z" />
                     </svg>
                   </span>
-                  <span>חייג</span>
+                  <span>התקשר לדייר</span>
                 </a>
               ) : null}
               {waze ? (
@@ -277,7 +266,6 @@ export function WorkerTicketCard({
                   rel="noopener noreferrer"
                   className="lg-glass"
                   style={styles.quickBtn(colors, 'waze')}
-                  aria-label="ניווט Waze"
                 >
                   <span style={styles.quickBtnIcon} aria-hidden>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -285,7 +273,7 @@ export function WorkerTicketCard({
                       <circle cx="12" cy="10" r="2.5" />
                     </svg>
                   </span>
-                  <span>נווט</span>
+                  <span>ניווט Waze</span>
                 </a>
               ) : null}
               {hasResidentPhone ? (
@@ -294,45 +282,68 @@ export function WorkerTicketCard({
                   onClick={onToggleWa}
                   className="lg-glass"
                   style={styles.quickBtn(colors, 'whatsapp', expandedWa)}
-                  aria-label="WhatsApp לדייר"
                 >
                   <span style={styles.quickBtnIcon} aria-hidden>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 11.5a8.4 8.4 0 0 1-9.2 8.4 8.4 8.4 0 0 1-3.5-.8L3 21l1.9-5.1a8.4 8.4 0 1 1 16.1-4.4Z" />
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </span>
-                  <span>וואטסאפ</span>
+                  <span>WhatsApp לדייר</span>
                 </button>
               ) : null}
             </div>
-            {expandedWa && waSlot ? <div className="wa-ticket-frame" style={{ marginTop: 12 }}>{waSlot}</div> : null}
           </div>
         ) : null}
 
-        <button
-          type="button"
-          disabled={statusBusy}
-          onClick={() => onStatusChange('CLOSED')}
-          style={styles.closeBtn(colors, ticket.status === 'CLOSED')}
-        >
-          סיימתי
-        </button>
-        <div style={styles.statusPair}>
-          {QUICK_STATUSES.filter((opt) => opt.value !== 'CLOSED').map((opt) => {
-            const active = ticket.status === opt.value
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                disabled={statusBusy}
-                onClick={() => onStatusChange(opt.value)}
-                className={active ? 'lg-nav-active' : 'lg-glass'}
-                style={styles.statusBtn(colors, opt.tone, active)}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
+        {expandedWa && waSlot ? <div style={styles.threadWrap(colors)}>{waSlot}</div> : null}
+
+        <div style={styles.section(colors)}>
+          <div style={styles.sectionTitle(colors)}>מה הסטטוס?</div>
+          <div style={styles.statusGrid}>
+            {QUICK_STATUSES.map((opt) => {
+              const active = ticket.status === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={statusBusy}
+                  onClick={() => onStatusChange(opt.value)}
+                  className={opt.tone === 'primary' && !active ? 'lg-btn-primary' : active ? 'lg-nav-active' : 'lg-glass'}
+                  style={styles.statusBtn(colors, opt.tone, active)}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            style={styles.moreStatusToggle(colors)}
+            onClick={() => setMoreStatusOpen((v) => !v)}
+          >
+            {showMoreStatus ? '▼ אפשרויות נוספות' : '▶ אפשרויות נוספות'}
+          </button>
+          {showMoreStatus ? (
+            <div style={styles.moreStatusRow}>
+              {MORE_STATUSES.map((opt) => {
+                const active = ticket.status === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={statusBusy}
+                    onClick={() => onStatusChange(opt.value)}
+                    style={styles.moreStatusBtn(colors, active)}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+          <div style={styles.currentStatus(colors)}>
+            עכשיו: {ticketStatusLabelHe(ticket.status, { feminine: true })}
+          </div>
         </div>
 
         {canMarkEscort && onEscort && ticket.status !== 'CLOSED' ? (
@@ -402,75 +413,97 @@ export function WorkerTicketCard({
           </div>
         ) : null}
 
-        {onUploadPhoto ? (
-          <div style={styles.photoRow}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              capture="environment"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) onUploadPhoto(file)
-                e.target.value = ''
-              }}
-            />
-            <Button
-              variant="secondary"
-              size="md"
-              loading={uploadingPhoto}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ width: '100%' }}
-            >
-              צלם לדייר (לא חובה)
-            </Button>
-          </div>
-        ) : null}
-
-        <button
-          type="button"
-          style={styles.moreStatusToggle(colors)}
-          onClick={() => setMoreStatusOpen((v) => !v)}
-        >
-          {showMoreStatus ? '▼ אפשרויות נוספות' : '▶ אפשרויות נוספות'}
-        </button>
-        {showMoreStatus ? (
-          <div style={styles.morePanel}>
-            <div style={styles.moreStatusRow}>
-              {MORE_STATUSES.map((opt) => {
-                const active = ticket.status === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={statusBusy}
-                    onClick={() => onStatusChange(opt.value)}
-                    style={styles.moreStatusBtn(colors, active)}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-            <button type="button" onClick={onToggleChat} style={styles.officeLink(colors, expandedChat)}>
-              {expandedChat ? '▲ סגור הודעה למשרד' : 'הודעה למשרד בלבד (הדייר לא רואה)'}
-            </button>
-            {desc !== '—' ? (
-              <button type="button" style={styles.linkBtn(colors)} onClick={onTranslate} disabled={translating}>
-                {translating ? 'מתרגם…' : 'תרגום לעברית'}
-              </button>
-            ) : null}
-            <button type="button" style={styles.numCopyBtn(colors)} onClick={() => void copyTicketNumber()}>
-              העתק מספר תקלה #{ticket.ticket_number}
-            </button>
-            <div style={styles.currentStatus(colors)}>
-              עכשיו: {ticketStatusLabelHe(ticket.status, { feminine: true })}
-            </div>
-          </div>
-        ) : null}
+        <div style={styles.officeRow}>
+          <button
+            type="button"
+            onClick={onToggleChat}
+            style={styles.officeLink(colors, expandedChat)}
+          >
+            {expandedChat ? '▲ סגור הודעה למשרד' : 'הודעה למשרד בלבד (הדייר לא רואה)'}
+          </button>
+        </div>
 
         {expandedChat && chatSlot ? <div style={styles.threadWrap(colors)}>{chatSlot}</div> : null}
+
+        <div style={styles.attachSection}>
+          <div style={styles.attachHead(colors)}>תמונה לדייר (לא חובה)</div>
+          {attachmentsLoading ? (
+            <p style={styles.attachMuted(colors)}>טוען…</p>
+          ) : (
+            <>
+              {otherMedia.length > 0 ? (
+                <div style={styles.gallery}>
+                  {otherMedia.map((a) =>
+                    a.mime_type?.startsWith('video/') ? (
+                      <div key={a.id} style={styles.videoWrap}>
+                        <video src={a.public_url || ''} controls preload="metadata" playsInline style={styles.videoThumb} />
+                      </div>
+                    ) : (
+                      <a
+                        key={a.id}
+                        href={a.public_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.thumbWrap}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
+                      </a>
+                    )
+                  )}
+                </div>
+              ) : null}
+              {completionPhotos.length > 0 ? (
+                <>
+                  <p style={styles.attachReady(colors)}>תמונה שמורה — תישלח לדייר אם תסגרו את התקלה</p>
+                  <div style={styles.gallery}>
+                    {completionPhotos.map((a) => (
+                      <a
+                        key={a.id}
+                        href={a.public_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.thumbWrap}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.public_url || ''} alt={a.file_name} style={styles.thumb} />
+                      </a>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </>
+          )}
+          {onUploadPhoto ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) onUploadPhoto(file)
+                  e.target.value = ''
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={uploadingPhoto}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                צלם לדייר (לא חובה)
+              </Button>
+              <p style={styles.attachHint(colors)}>אפשר לסגור את התקלה בלי תמונה — «סגור תקלה» למעלה</p>
+            </>
+          ) : null}
+        </div>
+
+        <button type="button" style={styles.numCopyBtn(colors)} onClick={() => void copyTicketNumber()}>
+          העתק מספר תקלה #{ticket.ticket_number}
+        </button>
       </div>
     </article>
   )
@@ -486,37 +519,16 @@ const priorityBorder: Record<string, string> = {
 const styles = {
   compact: (c: typeof theme.colors, priority: string): CSSProperties => ({
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexDirection: 'column',
+    alignItems: 'stretch',
     width: '100%',
-    maxWidth: '100%',
-    minWidth: 0,
-    overflow: 'hidden',
+    boxSizing: 'border-box',
     textAlign: 'right',
-    padding: '14px 2px',
-    border: 'none',
-    borderBottom: `1px solid ${c.border}`,
-    borderInlineStart: priority === 'URGENT' || priority === 'HIGH' ? `3px solid ${priorityBorder[priority]}` : 'none',
-    background: 'transparent',
+    font: 'inherit',
+    border: `1px solid ${c.border}`,
+    borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     cursor: 'pointer',
-    minHeight: 56,
   }),
-  rowBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    minWidth: 0,
-    flex: 1,
-    gap: 2,
-  } as CSSProperties,
-  rowMeta: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: 4,
-    flexShrink: 0,
-  } as CSSProperties,
   compactRow: {
     display: 'flex',
     alignItems: 'center',
@@ -525,53 +537,28 @@ const styles = {
     marginBottom: '4px',
   } as CSSProperties,
   compactLoc: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '17px',
-    fontWeight: 750,
-    color: c.textPrimary,
-    letterSpacing: '-0.02em',
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: c.textMuted,
+    marginBottom: '5px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    maxWidth: '100%',
   }),
-  compactDesc: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '14px',
-    margin: 0,
-    color: c.textSecondary,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    textAlign: 'right',
-    maxWidth: '100%',
+  attendanceHint: (c: typeof theme.colors): CSSProperties => ({
+    display: 'block',
+    fontSize: '11px',
+    color: c.primary,
+    marginBottom: '6px',
+    fontWeight: 600,
   }),
   card: (c: typeof theme.colors, priority: string): CSSProperties => ({
     padding: 0,
-    borderRadius: 22,
-    border: 'none',
-    background: c.surface,
-    boxShadow: '0 10px 28px rgba(16, 43, 70, 0.08)',
-    borderInlineStart: priority === 'URGENT' || priority === 'HIGH' ? `4px solid ${priorityBorder[priority]}` : 'none',
+    borderRadius: 18,
+    border: `1px solid ${c.border}`,
+    borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     overflow: 'hidden',
-    margin: '8px 0 14px',
-  }),
-  jobKicker: (c: typeof theme.colors): CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-    fontSize: 12,
-    fontWeight: 650,
-    color: c.textMuted,
-    marginBottom: 4,
-  }),
-  jobTitle: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: 'clamp(22px, 6.4vw, 26px)',
-    fontWeight: 800,
-    letterSpacing: '-0.03em',
-    lineHeight: 1.2,
-    color: c.textPrimary,
-    textAlign: 'right',
-    overflowWrap: 'anywhere',
   }),
   collapseHeader: (c: typeof theme.colors): CSSProperties => ({
     display: 'block',
@@ -618,22 +605,21 @@ const styles = {
     fontWeight: 600,
     color: c.textPrimary,
     marginBottom: '8px',
-    overflowWrap: 'anywhere',
   }),
   descClamp: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '18px',
-    margin: '0 0 14px',
-    lineHeight: 1.4,
+    fontSize: '15px',
+    margin: '0 0 8px',
+    lineHeight: 1.45,
     color: c.textPrimary,
     display: '-webkit-box',
-    WebkitLineClamp: 4,
+    WebkitLineClamp: 3,
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
   }),
   descOpen: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '18px',
-    margin: '0 0 14px',
-    lineHeight: 1.4,
+    fontSize: '15px',
+    margin: '0 0 8px',
+    lineHeight: 1.45,
     color: c.textPrimary,
     whiteSpace: 'pre-wrap',
   }),
@@ -685,37 +671,10 @@ const styles = {
     color: c.textPrimary,
     marginBottom: '10px',
   }),
-  actionsBlock: {
-    marginBottom: '12px',
-  } as CSSProperties,
-  closeBtn: (c: typeof theme.colors, active: boolean): CSSProperties => ({
-    width: '100%',
-    minHeight: 58,
-    marginBottom: 8,
-    borderRadius: 16,
-    border: 'none',
-    background: active ? c.successMuted : c.success,
-    color: active ? c.success : '#fff',
-    fontSize: '18px',
-    fontWeight: 800,
-    letterSpacing: '-0.02em',
-    cursor: 'pointer',
-  }),
-  statusPair: {
+  statusGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     gap: '8px',
-    marginBottom: '10px',
-  } as CSSProperties,
-  photoRow: {
-    marginBottom: '12px',
-  } as CSSProperties,
-  morePanel: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: '8px',
-    marginTop: '4px',
   } as CSSProperties,
   statusBtn: (
     c: typeof theme.colors,
@@ -733,21 +692,19 @@ const styles = {
       borderRadius: 14,
       border: active ? `1.5px solid ${palette.border}` : 'none',
       background: active ? palette.bg : 'transparent',
-      color: active ? palette.text : c.textPrimary,
-      fontSize: '14px',
+      color: active ? palette.text : tone === 'primary' ? '#fff' : c.textPrimary,
+      fontSize: '13px',
       fontWeight: 700,
       cursor: 'pointer',
       lineHeight: 1.25,
-      minHeight: 48,
-      whiteSpace: 'normal',
+      minHeight: '52px',
     }
   },
   moreStatusToggle: (c: typeof theme.colors): CSSProperties => ({
     marginTop: '8px',
     background: 'none',
     border: 'none',
-    padding: '10px 0',
-    minHeight: 44,
+    padding: '4px 0',
     fontSize: '12px',
     fontWeight: 600,
     color: c.textMuted,
@@ -793,26 +750,24 @@ const styles = {
   ): CSSProperties => {
     const palette =
       kind === 'call'
-        ? { bg: c.successMuted, text: c.success }
+        ? { border: c.success, bg: c.successMuted, text: c.success }
         : kind === 'whatsapp'
-          ? { bg: active ? '#dcf8c6' : '#e8f8ee', text: '#128C7E' }
-          : { bg: c.primaryMuted, text: c.primary }
+          ? { border: '#25D366', bg: active ? '#dcf8c6' : '#e8f8ee', text: '#128C7E' }
+          : { border: c.primary, bg: c.primaryMuted, text: c.primary }
     return {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       gap: '6px',
-      minHeight: '64px',
-      padding: '8px 6px',
-      borderRadius: 16,
-      border: 'none',
-      background: palette.bg,
+      minHeight: '76px',
+      padding: '10px 6px',
+      borderRadius: 14,
+      border: active ? `1.5px solid ${palette.border}` : 'none',
+      background: 'transparent',
       color: palette.text,
-      fontSize: '14px',
+      fontSize: '13px',
       fontWeight: 800,
-      maxWidth: '100%',
-      overflow: 'hidden',
       textDecoration: 'none',
       textAlign: 'center',
       lineHeight: 1.25,
@@ -894,25 +849,12 @@ const styles = {
     objectFit: 'cover',
   } as CSSProperties,
   videoWrap: {
-    position: 'relative',
     width: '128px',
     height: '80px',
     borderRadius: '10px',
     overflow: 'hidden',
     flexShrink: 0,
-    background: '#1c1c1e',
-  } as CSSProperties,
-  videoLabel: {
-    position: 'absolute',
-    insetInlineStart: 6,
-    bottom: 6,
-    padding: '2px 6px',
-    borderRadius: 6,
-    background: 'rgba(0,0,0,0.65)',
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 700,
-    pointerEvents: 'none',
+    background: '#000',
   } as CSSProperties,
   videoThumb: {
     width: '100%',
