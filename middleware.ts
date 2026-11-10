@@ -24,7 +24,7 @@ import {
   applyMiddlewareSupabaseCookies,
   redirectWithMiddlewareCookies,
 } from '@/lib/middleware-auth-cookies'
-import { shouldSignOutForTenantGate } from '@/lib/middleware-tenant-gate'
+import { bearerFallbackJwt, shouldSignOutResolvedSession } from '@/lib/user-access-jwt'
 
 type Pending = { response: NextResponse }
 
@@ -51,6 +51,31 @@ function createMiddlewareSupabase(req: NextRequest, pending: Pending) {
 /** Keep auth cookies that getUser() may have refreshed when swapping to a redirect. */
 function redirectWithCookies(pending: Pending, url: URL) {
   return redirectWithMiddlewareCookies(pending, url)
+}
+
+/**
+ * Cookie session first. For API routes only, a Supabase user JWT in Authorization
+ * is accepted when no cookie user exists. Invalid bearer tokens do not sign out.
+ */
+async function resolveMiddlewareUser(
+  supabase: NonNullable<ReturnType<typeof createMiddlewareSupabase>>,
+  req: NextRequest,
+  allowBearer: boolean
+): Promise<{ user: { id: string } | null; viaBearer: boolean }> {
+  const cookie = await supabase.auth.getUser()
+  const jwt = bearerFallbackJwt({
+    cookieUserPresent: Boolean(cookie.data.user),
+    authorization: req.headers.get('authorization'),
+    allowBearer,
+  })
+  if (!jwt) return { user: cookie.data.user ?? null, viaBearer: false }
+  try {
+    const bearer = await supabase.auth.getUser(jwt)
+    if (!bearer.data.user) return { user: null, viaBearer: false }
+    return { user: bearer.data.user, viaBearer: true }
+  } catch {
+    return { user: null, viaBearer: false }
+  }
 }
 
 export async function middleware(req: NextRequest) {
@@ -205,9 +230,11 @@ export async function middleware(req: NextRequest) {
     if (!supabase) {
       return pending.response
     }
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { user } = await resolveMiddlewareUser(
+      supabase,
+      req,
+      isResidentPortalApiPath(pathname)
+    )
     if (!user) {
       if (isResidentPortalApiPath(pathname)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -250,9 +277,11 @@ export async function middleware(req: NextRequest) {
     return pending.response
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user, viaBearer } = await resolveMiddlewareUser(
+    supabase,
+    req,
+    pathname.startsWith('/api/')
+  )
 
   if (!user) {
     clearMiddlewareTenantCache(pending.response)
@@ -282,7 +311,7 @@ export async function middleware(req: NextRequest) {
       if (clientIds.length === 0) {
         clearMiddlewareTenantCache(pending.response)
         // Access control only — shouldSignOutForTenantGate('no_access') === true
-        if (shouldSignOutForTenantGate('no_access')) {
+        if (shouldSignOutResolvedSession('no_access', viaBearer)) {
           await supabase.auth.signOut()
         }
         if (pathname.startsWith('/api/')) {
@@ -299,7 +328,7 @@ export async function middleware(req: NextRequest) {
       if (clientIds.length > 1) {
         clearMiddlewareTenantCache(pending.response)
         // Access control only — never used for transient DB failures.
-        if (shouldSignOutForTenantGate('multi_tenant')) {
+        if (shouldSignOutResolvedSession('multi_tenant', viaBearer)) {
           await supabase.auth.signOut()
         }
         if (pathname.startsWith('/api/')) {

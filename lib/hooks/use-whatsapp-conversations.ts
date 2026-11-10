@@ -38,30 +38,44 @@ export async function fetchWhatsAppConversations(): Promise<WhatsAppConversation
   return json.conversations ?? []
 }
 
-export type WhatsAppThreadPayload = {
-  messages: WhatsAppMessageRow[]
-  inSession: boolean
-  context: WhatsAppInboxContext | null
-}
-
 export async function fetchWhatsAppMessages(
   conversationId: string,
   signal?: AbortSignal
-): Promise<WhatsAppThreadPayload> {
+): Promise<WhatsAppMessageRow[]> {
   const res = await whatsappUiFetch(
     `/api/whatsapp/messages?conversation_id=${encodeURIComponent(conversationId)}`,
     { credentials: 'same-origin', cache: 'no-store', signal }
   )
   const json = (await res.json()) as {
     messages?: WhatsAppMessageRow[]
+    error?: string
+  }
+  if (!res.ok) throw new Error(json.error || 'טעינת הודעות נכשלה')
+  return json.messages ?? []
+}
+
+export type WhatsAppThreadMeta = {
+  inSession: boolean
+  context: WhatsAppInboxContext | null
+}
+
+/** Session window + ticket context. Loaded after bubbles so the thread can paint first. */
+export async function fetchWhatsAppThreadMeta(
+  conversationId: string,
+  signal?: AbortSignal
+): Promise<WhatsAppThreadMeta> {
+  const res = await whatsappUiFetch(
+    `/api/whatsapp/conversation-context?conversation_id=${encodeURIComponent(conversationId)}`,
+    { credentials: 'same-origin', cache: 'no-store', signal }
+  )
+  const json = (await res.json()) as {
     in_session?: boolean
     context?: WhatsAppInboxContext | null
     error?: string
   }
-  if (!res.ok) throw new Error(json.error || 'טעינת הודעות נכשלה')
+  if (!res.ok) throw new Error(json.error || 'טעינת פרטי שיחה נכשלה')
   return {
-    messages: json.messages ?? [],
-    inSession: json.in_session !== false,
+    inSession: json.in_session === true,
     context: json.context ?? null,
   }
 }
@@ -99,6 +113,23 @@ export function useWhatsAppMessages(conversationId: string | null) {
       ? queryKeys.whatsappMessages(conversationId)
       : (['whatsapp-messages', 'none'] as const),
     queryFn: ({ signal }) => fetchWhatsAppMessages(conversationId!, signal),
+    enabled: Boolean(conversationId),
+    staleTime: 20_000,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    networkMode: 'always',
+    retry: (failureCount, error) => failureCount < 1 && !isFetchTimeoutError(error),
+    retryDelay: 1000,
+  })
+}
+
+export function useWhatsAppThreadMeta(conversationId: string | null) {
+  return useQuery({
+    queryKey: conversationId
+      ? queryKeys.whatsappThreadMeta(conversationId)
+      : (['whatsapp-thread-meta', 'none'] as const),
+    queryFn: ({ signal }) => fetchWhatsAppThreadMeta(conversationId!, signal),
     enabled: Boolean(conversationId),
     staleTime: 20_000,
     refetchOnMount: true,

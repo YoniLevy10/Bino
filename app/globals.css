@@ -6,39 +6,39 @@
   --font-sans: var(--font-heebo), 'Heebo', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
   
-  --color-background: #f4f7fb;
-  --color-foreground: #14283f;
+  --color-background: #F8FAFC;
+  --color-foreground: #0F172A;
   
   --color-surface: #FFFFFF;
   --color-surface-elevated: #FFFFFF;
-  --color-surface-hover: #f7f9fc;
-  --color-surface-active: #eaf3ff;
-  --color-muted: #f7f9fc;
+  --color-surface-hover: #F8FAFC;
+  --color-surface-active: #EFF6FF;
+  --color-muted: #F1F5F9;
   
-  --color-border: #e1e8f0;
-  --color-border-subtle: #eef2f7;
-  --color-border-strong: #c5d0dc;
+  --color-border: #E2E8F0;
+  --color-border-subtle: #F1F5F9;
+  --color-border-strong: #CBD5E1;
   
-  --color-text-primary: #14283f;
-  --color-text-secondary: #52657a;
-  --color-text-muted: #718197;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
   --color-text-inverse: #FFFFFF;
   
-  --color-primary: #007AFF;
-  --color-primary-hover: #0066E0;
-  --color-primary-active: #0055C4;
-  --color-primary-muted: rgba(0, 122, 255, 0.14);
-  --color-primary-subtle: rgba(0, 122, 255, 0.22);
-  --color-primary-text: #007AFF;
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-active: #1E40AF;
+  --color-primary-muted: rgba(37, 99, 235, 0.12);
+  --color-primary-subtle: rgba(37, 99, 235, 0.20);
+  --color-primary-text: #2563EB;
   
-  --color-success: #34C759;
-  --color-success-muted: #E8F9ED;
-  --color-warning: #a95f00;
-  --color-warning-muted: #fff3dc;
-  --color-error: #c33532;
-  --color-error-muted: #fff0ee;
-  --color-info: #007AFF;
-  --color-info-muted: #eaf3ff;
+  --color-success: #047857;
+  --color-success-muted: #D1FAE5;
+  --color-warning: #B45309;
+  --color-warning-muted: #FEF3C7;
+  --color-error: #BE123C;
+  --color-error-muted: #FFE4E6;
+  --color-info: #0369A1;
+  --color-info-muted: #E0F2FE;
 
   /* Marketing-only semantic palette; authenticated product surfaces keep their existing theme. */
   --color-marketing-paper: #f6f6f0;
@@ -58,8 +58,8 @@
 }
 
 :root {
-  --background: #f4f7fb;
-  --foreground: #14283f;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
   /*
    * Floating mobile tab bar clearance ABOVE the home indicator.
    * = float gap (8) + bar min-height (64) + content breathing (8).
@@ -68,9 +68,9 @@
   --mobile-bottom-nav-bar-height: 64px;
   --mobile-bottom-nav-height: 80px;
   /* Live+ — same DNA as production, denser ambient wrap */
-  --live-wrap-a: rgba(0, 122, 255, 0.42);
-  --live-wrap-b: rgba(90, 200, 250, 0.38);
-  --live-wrap-c: rgba(64, 156, 255, 0.24);
+  --live-wrap-a: rgba(37, 99, 235, 0.28);
+  --live-wrap-b: rgba(14, 165, 233, 0.22);
+  --live-wrap-c: rgba(37, 99, 235, 0.14);
 }
 
 
@@ -92,7 +92,7 @@ body {
     radial-gradient(1280px 760px at 94% -16%, var(--live-wrap-a), transparent 60%),
     radial-gradient(1040px 680px at -12% 112%, var(--live-wrap-b), transparent 56%),
     radial-gradient(780px 520px at 50% 18%, var(--live-wrap-c), transparent 64%),
-    radial-gradient(560px 380px at 18% 42%, rgba(0, 122, 255, 0.12), transparent 58%),
+    radial-gradient(560px 380px at 18% 42%, rgba(37, 99, 235, 0.12), transparent 58%),
     radial-gradient(640px 420px at 40% 70%, rgba(255, 255, 255, 0.5), transparent 60%),
     var(--background);
   background-attachment: fixed;
@@ -140,7 +140,7 @@ button, a, [role="button"], [role="tab"], label {
 }
 
 ::selection {
-  background: rgba(0, 122, 255, 0.22);
+  background: rgba(37, 99, 235, 0.22);
   color: inherit;
 }
 
@@ -285,7 +285,7 @@ select {
   width: 420px;
   height: 420px;
   border-radius: 9999px;
-  background: rgba(0, 122, 255, 0.12);
+  background: rgba(37, 99, 235, 0.12);
   filter: blur(64px);
   pointer-events: none;
   animation: bamakor-splash-glow 3s ease-in-out infinite;
@@ -462,6 +462,11 @@ select {
   padding-bottom: 0;
 }
 
+body.wa-keyboard-open .lg-tabbar {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .wa-ticket-sheet .wa-ticket {
   flex: 1 1 auto;
   min-height: 0;
@@ -535,16 +540,18 @@ body.wa-sheet-open [data-app-main] {
 @media (max-width: 768px) {
   .wa-app,
   .wa-app .lg-glass {
-    height: 100dvh;
+    /* Stop above the floating tab bar. Negative margin cancels main's nav padding. */
+    height: calc(100dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px));
     min-height: 0;
-    max-height: 100dvh;
+    max-height: calc(100dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(-1 * (var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px)));
   }
 
   .wa-inbox-wrap {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: 100%;
+    max-height: 100%;
     min-height: 0;
     overflow: hidden;
   }
@@ -659,7 +666,7 @@ body.wa-sheet-open [data-app-main] {
 
 /* Home only: V2 soft page, solid cards. Severity color stays on the exception list. */
 .kiss-home {
-  background: #f4f7fb;
+  background: #F8FAFC;
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -669,7 +676,7 @@ body.wa-sheet-open [data-app-main] {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: 0 2px 8px rgba(16, 43, 70, 0.04);
-  border: 1px solid #e1e8f0;
+  border: 1px solid #E2E8F0;
 }
 
 /* Live+ liquid glass — production materials with richer blue tint wrap */
@@ -708,10 +715,10 @@ body.wa-sheet-open [data-app-main] {
 }
 
 .lg-nav-active {
-  background: rgba(0, 122, 255, 0.16);
+  background: rgba(37, 99, 235, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 0 0 0.5px rgba(0, 122, 255, 0.28);
+    inset 0 0 0 0.5px rgba(37, 99, 235, 0.28);
 }
 
 .lg-btn-primary {
@@ -721,7 +728,7 @@ body.wa-sheet-open [data-app-main] {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.48),
     inset 0 0 0 0.5px rgba(0, 40, 100, 0.18),
-    0 8px 22px rgba(0, 122, 255, 0.28);
+    0 8px 22px rgba(37, 99, 235, 0.28);
 }
 
 .lg-btn-primary:hover:not(:disabled) {
@@ -737,10 +744,10 @@ body.wa-sheet-open [data-app-main] {
 
 .lg-field:focus {
   outline: none;
-  border-color: rgba(0, 122, 255, 0.5);
+  border-color: rgba(37, 99, 235, 0.5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 0 0 4px rgba(0, 122, 255, 0.2);
+    0 0 0 4px rgba(37, 99, 235, 0.2);
 }
 
 .lg-chip {
@@ -751,8 +758,8 @@ body.wa-sheet-open [data-app-main] {
 }
 
 .lg-chip-active {
-  background: rgba(0, 122, 255, 0.14);
-  border: 0.5px solid rgba(0, 122, 255, 0.3);
+  background: rgba(37, 99, 235, 0.14);
+  border: 0.5px solid rgba(37, 99, 235, 0.3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   color: #007aff;
 }
@@ -846,10 +853,10 @@ body.wa-sheet-open [data-app-main] {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(1280px 760px at 94% -16%, rgba(0, 122, 255, 0.42), transparent 60%),
+    radial-gradient(1280px 760px at 94% -16%, rgba(37, 99, 235, 0.42), transparent 60%),
     radial-gradient(1040px 680px at -12% 112%, rgba(90, 200, 250, 0.38), transparent 56%),
     radial-gradient(780px 520px at 50% 18%, rgba(64, 156, 255, 0.24), transparent 64%),
-    radial-gradient(560px 380px at 18% 42%, rgba(0, 122, 255, 0.12), transparent 58%),
+    radial-gradient(560px 380px at 18% 42%, rgba(37, 99, 235, 0.12), transparent 58%),
     #dfe7f2;
 }
 
@@ -915,7 +922,7 @@ body.wa-sheet-open [data-app-main] {
 /* —— Resident portal auth / ambient polish —— */
 .resident-ambient-wash {
   background:
-    radial-gradient(1180px 700px at 94% -12%, rgba(0, 122, 255, 0.44), transparent 60%),
+    radial-gradient(1180px 700px at 94% -12%, rgba(37, 99, 235, 0.44), transparent 60%),
     radial-gradient(960px 600px at -12% 110%, rgba(90, 200, 250, 0.4), transparent 56%),
     radial-gradient(720px 480px at 48% 20%, rgba(64, 156, 255, 0.2), transparent 62%),
     radial-gradient(640px 420px at 48% 22%, rgba(255, 255, 255, 0.55), transparent 64%),
@@ -973,7 +980,7 @@ body.wa-sheet-open [data-app-main] {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     inset 0 0 0 0.5px rgba(0, 40, 100, 0.18),
-    0 12px 28px rgba(0, 122, 255, 0.3);
+    0 12px 28px rgba(37, 99, 235, 0.3);
 }
 
 .resident-auth-brand-name {
@@ -1037,14 +1044,14 @@ body.wa-sheet-open [data-app-main] {
 }
 
 .resident-otp-cell.is-filled {
-  border-color: rgba(0, 122, 255, 0.4);
+  border-color: rgba(37, 99, 235, 0.4);
   background: rgba(255, 255, 255, 0.88);
 }
 
 .resident-otp-cell.is-active {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 0 0 3px rgba(0, 122, 255, 0.18);
+    0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 /* Keep opacity:1 — iOS blocks Paste / SMS AutoFill on opacity:0 fields. */
@@ -1103,7 +1110,7 @@ body.wa-sheet-open [data-app-main] {
 
 /* Manager V2 shell: soft blue-gray page, solid cards, navy sidebar. */
 html[data-kiss='1'] body {
-  background: #f4f7fb;
+  background: #F8FAFC;
 }
 
 html[data-kiss='1'] .lg-glass,
@@ -1112,11 +1119,11 @@ html[data-kiss='1'] .lg-glass,
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: 0 2px 8px rgba(16, 43, 70, 0.04);
-  border: 1px solid #e1e8f0;
+  border: 1px solid #E2E8F0;
 }
 
 .kiss-app .lg-sidebar {
-  background: #102b46;
+  background: #0F172A;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
@@ -1130,9 +1137,9 @@ html[data-kiss='1'] .lg-glass,
 }
 
 .kiss-app .lg-sidebar .lg-nav-active {
-  background: #1d4266 !important;
+  background: #1E293B !important;
   color: #ffffff !important;
-  box-shadow: inset -3px 0 0 #007AFF !important;
+  box-shadow: inset -3px 0 0 #2563EB !important;
 }
 
 .kiss-app .lg-btn-primary {
@@ -1141,7 +1148,7 @@ html[data-kiss='1'] .lg-glass,
 
 .kiss-app .lg-tabbar {
   background: #ffffff;
-  border: 1px solid #e1e8f0;
+  border: 1px solid #E2E8F0;
   border-radius: 20px;
   box-shadow: 0 4px 16px rgba(16, 43, 70, 0.08);
   /* Never clip tab labels/icons inside the floating pill */
@@ -1169,7 +1176,7 @@ html[data-kiss='1'] .lg-glass,
 }
 
 .kiss-app :is(a, button, [role='button'], [role='tab']):focus-visible {
-  outline: 3px solid rgba(0, 122, 255, 0.38);
+  outline: 3px solid rgba(37, 99, 235, 0.38);
   outline-offset: 2px;
 }
 

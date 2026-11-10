@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
+import { getRequestUser } from '@/lib/request-user'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   getMembershipForUser,
@@ -85,10 +86,7 @@ export async function requireResidentContext(opts?: {
     }
   }
 
-  const {
-    data: { user },
-    error: uErr,
-  } = await supabase.auth.getUser()
+  const { user, error: uErr } = await getRequestUser(supabase)
   if (uErr || !user) {
     return {
       ok: false,

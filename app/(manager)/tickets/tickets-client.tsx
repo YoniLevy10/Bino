@@ -146,7 +146,11 @@ type ProjectRow = {
   project_code: string
 }
 
-const statusOptions = OPEN_TICKET_STATUS_FILTER_OPTIONS
+const statusOptions = [
+  ...OPEN_TICKET_STATUS_FILTER_OPTIONS.slice(0, 1),
+  { label: 'כל הטיפול', value: 'IN_TREATMENT' },
+  ...OPEN_TICKET_STATUS_FILTER_OPTIONS.slice(1),
+]
 
 const REFRESH_DEBOUNCE_MS = 30_000
 const TICKETS_INITIAL_LIMIT = 200
@@ -617,7 +621,8 @@ export default function TicketsPage() {
     const total = tickets.length
     const open = tickets.filter((t) => t.status === 'NEW').length
     const assigned = tickets.filter((t) => isTicketInTreatment(t.status)).length
-    return { total, open, assigned }
+    const unassigned = tickets.filter((t) => !t.assigned_worker_id).length
+    return { total, open, assigned, unassigned }
   }, [tickets])
 
   const projectOptions = useMemo(() => {
@@ -630,6 +635,7 @@ export default function TicketsPage() {
   const workerOptions = useMemo(() => {
     return [
       { label: 'כל העובדים', value: 'ALL' },
+      { label: 'ללא שיוך', value: 'UNASSIGNED' },
       ...workers.map((w) => ({ label: w.full_name, value: w.id })),
     ]
   }, [workers])
@@ -659,10 +665,16 @@ export default function TicketsPage() {
         (ticket.reporter_phone || '').toLowerCase().includes(q) ||
         (ticket.reporter_name || '').toLowerCase().includes(q)
 
-      const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'IN_TREATMENT'
+          ? isTicketInTreatment(ticket.status)
+          : ticket.status === statusFilter)
       const matchesPriority = priorityFilter === 'ALL' || (ticket.priority || '').toUpperCase() === priorityFilter
       const matchesProject = projectFilter === 'ALL' || ticket.project_code === projectFilter
-      const matchesWorker = workerFilter === 'ALL' || ticket.assigned_worker_id === workerFilter
+      const matchesWorker =
+        workerFilter === 'ALL' ||
+        (workerFilter === 'UNASSIGNED' ? !ticket.assigned_worker_id : ticket.assigned_worker_id === workerFilter)
 
       return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesWorker
     })
@@ -1080,7 +1092,7 @@ export default function TicketsPage() {
       setStatusFilter('NEW')
       setPriorityFilter('ALL')
     } else if (chip === 'IN_PROGRESS') {
-      setStatusFilter('IN_PROGRESS')
+      setStatusFilter('IN_TREATMENT')
       setPriorityFilter('ALL')
     } else if (chip === 'URGENT') {
       setStatusFilter('ALL')
@@ -1091,7 +1103,7 @@ export default function TicketsPage() {
   function isMobileQuickChipActive(chip: string): boolean {
     if (chip === 'ALL') return statusFilter === 'ALL' && priorityFilter === 'ALL'
     if (chip === 'NEW') return statusFilter === 'NEW' && priorityFilter === 'ALL'
-    if (chip === 'IN_PROGRESS') return statusFilter === 'IN_PROGRESS' && priorityFilter === 'ALL'
+    if (chip === 'IN_PROGRESS') return statusFilter === 'IN_TREATMENT' && priorityFilter === 'ALL'
     if (chip === 'URGENT') return priorityFilter === 'URGENT' && statusFilter === 'ALL'
     return false
   }
@@ -1145,7 +1157,13 @@ export default function TicketsPage() {
       {isMobile && (
         <MobileHeader
           title="תקלות"
-          subtitle={`${filteredTickets.length} תקלות`}
+          subtitle={
+            stats.unassigned === 1
+              ? 'תקלה אחת ממתינה לשיוך'
+              : stats.unassigned > 1
+                ? `${stats.unassigned} ממתינות לשיוך`
+                : `${filteredTickets.length} תקלות`
+          }
           onMenuClick={openMenu}
         />
       )}
@@ -1232,19 +1250,11 @@ export default function TicketsPage() {
         </div>
       </Drawer>
 
-      {isMobile && (
-        <div style={{ padding: '12px 20px 0', display: 'flex', justifyContent: 'flex-start' }}>
-          <Button variant="primary" size="md" onClick={openAddTicketDrawer}>
-            תקלה חדשה
-          </Button>
-        </div>
-      )}
-
       <div
         style={{
           ...styles.content,
           ...(isMobile
-            ? { padding: '16px 16px 8px', maxWidth: '100%', boxSizing: 'border-box', minWidth: 0 }
+            ? { padding: '8px 16px 8px', maxWidth: '100%', boxSizing: 'border-box', minWidth: 0 }
             : { padding: '0 40px 32px' }),
         }}
       >
@@ -1335,15 +1345,58 @@ export default function TicketsPage() {
             )
           : null}
 
-        <KpiRow columns={isMobile ? 2 : 3} isMobile={isMobile}>
-          <KpiCard label="סה״כ פעילות" value={stats.total} accent="primary" />
-          <KpiCard label="פתוחות" value={stats.open} accent="warning" />
-          <KpiCard label="בטיפול" value={stats.assigned} accent="primary" />
-        </KpiRow>
+        {isMobile ? (
+          <div style={styles.mobileStatRow} role="group" aria-label="מצב התור">
+            <button
+              type="button"
+              onClick={() => setWorkerFilter((current) => (current === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED'))}
+              aria-pressed={workerFilter === 'UNASSIGNED'}
+              style={{
+                ...styles.mobileStat,
+                ...(workerFilter === 'UNASSIGNED' ? styles.mobileStatActive : {}),
+              }}
+            >
+              <span style={styles.mobileStatValue}>{stats.unassigned}</span>
+              <span style={styles.mobileStatLabel}>ללא שיוך</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => applyMobileQuickChip('NEW')}
+              aria-pressed={isMobileQuickChipActive('NEW')}
+              style={{
+                ...styles.mobileStat,
+                ...(isMobileQuickChipActive('NEW') ? styles.mobileStatActive : {}),
+              }}
+            >
+              <span style={styles.mobileStatValue}>{stats.open}</span>
+              <span style={styles.mobileStatLabel}>חדשות</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => applyMobileQuickChip('IN_PROGRESS')}
+              aria-pressed={isMobileQuickChipActive('IN_PROGRESS')}
+              style={{
+                ...styles.mobileStat,
+                ...(isMobileQuickChipActive('IN_PROGRESS') ? styles.mobileStatActive : {}),
+              }}
+            >
+              <span style={styles.mobileStatValue}>{stats.assigned}</span>
+              <span style={styles.mobileStatLabel}>בטיפול</span>
+            </button>
+          </div>
+        ) : (
+          <KpiRow columns={3}>
+            <KpiCard label="סה״כ פעילות" value={stats.total} accent="primary" />
+            <KpiCard label="פתוחות" value={stats.open} accent="warning" />
+            <KpiCard label="בטיפול" value={stats.assigned} accent="primary" />
+          </KpiRow>
+        )}
 
-        <p style={styles.closedHint}>
-          תקלות סגורות מופיעות בדף הסיכום, בלשונית היסטוריה ובהיסטוריית הפרויקט.
-        </p>
+        {!isMobile && (
+          <p style={styles.closedHint}>
+            תקלות סגורות מופיעות בדף הסיכום, בלשונית היסטוריה ובהיסטוריית הפרויקט.
+          </p>
+        )}
 
         {ticketsTruncated && (
           <div style={{
@@ -1378,6 +1431,12 @@ export default function TicketsPage() {
                 placeholder="חיפוש תקלות..."
                 style={{ width: '100%', maxWidth: 'none' }}
               />
+              <div style={styles.mobileQueueHead}>
+                <span style={styles.mobileQueueCount}>{filteredTickets.length} ברשימה</span>
+                <Button variant="primary" size="sm" onClick={openAddTicketDrawer}>
+                  תקלה חדשה
+                </Button>
+              </div>
               <div style={styles.chipRow}>
                 {MOBILE_QUICK_STATUS_CHIPS.map((chip) => (
                   <button
@@ -1392,17 +1451,14 @@ export default function TicketsPage() {
                     {chip.label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={openMobileToolsDrawer}
+                  style={styles.chip}
+                >
+                  סינון{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                </button>
               </div>
-              <Button
-                variant="secondary"
-                size="md"
-                type="button"
-                onClick={openMobileToolsDrawer}
-                style={{ width: '100%' }}
-              >
-                כלים וסינון
-                {activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-              </Button>
             </div>
           ) : (
             <div style={{
@@ -1493,11 +1549,11 @@ export default function TicketsPage() {
           ) : isMobile ? (
             <VirtualizedList
               items={filteredTickets}
-              estimateSize={128}
+              estimateSize={168}
               overscan={6}
               getKey={(ticket) => ticket.id}
               style={styles.mobileCardList}
-              maxHeight="min(72vh, 900px)"
+              maxHeight="calc(100dvh - 250px)"
               renderItem={(ticket) => (
                 <div style={{ paddingBottom: 10 }}>
                   <TicketMobileCard
@@ -1525,6 +1581,7 @@ export default function TicketsPage() {
               renderItem={(ticket) => (
                 <button
                   type="button"
+                  aria-label={`פתח תקלה ${ticket.ticket_number}`}
                   onClick={() => openTicket(ticket)}
                   style={{
                     display: 'grid',
@@ -1812,6 +1869,56 @@ const styles: Record<string, CSSProperties> = {
     margin: '0 0 16px',
     lineHeight: 1.45,
   },
+  mobileStatRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  mobileStat: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '2px',
+    minHeight: '58px',
+    padding: '10px 12px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    color: theme.colors.textSecondary,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'right',
+  },
+  mobileStatActive: {
+    borderColor: theme.colors.primary,
+    background: theme.colors.blueSoft,
+    color: theme.colors.primary,
+  },
+  mobileStatValue: {
+    fontSize: '20px',
+    fontWeight: 800,
+    letterSpacing: '-0.03em',
+    fontVariantNumeric: 'tabular-nums',
+    color: 'inherit',
+    lineHeight: 1.1,
+  },
+  mobileStatLabel: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: 'inherit',
+  },
+  mobileQueueHead: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+  },
+  mobileQueueCount: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: theme.colors.textSecondary,
+  },
   chipRow: {
     display: 'flex',
     gap: '8px',
@@ -1824,7 +1931,9 @@ const styles: Record<string, CSSProperties> = {
     padding: '8px 14px',
     minHeight: '40px',
     borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: theme.colors.border,
     background: theme.colors.surface,
     color: theme.colors.textSecondary,
     fontSize: '13px',

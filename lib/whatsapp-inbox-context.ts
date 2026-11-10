@@ -39,32 +39,35 @@ export async function loadWhatsAppInboxContext(
   opts: { phone: string; residentId?: string | null }
 ): Promise<WhatsAppInboxContext> {
   const normalizedPhone = normalizePhone(opts.phone)
-  let building_name: string | null = null
-  let resident_name = 'דייר/ה'
-
-  if (opts.residentId) {
-    const { data: residentRow } = await admin
-      .from('residents')
-      .select('full_name, projects(name)')
-      .eq('id', opts.residentId)
-      .eq('client_id', clientId)
-      .maybeSingle()
-
-    const row = residentRow as
-      | { full_name?: string | null; projects?: { name?: string | null } | { name?: string | null }[] }
-      | null
-    resident_name = residentFirstNameForTemplate(row?.full_name)
-    building_name = projectNameFromJoin(row?.projects)
-  } else {
-    const resident = await findResidentByPhoneClient(admin, clientId, normalizedPhone)
-    if (resident) {
-      resident_name = residentFirstNameForTemplate(resident.full_name)
-    }
-  }
-
   const ticketSelect = 'ticket_number, description, status, projects(name)'
 
-  const { data: openRows } = await admin
+  const residentPromise = (async () => {
+    if (opts.residentId) {
+      const { data: residentRow } = await admin
+        .from('residents')
+        .select('full_name, projects(name)')
+        .eq('id', opts.residentId)
+        .eq('client_id', clientId)
+        .maybeSingle()
+
+      const row = residentRow as
+        | { full_name?: string | null; projects?: { name?: string | null } | { name?: string | null }[] }
+        | null
+      return {
+        resident_name: residentFirstNameForTemplate(row?.full_name),
+        building_name: projectNameFromJoin(row?.projects),
+      }
+    }
+    const resident = await findResidentByPhoneClient(admin, clientId, normalizedPhone)
+    return {
+      resident_name: resident
+        ? residentFirstNameForTemplate(resident.full_name)
+        : 'דייר/ה',
+      building_name: null as string | null,
+    }
+  })()
+
+  const openPromise = admin
     .from('tickets')
     .select(ticketSelect)
     .eq('client_id', clientId)
@@ -74,7 +77,26 @@ export async function loadWhatsAppInboxContext(
     .order('created_at', { ascending: false })
     .limit(1)
 
-  const openRow = openRows?.[0] as
+  const closedPromise = admin
+    .from('tickets')
+    .select(ticketSelect)
+    .eq('client_id', clientId)
+    .eq('reporter_phone', normalizedPhone)
+    .eq('status', 'CLOSED')
+    .is('deleted_at', null)
+    .order('closed_at', { ascending: false })
+    .limit(1)
+
+  const [residentBits, openQuery, closedQuery] = await Promise.all([
+    residentPromise,
+    openPromise,
+    closedPromise,
+  ])
+
+  let building_name = residentBits.building_name
+  const resident_name = residentBits.resident_name
+
+  const openRow = openQuery.data?.[0] as
     | {
         ticket_number: number
         description: string | null
@@ -93,15 +115,7 @@ export async function loadWhatsAppInboxContext(
     building_name = projectNameFromJoin(openRow.projects)
   }
 
-  const { data: closedRows } = await admin
-    .from('tickets')
-    .select(ticketSelect)
-    .eq('client_id', clientId)
-    .eq('reporter_phone', normalizedPhone)
-    .eq('status', 'CLOSED')
-    .is('deleted_at', null)
-    .order('closed_at', { ascending: false })
-    .limit(1)
+  const closedRows = closedQuery.data
 
   const closedRow = closedRows?.[0] as
     | {

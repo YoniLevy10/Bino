@@ -15,6 +15,7 @@
  */
 import { NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
+import { getRequestUser } from '@/lib/request-user'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSingletonClientId } from '@/lib/singleton-client-server'
@@ -40,10 +41,7 @@ export async function requireSessionClientIdLite(): Promise<
   { ok: true; ctx: SessionClientContextLite } | { ok: false; response: NextResponse }
 > {
   const supabase = await createSupabaseRouteHandlerClient()
-  const {
-    data: { user },
-    error: uErr,
-  } = await supabase.auth.getUser()
+  const { user, error: uErr } = await getRequestUser(supabase)
   if (uErr || !user) {
     return {
       ok: false,

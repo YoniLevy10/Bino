@@ -7,7 +7,7 @@
   "scope": "/superadmin",
   "display": "standalone",
   "background_color": "#F9F9FB",
-  "theme_color": "#0066FF",
+  "theme_color": "#2563EB",
   "display_override": [
     "standalone",
     "minimal-ui",

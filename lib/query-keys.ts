@@ -20,6 +20,7 @@ export const queryKeys = {
   settings: (clientId: string) => ['settings', clientId] as const,
   whatsappConversations: (clientId: string) => ['whatsapp-conversations', clientId] as const,
   whatsappMessages: (conversationId: string) => ['whatsapp-messages', conversationId] as const,
+  whatsappThreadMeta: (conversationId: string) => ['whatsapp-thread-meta', conversationId] as const,
   attendanceDashboard: (clientId: string, from: string, to: string) =>
     ['attendance-dashboard', clientId, from, to] as const,
 }

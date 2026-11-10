@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
+import { getRequestUser } from '@/lib/request-user'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { listActiveMembershipsForUser } from '@/lib/resident-portal/memberships'
 
 export async function GET() {
   const supabase = await createSupabaseRouteHandlerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getRequestUser(supabase)
   if (!user) {
     return NextResponse.json({ error: 'נדרשת התחברות' }, { status: 401 })
   }

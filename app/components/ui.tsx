@@ -21,6 +21,7 @@ import {
   lazy,
   Suspense,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/utils/supabase/client'
 import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
@@ -824,7 +825,7 @@ const bottomNavStyles: Record<string, CSSProperties> = {
     position: 'fixed',
     insetInline: '12px',
     bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
-    zIndex: 95,
+    zIndex: 130,
     display: 'flex',
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
@@ -2247,10 +2248,6 @@ function useFocusTrap(
   }, [active, containerRef])
 }
 
-/** Space above home indicator reserved for floating tab bar (var excludes safe-area). */
-const MOBILE_BOTTOM_NAV_CLEARANCE =
-  'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))'
-
 export function Drawer({
   open,
   onClose,
@@ -2270,37 +2267,23 @@ export function Drawer({
   isMobile?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const mobileMenu = useMobileMenuOptional()
   useFocusTrap(open, panelRef, onClose)
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
   const mobile = !!isMobile
-  const bottomNavVisible = mobile && !!mobileMenu?.bottomNavVisible
+  // Portal to body. main uses overflow-x:clip, which traps z-index inside it,
+  // so a fixed overlay there stops above the floating tab bar.
   const panelStyle: CSSProperties = mobile
-    ? {
-        ...drawerStyles.panelMobile,
-        ...(bottomNavVisible
-          ? {
-              bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
-              maxHeight: `min(calc(92dvh - ${MOBILE_BOTTOM_NAV_CLEARANCE}), calc(100svh - ${MOBILE_BOTTOM_NAV_CLEARANCE}))`,
-            }
-          : {}),
-      }
+    ? drawerStyles.panelMobile
     : { ...drawerStyles.panelSide, width: '560px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
-    paddingBottom:
-      footer || bottomNavVisible
-        ? '24px'
-        : 'calc(24px + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: footer ? '24px' : 'calc(24px + env(safe-area-inset-bottom, 0px))',
   }
   const footerStyle: CSSProperties = {
     ...drawerStyles.footer,
-    /* Panel already sits above nav+safe-area when bottomNavVisible — don't double-pad */
-    paddingBottom: bottomNavVisible
-      ? '16px'
-      : 'calc(16px + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
   }
   const headerStyle: CSSProperties = {
     ...drawerStyles.header,
@@ -2308,7 +2291,7 @@ export function Drawer({
     paddingTop: mobile ? '16px' : 'calc(24px + env(safe-area-inset-top, 0px))',
   }
 
-  return (
+  return createPortal(
     <>
       <div style={drawerStyles.overlay} onClick={onClose} aria-hidden />
       <div
@@ -2347,7 +2330,8 @@ export function Drawer({
         <div style={contentStyle}>{children}</div>
         {footer ? <div style={footerStyle}>{footer}</div> : null}
       </div>
-    </>
+    </>,
+    document.body
   )
 }
 

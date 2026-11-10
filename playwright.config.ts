@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 
+/** Speed runs build their own production server so a `next dev` on :3000 is not measured. */
+const speedRun = process.env.E2E_SPEED === '1'
+const port = speedRun ? 3010 : 3000
+const baseURL = `http://127.0.0.1:${port}`
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -8,7 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
 
@@ -37,9 +42,11 @@ export default defineConfig({
 
   webServer: {
     // Use production server for stable E2E (avoids dev "Compiling..." overlay/timeouts)
-    command: 'npm run build && npm run start',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
+    command: speedRun
+      ? `npx next build --webpack && PORT=${port} npm run start`
+      : 'npm run build && npm run start',
+    url: baseURL,
+    reuseExistingServer: !process.env.CI && !speedRun,
+    timeout: speedRun ? 600_000 : 180_000,
   },
 })

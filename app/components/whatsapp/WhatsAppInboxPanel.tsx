@@ -23,6 +23,7 @@ import {
 import {
   useWhatsAppConversations,
   useWhatsAppMessages,
+  useWhatsAppThreadMeta,
 } from '@/lib/hooks/use-whatsapp-conversations'
 import { queryKeys } from '@/lib/query-keys'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
@@ -147,12 +148,17 @@ export function WhatsAppInboxPanel() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const messagesQuery = useWhatsAppMessages(selectedId)
-  const messages = (messagesQuery.data?.messages ?? []) as Message[]
+  const metaQuery = useWhatsAppThreadMeta(selectedId)
+  const messages = (messagesQuery.data ?? []) as Message[]
   const [sessionClosedLocally, setSessionClosedLocally] = useState(false)
-  const inSession = sessionClosedLocally ? false : (messagesQuery.data?.inSession ?? true)
-  const inboxContext = messagesQuery.data?.context ?? null
+  const inSession = sessionClosedLocally
+    ? false
+    : metaQuery.isError
+      ? false
+      : (metaQuery.data?.inSession ?? true)
+  const inboxContext = metaQuery.data?.context ?? null
   const templates = useMemo(() => listInboxUiTemplates(), [])
-  const sessionLoading = Boolean(selectedId) && messagesQuery.isLoading && !messagesQuery.data
+  const sessionLoading = Boolean(selectedId) && metaQuery.isLoading && !metaQuery.data
   const contextLoading = sessionLoading
   // Only the initial in-flight load — not background isFetching (avoids eternal "טוען").
   const messagesLoading =
@@ -214,6 +220,7 @@ export function WhatsAppInboxPanel() {
       void invalidateConversations()
       if (selectedId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(selectedId) })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappThreadMeta(selectedId) })
       }
     }, [invalidateConversations, queryClient, selectedId])
   )
@@ -226,6 +233,13 @@ export function WhatsAppInboxPanel() {
       document.body.style.overflow = prev
     }
   }, [useMobileThreadPortal])
+
+  useEffect(() => {
+    const keyboardOpen = useMobileThreadPortal && Boolean(portalFrame?.keyboardOpen)
+    if (!keyboardOpen) return
+    document.body.classList.add('wa-keyboard-open')
+    return () => document.body.classList.remove('wa-keyboard-open')
+  }, [useMobileThreadPortal, portalFrame?.keyboardOpen])
 
   // Belt-and-suspenders: if the request never settles (iOS timer throttle / hung fetch),
   // leave the infinite "טוען הודעות…" state and offer retry.
@@ -243,7 +257,10 @@ export function WhatsAppInboxPanel() {
   }, [invalidateConversations])
 
   const refreshMessages = useCallback(async (conversationId: string) => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(conversationId) })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(conversationId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.whatsappThreadMeta(conversationId) }),
+    ])
   }, [queryClient])
   const refreshMessagesRef = useRef(refreshMessages)
   const refreshConversationsRef = useRef(refreshConversations)
@@ -289,6 +306,7 @@ export function WhatsAppInboxPanel() {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappMessages(selectedId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappThreadMeta(selectedId) })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
@@ -774,8 +792,17 @@ export function WhatsAppInboxPanel() {
               data-keyboard={portalFrame?.keyboardOpen ? 'open' : 'closed'}
               style={
                 portalFrame
-                  ? { top: portalFrame.top, height: portalFrame.height, bottom: 'auto' }
-                  : undefined
+                  ? {
+                      top: portalFrame.top,
+                      height: portalFrame.keyboardOpen
+                        ? portalFrame.height
+                        : `calc(${portalFrame.height}px - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px))`,
+                      bottom: 'auto',
+                    }
+                  : {
+                      bottom:
+                        'calc(var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px))',
+                    }
               }
             >
               <section className="wa-inbox-thread wa-inbox-thread-portal" style={styles.threadPortal} aria-label="שיחה">

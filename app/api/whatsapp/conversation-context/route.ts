@@ -4,6 +4,7 @@ import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { z } from 'zod'
 import { loadWhatsAppInboxContext } from '@/lib/whatsapp-inbox-context'
+import { isConversationWithinWhatsAppSession } from '@/lib/whatsapp-message-store'
 
 const querySchema = z.object({
   conversation_id: z.string().uuid(),
@@ -33,10 +34,18 @@ export async function GET(req: NextRequest) {
   }
 
   const row = conv as { phone: string; resident_id?: string | null }
-  const context = await loadWhatsAppInboxContext(admin, auth.ctx.clientId, {
-    phone: row.phone,
-    residentId: row.resident_id,
-  })
+  const [context, inSession] = await Promise.all([
+    loadWhatsAppInboxContext(admin, auth.ctx.clientId, {
+      phone: row.phone,
+      residentId: row.resident_id,
+    }),
+    isConversationWithinWhatsAppSession(
+      admin,
+      auth.ctx.clientId,
+      parsed.data.conversation_id,
+      row.phone
+    ).catch(() => false),
+  ])
 
-  return NextResponse.json({ context })
+  return NextResponse.json({ context, in_session: inSession })
 }

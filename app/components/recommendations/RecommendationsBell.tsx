@@ -3,10 +3,10 @@
 import { useEffect, useId, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 import type { OpsBriefing } from '@/lib/ops-context/synthesize-briefing'
+import { loadRecommendationsClient } from '@/lib/recommendations/load-recommendations-client'
 import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
 import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
 
@@ -30,14 +30,10 @@ export function RecommendationsBell() {
 
   async function load() {
     try {
-      const res = await fetchWithTimeout('/api/recommendations?limit=30')
-      if (!res.ok) return
-      const body = (await res.json()) as {
-        recommendations?: ManagementRecommendationRow[]
-        briefing?: OpsBriefing | null
-      }
-      setRows(body.recommendations ?? [])
-      setBriefing(body.briefing ?? null)
+      const body = await loadRecommendationsClient()
+      if (!body) return
+      setRows(body.recommendations)
+      setBriefing(body.briefing)
     } finally {
       setLoading(false)
     }

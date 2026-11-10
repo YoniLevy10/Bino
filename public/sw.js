@@ -5,6 +5,12 @@ const HTML_CACHE = `bino-html-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/bino-mark.png', '/worker', '/worker/nfc']
 
 self.addEventListener('install', (event) => {
+  const localDev =
+    self.location.hostname === '127.0.0.1' || self.location.hostname === 'localhost'
+  if (localDev) {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
@@ -104,6 +110,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   const url = new URL(request.url)
   if (!isSameOrigin(url)) return
+  // Private dev server: never cache-first Next chunks, or local UI edits stay invisible.
+  if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') return
   if (url.pathname.startsWith('/api/')) return
 
   if (isNavigationRequest(request)) {

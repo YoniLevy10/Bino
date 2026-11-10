@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card, theme } from '@/app/components/ui'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
+import { loadRecommendationsClient } from '@/lib/recommendations/load-recommendations-client'
 import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'
 import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
 
@@ -45,10 +45,9 @@ export function AttentionRequired({ previewLimit = 3 }: Props) {
 
   async function load() {
     try {
-      const res = await fetchWithTimeout('/api/recommendations?limit=30')
-      if (!res.ok) return
-      const body = (await res.json()) as { recommendations?: ManagementRecommendationRow[] }
-      setRows(body.recommendations ?? [])
+      const body = await loadRecommendationsClient()
+      if (!body) return
+      setRows(body.recommendations)
     } finally {
       setLoading(false)
     }

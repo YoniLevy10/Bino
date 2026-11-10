@@ -1,13 +1,13 @@
 import { theme } from '@/app/components/ui'
 
 /** Light wash — same as manager ambient background. */
-export const WORKER_LIGHT_THEME_COLOR = '#dfe7f2'
+export const WORKER_LIGHT_THEME_COLOR = '#F8FAFC'
 /** Outdoor dark glass surface (higher opacity than manager light materials). */
 export const WORKER_DARK_THEME_COLOR = '#1c1c1e'
 
 /**
  * Dark liquid-glass palette for worker portal outdoor use.
- * Keeps iOS system blue (#007AFF) — Live+ preview.
+ * Primary matches the product blue (#2563EB). Dark surfaces stay outdoor charcoal.
  */
 export const workerDarkColors: typeof theme.colors = {
   ...theme.colors,
@@ -24,13 +24,13 @@ export const workerDarkColors: typeof theme.colors = {
   textSecondary: '#EBEBF5',
   textMuted: 'rgba(235, 235, 245, 0.6)',
   textInverse: '#FFFFFF',
-  primary: '#007AFF',
-  primaryHover: '#0A84FF',
-  primaryActive: '#409CFF',
-  primaryMuted: 'rgba(0, 122, 255, 0.22)',
-  primarySubtle: 'rgba(0, 122, 255, 0.32)',
-  primaryText: '#0A84FF',
-  accent: '#0A84FF',
+  primary: '#2563EB',
+  primaryHover: '#3B82F6',
+  primaryActive: '#60A5FA',
+  primaryMuted: 'rgba(37, 99, 235, 0.28)',
+  primarySubtle: 'rgba(59, 130, 246, 0.34)',
+  primaryText: '#3B82F6',
+  accent: '#3B82F6',
   success: '#30D158',
   successMuted: 'rgba(48, 209, 88, 0.18)',
   warning: '#FF9F0A',

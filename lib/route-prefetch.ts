@@ -5,6 +5,7 @@ import { fetchWorkersList } from '@/lib/hooks/use-workers-list'
 import { fetchProjectsList } from '@/lib/hooks/use-projects-list'
 import { fetchResidentsPage, RESIDENTS_PAGE_SIZE } from '@/lib/hooks/use-residents-list'
 import { fetchActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
+import { fetchWhatsAppConversations } from '@/lib/hooks/use-whatsapp-conversations'
 
 /** Prefetch App Router pages (+ shared RQ lists) on hover/touch/focus. */
 export function navLinkPrefetchHandlers(
@@ -56,6 +57,12 @@ export function navLinkPrefetchHandlers(
         queryKey: queryKeys.projects(clientId),
         queryFn: () => fetchProjectsList(clientId),
         staleTime: 60_000,
+      })
+    } else if (href === '/whatsapp-inbox') {
+      void qc.prefetchQuery({
+        queryKey: queryKeys.whatsappConversations(clientId),
+        queryFn: fetchWhatsAppConversations,
+        staleTime: 30_000,
       })
     }
   }

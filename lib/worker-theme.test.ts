@@ -7,15 +7,15 @@ import {
 import { theme } from '@/app/components/ui/theme'
 
 describe('worker liquid-glass theme', () => {
-  it('keeps iOS system blue in dark outdoor palette', () => {
-    expect(workerDarkColors.primary).toBe('#007AFF')
+  it('uses the product primary in the dark outdoor palette', () => {
+    expect(workerDarkColors.primary).toBe('#2563EB')
     expect(workerDarkColors.primary).toBe(theme.colors.primary)
   })
 
   it('uses charcoal glass wash colors — not slate dashboard', () => {
     expect(workerDarkColors.background).toBe(WORKER_DARK_THEME_COLOR)
     expect(workerDarkColors.background).not.toBe('#0f172a')
-    expect(WORKER_LIGHT_THEME_COLOR).toBe('#dfe7f2')
+    expect(WORKER_LIGHT_THEME_COLOR).toBe('#F8FAFC')
   })
 
   it('exposes high-contrast muted fills for outdoor status chips', () => {

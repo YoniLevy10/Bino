@@ -5,11 +5,11 @@
   justify-content: center;
   box-sizing: border-box;
   padding: clamp(20px, 4vw, 44px);
-  color: #14283f;
+  color: #0F172A;
   background:
     radial-gradient(ellipse at 8% 10%, rgba(0, 122, 255, 0.1), transparent 30%),
     radial-gradient(ellipse at 92% 90%, rgba(0, 122, 255, 0.055), transparent 28%),
-    #f4f7fb;
+    #F8FAFC;
 }
 
 .shell {
@@ -50,7 +50,7 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 14px;
-  color: #007aff;
+  color: #2563EB;
   font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.015em;
@@ -60,13 +60,13 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #007aff;
+  background: #2563EB;
   content: "";
 }
 
 .formTitle {
   margin: 0 0 10px;
-  color: #102b46;
+  color: #0F172A;
   font-size: clamp(28px, 3vw, 36px);
   font-weight: 760;
   letter-spacing: -0.045em;
@@ -75,7 +75,7 @@
 
 .formDescription {
   margin: 0;
-  color: #52657a;
+  color: #475569;
   font-size: 15px;
   line-height: 1.7;
 }
@@ -90,7 +90,7 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
-  color: #14283f;
+  color: #0F172A;
   font-size: 14px;
   font-weight: 650;
 }
@@ -99,12 +99,12 @@
   width: 100%;
   min-height: 54px;
   box-sizing: border-box;
-  border: 1px solid #e1e8f0;
+  border: 1px solid #E2E8F0;
   border-radius: 14px;
   outline: none;
   padding: 0 16px;
-  background: #f7f9fc;
-  color: #102b46;
+  background: #F8FAFC;
+  color: #0F172A;
   direction: ltr;
   font: inherit;
   font-size: 16px;
@@ -114,12 +114,12 @@
 }
 
 .input::placeholder {
-  color: #718197;
+  color: #64748B;
   opacity: 1;
 }
 
 .input:focus-visible {
-  border-color: #007aff;
+  border-color: #2563EB;
   background: #fff;
   box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.13);
 }
@@ -147,33 +147,33 @@
 .submitButton {
   margin-top: 2px;
   border: 0;
-  background: #007aff;
+  background: #2563EB;
   color: #fff;
   box-shadow: 0 8px 18px rgba(0, 122, 255, 0.2);
 }
 
 .submitButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #0066e0;
+  background: #1D4ED8;
   box-shadow: 0 10px 22px rgba(0, 122, 255, 0.24);
 }
 
 .submitButton:active:not(:disabled) {
   transform: translateY(0);
-  background: #0055c4;
+  background: #1E40AF;
 }
 
 .googleButton {
   width: 100%;
-  border: 1px solid #e1e8f0;
+  border: 1px solid #E2E8F0;
   background: #fff;
-  color: #14283f;
+  color: #0F172A;
 }
 
 .googleButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: #c5d0dc;
-  background: #f7f9fc;
+  border-color: #CBD5E1;
+  background: #F8FAFC;
 }
 
 .submitButton:focus-visible,
@@ -201,7 +201,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  color: #718197;
+  color: #64748B;
   font-size: 13px;
   white-space: nowrap;
 }
@@ -210,7 +210,7 @@
 .divider::after {
   height: 1px;
   flex: 1;
-  background: #e6ebf1;
+  background: #E2E8F0;
   content: "";
 }
 
@@ -219,8 +219,8 @@
   border: 1px solid rgba(195, 53, 50, 0.22);
   border-radius: 12px;
   padding: 12px 14px;
-  background: #fff0ee;
-  color: #c33532;
+  background: #FFE4E6;
+  color: #BE123C;
   font-size: 13px;
   line-height: 1.55;
 }
@@ -234,7 +234,7 @@
   justify-content: space-between;
   isolation: isolate;
   padding: clamp(36px, 5vw, 64px);
-  background: radial-gradient(ellipse at 14% 18%, rgba(0, 122, 255, 0.3), transparent 43%), #102b46;
+  background: radial-gradient(ellipse at 14% 18%, rgba(37, 99, 235, 0.3), transparent 43%), #0F172A;
   color: #fff;
 }
 
@@ -376,8 +376,8 @@
 }
 
 .glyphBlue {
-  border-color: #007aff;
-  background: #007aff;
+  border-color: #2563EB;
+  background: #2563EB;
   box-shadow: 0 0 14px rgba(0, 122, 255, 0.4);
 }
 
@@ -400,7 +400,7 @@
   padding: 18px 22px;
   background: #fff;
   box-shadow: 0 12px 34px rgba(16, 43, 70, 0.08);
-  color: #14283f;
+  color: #0F172A;
 }
 
 .loadingShell p {
@@ -416,8 +416,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 12px;
-  background: #eaf3ff;
-  color: #007aff;
+  background: #EFF6FF;
+  color: #2563EB;
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.06em;

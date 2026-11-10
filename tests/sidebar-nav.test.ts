@@ -190,8 +190,8 @@ describe('addon nav hrefs', () => {
 })
 
 describe('shouldShowMobileBottomNav', () => {
-  it('hides bottom nav on immersive WhatsApp inbox', () => {
-    expect(shouldShowMobileBottomNav('/whatsapp-inbox')).toBe(false)
+  it('shows bottom nav on the WhatsApp inbox', () => {
+    expect(shouldShowMobileBottomNav('/whatsapp-inbox')).toBe(true)
   })
 
   it('shows bottom nav on primary tenant routes', () => {

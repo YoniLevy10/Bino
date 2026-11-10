@@ -246,18 +246,29 @@ export async function listWhatsAppMessagesForConversation(
   admin: SupabaseClient,
   clientId: string,
   conversationId: string,
-  limit = 200
+  limit = 200,
+  opts?: { omitInteractivePayload?: boolean }
 ) {
-  const { data, error } = await admin
-    .from('whatsapp_messages')
-    .select('id, direction, body, message_type, interactive_payload, ticket_id, created_at, wa_message_id')
-    .eq('client_id', clientId)
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
-    .limit(limit)
+  // Newest window, then chronological. ASC+limit returned the oldest slice on long threads.
+  const query = opts?.omitInteractivePayload
+    ? admin
+        .from('whatsapp_messages')
+        .select('id, direction, body, message_type, ticket_id, created_at')
+        .eq('client_id', clientId)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+    : admin
+        .from('whatsapp_messages')
+        .select('id, direction, body, message_type, interactive_payload, ticket_id, created_at, wa_message_id')
+        .eq('client_id', clientId)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
 
+  const { data, error } = await query
   if (error) throw error
-  return data ?? []
+  return [...(data ?? [])].reverse()
 }
 
 export async function listWhatsAppMessagesForPhone(
