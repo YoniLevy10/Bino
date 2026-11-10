@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
+import { PAGE_VIEW_DEDUP_MS } from '@/lib/page-view-write-dedupe'
 
 /** Same-path dedupe window — reduces feature_page_views write churn. */
-const PAGE_VIEW_DEDUP_MS = 15 * 60_000
 
 /**
  * Fires a lightweight page-view beacon on tenant dashboard navigations.

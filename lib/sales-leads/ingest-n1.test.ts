@@ -118,7 +118,119 @@ describe('ingestFromAdapter N+1 avoidance', () => {
     expect(result.updated).toBe(2)
     expect(result.created).toBe(0)
     expect(updateCalls).toHaveLength(2)
-    // One loadExistingLite select only — no per-duplicate maybeSingle.
     expect(getSelectCalls()).toBe(1)
+    const lead1 = updateCalls.find((call) => call.id === 'lead-1')
+    expect(lead1?.patch).toMatchObject({ estimated_mrr_ils: 500 })
+    expect(lead1?.patch).not.toHaveProperty('outreach_angle')
+    expect(lead1?.patch).toHaveProperty('last_seen_at')
+    expect(lead1?.patch).toHaveProperty('source_refs')
+  })
+
+  it('skips a duplicate write when mrr, angle, and source identity are unchanged', async () => {
+    const seen = new Date().toISOString()
+    const existing = [
+      {
+        id: 'lead-1',
+        phone_normalized: '972501111111',
+        source_name: 'google_places',
+        external_id: 'ext-1',
+        business_name: 'Acme Mgmt',
+        segment_slug: 'building_mgmt',
+        city: 'תל אביב',
+        website_url: 'https://acme.example',
+        source_url: null,
+        status: 'new',
+        source_refs: [{ source: 'google_places', externalId: 'ext-1', url: null, seenAt: seen }],
+        phone: '0501111111',
+        fit_score: 40,
+        outreach_angle: 'זווית',
+        estimated_mrr_ils: 500,
+        last_seen_at: seen,
+      },
+    ]
+    const { admin, updateCalls } = makeAdmin(existing)
+    const record = {
+      name: 'Acme Mgmt',
+      businessName: 'Acme Mgmt',
+      phone: '0501111111',
+      city: 'תל אביב',
+      sourceName: 'google_places',
+      externalId: 'ext-1',
+      websiteUrl: 'https://acme.example',
+      segmentSlug: 'building_mgmt',
+      outreachAngle: 'זווית',
+      estimatedMrrIls: 500,
+    }
+    const adapter: SalesLeadSourceAdapter = {
+      name: 'google_places',
+      async fetchRecords() {
+        return [record, record]
+      },
+    }
+
+    const result = await ingestFromAdapter(admin, adapter)
+    expect(result.updated).toBe(0)
+    expect(updateCalls).toHaveLength(0)
+  })
+
+  it('coalesces repeated hits of one lead into a single patch', async () => {
+    const existing = [
+      {
+        id: 'lead-1',
+        phone_normalized: '972501111111',
+        source_name: 'google_places',
+        external_id: 'ext-1',
+        business_name: 'Acme Mgmt',
+        segment_slug: 'building_mgmt',
+        city: 'תל אביב',
+        website_url: null,
+        source_url: null,
+        status: 'new',
+        source_refs: [],
+        phone: null,
+        fit_score: null,
+        outreach_angle: null,
+        estimated_mrr_ils: null,
+        last_seen_at: null,
+      },
+    ]
+    const { admin, updateCalls } = makeAdmin(existing)
+    const adapter: SalesLeadSourceAdapter = {
+      name: 'google_places',
+      async fetchRecords() {
+        return [
+          {
+            name: 'Acme Mgmt',
+            phone: '0501111111',
+            city: 'תל אביב',
+            sourceName: 'google_places',
+            externalId: 'ext-1',
+            segmentSlug: 'building_mgmt',
+            estimatedMrrIls: 500,
+          },
+          {
+            name: 'Acme Mgmt',
+            phone: '0501111111',
+            city: 'תל אביב',
+            sourceName: 'google_places',
+            externalId: 'ext-1',
+            websiteUrl: 'https://acme.example',
+            segmentSlug: 'building_mgmt',
+            estimatedMrrIls: 500,
+            outreachAngle: 'זווית',
+          },
+        ]
+      },
+    }
+
+    const result = await ingestFromAdapter(admin, adapter)
+    expect(result.updated).toBe(1)
+    expect(updateCalls).toHaveLength(1)
+    expect(updateCalls[0]?.patch).toMatchObject({
+      phone: '0501111111',
+      website_url: 'https://acme.example',
+      estimated_mrr_ils: 500,
+      outreach_angle: 'זווית',
+    })
   })
 })

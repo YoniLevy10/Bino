@@ -323,7 +323,7 @@ export async function bulkImportResidentsFromParsed(
   let inserted = 0
   for (let i = 0; i < deduped.length; i += BATCH) {
     const batch = deduped.slice(i, i + BATCH)
-    const { error } = await supabase.from('residents').insert(batch)
+    const { error } = await supabase.from('residents').insert(batch).select('id')
     if (error) throw new Error(error.message)
     inserted += batch.length
   }

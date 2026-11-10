@@ -7,7 +7,12 @@ import {
   type ExistingLeadLite,
 } from '@/lib/sales-leads/dedupe'
 import { normalizePhone } from '@/lib/sales-leads/phone'
-import { mergeSourceRefs, normalizeWebsiteHost, pickWebsiteUrl } from '@/lib/sales-leads/source-refs'
+import {
+  mergeSourceRefs,
+  normalizeWebsiteHost,
+  pickWebsiteUrl,
+  sourceRefsIdentityEqual,
+} from '@/lib/sales-leads/source-refs'
 import type {
   LeadStatus,
   SalesLead,
@@ -52,6 +57,20 @@ type IngestExistingRow = ExistingLeadLite & {
   phone: string | null
   websiteUrl: string | null
   fitScore: number | null
+  outreachAngle: string | null
+  estimatedMrrIls: number | null
+  lastSeenAt: string | null
+}
+
+/** One discovery walk is a few minutes. Don't rewrite last_seen on every city. */
+const LAST_SEEN_REWRITE_MS = 15 * 60 * 1000
+
+function lastSeenIsFresh(lastSeenAt: string | null, nowIso: string): boolean {
+  if (!lastSeenAt) return false
+  const then = Date.parse(lastSeenAt)
+  const nowMs = Date.parse(nowIso)
+  if (!Number.isFinite(then) || !Number.isFinite(nowMs)) return false
+  return nowMs - then < LAST_SEEN_REWRITE_MS
 }
 
 const INGEST_UPDATE_CONCURRENCY = 10
@@ -82,7 +101,7 @@ async function loadExistingLite(admin: SupabaseClient): Promise<IngestExistingRo
   const { data, error } = await admin
     .from('sales_leads')
     .select(
-      'id, phone_normalized, source_name, external_id, business_name, segment_slug, city, website_url, source_url, status, source_refs, phone, fit_score',
+      'id, phone_normalized, source_name, external_id, business_name, segment_slug, city, website_url, source_url, status, source_refs, phone, fit_score, outreach_angle, estimated_mrr_ils, last_seen_at',
     )
     .limit(8000)
   if (error) throw error
@@ -104,6 +123,10 @@ async function loadExistingLite(admin: SupabaseClient): Promise<IngestExistingRo
     phone: (r.phone as string | null) ?? null,
     websiteUrl: (r.website_url as string | null) ?? null,
     fitScore: typeof r.fit_score === 'number' ? r.fit_score : r.fit_score != null ? Number(r.fit_score) : null,
+    outreachAngle: (r.outreach_angle as string | null) ?? null,
+    estimatedMrrIls:
+      r.estimated_mrr_ils == null ? null : Number(r.estimated_mrr_ils),
+    lastSeenAt: (r.last_seen_at as string | null) ?? null,
   }))
 }
 
@@ -130,7 +153,7 @@ export async function ingestFromAdapter(
   result.found = records.length
   const existing = await loadExistingLite(admin)
   const now = new Date().toISOString()
-  const pendingUpdates: Array<{ id: string; patch: Record<string, unknown> }> = []
+  const pendingById = new Map<string, Record<string, unknown>>()
 
   for (const record of records) {
     const check = assertSourceRecord(record)
@@ -161,9 +184,13 @@ export async function ingestFromAdapter(
       const protectedStatus = ['customer', 'lost', 'demo_scheduled', 'demo_done', 'proposal_sent', 'negotiation'].includes(
         String(current.status),
       )
-      const patch: Record<string, unknown> = {
-        last_seen_at: now,
-        source_refs: mergeSourceRefs(current.sourceRefs ?? [], sourceRef),
+      const mergedRefs = mergeSourceRefs(current.sourceRefs ?? [], sourceRef)
+      const patch: Record<string, unknown> = {}
+      if (!sourceRefsIdentityEqual(current.sourceRefs, mergedRefs)) {
+        patch.source_refs = mergedRefs
+      }
+      if (!lastSeenIsFresh(current.lastSeenAt, now)) {
+        patch.last_seen_at = now
       }
       if (!protectedStatus) {
         if (record.phone && !current.phone) patch.phone = record.phone
@@ -177,12 +204,20 @@ export async function ingestFromAdapter(
           patch.fit_confidence = record.fitConfidence
           patch.fit_reasons = record.fitReasons ?? []
         }
-        if (record.outreachAngle) patch.outreach_angle = record.outreachAngle
-        if (record.estimatedMrrIls != null) patch.estimated_mrr_ils = record.estimatedMrrIls
+        if (record.outreachAngle && record.outreachAngle !== current.outreachAngle) {
+          patch.outreach_angle = record.outreachAngle
+        }
+        if (record.estimatedMrrIls != null && record.estimatedMrrIls !== current.estimatedMrrIls) {
+          patch.estimated_mrr_ils = record.estimatedMrrIls
+        }
       }
 
-      // Keep in-memory index warm for later duplicates in the same run.
-      current.sourceRefs = patch.source_refs as SalesLead['sourceRefs']
+      if (Object.keys(patch).length === 0) continue
+
+      if (patch.source_refs) current.sourceRefs = patch.source_refs as SalesLead['sourceRefs']
+      if (typeof patch.last_seen_at === 'string') current.lastSeenAt = patch.last_seen_at
+      if (typeof patch.outreach_angle === 'string') current.outreachAngle = patch.outreach_angle
+      if (typeof patch.estimated_mrr_ils === 'number') current.estimatedMrrIls = patch.estimated_mrr_ils
       if (typeof patch.phone === 'string') current.phone = patch.phone
       if (typeof patch.website_url === 'string') {
         current.websiteUrl = patch.website_url
@@ -190,7 +225,8 @@ export async function ingestFromAdapter(
       }
       if (typeof patch.fit_score === 'number') current.fitScore = patch.fit_score
 
-      pendingUpdates.push({ id: dup.existingId, patch })
+      const prev = pendingById.get(dup.existingId)
+      pendingById.set(dup.existingId, prev ? { ...prev, ...patch } : patch)
       continue
     }
 
@@ -258,6 +294,9 @@ export async function ingestFromAdapter(
       phone: record.phone ?? null,
       websiteUrl: website,
       fitScore: record.fitScore ?? null,
+      outreachAngle: record.outreachAngle ?? null,
+      estimatedMrrIls: record.estimatedMrrIls ?? null,
+      lastSeenAt: now,
     })
     result.created += 1
 
@@ -280,7 +319,7 @@ export async function ingestFromAdapter(
     })
   }
 
-  await mapPool(pendingUpdates, INGEST_UPDATE_CONCURRENCY, async ({ id, patch }) => {
+  await mapPool([...pendingById.entries()], INGEST_UPDATE_CONCURRENCY, async ([id, patch]) => {
     const { error } = await admin.from('sales_leads').update(patch).eq('id', id)
     if (error) {
       result.errors.push(error.message)

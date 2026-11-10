@@ -70,3 +70,21 @@ export function mergeSourceRefs(
   }
   return list.slice(0, 40)
 }
+
+/** Same sources and URLs, ignoring seenAt. Used to skip jsonb rewrites. */
+export function sourceRefsIdentityEqual(
+  existing: SalesLeadSourceRef[] | null | undefined,
+  merged: SalesLeadSourceRef[],
+): boolean {
+  const left = Array.isArray(existing) ? existing : []
+  if (left.length !== merged.length) return false
+  for (let i = 0; i < merged.length; i++) {
+    const a = left[i]
+    const b = merged[i]
+    if (!a || !b) return false
+    if (a.source !== b.source) return false
+    if ((a.externalId ?? null) !== (b.externalId ?? null)) return false
+    if ((a.url ?? null) !== (b.url ?? null)) return false
+  }
+  return true
+}

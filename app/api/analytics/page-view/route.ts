@@ -3,6 +3,7 @@ import { requireSessionClientIdLite } from '@/lib/api-auth'
 import { checkRateLimitMemoryOnly } from '@/lib/rate-limit'
 import { pageViewBodySchema } from '@/lib/api-body-schemas'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
+import { pageViewDedupeKey, rememberPageView, shouldRecordPageView } from '@/lib/page-view-write-dedupe'
 
 export async function POST(req: Request) {
   // Telemetry only needs userId + clientId; skip unused role resolve RTT.
@@ -38,6 +39,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, skipped: true })
   }
 
+  if (!shouldRecordPageView(pageViewDedupeKey(auth.ctx.clientId, auth.ctx.userId, navId, path))) {
+    return NextResponse.json({ ok: true, skipped: true })
+  }
+
   const { error } = await auth.ctx.admin.from('feature_page_views').insert({
     client_id: auth.ctx.clientId,
     user_id: auth.ctx.userId,
@@ -54,5 +59,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, skipped: true })
   }
 
+  rememberPageView(pageViewDedupeKey(auth.ctx.clientId, auth.ctx.userId, navId, path))
   return NextResponse.json({ ok: true })
 }

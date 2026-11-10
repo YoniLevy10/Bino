@@ -311,7 +311,7 @@ export async function ensureSandbox(admin: SupabaseClient): Promise<SandboxActio
       normalized_phone: '972500000002',
       apartment_number: '1',
       email: 'sandbox-resident@bino.casa',
-    })
+    }).select('id')
     if (rErr && !/unique|duplicate/i.test(rErr.message)) {
       return { ok: false, error: rErr.message }
     }

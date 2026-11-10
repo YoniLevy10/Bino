@@ -261,7 +261,7 @@ export async function PATCH(req: NextRequest) {
         normalized_phone: digits,
         apartment_number: apartmentNumber,
         notes: 'נוסף לאחר אישור בקשת הצטרפות מוואטסאפ',
-      })
+      }).select('id')
 
       if (insErr) {
         if (insErr.message?.includes('idx_residents_client_phone_unique')) {
