@@ -74,6 +74,13 @@ function locationLine(ticket: WorkerTicketCardTicket): string {
   return parts.join(' · ')
 }
 
+function priorityLabel(priority: string): string {
+  if (priority === 'URGENT') return 'דחופה'
+  if (priority === 'HIGH') return 'גבוהה'
+  if (priority === 'LOW') return 'נמוכה'
+  return 'רגילה'
+}
+
 export function WorkerTicketCard({
   ticket,
   colors = theme.colors,
@@ -139,19 +146,47 @@ export function WorkerTicketCard({
     return (
       <button
         type="button"
-        className="lg-glass worker-card-expand"
+        className="lg-glass worker-card-expand worker-ticket-card"
         style={styles.compact(colors, priority)}
         onClick={onActivate}
         aria-expanded={false}
+        aria-label={`פתיחת תקלה מספר ${ticket.ticket_number}, ${ticketStatusLabelHe(ticket.status)}, עדיפות ${priorityLabel(priority)}${loc ? `, ${loc}` : ''}`}
       >
-        <div style={styles.compactRow}>
-          <PriorityDot priority={priority} />
-          <span style={styles.num(colors)}>#{ticket.ticket_number}</span>
-          <StatusBadge status={ticket.status} size="sm" />
-          <span style={styles.when(colors)}>{relativeWhen}</span>
-        </div>
-        {loc ? <div style={styles.compactLoc(colors)}>{loc}</div> : null}
-        <p style={styles.compactDesc(colors)}>{desc}</p>
+        <span className="worker-ticket-card__top">
+          <span className="worker-ticket-card__identity">
+            <span className="worker-ticket-card__number" style={{ color: colors.primary }}>
+              #{ticket.ticket_number}
+            </span>
+            <StatusBadge status={ticket.status} size="sm" />
+          </span>
+          <span className="worker-ticket-card__meta" style={{ color: colors.textMuted }}>
+            <span>{relativeWhen}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </span>
+        </span>
+        {loc ? (
+          <span className="worker-ticket-card__location" style={{ color: colors.textMuted }} title={loc}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            <span>{loc}</span>
+          </span>
+        ) : null}
+        <span className="worker-ticket-card__description" style={{ color: colors.textPrimary }}>
+          {desc}
+        </span>
+        <span className="worker-ticket-card__footer" style={{ borderColor: colors.border }}>
+          <span className="worker-ticket-card__priority" style={{ color: colors.textSecondary }}>
+            <PriorityDot priority={priority} />
+            עדיפות {priorityLabel(priority)}
+          </span>
+          <span className="worker-ticket-card__open" style={{ color: colors.primary }}>
+            פרטים ועדכון
+          </span>
+        </span>
       </button>
     )
   }
@@ -163,20 +198,19 @@ export function WorkerTicketCard({
         style={styles.collapseHeader(colors)}
         onClick={onActivate}
         aria-expanded={true}
-        aria-label="סגור תקלה"
+        aria-label={`צמצום פרטי תקלה ${ticket.ticket_number}`}
       >
-        <div style={styles.compactRow}>
-          <PriorityDot priority={priority} />
+        <span style={styles.compactRow}>
           <span style={styles.num(colors)}>#{ticket.ticket_number}</span>
           <StatusBadge status={ticket.status} size="sm" />
           <span style={styles.when(colors)} title={new Date(ticket.created_at).toLocaleString('he-IL')}>
             {relativeWhen}
           </span>
-          <span style={styles.collapseHint(colors)}>▲ סגור</span>
-        </div>
-        {loc ? <div style={styles.compactLoc(colors)}>{loc}</div> : null}
+          <span style={styles.collapseHint(colors)}>צמצום</span>
+        </span>
+        {loc ? <span style={styles.compactLoc(colors)}>{loc}</span> : null}
         {showAttendanceHint && loc ? (
-          <div style={styles.attendanceHint(colors)}>כניסה ויציאה מהמשמרת — הצמידו את הטלפון למדבקת NFC בבניין</div>
+          <span style={styles.attendanceHint(colors)}>כניסה ויציאה מהמשמרת — הצמידו את הטלפון למדבקת NFC בבניין</span>
         ) : null}
       </button>
 
@@ -484,11 +518,13 @@ const priorityBorder: Record<string, string> = {
 
 const styles = {
   compact: (c: typeof theme.colors, priority: string): CSSProperties => ({
-    display: 'block',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     width: '100%',
+    boxSizing: 'border-box',
     textAlign: 'right',
-    padding: '14px 15px',
-    borderRadius: 18,
+    font: 'inherit',
     border: `1px solid ${c.border}`,
     borderInlineStart: `4px solid ${priorityBorder[priority] || c.border}`,
     cursor: 'pointer',
@@ -501,6 +537,7 @@ const styles = {
     marginBottom: '4px',
   } as CSSProperties,
   compactLoc: (c: typeof theme.colors): CSSProperties => ({
+    display: 'block',
     fontSize: '13px',
     fontWeight: 600,
     color: c.textMuted,
@@ -510,21 +547,11 @@ const styles = {
     whiteSpace: 'nowrap',
   }),
   attendanceHint: (c: typeof theme.colors): CSSProperties => ({
+    display: 'block',
     fontSize: '11px',
     color: c.primary,
     marginBottom: '6px',
     fontWeight: 600,
-  }),
-  compactDesc: (c: typeof theme.colors): CSSProperties => ({
-    fontSize: '14px',
-    lineHeight: 1.4,
-    margin: 0,
-    color: c.textPrimary,
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
-    textAlign: 'right',
   }),
   card: (c: typeof theme.colors, priority: string): CSSProperties => ({
     padding: 0,

@@ -24,7 +24,8 @@ import {
 import { PageTransitionLoader } from '../components/page-skeleton'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
-import { WorkerPortalToolbar, type WorkerTicketFilter, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
+import { WorkerTicketsScreen } from '../components/worker/WorkerTicketsScreen'
+import { WorkerPortalToolbar, type WorkerPortalTab } from '../components/worker/WorkerPortalToolbar'
 import { ActionConfirmSheet } from '../components/ui/ActionConfirmSheet'
 
 const WorkerTicketCard = dynamic(
@@ -62,7 +63,7 @@ import {
   writeWorkerToken,
 } from '@/lib/worker-portal-storage'
 import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker-offline-cache'
-import { isTicketInTreatment, WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
+import { WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
 import {
   applyWorkerThemeColor,
   readWorkerDarkMode,
@@ -122,12 +123,6 @@ function normalizeApiTickets(raw: ApiTicketRow[]): Ticket[] {
   )
 }
 
-function filterWorkerTickets(list: Ticket[], filter: WorkerTicketFilter): Ticket[] {
-  if (filter === 'ALL') return list
-  if (filter === 'NEW') return list.filter((t) => t.status === 'NEW' || t.status === 'ASSIGNED')
-  return list.filter((t) => isTicketInTreatment(t.status))
-}
-
 function WorkerPageInner() {
   const searchParams = useSearchParams()
   const [tokenSession, setTokenSession] = useState<TokenSession | null>(null)
@@ -149,7 +144,6 @@ function WorkerPageInner() {
   const [chatSending, setChatSending] = useState(false)
   const [translations, setTranslations] = useState<Record<string, string>>({})
   const [translatingId, setTranslatingId] = useState<string | null>(null)
-  const [ticketFilter, setTicketFilter] = useState<WorkerTicketFilter>('ALL')
   const [portalTab, setPortalTab] = useState<WorkerPortalTab>('TICKETS')
   const [visitedTabs, setVisitedTabs] = useState<Record<WorkerPortalTab, boolean>>({
     TICKETS: true,
@@ -432,11 +426,6 @@ function WorkerPageInner() {
   }, [workers, workerId, tokenSession])
 
   const openTickets = useMemo(() => filterOpenWorkerTickets(tickets), [tickets])
-
-  const filteredTickets = useMemo(
-    () => filterWorkerTickets(openTickets, ticketFilter),
-    [openTickets, ticketFilter]
-  )
 
   function removeClosedTicketFromView(ticketId: string) {
     setTickets((prev) => {
@@ -873,19 +862,9 @@ function WorkerPageInner() {
           </div>
         </header>
 
-        <WorkerPushOnboarding
-          token={tokenSession.token}
-          colors={palette}
-          openTicketCount={openTickets.length}
-          onEnabled={() => setPushEnabled(true)}
-        />
-
         <WorkerPortalToolbar
           colors={palette}
           portalTab={portalTab}
-          filter={ticketFilter}
-          ticketCount={openTickets.length}
-          filteredCount={filteredTickets.length}
           refreshing={refreshing}
           usingCache={usingCache}
           darkMode={darkMode}
@@ -893,7 +872,6 @@ function WorkerPageInner() {
             setPortalTab(tab)
             setVisitedTabs((prev) => (prev[tab] ? prev : { ...prev, [tab]: true }))
           }}
-          onFilterChange={setTicketFilter}
           onRefresh={() => {
             if (portalTab === 'TOURS') {
               setToursRefreshKey((k) => k + 1)
@@ -948,18 +926,20 @@ function WorkerPageInner() {
             className="worker-tab-fade"
             style={{ display: portalTab === 'TICKETS' ? 'block' : 'none' }}
           >
-          {loadingTickets ? (
-            <PageTransitionLoader compact logoUrl={clientLogoUrl} />
-          ) : filteredTickets.length === 0 ? (
-            <div className="lg-glass" style={styles.emptyStateGlass}>
-              <div style={{ ...styles.emptyIcon, background: palette.successMuted, color: palette.success }}>✓</div>
-              <p style={{ ...styles.emptyText, color: palette.textMuted }}>
-                {openTickets.length === 0 ? 'הכל מטופל' : 'אין תקלות בסינון זה'}
-              </p>
-            </div>
-          ) : (
-            <div style={styles.tokenTicketList}>
-              {filteredTickets.map((t) => (
+            <WorkerTicketsScreen
+              tickets={openTickets}
+              loading={loadingTickets}
+              logoUrl={clientLogoUrl}
+              colors={palette}
+              pushOnboarding={
+                <WorkerPushOnboarding
+                  token={tokenSession.token}
+                  colors={palette}
+                  openTicketCount={openTickets.length}
+                  onEnabled={() => setPushEnabled(true)}
+                />
+              }
+              renderTicket={(t) => (
                 <WorkerTicketCard
                   key={t.id}
                   ticket={t}
@@ -976,7 +956,7 @@ function WorkerPageInner() {
                   expandedWa={expandedWaId === t.id}
                   onToggleWa={t.reporter_phone ? () => openWa(t.id) : undefined}
                   waSlot={
-                    expandedWaId === t.id && t.reporter_phone && tokenSession ? (
+                    expandedWaId === t.id && t.reporter_phone ? (
                       <TicketWhatsAppThread
                         reporterPhone={t.reporter_phone}
                         ticketId={t.id}
@@ -1060,9 +1040,8 @@ function WorkerPageInner() {
                     ) : null
                   }
                 />
-              ))}
-            </div>
-          )}
+              )}
+            />
           </div>
         </div>
 
@@ -1240,16 +1219,6 @@ const styles: Record<string, CSSProperties> = {
     zIndex: 1,
     padding: '10px 12px calc(78px + env(safe-area-inset-bottom, 0px) + 18px)',
   },
-  emptyStateGlass: {
-    margin: '24px 4px',
-    padding: '36px 20px',
-    borderRadius: 20,
-    textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 12,
-  },
   standaloneTitle: {
     fontSize: '20px',
     fontWeight: 700,
@@ -1267,7 +1236,6 @@ const styles: Record<string, CSSProperties> = {
   },
   muted: { color: theme.colors.textMuted, fontSize: '14px', margin: 0 },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  tokenTicketList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   officeChatWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
   officeChatBanner: {
     margin: 0,
@@ -1322,19 +1290,6 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '8px',
   },
-  emptyIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    background: theme.colors.successMuted,
-    color: theme.colors.success,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '20px',
-    fontWeight: 700,
-  },
-  emptyText: { fontSize: '14px', color: theme.colors.textMuted, margin: 0 },
   confirmOverlay: {
     position: 'fixed',
     inset: 0,

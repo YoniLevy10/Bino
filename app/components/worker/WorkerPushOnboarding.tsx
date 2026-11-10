@@ -17,7 +17,7 @@ type WorkerPushOnboardingProps = {
 }
 
 /**
- * Prominent prompt — hidden permanently after worker enables push notifications.
+ * Compact prompt — hidden once the worker enables push notifications.
  */
 export function WorkerPushOnboarding({
   token,
@@ -73,19 +73,36 @@ export function WorkerPushOnboarding({
     <div
       className="lg-glass worker-push-onboarding"
       style={{
-        margin: '0 12px 8px',
-        padding: '10px 12px',
-        borderRadius: 16,
-        background: 'transparent',
-        border: 'none',
+        margin: 0,
+        padding: '12px',
+        borderRadius: 18,
+        background: colors.surface,
+        border: `1px solid ${colors.border}`,
         direction: 'rtl',
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: unsupported || denied ? '38px minmax(0, 1fr)' : '38px minmax(0, 1fr) auto',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
+        gap: 10,
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <span
+        aria-hidden="true"
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 13,
+          display: 'grid',
+          placeItems: 'center',
+          background: colors.primaryMuted,
+          color: colors.primary,
+        }}
+      >
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M10 21h4" />
+        </svg>
+      </span>
+      <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 800, fontSize: '14px', color: colors.textPrimary, marginBottom: '3px' }}>
           קבלו התראה על תקלות חדשות
         </div>

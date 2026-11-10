@@ -3,20 +3,15 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { theme } from '../ui'
 
-export type WorkerTicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
 export type WorkerPortalTab = 'TICKETS' | 'TOURS' | 'ATTENDANCE' | 'MAINTENANCE'
 
 type WorkerPortalToolbarProps = {
   colors: typeof theme.colors
   portalTab: WorkerPortalTab
-  filter: WorkerTicketFilter
-  ticketCount: number
-  filteredCount: number
   refreshing: boolean
   usingCache: boolean
   darkMode: boolean
   onPortalTabChange: (tab: WorkerPortalTab) => void
-  onFilterChange: (f: WorkerTicketFilter) => void
   onRefresh: () => void
   onToggleDark: () => void
   onEnablePush?: () => void
@@ -30,12 +25,6 @@ const PORTAL_TABS: { id: WorkerPortalTab; label: string; icon: WorkerTabIcon }[]
   { id: 'MAINTENANCE', label: 'אחזקה', icon: 'wrench' },
   { id: 'TOURS', label: 'סיורים', icon: 'map' },
   { id: 'ATTENDANCE', label: 'שעות', icon: 'clock' },
-]
-
-const FILTERS: { id: WorkerTicketFilter; label: string }[] = [
-  { id: 'ALL', label: 'הכל' },
-  { id: 'NEW', label: 'חדש' },
-  { id: 'IN_TREATMENT', label: 'בטיפול' },
 ]
 
 type WorkerTabIcon = 'ticket' | 'wrench' | 'map' | 'clock'
@@ -144,14 +133,10 @@ function ChromeIcon({
 export function WorkerPortalToolbar({
   colors,
   portalTab,
-  filter,
-  ticketCount,
-  filteredCount,
   refreshing,
   usingCache,
   darkMode,
   onPortalTabChange,
-  onFilterChange,
   onRefresh,
   onToggleDark,
   onEnablePush,
@@ -169,15 +154,17 @@ export function WorkerPortalToolbar({
         ? 'משימות אחזקה להיום'
         : portalTab === 'ATTENDANCE'
           ? 'הצמידו את הטלפון למדבקה'
-          : filteredCount === ticketCount
-            ? `${ticketCount} תקלות פתוחות`
-            : `${filteredCount} מתוך ${ticketCount}`
+          : null
 
   return (
     <>
       <div className="lg-chrome" style={styles.chrome}>
         <div style={styles.chromeRow}>
-          <span style={styles.count(colors)}>{subtitle}</span>
+          {subtitle ? (
+            <span style={styles.count(colors)}>{subtitle}</span>
+          ) : (
+            <span className="sr-only">פעולות אזור עובד</span>
+          )}
           <div style={styles.actions}>
             {onEnablePush ? (
               <button
@@ -187,6 +174,7 @@ export function WorkerPortalToolbar({
                 onClick={onEnablePush}
                 disabled={pushEnabling}
                 aria-label="הפעל התראות"
+                title="הפעל התראות"
               >
                 <ChromeIcon kind="bell" color={colors.textSecondary} />
               </button>
@@ -219,27 +207,6 @@ export function WorkerPortalToolbar({
           </div>
         ) : null}
 
-        {portalTab === 'TICKETS' ? (
-          <div
-            className="worker-ticket-filters"
-            style={styles.chips}
-            role="group"
-            aria-label="סינון תקלות"
-          >
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={filter === f.id ? 'lg-chip-active' : 'lg-chip'}
-                style={styles.chip}
-                aria-pressed={filter === f.id}
-                onClick={() => onFilterChange(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
 
       <nav className="lg-tabbar" style={styles.tabbar} aria-label="ניווט אזור עובד">
@@ -324,21 +291,6 @@ const styles = {
     borderRadius: 12,
     marginBottom: 8,
   }),
-  chips: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'nowrap',
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
-  } as CSSProperties,
-  chip: {
-    padding: '10px 14px',
-    minHeight: 44,
-    borderRadius: 999,
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-  } as CSSProperties,
   tabbar: {
     position: 'fixed',
     insetInline: 12,
