@@ -385,7 +385,7 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           />
         ) : (
           <Image
-            src="/apple-icon.png"
+            src="/bino-mark.png"
             alt={displayName}
             width={40}
             height={40}
@@ -1223,7 +1223,7 @@ export function MobileMenu({
               />
             ) : (
               <Image
-                src="/apple-icon.png"
+                src="/bino-mark.png"
                 alt={displayName}
                 width={36}
                 height={36}

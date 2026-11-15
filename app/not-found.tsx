@@ -11,7 +11,7 @@ export default function NotFound() {
         {/* Logo */}
         <div style={styles.logoContainer}>
           <Image
-            src="/apple-icon.png"
+            src="/bino-mark.png"
             alt="Bino"
             width={64}
             height={64}

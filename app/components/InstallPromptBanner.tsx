@@ -61,7 +61,7 @@ export function InstallPromptBanner() {
   }
   if (!prompt || dismissed) return null
 
-  const iconSrc = logoUrl || '/apple-icon.png'
+  const iconSrc = logoUrl || '/bino-mark.png'
 
   return (
     <div

@@ -234,7 +234,7 @@ export function LoginClient() {
         <aside className={styles.brandPanel} aria-labelledby="login-brand-title">
           <div className={styles.brandHeader} dir="ltr">
             <Image
-              src="/apple-icon.png"
+              src="/bino-mark.png"
               alt=""
               width={48}
               height={48}

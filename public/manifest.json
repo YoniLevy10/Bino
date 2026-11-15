@@ -13,9 +13,8 @@
   "lang": "he",
   "categories": ["productivity", "business"],
   "icons": [
-    { "src": "/apple-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" },
-    { "src": "/apple-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "maskable" }
+    { "src": "/bino-mark.png", "sizes": "160x160", "type": "image/png", "purpose": "any" },
+    { "src": "/bino-mark.png", "sizes": "160x160", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
@@ -23,28 +22,28 @@
       "short_name": "טיקט חדש",
       "description": "פתח טיקט תקלה חדש",
       "url": "/tickets?new=1",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/bino-mark.png", "sizes": "160x160" }]
     },
     {
       "name": "כל הטיקטים",
       "short_name": "טיקטים",
       "description": "הצג את כל הטיקטים הפתוחים",
       "url": "/tickets",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/bino-mark.png", "sizes": "160x160" }]
     },
     {
       "name": "עובדים",
       "short_name": "עובדים",
       "description": "ניהול עובדים",
       "url": "/workers",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/bino-mark.png", "sizes": "160x160" }]
     },
     {
       "name": "Super Admin",
       "short_name": "Super Admin",
       "description": "ניהול לקוחות וחבילות",
       "url": "/superadmin",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/bino-mark.png", "sizes": "160x160" }]
     }
   ]
 }

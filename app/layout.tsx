@@ -87,10 +87,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
-      { url: "/apple-icon.png", sizes: "1254x1254", type: "image/png" },
+      { url: "/bino-mark.png", sizes: "160x160", type: "image/png" },
     ],
-    apple: [{ url: "/apple-icon.png", sizes: "1254x1254", type: "image/png" }],
-    shortcut: "/apple-icon.png",
+    apple: [{ url: "/bino-mark.png", sizes: "160x160", type: "image/png" }],
+    shortcut: "/bino-mark.png",
   },
   openGraph: {
     type: "website",

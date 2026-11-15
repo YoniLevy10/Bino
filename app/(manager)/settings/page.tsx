@@ -997,7 +997,7 @@ function SettingsPageInner() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={logoUrl || '/apple-icon.png'}
+                        src={logoUrl || '/bino-mark.png'}
                         alt={clientName || 'לוגו'}
                         width={56}
                         height={56}

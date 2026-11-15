@@ -66,7 +66,7 @@ function MarketingHeader({ copy }: { copy: MarketingCopy }) {
         <Link className="bino-brand-lockup" href="/" aria-label="BINO">
           <span className="bino-brand-lockup__mark" aria-hidden="true">
             <Image
-              src="/icon.png"
+              src="/bino-mark.png"
               alt=""
               fill
               priority

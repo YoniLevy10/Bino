@@ -104,7 +104,7 @@ export function WorkerInstallPrompt({ workerName }: WorkerInstallPromptProps) {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/apple-icon.png" alt="" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
+      <img src="/bino-mark.png" alt="" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{title}</div>
         <div style={{ fontSize: '12px', color: '#64748b', marginTop: 4, lineHeight: 1.55 }}>{subtitle}</div>

@@ -1,8 +1,8 @@
-/* Bino PWA — v15: refresh worker portal styles and assets */
-const CACHE_VERSION = 'bino-v15'
+/* Bino PWA — v16: refresh worker portal styles and assets */
+const CACHE_VERSION = 'bino-v16'
 const STATIC_CACHE = `bino-static-${CACHE_VERSION}`
 const HTML_CACHE = `bino-html-${CACHE_VERSION}`
-const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/apple-icon.png', '/bino-mark.png', '/worker', '/worker/nfc']
+const PRECACHE_URLS = ['/offline.html', '/manifest.json', '/bino-mark.png', '/worker', '/worker/nfc']
 
 self.addEventListener('install', (event) => {
   const localDev =
@@ -139,7 +139,7 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (isStaticAsset(url.pathname) || url.pathname === '/manifest.json' || url.pathname === '/apple-icon.png') {
+  if (isStaticAsset(url.pathname) || url.pathname === '/manifest.json' || url.pathname === '/bino-mark.png') {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached
@@ -193,8 +193,8 @@ self.addEventListener('push', (event) => {
         data: { url, badge },
         tag,
         renotify: true,
-        icon: '/apple-icon.png',
-        badge: '/apple-icon.png',
+        icon: '/bino-mark.png',
+        badge: '/bino-mark.png',
         lang: 'he',
         dir: 'rtl',
         vibrate: [200, 100, 200],
