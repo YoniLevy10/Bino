@@ -501,7 +501,9 @@ body.wa-sheet-open [data-app-main] {
   flex-direction: column;
   background: #efeae2;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Bottom nav already clears the home indicator — do not double-pad here
+     (was leaving a patterned dead band above the tab bar). */
+  padding-bottom: 0;
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
   box-sizing: border-box;
@@ -545,6 +547,14 @@ body.wa-sheet-open [data-app-main] {
     min-height: 0;
     max-height: calc(100dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px));
     margin-bottom: calc(-1 * (var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px)));
+  }
+
+  .wa-inbox-compose {
+    padding-bottom: 4px;
+  }
+
+  .wa-inbox-messages {
+    padding-inline: 3.5%;
   }
 
   .wa-inbox-wrap {
