@@ -95,7 +95,9 @@ describe('report-print', () => {
       print: vi.fn(),
       addEventListener: vi.fn(),
     }
-    const open = vi.fn(() => popup)
+    const open = vi.fn(
+      (_url?: string | URL, _target?: string, _features?: string) => popup
+    )
     vi.stubGlobal('window', {
       open,
       location: { origin: 'https://bino.casa' },
