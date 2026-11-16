@@ -126,6 +126,7 @@ export const sidebarPinBodySchema = z.object({
     'whatsapp_inbox',
     'campaigns',
     'collections',
+    'building_finance',
   ]),
   pinned: z.boolean(),
 })
@@ -641,4 +642,23 @@ export const midragSearchOpenedBodySchema = z.object({
   sector_id: z.number().int().nullable().optional(),
   city_id: z.number().int().nullable().optional(),
   url: z.string().max(2000).optional(),
+})
+
+/** Building finance — create expense (Wave 3 Phase 1). */
+export const createBuildingExpenseBodySchema = z.object({
+  project_id: z.string().uuid(),
+  amount: z.number().positive().max(10_000_000),
+  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  category_id: z.string().uuid().nullable().optional(),
+  vendor_name: z.string().max(200).nullable().optional(),
+  professional_id: z.string().uuid().nullable().optional(),
+  description: z.string().max(2000).nullable().optional(),
+  receipt_url: z.string().url().max(2000).nullable().optional(),
+  payment_status: z.enum(['unpaid', 'partial', 'paid']).optional(),
+  budget_period_key: z
+    .string()
+    .regex(/^[0-9]{4}(-Q[1-4]|-[0-9]{2})?$/)
+    .nullable()
+    .optional(),
+  idempotency_key: z.string().min(8).max(120),
 })
