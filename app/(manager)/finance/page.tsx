@@ -10,7 +10,7 @@ import { LoadingSpinner, theme } from '@/app/components/ui'
 function FinancePageInner() {
   return (
     <AddonFeaturePageShell
-      title="כספים"
+      title="הכנסות והוצאות"
       mobileSubtitle="הוצאות · תקציב · עלות תחזוקה לבניין"
       desktopSubtitle="הנהלת חשבונות בניין — הוצאות ותקציב מול ביצוע"
     >

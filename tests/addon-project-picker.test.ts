@@ -10,8 +10,8 @@ describe('navItemIdForPathname', () => {
     expect(navItemIdForPathname('/professionals')).toBe('professionals')
   })
 
-  it('maps finance deep links under finance nav', () => {
+  it('maps finance routes to distinct nav ids', () => {
     expect(navItemIdForPathname('/finance')).toBe('finance')
-    expect(navItemIdForPathname('/finance/reports')).toBe('finance')
+    expect(navItemIdForPathname('/finance/reports')).toBe('reports')
   })
 })

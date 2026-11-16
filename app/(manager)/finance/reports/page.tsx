@@ -10,7 +10,7 @@ import { LoadingSpinner, theme } from '@/app/components/ui'
 function FinanceReportsInner() {
   return (
     <AddonFeaturePageShell
-      title="דוחות"
+      title="דוחות כספיים"
       mobileSubtitle="תקציב מול ביצוע · עלות תחזוקה לבניין"
       desktopSubtitle="הנהלת חשבונות בניין — דוח תקופתי, פירוט והשוואות"
     >
@@ -24,7 +24,7 @@ function FinanceReportsInner() {
             textDecoration: 'none',
           }}
         >
-          ← חזרה לכספים (רישום הוצאות)
+          ← חזרה להכנסות והוצאות
         </Link>
       </div>
       <AddonProjectPicker emptyHint="הוסיפו בניין בדף פרויקטים כדי לצפות בדוחות.">
