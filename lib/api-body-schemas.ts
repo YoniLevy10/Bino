@@ -330,6 +330,8 @@ export const createProfessionalBodySchema = z.object({
   company_name: z.string().max(200).nullable().optional(),
   email: z.union([z.string().email().max(320), z.literal('')]).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  personal_rating: z.number().int().min(1).max(5).nullable().optional(),
+  personal_note: z.string().max(2000).nullable().optional(),
   is_active: z.boolean().optional(),
 })
 
