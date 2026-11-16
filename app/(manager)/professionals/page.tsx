@@ -13,6 +13,7 @@ import { validateRequired, validatePhoneNumber } from '@/lib/validators'
 import {
   sanitizeExtraPhones,
   formatWorkerPhonesDisplay,
+  formatWorkerPhoneDisplay,
   normalizeWorkerPhone,
   MAX_WORKER_EXTRA_PHONES,
 } from '@/lib/worker-phones'
@@ -163,8 +164,8 @@ export default function ProfessionalsPage() {
     setEditing(row)
     setForm({
       full_name: row.full_name || '',
-      phone: row.phone || '',
-      extra_phones: [...(row.extra_phones ?? [])],
+      phone: row.phone ? formatWorkerPhoneDisplay(row.phone) : '',
+      extra_phones: (row.extra_phones ?? []).map((p) => formatWorkerPhoneDisplay(p)),
       trade: row.trade || '',
       company_name: row.company_name || '',
       email: row.email || '',
@@ -258,8 +259,8 @@ export default function ProfessionalsPage() {
     setEditing(row)
     setForm({
       full_name: row.full_name || '',
-      phone: row.phone || '',
-      extra_phones: [...(row.extra_phones ?? [])],
+      phone: row.phone ? formatWorkerPhoneDisplay(row.phone) : '',
+      extra_phones: (row.extra_phones ?? []).map((p) => formatWorkerPhoneDisplay(p)),
       trade: row.trade || '',
       company_name: row.company_name || '',
       email: row.email || '',
@@ -274,6 +275,22 @@ export default function ProfessionalsPage() {
     setDrawerOpen(true)
   }
 
+  /** Fixly directory rows are read-only — seed a local create form so they can be saved to the book. */
+  function openCreateFromFixly(row: ProfessionalRow) {
+    setEditing(null)
+    setForm({
+      ...emptyForm,
+      full_name: row.full_name || '',
+      phone: row.phone ? formatWorkerPhoneDisplay(row.phone) : '',
+      trade: row.trade || '',
+      company_name: row.company_name || '',
+      email: row.email || '',
+      notes: row.notes || '',
+      is_active: true,
+    })
+    setDrawerOpen(true)
+  }
+
   function closeDrawer() {
     if (saving) return
     setDrawerOpen(false)
@@ -283,6 +300,45 @@ export default function ProfessionalsPage() {
 
   function updateForm<K extends keyof ProfessionalForm>(key: K, value: ProfessionalForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function updateExtraPhone(index: number, value: string) {
+    setForm((prev) => {
+      const next = [...prev.extra_phones]
+      next[index] = value
+      return { ...prev, extra_phones: next }
+    })
+  }
+
+  function addExtraPhoneField() {
+    setForm((prev) => {
+      if (prev.extra_phones.length >= MAX_WORKER_EXTRA_PHONES) return prev
+      return { ...prev, extra_phones: [...prev.extra_phones, ''] }
+    })
+  }
+
+  function removeExtraPhone(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      extra_phones: prev.extra_phones.filter((_, i) => i !== index),
+    }))
+  }
+
+  function blurPhoneField(value: string): string {
+    const normalized = normalizeWorkerPhone(value)
+    return normalized ? formatWorkerPhoneDisplay(normalized) : value.trim()
+  }
+
+  function blurPrimaryPhone() {
+    setForm((prev) => ({ ...prev, phone: blurPhoneField(prev.phone) }))
+  }
+
+  function blurExtraPhone(index: number) {
+    setForm((prev) => {
+      const next = [...prev.extra_phones]
+      next[index] = blurPhoneField(next[index] ?? '')
+      return { ...prev, extra_phones: next }
+    })
   }
 
   function validateForm(): string {
@@ -532,7 +588,7 @@ export default function ProfessionalsPage() {
               <KpiCard label="לא פעילים" value={stats.inactive} />
             </KpiRow>
 
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 24, minWidth: 0, maxWidth: '100%', overflowX: 'hidden' }}>
               <MidragSearchPanel
                 isMobile={isMobile}
                 drawerOpen={midragDrawerOpen}
@@ -620,18 +676,29 @@ export default function ProfessionalsPage() {
                         <div style={styles.personalNoteBox}>{row.personal_note}</div>
                       ) : null}
                       {row.notes ? <div style={styles.notes}>{row.notes}</div> : null}
-                      {row.source === 'fixly' ? null : (
-                      <div style={styles.actions}>
-                        <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
-                          עריכה
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => void toggleActive(row)}>
-                          {row.is_active ? 'השבתה' : 'הפעלה'}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => void removeProfessional(row)}>
-                          הסרה
-                        </Button>
-                      </div>
+                      {row.source === 'fixly' ? (
+                        <div style={styles.actions}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => openCreateFromFixly(row)}
+                            disabled={tableMissing}
+                          >
+                            הוסף לפנקס
+                          </Button>
+                        </div>
+                      ) : (
+                        <div style={styles.actions}>
+                          <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
+                            עריכה
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={() => void toggleActive(row)}>
+                            {row.is_active ? 'השבתה' : 'הפעלה'}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => void removeProfessional(row)}>
+                            הסרה
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -660,7 +727,7 @@ export default function ProfessionalsPage() {
         open={drawerOpen}
         onClose={closeDrawer}
         title={editing ? 'עריכת איש מקצוע' : 'איש מקצוע חדש'}
-        subtitle="טלפון להעברה ב-SMS · דירוג והערה אישיים לזיכרון תפעולי"
+        subtitle="טלפונים להעברה ב-SMS · דירוג והערה אישיים לזיכרון תפעולי"
         isMobile={isMobile}
         footer={
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -684,11 +751,51 @@ export default function ProfessionalsPage() {
           <label style={styles.label}>טלפון ראשי *</label>
           <input
             type="tel"
+            inputMode="tel"
             className="app-input"
             value={form.phone}
             onChange={(e) => updateForm('phone', e.target.value)}
+            onBlur={blurPrimaryPhone}
+            placeholder="05X-XXX-XXXX"
             style={styles.input}
           />
+          <p style={styles.formHint}>05X-XXX-XXXX, 05XXXXXXXX, +972... או 972... (עם או בלי מקפים)</p>
+          <div style={styles.extraPhonesHeader}>
+            <label style={styles.label}>טלפונים נוספים (SMS)</label>
+            {form.extra_phones.length < MAX_WORKER_EXTRA_PHONES ? (
+              <Button variant="ghost" size="sm" type="button" onClick={addExtraPhoneField}>
+                + הוסף מספר
+              </Button>
+            ) : null}
+          </div>
+          <p style={styles.formHint}>
+            למשל טלפון עבודה — כל המספרים יכולים לקבל SMS בהעברת תקלה
+          </p>
+          {form.extra_phones.length === 0 ? (
+            <Button variant="secondary" size="sm" type="button" onClick={addExtraPhoneField}>
+              הוסף טלפון נוסף
+            </Button>
+          ) : (
+            <div style={styles.extraPhoneList}>
+              {form.extra_phones.map((extraPhone, index) => (
+                <div key={index} style={styles.extraPhoneRow}>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    className="app-input"
+                    value={extraPhone}
+                    onChange={(e) => updateExtraPhone(index, e.target.value)}
+                    onBlur={() => blurExtraPhone(index)}
+                    placeholder="05X-XXX-XXXX"
+                    style={{ ...styles.input, flex: 1, minWidth: 0 }}
+                  />
+                  <Button variant="ghost" size="sm" type="button" onClick={() => removeExtraPhone(index)}>
+                    הסר
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
           <label style={styles.label}>תחום (חשמל, אינסטלציה...)</label>
           <input
             className="app-input"
@@ -803,10 +910,18 @@ const styles: Record<string, CSSProperties> = {
     maxWidth: 1200,
     margin: '0 auto',
     width: '100%',
+    minWidth: 0,
     boxSizing: 'border-box',
+    overflowX: 'hidden',
   },
-  contentMobile: { padding: '16px 16px 80px', maxWidth: '100%', boxSizing: 'border-box' },
-  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
+  contentMobile: {
+    padding: '16px 16px 80px',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+    overflowX: 'hidden',
+  },
+  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginBottom: 24 },
   filters: {
     display: 'flex',
     gap: 12,
@@ -814,20 +929,60 @@ const styles: Record<string, CSSProperties> = {
     padding: '16px 20px',
     borderBottom: `1px solid ${theme.colors.border}`,
     background: theme.colors.mutedSurface,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
   },
-  list: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14, padding: 20 },
+  list: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+    gap: 14,
+    padding: 20,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+  },
   card: {
     padding: '16px 18px',
     borderRadius: theme.radius.xl,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     boxShadow: theme.shadows.xs,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
   },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
-  name: { fontSize: 16, fontWeight: 600, color: theme.colors.textPrimary },
-  sub: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
-  phone: { fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8 },
-  notes: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 12, lineHeight: 1.4 },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8, minWidth: 0 },
+  name: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: theme.colors.textPrimary,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
+  sub: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
+  phone: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
+  notes: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
+    marginBottom: 12,
+    lineHeight: 1.4,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
   personalNoteBox: {
     fontSize: 13,
     color: theme.colors.textSecondary,
@@ -837,10 +992,37 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     background: theme.colors.mutedSurface,
     border: `1px solid ${theme.colors.borderSubtle}`,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
   },
-  actions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  form: { display: 'flex', flexDirection: 'column', gap: 12 },
+  actions: { display: 'flex', flexWrap: 'wrap', gap: 8, minWidth: 0 },
+  form: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, maxWidth: '100%' },
   label: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary },
+  formHint: {
+    margin: 0,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    lineHeight: 1.4,
+  },
+  extraPhonesHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    minWidth: 0,
+  },
+  extraPhoneList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    minWidth: 0,
+  },
+  extraPhoneRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
   input: {
     width: '100%',
     padding: '12px 14px',
@@ -851,6 +1033,8 @@ const styles: Record<string, CSSProperties> = {
     boxSizing: 'border-box',
     background: theme.colors.surface,
     color: theme.colors.textPrimary,
+    maxWidth: '100%',
+    minWidth: 0,
   },
   checkRow: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' },
   migrationHint: { margin: 0, fontSize: 14, lineHeight: 1.5, color: theme.colors.textSecondary },

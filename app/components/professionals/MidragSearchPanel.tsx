@@ -253,7 +253,7 @@ export function MidragSearchPanel({
 
   return (
     <>
-      <div id={MIDRAG_SEARCH_PANEL_ID}>
+      <div id={MIDRAG_SEARCH_PANEL_ID} style={{ minWidth: 0, maxWidth: '100%', overflowX: 'hidden' }}>
         <Card>
           <div style={styles.header}>
             <div>
@@ -312,6 +312,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'flex-start',
     gap: 12,
     marginBottom: 12,
+    minWidth: 0,
   },
   title: {
     margin: 0,
@@ -334,6 +335,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
+    minWidth: 0,
+    maxWidth: '100%',
+    overflowX: 'hidden',
   },
   intro: {
     margin: '0 0 8px',
@@ -349,6 +353,8 @@ const styles: Record<string, CSSProperties> = {
   },
   input: {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
     boxSizing: 'border-box',
   },
   hint: {
@@ -369,6 +375,8 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 10,
     marginTop: 12,
+    minWidth: 0,
+    maxWidth: '100%',
   },
   primaryLink: {
     display: 'inline-flex',
@@ -384,11 +392,19 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 15,
     textDecoration: 'none',
     textAlign: 'center',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    whiteSpace: 'normal',
   },
   secondaryRow: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 8,
+    minWidth: 0,
+    maxWidth: '100%',
   },
   secondaryLink: {
     display: 'inline-flex',
@@ -403,7 +419,9 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     textDecoration: 'none',
     flex: 1,
+    minWidth: 0,
     textAlign: 'center',
+    boxSizing: 'border-box',
   },
   ghostLink: {
     display: 'inline-flex',
@@ -417,6 +435,8 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     textDecoration: 'none',
     flex: 1,
+    minWidth: 0,
     textAlign: 'center',
+    boxSizing: 'border-box',
   },
 }
