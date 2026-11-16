@@ -20,6 +20,7 @@ import {
   savedResidentDisplayName,
 } from '@/lib/reporter-display'
 import { TabBar } from '../ui/TabBar'
+import { TicketDetailMobileShell } from './TicketDetailMobileShell'
 import type {
   TicketDetailAttachment,
   TicketDetailLog,
@@ -146,6 +147,22 @@ export function TicketDetailDrawer({
     setAdvancedOpen(false)
   }, [selectedTicket?.id])
 
+  // Deep link: ?focus=forward opens advanced + scrolls to professional picker
+  useEffect(() => {
+    if (!selectedTicket?.id || typeof window === 'undefined') return
+    const focus = new URLSearchParams(window.location.search).get('focus')
+    if (focus !== 'forward' && focus !== 'midrag') return
+    setActiveTab('details')
+    setAdvancedOpen(true)
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(
+        focus === 'midrag' ? 'ticket-midrag-block' : 'ticket-forward-professional'
+      )
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 320)
+    return () => window.clearTimeout(t)
+  }, [selectedTicket?.id])
+
   const storedReporterName = reporterName || selectedTicket?.reporter_name
   const reporterClientId = _tenantClientId || selectedTicket?.client_id || tenantFromSession.data || null
 
@@ -247,30 +264,38 @@ export function TicketDetailDrawer({
     onCancel
   )
 
-  return (
-    <Drawer
-      open={!!selectedTicket}
-      onClose={onClose}
-      title={`תקלה #${selectedTicket?.ticket_number}`}
-      subtitle={selectedTicket?.project_name || 'פרטי בניין'}
-      isMobile={isMobile}
-      footer={
-        selectedTicket && activeTab === 'details' ? (
-          <div style={styles.drawerActions}>
-            {selectedTicket.status !== 'CLOSED' && (
-              <Button variant="danger" onClick={onCloseTicket} style={{ width: '100%' }}>
-                סגירת תקלה
-              </Button>
-            )}
-            <Button variant="primary" onClick={onSave} loading={savingTicket} style={{ width: '100%' }}>
-              שמירה
-            </Button>
-          </div>
-        ) : undefined
-      }
-    >
-      {selectedTicket && (
-        <div style={styles.drawerContent}>
+  const mobileComfort = isMobile ? styles.mobileComfort : undefined
+
+  const footerActions =
+    selectedTicket && activeTab === 'details' ? (
+      <div style={{ ...styles.drawerActions, ...(isMobile ? styles.drawerActionsMobile : {}) }}>
+        {selectedTicket.status !== 'CLOSED' && (
+          <Button
+            variant="danger"
+            size={isMobile ? 'lg' : 'md'}
+            onClick={onCloseTicket}
+            style={styles.footerButtonFull}
+          >
+            סגירת תקלה
+          </Button>
+        )}
+        <Button
+          variant="primary"
+          size={isMobile ? 'lg' : 'md'}
+          onClick={onSave}
+          loading={savingTicket}
+          style={styles.footerButtonFull}
+        >
+          שמירה
+        </Button>
+      </div>
+    ) : undefined
+
+  const drawerTitle = selectedTicket ? `תקלה #${selectedTicket.ticket_number}` : ''
+  const drawerSubtitle = selectedTicket?.project_name || 'פרטי בניין'
+
+  const drawerBody = selectedTicket ? (
+        <div style={{ ...styles.drawerContent, ...(isMobile ? styles.drawerContentMobile : {}) }}>
           <TabBar
             tabs={[
               {
@@ -286,6 +311,7 @@ export function TicketDetailDrawer({
             activeTab={activeTab}
             onTabChange={setActiveTab}
             ariaLabel="פרטי תקלה"
+            comfortable={isMobile}
           />
 
           {activeTab === 'details' && (
@@ -309,8 +335,8 @@ export function TicketDetailDrawer({
                   <textarea
                     value={draftDescription}
                     onChange={(e) => onDescriptionChange(e.target.value)}
-                    style={styles.drawerTextarea}
-                    rows={4}
+                    style={{ ...styles.drawerTextarea, ...(isMobile ? styles.drawerTextareaMobile : {}) }}
+                    rows={isMobile ? 5 : 4}
                   />
                 )}
                 {translation ? (
@@ -327,7 +353,7 @@ export function TicketDetailDrawer({
                   className="app-select-input"
                   value={draftStatus}
                   onChange={(e) => onStatusChange(e.target.value)}
-                  style={styles.drawerSelect}
+                  style={{ ...styles.drawerSelect, ...mobileComfort }}
                 >
                   {TICKET_STATUSES.map((status) => (
                     <option key={status} value={status}>
@@ -343,7 +369,7 @@ export function TicketDetailDrawer({
                   className="app-select-input"
                   value={draftWorkerId}
                   onChange={(e) => onWorkerChange(e.target.value)}
-                  style={styles.drawerSelect}
+                  style={{ ...styles.drawerSelect, ...mobileComfort }}
                 >
                   <option value="">לא משויך</option>
                   {Object.entries(workersMap).map(([id, name]) => (
@@ -366,9 +392,10 @@ export function TicketDetailDrawer({
                 <div style={styles.drawerSection}>
                   <Button
                     variant="secondary"
+                    size={isMobile ? 'lg' : 'md'}
                     type="button"
                     onClick={goCreateMaintenanceTask}
-                    style={{ width: '100%' }}
+                    style={styles.footerButtonFull}
                   >
                     יצירת משימת אחזקה
                   </Button>
@@ -522,7 +549,9 @@ export function TicketDetailDrawer({
                         professionals={professionals}
                         onForwarded={onTicketForwarded}
                       />
-                      <TicketMidragBlock ticketId={selectedTicket.id} isMobile={isMobile} />
+                      <div id="ticket-midrag-block">
+                        <TicketMidragBlock ticketId={selectedTicket.id} isMobile={isMobile} />
+                      </div>
                     </>
                   )}
 
@@ -593,7 +622,33 @@ export function TicketDetailDrawer({
             <p style={{ color: theme.colors.textMuted, fontSize: 13 }}>אין טלפון דייר לתקלה זו.</p>
           )}
         </div>
-      )}
+  ) : null
+
+  if (isMobile) {
+    return (
+      <TicketDetailMobileShell
+        open={!!selectedTicket}
+        onClose={onClose}
+        title={drawerTitle}
+        subtitle={drawerSubtitle}
+        footer={footerActions}
+      >
+        {drawerBody}
+      </TicketDetailMobileShell>
+    )
+  }
+
+  return (
+    <Drawer
+      open={!!selectedTicket}
+      onClose={onClose}
+      title={drawerTitle}
+      subtitle={drawerSubtitle}
+      isMobile={false}
+      placement="center"
+      footer={footerActions}
+    >
+      {drawerBody}
     </Drawer>
   )
 }
@@ -662,6 +717,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+  },
+  drawerContentMobile: {
+    gap: '18px',
   },
   drawerSection: {
     display: 'flex',
@@ -735,6 +793,22 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
+  },
+  drawerActionsMobile: {
+    gap: '12px',
+  },
+  footerButtonFull: {
+    width: '100%',
+    minHeight: '48px',
+  },
+  mobileComfort: {
+    minHeight: '48px',
+    padding: '12px 16px',
+    fontSize: '16px',
+  },
+  drawerTextareaMobile: {
+    minHeight: '120px',
+    padding: '14px 16px',
   },
   advancedDanger: {
     display: 'flex',
