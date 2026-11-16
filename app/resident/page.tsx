@@ -1,17 +1,23 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { useIsMobile } from '@/lib/use-is-mobile'
 import {
   ResidentAlert,
-  ResidentCard,
   ResidentMuted,
   ResidentPrimaryButton,
-  ResidentSectionTitle,
   residentShellStyles,
-  residentTheme,
 } from '@/app/components/resident/residentUi'
 
 type HomePayload = {
+  membership?: {
+    id: string
+    client_name: string | null
+    project_name: string | null
+    apartment_number: string | null
+  }
   openBalance: number
   nextCharge: {
     id: string
@@ -35,7 +41,21 @@ type HomePayload = {
   error?: string
 }
 
+const QUICK_ACTIONS = [
+  { href: '/resident/tickets', label: 'פתיחת תקלה', hint: 'דיווח מהיר' },
+  { href: '/resident/payments', label: 'תשלומים', hint: 'יתרות וחיובים' },
+  { href: '/resident/decisions', label: 'החלטות', hint: 'חתימה והצבעה' },
+  { href: '/resident/information', label: 'מידע', hint: 'הודעות ומסמכים' },
+] as const
+
+function amenityHours(a: HomePayload['amenitiesToday'][number]): string {
+  if (a.today.source === 'none') return 'לא פורסמו שעות'
+  if (a.today.is_closed) return 'סגור'
+  return `${a.today.opens_at}–${a.today.closes_at}`
+}
+
 export default function ResidentHomePage() {
+  const isMobile = useIsMobile()
   const [data, setData] = useState<HomePayload | null>(null)
   const [error, setError] = useState('')
 
@@ -43,7 +63,13 @@ export default function ResidentHomePage() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/resident/home')
+        let res = await fetchWithTimeout('/api/resident/home')
+        // Soft-nav after login can race cookies; one short retry.
+        if (res.status === 401) {
+          await new Promise((r) => setTimeout(r, 250))
+          if (cancelled) return
+          res = await fetchWithTimeout('/api/resident/home')
+        }
         const json = await res.json()
         if (cancelled) return
         if (!res.ok) {
@@ -63,72 +89,82 @@ export default function ResidentHomePage() {
   if (error) return <ResidentAlert tone="error">{error}</ResidentAlert>
   if (!data) return <ResidentMuted>טוען…</ResidentMuted>
 
+  const apartment = data.membership?.apartment_number
+  const building = data.membership?.project_name
+  const balance = Number(data.openBalance || 0)
+
   return (
-    <div style={{ display: 'grid', gap: 14 }} className="resident-home-stack">
-      <ResidentCard style={{ padding: '22px 20px' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: residentTheme.colors.textMuted }}>
-          יתרה לתשלום
-        </div>
-        <div style={{ ...residentShellStyles.balanceValue, marginTop: 6 }}>
-          ₪{Number(data.openBalance || 0).toLocaleString('he-IL')}
-        </div>
-        {data.nextCharge ? (
-          <div style={{ marginTop: 10, fontSize: 14, color: residentTheme.colors.textSecondary }}>
-            החיוב הקרוב: {data.nextCharge.title}
-            {data.nextCharge.due_date ? ` · עד ${data.nextCharge.due_date}` : ''}
+    <div className={`resident-home ${isMobile ? 'is-mobile' : 'is-desktop'}`}>
+      <section className="resident-home-hero" aria-labelledby="resident-home-balance-label">
+        <p className="resident-home-kicker">אזור אישי</p>
+        <h1 className="resident-home-greeting" id="resident-home-title">
+          {apartment ? `דירה ${apartment}` : 'הבית שלכם'}
+          {building ? <span className="resident-home-greeting-sub">{building}</span> : null}
+        </h1>
+
+        <div className="resident-home-balance">
+          <div id="resident-home-balance-label" className="resident-home-balance-label">
+            יתרה לתשלום
           </div>
-        ) : (
-          <ResidentMuted style={{ marginTop: 10 }}>אין חיוב פתוח שפורסם</ResidentMuted>
-        )}
-        <div style={{ marginTop: 16 }}>
-          <ResidentPrimaryButton href="/resident/payments">לתשלומים</ResidentPrimaryButton>
-        </div>
-      </ResidentCard>
-
-      <ResidentCard>
-        <ResidentSectionTitle>הודעה</ResidentSectionTitle>
-        {data.pinnedAnnouncement ? (
-          <>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{data.pinnedAnnouncement.title}</div>
-            <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', color: residentTheme.colors.textSecondary, lineHeight: 1.5 }}>
-              {data.pinnedAnnouncement.body}
+          <div className="resident-home-balance-value" style={residentShellStyles.balanceValue}>
+            ₪{balance.toLocaleString('he-IL')}
+          </div>
+          {data.nextCharge ? (
+            <p className="resident-home-balance-meta">
+              החיוב הקרוב: {data.nextCharge.title}
+              {data.nextCharge.due_date ? ` · עד ${data.nextCharge.due_date}` : ''}
             </p>
-          </>
-        ) : (
-          <ResidentMuted>אין הודעות שפורסמו כרגע</ResidentMuted>
-        )}
-      </ResidentCard>
+          ) : (
+            <p className="resident-home-balance-meta muted">אין חיוב פתוח שפורסם</p>
+          )}
+          <div className="resident-home-balance-cta">
+            <ResidentPrimaryButton href="/resident/payments">לתשלומים</ResidentPrimaryButton>
+          </div>
+        </div>
+      </section>
 
-      <ResidentCard>
-        <ResidentSectionTitle>שעות מתקנים להיום</ResidentSectionTitle>
-        {data.amenitiesToday.length === 0 ? (
-          <ResidentMuted>לא פורסמו שעות מתקנים</ResidentMuted>
-        ) : (
-          <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-            {data.amenitiesToday.map((a) => (
-              <li key={a.id} style={{ marginBottom: 8, lineHeight: 1.4 }}>
-                <strong>{a.name}</strong>:{' '}
-                {a.today.source === 'none'
-                  ? 'לא פורסמו שעות'
-                  : a.today.is_closed
-                    ? 'סגור'
-                    : `${a.today.opens_at}–${a.today.closes_at}`}
-              </li>
-            ))}
-          </ul>
-        )}
-      </ResidentCard>
+      <nav className="resident-home-actions" aria-label="פעולות מהירות">
+        {QUICK_ACTIONS.map((action) => (
+          <Link key={action.href} href={action.href} className="resident-home-action resident-btn-press">
+            <span className="resident-home-action-label">{action.label}</span>
+            <span className="resident-home-action-hint">{action.hint}</span>
+          </Link>
+        ))}
+      </nav>
 
-      <ResidentPrimaryButton
-        href="/resident/tickets"
-        style={{
-          background: 'linear-gradient(180deg, #3a3a4a 0%, #1A1A2E 46%, #12121f 100%)',
-          boxShadow:
-            'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(0,0,0,0.25)',
-        }}
-      >
-        פתיחת תקלה
-      </ResidentPrimaryButton>
+      <div className="resident-home-secondary">
+        <section className="resident-home-section" aria-labelledby="resident-home-announcement">
+          <h2 id="resident-home-announcement" className="resident-home-section-title">
+            הודעה
+          </h2>
+          {data.pinnedAnnouncement ? (
+            <>
+              <div className="resident-home-announcement-title">{data.pinnedAnnouncement.title}</div>
+              <p className="resident-home-announcement-body">{data.pinnedAnnouncement.body}</p>
+            </>
+          ) : (
+            <ResidentMuted>אין הודעות שפורסמו כרגע</ResidentMuted>
+          )}
+        </section>
+
+        <section className="resident-home-section" aria-labelledby="resident-home-amenities">
+          <h2 id="resident-home-amenities" className="resident-home-section-title">
+            שעות מתקנים להיום
+          </h2>
+          {data.amenitiesToday.length === 0 ? (
+            <ResidentMuted>לא פורסמו שעות מתקנים</ResidentMuted>
+          ) : (
+            <ul className="resident-home-amenity-list">
+              {data.amenitiesToday.map((a) => (
+                <li key={a.id}>
+                  <span className="resident-home-amenity-name">{a.name}</span>
+                  <span className="resident-home-amenity-hours">{amenityHours(a)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

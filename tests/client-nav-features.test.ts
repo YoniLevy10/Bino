@@ -35,13 +35,20 @@ describe('client nav features', () => {
     for (const required of REQUIRED_NAV_FEATURE_IDS) {
       expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toContain(required)
     }
+    expect(REQUIRED_NAV_FEATURE_IDS).toEqual(['dashboard', 'tickets', 'finance', 'reports'])
     expect(isSetupPackageNavFeatures(getSetupPackageNavFeatures())).toBe(true)
     expect(describeClientNavFeaturesMode(getSetupPackageNavFeatures())).toBe('setup_package')
   })
 
-  it('filters sidebar items when enabled list is set', () => {
+  it('filters sidebar items when enabled list is set (finance/reports always stay)', () => {
     const items = resolveSidebarNavItems(null, ['dashboard', 'tickets', 'projects'])
-    expect(items.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'projects'])
+    expect(items.map((i) => i.id)).toEqual([
+      'dashboard',
+      'tickets',
+      'projects',
+      'finance',
+      'reports',
+    ])
   })
 
   it('blocks calendar when not in enabled list', () => {
@@ -58,11 +65,18 @@ describe('client nav features', () => {
       'workers',
       'site_tours',
       'summary',
+      'finance',
+      'reports',
       'qr',
       'whatsapp_templates',
       'pending_residents',
     ])
     // Sidebar default is curated separately and may omit QR/templates/pending.
     expect(DEFAULT_SIDEBAR_NAV_ORDER).not.toContain('qr')
+  })
+
+  it('treats finance/reports as always-on core nav', () => {
+    expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'finance')).toBe(true)
+    expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'reports')).toBe(true)
   })
 })

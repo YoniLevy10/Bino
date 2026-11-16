@@ -7,7 +7,8 @@ import { PaidAddonGate } from '@/app/components/PaidAddonGate'
 import { AppShell, MobileHeader, useMobileMenu, PageHeader } from '../ui'
 
 type Props = {
-  addonKey: PaidAddonKey
+  /** Omit for core features (e.g. כספים / דוחות) — no PaidAddonGate. */
+  addonKey?: PaidAddonKey
   title: string
   mobileSubtitle: string
   desktopSubtitle?: string
@@ -44,8 +45,8 @@ export function AddonFeaturePageShell({
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const body = (
-    <PaidAddonGate addonKey={addonKey}>
+  const inner = (
+    <>
       {isMobile && !immersive && (
         <MobileHeader
           title={title}
@@ -71,8 +72,10 @@ export function AddonFeaturePageShell({
         )}
         <div style={{ ...styles.body, ...(immersive ? styles.bodyImmersive : {}) }}>{children}</div>
       </div>
-    </PaidAddonGate>
+    </>
   )
+
+  const body = addonKey ? <PaidAddonGate addonKey={addonKey}>{inner}</PaidAddonGate> : inner
 
   if (!wrapAppShell) return body
   return <AppShell isMobile={isMobile}>{body}</AppShell>
@@ -86,8 +89,9 @@ const styles: Record<string, CSSProperties> = {
     boxSizing: 'border-box',
   },
   contentMobile: {
-    padding: '16px 16px 32px',
+    padding: '16px 16px calc(24px + env(safe-area-inset-bottom, 0px))',
     maxWidth: '100%',
+    overflowX: 'hidden',
   },
   body: {
     display: 'flex',

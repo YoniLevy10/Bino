@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientIdLite } from '@/lib/api-auth'
-import { getClientEnabledAddonKeys, listActiveAddonsCatalog } from '@/lib/paid-addons'
+import {
+  getClientEnabledAddonKeys,
+  listActiveAddonsCatalog,
+  type AddonEntitlement,
+} from '@/lib/paid-addons'
 
 /** Tenant dashboard: catalog prices + which add-ons are enabled for this client. */
 export async function GET() {
@@ -18,7 +22,7 @@ export async function GET() {
       getClientEnabledAddonKeys(admin, clientId),
     ])
 
-    const addons = catalog.map((row) => ({
+    const addons: AddonEntitlement[] = catalog.map((row) => ({
       ...row,
       enabled: enabledKeys.has(row.addon_key),
     }))

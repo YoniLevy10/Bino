@@ -241,6 +241,9 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `PLATFORM_OPS_EMAIL` | Inbox for SMS/WhatsApp failure alerts (fallback: `VAPID_SUBJECT` mailto) |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key — sends ops alert emails |
 | `RESEND_FROM_EMAIL` | Verified Resend sender (optional) |
+| `COMPOSIO_API_KEY` | Composio project API key — Meta WhatsApp **UTILITY** template create/sync from superadmin (see `docs/COMPOSIO_META_TEMPLATES.md`) |
+| `COMPOSIO_WHATSAPP_CONNECTED_ACCOUNT_ID` | Composio connected WhatsApp account id/alias (e.g. `whatsapp_lookum-behead`) |
+| `COMPOSIO_USER_ID` | Optional Composio user scope (default `bino-platform`) |
 | `GROW_API_KEY` | Grow body `apiKey` from Lial — **required for collections** |
 | `GROW_X_API_KEY` | Grow header `x-api-key` from Lial (separate from body key) — **required for collections** |
 | `GROW_PAGE_CODE` | Grow payment-link pageCode — **required for collections** |

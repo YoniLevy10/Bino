@@ -94,7 +94,7 @@ export function ProjectAdvancedActions({
     if (isBootstrapped && hasAddon(PAID_ADDON_KEYS.project_documents)) {
       rows.push({
         id: 'project_documents',
-        label: 'מסמכי הבניין',
+        label: 'מסמכים',
         onClick: () => {
           router.push(`/project-documents?project=${encodeURIComponent(projectId)}`)
         },

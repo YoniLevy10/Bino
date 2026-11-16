@@ -192,6 +192,22 @@ export async function POST(req: Request) {
     },
   })
 
+  let notify: { push: boolean; managerNotify: boolean } | null = null
+  try {
+    const { notifyDocumentPublished } = await import(
+      '@/lib/building-governance/document-publish-notify'
+    )
+    notify = await notifyDocumentPublished(auth.ctx.admin, {
+      clientId: auth.ctx.clientId,
+      projectId,
+      documentId: (inserted as { id: string }).id,
+      fileName,
+      userId: auth.ctx.userId,
+    })
+  } catch (e) {
+    console.warn('[portal/documents upload] notify failed', e)
+  }
+
   const { data: signed } = await auth.ctx.admin.storage
     .from(BUCKET)
     .createSignedUrl(storagePath, 3600)
@@ -202,6 +218,7 @@ export async function POST(req: Request) {
       ...(inserted as object),
       download_url: signed?.signedUrl ?? null,
     },
+    notify,
   })
 }
 

@@ -126,7 +126,6 @@ export const sidebarPinBodySchema = z.object({
     'whatsapp_inbox',
     'campaigns',
     'collections',
-    'building_finance',
   ]),
   pinned: z.boolean(),
 })
@@ -663,4 +662,151 @@ export const createBuildingExpenseBodySchema = z.object({
     .nullable()
     .optional(),
   idempotency_key: z.string().min(8).max(120),
+})
+
+/** Building finance — upsert annual/period budget. */
+export const upsertBuildingBudgetBodySchema = z.object({
+  project_id: z.string().uuid(),
+  period_key: z.string().regex(/^[0-9]{4}(-Q[1-4]|-[0-9]{2})?$/),
+  amount_planned: z.number().min(0).max(100_000_000),
+  category_id: z.string().uuid().nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+})
+
+const committeeRoleSchema = z.enum(['chair', 'treasurer', 'secretary', 'member', 'signer'])
+
+/** Wave 4 — add committee member. */
+export const createCommitteeMemberBodySchema = z.object({
+  project_id: z.string().uuid(),
+  full_name: z.string().trim().min(1).max(200),
+  role: committeeRoleSchema.optional(),
+  phone: z.string().trim().max(40).nullable().optional(),
+  email: z.string().trim().email().max(200).nullable().optional(),
+  term_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  term_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  resident_id: z.string().uuid().nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  /** Send service SMS/WA invite (default: auto for signer/chair when auto-notify on). */
+  send_invite: z.boolean().optional(),
+})
+
+/** Wave 4 — update / end committee member. */
+export const updateCommitteeMemberBodySchema = z
+  .object({
+    id: z.string().uuid(),
+    project_id: z.string().uuid(),
+    full_name: z.string().trim().min(1).max(200).optional(),
+    role: committeeRoleSchema.optional(),
+    phone: z.string().trim().max(40).nullable().optional(),
+    email: z.string().trim().email().max(200).nullable().optional(),
+    term_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    term_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    notes: z.string().trim().max(2000).nullable().optional(),
+    is_active: z.boolean().optional(),
+  })
+  .refine(
+    (v) =>
+      v.full_name !== undefined ||
+      v.role !== undefined ||
+      v.phone !== undefined ||
+      v.email !== undefined ||
+      v.term_start !== undefined ||
+      v.term_end !== undefined ||
+      v.notes !== undefined ||
+      v.is_active !== undefined,
+    { message: 'נדרש לפחות שדה אחד לעדכון' }
+  )
+
+/** Wave 4 — create building decision. */
+export const createBuildingDecisionBodySchema = z.object({
+  project_id: z.string().uuid(),
+  title: z.string().trim().min(1).max(300),
+  body: z.string().trim().max(8000).nullable().optional(),
+  majority_threshold: z.number().gt(0).lte(1).optional(),
+  required_signatures: z.number().int().min(1).max(500).optional(),
+  status: z.enum(['draft', 'open']).optional(),
+  /** Create + notify signature links for committee members with phones (default true when open). */
+  fanout_committee: z.boolean().optional(),
+})
+
+/** Wave 4 — create signature request for a decision. */
+export const createSignatureRequestBodySchema = z.object({
+  project_id: z.string().uuid(),
+  decision_id: z.string().uuid(),
+  signer_name: z.string().trim().min(1).max(200),
+  signer_phone: z.string().trim().max(40).nullable().optional(),
+  expires_in_days: z.number().int().min(1).max(90).optional(),
+  /** Auto-send sign link via SMS/WA (default true when phone present + auto-notify on). */
+  send_notify: z.boolean().optional(),
+})
+
+/** Hub — send decision to selected/all residents via SMS and/or email (portal deep link). */
+export const notifyBuildingDecisionResidentsBodySchema = z
+  .object({
+    project_id: z.string().uuid(),
+    decision_id: z.string().uuid(),
+    /** When true, ignore resident_ids and notify all project residents (capped). */
+    all_residents: z.boolean().optional(),
+    resident_ids: z.array(z.string().uuid()).max(80).optional(),
+    /**
+     * Delivery channels. Empty = create signature stubs + recipient rows only
+     * (portal can still sign without SMS/email).
+     */
+    channels: z.array(z.enum(['sms', 'email'])).max(2).optional().default([]),
+    /**
+     * When false, never send SMS/email even if channels are set — still create
+     * signature stubs + building_decision_recipients. Default true.
+     */
+    send_messages: z.boolean().optional(),
+    /** Append public /intake/building-sign/{token} as secondary link (default false). */
+    include_public_fallback: z.boolean().optional(),
+    expires_in_days: z.number().int().min(1).max(90).optional(),
+    limit: z.number().int().min(1).max(80).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.all_residents && (!val.resident_ids || val.resident_ids.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'נא לבחור דיירים או לסמן «כל דיירי הבניין»',
+        path: ['resident_ids'],
+      })
+    }
+  })
+
+/** Resident portal — submit signature for a building decision. */
+export const residentSignBuildingDecisionBodySchema = z.object({
+  signature_data_url: z
+    .string()
+    .min(32)
+    .max(900_000)
+    .refine((v) => v.startsWith('data:image/'), { message: 'נדרש חתימה כ־data URL' }),
+})
+
+/** Hub — batch resident portal join invites. */
+export const residentJoinInviteBatchBodySchema = z.object({
+  project_id: z.string().uuid(),
+  resident_ids: z.array(z.string().uuid()).max(40).optional(),
+  limit: z.number().int().min(1).max(40).optional(),
+})
+
+/** Wave 4 — public submit signature (token URL). */
+export const submitBuildingSignatureBodySchema = z.object({
+  signature_data_url: z
+    .string()
+    .min(32)
+    .max(900_000)
+    .refine((v) => v.startsWith('data:image/'), { message: 'נדרש חתימה כ־data URL' }),
+  signer_name: z.string().trim().min(1).max(200).optional(),
+})
+
+/** Superadmin — create UTILITY WhatsApp template via Composio → Meta (service only). */
+export const createMetaWhatsappTemplateBodySchema = z.object({
+  spec_id: z.string().trim().min(1).max(80),
+  /** Optional client label → Meta name suffix (ticket_closed_client). */
+  name_suffix: z.string().trim().max(60).nullable().optional(),
+  /** Optional customized body; must keep {{n}} placeholders. */
+  body_override: z.string().trim().max(1024).nullable().optional(),
+  /** Override COMPOSIO_WHATSAPP_CONNECTED_ACCOUNT_ID (alias or id). */
+  connected_account_id: z.string().trim().max(120).nullable().optional(),
+  language: z.string().trim().max(16).nullable().optional(),
 })

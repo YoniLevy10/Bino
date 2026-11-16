@@ -56,14 +56,65 @@ describe('resolveSidebarNavItems', () => {
     expect(paidUnpinned.map((i) => i.id)).not.toContain('professionals')
   })
 
-  it('hides an auto addon when the saved order omits it', () => {
+  it('still shows entitled auto addons when a saved order omits them', () => {
+    // Stale sidebar_nav_order (saved before the auto addon shipped) must not hide it.
     const withoutAttendance = DEFAULT_SIDEBAR_NAV_ORDER.filter((id) => id !== 'attendance')
     const items = resolveSidebarNavItems(
       withoutAttendance,
       null,
       new Set(['attendance'] as const)
     )
-    expect(items.map((i) => i.id)).not.toContain('attendance')
+    expect(items.map((i) => i.id)).toContain('attendance')
+  })
+
+  it('shows finance/reports as core even if order + features allowlist omit them', () => {
+    const bamakorLikeOrder = [
+      'dashboard',
+      'tasks',
+      'tickets',
+      'projects',
+      'residents',
+      'workers',
+      'site_tours',
+      'whatsapp_inbox',
+      'collections',
+      'professionals',
+      'summary',
+      'project_documents',
+    ] as const
+    const bamakorLikeFeatures = [
+      'attendance',
+      'calendar',
+      'campaigns',
+      'collections',
+      'dashboard',
+      'pending_residents',
+      'pilot_sms',
+      'professionals',
+      'project_documents',
+      'projects',
+      'qr',
+      'residents',
+      'site_tours',
+      'summary',
+      'tasks',
+      'tickets',
+      'whatsapp_inbox',
+      'whatsapp_templates',
+      'workers',
+    ] as const
+    const items = resolveSidebarNavItems(
+      [...bamakorLikeOrder],
+      [...bamakorLikeFeatures],
+      new Set(['whatsapp_inbox', 'collections', 'professionals', 'project_documents'] as const)
+    )
+    expect(items.map((i) => i.id)).toContain('finance')
+    expect(items.find((i) => i.id === 'finance')?.label).toBe('כספים')
+    expect(items.map((i) => i.id)).toContain('reports')
+    expect(items.find((i) => i.id === 'reports')?.label).toBe('דוחות')
+    const financeIdx = items.findIndex((i) => i.id === 'finance')
+    const reportsIdx = items.findIndex((i) => i.id === 'reports')
+    expect(reportsIdx).toBe(financeIdx + 1)
   })
 
   it('applies curated tenant order (custom order cannot float summary above addons)', () => {
@@ -76,6 +127,8 @@ describe('resolveSidebarNavItems', () => {
       'residents',
       'workers',
       'site_tours',
+      'finance',
+      'reports',
       'summary',
     ])
   })
@@ -96,6 +149,8 @@ describe('resolveSidebarNavItems', () => {
       'site_tours',
       'whatsapp_inbox',
       'attendance',
+      'finance',
+      'reports',
       'summary',
     ])
   })
@@ -182,10 +237,24 @@ describe('addon nav hrefs', () => {
   it('routes project-scoped add-ons to dedicated pages', () => {
     expect(SIDEBAR_NAV_REGISTRY.pilot_sms.href).toBe('/pilot-sms')
     expect(SIDEBAR_NAV_REGISTRY.project_documents.href).toBe('/project-documents')
+    expect(SIDEBAR_NAV_REGISTRY.finance.href).toBe('/finance')
   })
 
   it('labels attendance as החתמת עובדים', () => {
     expect(SIDEBAR_NAV_REGISTRY.attendance.label).toBe('החתמת עובדים')
+  })
+
+  it('labels finance as כספים and shows as core without paid entitlement', () => {
+    expect(SIDEBAR_NAV_REGISTRY.finance.label).toBe('כספים')
+    const items = resolveSidebarNavItems(null, null, new Set())
+    expect(items.map((i) => i.id)).toContain('finance')
+  })
+
+  it('labels reports as דוחות and shows as core without paid entitlement', () => {
+    expect(SIDEBAR_NAV_REGISTRY.reports.href).toBe('/finance/reports')
+    expect(SIDEBAR_NAV_REGISTRY.reports.label).toBe('דוחות')
+    const items = resolveSidebarNavItems(null, null, new Set())
+    expect(items.map((i) => i.id)).toContain('reports')
   })
 })
 

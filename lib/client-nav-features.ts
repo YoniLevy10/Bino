@@ -15,6 +15,8 @@ import {
 export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
   'tickets',
+  'finance',
+  'reports',
 ]
 
 /** Paid add-ons — not in sidebar; not in setup package (~10k NIS). */
@@ -33,6 +35,8 @@ export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'workers',
   'site_tours',
   'summary',
+  'finance',
+  'reports',
   'qr',
   'whatsapp_templates',
   'pending_residents',
@@ -96,6 +100,8 @@ export function isNavFeatureEnabled(
   enabledFeatures: SidebarNavItemId[] | null | undefined,
   featureId: SidebarNavItemId
 ): boolean {
+  // Core nav — always available (same class as dashboard / tickets).
+  if (featureId === 'finance' || featureId === 'reports') return true
   if (!enabledFeatures || enabledFeatures.length === 0) return true
   return enabledFeatures.includes(featureId)
 }
@@ -141,6 +147,7 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
   '/whatsapp-inbox': 'whatsapp_inbox',
   '/campaigns': 'campaigns',
   '/collections': 'collections',
+  '/finance': 'finance',
   '/qr': 'qr',
   '/settings/whatsapp-templates': 'whatsapp_templates',
   '/pending-residents': 'pending_residents',
@@ -148,6 +155,7 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
 
 export function navItemIdForPathname(pathname: string): SidebarNavItemId | null {
   if (pathname in PATH_TO_NAV_ID) return PATH_TO_NAV_ID[pathname]
+  if (pathname.startsWith('/finance/')) return 'finance'
   if (pathname.startsWith('/settings/whatsapp-templates')) return 'whatsapp_templates'
   return null
 }
@@ -161,7 +169,7 @@ export function normalizeEnabledNavFeaturesPayload(
   }
   for (const required of REQUIRED_NAV_FEATURE_IDS) {
     if (!parsed.includes(required)) {
-      return { ok: false, error: 'לוח בקרה ותקלות חייבים להישאר פעילים' }
+      return { ok: false, error: 'לוח בקרה, תקלות, כספים ודוחות חייבים להישאר פעילים' }
     }
   }
   return { ok: true, value: parsed }

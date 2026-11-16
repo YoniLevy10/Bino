@@ -12,11 +12,15 @@ export async function GET(req: Request) {
   const auth = await requireResidentContext({ request: req, allowPicker: true })
   if (!auth.ok) return auth.response
 
+  // Match portal-opened tickets (membership) OR seeded/legacy rows for this resident.
   const { data, error } = await auth.ctx.admin
     .from('tickets')
     .select(RESIDENT_TICKET_SELECT)
     .eq('client_id', auth.ctx.membership.client_id)
-    .eq('reporter_membership_id', auth.ctx.membership.id)
+    .eq('project_id', auth.ctx.membership.project_id)
+    .or(
+      `reporter_membership_id.eq.${auth.ctx.membership.id},resident_id.eq.${auth.ctx.membership.resident_id}`
+    )
     .is('deleted_at', null)
     .order('opened_at', { ascending: false })
     .limit(50)

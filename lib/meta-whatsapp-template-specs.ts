@@ -139,6 +139,81 @@ export function getMetaTemplateSpecById(id: string): MetaTemplateSpec | undefine
   return META_WHATSAPP_TEMPLATE_SPECS.find((s) => s.id === id)
 }
 
+/** Specs that can be submitted via Composio (text body; no image-header media example). */
+export function isMetaTemplateSpecComposable(spec: MetaTemplateSpec): boolean {
+  if (spec.category !== 'Utility') return false
+  if (spec.header?.toLowerCase().includes('image')) return false
+  return true
+}
+
+/** Sanitize client/label into Meta template name suffix (a-z0-9_). */
+export function sanitizeMetaTemplateNameSuffix(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40)
+}
+
+/**
+ * Build Meta Cloud API create payload (UTILITY only).
+ * Optional nameSuffix → client-adapted unique name (e.g. ticket_closed_bamakor).
+ * Optional bodyOverride → customer-adapted copy; must keep {{n}} placeholders.
+ */
+export function buildMetaTemplateCreatePayload(
+  spec: MetaTemplateSpec,
+  options?: {
+    nameSuffix?: string | null
+    bodyOverride?: string | null
+    language?: string | null
+  }
+): {
+  name: string
+  category: 'UTILITY'
+  language: string
+  allow_category_change: boolean
+  components: Array<{
+    type: 'BODY' | 'HEADER'
+    format?: 'IMAGE'
+    text?: string
+    example?: { body_text: string[][] }
+  }>
+} {
+  if (spec.category !== 'Utility') {
+    throw new Error('Only Utility (service) templates may be created via this flow')
+  }
+
+  const suffix = options?.nameSuffix ? sanitizeMetaTemplateNameSuffix(options.nameSuffix) : ''
+  const name = suffix ? `${spec.metaName}_${suffix}`.slice(0, 512) : spec.metaName
+  const body = (options?.bodyOverride?.trim() || spec.body).trim()
+  const language = (options?.language?.trim() || spec.language || 'he').trim()
+
+  const exampleRow = spec.variables.map((v) => v.sample)
+  const components: Array<{
+    type: 'BODY' | 'HEADER'
+    format?: 'IMAGE'
+    text?: string
+    example?: { body_text: string[][] }
+  }> = [
+    {
+      type: 'BODY',
+      text: body,
+      ...(exampleRow.length
+        ? { example: { body_text: [exampleRow] } }
+        : {}),
+    },
+  ]
+
+  return {
+    name,
+    category: 'UTILITY',
+    language,
+    allow_category_change: true,
+    components,
+  }
+}
+
 /** Plain-text block for copy-paste into Meta form */
 export function formatMetaTemplateSpecForCopy(spec: MetaTemplateSpec): string {
   const lines = [

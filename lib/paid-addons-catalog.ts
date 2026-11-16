@@ -144,13 +144,13 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
   },
   [PAID_ADDON_KEYS.project_documents]: {
     id: PAID_ADDON_KEYS.project_documents,
-    title: 'תיקיית מסמכים',
+    title: 'מסמכים',
     tagline: 'ארכיון קבצים לכל פרויקט',
     description:
       'העלאה ושמירה של חוזים, תוכניות ומסמכים — מסודר לפי בניין, עם הורדה מאובטחת.',
     highlights: ['PDF ו-Office', 'עד 15MB לקובץ', 'מחיקה והורדה מהירה'],
     featureHref: '/project-documents',
-    featureCtaHe: 'לתיקיית מסמכים',
+    featureCtaHe: 'למסמכים',
     marketing: {
       headline: 'כל מסמכי הבניין במקום אחד — לא בתיקיות במייל',
       intro:
@@ -226,33 +226,6 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
         'ועד שפותח חשבון Grow חדש',
       ],
       closing: 'פחות מעקב ידני, יותר גבייה בזמן.',
-    },
-  },
-  [PAID_ADDON_KEYS.building_finance]: {
-    id: PAID_ADDON_KEYS.building_finance,
-    title: 'הנהלת חשבונות בניין',
-    tagline: 'הוצאות, תקציב ומרכז פיננסי',
-    description:
-      'רישום הוצאות לפי קטגוריה, תקציב מול ביצוע, ומרכז פיננסי לבניין — בלי לשנות את גביית Grow.',
-    highlights: ['הוצאות + אסמכתא', 'תקציב מול ביצוע', 'KPI לבניין'],
-    featureHref: '/projects',
-    featureCtaHe: 'לפרויקטים / מרכז בניין',
-    marketing: {
-      headline: 'כל בניין כיחידה פיננסית — הוצאות ותקציב במקום אחד',
-      intro:
-        'מעבר מתיעוד תקלות לשליטה בעלות התחזוקה לבניין: הוצאות, קטגוריות, ותקציב מול ביצוע.',
-      valueProps: [
-        'הפרדה ברורה מגביית דיירים (Grow)',
-        'הוצאות append-only עם ביטול מתועד',
-        'תקציב שנתי / רבעוני עם התראת קצב',
-        'מופעל כתוסף — כיבוי מיידי אם צריך',
-      ],
-      scenarios: [
-        'חברת ניהול שרוצה P&L פר בניין',
-        'מעקב ניקיון / מעליות מול תקציב שנתי',
-        'הוכחת חיסכון ללקוח ניהול',
-      ],
-      closing: 'Simple Outside, Powerful Inside — כסף ותפעול באותו בניין.',
     },
   },
 }

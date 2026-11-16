@@ -47,20 +47,18 @@ async function resolveMembership(
   if (preferredId) {
     const preferred = await getMembershipForUser(admin, userId, preferredId)
     if (preferred) return preferred
+    // Stale cookie / revoked after demo re-seed — fall through to live list.
+    // Returning null here left /resident/decisions on 403 forever («טוען…» or empty).
   }
   const list = await listActiveMembershipsForUser(admin, userId)
   if (list.length === 1) return list[0]
-  if (list.length > 1 && preferredId) {
-    // Preferred was invalid/revoked — do not silently pick another when client asked for one.
-    return null
-  }
   if (list.length > 1) {
     const cookieId = await readMembershipCookie()
     if (cookieId) {
       const fromCookie = list.find((m) => m.id === cookieId)
       if (fromCookie) return fromCookie
     }
-    // Multi-membership without selection — caller should prompt picker.
+    // Multi-membership without a still-valid selection — caller should prompt picker.
     return null
   }
   return list[0] ?? null

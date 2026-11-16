@@ -1,6 +1,6 @@
 /**
  * Platform kill-switch for building finance (Wave 3).
- * Tenant entitlement still requires paid addon `building_finance`.
+ * Building finance is a core product feature (not a paid addon).
  * Set BUILDING_FINANCE_ENABLED=false to disable for all tenants.
  */
 export function isBuildingFinancePlatformEnabled(): boolean {

@@ -165,12 +165,15 @@ export async function middleware(req: NextRequest) {
     return pending.response
   }
 
-  // Resident login / shared join link / UX sandbox are public. Other /resident* need session below.
+  // Resident login / shared join link / UX sandbox / local QA demo are public.
+  // Other /resident* need session below. Demo route still hard-gates in-handler.
   if (
     pathname === '/resident/login' ||
     pathname.startsWith('/resident/login/') ||
     pathname === '/resident/join' ||
     pathname.startsWith('/resident/join/') ||
+    pathname === '/resident/demo' ||
+    pathname.startsWith('/resident/demo/') ||
     pathname === '/resident/sandbox' ||
     pathname.startsWith('/resident/sandbox/')
   ) {
@@ -312,6 +315,24 @@ export async function middleware(req: NextRequest) {
       const clientIds = await listClientIdsForUserId(admin, user.id)
       if (clientIds.length === 0) {
         clearMiddlewareTenantCache(pending.response)
+        // Resident-only accounts (demo / portal) have no organization_users row.
+        // Never sign them out when a manager path is hit — that wiped portal sessions
+        // mid-navigation (decisions stuck on «טוען…» after subsequent 401s).
+        const hasResident = await userHasActiveResidentMembership(admin, user.id).catch(
+          () => false
+        )
+        if (hasResident) {
+          if (pathname.startsWith('/api/')) {
+            return NextResponse.json(
+              { error: 'נתיב מנהלים — השתמשו בפורטל הדיירים' },
+              { status: 403 }
+            )
+          }
+          const url = req.nextUrl.clone()
+          url.pathname = '/resident'
+          url.search = ''
+          return redirectWithCookies(pending, url)
+        }
         // Access control only — shouldSignOutForTenantGate('no_access') === true
         if (shouldSignOutResolvedSession('no_access', viaBearer)) {
           await supabase.auth.signOut()

@@ -16,6 +16,7 @@ type PortalDoc = {
 
 type Props = {
   projectId: string
+  isMobile?: boolean
 }
 
 function formatBytes(n: number | null): string {
@@ -29,7 +30,7 @@ function formatBytes(n: number | null): string {
  * Manager UI: upload a designed PDF that residents see under «מידע הבניין».
  * Separate from the paid internal document archive.
  */
-export function ResidentPortalDocsPanel({ projectId }: Props) {
+export function ResidentPortalDocsPanel({ projectId, isMobile = false }: Props) {
   const [docs, setDocs] = useState<PortalDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -145,7 +146,7 @@ export function ResidentPortalDocsPanel({ projectId }: Props) {
         variant="primary"
         onClick={() => fileRef.current?.click()}
         loading={uploading}
-        style={{ width: '100%' }}
+        style={{ width: '100%', minHeight: isMobile ? 48 : undefined }}
       >
         העלאת PDF לפורטל דיירים
       </Button>
@@ -168,13 +169,21 @@ export function ResidentPortalDocsPanel({ projectId }: Props) {
                 </span>
                 <span style={styles.badge}>גלוי לדיירים</span>
               </div>
-              <div style={styles.itemActions}>
+              <div
+                style={{
+                  ...styles.itemActions,
+                  ...(isMobile ? styles.itemActionsMobile : null),
+                }}
+              >
                 {doc.download_url ? (
                   <a
                     href={doc.download_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={styles.link}
+                    style={{
+                      ...styles.link,
+                      ...(isMobile ? styles.actionChip : null),
+                    }}
                   >
                     צפייה
                   </a>
@@ -183,7 +192,10 @@ export function ResidentPortalDocsPanel({ projectId }: Props) {
                   type="button"
                   disabled={busyId === doc.id}
                   onClick={() => void onUnpublish(doc)}
-                  style={styles.secondaryBtn}
+                  style={{
+                    ...styles.secondaryBtn,
+                    ...(isMobile ? styles.actionChip : null),
+                  }}
                 >
                   הסרה מהפורטל
                 </button>
@@ -191,7 +203,10 @@ export function ResidentPortalDocsPanel({ projectId }: Props) {
                   type="button"
                   disabled={busyId === doc.id}
                   onClick={() => void onDelete(doc)}
-                  style={styles.deleteBtn}
+                  style={{
+                    ...styles.deleteBtn,
+                    ...(isMobile ? styles.actionChipDanger : null),
+                  }}
                 >
                   מחק
                 </button>
@@ -263,6 +278,9 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
     alignItems: 'center',
   },
+  itemActionsMobile: {
+    gap: 8,
+  },
   link: {
     fontSize: 13,
     color: theme.colors.primary,
@@ -286,5 +304,26 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     padding: 0,
     fontFamily: 'inherit',
+  },
+  actionChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    padding: '0 14px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    textDecoration: 'none',
+  },
+  actionChipDanger: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    padding: '0 14px',
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
   },
 }

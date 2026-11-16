@@ -11,7 +11,7 @@ function ProjectDocumentsPageInner() {
   return (
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.project_documents}
-      title="תיקיית מסמכים"
+      title="מסמכים"
       mobileSubtitle="ארכיון קבצים לפי בניין"
       desktopSubtitle="העלאה, הורדה וארכיון מסמכים לפי פרויקט"
     >

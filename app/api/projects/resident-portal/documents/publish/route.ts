@@ -58,5 +58,41 @@ export async function POST(req: Request) {
     newValues: patch,
   })
 
-  return NextResponse.json({ ok: true, document: data })
+  let notify: { push: boolean; managerNotify: boolean } | null = null
+  if (publish) {
+    try {
+      const { notifyDocumentPublished } = await import(
+        '@/lib/building-governance/document-publish-notify'
+      )
+      const doc = data as {
+        file_name?: string | null
+        project_id?: string | null
+        building_id?: string | null
+      }
+      // Prefer document.project_id if selected; fall back to building_id context from body.
+      const projectId =
+        (doc as { project_id?: string }).project_id ||
+        (typeof body.building_id === 'string' ? null : null)
+
+      const { data: fullDoc } = await auth.ctx.admin
+        .from('project_documents')
+        .select('id, file_name, project_id')
+        .eq('id', documentId)
+        .eq('client_id', auth.ctx.clientId)
+        .maybeSingle()
+
+      const row = fullDoc as { file_name?: string; project_id?: string } | null
+      notify = await notifyDocumentPublished(auth.ctx.admin, {
+        clientId: auth.ctx.clientId,
+        projectId: row?.project_id ?? projectId,
+        documentId,
+        fileName: row?.file_name || doc.file_name || 'מסמך',
+        userId: auth.ctx.userId,
+      })
+    } catch (e) {
+      console.warn('[portal/documents/publish] notify failed', e)
+    }
+  }
+
+  return NextResponse.json({ ok: true, document: data, notify })
 }

@@ -17,10 +17,8 @@ export const PAID_ADDON_KEYS = {
   whatsapp_inbox: 'whatsapp_inbox',
   /** קמפיינים SMS לדיירים */
   campaigns: 'campaigns',
-  /** גביית ועד — Grow */
+  /** גביית ועד — Grow (paid). Building finance / דוחות are core nav — not listed here. */
   collections: 'collections',
-  /** הנהלת חשבונות / תקציב / מרכז פיננסי לבניין (BINO 2.0 Phase 1) */
-  building_finance: 'building_finance',
 } as const
 
 export type PaidAddonKey = (typeof PAID_ADDON_KEYS)[keyof typeof PAID_ADDON_KEYS]
@@ -52,6 +50,9 @@ export function addonRequiredMessageHe(nameHe: string, priceIls: number): string
   return `התוסף "${nameHe}" אינו פעיל בחשבון שלכם. מחיר: ${formatAddonPriceDisplay(priceIls)} — פנו לBino להפעלה.`
 }
 
+/** Core features formerly sold as add-ons — hide from catalog/entitlements UI. */
+const RETIRED_PAID_ADDON_KEYS = new Set(['building_finance'])
+
 export async function listActiveAddonsCatalog(
   supabase: SupabaseClient
 ): Promise<PaidAddonCatalogRow[]> {
@@ -62,7 +63,9 @@ export async function listActiveAddonsCatalog(
     .order('sort_order', { ascending: true })
 
   if (error) throw toError(error)
-  return (data as PaidAddonCatalogRow[]) || []
+  return ((data as PaidAddonCatalogRow[]) || []).filter(
+    (row) => !RETIRED_PAID_ADDON_KEYS.has(row.addon_key)
+  )
 }
 
 export async function listAllAddonsCatalogAdmin(
@@ -74,7 +77,9 @@ export async function listAllAddonsCatalogAdmin(
     .order('sort_order', { ascending: true })
 
   if (error) throw toError(error)
-  return (data as PaidAddonCatalogRow[]) || []
+  return ((data as PaidAddonCatalogRow[]) || []).filter(
+    (row) => !RETIRED_PAID_ADDON_KEYS.has(row.addon_key)
+  )
 }
 
 export async function getClientEnabledAddonKeys(
@@ -88,7 +93,9 @@ export async function getClientEnabledAddonKeys(
     .eq('enabled', true)
 
   if (error) throw toError(error)
-  return new Set((data || []).map((r) => (r as { addon_key: string }).addon_key))
+  const keys = new Set((data || []).map((r) => (r as { addon_key: string }).addon_key))
+  for (const retired of RETIRED_PAID_ADDON_KEYS) keys.delete(retired)
+  return keys
 }
 
 export async function clientHasPaidAddon(
@@ -96,6 +103,8 @@ export async function clientHasPaidAddon(
   clientId: string,
   addonKey: PaidAddonKey | string
 ): Promise<boolean> {
+  if (RETIRED_PAID_ADDON_KEYS.has(addonKey)) return true
+
   // Audit #52: catalog.is_active must disable usage, not only hide purchase.
   // Parallel reads — sequential round-trips were stacking on every collections API.
   const [catalogRes, entitlementRes] = await Promise.all([
@@ -125,6 +134,7 @@ export async function getCatalogRowForAddon(
   supabase: SupabaseClient,
   addonKey: string
 ): Promise<PaidAddonCatalogRow | null> {
+  if (RETIRED_PAID_ADDON_KEYS.has(addonKey)) return null
   const { data, error } = await supabase
     .from('paid_addons_catalog')
     .select('addon_key, name_he, description_he, price_ils_monthly, is_active, sort_order')
@@ -145,8 +155,6 @@ export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
   [PAID_ADDON_KEYS.whatsapp_inbox]: 'whatsapp_inbox',
   [PAID_ADDON_KEYS.campaigns]: 'campaigns',
   [PAID_ADDON_KEYS.collections]: 'collections',
-  // Finance lives in Building Hub / projects — no dedicated sidebar nav id yet.
-  [PAID_ADDON_KEYS.building_finance]: 'projects',
 }
 
 const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [

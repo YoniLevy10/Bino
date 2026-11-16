@@ -67,7 +67,7 @@ flowchart TB
 |------|--------|--------|------|
 | **Agent-Finance** | הוצאות/תקציב/APIs/UI flag | `supabase/migrations/*finance*`, `lib/*expense*`, `app/api/*/finance*`, טאב כספים ב־Hub | לא לגעת ב־Grow webhook |
 | **Agent-Bank** | scrapers worker + `bank_transactions` | `lib/bank/*`, worker/cron נפרד, migrations bank | לא לערבב עם Finance schema באותו קובץ migration |
-| **Agent-ComposioMeta** | תיעוד/סקריפטים לסנכרון תבניות Meta | `docs/`, `scripts/` בלבד בהתחלה; לא לשנות webhook פרוד | חיבור WABA מבעלים |
+| **Agent-ComposioMeta** | סנכרון תבניות Meta (Utility) דרך Composio | `docs/COMPOSIO_META_TEMPLATES.md`, `scripts/composio-sync-meta-templates.mjs`, `app/api/superadmin/meta-templates`, `MetaWhatsAppPendingPanel`; לא לשנות webhook פרוד | `COMPOSIO_API_KEY` + WABA מבעלים |
 
 ### Wave 4
 

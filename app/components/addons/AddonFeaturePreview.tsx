@@ -94,7 +94,7 @@ function DocumentsMock() {
   return (
     <div style={styles.mockFrame}>
       <div style={styles.mockHeader}>
-        <span style={styles.mockTitle}>תיקיית מסמכים</span>
+        <span style={styles.mockTitle}>מסמכים</span>
         <span style={styles.mockPill}>3 קבצים</span>
       </div>
       <ul style={styles.proList}>

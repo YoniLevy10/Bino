@@ -2,8 +2,8 @@
 
 /**
  * BuildingHubModal — centered building hub (replaces detail side Drawer on /projects).
- * Tabs: overview | finance | committee | docs | residents | decisions | settings.
- * Finance/committee/residents/decisions are Wave 3/4 placeholders.
+ * Tabs: overview | finance | reports | committee | docs | residents | decisions | settings.
+ * Finance/Reports: Wave 3. Governance tabs (ועד/מסמכים/דיירים/החלטות): Wave 4.
  */
 
 import {
@@ -27,6 +27,11 @@ import {
 import { CollapsibleSection } from '@/app/components/shared/CollapsibleSection'
 import { ResidentPortalDocsPanel } from '@/app/components/projects/ResidentPortalDocsPanel'
 import { ProjectAdvancedActions } from '@/app/components/projects/ProjectAdvancedActions'
+import { BuildingFinancePanel } from '@/app/components/projects/BuildingFinancePanel'
+import { BuildingReportsPanel } from '@/app/components/projects/BuildingReportsPanel'
+import { BuildingCommitteePanel } from '@/app/components/projects/BuildingCommitteePanel'
+import { BuildingResidentsPanel } from '@/app/components/projects/BuildingResidentsPanel'
+import { BuildingDecisionsPanel } from '@/app/components/projects/BuildingDecisionsPanel'
 
 export type BuildingHubProject = {
   id: string
@@ -54,6 +59,7 @@ export type BuildingHubTicket = {
 type HubTab =
   | 'overview'
   | 'finance'
+  | 'reports'
   | 'committee'
   | 'docs'
   | 'residents'
@@ -63,6 +69,7 @@ type HubTab =
 const TABS: { id: HubTab; label: string }[] = [
   { id: 'overview', label: 'סקירה' },
   { id: 'finance', label: 'כספים' },
+  { id: 'reports', label: 'דוחות' },
   { id: 'committee', label: 'ועד' },
   { id: 'docs', label: 'מסמכים' },
   { id: 'residents', label: 'דיירים' },
@@ -86,15 +93,6 @@ type Props = {
   onToggleActive: (project: BuildingHubProject) => void
   onDelete: (project: BuildingHubProject) => void
   onOpenTicket: (ticketId: string) => void
-}
-
-function ComingSoon({ title, wave }: { title: string; wave: string }) {
-  return (
-    <div style={styles.placeholder}>
-      <p style={styles.placeholderTitle}>{title}</p>
-      <p style={styles.placeholderBody}>בפיתוח — {wave}</p>
-    </div>
-  )
 }
 
 export function BuildingHubModal({
@@ -154,156 +152,32 @@ export function BuildingHubModal({
     : styles.panel
 
   let body: ReactNode = null
-  if (tab === 'overview') {
-    body = (
-      <div style={styles.stack}>
-        <div style={styles.detailSection}>
-          <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>סטטוס</span>
-            <StatusBadge status={project.is_active ? 'ACTIVE' : 'INACTIVE'} />
-          </div>
-          <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>כתובת</span>
-            <span style={styles.detailValue}>{project.address || '-'}</span>
-          </div>
-          {project.address_en ? (
-            <div style={styles.detailRow}>
-              <span style={styles.detailLabel}>כתובת (EN)</span>
-              <span style={{ ...styles.detailValue, direction: 'ltr', textAlign: 'left' }}>
-                {project.address_en}
-              </span>
-            </div>
-          ) : null}
-          <div style={{ ...styles.detailRow, ...styles.detailRowLast }}>
-            <span style={styles.detailLabel}>עובד אחזקה</span>
-            <div style={styles.workerSelectWrap} onClick={(e) => e.stopPropagation()}>
-              <Select
-                value={project.assigned_worker_id || ''}
-                onChange={(value) => onAssignWorker(value)}
-                options={[
-                  { label: 'לא שויך', value: '' },
-                  ...workers.map((w) => ({ label: w.full_name, value: w.id })),
-                ]}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style={styles.sectionHeader}>
-            <h3 style={styles.sectionTitle}>תקלות פעילות</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                window.location.href = `/tickets?project=${encodeURIComponent(project.project_code)}`
-              }}
-            >
-              לכל התקלות
-            </Button>
-          </div>
-
-          {loadingTickets ? (
-            <div style={styles.loadingSmall}>
-              <LoadingSpinner size="sm" />
-            </div>
-          ) : openTickets.length === 0 ? (
-            <p style={styles.emptyText}>אין תקלות פעילות לפרויקט זה</p>
-          ) : (
-            <div style={styles.ticketList}>
-              {openTickets.map((ticket) => (
-                <button
-                  key={ticket.id}
-                  type="button"
-                  style={{ ...styles.ticketItem, ...styles.ticketItemButton }}
-                  onClick={() => onOpenTicket(ticket.id)}
-                >
-                  <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                  <StatusBadge status={ticket.status} size="sm" />
-                  <span style={styles.mutedMeta}>
-                    {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <CollapsibleSection
-            title="היסטוריית תקלות"
-            badge={closedTickets.length > 0 ? String(closedTickets.length) : undefined}
-            open={historyOpen}
-            onToggle={() => setHistoryOpen((v) => !v)}
-          >
-            {loadingTickets ? (
-              <div style={styles.loadingSmall}>
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : closedTickets.length === 0 ? (
-              <p style={styles.emptyText}>אין תקלות סגורות בהיסטוריה</p>
-            ) : (
-              <>
-                <div style={styles.ticketList}>
-                  {closedTickets.map((ticket) => (
-                    <button
-                      key={ticket.id}
-                      type="button"
-                      style={{ ...styles.ticketHistoryItem, ...styles.ticketItemButton }}
-                      onClick={() => onOpenTicket(ticket.id)}
-                    >
-                      <div style={styles.ticketHistoryTop}>
-                        <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                        <StatusBadge status={ticket.status} size="sm" />
-                      </div>
-                      <p style={styles.ticketHistoryDesc}>
-                        {ticket.description?.slice(0, 80)}
-                        {(ticket.description?.length || 0) > 80 ? '…' : ''}
-                      </p>
-                      <span style={styles.mutedMeta}>
-                        {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) ||
-                          '—'}
-                      </span>
-                      <span style={styles.mutedMeta}>
-                        נסגרה:{' '}
-                        {ticket.closed_at
-                          ? new Date(ticket.closed_at).toLocaleString('he-IL')
-                          : '—'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={exportingHistory}
-                  onClick={() => onExportHistory(project)}
-                  style={{ width: '100%', marginTop: 8 }}
-                >
-                  ייצוא היסטוריה ל-Excel
-                </Button>
-              </>
-            )}
-          </CollapsibleSection>
-        </div>
-      </div>
-    )
-  } else if (tab === 'docs') {
+  if (tab === 'docs') {
     body = (
       <div style={styles.stack}>
         <p style={styles.docsHint}>
-          מסמכים לפורטל הדיירים — בחרו מה הדיירים רואים (visibility). הרחבת עין/הרשאות תגיע ב־Wave 4.
+          מסמכי פורטל דיירים — העלאת PDF שמפורסם תחת «מידע הבניין». נראה לדיירים רק אחרי פרסום;
+          הסתרה/מחיקה מהרשימה מסירה את החשיפה. ארכיון מסמכים פנימי נשאר בתוסף מסמכי בניין.
         </p>
-        <ResidentPortalDocsPanel projectId={project.id} />
+        <ResidentPortalDocsPanel projectId={project.id} isMobile={isMobile} />
       </div>
     )
   } else if (tab === 'settings') {
     body = (
       <div style={styles.stack}>
-        <div style={styles.settingsActions}>
+        <div
+          style={{
+            ...styles.settingsActions,
+            ...(isMobile ? styles.settingsActionsMobile : null),
+          }}
+        >
           <Button
             variant="secondary"
             onClick={() => onOpenEdit(project)}
-            style={styles.settingsActionBtn}
+            style={{
+              ...styles.settingsActionBtn,
+              ...(isMobile ? styles.settingsActionBtnMobile : null),
+            }}
           >
             עריכת פרויקט
           </Button>
@@ -312,7 +186,10 @@ export function BuildingHubModal({
             onClick={() => {
               window.location.href = `/qr?project=${encodeURIComponent(project.project_code)}`
             }}
-            style={styles.settingsActionBtn}
+            style={{
+              ...styles.settingsActionBtn,
+              ...(isMobile ? styles.settingsActionBtnMobile : null),
+            }}
           >
             צפייה ב-QR
           </Button>
@@ -329,30 +206,73 @@ export function BuildingHubModal({
       </div>
     )
   } else if (tab === 'finance') {
-    body = <ComingSoon title="הנהלת חשבונות, הוצאות ותקציב בניין" wave="Wave 3" />
+    body = (
+      <BuildingFinancePanel
+        projectId={project.id}
+        projectName={project.name}
+        isMobile={isMobile}
+      />
+    )
+  } else if (tab === 'reports') {
+    body = (
+      <BuildingReportsPanel
+        projectId={project.id}
+        projectName={project.name}
+        isMobile={isMobile}
+      />
+    )
   } else if (tab === 'committee') {
-    body = <ComingSoon title="ועד הבית — ניהול והחלטות שוטפות" wave="Wave 4" />
+    body = (
+      <BuildingCommitteePanel
+        projectId={project.id}
+        projectName={project.name}
+        isMobile={isMobile}
+      />
+    )
   } else if (tab === 'residents') {
-    body = <ComingSoon title="דיירים בפרויקט — רישום ופורטל" wave="Wave 4" />
-  } else {
-    body = <ComingSoon title="החלטות דיירים וחתימות (רוב)" wave="Wave 4" />
+    body = (
+      <BuildingResidentsPanel
+        projectId={project.id}
+        projectName={project.name}
+        projectCode={project.project_code}
+        clientId={project.client_id}
+        isMobile={isMobile}
+      />
+    )
+  } else if (tab === 'decisions') {
+    body = (
+      <BuildingDecisionsPanel
+        projectId={project.id}
+        projectName={project.name}
+        isMobile={isMobile}
+      />
+    )
   }
 
   return createPortal(
-    <div style={overlayStyle} onClick={onClose} role="presentation">
+    <div
+      style={overlayStyle}
+      className={isMobile ? 'app-modal-backdrop-mobile' : undefined}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        className={isMobile ? 'app-modal-sheet-root' : undefined}
         style={panelStyle}
         onClick={(e) => e.stopPropagation()}
         data-building-hub="true"
       >
-        <header style={styles.header}>
+        <header style={{ ...styles.header, ...(isMobile ? styles.headerMobile : null) }}>
           <div style={styles.headerText}>
             <p style={styles.eyebrow}>מרכז הבניין · BINO</p>
-            <h2 id={titleId} style={styles.title}>
+            <h2
+              id={titleId}
+              style={{ ...styles.title, ...(isMobile ? styles.titleMobile : null) }}
+            >
               {project.name}
             </h2>
             <p style={styles.subtitle}>{project.address || 'פרטי הבניין'}</p>
@@ -362,6 +282,7 @@ export function BuildingHubModal({
             onClick={onClose}
             style={{
               ...styles.closeButton,
+              ...(isMobile ? styles.closeButtonMobile : null),
               ...(closeHovered ? styles.closeButtonHover : null),
             }}
             aria-label="סגירה"
@@ -385,8 +306,11 @@ export function BuildingHubModal({
           </button>
         </header>
 
-        <nav style={styles.tabBar} aria-label="טאבי מרכז הבניין">
-          <div style={styles.tabTrack}>
+        <nav
+          style={{ ...styles.tabBar, ...(isMobile ? styles.tabBarMobile : null) }}
+          aria-label="טאבי מרכז הבניין"
+        >
+          <div style={{ ...styles.tabTrack, ...(isMobile ? styles.tabTrackMobile : null) }}>
             {TABS.map((t) => {
               const active = tab === t.id
               return (
@@ -398,6 +322,7 @@ export function BuildingHubModal({
                   onClick={() => setTab(t.id)}
                   style={{
                     ...styles.tab,
+                    ...(isMobile ? styles.tabCompact : null),
                     ...(active ? styles.tabActive : null),
                   }}
                 >
@@ -408,7 +333,189 @@ export function BuildingHubModal({
           </div>
         </nav>
 
-        <div style={styles.body}>{body}</div>
+        <div
+          className={isMobile ? 'app-modal-sheet-scroll' : undefined}
+          style={{ ...styles.body, ...(isMobile ? styles.bodyMobile : null) }}
+        >
+          {tab === 'overview' ? (
+            <div style={styles.stack}>
+              <div style={styles.detailSection}>
+                <div
+                  style={{
+                    ...styles.detailRow,
+                    ...(isMobile ? styles.detailRowMobile : null),
+                  }}
+                >
+                  <span style={styles.detailLabel}>סטטוס</span>
+                  <StatusBadge status={project.is_active ? 'ACTIVE' : 'INACTIVE'} />
+                </div>
+                <div
+                  style={{
+                    ...styles.detailRow,
+                    ...(isMobile ? styles.detailRowMobile : null),
+                  }}
+                >
+                  <span style={styles.detailLabel}>כתובת</span>
+                  <span style={styles.detailValue}>{project.address || '-'}</span>
+                </div>
+                {project.address_en ? (
+                  <div
+                    style={{
+                      ...styles.detailRow,
+                      ...(isMobile ? styles.detailRowMobile : null),
+                    }}
+                  >
+                    <span style={styles.detailLabel}>כתובת (EN)</span>
+                    <span style={{ ...styles.detailValue, direction: 'ltr', textAlign: 'left' }}>
+                      {project.address_en}
+                    </span>
+                  </div>
+                ) : null}
+                <div
+                  style={{
+                    ...styles.detailRow,
+                    ...styles.detailRowLast,
+                    ...(isMobile ? styles.detailRowMobile : null),
+                  }}
+                >
+                  <span style={styles.detailLabel}>עובד אחזקה</span>
+                  <div
+                    style={{
+                      ...styles.workerSelectWrap,
+                      ...(isMobile ? styles.workerSelectWrapMobile : null),
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Select
+                      value={project.assigned_worker_id || ''}
+                      onChange={(value) => onAssignWorker(value)}
+                      options={[
+                        { label: 'לא שויך', value: '' },
+                        ...workers.map((w) => ({ label: w.full_name, value: w.id })),
+                      ]}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    ...styles.sectionHeader,
+                    ...(isMobile ? styles.sectionHeaderMobile : null),
+                  }}
+                >
+                  <h3 style={styles.sectionTitle}>תקלות פעילות</h3>
+                  <Button
+                    variant="ghost"
+                    size={isMobile ? 'md' : 'sm'}
+                    onClick={() => {
+                      window.location.href = `/tickets?project=${encodeURIComponent(project.project_code)}`
+                    }}
+                    style={isMobile ? { width: '100%', minHeight: 44 } : undefined}
+                  >
+                    לכל התקלות
+                  </Button>
+                </div>
+
+                {loadingTickets ? (
+                  <div style={styles.loadingSmall}>
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : openTickets.length === 0 ? (
+                  <p style={styles.emptyText}>אין תקלות פעילות לפרויקט זה</p>
+                ) : (
+                  <div style={styles.ticketList}>
+                    {openTickets.map((ticket) => (
+                      <button
+                        key={ticket.id}
+                        type="button"
+                        style={{
+                          ...styles.ticketItem,
+                          ...styles.ticketItemButton,
+                          ...(isMobile ? styles.ticketItemMobile : null),
+                        }}
+                        onClick={() => onOpenTicket(ticket.id)}
+                      >
+                        <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
+                        <StatusBadge status={ticket.status} size="sm" />
+                        <span style={styles.mutedMeta}>
+                          {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) ||
+                            '—'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <CollapsibleSection
+                  title="היסטוריית תקלות"
+                  badge={closedTickets.length > 0 ? String(closedTickets.length) : undefined}
+                  open={historyOpen}
+                  onToggle={() => setHistoryOpen((v) => !v)}
+                >
+                  {loadingTickets ? (
+                    <div style={styles.loadingSmall}>
+                      <LoadingSpinner size="sm" />
+                    </div>
+                  ) : closedTickets.length === 0 ? (
+                    <p style={styles.emptyText}>אין תקלות סגורות בהיסטוריה</p>
+                  ) : (
+                    <>
+                      <div style={styles.ticketList}>
+                        {closedTickets.map((ticket) => (
+                          <button
+                            key={ticket.id}
+                            type="button"
+                            style={{
+                              ...styles.ticketHistoryItem,
+                              ...styles.ticketItemButton,
+                              ...(isMobile ? styles.ticketItemMobile : null),
+                            }}
+                            onClick={() => onOpenTicket(ticket.id)}
+                          >
+                            <div style={styles.ticketHistoryTop}>
+                              <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
+                              <StatusBadge status={ticket.status} size="sm" />
+                            </div>
+                            <p style={styles.ticketHistoryDesc}>
+                              {ticket.description?.slice(0, 80)}
+                              {(ticket.description?.length || 0) > 80 ? '…' : ''}
+                            </p>
+                            <span style={styles.mutedMeta}>
+                              {formatReporterNameAndPhone(
+                                ticket.reporter_name,
+                                ticket.reporter_phone
+                              ) || '—'}
+                            </span>
+                            <span style={styles.mutedMeta}>
+                              נסגרה:{' '}
+                              {ticket.closed_at
+                                ? new Date(ticket.closed_at).toLocaleString('he-IL')
+                                : '—'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size={isMobile ? 'md' : 'sm'}
+                        loading={exportingHistory}
+                        onClick={() => onExportHistory(project)}
+                        style={{ width: '100%', marginTop: 8, minHeight: isMobile ? 48 : undefined }}
+                      >
+                        ייצוא היסטוריה ל-Excel
+                      </Button>
+                    </>
+                  )}
+                </CollapsibleSection>
+              </div>
+            </div>
+          ) : (
+            body
+          )}
+        </div>
       </div>
     </div>,
     document.body
@@ -430,9 +537,9 @@ const styles: Record<string, CSSProperties> = {
     animation: 'fadeIn 0.2s ease',
   },
   overlayMobile: {
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 0,
+    alignItems: 'flex-end',
+    justifyContent: 'stretch',
   },
   panel: {
     width: 'min(720px, calc(100vw - 48px))',
@@ -449,11 +556,11 @@ const styles: Record<string, CSSProperties> = {
     transformOrigin: 'center center',
   },
   panelMobile: {
-    width: 'calc(100% - 4px)',
-    height: 'calc(100dvh - 20px)',
-    maxHeight: 'calc(100dvh - 20px)',
-    borderRadius: theme.radius.xl,
-    marginTop: 'env(safe-area-inset-top, 0px)',
+    width: '100%',
+    height: 'auto',
+    maxHeight: 'min(88dvh, 100svh)',
+    borderRadius: '16px 16px 0 0',
+    marginTop: 0,
   },
   header: {
     display: 'flex',
@@ -464,6 +571,10 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: `1px solid ${theme.colors.borderSubtle}`,
     background: `linear-gradient(180deg, ${theme.colors.blueSoft} 0%, ${theme.colors.surface} 72%)`,
     flexShrink: 0,
+  },
+  headerMobile: {
+    padding: `${theme.spacing.md} ${theme.spacing.md} ${theme.spacing.sm}`,
+    paddingTop: `calc(${theme.spacing.md} + env(safe-area-inset-top, 0px))`,
   },
   headerText: {
     minWidth: 0,
@@ -484,6 +595,10 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textPrimary,
     lineHeight: 1.25,
   },
+  titleMobile: {
+    fontSize: theme.typography.fontSize.xl,
+    wordBreak: 'break-word' as const,
+  },
   subtitle: {
     margin: '6px 0 0',
     fontSize: theme.typography.fontSize.sm,
@@ -499,12 +614,18 @@ const styles: Record<string, CSSProperties> = {
     height: 40,
     marginTop: 2,
     borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: theme.colors.border,
     background: theme.colors.surface,
     color: theme.colors.textSecondary,
     cursor: 'pointer',
     boxShadow: theme.shadows.xs,
     transition: `background ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
+  },
+  closeButtonMobile: {
+    width: 44,
+    height: 44,
   },
   closeButtonHover: {
     background: theme.colors.surfaceHover,
@@ -519,25 +640,41 @@ const styles: Record<string, CSSProperties> = {
     overflowX: 'auto',
     scrollbarWidth: 'thin' as const,
   },
+  tabBarMobile: {
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    overflowX: 'hidden',
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 2,
+  },
   tabTrack: {
-    display: 'inline-flex',
+    display: 'flex',
     alignItems: 'center',
     gap: 4,
-    minWidth: '100%',
+    width: '100%',
     padding: 4,
     borderRadius: theme.radius.lg,
     background: theme.colors.surfaceInset,
     boxSizing: 'border-box' as const,
   },
+  tabTrackMobile: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: 4,
+    alignItems: 'stretch',
+  },
   tab: {
-    flexShrink: 0,
+    flex: '1 1 0',
+    minWidth: 0,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 34,
-    padding: '6px 12px',
+    padding: '6px 8px',
     borderRadius: theme.radius.full,
-    border: '1px solid transparent',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     background: 'transparent',
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
@@ -547,6 +684,15 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: 'nowrap',
     lineHeight: 1.2,
     transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
+  },
+  tabCompact: {
+    padding: '8px 4px',
+    fontSize: theme.typography.fontSize.xs,
+    minHeight: 44,
+    whiteSpace: 'normal',
+    textAlign: 'center' as const,
+    borderRadius: theme.radius.md,
+    lineHeight: 1.15,
   },
   tabActive: {
     background: theme.colors.surface,
@@ -562,6 +708,11 @@ const styles: Record<string, CSSProperties> = {
     padding: theme.spacing.xl,
     paddingBottom: `calc(${theme.spacing.xl} + env(safe-area-inset-bottom, 0px))`,
     background: theme.colors.background,
+  },
+  bodyMobile: {
+    padding: theme.spacing.md,
+    paddingBottom: `calc(${theme.spacing.lg} + env(safe-area-inset-bottom, 0px))`,
+    WebkitOverflowScrolling: 'touch',
   },
   stack: {
     display: 'flex',
@@ -586,6 +737,13 @@ const styles: Record<string, CSSProperties> = {
     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
     borderBottom: `1px solid ${theme.colors.borderSubtle}`,
   },
+  detailRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 8,
+    minHeight: 0,
+    padding: `${theme.spacing.md} ${theme.spacing.md}`,
+  },
   detailRowLast: {
     borderBottom: 'none',
   },
@@ -601,11 +759,16 @@ const styles: Record<string, CSSProperties> = {
     textAlign: 'left' as const,
     fontWeight: theme.typography.fontWeight.medium,
     minWidth: 0,
+    wordBreak: 'break-word' as const,
   },
   workerSelectWrap: {
     flex: 1,
     minWidth: 0,
     maxWidth: 280,
+  },
+  workerSelectWrapMobile: {
+    maxWidth: '100%',
+    width: '100%',
   },
   sectionHeader: {
     display: 'flex',
@@ -613,6 +776,10 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     marginBottom: theme.spacing.md,
     gap: theme.spacing.sm,
+  },
+  sectionHeaderMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   sectionTitle: {
     margin: 0,
@@ -644,6 +811,11 @@ const styles: Record<string, CSSProperties> = {
     padding: '12px 14px',
     background: theme.colors.surface,
     borderRadius: theme.radius.md,
+  },
+  ticketItemMobile: {
+    flexWrap: 'wrap' as const,
+    minHeight: 48,
+    alignItems: 'flex-start',
   },
   ticketItemButton: {
     width: '100%',
@@ -693,32 +865,17 @@ const styles: Record<string, CSSProperties> = {
     gap: theme.spacing.md,
     flexWrap: 'wrap',
   },
+  settingsActionsMobile: {
+    flexDirection: 'column',
+  },
   settingsActionBtn: {
     flex: '1 1 160px',
     minWidth: 140,
   },
-  placeholder: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    minHeight: 240,
-    padding: theme.spacing.xxl,
-    textAlign: 'center',
-    background: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    border: `1px dashed ${theme.colors.borderStrong}`,
-  },
-  placeholderTitle: {
-    margin: 0,
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-  },
-  placeholderBody: {
-    margin: 0,
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textMuted,
+  settingsActionBtnMobile: {
+    flex: '1 1 auto',
+    minWidth: 0,
+    width: '100%',
+    minHeight: 48,
   },
 }

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { createBuildingExpenseBodySchema } from '@/lib/api-body-schemas'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import { roundMoney } from '@/lib/unit-ledger'
@@ -21,7 +20,7 @@ function platformDisabled() {
 export async function GET(req: Request) {
   if (!isBuildingFinancePlatformEnabled()) return platformDisabled()
 
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.building_finance)
+  const auth = await requireSessionClientId()
   if (!auth.ok) return auth.response
 
   const url = new URL(req.url)
@@ -76,9 +75,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!isBuildingFinancePlatformEnabled()) return platformDisabled()
 
-  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.building_finance, {
-    write: true,
-  })
+  const auth = await requireSessionWriteAccess()
   if (!auth.ok) return auth.response
 
   let rawBody: unknown
@@ -154,5 +151,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'שגיאה בשמירת הוצאה' }, { status: 500 })
   }
 
-  return NextResponse.json({ expense: data }, { status: 201 })
+  let budget_alert: { alerted: boolean; kind?: string; skippedReason?: string } | null = null
+  const periodKey =
+    (data as { budget_period_key?: string | null } | null)?.budget_period_key ||
+    body.budget_period_key ||
+    null
+  if (periodKey) {
+    try {
+      const { maybeNotifyBudgetAlert } = await import('@/lib/building-finance/budget-alert-notify')
+      const alert = await maybeNotifyBudgetAlert(admin, {
+        clientId: auth.ctx.clientId,
+        projectId: body.project_id,
+        periodKey,
+        userId: auth.ctx.userId,
+      })
+      budget_alert = {
+        alerted: alert.alerted,
+        kind: alert.kind,
+        skippedReason: alert.skippedReason,
+      }
+    } catch (e) {
+      getLogger().warn('BUILDING_FINANCE', 'budget alert after expense failed', {
+        err: e instanceof Error ? e.message : String(e),
+      })
+    }
+  }
+
+  return NextResponse.json({ expense: data, budget_alert }, { status: 201 })
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { CSSProperties, ReactNode } from 'react'
+import { forwardRef, type CSSProperties, type ReactNode } from 'react'
 import { theme } from '@/app/components/ui'
 import { residentDocumentDisplayName } from '@/lib/resident-portal/document-display'
 
@@ -22,24 +22,24 @@ export function ResidentAmbientWash() {
   )
 }
 
-export function ResidentCard({
-  children,
-  style,
-  className,
-}: {
-  children: ReactNode
-  style?: CSSProperties
-  className?: string
-}) {
+export const ResidentCard = forwardRef<
+  HTMLDivElement,
+  {
+    children: ReactNode
+    style?: CSSProperties
+    className?: string
+  }
+>(function ResidentCard({ children, style, className }, ref) {
   return (
     <div
+      ref={ref}
       className={['lg-glass', 'resident-card', className].filter(Boolean).join(' ')}
       style={{ ...residentCardStyle, ...style }}
     >
       {children}
     </div>
   )
-}
+})
 
 export function ResidentPrimaryButton({
   children,
@@ -560,6 +560,14 @@ export const residentShellStyles = {
     alignItems: 'center',
     gap: 12,
   } satisfies CSSProperties,
+  headerInnerWide: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 14,
+    width: '100%',
+    maxWidth: 880,
+    marginInline: 'auto',
+  } satisfies CSSProperties,
   logoMark: {
     width: 36,
     height: 36,
@@ -573,6 +581,14 @@ export const residentShellStyles = {
     boxShadow:
       'inset 0 1px 0 rgba(255,255,255,0.48), inset 0 0 0 0.5px rgba(0,40,100,0.18), 0 8px 20px rgba(0,122,255,0.22)',
     flexShrink: 0,
+  } satisfies CSSProperties,
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.02em',
+    color: theme.colors.textMuted,
+    lineHeight: 1.2,
+    marginBottom: 2,
   } satisfies CSSProperties,
   title: {
     fontWeight: theme.typography.fontWeight.semibold,
@@ -610,7 +626,7 @@ export const residentShellStyles = {
     bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
     zIndex: 30,
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateColumns: 'repeat(5, 1fr)',
     gap: 2,
     padding: 6,
   } satisfies CSSProperties,
@@ -634,24 +650,6 @@ export const residentShellStyles = {
   } satisfies CSSProperties,
   tabItemActive: {
     color: theme.colors.primary,
-  } satisfies CSSProperties,
-  fab: {
-    position: 'fixed',
-    bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
-    left: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    display: 'grid',
-    placeItems: 'center',
-    textDecoration: 'none',
-    fontWeight: 700,
-    fontSize: 13,
-    color: '#fff',
-    zIndex: 40,
-    background: 'linear-gradient(180deg, #3b9bff 0%, #007aff 46%, #0071eb 100%)',
-    boxShadow:
-      'inset 0 1px 0 rgba(255,255,255,0.48), 0 10px 28px rgba(0,122,255,0.35)',
   } satisfies CSSProperties,
   balanceValue: {
     fontSize: '2.35rem',

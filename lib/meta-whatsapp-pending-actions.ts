@@ -1,4 +1,8 @@
-/** Actions that require Meta Business Manager / Developer Console — not automatable in code. */
+/**
+ * Actions that still need Meta Business Manager / Developer Console for some steps.
+ * UTILITY message templates can also be submitted via Composio
+ * (`/api/superadmin/meta-templates` + MetaWhatsAppPendingPanel) — Meta approval remains manual.
+ */
 
 export type MetaPendingAction = {
   id: string

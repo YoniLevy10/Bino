@@ -6,7 +6,8 @@ export const TENANT_CID_SESSION_KEY = 'bamakor_cid_v1'
 export const TENANT_CID_LOCAL_KEY = 'bamakor_cid_local_v1'
 
 /** Sidebar nav order + enabled_nav_features (SidebarNavContext). */
-export const NAV_CACHE_PREFIX = 'bamakor_nav_v5_' as const
+/** v6: drop stale custom labels after project_documents rename to מסמכים. */
+export const NAV_CACHE_PREFIX = 'bamakor_nav_v6_' as const
 
 /** Paid add-on entitlements (PaidAddonsContext). */
 export const ADDONS_CACHE_PREFIX = 'bamakor_addons_v1_' as const

@@ -70,10 +70,12 @@ const FEATURE_LABELS: Record<UsageFeatureKey, string> = {
   whatsapp_templates: 'תבניות וואטסאפ',
   pending_residents: 'דיירים ממתינים',
   pilot_sms: 'SMS פיילוט',
-  project_documents: 'מסמכי פרויקט',
+  project_documents: 'מסמכים',
   whatsapp_inbox: 'תיבת WhatsApp',
   campaigns: 'קמפיינים SMS',
   collections: 'גביית ועד',
+  finance: 'כספים',
+  reports: 'דוחות',
   settings: 'הגדרות',
   addons: 'תוספים',
   whatsapp_bot: 'בוט WhatsApp (דיירים)',
@@ -276,6 +278,7 @@ export async function buildUsageAnalyticsReport(
     whatsapp_inbox: 'whatsapp_inbox',
     campaigns: 'campaigns',
     collections: 'collections',
+    building_finance: 'finance',
   }
 
   const clientRows: ClientUsageRow[] = clients.map((c) => {

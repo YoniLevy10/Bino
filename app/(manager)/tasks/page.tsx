@@ -4,12 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
+  Card,
   Drawer,
+  EmptyState,
+  FilterTabs,
   LoadingSpinner,
   MobileHeader,
   PageHeader,
   theme,
-  useMobileMenu
+  useMobileMenu,
 } from '@/app/components/ui'
 import {
   fetchWithTimeout,
@@ -508,14 +511,12 @@ export default function TasksPage() {
       {isMobile && (
         <MobileHeader
           title="משימות"
-          subtitle="רשימת משימות כללית"
+          subtitle="משימות אחזקה"
           onMenuClick={openMenu}
         />
       )}
 
-      {isMobile && <div style={styles.mobileCreateRow}>{createBtn}</div>}
-
-      <div style={styles.wrap(isMobile)}>
+      <div style={{ ...styles.content, ...(isMobile ? styles.contentMobile : {}) }}>
         {!isMobile && (
           <PageHeader
             title="משימות"
@@ -524,224 +525,256 @@ export default function TasksPage() {
           />
         )}
 
-        <div style={styles.toolbar}>
-          <div style={styles.chips}>
-            {(
-              [
-                { id: 'open', label: 'פתוחות' },
-                { id: 'today', label: 'היום' },
-                { id: 'all', label: 'הכל' },
-              ] as const
-            ).map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setListFilter(c.id)}
-                style={{
-                  ...styles.chip,
-                  ...(listFilter === c.id ? styles.chipActive : null),
-                }}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          <label style={styles.check}>
-            <input
-              type="checkbox"
-              checked={groupByWorker}
-              onChange={(e) => setGroupByWorker(e.target.checked)}
-            />
-            <span>לפי עובד</span>
-          </label>
-        </div>
+        {isMobile ? (
+          <Button variant="primary" onClick={openCreate} style={styles.mobileCreateBtn}>
+            + משימה חדשה
+          </Button>
+        ) : null}
 
         {loading ? (
           <LoadingSpinner />
-        ) : visible.length === 0 ? (
-          <div style={styles.emptyBox}>
-            <p style={styles.empty}>אין משימות להצגה</p>
-            <div style={{ marginTop: 12 }}>{createBtn}</div>
-          </div>
         ) : (
-          <div style={styles.listCard}>
-            {grouped.map((group) => (
-              <div key={group.key}>
-                {group.label ? (
-                  <div style={styles.groupTitle}>
-                    {group.label}
-                    <span style={styles.groupCount}> · {group.items.length}</span>
-                  </div>
-                ) : null}
-                {group.items.map((t) => {
-                  const done = t.status === 'DONE'
-                  const expanded = expandedId === t.id
-                  const atts = attachmentsByTask[t.id] || []
-                  const busy = busyId === t.id
-                  return (
-                    <div key={t.id} style={styles.todoRow}>
-                      <div style={styles.todoMain}>
-                        <button
-                          type="button"
-                          aria-label={done ? 'פתח מחדש' : 'סמן כהושלם'}
-                          disabled={busy}
-                          onClick={() => void toggleDone(t)}
-                          style={{
-                            ...styles.checkBtn,
-                            ...(done ? styles.checkBtnDone : null),
-                          }}
-                        >
-                          {done ? (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <path d="M20 6 9 17l-5-5" />
-                            </svg>
-                          ) : null}
-                        </button>
-                        <button
-                          type="button"
-                          style={styles.todoBody}
-                          onClick={() => setExpandedId(expanded ? null : t.id)}
-                        >
-                          <div
-                            style={{
-                              ...styles.todoTitle,
-                              ...(done ? styles.todoTitleDone : null),
-                            }}
-                          >
-                            {t.title}
-                          </div>
-                          <div style={styles.todoMeta}>
-                            {projectName(t)} · {relName(t)}
-                            {t.due_at
-                              ? ` · ${new Date(t.due_at).toLocaleString('he-IL', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}`
-                              : ''}
-                            {t.priority === 'HIGH' || t.priority === 'URGENT'
-                              ? ` · ${PRIORITY_LABEL[t.priority]}`
-                              : ''}
-                          </div>
-                        </button>
-                      </div>
+          <Card noPadding>
+            <div
+              style={{
+                ...styles.filtersRow,
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+              }}
+            >
+              <div style={styles.filtersStart}>
+                <FilterTabs
+                  value={listFilter}
+                  onChange={(v) => setListFilter(v as ListFilter)}
+                  options={[
+                    { label: 'פתוחות', value: 'open' },
+                    { label: 'היום', value: 'today' },
+                    { label: 'הכל', value: 'all' },
+                  ]}
+                />
+              </div>
+              <label
+                style={{
+                  ...styles.check,
+                  ...(isMobile ? styles.checkMobile : null),
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={groupByWorker}
+                  onChange={(e) => setGroupByWorker(e.target.checked)}
+                  style={isMobile ? { width: 18, height: 18 } : undefined}
+                />
+                <span>לפי עובד</span>
+              </label>
+            </div>
 
-                      {expanded ? (
-                        <div style={styles.expand}>
-                          {(() => {
-                            const link = ticketLinkMeta(t)
-                            if (!link) return null
-                            const label =
-                              link.number != null
-                                ? `מקושר לתקלה #${link.number}`
-                                : 'מקושר לתקלה'
-                            return (
-                              <a href={`/tickets?ticket=${link.id}`} style={styles.ticketChip}>
-                                {label}
-                              </a>
-                            )
-                          })()}
-                          {t.description ? <p style={styles.desc}>{t.description}</p> : null}
-                          {t.notes ? <p style={styles.notesLine}>הערות: {t.notes}</p> : null}
-                          {atts.length > 0 ? (
-                            <div style={styles.attRow}>
-                              {atts.map((a) =>
-                                a.public_url && (a.mime_type || '').startsWith('image/') ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img
-                                    key={a.id}
-                                    src={a.public_url}
-                                    alt={a.file_name}
-                                    style={styles.thumb}
-                                  />
-                                ) : (
-                                  <a
-                                    key={a.id}
-                                    href={a.public_url || '#'}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    style={{ fontSize: 13 }}
-                                  >
-                                    {a.file_name}
+            {visible.length === 0 ? (
+              <EmptyState
+                title="אין משימות להצגה"
+                description="צרו משימת אחזקה, או שנו את הסינון."
+                action={createBtn}
+              />
+            ) : (
+              <div style={styles.list}>
+                {grouped.map((group) => (
+                  <div key={group.key}>
+                    {group.label ? (
+                      <div style={styles.groupTitle}>
+                        {group.label}
+                        <span style={styles.groupCount}> · {group.items.length}</span>
+                      </div>
+                    ) : null}
+                    {group.items.map((t) => {
+                      const done = t.status === 'DONE'
+                      const expanded = expandedId === t.id
+                      const atts = attachmentsByTask[t.id] || []
+                      const busy = busyId === t.id
+                      return (
+                        <div key={t.id} style={styles.todoRow}>
+                          <div style={styles.todoMain}>
+                            <button
+                              type="button"
+                              aria-label={done ? 'פתח מחדש' : 'סמן כהושלם'}
+                              disabled={busy}
+                              onClick={() => void toggleDone(t)}
+                              style={{
+                                ...styles.checkBtn,
+                                ...(isMobile ? styles.checkBtnMobile : null),
+                                ...(done ? styles.checkBtnDone : null),
+                              }}
+                            >
+                              {done ? (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                  <path d="M20 6 9 17l-5-5" />
+                                </svg>
+                              ) : null}
+                            </button>
+                            <button
+                              type="button"
+                              style={styles.todoBody}
+                              onClick={() => setExpandedId(expanded ? null : t.id)}
+                            >
+                              <div
+                                style={{
+                                  ...styles.todoTitle,
+                                  ...(done ? styles.todoTitleDone : null),
+                                }}
+                              >
+                                {t.title}
+                              </div>
+                              <div style={styles.todoMeta}>
+                                {projectName(t)} · {relName(t)}
+                                {t.due_at
+                                  ? ` · ${new Date(t.due_at).toLocaleString('he-IL', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}`
+                                  : ''}
+                                {t.priority === 'HIGH' || t.priority === 'URGENT'
+                                  ? ` · ${PRIORITY_LABEL[t.priority]}`
+                                  : ''}
+                              </div>
+                            </button>
+                          </div>
+
+                          {expanded ? (
+                            <div
+                              style={{
+                                ...styles.expand,
+                                ...(isMobile ? { marginInlineStart: 0 } : null),
+                              }}
+                            >
+                              {(() => {
+                                const link = ticketLinkMeta(t)
+                                if (!link) return null
+                                const label =
+                                  link.number != null
+                                    ? `מקושר לתקלה #${link.number}`
+                                    : 'מקושר לתקלה'
+                                return (
+                                  <a href={`/tickets?ticket=${link.id}`} style={styles.ticketChip}>
+                                    {label}
                                   </a>
                                 )
-                              )}
+                              })()}
+                              {t.description ? <p style={styles.desc}>{t.description}</p> : null}
+                              {t.notes ? <p style={styles.notesLine}>הערות: {t.notes}</p> : null}
+                              {atts.length > 0 ? (
+                                <div style={styles.attRow}>
+                                  {atts.map((a) =>
+                                    a.public_url && (a.mime_type || '').startsWith('image/') ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        key={a.id}
+                                        src={a.public_url}
+                                        alt={a.file_name}
+                                        style={styles.thumb}
+                                      />
+                                    ) : (
+                                      <a
+                                        key={a.id}
+                                        href={a.public_url || '#'}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ fontSize: 13 }}
+                                      >
+                                        {a.file_name}
+                                      </a>
+                                    )
+                                  )}
+                                </div>
+                              ) : null}
+                              <div
+                                style={{
+                                  ...styles.cardActions,
+                                  ...(isMobile ? styles.cardActionsMobile : null),
+                                }}
+                              >
+                                <Button
+                                  type="button"
+                                  size={isMobile ? 'md' : 'sm'}
+                                  variant="secondary"
+                                  onClick={() => openEdit(t)}
+                                  style={isMobile ? styles.actionBtnMobile : undefined}
+                                >
+                                  עריכה
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size={isMobile ? 'md' : 'sm'}
+                                  variant="secondary"
+                                  onClick={() => fileRefs.current[t.id]?.click()}
+                                  style={isMobile ? styles.actionBtnMobile : undefined}
+                                >
+                                  צרף קובץ
+                                </Button>
+                                <input
+                                  ref={(el) => {
+                                    fileRefs.current[t.id] = el
+                                  }}
+                                  type="file"
+                                  accept="image/*,application/pdf,video/mp4,video/webm"
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0]
+                                    if (f) void uploadPhoto(t.id, f)
+                                    e.target.value = ''
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  size={isMobile ? 'md' : 'sm'}
+                                  variant="danger"
+                                  disabled={busy}
+                                  onClick={() => void deleteTask(t.id)}
+                                  style={isMobile ? styles.actionBtnMobile : undefined}
+                                >
+                                  מחיקה
+                                </Button>
+                              </div>
+                              <div style={{ marginTop: 8, minWidth: 0 }}>
+                                <select
+                                  style={styles.input}
+                                  value={t.assigned_worker_id || ''}
+                                  onChange={(e) =>
+                                    void patchTask(t.id, {
+                                      assigned_worker_id: e.target.value || null,
+                                    })
+                                  }
+                                >
+                                  <option value="">העבר לעובד…</option>
+                                  {workers.map((w) => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.full_name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
                           ) : null}
-                          <div style={styles.cardActions}>
-                            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(t)}>
-                              עריכה
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => fileRefs.current[t.id]?.click()}
-                            >
-                              צרף קובץ
-                            </Button>
-                            <input
-                              ref={(el) => {
-                                fileRefs.current[t.id] = el
-                              }}
-                              type="file"
-                              accept="image/*,application/pdf,video/mp4,video/webm"
-                              style={{ display: 'none' }}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0]
-                                if (f) void uploadPhoto(t.id, f)
-                                e.target.value = ''
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="danger"
-                              disabled={busy}
-                              onClick={() => void deleteTask(t.id)}
-                            >
-                              מחיקה
-                            </Button>
-                          </div>
-                          <div style={{ marginTop: 8 }}>
-                            <select
-                              style={styles.input}
-                              value={t.assigned_worker_id || ''}
-                              onChange={(e) =>
-                                void patchTask(t.id, {
-                                  assigned_worker_id: e.target.value || null,
-                                })
-                              }
-                            >
-                              <option value="">העבר לעובד…</option>
-                              {workers.map((w) => (
-                                <option key={w.id} value={w.id}>
-                                  {w.full_name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
                         </div>
-                      ) : null}
-                    </div>
-                  )
-                })}
+                      )
+                    })}
+                  </div>
+                ))}
+                {hasMoreTasks && listFilter !== 'today' ? (
+                  <div style={styles.loadMore}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      loading={loadingMore}
+                      onClick={() => void loadMoreTasks()}
+                    >
+                      טען עוד משימות
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-            ))}
-            {hasMoreTasks && listFilter !== 'today' ? (
-              <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  loading={loadingMore}
-                  onClick={() => void loadMoreTasks()}
-                >
-                  טען עוד משימות
-                </Button>
-              </div>
-            ) : null}
-          </div>
+            )}
+          </Card>
         )}
       </div>
 
@@ -885,63 +918,66 @@ export default function TasksPage() {
   )
 }
 
-const styles = {
-  wrap: (mobile: boolean): CSSProperties => ({
-    padding: mobile ? '12px 16px 32px' : '32px 40px',
-    maxWidth: mobile ? '100%' : 820,
+const styles: Record<string, CSSProperties> = {
+  content: {
+    padding: '32px 40px 48px',
+    maxWidth: 1400,
     margin: '0 auto',
     width: '100%',
     boxSizing: 'border-box',
     minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
+    gap: 20,
+  },
+  contentMobile: {
+    padding: '16px 16px 24px',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
     gap: 14,
-  }),
-  mobileCreateRow: {
-    padding: '12px 16px 0',
+  },
+  mobileCreateBtn: {
+    width: '100%',
+    marginBottom: 4,
+  },
+  filtersRow: {
     display: 'flex',
-    justifyContent: 'flex-start',
-  } as CSSProperties,
-  toolbar: {
-    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+    padding: '16px 20px',
+    borderBottom: `1px solid ${theme.colors.border}`,
+    background: theme.colors.mutedSurface,
+  },
+  filtersStart: {
+    display: 'flex',
     alignItems: 'center',
     gap: 12,
     flexWrap: 'wrap',
-  } as CSSProperties,
-  chips: { display: 'flex', gap: 8, flexWrap: 'wrap' } as CSSProperties,
-  chip: {
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    color: theme.colors.textSecondary,
-    borderRadius: theme.radius.md,
-    padding: '8px 14px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    minHeight: 40,
-    fontFamily: 'inherit',
-    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
-  } as CSSProperties,
-  chipActive: {
-    background: theme.colors.blueSoft,
-    color: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  } as CSSProperties,
+    minWidth: 0,
+    maxWidth: '100%',
+    flex: 1,
+    overflowX: 'auto',
+  },
   check: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     fontSize: 13,
     color: theme.colors.textSecondary,
-  } as CSSProperties,
-  listCard: {
-    background: theme.colors.surface,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.xl,
-    overflow: 'hidden',
-    boxShadow: theme.shadows.xs,
-  } as CSSProperties,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  checkMobile: {
+    minHeight: 44,
+    paddingInlineEnd: 4,
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+  },
   groupTitle: {
     padding: '12px 16px',
     fontSize: 13,
@@ -949,20 +985,22 @@ const styles = {
     color: theme.colors.textSecondary,
     background: theme.colors.mutedSurface,
     borderBottom: `1px solid ${theme.colors.border}`,
-  } as CSSProperties,
-  groupCount: { fontWeight: 500 } as CSSProperties,
+  },
+  groupCount: { fontWeight: 500 },
   todoRow: {
     borderBottom: `1px solid ${theme.colors.border}`,
-    padding: '12px 14px',
-  } as CSSProperties,
+    padding: '12px 16px',
+    minWidth: 0,
+  },
   todoMain: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: 12,
-  } as CSSProperties,
+    minWidth: 0,
+  },
   checkBtn: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
     borderRadius: 999,
     border: `2px solid ${theme.colors.border}`,
     background: 'transparent',
@@ -974,11 +1012,25 @@ const styles = {
     justifyContent: 'center',
     padding: 0,
     color: theme.colors.textInverse,
-  } as CSSProperties,
+  },
+  checkBtnMobile: {
+    width: 44,
+    height: 44,
+    marginTop: 0,
+  },
   checkBtnDone: {
     background: theme.colors.success,
     borderColor: theme.colors.success,
-  } as CSSProperties,
+  },
+  cardActionsMobile: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 8,
+  },
+  actionBtnMobile: {
+    minHeight: 44,
+    width: '100%',
+  },
   todoBody: {
     flex: 1,
     minWidth: 0,
@@ -989,61 +1041,73 @@ const styles = {
     cursor: 'pointer',
     font: 'inherit',
     color: 'inherit',
-  } as CSSProperties,
+  },
   todoTitle: {
     fontWeight: 700,
     fontSize: 15,
     lineHeight: 1.35,
     wordBreak: 'break-word',
     color: theme.colors.textPrimary,
-  } as CSSProperties,
+  },
   todoTitleDone: {
     textDecoration: 'line-through',
     color: theme.colors.textSecondary,
     fontWeight: 600,
-  } as CSSProperties,
+  },
   todoMeta: {
     marginTop: 4,
     fontSize: 12,
     color: theme.colors.textSecondary,
     lineHeight: 1.4,
     wordBreak: 'break-word',
-  } as CSSProperties,
+  },
   expand: {
     marginTop: 12,
-    marginInlineStart: 38,
+    marginInlineStart: 40,
     paddingTop: 10,
     borderTop: `1px dashed ${theme.colors.border}`,
-  } as CSSProperties,
+    minWidth: 0,
+  },
   desc: {
     fontSize: 14,
     margin: '0 0 8px',
     lineHeight: 1.45,
     wordBreak: 'break-word',
-  } as CSSProperties,
+  },
   notesLine: {
     fontSize: 13,
     margin: '0 0 8px',
     color: theme.colors.textSecondary,
     wordBreak: 'break-word',
-  } as CSSProperties,
-  cardActions: { display: 'flex', flexWrap: 'wrap', gap: 8 } as CSSProperties,
-  emptyBox: {
-    textAlign: 'center',
-    padding: '36px 16px',
-    borderRadius: 16,
-    border: `1px dashed ${theme.colors.border}`,
-    background: theme.colors.surface,
-  } as CSSProperties,
-  empty: { margin: 0, color: theme.colors.textSecondary, fontWeight: 600 } as CSSProperties,
-  attRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 } as CSSProperties,
-  thumb: { width: 56, height: 56, objectFit: 'cover', borderRadius: 10 } as CSSProperties,
+  },
+  cardActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  loadMore: {
+    padding: 16,
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  attRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  thumb: {
+    width: 56,
+    height: 56,
+    objectFit: 'cover',
+    borderRadius: 10,
+  },
   formGrid: {
     display: 'grid',
     gap: 12,
     gridTemplateColumns: '1fr',
     minWidth: 0,
-  } as CSSProperties,
+  },
   ticketLinkBanner: {
     display: 'flex',
     alignItems: 'center',
@@ -1054,7 +1118,7 @@ const styles = {
     borderRadius: 12,
     background: theme.colors.primaryMuted,
     border: `1px solid ${theme.colors.primary}`,
-  } as CSSProperties,
+  },
   ticketChip: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -1067,29 +1131,29 @@ const styles = {
     fontWeight: 800,
     textDecoration: 'none',
     marginBottom: 8,
-  } as CSSProperties,
+  },
   ticketBackLink: {
     fontSize: 13,
     fontWeight: 700,
     color: theme.colors.primary,
     textDecoration: 'underline',
-  } as CSSProperties,
+  },
   field: {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
     minWidth: 0,
-  } as CSSProperties,
+  },
   fieldLabel: {
     fontSize: 13,
     fontWeight: 700,
     color: theme.colors.textSecondary,
-  } as CSSProperties,
+  },
   fieldHint: {
     fontSize: 12,
     color: theme.colors.textSecondary,
     lineHeight: 1.35,
-  } as CSSProperties,
+  },
   input: {
     width: '100%',
     maxWidth: '100%',
@@ -1101,7 +1165,7 @@ const styles = {
     color: theme.colors.textPrimary,
     boxSizing: 'border-box',
     minWidth: 0,
-  } as CSSProperties,
+  },
   textarea: {
     width: '100%',
     maxWidth: '100%',
@@ -1115,8 +1179,13 @@ const styles = {
     minWidth: 0,
     resize: 'vertical',
     fontFamily: 'inherit',
-  } as CSSProperties,
-  attachRow: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } as CSSProperties,
+  },
+  attachRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
   clearAttach: {
     border: 'none',
     background: 'transparent',
@@ -1125,10 +1194,11 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     padding: 0,
-  } as CSSProperties,
+  },
   drawerFooter: {
     display: 'flex',
     gap: 10,
     justifyContent: 'stretch',
-  } as CSSProperties,
+    flexWrap: 'wrap',
+  },
 }

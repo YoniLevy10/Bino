@@ -5,6 +5,7 @@ import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
 import { sendResidentSMS } from '@/lib/sms-send'
 import { logAudit } from '@/lib/audit'
 import { BINO_PUBLIC_ORIGIN, getEnvPublicOrigin } from '@/lib/public-origin'
+import { isResidentPortalDevUnlocked } from '@/lib/resident-portal/dev-unlock'
 
 const OTP_TTL_MS = 10 * 60 * 1000
 const MAX_SENDS_PER_PHONE_PER_HOUR = 3
@@ -49,7 +50,7 @@ function generateSixDigitCode(): string {
 }
 
 export type PhoneOtpRequestResult =
-  | { ok: true; sent: true }
+  | { ok: true; sent: true; devCode?: string }
   | { ok: true; sent: false; reason: 'not_listed' | 'portal_disabled' | 'ambiguous' }
   | { ok: false; error: string; status: number }
 
@@ -65,7 +66,7 @@ export const RESIDENT_PHONE_OTP_SENT_MESSAGE = 'נשלחה סיסמה מספרי
  */
 export function residentPhoneOtpHttpResult(result: PhoneOtpRequestResult): {
   status: number
-  body: { ok?: true; message?: string; error?: string }
+  body: { ok?: true; message?: string; error?: string; dev_code?: string }
 } {
   if (!result.ok) return { status: result.status, body: { error: result.error } }
   if (!result.sent) {
@@ -80,7 +81,15 @@ export function residentPhoneOtpHttpResult(result: PhoneOtpRequestResult): {
     }
     return { status: 403, body: { error: RESIDENT_PHONE_NOT_REGISTERED_ERROR } }
   }
-  return { status: 200, body: { ok: true, message: RESIDENT_PHONE_OTP_SENT_MESSAGE } }
+  const body: { ok: true; message: string; dev_code?: string } = {
+    ok: true,
+    message: RESIDENT_PHONE_OTP_SENT_MESSAGE,
+  }
+  if (result.devCode && isResidentPortalDevUnlocked()) {
+    body.message = 'קוד QA (ללא SMS) — הזינו את הקוד שמופיע במסך.'
+    body.dev_code = result.devCode
+  }
+  return { status: 200, body }
 }
 
 /**
@@ -179,22 +188,25 @@ export async function requestResidentPhoneOtp(
     (clientRow as { name?: string | null } | null)?.name?.trim() ||
     'BINO'
 
-  const smsBody = buildResidentPortalOtpSms({ company, code })
-  const sent = await sendResidentSMS(normalized, smsBody, sender, project.client_id)
-  if (!sent) {
-    return { ok: false, error: 'שליחת SMS נכשלה — נסו שוב', status: 502 }
+  const unlock = isResidentPortalDevUnlocked()
+  if (!unlock) {
+    const smsBody = buildResidentPortalOtpSms({ company, code })
+    const sent = await sendResidentSMS(normalized, smsBody, sender, project.client_id)
+    if (!sent) {
+      return { ok: false, error: 'שליחת SMS נכשלה — נסו שוב', status: 502 }
+    }
   }
 
   await logAudit({
     clientId: project.client_id,
     userId: null,
-    action: 'portal_phone_otp_sent',
+    action: unlock ? 'portal_phone_otp_dev_unlock' : 'portal_phone_otp_sent',
     entityType: 'resident',
     entityId: resident.id,
-    newValues: { project_id: project.id, phone_suffix: normalized.slice(-4) },
+    newValues: { project_id: project.id, phone_suffix: normalized.slice(-4), dev_unlock: unlock },
   })
 
-  return { ok: true, sent: true }
+  return unlock ? { ok: true, sent: true, devCode: code } : { ok: true, sent: true }
 }
 
 export type PhoneOtpVerifyResult =
@@ -273,35 +285,83 @@ export async function verifyResidentPhoneOtp(
     return { ok: false, error: 'דייר לא נמצא', status: 404 }
   }
 
-  const email = residentAuthEmailFromPhone(normalized)
-  const userId = await ensureResidentAuthUser(admin, {
-    email,
-    phone: normalized,
-    fullName: resident.full_name,
+  const issued = await issueResidentPortalLoginSession(admin, {
+    resident,
+    normalizedPhone: normalized,
+    auditAction: 'portal_phone_otp_verified',
   })
+  if (!issued.ok) return issued
 
-  const role = resident.is_renter ? 'renter' : 'owner'
+  return {
+    ok: true,
+    membershipId: issued.membershipId,
+    email: issued.email,
+    tokenHash: issued.tokenHash,
+  }
+}
 
-  // Upsert active membership
+export type IssueResidentLoginSessionResult =
+  | { ok: true; membershipId: string; email: string; tokenHash: string; userId: string }
+  | { ok: false; error: string; status: number }
+
+type ResidentLoginRow = {
+  id: string
+  unit_id: string | null
+  is_renter: boolean | null
+  client_id: string
+  project_id: string
+  full_name: string | null
+}
+
+/** Create / refresh Auth user + active membership + magiclink token_hash for browser verifyOtp. */
+export async function issueResidentPortalLoginSession(
+  admin: SupabaseClient,
+  opts: {
+    resident: ResidentLoginRow
+    normalizedPhone: string
+    auditAction?: string
+  }
+): Promise<IssueResidentLoginSessionResult> {
+  const email = residentAuthEmailFromPhone(opts.normalizedPhone)
+  let userId: string
+  try {
+    userId = await ensureResidentAuthUser(admin, {
+      email,
+      phone: opts.normalizedPhone,
+      fullName: opts.resident.full_name,
+    })
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'יצירת משתמש נכשלה',
+      status: 500,
+    }
+  }
+
+  const role = opts.resident.is_renter ? 'renter' : 'owner'
+  const nowIso = new Date().toISOString()
+
+  // Revoke any active row for this user on this building (covers re-seeded resident ids
+  // after QA Hub client moves). Avoids stale multi-membership 403 on decisions.
   await admin
     .from('resident_portal_memberships')
     .update({
       status: 'revoked',
-      revoked_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      revoked_at: nowIso,
+      updated_at: nowIso,
     })
     .eq('user_id', userId)
-    .eq('resident_id', resident.id)
+    .eq('project_id', opts.resident.project_id)
     .eq('status', 'active')
 
   const { data: membership, error: mErr } = await admin
     .from('resident_portal_memberships')
     .insert({
       user_id: userId,
-      resident_id: resident.id,
-      unit_id: resident.unit_id,
-      client_id: resident.client_id,
-      project_id: resident.project_id,
+      resident_id: opts.resident.id,
+      unit_id: opts.resident.unit_id,
+      client_id: opts.resident.client_id,
+      project_id: opts.resident.project_id,
       role,
       status: 'active',
     })
@@ -328,12 +388,12 @@ export async function verifyResidentPhoneOtp(
   }
 
   await logAudit({
-    clientId: project.client_id,
+    clientId: opts.resident.client_id,
     userId,
-    action: 'portal_phone_otp_verified',
+    action: opts.auditAction || 'portal_login_session_issued',
     entityType: 'resident_portal_membership',
     entityId: membership.id,
-    newValues: { resident_id: resident.id, project_id: project.id },
+    newValues: { resident_id: opts.resident.id, project_id: opts.resident.project_id },
   })
 
   return {
@@ -341,6 +401,7 @@ export async function verifyResidentPhoneOtp(
     membershipId: membership.id,
     email,
     tokenHash,
+    userId,
   }
 }
 

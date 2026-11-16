@@ -28,6 +28,14 @@ function ResidentLoginNotice() {
           </ResidentAlert>
         </div>
       ) : null}
+      <div style={{ marginTop: 18 }}>
+        <ResidentMuted>
+          QA מקומי:{' '}
+          <a href="/resident/demo" style={{ color: 'inherit', textDecoration: 'underline' }}>
+            /resident/demo
+          </a>
+        </ResidentMuted>
+      </div>
     </ResidentAuthFrame>
   )
 }

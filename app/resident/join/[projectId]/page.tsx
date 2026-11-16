@@ -1,7 +1,7 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import {
   ResidentAlert,
@@ -15,14 +15,28 @@ import {
   residentTheme,
 } from '@/app/components/resident/residentUi'
 
+/** Only allow in-app resident portal redirects (open-redirect safe). */
+function safeResidentNext(raw: string | null): string | null {
+  if (!raw) return null
+  const path = raw.trim()
+  if (!path.startsWith('/resident')) return null
+  if (path.startsWith('//') || path.includes('://')) return null
+  if (path.length > 300) return null
+  return path
+}
+
 type JoinMeta = {
   project?: { name?: string | null }
   client?: { name?: string | null; logo_url?: string | null }
 }
 
-export default function ResidentJoinPage() {
+function ResidentJoinInner() {
   const params = useParams()
-  const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextPath = useMemo(
+    () => safeResidentNext(searchParams.get('next')),
+    [searchParams]
+  )
   const projectId = useMemo(() => {
     const raw = params?.projectId
     return typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : ''
@@ -67,12 +81,21 @@ export default function ResidentJoinPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: projectId, phone }),
       })
-      const json = (await res.json()) as { error?: string; message?: string }
+      const json = (await res.json()) as {
+        error?: string
+        message?: string
+        dev_code?: string
+      }
       if (!res.ok) {
         setError(json.error || 'שליחת סיסמה נכשלה')
         return
       }
-      setInfo(json.message || 'נשלחה סיסמה מספרית ב-SMS. בדקו גם במסוננים / הודעות לא רצויות.')
+      if (json.dev_code) {
+        setCode(json.dev_code)
+        setInfo(`קוד QA (ללא SMS): ${json.dev_code}`)
+      } else {
+        setInfo(json.message || 'נשלחה סיסמה מספרית ב-SMS. בדקו גם במסוננים / הודעות לא רצויות.')
+      }
       setStep('code')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאת רשת')
@@ -124,8 +147,9 @@ export default function ResidentJoinPage() {
           return
         }
       }
-      router.replace('/resident')
-      router.refresh()
+      // Full navigation so auth cookies settle before portal data fetches.
+      window.location.assign(nextPath || '/resident')
+      return
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאת רשת')
     } finally {
@@ -212,5 +236,19 @@ export default function ResidentJoinPage() {
         </form>
       )}
     </ResidentAuthFrame>
+  )
+}
+
+export default function ResidentJoinPage() {
+  return (
+    <Suspense
+      fallback={
+        <div dir="rtl" style={{ padding: 24, color: residentTheme.colors.textMuted }}>
+          טוען…
+        </div>
+      }
+    >
+      <ResidentJoinInner />
+    </Suspense>
   )
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
+import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Card, EmptyState, LoadingSpinner, Select, theme } from '../ui'
 
 export type AddonProjectOption = {
@@ -72,7 +73,15 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
   )
 
   const [selectedId, setSelectedId] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
   const loading = projectsLoading && !projectsHasData
+
+  useEffect(() => {
+    const check = () => setIsMobile(getIsMobileViewport())
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     if (projects.length === 0) return
@@ -131,19 +140,26 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
 
   return (
     <div style={styles.wrap}>
-      <Card title="בחירת בניין" subtitle={`${projects.length} בניינים פעילים`}>
-        <div style={styles.pickerRow}>
-          <Select
-            value={selected.id}
-            onChange={handleSelect}
-            options={projects.map((p) => ({
-              label: p.name,
-              value: p.id,
-            }))}
-            style={{ flex: 1, minWidth: 200 }}
-          />
-        </div>
-      </Card>
+      <div style={isMobile ? styles.pickerSticky : undefined}>
+        <Card title="בחירת בניין" subtitle={`${projects.length} בניינים פעילים`}>
+          <div style={styles.pickerRow}>
+            <Select
+              value={selected.id}
+              onChange={handleSelect}
+              options={projects.map((p) => ({
+                label: p.name,
+                value: p.id,
+              }))}
+              style={{
+                flex: 1,
+                minWidth: isMobile ? 0 : 200,
+                width: '100%',
+                minHeight: isMobile ? 48 : undefined,
+              }}
+            />
+          </div>
+        </Card>
+      </div>
       {children(selected)}
     </div>
   )
@@ -151,11 +167,19 @@ export function AddonProjectPicker({ children, emptyHint }: Props) {
 
 const styles: Record<string, CSSProperties> = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 20 },
+  pickerSticky: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 5,
+    paddingBottom: 8,
+    background: theme.colors.background,
+  },
   pickerRow: {
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 12,
+    width: '100%',
   },
   loading: { display: 'flex', justifyContent: 'center', padding: 32 },
   projectsLink: {

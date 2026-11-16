@@ -24,6 +24,8 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'whatsapp_inbox',
   'campaigns',
   'collections',
+  'finance',
+  'reports',
 ] as const
 
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
@@ -103,6 +105,8 @@ export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'whatsapp_inbox',
   'attendance',
   'collections',
+  'finance',
+  'reports',
   'calendar',
   'professionals',
   'pilot_sms',
@@ -185,7 +189,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   project_documents: {
     id: 'project_documents',
     href: '/project-documents',
-    label: 'תיקיית מסמכים לפרויקט',
+    label: 'מסמכים',
     icon: 'folder',
   },
   whatsapp_inbox: {
@@ -206,6 +210,18 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     label: 'גביית ועד',
     icon: 'coin',
   },
+  finance: {
+    id: 'finance',
+    href: '/finance',
+    label: 'כספים',
+    icon: 'chart',
+  },
+  reports: {
+    id: 'reports',
+    href: '/finance/reports',
+    label: 'דוחות',
+    icon: 'chart',
+  },
 }
 
 /**
@@ -223,6 +239,8 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'whatsapp_inbox',
   'attendance',
   'collections',
+  'finance',
+  'reports',
   'summary',
 ]
 
@@ -306,19 +324,21 @@ export function resolveSidebarNavItems(
   const includeId = (id: SidebarNavItemId): boolean => {
     if (!isTenantSidebarNavId(id)) return false
     if (isAddonOnlySidebarNavId(id) && !paidNavIds?.has(id)) return false
+    // Pin-only addons require an explicit sidebar_nav_order entry.
     if (isAddonOnlySidebarNavId(id) && !isAutoSidebarAddonNavId(id)) {
       if (!customOrder?.includes(id)) return false
     }
-    if (
-      isAddonOnlySidebarNavId(id) &&
-      isAutoSidebarAddonNavId(id) &&
-      customOrder &&
-      customOrder.length > 0 &&
-      !customOrder.includes(id)
-    ) {
-      return false
+    // Core finance/reports always show (like dashboard/tickets) even when a
+    // saved enabled_nav_features allowlist predates them.
+    if (id === 'finance' || id === 'reports') {
+      return true
     }
-    if (allowedSet && !allowedSet.has(id)) return false
+    // Auto addons (WhatsApp / attendance / collections): show whenever
+    // entitled — even if a saved order / enabled_nav_features allowlist predates
+    // the feature (omission ≠ intentional unpin for newly shipped auto ids).
+    if (allowedSet && !allowedSet.has(id)) {
+      if (!(isAutoSidebarAddonNavId(id) && paidNavIds?.has(id))) return false
+    }
     return true
   }
 

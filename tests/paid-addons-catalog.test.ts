@@ -60,5 +60,11 @@ describe('paid addons catalog', () => {
     expect(getPaidAddonCatalogEntry('calendar')?.featureHref).toBe('/calendar')
     expect(getPaidAddonCatalogEntry('worker_stamp')?.featureHref).toBe('/attendance')
     expect(getPaidAddonCatalogEntry('professionals')?.featureHref).toBe('/professionals')
+    expect(getPaidAddonCatalogEntry('collections')?.featureHref).toBe('/collections')
+  })
+
+  it('does not treat building_finance as a paid catalog entry (core feature)', () => {
+    expect(getPaidAddonCatalogEntry('building_finance' as never)).toBeUndefined()
+    expect(Object.values(PAID_ADDON_KEYS)).not.toContain('building_finance')
   })
 })
