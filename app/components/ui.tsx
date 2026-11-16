@@ -907,6 +907,23 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
 }
 
+/** Responsive shell layout without waiting for JS viewport (reduces mobile CLS). */
+const APP_SHELL_RESPONSIVE_CSS = `
+@media (max-width: 768px) {
+  [data-bino-app-shell] [data-app-sidebar-host] {
+    display: none !important;
+  }
+  [data-bino-app-shell] [data-app-main] {
+    margin-inline-start: 0 !important;
+  }
+}
+@media (min-width: 769px) {
+  [data-bino-app-shell] [data-app-main] {
+    margin-inline-start: 248px;
+  }
+}
+`
+
 export function AppShell({
   children,
   isMobile,
@@ -958,10 +975,12 @@ function AppShellInner({
 
   return (
     <AppSearchContext.Provider value={{ openSearch }}>
+      <style>{APP_SHELL_RESPONSIVE_CSS}</style>
       {showSplash ? <AppSplashScreen ready={isBootstrapped} /> : null}
       <PageViewTracker />
       <div
         dir="rtl"
+        data-bino-app-shell
         className={calmSurface ? 'kiss-app' : undefined}
         style={{
           display: 'flex',
@@ -973,13 +992,14 @@ function AppShellInner({
         }}
         suppressHydrationWarning
       >
-        <Sidebar hidden={mobile} calmSurface={calmSurface} />
+        <div data-app-sidebar-host>
+          <Sidebar hidden={mobile} calmSurface={calmSurface} />
+        </div>
         <main
           dir="rtl"
           data-app-main
           style={{
             flex: 1,
-            marginInlineStart: mobile ? 0 : '248px',
             minWidth: 0,
             width: '100%',
             maxWidth: '100%',

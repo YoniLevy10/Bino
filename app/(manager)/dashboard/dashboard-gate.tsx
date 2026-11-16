@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { theme } from '@/app/components/ui/theme'
 
 const DashboardClient = dynamic(() => import('./dashboard-client'), {
   ssr: false,
@@ -31,10 +32,11 @@ function DashboardBodyFallback() {
           <div
             key={index}
             style={{
-              height: 96,
-              borderRadius: 16,
-              background: '#f7f9fc',
-              border: '1px solid #e1e8f0',
+              minHeight: 96,
+              boxSizing: 'border-box',
+              borderRadius: theme.radius.lg,
+              background: theme.colors.mutedSurface,
+              border: `1px solid ${theme.colors.border}`,
             }}
           />
         ))}
