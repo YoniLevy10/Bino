@@ -414,6 +414,7 @@ select {
   }
 }
 
+
 @keyframes slideInFromInlineEnd {
   from {
     transform: translateX(-100%);
@@ -1715,8 +1716,17 @@ html[data-kiss='1'] .lg-glass,
   box-shadow: inset -3px 0 0 #2563EB !important;
 }
 
+/* Manager V2 primary — solid Palette primary (not legacy iOS blue gradient) */
 .kiss-app .lg-btn-primary {
-  box-shadow: 0 2px 6px rgba(0, 64, 166, 0.16);
+  background: var(--color-button-primary, #2563EB) !important;
+  border: 1px solid var(--color-primary, #2563EB) !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.22);
+}
+
+.kiss-app .lg-btn-primary:hover:not(:disabled) {
+  background: var(--color-button-primary-hover, #1D4ED8) !important;
+  border-color: var(--color-primary-hover, #1D4ED8) !important;
+  filter: none;
 }
 
 .kiss-app .lg-tabbar {
@@ -1740,7 +1750,8 @@ html[data-kiss='1'] .lg-glass,
 }
 
 .kiss-app [data-ui='card'] {
-  box-shadow: 0 1px 2px rgba(16, 43, 70, 0.035), 0 8px 22px rgba(16, 43, 70, 0.035);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--color-card-border, #E2E8F0);
 }
 
 .kiss-app [data-ui='button'],
@@ -1749,8 +1760,25 @@ html[data-kiss='1'] .lg-glass,
 }
 
 .kiss-app :is(a, button, [role='button'], [role='tab']):focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.38);
+  outline: 3px solid var(--color-focus-ring, #93C5FD);
   outline-offset: 2px;
+}
+
+/* Shared manager fields — match Button height + V2 focus ring */
+.kiss-app .app-search-input-root input,
+.kiss-app .app-select-input {
+  border-color: var(--color-input-border, #CBD5E1);
+}
+
+.kiss-app .app-search-input-root input:focus-visible,
+.kiss-app .app-select-input:focus-visible {
+  outline: none;
+  border-color: var(--color-border-focus, #2563EB);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+.kiss-app [data-ui='kpi-card'] {
+  border: 1px solid var(--color-border, #E2E8F0);
 }
 
 @media (hover: hover) {
@@ -1766,15 +1794,18 @@ html[data-kiss='1'] .lg-glass,
   }
 
   .kiss-app [data-ui='button'][data-variant='primary']:not(:disabled):hover {
-    filter: brightness(0.96);
+    filter: none;
+    background: var(--color-button-primary-hover, #1D4ED8);
   }
 
   .kiss-app [data-ui='button'][data-variant='secondary']:not(:disabled):hover {
-    box-shadow: 0 3px 10px rgba(16, 43, 70, 0.08);
+    background: var(--color-button-secondary-hover, #F1F5F9);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
   }
 
   .kiss-app [data-ui='kpi-card'][data-interactive='true']:hover {
-    box-shadow: 0 6px 18px rgba(16, 43, 70, 0.08);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    border-color: var(--color-border-strong, #CBD5E1);
   }
 }
 
