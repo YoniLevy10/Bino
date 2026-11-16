@@ -13,6 +13,8 @@ type TabBarProps<T extends string> = {
   activeTab: T
   onTabChange: (tab: T) => void
   ariaLabel?: string
+  /** Larger touch targets for manager mobile ticket detail. */
+  comfortable?: boolean
 }
 
 export function TabBar<T extends string>({
@@ -20,9 +22,10 @@ export function TabBar<T extends string>({
   activeTab,
   onTabChange,
   ariaLabel = 'טאבים',
+  comfortable = false,
 }: TabBarProps<T>) {
   return (
-    <div style={styles.tabBar} role="tablist" aria-label={ariaLabel}>
+    <div style={{ ...styles.tabBar, ...(comfortable ? styles.tabBarComfortable : {}) }} role="tablist" aria-label={ariaLabel}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -31,6 +34,7 @@ export function TabBar<T extends string>({
           aria-selected={activeTab === tab.id}
           style={{
             ...styles.tab,
+            ...(comfortable ? styles.tabComfortable : {}),
             ...(activeTab === tab.id ? styles.tabActive : styles.tabInactive),
           }}
           onClick={() => onTabChange(tab.id)}
@@ -51,6 +55,10 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
   },
+  tabBarComfortable: {
+    padding: '6px',
+    gap: '6px',
+  },
   tab: {
     flex: 1,
     minHeight: '44px',
@@ -62,6 +70,11 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease`,
     fontFamily: 'inherit',
+  },
+  tabComfortable: {
+    minHeight: '48px',
+    padding: '10px 6px',
+    fontSize: '15px',
   },
   tabActive: {
     background: theme.colors.surface,
