@@ -212,6 +212,13 @@ export async function detectProfessionalFollowup(
                 kind: 'navigate' as const,
                 requiresAddon: PAID_ADDON_KEYS.professionals,
               },
+              {
+                id: 'update_pro_rating',
+                label: 'עדכון דירוג אישי',
+                href: `/professionals?id=${proId}&focus=rating`,
+                kind: 'navigate' as const,
+                requiresAddon: PAID_ADDON_KEYS.professionals,
+              },
             ]
           : []),
         {
@@ -228,6 +235,49 @@ export async function detectProfessionalFollowup(
         { id: 'snooze', label: 'הזכר לי מאוחר יותר', kind: 'snooze' },
       ],
     })
+  }
+
+  // Enrich with personal ratings (operational memory) for UI hints
+  const proIds = [
+    ...new Set(
+      drafts
+        .map((d) => (typeof d.facts.professional_id === 'string' ? d.facts.professional_id : null))
+        .filter((id): id is string => Boolean(id))
+    ),
+  ].slice(0, 50)
+
+  if (proIds.length > 0) {
+    const { data: pros } = await admin
+      .from('professionals')
+      .select('id, personal_rating, personal_note, use_count')
+      .eq('client_id', clientId)
+      .in('id', proIds)
+      .is('deleted_at', null)
+      .limit(50)
+
+    const byId = new Map(
+      (pros || []).map((p) => [
+        p.id as string,
+        {
+          personal_rating: (p as { personal_rating?: number | null }).personal_rating ?? null,
+          personal_note: (p as { personal_note?: string | null }).personal_note ?? null,
+          use_count: (p as { use_count?: number | null }).use_count ?? 0,
+        },
+      ])
+    )
+
+    for (const d of drafts) {
+      const pid = typeof d.facts.professional_id === 'string' ? d.facts.professional_id : null
+      if (!pid) continue
+      const mem = byId.get(pid)
+      if (!mem) continue
+      d.facts.personal_rating = mem.personal_rating
+      d.facts.personal_note = mem.personal_note
+      d.facts.use_count = mem.use_count
+      if (mem.personal_rating && mem.personal_rating >= 1) {
+        d.reason = `${d.reason} דירוג אישי: ${mem.personal_rating}/5.`
+      }
+    }
   }
 
   return drafts

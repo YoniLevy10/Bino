@@ -11,6 +11,7 @@ export const PENDING_MIGRATION_FILES = [
   '089_collection_receipt_contact.sql',
   '090_client_grow_legal.sql',
   '092_grow_payments.sql',
+  '131_professionals_operational_memory.sql',
 ] as const
 
 /** Strip sslmode from URL so pg Client `ssl.rejectUnauthorized` applies (Vercel + Supabase). */

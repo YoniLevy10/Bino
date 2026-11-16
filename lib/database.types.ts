@@ -1222,10 +1222,14 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          last_contacted_at: string | null
           notes: string | null
+          personal_note: string | null
+          personal_rating: number | null
           phone: string | null
           trade: string | null
           updated_at: string
+          use_count: number
         }
         Insert: {
           client_id: string
@@ -1237,10 +1241,14 @@ export type Database = {
           full_name: string
           id?: string
           is_active?: boolean
+          last_contacted_at?: string | null
           notes?: string | null
+          personal_note?: string | null
+          personal_rating?: number | null
           phone?: string | null
           trade?: string | null
           updated_at?: string
+          use_count?: number
         }
         Update: {
           client_id?: string
@@ -1252,10 +1260,14 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          last_contacted_at?: string | null
           notes?: string | null
+          personal_note?: string | null
+          personal_rating?: number | null
           phone?: string | null
           trade?: string | null
           updated_at?: string
+          use_count?: number
         }
         Relationships: [
           {

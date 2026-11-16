@@ -4,7 +4,7 @@
  * דף אנשי מקצוע — קשרים חיצוניים (קבלנים, חשמלאים וכו').
  * העברת תקלות מתבצעת מדף התקלות ב-SMS.
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
@@ -47,6 +47,7 @@ import {
   useTenantProfessionalsList,
 } from '@/lib/hooks/use-professionals-list'
 import { queryKeys } from '@/lib/query-keys'
+import { ProfessionalRatingStars } from '@/app/components/professionals/ProfessionalRatingStars'
 
 type ProfessionalRow = {
   id: string
@@ -57,6 +58,10 @@ type ProfessionalRow = {
   company_name?: string | null
   email?: string | null
   notes?: string | null
+  personal_rating?: number | null
+  personal_note?: string | null
+  use_count?: number | null
+  last_contacted_at?: string | null
   is_active: boolean
   source?: 'local' | 'fixly'
 }
@@ -69,6 +74,8 @@ type ProfessionalForm = {
   company_name: string
   email: string
   notes: string
+  personal_rating: number | null
+  personal_note: string
   is_active: boolean
 }
 
@@ -80,12 +87,15 @@ const emptyForm: ProfessionalForm = {
   company_name: '',
   email: '',
   notes: '',
+  personal_rating: null,
+  personal_note: '',
   is_active: true,
 }
 
 export default function ProfessionalsPage() {
   const { openMenu } = useMobileMenu()
   const queryClient = useQueryClient()
+  const deepLinkOpened = useRef(false)
   const {
     clientId: rqClientId,
     professionals: rqProfessionals,
@@ -140,6 +150,34 @@ export default function ProfessionalsPage() {
       toast.error(TM.genericLoadError)
     }
   }, [rqError])
+
+  // Deep link from recommendations: /professionals?id=…&focus=rating
+  useEffect(() => {
+    if (deepLinkOpened.current || !rqHasData) return
+    if (typeof window === 'undefined') return
+    const id = new URLSearchParams(window.location.search).get('id')
+    if (!id) return
+    const row = rqProfessionals.find((r) => r.id === id) as ProfessionalRow | undefined
+    if (!row || row.source === 'fixly') return
+    deepLinkOpened.current = true
+    setEditing(row)
+    setForm({
+      full_name: row.full_name || '',
+      phone: row.phone || '',
+      extra_phones: [...(row.extra_phones ?? [])],
+      trade: row.trade || '',
+      company_name: row.company_name || '',
+      email: row.email || '',
+      notes: row.notes || '',
+      personal_rating:
+        typeof row.personal_rating === 'number' && row.personal_rating >= 1
+          ? row.personal_rating
+          : null,
+      personal_note: row.personal_note || '',
+      is_active: row.is_active,
+    })
+    setDrawerOpen(true)
+  }, [rqHasData, rqProfessionals])
 
   const allRows = useMemo(() => {
     if (extraRows.length === 0) return rows
@@ -226,6 +264,11 @@ export default function ProfessionalsPage() {
       company_name: row.company_name || '',
       email: row.email || '',
       notes: row.notes || '',
+      personal_rating:
+        typeof row.personal_rating === 'number' && row.personal_rating >= 1
+          ? row.personal_rating
+          : null,
+      personal_note: row.personal_note || '',
       is_active: row.is_active,
     })
     setDrawerOpen(true)
@@ -281,6 +324,8 @@ export default function ProfessionalsPage() {
           company_name: form.company_name.trim() || null,
           email: form.email.trim() || null,
           notes: form.notes.trim() || null,
+          personal_rating: form.personal_rating,
+          personal_note: form.personal_note.trim() || null,
           is_active: form.is_active,
           updated_at: new Date().toISOString(),
         }
@@ -300,6 +345,8 @@ export default function ProfessionalsPage() {
                 company_name: payload.company_name,
                 email: payload.email,
                 notes: payload.notes,
+                personal_rating: payload.personal_rating,
+                personal_note: payload.personal_note,
                 is_active: payload.is_active,
               }),
             },
@@ -322,6 +369,8 @@ export default function ProfessionalsPage() {
                 company_name: payload.company_name,
                 email: payload.email || '',
                 notes: payload.notes,
+                personal_rating: payload.personal_rating,
+                personal_note: payload.personal_note,
                 is_active: payload.is_active,
               }),
             },
@@ -339,6 +388,39 @@ export default function ProfessionalsPage() {
       { context: 'שמירת איש מקצוע', showErrorToast: true }
     )
     setSaving(false)
+  }
+
+  async function quickRate(row: ProfessionalRow, next: number) {
+    if (row.source === 'fixly') return
+    await asyncHandler(
+      async () => {
+        const res = await fetchWithTimeout(
+          '/api/update-professional',
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              professional_id: row.id,
+              personal_rating: next,
+            }),
+          },
+          MUTATION_FETCH_TIMEOUT_MS
+        )
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(errorMessageFromResponseJson(json, 'עדכון דירוג נכשל'))
+        setRows((prev) =>
+          prev.map((r) => (r.id === row.id ? { ...r, personal_rating: next } : r))
+        )
+        setExtraRows((prev) =>
+          prev.map((r) => (r.id === row.id ? { ...r, personal_rating: next } : r))
+        )
+        if (clientId) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.professionalsActiveAssign(clientId) })
+        }
+        return true
+      },
+      { context: 'דירוג איש מקצוע', showErrorToast: true }
+    )
   }
 
   async function toggleActive(row: ProfessionalRow) {
@@ -381,7 +463,10 @@ export default function ProfessionalsPage() {
   const stats = useMemo(() => {
     const total = listed.length
     const active = listed.filter((r) => r.is_active).length
-    return { total, active, inactive: total - active }
+    const rated = listed.filter(
+      (r) => typeof r.personal_rating === 'number' && r.personal_rating >= 1
+    ).length
+    return { total, active, rated, inactive: total - active }
   }, [listed])
 
   const filtered = useMemo(() => {
@@ -417,7 +502,7 @@ export default function ProfessionalsPage() {
         {!isMobile && (
           <PageHeader
             title="אנשי מקצוע"
-            subtitle="פנקס קבלנים להעברת תקלות ב-SMS"
+            subtitle="פנקס קבלנים עם דירוג והערה אישיים — ממוין לפי איכות ושימוש בהעברת תקלות"
             actions={
               <Button variant="primary" onClick={openCreate} disabled={tableMissing}>
                 איש מקצוע חדש
@@ -440,9 +525,10 @@ export default function ProfessionalsPage() {
           <PageTransitionLoader />
         ) : (
           <>
-            <KpiRow columns={3} isMobile={isMobile}>
+            <KpiRow columns={isMobile ? 2 : 4} isMobile={isMobile}>
               <KpiCard label="סה״כ" value={stats.total} accent="primary" />
               <KpiCard label="פעילים" value={stats.active} accent="success" />
+              <KpiCard label="עם דירוג" value={stats.rated} accent="warning" />
               <KpiCard label="לא פעילים" value={stats.inactive} />
             </KpiRow>
 
@@ -515,6 +601,24 @@ export default function ProfessionalsPage() {
                         <span style={statusPill(row.is_active)}>{row.is_active ? 'פעיל' : 'לא פעיל'}</span>
                       </div>
                       <div style={styles.phone}>{formatWorkerPhonesDisplay(row)}</div>
+                      {row.source === 'fixly' ? null : (
+                        <div style={{ marginBottom: 8 }}>
+                          <ProfessionalRatingStars
+                            rating={row.personal_rating}
+                            size="md"
+                            showEmptyLabel
+                            caption={
+                              (row.use_count ?? 0) > 0
+                                ? `${row.use_count} העברות מוצלחות`
+                                : 'עדיין לא הועברה תקלה'
+                            }
+                            onChange={(next) => void quickRate(row, next)}
+                          />
+                        </div>
+                      )}
+                      {row.personal_note ? (
+                        <div style={styles.personalNoteBox}>{row.personal_note}</div>
+                      ) : null}
                       {row.notes ? <div style={styles.notes}>{row.notes}</div> : null}
                       {row.source === 'fixly' ? null : (
                       <div style={styles.actions}>
@@ -556,7 +660,7 @@ export default function ProfessionalsPage() {
         open={drawerOpen}
         onClose={closeDrawer}
         title={editing ? 'עריכת איש מקצוע' : 'איש מקצוע חדש'}
-        subtitle="פרטי קשר ל-SMS בעת העברת תקלה"
+        subtitle="טלפון להעברה ב-SMS · דירוג והערה אישיים לזיכרון תפעולי"
         isMobile={isMobile}
         footer={
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -607,7 +711,24 @@ export default function ProfessionalsPage() {
             onChange={(e) => updateForm('email', e.target.value)}
             style={styles.input}
           />
-          <label style={styles.label}>הערות</label>
+          <label style={styles.label}>דירוג אישי</label>
+          <ProfessionalRatingStars
+            rating={form.personal_rating}
+            size="md"
+            showEmptyLabel
+            allowClear
+            onClear={() => updateForm('personal_rating', null)}
+            onChange={(next) => updateForm('personal_rating', next)}
+          />
+          <label style={styles.label}>הערה אישית (למנהל)</label>
+          <textarea
+            value={form.personal_note}
+            onChange={(e) => updateForm('personal_note', e.target.value)}
+            rows={2}
+            placeholder="למשל: מגיע מהר, יקר בערב…"
+            style={styles.input}
+          />
+          <label style={styles.label}>הערות כלליות</label>
           <textarea
             value={form.notes}
             onChange={(e) => updateForm('notes', e.target.value)}
@@ -707,6 +828,16 @@ const styles: Record<string, CSSProperties> = {
   sub: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
   phone: { fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8 },
   notes: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 12, lineHeight: 1.4 },
+  personalNoteBox: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: 12,
+    lineHeight: 1.45,
+    padding: '8px 10px',
+    borderRadius: theme.radius.md,
+    background: theme.colors.mutedSurface,
+    border: `1px solid ${theme.colors.borderSubtle}`,
+  },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   form: { display: 'flex', flexDirection: 'column', gap: 12 },
   label: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary },

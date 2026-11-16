@@ -62,6 +62,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'אימייל לא תקין', requestId }, { status: 400 })
     }
 
+    const personalRating =
+      body.personal_rating === null || body.personal_rating === undefined
+        ? null
+        : body.personal_rating
+    const personalNote = body.personal_note ? sanitizeString(String(body.personal_note)) : null
+
     const { data: created, error: insErr } = await supabase
       .from('professionals')
       .insert({
@@ -73,6 +79,8 @@ export async function POST(req: Request) {
         company_name: body.company_name ? sanitizeString(String(body.company_name)) : null,
         email,
         notes: body.notes ? sanitizeString(String(body.notes)) : null,
+        personal_rating: personalRating,
+        personal_note: personalNote,
         is_active: body.is_active !== false,
       })
       .select()

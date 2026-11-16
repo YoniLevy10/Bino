@@ -25,7 +25,6 @@ import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-ti
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
 import { ticketDetailPath } from '@/lib/ticket-deep-link'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import { queryKeys } from '@/lib/query-keys'
@@ -49,9 +48,7 @@ import {
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
-import { ProjectAdvancedActions } from '@/app/components/projects/ProjectAdvancedActions'
-import { ResidentPortalDocsPanel } from '@/app/components/projects/ResidentPortalDocsPanel'
-import { CollapsibleSection } from '@/app/components/shared/CollapsibleSection'
+import { BuildingHubModal } from '@/app/components/projects/BuildingHubModal'
 
 type ProjectRow = {
   id: string
@@ -164,8 +161,6 @@ export default function ProjectsPage() {
   const [projectClosedTickets, setProjectClosedTickets] = useState<TicketRow[]>([])
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [exportingHistory, setExportingHistory] = useState(false)
-  const [projectResidentDocsOpen, setProjectResidentDocsOpen] = useState(true)
-  const [projectHistoryOpen, setProjectHistoryOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -313,16 +308,12 @@ export default function ProjectsPage() {
     closeDrawer()
     setSelectedProject(project)
     setDetailDrawerOpen(true)
-    setProjectResidentDocsOpen(true)
-    setProjectHistoryOpen(false)
     await fetchProjectTickets(project.id)
   }
 
   function closeDetailDrawer() {
     setDetailDrawerOpen(false)
     setSelectedProject(null)
-    setProjectResidentDocsOpen(true)
-    setProjectHistoryOpen(false)
     setProjectTickets([])
     setProjectClosedTickets([])
   }
@@ -655,10 +646,24 @@ export default function ProjectsPage() {
                   onClick={() => openDetailDrawer(project)}
                   style={styles.projectCard}
                   data-ui="card"
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    el.style.borderColor = theme.colors.borderSelected
+                    el.style.boxShadow = theme.shadows.sm
+                    el.style.background = theme.colors.cardHover
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    el.style.borderColor = theme.colors.border
+                    el.style.boxShadow = theme.shadows.xs
+                    el.style.background = theme.colors.surface
+                  }}
                 >
                   <div style={styles.projectHeader}>
                     <div style={styles.projectName}>{project.name}</div>
-                    <StatusBadge status={project.is_active ? 'ACTIVE' : 'INACTIVE'} size="sm" />
+                    <div style={styles.projectBadge}>
+                      <StatusBadge status={project.is_active ? 'ACTIVE' : 'INACTIVE'} size="sm" />
+                    </div>
                   </div>
 
                   <div style={styles.projectMeta}>
@@ -668,7 +673,7 @@ export default function ProjectsPage() {
                         <span style={styles.metaValue}>{project.address}</span>
                       </div>
                     ) : null}
-                    <div style={styles.metaItem}>
+                    <div style={{ ...styles.metaItem, ...styles.metaItemLast }}>
                       <span style={styles.metaLabel}>עובד אחזקה</span>
                       <span style={styles.metaValue}>
                         {project.assigned_worker_id
@@ -775,179 +780,38 @@ export default function ProjectsPage() {
         </div>
       </Drawer>
 
-      {/* Detail Drawer */}
-      <Drawer
+      <BuildingHubModal
         open={detailDrawerOpen}
         onClose={closeDetailDrawer}
-        title={selectedProject?.name || ''}
-        subtitle={selectedProject?.address || 'פרטי הבניין'}
+        project={selectedProject}
+        workers={workers}
         isMobile={isMobile}
-      >
-        {selectedProject && (
-          <div style={styles.drawerContent}>
-            <div style={styles.detailSection}>
-              <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>סטטוס</span>
-                <StatusBadge status={selectedProject.is_active ? 'ACTIVE' : 'INACTIVE'} />
-              </div>
-              <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>כתובת</span>
-                <span style={styles.detailValue}>{selectedProject.address || '-'}</span>
-              </div>
-              {selectedProject.address_en && (
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>כתובת (EN)</span>
-                  <span style={{ ...styles.detailValue, direction: 'ltr', textAlign: 'left' }}>{selectedProject.address_en}</span>
-                </div>
-              )}
-              <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>עובד אחזקה</span>
-                <div style={{ flex: 1, minWidth: 0, maxWidth: '260px' }} onClick={(e) => e.stopPropagation()}>
-                  <Select
-                    value={selectedProject.assigned_worker_id || ''}
-                    onChange={(value) => {
-                      void updateProjectAssignedWorker(selectedProject.id, value).then(() => {
-                        setSelectedProject((prev) =>
-                          prev ? { ...prev, assigned_worker_id: value || null } : prev
-                        )
-                      })
-                    }}
-                    options={[
-                      { label: 'לא שויך', value: '' },
-                      ...workers.map((w) => ({ label: w.full_name, value: w.id })),
-                    ]}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.ticketsSection}>
-              <div style={styles.ticketsSectionHeader}>
-                <h4 style={styles.ticketsSectionTitle}>תקלות פעילות</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    window.location.href = `/tickets?project=${encodeURIComponent(selectedProject.project_code)}`
-                  }}
-                >
-                  לכל התקלות
-                </Button>
-              </div>
-
-              {loadingTickets ? (
-                <div style={styles.loadingSmall}>
-                  <LoadingSpinner size="sm" />
-                </div>
-              ) : projectTickets.length === 0 ? (
-                <p style={styles.emptyText}>אין תקלות פעילות לפרויקט זה</p>
-              ) : (
-                <div style={styles.ticketList}>
-                  {projectTickets.map((ticket) => (
-                    <button
-                      key={ticket.id}
-                      type="button"
-                      style={{ ...styles.ticketItem, ...styles.ticketItemButton }}
-                      onClick={() => router.push(ticketDetailPath(ticket.id))}
-                    >
-                      <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                      <StatusBadge status={ticket.status} size="sm" />
-                      <span style={styles.ticketHistoryDate}>
-                        {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <CollapsibleSection
-                title="היסטוריית תקלות"
-                badge={projectClosedTickets.length > 0 ? String(projectClosedTickets.length) : undefined}
-                open={projectHistoryOpen}
-                onToggle={() => setProjectHistoryOpen((v) => !v)}
-              >
-                {loadingTickets ? (
-                  <div style={styles.loadingSmall}>
-                    <LoadingSpinner size="sm" />
-                  </div>
-                ) : projectClosedTickets.length === 0 ? (
-                  <p style={styles.emptyText}>אין תקלות סגורות בהיסטוריה</p>
-                ) : (
-                  <>
-                    <div style={styles.ticketList}>
-                      {projectClosedTickets.map((ticket) => (
-                        <button
-                          key={ticket.id}
-                          type="button"
-                          style={{ ...styles.ticketHistoryItem, ...styles.ticketItemButton }}
-                          onClick={() => router.push(ticketDetailPath(ticket.id))}
-                        >
-                          <div style={styles.ticketHistoryTop}>
-                            <span style={styles.ticketNumber}>#{ticket.ticket_number}</span>
-                            <StatusBadge status={ticket.status} size="sm" />
-                          </div>
-                          <p style={styles.ticketHistoryDesc}>
-                            {ticket.description?.slice(0, 80)}
-                            {(ticket.description?.length || 0) > 80 ? '…' : ''}
-                          </p>
-                          <span style={styles.ticketHistoryDate}>
-                            {formatReporterNameAndPhone(ticket.reporter_name, ticket.reporter_phone) || '—'}
-                          </span>
-                          <span style={styles.ticketHistoryDate}>
-                            נסגרה: {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('he-IL') : '—'}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={exportingHistory}
-                      onClick={() => void exportProjectHistory(selectedProject)}
-                      style={{ width: '100%' }}
-                    >
-                      ייצוא היסטוריה ל-Excel
-                    </Button>
-                  </>
-                )}
-              </CollapsibleSection>
-            </div>
-
-            <div style={styles.drawerActions}>
-              <Button variant="secondary" onClick={() => openEditDrawer(selectedProject)}>
-                עריכת פרויקט
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  window.location.href = `/qr?project=${encodeURIComponent(selectedProject.project_code)}`
-                }}
-              >
-                צפייה ב-QR
-              </Button>
-            </div>
-
-            <CollapsibleSection
-              title="מידע לדיירים"
-              open={projectResidentDocsOpen}
-              onToggle={() => setProjectResidentDocsOpen((v) => !v)}
-            >
-              <ResidentPortalDocsPanel projectId={selectedProject.id} />
-            </CollapsibleSection>
-
-            <ProjectAdvancedActions
-              projectId={selectedProject.id}
-              projectName={selectedProject.name}
-              projectCode={selectedProject.project_code}
-              clientId={selectedProject.client_id}
-              isActive={selectedProject.is_active}
-              onToggleActive={() => void toggleProjectStatus(selectedProject)}
-              onDelete={() => deleteProject(selectedProject)}
-            />
-          </div>
-        )}
-      </Drawer>
+        openTickets={projectTickets}
+        closedTickets={projectClosedTickets}
+        loadingTickets={loadingTickets}
+        exportingHistory={exportingHistory}
+        onAssignWorker={(value) => {
+          if (!selectedProject) return
+          void updateProjectAssignedWorker(selectedProject.id, value).then(() => {
+            setSelectedProject((prev) =>
+              prev ? { ...prev, assigned_worker_id: value || null } : prev
+            )
+          })
+        }}
+        onOpenEdit={() => {
+          if (selectedProject) openEditDrawer(selectedProject)
+        }}
+        onExportHistory={() => {
+          if (selectedProject) void exportProjectHistory(selectedProject)
+        }}
+        onToggleActive={() => {
+          if (selectedProject) void toggleProjectStatus(selectedProject)
+        }}
+        onDelete={() => {
+          if (selectedProject) void deleteProject(selectedProject)
+        }}
+        onOpenTicket={(ticketId) => router.push(ticketDetailPath(ticketId))}
+      />
     </>
   )
 }
@@ -966,11 +830,11 @@ const styles: Record<string, CSSProperties> = {
   filtersRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: theme.spacing.md,
     flexWrap: 'wrap',
-    padding: '16px 20px',
-    borderBottom: `1px solid ${theme.colors.border}`,
-    background: theme.colors.mutedSurface,
+    padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    background: theme.colors.surfaceInset,
   },
   loadingContainer: {
     display: 'flex',
@@ -980,66 +844,88 @@ const styles: Record<string, CSSProperties> = {
   },
   projectGrid: {
     display: 'grid',
-    gap: '16px',
-    padding: '16px 20px 24px',
+    gap: theme.spacing.lg,
+    padding: `${theme.spacing.lg} ${theme.spacing.xl} ${theme.spacing.xl}`,
   },
   projectCard: {
     background: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.radius.xl,
-    padding: '20px 22px',
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
     cursor: 'pointer',
     boxShadow: theme.shadows.xs,
-    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
+    transition: `border-color ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease, background ${theme.motion.base} ease`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.md,
+    minHeight: 132,
   },
   projectHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: '14px',
-    gap: '12px',
+    gap: theme.spacing.md,
   },
   projectName: {
-    fontSize: '17px',
-    fontWeight: 600,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.textPrimary,
+    lineHeight: 1.35,
+    minWidth: 0,
+    flex: 1,
+  },
+  projectBadge: {
+    flexShrink: 0,
+    marginTop: 2,
   },
   projectCode: {
-    fontSize: '13px',
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textMuted,
-    marginTop: '2px',
+    marginTop: 2,
   },
   projectMeta: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    marginBottom: '18px',
+    gap: 0,
+    marginTop: 'auto',
+    borderTop: `1px solid ${theme.colors.borderSubtle}`,
+    paddingTop: theme.spacing.sm,
   },
   metaItem: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '12px',
+    gap: theme.spacing.md,
+    minHeight: 36,
+    padding: `${theme.spacing.xs} 0`,
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+  },
+  metaItemLast: {
+    borderBottom: 'none',
   },
   metaLabel: {
-    fontSize: '13px',
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textMuted,
+    flexShrink: 0,
   },
   metaValue: {
-    fontSize: '14px',
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textSecondary,
+    textAlign: 'left' as const,
+    minWidth: 0,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   metaCode: {
-    fontSize: '13px',
+    fontSize: theme.typography.fontSize.sm,
     fontFamily: 'monospace',
     color: theme.colors.textSecondary,
-    background: theme.colors.mutedSurface,
+    background: theme.colors.surfaceInset,
     padding: '4px 8px',
     borderRadius: theme.radius.sm,
   },
   projectActions: {
     display: 'flex',
-    gap: '8px',
+    gap: theme.spacing.sm,
     flexWrap: 'wrap',
   },
   drawerContent: {

@@ -59,7 +59,7 @@ export async function forwardTicketToProfessional(
 
   const { data: professional, error: proError } = await supabase
     .from('professionals')
-    .select('id, full_name, phone, extra_phones, trade, is_active')
+    .select('id, full_name, phone, extra_phones, trade, is_active, use_count')
     .eq('id', professionalId)
     .eq('client_id', clientId)
     .is('deleted_at', null)
@@ -154,6 +154,27 @@ export async function forwardTicketToProfessional(
 
   if (logError) {
     logger.warn('FORWARD_PRO', 'ticket_logs insert failed', { err: logError.message })
+  }
+
+  // Operational memory: bump usage after at least one SMS delivered
+  if (smsSentCount > 0) {
+    const currentCount =
+      typeof (professional as { use_count?: number }).use_count === 'number'
+        ? (professional as { use_count: number }).use_count
+        : 0
+    const { error: touchErr } = await supabase
+      .from('professionals')
+      .update({
+        use_count: currentCount + 1,
+        last_contacted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', professionalId)
+      .eq('client_id', clientId)
+      .is('deleted_at', null)
+    if (touchErr) {
+      logger.warn('FORWARD_PRO', 'use_count bump failed', { err: touchErr.message })
+    }
   }
 
   return {
