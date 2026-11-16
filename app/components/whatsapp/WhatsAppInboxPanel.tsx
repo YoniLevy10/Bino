@@ -485,14 +485,26 @@ export function WhatsAppInboxPanel() {
         >
           <WaBackIcon />
         </button>
-        <span style={{ ...styles.avatar, background: waAvatarColor(selected.id) }} aria-hidden>
+        <span
+          style={{ ...styles.avatar, ...styles.threadAvatar, background: waAvatarColor(selected.id) }}
+          aria-hidden
+        >
           {waInitials(residentLabel(selected))}
         </span>
         <span style={styles.threadIdentity}>
           <span style={styles.threadTitle}>{residentLabel(selected)}</span>
-          <span style={styles.threadSub}>
-            {displayPhone(selected.phone)}
-            {!sessionLoading ? ` · ${inSession ? 'אפשר לכתוב' : 'חלון 24 שעות סגור'}` : ''}
+          <span style={styles.threadMetaRow}>
+            <span style={styles.threadSub}>{displayPhone(selected.phone)}</span>
+            {!sessionLoading ? (
+              <span
+                style={{
+                  ...styles.sessionChip,
+                  ...(inSession ? styles.sessionChipOpen : styles.sessionChipClosed),
+                }}
+              >
+                {inSession ? 'אפשר לכתוב' : 'חלון 24 שעות סגור'}
+              </span>
+            ) : null}
           </span>
         </span>
       </div>
@@ -531,9 +543,16 @@ export function WhatsAppInboxPanel() {
             return (
               <div key={m.id} style={styles.messageBlock}>
                 {showDay ? <div style={styles.dayChip}>{day}</div> : null}
-                <div style={{ ...styles.bubble, ...(outgoing ? styles.bubbleOut : styles.bubbleIn) }}>
-                  <span style={styles.bubbleText}>{formatInboxMessageBody(m)}</span>
-                  <span style={styles.time}>{waClock(m.created_at)}</span>
+                <div
+                  style={{
+                    ...styles.bubbleRow,
+                    ...(outgoing ? styles.bubbleRowOut : styles.bubbleRowIn),
+                  }}
+                >
+                  <div style={{ ...styles.bubble, ...(outgoing ? styles.bubbleOut : styles.bubbleIn) }}>
+                    <span style={styles.bubbleText}>{formatInboxMessageBody(m)}</span>
+                    <span style={styles.time}>{waClock(m.created_at)}</span>
+                  </div>
                 </div>
               </div>
             )
@@ -963,6 +982,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 16,
     fontWeight: 700,
   },
+  threadAvatar: {
+    width: 40,
+    height: 40,
+    fontSize: 15,
+  },
   thread: {
     display: 'flex',
     flexDirection: 'column',
@@ -1011,19 +1035,19 @@ const styles: Record<string, CSSProperties> = {
     textAlign: 'center',
   },
   threadHeader: {
-    padding: '8px 12px',
-    minHeight: 60,
+    padding: '6px 10px',
+    minHeight: 56,
     borderBottom: '1px solid #e9edef',
     display: 'flex',
     flexWrap: 'nowrap',
-    gap: 10,
+    gap: 8,
     alignItems: 'center',
     flexShrink: 0,
     background: '#f0f2f5',
   },
   backBtn: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     border: 'none',
     background: 'transparent',
     color: '#54656f',
@@ -1031,10 +1055,11 @@ const styles: Record<string, CSSProperties> = {
     padding: 0,
     fontFamily: 'inherit',
     flexShrink: 0,
+    display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  threadIdentity: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 },
+  threadIdentity: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
   threadTitle: {
     fontSize: 16,
     fontWeight: 600,
@@ -1042,8 +1067,39 @@ const styles: Record<string, CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    lineHeight: 1.25,
   },
-  threadSub: { fontSize: 12, color: '#667781', fontWeight: 400 },
+  threadMetaRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '4px 8px',
+    minWidth: 0,
+  },
+  threadSub: {
+    fontSize: 12,
+    color: '#667781',
+    fontWeight: 400,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  sessionChip: {
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    padding: '2px 8px',
+    borderRadius: 999,
+  },
+  sessionChipOpen: {
+    color: '#0b7a4b',
+    background: 'rgba(37, 211, 102, 0.16)',
+  },
+  sessionChipClosed: {
+    color: '#9a6700',
+    background: 'rgba(255, 193, 7, 0.18)',
+  },
   badgeOpen: {
     fontSize: 11,
     fontWeight: 600,
@@ -1063,7 +1119,7 @@ const styles: Record<string, CSSProperties> = {
   messages: {
     flex: '1 1 0%',
     overflowY: 'auto',
-    padding: '12px 6%',
+    padding: '8px 4%',
     display: 'flex',
     flexDirection: 'column',
     gap: 2,
@@ -1072,7 +1128,7 @@ const styles: Record<string, CSSProperties> = {
   messageBlock: { display: 'flex', flexDirection: 'column' },
   dayChip: {
     alignSelf: 'center',
-    margin: '8px 0',
+    margin: '6px 0',
     padding: '5px 12px',
     borderRadius: 8,
     background: '#fff',
@@ -1095,31 +1151,45 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.error,
     lineHeight: 1.45,
   },
+  /* LTR row so WhatsApp sides stay stable in Hebrew RTL pages:
+     incoming (resident) left, outgoing (manager) right. */
+  bubbleRow: {
+    display: 'flex',
+    width: '100%',
+    direction: 'ltr',
+  },
+  bubbleRowIn: { justifyContent: 'flex-start' },
+  bubbleRowOut: { justifyContent: 'flex-end' },
   bubble: {
-    maxWidth: '78%',
+    maxWidth: '82%',
     margin: '1px 0',
-    padding: '6px 8px 4px 9px',
+    padding: '6px 9px 4px 9px',
     borderRadius: 8,
     fontSize: 14.2,
-    lineHeight: 1.35,
+    lineHeight: 1.4,
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'flex-end',
     columnGap: 8,
+    rowGap: 2,
     boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
   },
-  bubbleText: { whiteSpace: 'pre-wrap', minWidth: 0 },
+  bubbleText: {
+    whiteSpace: 'pre-wrap',
+    minWidth: 0,
+    direction: 'rtl',
+    textAlign: 'right',
+    unicodeBidi: 'plaintext',
+  },
   bubbleIn: {
-    alignSelf: 'flex-start',
     background: '#fff',
     color: '#111b21',
-    borderEndStartRadius: 2,
+    borderBottomLeftRadius: 2,
   },
   bubbleOut: {
-    alignSelf: 'flex-end',
     background: '#d9fdd3',
     color: '#111b21',
-    borderEndEndRadius: 2,
+    borderBottomRightRadius: 2,
   },
   time: {
     marginInlineStart: 'auto',
@@ -1128,19 +1198,21 @@ const styles: Record<string, CSSProperties> = {
     color: '#667781',
     paddingBottom: 2,
     whiteSpace: 'nowrap',
+    direction: 'ltr',
   },
   compose: {
-    padding: '6px 10px 8px',
+    padding: '4px 8px 6px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 6,
     flexShrink: 0,
     background: '#f0f2f5',
+    borderTop: '1px solid #e9edef',
   },
-  composeRow: { display: 'flex', alignItems: 'flex-end', gap: 8 },
+  composeRow: { display: 'flex', alignItems: 'flex-end', gap: 6 },
   iconBtn: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: '50%',
     border: 'none',
     background: 'transparent',
@@ -1164,8 +1236,8 @@ const styles: Record<string, CSSProperties> = {
     border: 0,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: '50%',
     border: 'none',
     background: '#00a884',
@@ -1246,10 +1318,10 @@ const styles: Record<string, CSSProperties> = {
     flex: 1,
     width: '100%',
     resize: 'none',
-    minHeight: 42,
+    minHeight: 40,
     maxHeight: 120,
-    padding: '10px 12px',
-    borderRadius: 8,
+    padding: '9px 14px',
+    borderRadius: 20,
     border: 'none',
     background: '#fff',
     fontFamily: 'inherit',
