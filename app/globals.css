@@ -725,9 +725,15 @@ body.wa-sheet-open [data-app-main] {
 .app-modal-sheet-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+  box-sizing: border-box;
 }
 
 .app-modal-sheet-footer {

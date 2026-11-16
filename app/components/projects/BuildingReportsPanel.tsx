@@ -688,6 +688,13 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing.md,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    overflowX: 'clip',
+    boxSizing: 'border-box',
+    position: 'relative' as const,
+    zIndex: 0,
   },
   letterhead: {
     display: 'flex',
@@ -696,6 +703,8 @@ const styles: Record<string, CSSProperties> = {
     gap: theme.spacing.md,
     paddingBottom: theme.spacing.sm,
     borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    maxWidth: '100%',
+    minWidth: 0,
   },
   letterheadMain: {
     display: 'flex',
@@ -754,11 +763,14 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing.sm,
+    maxWidth: '100%',
+    minWidth: 0,
   },
   controlsMobile: {
-    position: 'sticky' as const,
-    top: 0,
-    zIndex: 3,
+    // Do not sticky/port a second chrome layer inside BuildingHubModal —
+    // sticky + z-index stacked over the hub and blocked tab/close taps.
+    position: 'relative' as const,
+    zIndex: 0,
     paddingBottom: theme.spacing.sm,
     background: theme.colors.background,
   },
@@ -830,6 +842,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
   },
   kpi: {
     display: 'flex',
@@ -839,6 +854,9 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.borderSubtle}`,
     background: theme.colors.surface,
+    minWidth: 0,
+    maxWidth: '100%',
+    overflowWrap: 'anywhere',
   },
   kpiLabel: {
     fontSize: theme.typography.fontSize.xs,
