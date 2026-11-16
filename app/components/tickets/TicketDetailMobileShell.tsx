@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { createPortal } from 'react-dom'
 import { theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
-import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/use-visual-viewport-frame'
+import { useChatSheetScrollLock } from '@/lib/use-visual-viewport-frame'
 
 export type TicketDetailMobileShellProps = {
   open: boolean
@@ -27,8 +27,8 @@ const shellCss = `
 `
 
 /**
- * Full-bleed ticket detail on manager mobile (≤768). Avoids the global Drawer bottom sheet
- * so Sarah gets a true full-screen card per mobile usage priorities.
+ * Centered ticket-detail popup on manager mobile (≤768), matching the desktop
+ * Drawer `placement="center"` modal — not a full-bleed page.
  */
 export function TicketDetailMobileShell({
   open,
@@ -40,7 +40,6 @@ export function TicketDetailMobileShell({
 }: TicketDetailMobileShellProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const [portalReady, setPortalReady] = useState(false)
-  const frame = useVisualViewportFrame(open)
 
   useFocusTrap(panelRef, open)
   useChatSheetScrollLock(open)
@@ -69,79 +68,95 @@ export function TicketDetailMobileShell({
 
   if (!open || !portalReady || typeof document === 'undefined') return null
 
-  const panelFrame: CSSProperties = frame
-    ? {
-        top: frame.top,
-        height: frame.height,
-        bottom: 'auto',
-      }
-    : {
-        top: 0,
-        bottom: 0,
-        height: '100dvh',
-        maxHeight: '100dvh',
-      }
-
   return createPortal(
     <div
-      ref={panelRef}
       className="ticket-detail-mobile-shell"
-      style={{ ...shellStyles.panel, ...panelFrame }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ticket-detail-mobile-title"
+      style={shellStyles.overlay}
+      onClick={onClose}
+      role="presentation"
       data-ticket-detail-mobile="true"
     >
       <style>{shellCss}</style>
-      <header style={shellStyles.header}>
-        <div style={shellStyles.headerMain}>
-          <h2 id="ticket-detail-mobile-title" style={shellStyles.title}>
-            {title}
-          </h2>
-          {subtitle ? <p style={shellStyles.subtitle}>{subtitle}</p> : null}
-        </div>
-        <button type="button" onClick={onClose} style={shellStyles.closeButton} aria-label="סגירה">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.25"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </header>
-      <div style={shellStyles.content}>{children}</div>
-      {footer ? (
-        <footer className="ticket-detail-mobile-shell__footer" style={shellStyles.footer}>
-          {footer}
-        </footer>
-      ) : null}
+      <div
+        ref={panelRef}
+        style={shellStyles.panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ticket-detail-mobile-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header style={shellStyles.header}>
+          <div style={shellStyles.headerMain}>
+            <h2 id="ticket-detail-mobile-title" style={shellStyles.title}>
+              {title}
+            </h2>
+            {subtitle ? <p style={shellStyles.subtitle}>{subtitle}</p> : null}
+          </div>
+          <button type="button" onClick={onClose} style={shellStyles.closeButton} aria-label="סגירה">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <div style={shellStyles.content}>{children}</div>
+        {footer ? (
+          <footer className="ticket-detail-mobile-shell__footer" style={shellStyles.footer}>
+            {footer}
+          </footer>
+        ) : null}
+      </div>
     </div>,
     document.body
   )
 }
 
 const shellStyles: Record<string, CSSProperties> = {
-  panel: {
+  overlay: {
     position: 'fixed',
-    left: 0,
-    right: 0,
-    zIndex: 302,
+    inset: 0,
+    zIndex: 320,
     display: 'flex',
-    flexDirection: 'column',
-    background: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '12px',
+    paddingTop: 'max(12px, env(safe-area-inset-top, 0px))',
+    paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
     boxSizing: 'border-box',
+    background: theme.colors.overlay,
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    animation: 'fadeIn 0.2s ease',
     direction: 'rtl',
     textAlign: 'right',
-    WebkitOverflowScrolling: 'touch',
     touchAction: 'manipulation',
+  },
+  panel: {
+    width: 'min(560px, calc(100vw - 24px))',
+    height: 'min(720px, calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)))',
+    maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+    display: 'flex',
+    flexDirection: 'column',
+    background: theme.colors.surfaceElevated,
+    borderRadius: theme.radius.xl,
+    border: `1px solid ${theme.colors.border}`,
+    boxShadow: theme.shadows.xl,
+    overflow: 'hidden',
+    animation: 'hubModalIn 0.22s ease',
+    transformOrigin: 'center center',
+    zIndex: 321,
+    boxSizing: 'border-box',
+    WebkitOverflowScrolling: 'touch',
   },
   header: {
     display: 'flex',
@@ -152,10 +167,10 @@ const shellStyles: Record<string, CSSProperties> = {
     width: '100%',
     boxSizing: 'border-box',
     paddingInline: 16,
-    paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
+    paddingTop: 14,
     paddingBottom: 12,
-    borderBottom: `1px solid ${theme.colors.divider}`,
-    background: theme.colors.surface,
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    background: `linear-gradient(180deg, ${theme.colors.blueSoft} 0%, ${theme.colors.surface} 72%)`,
   },
   headerMain: {
     minWidth: 0,
@@ -204,6 +219,7 @@ const shellStyles: Record<string, CSSProperties> = {
     paddingInline: 16,
     paddingTop: 12,
     paddingBottom: 12,
+    background: theme.colors.background,
     touchAction: 'manipulation',
   },
   footer: {
@@ -213,7 +229,7 @@ const shellStyles: Record<string, CSSProperties> = {
     gap: 12,
     paddingInline: 16,
     paddingTop: 12,
-    paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: 14,
     borderTop: `1px solid ${theme.colors.divider}`,
     background: theme.colors.surface,
     boxShadow: '0 -6px 20px rgba(15, 23, 42, 0.06)',

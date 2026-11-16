@@ -52,10 +52,16 @@ describe('ticket detail parity contract', () => {
     expect(drawer).toContain('TicketDetailMobileShell')
   })
 
-  it('TicketDetailMobileShell is full-screen portal shell', () => {
+  it('TicketDetailMobileShell is centered portal popup (not full-bleed)', () => {
     const shell = readRepoFile('app/components/tickets/TicketDetailMobileShell.tsx')
     expect(shell).toContain('createPortal')
     expect(shell).toContain('data-ticket-detail-mobile')
+    expect(shell).toContain("alignItems: 'center'")
+    expect(shell).toContain("justifyContent: 'center'")
+    expect(shell).toContain('surfaceElevated')
+    expect(shell).toContain('hubModalIn')
+    expect(shell).not.toContain('useVisualViewportFrame')
+    expect(shell).not.toMatch(/height:\s*'100dvh'/)
   })
 })
 
