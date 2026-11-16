@@ -21,7 +21,8 @@ import {
   StatusBadge,
   theme,
 } from '../components/ui'
-import { PageTransitionLoader } from '../components/page-skeleton'
+import { PageListSkeleton, PageTransitionLoader } from '../components/page-skeleton'
+import { WorkerPortalBootstrapShell } from '../components/worker/WorkerPortalBootstrapShell'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
 import { WorkerTicketsScreen } from '../components/worker/WorkerTicketsScreen'
@@ -814,8 +815,24 @@ function WorkerPageInner() {
     } finally { setBusyKey(null) }
   }
 
+  const pendingWorkerToken =
+    normalizeWorkerToken(searchParams.get('token')) ?? readWorkerToken()
+
   // Standalone worker view (accessed via token link or email login — no sidebar)
   if (!tokenChecked || !sessionResolved) {
+    if (pendingWorkerToken) {
+      const cachedBranding = tryReadWorkerPortalBranding()
+      return (
+        <WorkerPortalBootstrapShell
+          darkMode={darkMode}
+          colors={palette}
+          logoUrl={clientLogoUrl ?? cachedBranding?.logoUrl ?? null}
+          greetingName="עובד"
+          toolbarRefreshing={!tokenChecked}
+          ticketsLoading={loadingTickets && tickets.length === 0}
+        />
+      )
+    }
     return (
       <div
         className="worker-shell"
@@ -947,7 +964,8 @@ function WorkerPageInner() {
           >
             <WorkerTicketsScreen
               tickets={openTickets}
-              loading={loadingTickets}
+              loading={loadingTickets && openTickets.length === 0}
+              refreshing={refreshing || (loadingTickets && openTickets.length > 0)}
               logoUrl={clientLogoUrl}
               colors={palette}
               pushOnboarding={
@@ -1120,10 +1138,6 @@ function WorkerPageInner() {
       </div>
     )
   }
-  if (!tokenChecked || !sessionResolved) {
-    return <PageTransitionLoader logoUrl={clientLogoUrl} />
-  }
-
   return (
     <AppShell isMobile={isMobile}>
       {isMobile && (
@@ -1142,7 +1156,7 @@ function WorkerPageInner() {
         ) : (
           <>
             {loadingList ? (
-              <div style={styles.center}><LoadingSpinner /></div>
+              <PageListSkeleton rows={2} />
             ) : (
               <Card title="בחר עובד" noPadding style={{ marginBottom: '16px' }}>
                 <div style={styles.pad}>
@@ -1165,7 +1179,7 @@ function WorkerPageInner() {
               <Card title={`תקלות פתוחות — ${selectedName}`} noPadding>
                 <div style={styles.pad}>
                   {loadingTickets ? (
-                    <div style={styles.center}><LoadingSpinner /></div>
+                    <PageListSkeleton rows={5} />
                   ) : openTickets.length === 0 ? (
                     <p style={styles.muted}>אין תקלות פתוחות משויכות.</p>
                   ) : (
@@ -1367,9 +1381,23 @@ const styles: Record<string, CSSProperties> = {
   actions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
 }
 
+function WorkerPageSuspenseFallback() {
+  const darkMode = readWorkerDarkMode()
+  const palette = darkMode ? workerDarkColors : theme.colors
+  const cachedBranding = typeof window !== 'undefined' ? tryReadWorkerPortalBranding() : null
+  return (
+    <WorkerPortalBootstrapShell
+      darkMode={darkMode}
+      colors={palette}
+      logoUrl={cachedBranding?.logoUrl ?? null}
+      greetingName="עובד"
+    />
+  )
+}
+
 export default function WorkerPage() {
   return (
-    <Suspense fallback={<PageTransitionLoader />}>
+    <Suspense fallback={<WorkerPageSuspenseFallback />}>
       <WorkerPageInner />
     </Suspense>
   )
