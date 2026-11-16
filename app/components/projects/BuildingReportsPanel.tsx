@@ -331,8 +331,7 @@ export function BuildingReportsPanel({
       </div>
 
       <p style={styles.intro}>
-        דוח חשבונאי ל־<strong>{projectName}</strong> — תקציב מול ביצוע, פירוט קטגוריות/ספקים, ורו״ח
-        תמציתי להוכחת עלות תחזוקה לבניין.
+        דוח ל־<strong>{projectName}</strong> — תקציב מול ביצוע ועלות תחזוקה.
       </p>
 
       <div

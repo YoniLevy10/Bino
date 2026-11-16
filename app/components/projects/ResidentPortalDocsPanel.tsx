@@ -127,10 +127,7 @@ export function ResidentPortalDocsPanel({ projectId, isMobile = false }: Props) 
 
   return (
     <div style={styles.wrap}>
-      <p style={styles.help}>
-        העלו PDF מעוצב (שעות בריכה/כושר, הודעת ועד, נוהל…) — הדיירים יראו אותו באזור האישי תחת
-        «מידע הבניין».
-      </p>
+      <p style={styles.help}>העלו PDF — יופיע לדיירים ב«מידע הבניין» אחרי פרסום.</p>
 
       <input
         ref={fileRef}
@@ -154,7 +151,7 @@ export function ResidentPortalDocsPanel({ projectId, isMobile = false }: Props) 
       {loading ? (
         <p style={styles.muted}>טוען מסמכים שפורסמו…</p>
       ) : docs.length === 0 ? (
-        <p style={styles.muted}>עדיין אין מסמכים שפורסמו לדיירים בבניין זה.</p>
+        <p style={styles.muted}>אין מסמכים שפורסמו.</p>
       ) : (
         <ul style={styles.list}>
           {docs.map((doc) => (

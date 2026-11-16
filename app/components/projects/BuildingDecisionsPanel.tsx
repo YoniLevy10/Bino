@@ -212,8 +212,7 @@ export function BuildingDecisionsPanel({
   return (
     <div style={styles.root}>
       <p style={styles.intro}>
-        החלטות ל־<strong>{projectName}</strong> — קישורי חתימה לכל חותם; כשמגיעים לרוב (ברירת מחדל
-        50% ממספר החתימות הנדרש) הסטטוס עובר ל־«אושרה».
+        החלטות ל־<strong>{projectName}</strong> — קישור חתימה לכל חותם; ברוב → «אושרה».
       </p>
 
       <form onSubmit={onCreate} style={styles.form}>
@@ -353,9 +352,6 @@ export function BuildingDecisionsPanel({
         </div>
       )}
 
-      <p style={styles.hint}>
-        Wave 4b מאוחר יותר: canvas signature_pad מלא, שליחה אוטומטית ב־WhatsApp/SMS, ודוחות OPC.
-      </p>
     </div>
   )
 }
@@ -480,12 +476,6 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textMuted,
     fontSize: theme.typography.fontSize.sm,
     padding: '16px 0',
-  },
-  hint: {
-    margin: 0,
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.textMuted,
-    lineHeight: 1.45,
   },
   lockBox: {
     padding: theme.spacing.xl,

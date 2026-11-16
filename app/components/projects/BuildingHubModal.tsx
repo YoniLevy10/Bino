@@ -153,15 +153,7 @@ export function BuildingHubModal({
 
   let body: ReactNode = null
   if (tab === 'docs') {
-    body = (
-      <div style={styles.stack}>
-        <p style={styles.docsHint}>
-          מסמכי פורטל דיירים — העלאת PDF שמפורסם תחת «מידע הבניין». נראה לדיירים רק אחרי פרסום;
-          הסתרה/מחיקה מהרשימה מסירה את החשיפה. ארכיון מסמכים פנימי נשאר בתוסף מסמכי בניין.
-        </p>
-        <ResidentPortalDocsPanel projectId={project.id} isMobile={isMobile} />
-      </div>
-    )
+    body = <ResidentPortalDocsPanel projectId={project.id} isMobile={isMobile} />
   } else if (tab === 'settings') {
     body = (
       <div style={styles.stack}>
@@ -853,12 +845,6 @@ const styles: Record<string, CSSProperties> = {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textPrimary,
     lineHeight: 1.4,
-  },
-  docsHint: {
-    margin: 0,
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
-    lineHeight: 1.5,
   },
   settingsActions: {
     display: 'flex',
