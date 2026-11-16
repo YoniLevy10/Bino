@@ -6,16 +6,15 @@
   "start_url": "/worker",
   "scope": "/worker",
   "display": "standalone",
-  "background_color": "#F8FAFC",
-  "theme_color": "#F8FAFC",
+  "background_color": "#021446",
+  "theme_color": "#021446",
   "dir": "rtl",
   "lang": "he",
   "categories": ["productivity", "business"],
   "prefer_related_applications": false,
   "icons": [
-    { "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/apple-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

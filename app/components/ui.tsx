@@ -385,7 +385,7 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           />
         ) : (
           <Image
-            src="/apple-icon.png"
+            src="/bino-mark.png"
             alt={displayName}
             width={40}
             height={40}
@@ -907,6 +907,23 @@ const bottomNavStyles: Record<string, CSSProperties> = {
   },
 }
 
+/** Responsive shell layout without waiting for JS viewport (reduces mobile CLS). */
+const APP_SHELL_RESPONSIVE_CSS = `
+@media (max-width: 768px) {
+  [data-bino-app-shell] [data-app-sidebar-host] {
+    display: none !important;
+  }
+  [data-bino-app-shell] [data-app-main] {
+    margin-inline-start: 0 !important;
+  }
+}
+@media (min-width: 769px) {
+  [data-bino-app-shell] [data-app-main] {
+    margin-inline-start: 248px;
+  }
+}
+`
+
 export function AppShell({
   children,
   isMobile,
@@ -932,12 +949,16 @@ function AppShellInner({
   const { isBootstrapped } = useClientBranding()
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
+  const [viewportMobile, setViewportMobile] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const openSearch = useCallback(() => setSearchOpen(true), [])
 
   useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setMounted(true)
+    const sync = () => setViewportMobile(getIsMobileViewport())
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
   }, [])
 
   useEffect(() => {
@@ -951,17 +972,20 @@ function AppShellInner({
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const mobile = mounted ? !!isMobile : false
+  // Prefer prop from useIsMobile; fall back to local layout measure (never force desktop until measured).
+  const mobile = typeof isMobile === 'boolean' ? !!isMobile || viewportMobile : viewportMobile
   const bottomNav = mobile && shouldShowMobileBottomNav(pathname)
 
   const showSplash = mounted && shouldShowAppSplash()
 
   return (
     <AppSearchContext.Provider value={{ openSearch }}>
+      <style>{APP_SHELL_RESPONSIVE_CSS}</style>
       {showSplash ? <AppSplashScreen ready={isBootstrapped} /> : null}
       <PageViewTracker />
       <div
         dir="rtl"
+        data-bino-app-shell
         className={calmSurface ? 'kiss-app' : undefined}
         style={{
           display: 'flex',
@@ -973,13 +997,14 @@ function AppShellInner({
         }}
         suppressHydrationWarning
       >
-        <Sidebar hidden={mobile} calmSurface={calmSurface} />
+        <div data-app-sidebar-host>
+          <Sidebar hidden={mobile} calmSurface={calmSurface} />
+        </div>
         <main
           dir="rtl"
           data-app-main
           style={{
             flex: 1,
-            marginInlineStart: mobile ? 0 : '248px',
             minWidth: 0,
             width: '100%',
             maxWidth: '100%',
@@ -1223,7 +1248,7 @@ export function MobileMenu({
               />
             ) : (
               <Image
-                src="/apple-icon.png"
+                src="/bino-mark.png"
                 alt={displayName}
                 width={36}
                 height={36}
@@ -1490,13 +1515,13 @@ const pageHeaderStyles: Record<string, CSSProperties> = {
   container: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '24px',
-    marginBottom: '24px',
-    padding: '24px 28px',
+    alignItems: 'flex-start',
+    gap: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
+    padding: `${theme.spacing.xl} 28px`,
     flexWrap: 'wrap',
-    border: `1px solid ${theme.colors.border}`,
-    borderInlineStart: `4px solid ${theme.colors.primary}`,
+    border: `1px solid ${theme.colors.borderStrong}`,
+    borderInlineStart: `3px solid ${theme.colors.primary}`,
     borderRadius: theme.radius.xl,
     background: `linear-gradient(110deg, ${theme.colors.surfaceActive} 0%, ${theme.colors.surface} 62%, ${theme.colors.background} 100%)`,
     boxShadow: theme.shadows.xs,
@@ -1508,8 +1533,8 @@ const pageHeaderStyles: Record<string, CSSProperties> = {
   eyebrow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    marginBottom: '9px',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
     color: theme.colors.primary,
     fontSize: '11px',
     fontWeight: 700,
@@ -1517,32 +1542,34 @@ const pageHeaderStyles: Record<string, CSSProperties> = {
     lineHeight: 1,
   },
   eyebrowDot: {
-    width: '7px',
-    height: '7px',
+    width: '6px',
+    height: '6px',
     flexShrink: 0,
-    borderRadius: '50%',
+    borderRadius: theme.radius.full,
     background: theme.colors.primary,
-    boxShadow: '0 0 0 4px rgba(0, 122, 255, 0.12)',
+    boxShadow: `0 0 0 3px ${theme.colors.primaryMuted}`,
   },
   title: {
-    fontSize: '30px',
+    fontSize: '28px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
-    letterSpacing: '-0.035em',
+    letterSpacing: '-0.03em',
     lineHeight: 1.2,
   },
   subtitle: {
     fontSize: '14px',
     color: theme.colors.textSecondary,
-    margin: '7px 0 0',
-    lineHeight: 1.55,
+    margin: `${theme.spacing.sm} 0 0`,
+    lineHeight: 1.5,
+    maxWidth: '42rem',
   },
   actions: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: theme.spacing.md,
     flexWrap: 'wrap',
+    paddingTop: '2px',
   },
 }
 
@@ -1653,7 +1680,7 @@ export function KpiRow({
   }
 
   if (isMobile) {
-    const gapPx = 10
+    const gapPx = 12
     const gaps = Math.max(0, columns - 1) * gapPx
     const itemStyle: CSSProperties = {
       ...kpiRowStyles.mobileItem,
@@ -1688,13 +1715,13 @@ export function KpiRow({
 const kpiRowStyles: Record<string, CSSProperties> = {
   desktopGrid: {
     display: 'grid',
-    gap: 16,
-    marginBottom: 24,
+    gap: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
     width: '100%',
     minWidth: 0,
   },
   mobileWrap: {
-    marginBottom: 20,
+    marginBottom: theme.spacing.lg,
     width: '100%',
     maxWidth: '100%',
     minWidth: 0,
@@ -1703,8 +1730,8 @@ const kpiRowStyles: Record<string, CSSProperties> = {
   },
   mobileWrapGrid: {
     display: 'grid',
-    gap: 10,
-    marginBottom: 20,
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
     width: '100%',
     maxWidth: '100%',
     minWidth: 0,
@@ -1712,7 +1739,7 @@ const kpiRowStyles: Record<string, CSSProperties> = {
   mobileTrack: {
     display: 'flex',
     flexDirection: 'row-reverse',
-    gap: 10,
+    gap: theme.spacing.md,
     overflowX: 'auto',
     overflowY: 'hidden',
     WebkitOverflowScrolling: 'touch',
@@ -1731,43 +1758,43 @@ const kpiRowStyles: Record<string, CSSProperties> = {
 const kpiStyles: Record<string, CSSProperties> = {
   card: {
     borderRadius: theme.radius.lg,
-    padding: '24px',
+    padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
     textAlign: 'start',
     transition: `transform ${theme.motion.fast} ease, background ${theme.motion.base} ease, box-shadow ${theme.motion.base} ease`,
     width: '100%',
-    minHeight: '96px',
+    minHeight: '92px',
     minWidth: 0,
     boxSizing: 'border-box',
   },
   cardCompact: {
-    padding: '14px 12px',
-    minHeight: '84px',
+    padding: `${theme.spacing.md} ${theme.spacing.md}`,
+    minHeight: '80px',
     borderRadius: theme.radius.lg,
   },
   row: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: '12px',
+    gap: theme.spacing.md,
     flexDirection: 'row-reverse',
     width: '100%',
     minWidth: 0,
   },
   rowCompact: {
-    gap: '8px',
+    gap: theme.spacing.sm,
     flexDirection: 'column',
     alignItems: 'flex-end',
   },
   value: {
-    fontSize: '32px',
+    fontSize: '30px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     letterSpacing: '-0.03em',
-    lineHeight: 1.15,
+    lineHeight: 1.1,
     flexShrink: 0,
   },
   valueCompact: {
-    fontSize: '26px',
+    fontSize: '24px',
     flexShrink: 1,
     minWidth: 0,
   },
@@ -1776,11 +1803,24 @@ const kpiStyles: Record<string, CSSProperties> = {
     minWidth: 0,
     textAlign: 'right',
   },
+  labelRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  labelDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: theme.radius.full,
+    flexShrink: 0,
+  },
   label: {
     fontSize: '14px',
     color: theme.colors.textSecondary,
     fontWeight: 500,
-    lineHeight: 1.45,
+    lineHeight: 1.4,
   },
   labelCompact: {
     fontSize: '12px',
@@ -1789,7 +1829,7 @@ const kpiStyles: Record<string, CSSProperties> = {
   hint: {
     fontSize: '12px',
     color: theme.colors.textMuted,
-    marginTop: '4px',
+    marginTop: theme.spacing.xs,
     lineHeight: 1.4,
   },
 }
@@ -1838,26 +1878,31 @@ const cardStyles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: '24px 24px 0',
-    gap: '16px',
+    padding: `${theme.spacing.xl} ${theme.spacing.xl} 0`,
+    gap: theme.spacing.lg,
   },
   title: {
-    fontSize: '17px',
+    fontSize: '16px',
     fontWeight: 700,
     color: theme.colors.textPrimary,
     margin: 0,
+    letterSpacing: '-0.01em',
+    lineHeight: 1.35,
   },
   subtitle: {
     fontSize: '13px',
     color: theme.colors.textSecondary,
-    margin: '4px 0 0',
+    margin: `${theme.spacing.xs} 0 0`,
+    lineHeight: 1.45,
   },
   actions: {
     display: 'flex',
-    gap: '8px',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flexShrink: 0,
   },
   content: {
-    padding: '20px 24px 24px',
+    padding: `${theme.spacing.lg} ${theme.spacing.xl} ${theme.spacing.xl}`,
   },
 }
 
@@ -1884,28 +1929,32 @@ export function Button({
 }) {
   const variantStyles: Record<string, CSSProperties> = {
     primary: {
-      color: theme.colors.textInverse,
-      border: 'none',
-      background: theme.colors.primary,
+      color: theme.colors.textOnPrimary,
+      border: `1px solid ${theme.colors.primary}`,
+      background: theme.colors.buttonPrimary,
       boxShadow: theme.shadows.primaryBtn,
     },
     secondary: {
       color: theme.colors.textPrimary,
-      border: `1px solid ${theme.colors.border}`,
-      background: theme.colors.surface,
+      border: `1px solid ${theme.colors.borderStrong}`,
+      background: theme.colors.buttonSecondary,
     },
-    ghost: { background: 'transparent', color: theme.colors.textSecondary, border: 'none' },
+    ghost: {
+      background: 'transparent',
+      color: theme.colors.textSecondary,
+      border: '1px solid transparent',
+    },
     danger: {
       background: theme.colors.errorMuted,
       color: theme.colors.error,
-      border: `1px solid ${theme.colors.error}`,
+      border: `1px solid ${theme.colors.borderError}`,
     },
   }
 
   const sizeStyles: Record<string, CSSProperties> = {
-    sm: { padding: '8px 14px', fontSize: '13px', minHeight: '40px', height: 'auto' },
-    md: { padding: '10px 18px', fontSize: '14px', minHeight: '44px', height: 'auto' },
-    lg: { padding: '12px 22px', fontSize: '15px', minHeight: '46px', height: 'auto' },
+    sm: { padding: '6px 12px', fontSize: '13px', minHeight: '36px', height: '36px' },
+    md: { padding: '8px 16px', fontSize: '14px', minHeight: '44px', height: '44px' },
+    lg: { padding: '10px 20px', fontSize: '15px', minHeight: '48px', height: '48px' },
   }
 
   return (
@@ -1937,10 +1986,14 @@ const buttonStyles: Record<string, CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: theme.spacing.sm,
     borderRadius: theme.radius.md,
     fontWeight: 600,
-    transition: `opacity ${theme.motion.fast} ease, background ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease, transform ${theme.motion.fast} ease, filter ${theme.motion.fast} ease`,
+    fontFamily: 'inherit',
+    lineHeight: 1.2,
+    letterSpacing: '-0.01em',
+    boxSizing: 'border-box',
+    transition: `opacity ${theme.motion.fast} ease, background ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease, transform ${theme.motion.fast} ease, filter ${theme.motion.fast} ease`,
     whiteSpace: 'nowrap',
     cursor: 'pointer',
   },
@@ -1949,7 +2002,7 @@ const buttonStyles: Record<string, CSSProperties> = {
     height: '16px',
     border: '2px solid transparent',
     borderTopColor: 'currentColor',
-    borderRadius: '50%',
+    borderRadius: theme.radius.full,
     animation: 'spin 0.6s linear infinite',
   },
 }
@@ -1983,12 +2036,20 @@ export function StatusBadge({
 
   const config = statusConfig[status] || { bg: theme.colors.muted, text: theme.colors.textMuted }
   const sizeStyles = {
-    sm: { padding: '5px 10px', fontSize: '11px' },
-    md: { padding: '6px 12px', fontSize: '12px' },
+    sm: { padding: '3px 8px', fontSize: '11px', minHeight: '22px' },
+    md: { padding: '4px 10px', fontSize: '12px', minHeight: '26px' },
   }
 
   return (
-    <span style={{ ...badgeStyles.base, ...sizeStyles[size], background: config.bg, color: config.text }}>
+    <span
+      style={{
+        ...badgeStyles.base,
+        ...sizeStyles[size],
+        background: config.bg,
+        color: config.text,
+        borderColor: theme.colors.borderSubtle,
+      }}
+    >
       {ticketStatusLabelHe(status) || status.replace(/_/g, ' ')}
     </span>
   )
@@ -2000,9 +2061,12 @@ const badgeStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.radius.sm,
+    border: `1px solid ${theme.colors.borderSubtle}`,
     fontWeight: 600,
     letterSpacing: '0.01em',
-    lineHeight: 1.45,
+    lineHeight: 1.25,
+    boxSizing: 'border-box',
+    whiteSpace: 'nowrap',
   },
 }
 
@@ -2072,19 +2136,23 @@ const searchStyles: Record<string, CSSProperties> = {
   },
   icon: {
     position: 'absolute',
+    /* Physical left — sits at reading-end in RTL so Hebrew text keeps full start edge */
     left: '14px',
     pointerEvents: 'none',
   },
   input: {
     width: '100%',
-    padding: '12px 16px 12px 44px',
+    height: '44px',
+    minHeight: '44px',
+    padding: '10px 16px 10px 44px',
     borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    fontSize: '16px',
+    border: `1px solid ${theme.colors.inputBorder}`,
+    background: theme.colors.inputBackground,
+    fontSize: '15px',
+    fontFamily: 'inherit',
     color: theme.colors.textPrimary,
     outline: 'none',
-    transition: 'all 0.15s ease',
+    transition: `border-color ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
     boxSizing: 'border-box',
   },
 }
@@ -2184,14 +2252,20 @@ export function Select({
 
 const selectStyles: Record<string, CSSProperties> = {
   select: {
-    padding: '10px 40px 10px 14px',
+    height: '44px',
+    minHeight: '44px',
+    padding: '8px 40px 8px 14px',
     borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.inputBorder}`,
+    background: theme.colors.inputBackground,
     fontSize: '15px',
+    fontFamily: 'inherit',
+    fontWeight: 500,
     color: theme.colors.textPrimary,
     cursor: 'pointer',
     minWidth: '140px',
+    boxSizing: 'border-box',
+    lineHeight: 1.2,
   },
 }
 
@@ -2256,6 +2330,8 @@ export function Drawer({
   children,
   footer,
   isMobile,
+  /** Desktop only. `center` matches BuildingHubModal; `side` is the classic end drawer. */
+  placement = 'side',
 }: {
   open: boolean
   onClose: () => void
@@ -2265,20 +2341,34 @@ export function Drawer({
   /** Sticky action bar — stays visible above mobile bottom nav while form body scrolls. */
   footer?: ReactNode
   isMobile?: boolean
+  placement?: 'side' | 'center'
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
   useFocusTrap(open, panelRef, onClose)
 
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   if (!open || typeof document === 'undefined') return null
 
   const mobile = !!isMobile
+  const centered = !mobile && placement === 'center'
   // Portal to body. main uses overflow-x:clip, which traps z-index inside it,
   // so a fixed overlay there stops above the floating tab bar.
   const panelStyle: CSSProperties = mobile
     ? drawerStyles.panelMobile
-    : { ...drawerStyles.panelSide, width: '560px' }
+    : centered
+      ? drawerStyles.panelCenter
+      : { ...drawerStyles.panelSide, width: '560px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
+    ...(centered ? drawerStyles.contentCenter : null),
     paddingBottom: footer ? '24px' : 'calc(24px + env(safe-area-inset-bottom, 0px))',
   }
   const footerStyle: CSSProperties = {
@@ -2287,49 +2377,72 @@ export function Drawer({
   }
   const headerStyle: CSSProperties = {
     ...drawerStyles.header,
+    ...(centered ? drawerStyles.headerCenter : null),
     /* Bottom sheet is not under the status bar; side drawer may be (iPad notch). */
-    paddingTop: mobile ? '16px' : 'calc(24px + env(safe-area-inset-top, 0px))',
+    paddingTop: mobile
+      ? '16px'
+      : centered
+        ? undefined
+        : 'calc(24px + env(safe-area-inset-top, 0px))',
+  }
+
+  const panel = (
+    <div
+      ref={panelRef}
+      style={panelStyle}
+      data-drawer-panel={mobile ? 'mobile' : centered ? 'center' : 'desktop'}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+      onClick={centered ? (e) => e.stopPropagation() : undefined}
+    >
+      <div style={headerStyle}>
+        {mobile && (
+          <div style={drawerStyles.dragHandleWrap} aria-hidden>
+            <div style={drawerStyles.dragHandle} />
+          </div>
+        )}
+        <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: '8px' }}>
+          <h2 id="drawer-title" style={drawerStyles.title}>
+            {title}
+          </h2>
+          {subtitle && <p style={drawerStyles.subtitle}>{subtitle}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={drawerStyles.closeButton}
+          aria-label="סגירה"
+          data-drawer-close
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div style={contentStyle}>{children}</div>
+      {footer ? <div style={footerStyle}>{footer}</div> : null}
+    </div>
+  )
+
+  if (centered) {
+    return createPortal(
+      <div
+        style={drawerStyles.overlayCenter}
+        onClick={onClose}
+        role="presentation"
+      >
+        {panel}
+      </div>,
+      document.body
+    )
   }
 
   return createPortal(
     <>
       <div style={drawerStyles.overlay} onClick={onClose} aria-hidden />
-      <div
-        ref={panelRef}
-        style={panelStyle}
-        data-drawer-panel={mobile ? 'mobile' : 'desktop'}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="drawer-title"
-      >
-        <div style={headerStyle}>
-          {mobile && (
-            <div style={drawerStyles.dragHandleWrap} aria-hidden>
-              <div style={drawerStyles.dragHandle} />
-            </div>
-          )}
-          <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: '8px' }}>
-            <h2 id="drawer-title" style={drawerStyles.title}>
-              {title}
-            </h2>
-            {subtitle && <p style={drawerStyles.subtitle}>{subtitle}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={drawerStyles.closeButton}
-            aria-label="סגירה"
-            data-drawer-close
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-          </button>
-        </div>
-        <div style={contentStyle}>{children}</div>
-        {footer ? <div style={footerStyle}>{footer}</div> : null}
-      </div>
+      {panel}
     </>,
     document.body
   )
@@ -2343,6 +2456,19 @@ const drawerStyles: Record<string, CSSProperties> = {
     zIndex: 300,
     animation: 'fadeIn 0.2s ease',
   },
+  overlayCenter: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 320,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+    background: theme.colors.overlay,
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    animation: 'fadeIn 0.2s ease',
+  },
   panelSide: {
     position: 'fixed',
     top: 0,
@@ -2354,6 +2480,21 @@ const drawerStyles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     maxWidth: '100%',
+  },
+  panelCenter: {
+    width: 'min(720px, calc(100vw - 48px))',
+    height: 'min(720px, calc(100vh - 64px))',
+    maxHeight: 'calc(100vh - 64px)',
+    display: 'flex',
+    flexDirection: 'column',
+    background: theme.colors.surfaceElevated,
+    borderRadius: theme.radius.xl,
+    border: `1px solid ${theme.colors.border}`,
+    boxShadow: theme.shadows.xl,
+    overflow: 'hidden',
+    animation: 'hubModalIn 0.22s ease',
+    transformOrigin: 'center center',
+    zIndex: 321,
   },
   panelMobile: {
     position: 'fixed',
@@ -2383,6 +2524,15 @@ const drawerStyles: Record<string, CSSProperties> = {
     flexShrink: 0,
     flexWrap: 'wrap',
     gap: '8px',
+  },
+  headerCenter: {
+    padding: `${theme.spacing.xl} ${theme.spacing.xl} ${theme.spacing.lg}`,
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    background: `linear-gradient(180deg, ${theme.colors.blueSoft} 0%, ${theme.colors.surface} 72%)`,
+    flexWrap: 'nowrap',
+  },
+  contentCenter: {
+    background: theme.colors.background,
   },
   dragHandleWrap: {
     width: '100%',
@@ -2460,31 +2610,20 @@ export function EmptyState({
     if (typeof action === 'object' && 'label' in (action as object) && 'onClick' in (action as object)) {
       const a = action as { label: string; onClick: () => void }
       return (
-        <button
-          onClick={a.onClick}
-          style={{
-            padding: '8px 16px',
-            borderRadius: theme.radius.sm,
-            background: theme.colors.primary,
-            color: '#FFFFFF',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            border: 'none',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          {a.label}
-        </button>
+        <div style={emptyStateStyles.action}>
+          <Button variant="primary" size="md" type="button" onClick={a.onClick}>
+            {a.label}
+          </Button>
+        </div>
       )
     }
-    return <div style={{ marginTop: '20px' }}>{action as ReactNode}</div>
+    return <div style={emptyStateStyles.action}>{action as ReactNode}</div>
   }
 
   return (
     <div style={emptyStateStyles.container}>
       <div style={emptyStateStyles.icon}>
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={theme.colors.textMuted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 8v13H3V8" />
           <path d="M1 3h22v5H1z" />
           <path d="M10 12h4" />
@@ -2503,24 +2642,39 @@ const emptyStateStyles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '64px 24px',
+    padding: `${theme.spacing.xxxl} ${theme.spacing.xl}`,
     textAlign: 'center',
+    gap: 0,
   },
   icon: {
-    marginBottom: '20px',
-    opacity: 0.5,
+    marginBottom: theme.spacing.lg,
+    opacity: 0.45,
+    width: '64px',
+    height: '64px',
+    borderRadius: theme.radius.lg,
+    background: theme.colors.surfaceInset,
+    border: `1px solid ${theme.colors.border}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: '17px',
+    fontSize: '16px',
     fontWeight: 600,
     color: theme.colors.textPrimary,
     margin: 0,
+    letterSpacing: '-0.01em',
+    lineHeight: 1.35,
   },
   description: {
     fontSize: '14px',
     color: theme.colors.textMuted,
-    margin: '8px 0 0',
+    margin: `${theme.spacing.sm} 0 0`,
     maxWidth: '320px',
+    lineHeight: 1.5,
+  },
+  action: {
+    marginTop: theme.spacing.xl,
   },
 }
 

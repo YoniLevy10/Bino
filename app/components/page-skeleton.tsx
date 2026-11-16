@@ -107,4 +107,9 @@ export function SectionLoader() {
   return <PageListSkeleton rows={4} />
 }
 
+/** Worker portal list area — hero/toolbar stay mounted; use instead of PageTransitionLoader. */
+export function WorkerTicketListSkeleton({ rows = 6 }: { rows?: number }) {
+  return <PageListSkeleton rows={rows} />
+}
+
 export { PageTransitionLoader }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Heebo } from "next/font/google";
+import { Heebo } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "./components/ToastContainer";
 import { RegisterServiceWorker } from "./components/RegisterServiceWorker";
@@ -18,12 +18,6 @@ import {
   BINO_MARKETING_TITLE,
   getMarketingSiteOrigin,
 } from "@/lib/marketing-site";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const heebo = Heebo({
   variable: "--font-heebo",
@@ -87,7 +81,8 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
-      { url: "/apple-icon.png", sizes: "1254x1254", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon.png", sizes: "1254x1254", type: "image/png" },
     ],
     apple: [{ url: "/apple-icon.png", sizes: "1254x1254", type: "image/png" }],
     shortcut: "/apple-icon.png",
@@ -128,7 +123,7 @@ export default function RootLayout({
     <html
       lang="he"
       dir="rtl"
-      className={`${inter.variable} ${heebo.variable} font-sans antialiased bg-background`}
+      className={`${heebo.variable} font-sans antialiased bg-background`}
     >
       <body className="min-h-screen flex flex-col bg-background text-foreground" dir="rtl">
         <RegisterServiceWorker />

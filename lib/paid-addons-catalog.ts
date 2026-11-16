@@ -228,6 +228,33 @@ const CATALOG: Record<PaidAddonId, PaidAddonCatalogEntry> = {
       closing: 'פחות מעקב ידני, יותר גבייה בזמן.',
     },
   },
+  [PAID_ADDON_KEYS.building_finance]: {
+    id: PAID_ADDON_KEYS.building_finance,
+    title: 'הנהלת חשבונות בניין',
+    tagline: 'הוצאות, תקציב ומרכז פיננסי',
+    description:
+      'רישום הוצאות לפי קטגוריה, תקציב מול ביצוע, ומרכז פיננסי לבניין — בלי לשנות את גביית Grow.',
+    highlights: ['הוצאות + אסמכתא', 'תקציב מול ביצוע', 'KPI לבניין'],
+    featureHref: '/projects',
+    featureCtaHe: 'לפרויקטים / מרכז בניין',
+    marketing: {
+      headline: 'כל בניין כיחידה פיננסית — הוצאות ותקציב במקום אחד',
+      intro:
+        'מעבר מתיעוד תקלות לשליטה בעלות התחזוקה לבניין: הוצאות, קטגוריות, ותקציב מול ביצוע.',
+      valueProps: [
+        'הפרדה ברורה מגביית דיירים (Grow)',
+        'הוצאות append-only עם ביטול מתועד',
+        'תקציב שנתי / רבעוני עם התראת קצב',
+        'מופעל כתוסף — כיבוי מיידי אם צריך',
+      ],
+      scenarios: [
+        'חברת ניהול שרוצה P&L פר בניין',
+        'מעקב ניקיון / מעליות מול תקציב שנתי',
+        'הוכחת חיסכון ללקוח ניהול',
+      ],
+      closing: 'Simple Outside, Powerful Inside — כסף ותפעול באותו בניין.',
+    },
+  },
 }
 
 export function getPaidAddonCatalogEntry(id: PaidAddonId): PaidAddonCatalogEntry | undefined {

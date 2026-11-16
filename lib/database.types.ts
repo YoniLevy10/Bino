@@ -105,6 +105,210 @@ export type Database = {
         }
         Relationships: []
       }
+      building_budgets: {
+        Row: {
+          amount_planned: number
+          category_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          notes: string | null
+          period_key: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_planned: number
+          category_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          period_key: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_planned?: number
+          category_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          period_key?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "building_expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      building_expense_categories: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_system: boolean
+          key: string
+          name_he: string
+          project_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key: string
+          name_he: string
+          project_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key?: string
+          name_he?: string
+          project_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_expense_categories_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_expense_categories_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      building_expenses: {
+        Row: {
+          amount: number
+          budget_period_key: string | null
+          category_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          expense_date: string
+          id: string
+          idempotency_key: string
+          payment_status: string
+          professional_id: string | null
+          project_id: string
+          receipt_url: string | null
+          vendor_name: string | null
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          amount: number
+          budget_period_key?: string | null
+          category_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          idempotency_key: string
+          payment_status?: string
+          professional_id?: string | null
+          project_id: string
+          receipt_url?: string | null
+          vendor_name?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          amount?: number
+          budget_period_key?: string | null
+          category_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          idempotency_key?: string
+          payment_status?: string
+          professional_id?: string | null
+          project_id?: string
+          receipt_url?: string | null
+          vendor_name?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "building_expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_expenses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_expenses_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean
@@ -1222,10 +1426,14 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          last_contacted_at: string | null
           notes: string | null
+          personal_note: string | null
+          personal_rating: number | null
           phone: string | null
           trade: string | null
           updated_at: string
+          use_count: number
         }
         Insert: {
           client_id: string
@@ -1237,10 +1445,14 @@ export type Database = {
           full_name: string
           id?: string
           is_active?: boolean
+          last_contacted_at?: string | null
           notes?: string | null
+          personal_note?: string | null
+          personal_rating?: number | null
           phone?: string | null
           trade?: string | null
           updated_at?: string
+          use_count?: number
         }
         Update: {
           client_id?: string
@@ -1252,10 +1464,14 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          last_contacted_at?: string | null
           notes?: string | null
+          personal_note?: string | null
+          personal_rating?: number | null
           phone?: string | null
           trade?: string | null
           updated_at?: string
+          use_count?: number
         }
         Relationships: [
           {

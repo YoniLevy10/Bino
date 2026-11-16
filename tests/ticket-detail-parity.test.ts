@@ -49,6 +49,13 @@ describe('ticket detail parity contract', () => {
     expect(drawer).toContain("id: 'activity'")
     expect(drawer).toContain('TicketWhatsAppThread')
     expect(drawer).toContain('onRecoverMedia')
+    expect(drawer).toContain('TicketDetailMobileShell')
+  })
+
+  it('TicketDetailMobileShell is full-screen portal shell', () => {
+    const shell = readRepoFile('app/components/tickets/TicketDetailMobileShell.tsx')
+    expect(shell).toContain('createPortal')
+    expect(shell).toContain('data-ticket-detail-mobile')
   })
 })
 

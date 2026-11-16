@@ -1,33 +1,11 @@
-'use client'
-
 import { theme } from '@/app/components/ui/theme'
+import { DashboardAddTicketButton } from './dashboard-add-ticket-button'
 
-const ADD_EVENT = 'bino:dashboard-add-ticket'
-const PENDING_KEY = 'bino:dashboard-add-ticket-pending'
-
-/** Ask the deferred dashboard body to open the new-ticket modal. */
-export function requestDashboardAddTicket() {
-  if (typeof window === 'undefined') return
-  try {
-    sessionStorage.setItem(PENDING_KEY, '1')
-  } catch {
-    /* private mode */
-  }
-  window.dispatchEvent(new Event(ADD_EVENT))
-}
-
-export function consumeDashboardAddTicket(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const pending = sessionStorage.getItem(PENDING_KEY) === '1'
-    if (pending) sessionStorage.removeItem(PENDING_KEY)
-    return pending
-  } catch {
-    return false
-  }
-}
-
-export const DASHBOARD_ADD_EVENT = ADD_EVENT
+export {
+  requestDashboardAddTicket,
+  consumeDashboardAddTicket,
+  DASHBOARD_ADD_EVENT,
+} from './dashboard-shell-events'
 
 const shellCss = `
 .dashboard-shell-mobile { display: none; }
@@ -67,9 +45,7 @@ export function DashboardShell() {
               </p>
             </div>
             <div style={styles.heroActions}>
-              <button type="button" onClick={requestDashboardAddTicket} style={styles.addButton}>
-                + תקלה חדשה
-              </button>
+              <DashboardAddTicketButton />
             </div>
           </div>
         </div>
@@ -83,26 +59,28 @@ export function DashboardShell() {
 
 const styles = {
   desktopWrap: {
-    padding: '32px 40px 0',
+    padding: '28px 40px 0',
     maxWidth: 1400,
     margin: '0 auto',
   },
   desktopToolbar: {
     display: 'flex',
     justifyContent: 'flex-end',
-    marginBottom: 12,
-    minHeight: 18,
+    alignItems: 'center',
+    marginBottom: 14,
+    minHeight: 20,
   },
   desktopDate: {
     margin: 0,
     fontSize: 13,
     fontWeight: 500,
     color: theme.colors.textMuted,
+    letterSpacing: '0.01em',
   },
   hero: {
-    marginBottom: 24,
+    marginBottom: 28,
     padding: '28px 32px',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    border: `1px solid ${theme.colors.sidebarBorder}`,
     borderRadius: theme.radius.xl,
     background: `linear-gradient(125deg, ${theme.colors.navy} 0%, ${theme.colors.navySoft} 100%)`,
     boxShadow: theme.shadows.lg,
@@ -112,7 +90,7 @@ const styles = {
     flexDirection: 'row' as const,
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 20,
+    gap: 24,
     flexWrap: 'wrap' as const,
   },
   heroText: { flex: 1, minWidth: 0 },
@@ -138,28 +116,21 @@ const styles = {
     lineHeight: 1.55,
     minHeight: 22,
   },
-  heroActions: { display: 'flex', gap: 12, alignItems: 'center' },
-  addButton: {
-    background: theme.colors.primary,
-    color: theme.colors.textInverse,
-    border: 'none',
-    borderRadius: theme.radius.md,
-    padding: '12px 18px',
-    fontWeight: 600,
-    fontSize: 16,
-    lineHeight: 1.2,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    boxShadow: theme.shadows.primaryBtn,
+  heroActions: {
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+    flexShrink: 0,
   },
   mobileWrap: {
-    padding: '16px 16px 0',
+    padding: '12px 16px 4px',
   },
   mobileTitle: {
     margin: 0,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 700,
     color: theme.colors.textPrimary,
     letterSpacing: '-0.02em',
+    lineHeight: 1.25,
   },
 }

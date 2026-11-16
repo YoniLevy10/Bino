@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react'
 import { isTicketInTreatment } from '@/lib/ticket-status'
-import { PageTransitionLoader } from '../page-skeleton'
+import { WorkerTicketListSkeleton } from '../page-skeleton'
 import { theme } from '../ui'
 import type { WorkerTicketCardTicket } from './WorkerTicketCard'
 
@@ -10,7 +10,10 @@ type TicketFilter = 'ALL' | 'NEW' | 'IN_TREATMENT'
 
 type WorkerTicketsScreenProps = {
   tickets: WorkerTicketCardTicket[]
-  loading: boolean
+  /** First paint with no rows yet — keep hero/filters, skeleton list only. */
+  loading?: boolean
+  /** Silent refresh — swap list for skeleton without hiding chrome. */
+  refreshing?: boolean
   logoUrl?: string | null
   colors: typeof theme.colors
   pushOnboarding?: ReactNode
@@ -19,8 +22,9 @@ type WorkerTicketsScreenProps = {
 
 export function WorkerTicketsScreen({
   tickets,
-  loading,
-  logoUrl,
+  loading = false,
+  refreshing = false,
+  logoUrl: _logoUrl, // kept for API stability / future branded empty states
   colors,
   pushOnboarding,
   renderTicket,
@@ -177,9 +181,9 @@ export function WorkerTicketsScreen({
         </span>
       </div>
 
-      {loading ? (
-        <div className="worker-ticket-screen__loading" role="status" aria-label="טוען תקלות">
-          <PageTransitionLoader compact logoUrl={logoUrl} />
+      {loading || refreshing ? (
+        <div className="worker-ticket-screen__loading">
+          <WorkerTicketListSkeleton rows={refreshing ? 5 : 6} />
         </div>
       ) : visibleTickets.length ? (
         <div className="worker-ticket-screen__list" role="list">

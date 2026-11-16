@@ -127,7 +127,14 @@ export async function detectSlaUnassigned(
         },
         {
           id: 'find_professional',
-          label: 'איתור איש מקצוע',
+          label: 'העברה לאיש מקצוע (לפי דירוג)',
+          href: `/dashboard?ticket=${tid}&focus=forward`,
+          kind: 'navigate',
+          requiresAddon: PAID_ADDON_KEYS.professionals,
+        },
+        {
+          id: 'midrag_search',
+          label: 'חיפוש במידרג',
           href: `/dashboard?ticket=${tid}&focus=midrag`,
           kind: 'midrag',
           requiresAddon: PAID_ADDON_KEYS.professionals,

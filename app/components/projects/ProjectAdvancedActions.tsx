@@ -50,11 +50,13 @@ export function ProjectAdvancedActions({
   const [view, setView] = useState<'menu' | ShareKind>('menu')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
   useEffect(() => {
     setView('menu')
     setCopied(false)
     setBusy(false)
+    setHoveredRow(null)
   }, [projectId])
 
   const joinUrl = useMemo(() => getResidentPortalJoinUrl(projectId), [projectId])
@@ -195,9 +197,20 @@ export function ProjectAdvancedActions({
 
   return (
     <div style={styles.wrap}>
+      <p style={styles.sectionLabel}>פעולות נוספות</p>
       <div style={styles.menu}>
         {menuRows.map((row) => (
-          <button key={row.id} type="button" style={styles.menuBtn} onClick={row.onClick}>
+          <button
+            key={row.id}
+            type="button"
+            style={{
+              ...styles.menuBtn,
+              ...(hoveredRow === row.id ? styles.menuBtnHover : null),
+            }}
+            onClick={row.onClick}
+            onMouseEnter={() => setHoveredRow(row.id)}
+            onMouseLeave={() => setHoveredRow(null)}
+          >
             <span>{row.label}</span>
             <span style={styles.chevron} aria-hidden>
               ←
@@ -223,30 +236,44 @@ export function ProjectAdvancedActions({
 
 const styles: Record<string, CSSProperties> = {
   wrap: {
-    display: 'grid',
-    gap: 10,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.md,
+  },
+  sectionLabel: {
+    margin: 0,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.textMuted,
   },
   menu: {
-    display: 'grid',
-    gap: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.sm,
   },
   menuBtn: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: theme.spacing.md,
     width: '100%',
     minHeight: 48,
-    padding: '12px 14px',
+    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
     color: theme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: 600,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
     fontFamily: 'inherit',
     cursor: 'pointer',
     textAlign: 'right',
+    boxShadow: theme.shadows.xs,
+    transition: `background ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
+  },
+  menuBtnHover: {
+    background: theme.colors.surfaceHover,
+    borderColor: theme.colors.borderStrong,
   },
   chevron: {
     color: theme.colors.textMuted,
@@ -255,32 +282,33 @@ const styles: Record<string, CSSProperties> = {
   },
   divider: {
     height: 1,
-    background: theme.colors.border,
-    margin: '4px 0',
+    background: theme.colors.borderSubtle,
+    margin: `${theme.spacing.xs} 0`,
   },
   dangerZone: {
-    paddingTop: 4,
+    paddingTop: theme.spacing.xs,
   },
   backBtn: {
     alignSelf: 'start',
     border: 'none',
     background: 'transparent',
     color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: 600,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
     fontFamily: 'inherit',
     cursor: 'pointer',
-    padding: '4px 0',
+    padding: `${theme.spacing.xs} 0`,
     textAlign: 'right',
   },
   shareTitle: {
     margin: 0,
-    fontSize: 16,
-    fontWeight: 700,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textPrimary,
   },
   shareActions: {
-    display: 'grid',
-    gap: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.sm,
   },
 }

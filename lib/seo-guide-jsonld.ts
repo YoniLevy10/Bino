@@ -48,7 +48,7 @@ export function buildSeoGuideJsonLd(guide: SeoGuide) {
           name: 'BINO',
           logo: {
             '@type': 'ImageObject',
-            url: `${origin}/apple-icon.png`,
+            url: `${origin}/bino-mark.png`,
           },
         },
         about: {

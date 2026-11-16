@@ -79,6 +79,17 @@ export async function PATCH(req: Request) {
       payload.email = emailRaw && emailRaw !== '' ? emailRaw : null
     }
     if (body.notes !== undefined) payload.notes = body.notes ? sanitizeString(String(body.notes)) : null
+    if (body.personal_rating !== undefined) {
+      payload.personal_rating =
+        body.personal_rating === null || body.personal_rating === undefined
+          ? null
+          : body.personal_rating
+    }
+    if (body.personal_note !== undefined) {
+      payload.personal_note = body.personal_note
+        ? sanitizeString(String(body.personal_note))
+        : null
+    }
     if (body.is_active !== undefined) payload.is_active = body.is_active
 
     const { data, error } = await supabase

@@ -286,7 +286,7 @@ function ReportPageContent() {
           {/* Prefer clients.logo_url; otherwise platform Bino icon. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={branding?.logo_url || '/apple-icon.png'}
+            src={branding?.logo_url || '/bino-mark.png'}
             alt={brandName}
             style={styles.logoImage}
           />

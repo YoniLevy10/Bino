@@ -154,7 +154,7 @@ function IntakePageContent() {
           {/* Prefer clients.logo_url; otherwise same app icon as dashboard sidebar (not red B). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={branding?.logo_url || '/apple-icon.png'}
+            src={branding?.logo_url || '/bino-mark.png'}
             alt={branding?.name?.trim() || 'Bino'}
             style={styles.logoImage}
           />

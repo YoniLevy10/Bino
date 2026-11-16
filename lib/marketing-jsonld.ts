@@ -26,9 +26,9 @@ export function buildMarketingJsonLd() {
       url: `${origin}/`,
       logo: {
         '@type': 'ImageObject',
-        url: `${origin}/apple-icon.png`,
-        width: 1254,
-        height: 1254,
+        url: `${origin}/bino-mark.png`,
+        width: 160,
+        height: 160,
       },
       description: BINO_MARKETING_DESCRIPTION,
       foundingDate: '2024',

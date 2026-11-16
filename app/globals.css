@@ -1,36 +1,52 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Manager V2 — Figma delivery tokens (BINO · גרסה סופית למסירה) */
+  /* Manager — Color Palette V2 (docs/planning/BINO_COLOR_PALETTE_V2.md) */
   
   --font-sans: var(--font-heebo), 'Heebo', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
   
+  /* Surfaces */
   --color-background: #F8FAFC;
   --color-foreground: #0F172A;
-  
   --color-surface: #FFFFFF;
   --color-surface-elevated: #FFFFFF;
   --color-surface-hover: #F8FAFC;
   --color-surface-active: #EFF6FF;
+  --color-surface-selected: #DBEAFE;
+  --color-surface-inset: #F1F5F9;
   --color-muted: #F1F5F9;
   
+  /* Borders */
   --color-border: #E2E8F0;
-  --color-border-subtle: #F1F5F9;
+  --color-border-subtle: #EDF1F5;
   --color-border-strong: #CBD5E1;
+  --color-border-focus: #2563EB;
+  --color-border-error: #FDA4AF;
+  --color-border-selected: #93C5FD;
   
+  /* Text */
   --color-text-primary: #0F172A;
   --color-text-secondary: #475569;
   --color-text-muted: #64748B;
+  --color-text-disabled: #94A3B8;
   --color-text-inverse: #FFFFFF;
+  --color-text-link: #1D4ED8;
+  --color-text-on-primary: #FFFFFF;
   
+  /* Brand / Primary */
   --color-primary: #2563EB;
   --color-primary-hover: #1D4ED8;
   --color-primary-active: #1E40AF;
-  --color-primary-muted: rgba(37, 99, 235, 0.12);
+  --color-primary-muted: rgba(37, 99, 235, 0.10);
+  --color-primary-light: #DBEAFE;
   --color-primary-subtle: rgba(37, 99, 235, 0.20);
   --color-primary-text: #2563EB;
+  --color-focus-ring: #93C5FD;
+  --color-blue-soft: #EFF6FF;
+  --color-brand-soft: #EFF6FF;
   
+  /* Status */
   --color-success: #047857;
   --color-success-muted: #D1FAE5;
   --color-warning: #B45309;
@@ -39,6 +55,68 @@
   --color-error-muted: #FFE4E6;
   --color-info: #0369A1;
   --color-info-muted: #E0F2FE;
+  --color-pending: #6D28D9;
+  --color-pending-muted: #EDE9FE;
+  --color-neutral: #475569;
+  --color-neutral-muted: #F1F5F9;
+  
+  /* Sidebar / Nav */
+  --color-navy: #0F172A;
+  --color-navy-soft: #1E293B;
+  --color-sidebar: #0F172A;
+  --color-sidebar-hover: #1E293B;
+  --color-sidebar-active: #1E3A5F;
+  --color-sidebar-active-indicator: #60A5FA;
+  --color-sidebar-border: #334155;
+  --color-nav-text: #CBD5E1;
+  --color-nav-text-active: #FFFFFF;
+  --color-nav-text-muted: #94A3B8;
+  
+  /* Cards / Dashboard */
+  --color-card-background: #FFFFFF;
+  --color-card-border: #E2E8F0;
+  --color-card-hover: #F8FAFC;
+  --color-card-highlight: #EFF6FF;
+  --color-kpi-positive: #047857;
+  --color-kpi-negative: #BE123C;
+  --color-kpi-neutral: #64748B;
+  --color-divider: #EDF1F5;
+  
+  /* Charts */
+  --color-chart-primary: #2563EB;
+  --color-chart-secondary: #0891B2;
+  --color-chart-tertiary: #7C3AED;
+  --color-chart-success: #059669;
+  --color-chart-warning: #D97706;
+  --color-chart-danger: #E11D48;
+  --color-chart-grid: #E2E8F0;
+  --color-chart-axis: #64748B;
+  --color-chart-tooltip: #0F172A;
+  
+  /* Financial / Collection */
+  --color-payment-paid: #047857;
+  --color-payment-paid-muted: #D1FAE5;
+  --color-payment-pending: #B45309;
+  --color-payment-pending-muted: #FEF3C7;
+  --color-payment-overdue: #BE123C;
+  --color-payment-overdue-muted: #FFE4E6;
+  --color-payment-partial: #1D4ED8;
+  --color-payment-partial-muted: #DBEAFE;
+  --color-payment-exempt: #475569;
+  --color-payment-exempt-muted: #F1F5F9;
+  
+  /* Buttons / Interactive */
+  --color-button-primary: #2563EB;
+  --color-button-primary-hover: #1D4ED8;
+  --color-button-primary-active: #1E40AF;
+  --color-button-secondary: #FFFFFF;
+  --color-button-secondary-hover: #F1F5F9;
+  --color-button-ghost-hover: #F1F5F9;
+  --color-button-destructive: #BE123C;
+  --color-button-destructive-hover: #9F1239;
+  --color-input-background: #FFFFFF;
+  --color-input-border: #CBD5E1;
+  --color-input-focus: #2563EB;
 
   /* Marketing-only semantic palette; authenticated product surfaces keep their existing theme. */
   --color-marketing-paper: #f6f6f0;
@@ -333,6 +411,19 @@ select {
   }
   to {
     opacity: 1;
+  }
+}
+
+
+
+@keyframes hubModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -1647,8 +1738,17 @@ html[data-kiss='1'] .lg-glass,
   box-shadow: inset -3px 0 0 #2563EB !important;
 }
 
+/* Manager V2 primary — solid Palette primary (not legacy iOS blue gradient) */
 .kiss-app .lg-btn-primary {
-  box-shadow: 0 2px 6px rgba(0, 64, 166, 0.16);
+  background: var(--color-button-primary, #2563EB) !important;
+  border: 1px solid var(--color-primary, #2563EB) !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.22);
+}
+
+.kiss-app .lg-btn-primary:hover:not(:disabled) {
+  background: var(--color-button-primary-hover, #1D4ED8) !important;
+  border-color: var(--color-primary-hover, #1D4ED8) !important;
+  filter: none;
 }
 
 .kiss-app .lg-tabbar {
@@ -1672,7 +1772,8 @@ html[data-kiss='1'] .lg-glass,
 }
 
 .kiss-app [data-ui='card'] {
-  box-shadow: 0 1px 2px rgba(16, 43, 70, 0.035), 0 8px 22px rgba(16, 43, 70, 0.035);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--color-card-border, #E2E8F0);
 }
 
 .kiss-app [data-ui='button'],
@@ -1681,8 +1782,25 @@ html[data-kiss='1'] .lg-glass,
 }
 
 .kiss-app :is(a, button, [role='button'], [role='tab']):focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.38);
+  outline: 3px solid var(--color-focus-ring, #93C5FD);
   outline-offset: 2px;
+}
+
+/* Shared manager fields — match Button height + V2 focus ring */
+.kiss-app .app-search-input-root input,
+.kiss-app .app-select-input {
+  border-color: var(--color-input-border, #CBD5E1);
+}
+
+.kiss-app .app-search-input-root input:focus-visible,
+.kiss-app .app-select-input:focus-visible {
+  outline: none;
+  border-color: var(--color-border-focus, #2563EB);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+.kiss-app [data-ui='kpi-card'] {
+  border: 1px solid var(--color-border, #E2E8F0);
 }
 
 @media (hover: hover) {
@@ -1698,15 +1816,18 @@ html[data-kiss='1'] .lg-glass,
   }
 
   .kiss-app [data-ui='button'][data-variant='primary']:not(:disabled):hover {
-    filter: brightness(0.96);
+    filter: none;
+    background: var(--color-button-primary-hover, #1D4ED8);
   }
 
   .kiss-app [data-ui='button'][data-variant='secondary']:not(:disabled):hover {
-    box-shadow: 0 3px 10px rgba(16, 43, 70, 0.08);
+    background: var(--color-button-secondary-hover, #F1F5F9);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
   }
 
   .kiss-app [data-ui='kpi-card'][data-interactive='true']:hover {
-    box-shadow: 0 6px 18px rgba(16, 43, 70, 0.08);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    border-color: var(--color-border-strong, #CBD5E1);
   }
 }
 

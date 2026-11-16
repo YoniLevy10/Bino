@@ -6,16 +6,17 @@
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#F8FAFC",
-  "theme_color": "#2563EB",
+  "background_color": "#021446",
+  "theme_color": "#021446",
   "display_override": ["standalone", "minimal-ui", "browser"],
   "dir": "rtl",
   "lang": "he",
   "categories": ["productivity", "business"],
   "icons": [
-    { "src": "/apple-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" },
-    { "src": "/apple-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/apple-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" }
   ],
   "shortcuts": [
     {
@@ -23,28 +24,28 @@
       "short_name": "טיקט חדש",
       "description": "פתח טיקט תקלה חדש",
       "url": "/tickets?new=1",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "כל הטיקטים",
       "short_name": "טיקטים",
       "description": "הצג את כל הטיקטים הפתוחים",
       "url": "/tickets",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "עובדים",
       "short_name": "עובדים",
       "description": "ניהול עובדים",
       "url": "/workers",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Super Admin",
       "short_name": "Super Admin",
       "description": "ניהול לקוחות וחבילות",
       "url": "/superadmin",
-      "icons": [{ "src": "/apple-icon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

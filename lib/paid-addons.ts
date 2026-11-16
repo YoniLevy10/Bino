@@ -19,6 +19,8 @@ export const PAID_ADDON_KEYS = {
   campaigns: 'campaigns',
   /** גביית ועד — Grow */
   collections: 'collections',
+  /** הנהלת חשבונות / תקציב / מרכז פיננסי לבניין (BINO 2.0 Phase 1) */
+  building_finance: 'building_finance',
 } as const
 
 export type PaidAddonKey = (typeof PAID_ADDON_KEYS)[keyof typeof PAID_ADDON_KEYS]
@@ -143,6 +145,8 @@ export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
   [PAID_ADDON_KEYS.whatsapp_inbox]: 'whatsapp_inbox',
   [PAID_ADDON_KEYS.campaigns]: 'campaigns',
   [PAID_ADDON_KEYS.collections]: 'collections',
+  // Finance lives in Building Hub / projects — no dedicated sidebar nav id yet.
+  [PAID_ADDON_KEYS.building_finance]: 'projects',
 }
 
 const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [

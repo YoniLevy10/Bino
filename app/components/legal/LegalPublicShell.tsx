@@ -7,7 +7,7 @@ const shellStyle: CSSProperties = {
   padding: '32px 24px 48px',
   maxWidth: '720px',
   margin: '0 auto',
-  fontFamily: 'Heebo, var(--font-inter), system-ui, sans-serif',
+  fontFamily: 'Heebo, var(--font-heebo), system-ui, sans-serif',
   lineHeight: 1.65,
   textAlign: 'right',
   color: '#0f172a',

@@ -11,9 +11,9 @@ export const PROFESSIONALS_PAGE_SIZE = 100
 /** Shared assign/forward list size (Dashboard + Tickets drawer). */
 export const ACTIVE_PROFESSIONALS_ASSIGN_LIMIT = 200
 
-/** List columns — notes loaded on edit when needed. */
+/** List columns — includes operational memory fields for system-wide ranking. */
 export const PROFESSIONALS_LIST_SELECT =
-  'id, full_name, phone, extra_phones, trade, company_name, email, notes, is_active'
+  'id, full_name, phone, extra_phones, trade, company_name, email, notes, personal_rating, personal_note, use_count, last_contacted_at, is_active'
 
 export type ProfessionalListRow = {
   id: string
@@ -24,6 +24,10 @@ export type ProfessionalListRow = {
   company_name?: string | null
   email?: string | null
   notes?: string | null
+  personal_rating?: number | null
+  personal_note?: string | null
+  use_count?: number | null
+  last_contacted_at?: string | null
   is_active: boolean
 }
 
@@ -31,6 +35,33 @@ export function isProfessionalsTableMissing(err: { message?: string } | null): b
   if (!err?.message) return false
   const m = err.message.toLowerCase()
   return m.includes('professionals') && (m.includes('does not exist') || m.includes('schema cache'))
+}
+
+/** Rank: rating DESC → use_count DESC → last_contacted DESC → name. */
+export function compareProfessionalsByOperationalMemory(
+  a: {
+    personal_rating?: number | null
+    use_count?: number | null
+    last_contacted_at?: string | null
+    full_name: string
+  },
+  b: {
+    personal_rating?: number | null
+    use_count?: number | null
+    last_contacted_at?: string | null
+    full_name: string
+  }
+): number {
+  const ar = a.personal_rating ?? 0
+  const br = b.personal_rating ?? 0
+  if (br !== ar) return br - ar
+  const au = a.use_count ?? 0
+  const bu = b.use_count ?? 0
+  if (bu !== au) return bu - au
+  const at = a.last_contacted_at ? Date.parse(a.last_contacted_at) : 0
+  const bt = b.last_contacted_at ? Date.parse(b.last_contacted_at) : 0
+  if (bt !== at) return bt - at
+  return a.full_name.localeCompare(b.full_name, 'he')
 }
 
 export async function fetchProfessionalsPage(
@@ -44,12 +75,33 @@ export async function fetchProfessionalsPage(
     clientId
   )
     .is('deleted_at', null)
+    .order('personal_rating', { ascending: false, nullsFirst: false })
+    .order('use_count', { ascending: false })
+    .order('last_contacted_at', { ascending: false, nullsFirst: false })
     .order('full_name', { ascending: true })
     .order('id', { ascending: true })
     .range(offset, offset + limit - 1)
 
-  if (error) throw error
-  const rows = (data || []) as ProfessionalListRow[]
+  if (error) {
+    // Fallback if columns not yet migrated — keep product usable.
+    if (/personal_rating|use_count|last_contacted|personal_note/i.test(error.message)) {
+      const legacy = await withClientId(
+        supabase
+          .from('professionals')
+          .select('id, full_name, phone, extra_phones, trade, company_name, email, notes, is_active'),
+        clientId
+      )
+        .is('deleted_at', null)
+        .order('full_name', { ascending: true })
+        .order('id', { ascending: true })
+        .range(offset, offset + limit - 1)
+      if (legacy.error) throw legacy.error
+      const rows = (legacy.data || []) as ProfessionalListRow[]
+      return { rows, hasMore: rows.length >= limit }
+    }
+    throw error
+  }
+  const rows = ((data || []) as ProfessionalListRow[]).slice().sort(compareProfessionalsByOperationalMemory)
   return { rows, hasMore: rows.length >= limit }
 }
 
@@ -83,17 +135,37 @@ export function useTenantProfessionalsList(options?: { enabled?: boolean; limit?
 export async function fetchActiveProfessionalsForAssign(
   clientId: string
 ): Promise<ProfessionalOption[]> {
+  const select =
+    'id, full_name, phone, trade, is_active, personal_rating, personal_note, use_count, last_contacted_at'
   const { data, error } = await withClientId(
-    supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
+    supabase.from('professionals').select(select),
     clientId
   )
     .is('deleted_at', null)
     .eq('is_active', true)
+    .order('personal_rating', { ascending: false, nullsFirst: false })
+    .order('use_count', { ascending: false })
     .order('full_name', { ascending: true })
     .limit(ACTIVE_PROFESSIONALS_ASSIGN_LIMIT)
 
-  if (error) throw error
-  return (data || []) as ProfessionalOption[]
+  if (error) {
+    if (/personal_rating|use_count|last_contacted|personal_note/i.test(error.message)) {
+      const legacy = await withClientId(
+        supabase.from('professionals').select('id, full_name, phone, trade, is_active'),
+        clientId
+      )
+        .is('deleted_at', null)
+        .eq('is_active', true)
+        .order('full_name', { ascending: true })
+        .limit(ACTIVE_PROFESSIONALS_ASSIGN_LIMIT)
+      if (legacy.error) throw legacy.error
+      return (legacy.data || []) as ProfessionalOption[]
+    }
+    throw error
+  }
+  return ((data || []) as ProfessionalOption[])
+    .slice()
+    .sort(compareProfessionalsByOperationalMemory)
 }
 
 export function useActiveProfessionalsForAssign(options?: { enabled?: boolean }) {

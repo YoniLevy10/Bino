@@ -47,3 +47,17 @@ export function isMaintenanceTaskForToday(opts: {
   const t = new Date(opts.dueAt).getTime()
   return t >= new Date(startIso).getTime() && t <= new Date(endIso).getTime()
 }
+
+/** Open task past its due datetime (Israel calendar: before start of today, or earlier today clock). */
+export function isMaintenanceTaskOverdue(opts: {
+  dueAt: string | null | undefined
+  status: string
+  now?: Date
+}): boolean {
+  if (opts.status === 'DONE') return false
+  if (!opts.dueAt) return false
+  const now = opts.now ?? new Date()
+  const due = new Date(opts.dueAt).getTime()
+  if (Number.isNaN(due)) return false
+  return due < now.getTime()
+}
