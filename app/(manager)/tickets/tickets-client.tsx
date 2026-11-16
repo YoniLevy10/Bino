@@ -1254,7 +1254,7 @@ export default function TicketsPage() {
         style={{
           ...styles.content,
           ...(isMobile
-            ? { padding: '8px 16px 8px', maxWidth: '100%', boxSizing: 'border-box', minWidth: 0 }
+            ? { padding: '12px 16px 24px', maxWidth: '100%', boxSizing: 'border-box', minWidth: 0 }
             : { padding: '0 40px 32px' }),
         }}
       >
@@ -1872,26 +1872,27 @@ const styles: Record<string, CSSProperties> = {
   mobileStatRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: '8px',
-    marginBottom: '12px',
+    gap: '10px',
+    marginBottom: '16px',
   },
   mobileStat: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: '2px',
-    minHeight: '58px',
-    padding: '10px 12px',
+    gap: '4px',
+    minHeight: '62px',
+    padding: '12px 12px',
     borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.cardBorder}`,
+    background: theme.colors.cardBackground,
     color: theme.colors.textSecondary,
     cursor: 'pointer',
     fontFamily: 'inherit',
     textAlign: 'right',
+    boxSizing: 'border-box',
   },
   mobileStatActive: {
-    borderColor: theme.colors.primary,
+    borderColor: theme.colors.borderSelected,
     background: theme.colors.blueSoft,
     color: theme.colors.primary,
   },
@@ -1912,7 +1913,8 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: '10px',
+    gap: '12px',
+    marginBottom: '2px',
   },
   mobileQueueCount: {
     fontSize: '13px',
@@ -1924,7 +1926,7 @@ const styles: Record<string, CSSProperties> = {
     gap: '8px',
     overflowX: 'auto',
     WebkitOverflowScrolling: 'touch',
-    paddingBottom: '2px',
+    paddingBottom: '4px',
   },
   chip: {
     flex: '0 0 auto',
@@ -1933,8 +1935,8 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: theme.colors.border,
-    background: theme.colors.surface,
+    borderColor: theme.colors.cardBorder,
+    background: theme.colors.cardBackground,
     color: theme.colors.textSecondary,
     fontSize: '13px',
     fontWeight: 600,
@@ -1943,15 +1945,15 @@ const styles: Record<string, CSSProperties> = {
     transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
   },
   chipActive: {
-    borderColor: theme.colors.primary,
+    borderColor: theme.colors.borderSelected,
     background: theme.colors.blueSoft,
     color: theme.colors.primary,
   },
   mobileCardList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    padding: '12px 16px 20px',
+    gap: '12px',
+    padding: '14px 16px 12px',
   },
   filtersRow: {
     display: 'flex',

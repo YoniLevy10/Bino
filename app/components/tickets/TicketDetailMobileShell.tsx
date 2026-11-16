@@ -1,6 +1,7 @@
 'use client'
 
-import { createPortal, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/use-visual-viewport-frame'
@@ -14,6 +15,16 @@ export type TicketDetailMobileShellProps = {
   /** Sticky thumb zone — save / close ticket actions. */
   footer?: ReactNode
 }
+
+const shellCss = `
+.ticket-detail-mobile-shell [role="tablist"] {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 0 4px;
+  box-shadow: 0 8px 16px -12px rgba(15, 23, 42, 0.18);
+}
+`
 
 /**
  * Full-bleed ticket detail on manager mobile (≤768). Avoids the global Drawer bottom sheet
@@ -81,6 +92,7 @@ export function TicketDetailMobileShell({
       aria-labelledby="ticket-detail-mobile-title"
       data-ticket-detail-mobile="true"
     >
+      <style>{shellCss}</style>
       <header style={shellStyles.header}>
         <div style={shellStyles.headerMain}>
           <h2 id="ticket-detail-mobile-title" style={shellStyles.title}>
@@ -90,12 +102,12 @@ export function TicketDetailMobileShell({
         </div>
         <button type="button" onClick={onClose} style={shellStyles.closeButton} aria-label="סגירה">
           <svg
-            width="24"
-            height="24"
+            width="22"
+            height="22"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.25"
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden
@@ -106,7 +118,11 @@ export function TicketDetailMobileShell({
         </button>
       </header>
       <div style={shellStyles.content}>{children}</div>
-      {footer ? <footer style={shellStyles.footer}>{footer}</footer> : null}
+      {footer ? (
+        <footer className="ticket-detail-mobile-shell__footer" style={shellStyles.footer}>
+          {footer}
+        </footer>
+      ) : null}
     </div>,
     document.body
   )
@@ -129,45 +145,52 @@ const shellStyles: Record<string, CSSProperties> = {
   },
   header: {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: '12px',
+    gap: 12,
     flexShrink: 0,
-    padding: '12px 16px',
-    paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
-    borderBottom: `1px solid ${theme.colors.border}`,
+    width: '100%',
+    boxSizing: 'border-box',
+    paddingInline: 16,
+    paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
+    paddingBottom: 12,
+    borderBottom: `1px solid ${theme.colors.divider}`,
     background: theme.colors.surface,
   },
   headerMain: {
     minWidth: 0,
     flex: 1,
+    paddingInlineEnd: 4,
   },
   title: {
     margin: 0,
-    fontSize: '20px',
+    fontSize: 20,
     fontWeight: 700,
     color: theme.colors.textPrimary,
     lineHeight: 1.25,
+    letterSpacing: '-0.02em',
   },
   subtitle: {
     margin: '4px 0 0',
-    fontSize: '14px',
+    fontSize: 13,
+    fontWeight: 500,
     color: theme.colors.textMuted,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    lineHeight: 1.35,
   },
   closeButton: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '48px',
-    height: '48px',
-    margin: '-4px',
+    width: 44,
+    height: 44,
+    marginInlineStart: -6,
     borderRadius: theme.radius.md,
-    background: 'transparent',
-    color: theme.colors.textMuted,
-    border: 'none',
+    background: theme.colors.surfaceInset,
+    color: theme.colors.textSecondary,
+    border: `1px solid ${theme.colors.borderSubtle}`,
     cursor: 'pointer',
     flexShrink: 0,
     touchAction: 'manipulation',
@@ -178,16 +201,21 @@ const shellStyles: Record<string, CSSProperties> = {
     overflow: 'auto',
     overscrollBehavior: 'contain',
     WebkitOverflowScrolling: 'touch',
-    padding: '16px',
-    paddingBottom: '8px',
+    paddingInline: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     touchAction: 'manipulation',
   },
   footer: {
     flexShrink: 0,
-    padding: '12px 16px',
-    paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
-    borderTop: `1px solid ${theme.colors.border}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    paddingInline: 16,
+    paddingTop: 12,
+    paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))',
+    borderTop: `1px solid ${theme.colors.divider}`,
     background: theme.colors.surface,
-    boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.06)',
+    boxShadow: '0 -6px 20px rgba(15, 23, 42, 0.06)',
   },
 }

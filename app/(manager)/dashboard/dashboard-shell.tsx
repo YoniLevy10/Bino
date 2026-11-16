@@ -59,26 +59,28 @@ export function DashboardShell() {
 
 const styles = {
   desktopWrap: {
-    padding: '32px 40px 0',
+    padding: '28px 40px 0',
     maxWidth: 1400,
     margin: '0 auto',
   },
   desktopToolbar: {
     display: 'flex',
     justifyContent: 'flex-end',
-    marginBottom: 12,
-    minHeight: 18,
+    alignItems: 'center',
+    marginBottom: 14,
+    minHeight: 20,
   },
   desktopDate: {
     margin: 0,
     fontSize: 13,
     fontWeight: 500,
     color: theme.colors.textMuted,
+    letterSpacing: '0.01em',
   },
   hero: {
-    marginBottom: 24,
+    marginBottom: 28,
     padding: '28px 32px',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    border: `1px solid ${theme.colors.sidebarBorder}`,
     borderRadius: theme.radius.xl,
     background: `linear-gradient(125deg, ${theme.colors.navy} 0%, ${theme.colors.navySoft} 100%)`,
     boxShadow: theme.shadows.lg,
@@ -88,7 +90,7 @@ const styles = {
     flexDirection: 'row' as const,
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 20,
+    gap: 24,
     flexWrap: 'wrap' as const,
   },
   heroText: { flex: 1, minWidth: 0 },
@@ -114,15 +116,21 @@ const styles = {
     lineHeight: 1.55,
     minHeight: 22,
   },
-  heroActions: { display: 'flex', gap: 12, alignItems: 'center' },
+  heroActions: {
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+    flexShrink: 0,
+  },
   mobileWrap: {
-    padding: '16px 16px 0',
+    padding: '12px 16px 4px',
   },
   mobileTitle: {
     margin: 0,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 700,
     color: theme.colors.textPrimary,
     letterSpacing: '-0.02em',
+    lineHeight: 1.25,
   },
 }

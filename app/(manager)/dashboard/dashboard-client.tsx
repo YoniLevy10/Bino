@@ -981,12 +981,19 @@ export default function DashboardPage() {
         style={{
           ...styles.content,
           ...(isMobile
-            ? { padding: '16px 16px 8px', maxWidth: '100%', boxSizing: 'border-box' }
-            : { padding: '0 40px 32px' }),
+            ? {
+                padding: '12px 16px 28px',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 18,
+              }
+            : { padding: '0 40px 36px' }),
         }}
       >
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <PageKpiSkeleton />
             <PageListSkeleton rows={5} />
           </div>
@@ -1011,24 +1018,26 @@ export default function DashboardPage() {
                     variant="primary"
                     size="lg"
                     onClick={() => router.push('/tickets')}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', minHeight: 48 }}
                   >
                     צפייה בתקלות הפתוחות
                   </Button>
                 </div>
-                <KpiRow columns={2} isMobile>
-                  <KpiCard
-                    label="חדשות"
-                    value={stats.open}
-                    hint="עדיין בלי שיוך"
-                    onClick={() => setActiveKpi('NEW')}
-                  />
-                  <KpiCard
-                    label="בטיפול"
-                    value={stats.inProgress}
-                    onClick={() => setActiveKpi('IN_PROGRESS')}
-                  />
-                </KpiRow>
+                <div style={styles.mobileSection}>
+                  <KpiRow columns={2} isMobile>
+                    <KpiCard
+                      label="חדשות"
+                      value={stats.open}
+                      hint="עדיין בלי שיוך"
+                      onClick={() => setActiveKpi('NEW')}
+                    />
+                    <KpiCard
+                      label="בטיפול"
+                      value={stats.inProgress}
+                      onClick={() => setActiveKpi('IN_PROGRESS')}
+                    />
+                  </KpiRow>
+                </div>
                 {nextActionTicket ? (
                   <div style={styles.nextActionBlock}>
                     <h2 style={styles.nextActionTitle}>הפעולה הבאה שלך</h2>
@@ -1065,20 +1074,22 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 ) : null}
-                <Button
-                  variant="secondary"
-                  onClick={() => setMobileMoreOpen((v) => !v)}
-                  style={{ width: '100%', marginBottom: 12 }}
-                >
-                  {mobileMoreOpen ? 'הסתר פרויקטים ופעילות' : 'פרויקטים ופעילות אחרונה'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => router.push('/tasks')}
-                  style={{ width: '100%', marginBottom: 16 }}
-                >
-                  {openTasksCount ?? 0} משימות אחזקה פתוחות
-                </Button>
+                <div style={styles.mobileActionStack}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setMobileMoreOpen((v) => !v)}
+                    style={styles.mobileActionButton}
+                  >
+                    {mobileMoreOpen ? 'הסתר פרויקטים ופעילות' : 'פרויקטים ופעילות אחרונה'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => router.push('/tasks')}
+                    style={styles.mobileActionButton}
+                  >
+                    {openTasksCount ?? 0} משימות אחזקה פתוחות
+                  </Button>
+                </div>
               </>
             ) : (
               <>
@@ -1110,6 +1121,7 @@ export default function DashboardPage() {
               <div
                 style={{
                   ...styles.mainGrid,
+                  ...(isMobile ? styles.mainGridMobile : null),
                   gridTemplateColumns: isMobile ? '1fr' : '360px 1fr',
                 }}
               >
@@ -1392,12 +1404,24 @@ export default function DashboardPage() {
 const styles: Record<string, CSSProperties> = {
   content: { padding: '32px 40px', maxWidth: '1400px', margin: '0 auto' },
   kpiGrid: { display: 'grid', gap: 16, marginBottom: 24 },
-  mainGrid: { display: 'grid', gap: 16, marginBottom: 24 },
+  mainGrid: { display: 'grid', gap: 20, marginBottom: 28 },
+  mainGridMobile: { gap: 16, marginBottom: 0 },
+  mobileSection: { width: '100%' },
+  mobileActionStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    width: '100%',
+  },
+  mobileActionButton: {
+    width: '100%',
+    minHeight: 48,
+  },
   projectList: { display: 'flex', flexDirection: 'column', gap: 0 },
   projectCard: {
     display: 'block',
-    padding: '12px 0',
-    borderBottom: `1px solid ${theme.colors.border}`,
+    padding: '14px 0',
+    borderBottom: `1px solid ${theme.colors.divider}`,
     textDecoration: 'none',
     transition: `background ${theme.motion.fast} ease`,
     cursor: 'pointer',
@@ -1416,14 +1440,15 @@ const styles: Record<string, CSSProperties> = {
     background: theme.colors.blueSoft,
     padding: '5px 10px',
     borderRadius: theme.radius.sm,
+    border: `1px solid ${theme.colors.borderSelected}`,
   },
   activityList: { display: 'flex', flexDirection: 'column', gap: 0 },
   activityItem: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: 12,
-    padding: '12px 0',
-    borderBottom: `1px solid ${theme.colors.border}`,
+    padding: '14px 0',
+    borderBottom: `1px solid ${theme.colors.divider}`,
   },
   activityButton: {
     width: '100%',
@@ -1470,11 +1495,12 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
-    padding: '20px 23px',
+    padding: '20px 24px',
     marginBottom: 24,
     borderRadius: theme.radius.xl,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.cardBorder}`,
+    background: theme.colors.cardBackground,
+    boxShadow: theme.shadows.xs,
   },
   tasksShortcutTitle: {
     fontSize: 16,
@@ -1487,7 +1513,12 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 4,
   },
   tableContainer: { overflowX: 'auto' },
-  mobileCardList: { display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0 20px' },
+  mobileCardList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: '4px 0 8px',
+  },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: {
     textAlign: 'start',
@@ -1506,7 +1537,7 @@ const styles: Record<string, CSSProperties> = {
     padding: '16px',
     fontSize: 14,
     color: theme.colors.textPrimary,
-    borderBottom: `1px solid ${theme.colors.border}`,
+    borderBottom: `1px solid ${theme.colors.divider}`,
     verticalAlign: 'middle',
   },
   ticketNumber: { fontWeight: 600, fontVariantNumeric: 'tabular-nums' },
@@ -1524,13 +1555,13 @@ const styles: Record<string, CSSProperties> = {
   emptyText: { textAlign: 'center', color: theme.colors.textMuted, padding: '24px 0' },
   mobileHeroCard: {
     background: `linear-gradient(135deg, ${theme.colors.navy} 0%, ${theme.colors.navySoft} 100%)`,
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    border: `1px solid ${theme.colors.sidebarBorder}`,
     borderRadius: theme.radius.xl,
-    padding: 20,
-    marginBottom: 16,
+    padding: '20px 18px',
+    marginBottom: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 14,
     boxShadow: theme.shadows.md,
   },
   mobileHeroEyebrow: {
@@ -1552,37 +1583,40 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     fontSize: 13,
     fontWeight: 500,
-    lineHeight: 1.4,
+    lineHeight: 1.45,
     color: theme.colors.navText,
     textAlign: 'right',
   },
-  mobileHeroValue: { margin: 0, fontSize: 40, fontWeight: 700, lineHeight: 1 },
+  mobileHeroValue: { margin: 0, fontSize: 40, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.03em' },
   mobileKpiRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 0,
   },
-  nextActionBlock: { marginBottom: 16 },
+  nextActionBlock: { marginBottom: 0, width: '100%' },
   nextActionTitle: {
-    margin: '0 0 12px',
-    fontSize: 18,
+    margin: '0 0 10px',
+    fontSize: 17,
     fontWeight: 700,
     color: theme.colors.textPrimary,
     textAlign: 'right',
+    letterSpacing: '-0.015em',
   },
   nextActionCard: {
     width: '100%',
     textAlign: 'right',
-    background: theme.colors.surface,
-    border: `1.25px solid ${theme.colors.primary}`,
+    background: theme.colors.cardBackground,
+    border: `1px solid ${theme.colors.borderSelected}`,
     borderRadius: theme.radius.xl,
-    padding: 20,
+    padding: '18px 18px 16px',
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
     cursor: 'pointer',
     fontFamily: 'inherit',
+    boxShadow: theme.shadows.xs,
+    boxSizing: 'border-box',
   },
   nextActionMeta: {
     display: 'flex',
@@ -1613,10 +1647,13 @@ const styles: Record<string, CSSProperties> = {
   assignChip: {
     fontSize: 14,
     fontWeight: 600,
-    color: theme.colors.textInverse,
-    background: theme.colors.primary,
+    color: theme.colors.textOnPrimary,
+    background: theme.colors.buttonPrimary,
     padding: '10px 16px',
     borderRadius: theme.radius.md,
     boxShadow: theme.shadows.primaryBtn,
+    minHeight: 40,
+    display: 'inline-flex',
+    alignItems: 'center',
   },
 }

@@ -949,12 +949,16 @@ function AppShellInner({
   const { isBootstrapped } = useClientBranding()
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
+  const [viewportMobile, setViewportMobile] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const openSearch = useCallback(() => setSearchOpen(true), [])
 
   useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setMounted(true)
+    const sync = () => setViewportMobile(getIsMobileViewport())
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
   }, [])
 
   useEffect(() => {
@@ -968,7 +972,8 @@ function AppShellInner({
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const mobile = mounted ? !!isMobile : false
+  // Prefer prop from useIsMobile; fall back to local layout measure (never force desktop until measured).
+  const mobile = typeof isMobile === 'boolean' ? !!isMobile || viewportMobile : viewportMobile
   const bottomNav = mobile && shouldShowMobileBottomNav(pathname)
 
   const showSplash = mounted && shouldShowAppSplash()
@@ -2325,6 +2330,8 @@ export function Drawer({
   children,
   footer,
   isMobile,
+  /** Desktop only. `center` matches BuildingHubModal; `side` is the classic end drawer. */
+  placement = 'side',
 }: {
   open: boolean
   onClose: () => void
@@ -2334,20 +2341,34 @@ export function Drawer({
   /** Sticky action bar — stays visible above mobile bottom nav while form body scrolls. */
   footer?: ReactNode
   isMobile?: boolean
+  placement?: 'side' | 'center'
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
   useFocusTrap(open, panelRef, onClose)
 
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   if (!open || typeof document === 'undefined') return null
 
   const mobile = !!isMobile
+  const centered = !mobile && placement === 'center'
   // Portal to body. main uses overflow-x:clip, which traps z-index inside it,
   // so a fixed overlay there stops above the floating tab bar.
   const panelStyle: CSSProperties = mobile
     ? drawerStyles.panelMobile
-    : { ...drawerStyles.panelSide, width: '560px' }
+    : centered
+      ? drawerStyles.panelCenter
+      : { ...drawerStyles.panelSide, width: '560px' }
   const contentStyle: CSSProperties = {
     ...drawerStyles.content,
+    ...(centered ? drawerStyles.contentCenter : null),
     paddingBottom: footer ? '24px' : 'calc(24px + env(safe-area-inset-bottom, 0px))',
   }
   const footerStyle: CSSProperties = {
@@ -2356,49 +2377,72 @@ export function Drawer({
   }
   const headerStyle: CSSProperties = {
     ...drawerStyles.header,
+    ...(centered ? drawerStyles.headerCenter : null),
     /* Bottom sheet is not under the status bar; side drawer may be (iPad notch). */
-    paddingTop: mobile ? '16px' : 'calc(24px + env(safe-area-inset-top, 0px))',
+    paddingTop: mobile
+      ? '16px'
+      : centered
+        ? undefined
+        : 'calc(24px + env(safe-area-inset-top, 0px))',
+  }
+
+  const panel = (
+    <div
+      ref={panelRef}
+      style={panelStyle}
+      data-drawer-panel={mobile ? 'mobile' : centered ? 'center' : 'desktop'}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+      onClick={centered ? (e) => e.stopPropagation() : undefined}
+    >
+      <div style={headerStyle}>
+        {mobile && (
+          <div style={drawerStyles.dragHandleWrap} aria-hidden>
+            <div style={drawerStyles.dragHandle} />
+          </div>
+        )}
+        <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: '8px' }}>
+          <h2 id="drawer-title" style={drawerStyles.title}>
+            {title}
+          </h2>
+          {subtitle && <p style={drawerStyles.subtitle}>{subtitle}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={drawerStyles.closeButton}
+          aria-label="סגירה"
+          data-drawer-close
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div style={contentStyle}>{children}</div>
+      {footer ? <div style={footerStyle}>{footer}</div> : null}
+    </div>
+  )
+
+  if (centered) {
+    return createPortal(
+      <div
+        style={drawerStyles.overlayCenter}
+        onClick={onClose}
+        role="presentation"
+      >
+        {panel}
+      </div>,
+      document.body
+    )
   }
 
   return createPortal(
     <>
       <div style={drawerStyles.overlay} onClick={onClose} aria-hidden />
-      <div
-        ref={panelRef}
-        style={panelStyle}
-        data-drawer-panel={mobile ? 'mobile' : 'desktop'}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="drawer-title"
-      >
-        <div style={headerStyle}>
-          {mobile && (
-            <div style={drawerStyles.dragHandleWrap} aria-hidden>
-              <div style={drawerStyles.dragHandle} />
-            </div>
-          )}
-          <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: '8px' }}>
-            <h2 id="drawer-title" style={drawerStyles.title}>
-              {title}
-            </h2>
-            {subtitle && <p style={drawerStyles.subtitle}>{subtitle}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={drawerStyles.closeButton}
-            aria-label="סגירה"
-            data-drawer-close
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-          </button>
-        </div>
-        <div style={contentStyle}>{children}</div>
-        {footer ? <div style={footerStyle}>{footer}</div> : null}
-      </div>
+      {panel}
     </>,
     document.body
   )
@@ -2412,6 +2456,19 @@ const drawerStyles: Record<string, CSSProperties> = {
     zIndex: 300,
     animation: 'fadeIn 0.2s ease',
   },
+  overlayCenter: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 320,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+    background: theme.colors.overlay,
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    animation: 'fadeIn 0.2s ease',
+  },
   panelSide: {
     position: 'fixed',
     top: 0,
@@ -2423,6 +2480,21 @@ const drawerStyles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     maxWidth: '100%',
+  },
+  panelCenter: {
+    width: 'min(720px, calc(100vw - 48px))',
+    height: 'min(720px, calc(100vh - 64px))',
+    maxHeight: 'calc(100vh - 64px)',
+    display: 'flex',
+    flexDirection: 'column',
+    background: theme.colors.surfaceElevated,
+    borderRadius: theme.radius.xl,
+    border: `1px solid ${theme.colors.border}`,
+    boxShadow: theme.shadows.xl,
+    overflow: 'hidden',
+    animation: 'hubModalIn 0.22s ease',
+    transformOrigin: 'center center',
+    zIndex: 321,
   },
   panelMobile: {
     position: 'fixed',
@@ -2452,6 +2524,15 @@ const drawerStyles: Record<string, CSSProperties> = {
     flexShrink: 0,
     flexWrap: 'wrap',
     gap: '8px',
+  },
+  headerCenter: {
+    padding: `${theme.spacing.xl} ${theme.spacing.xl} ${theme.spacing.lg}`,
+    borderBottom: `1px solid ${theme.colors.borderSubtle}`,
+    background: `linear-gradient(180deg, ${theme.colors.blueSoft} 0%, ${theme.colors.surface} 72%)`,
+    flexWrap: 'nowrap',
+  },
+  contentCenter: {
+    background: theme.colors.background,
   },
   dragHandleWrap: {
     width: '100%',

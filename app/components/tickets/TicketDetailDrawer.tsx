@@ -147,6 +147,22 @@ export function TicketDetailDrawer({
     setAdvancedOpen(false)
   }, [selectedTicket?.id])
 
+  // Deep link: ?focus=forward opens advanced + scrolls to professional picker
+  useEffect(() => {
+    if (!selectedTicket?.id || typeof window === 'undefined') return
+    const focus = new URLSearchParams(window.location.search).get('focus')
+    if (focus !== 'forward' && focus !== 'midrag') return
+    setActiveTab('details')
+    setAdvancedOpen(true)
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(
+        focus === 'midrag' ? 'ticket-midrag-block' : 'ticket-forward-professional'
+      )
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 320)
+    return () => window.clearTimeout(t)
+  }, [selectedTicket?.id])
+
   const storedReporterName = reporterName || selectedTicket?.reporter_name
   const reporterClientId = _tenantClientId || selectedTicket?.client_id || tenantFromSession.data || null
 
@@ -533,7 +549,9 @@ export function TicketDetailDrawer({
                         professionals={professionals}
                         onForwarded={onTicketForwarded}
                       />
-                      <TicketMidragBlock ticketId={selectedTicket.id} isMobile={isMobile} />
+                      <div id="ticket-midrag-block">
+                        <TicketMidragBlock ticketId={selectedTicket.id} isMobile={isMobile} />
+                      </div>
                     </>
                   )}
 
@@ -627,6 +645,7 @@ export function TicketDetailDrawer({
       title={drawerTitle}
       subtitle={drawerSubtitle}
       isMobile={false}
+      placement="center"
       footer={footerActions}
     >
       {drawerBody}

@@ -21,7 +21,7 @@ import {
   StatusBadge,
   theme,
 } from '../components/ui'
-import { PageListSkeleton, PageTransitionLoader } from '../components/page-skeleton'
+import { PageListSkeleton } from '../components/page-skeleton'
 import { WorkerPortalBootstrapShell } from '../components/worker/WorkerPortalBootstrapShell'
 import { WorkerInstallPrompt } from '../components/WorkerInstallPrompt'
 import type { WorkerAttachment } from '../components/worker/WorkerTicketCard'
@@ -834,15 +834,14 @@ function WorkerPageInner() {
       )
     }
     return (
-      <div
-        className="worker-shell"
-        data-worker-theme={darkMode ? 'dark' : 'light'}
-        style={{ ...standaloneShell, background: 'transparent' }}
-        dir="rtl"
-      >
-        <div className="worker-ambient-wash" aria-hidden />
-        <PageTransitionLoader compact logoUrl={clientLogoUrl} />
-      </div>
+      <WorkerPortalBootstrapShell
+        darkMode={darkMode}
+        colors={palette}
+        logoUrl={clientLogoUrl ?? tryReadWorkerPortalBranding()?.logoUrl ?? null}
+        greetingName="עובד"
+        toolbarRefreshing
+        ticketsLoading
+      />
     )
   }
 
