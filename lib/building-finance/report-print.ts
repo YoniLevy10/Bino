@@ -110,10 +110,23 @@ function lineRows(lines: ReportPrintLine[]): string {
     .join('')
 }
 
+/** Resolve logo for about:blank print windows (relative /paths would not load). */
+export function resolveReportPrintLogoUrl(
+  logoUrl: string | null | undefined,
+  origin: string = typeof window !== 'undefined' ? window.location.origin : ''
+): string {
+  const trimmed = logoUrl?.trim()
+  if (trimmed) {
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed
+    if (trimmed.startsWith('/') && origin) return `${origin.replace(/\/$/, '')}${trimmed}`
+    return trimmed
+  }
+  return origin ? `${origin.replace(/\/$/, '')}/bino-mark.png` : '/bino-mark.png'
+}
+
 export function buildReportPrintHtml(payload: ReportPrintPayload): string {
-  const logo = payload.logoUrl
-    ? `<img class="logo" src="${esc(payload.logoUrl)}" alt="" />`
-    : `<img class="logo" src="/bino-mark.png" alt="" />`
+  const logoSrc = resolveReportPrintLogoUrl(payload.logoUrl)
+  const logo = `<img class="logo" src="${esc(logoSrc)}" alt="" />`
   const util =
     payload.kpi.utilization_pct == null ? '—' : `${payload.kpi.utilization_pct}%`
   const deltaPct =
@@ -320,11 +333,26 @@ export function buildReportPrintHtml(payload: ReportPrintPayload): string {
 </html>`
 }
 
-/** Open a print window with branded report HTML. Returns false if popup blocked. */
+/**
+ * Open a print window with branded report HTML. Returns false if popup blocked.
+ *
+ * Do NOT pass `noopener` to window.open: browsers return null for the WindowProxy
+ * when noopener is set, which made «ייצוא מעוצב» always look popup-blocked.
+ * We still clear `opener` after open for the same security intent.
+ */
 export function openBrandedReportPrint(payload: ReportPrintPayload): boolean {
-  const html = buildReportPrintHtml(payload)
-  const w = window.open('', '_blank', 'noopener,noreferrer,width=960,height=720')
+  const html = buildReportPrintHtml({
+    ...payload,
+    logoUrl: resolveReportPrintLogoUrl(payload.logoUrl, window.location.origin),
+  })
+  // Features only — no noopener/noreferrer (need a writable Window reference).
+  const w = window.open('', '_blank', 'width=960,height=720')
   if (!w) return false
+  try {
+    w.opener = null
+  } catch {
+    /* ignore */
+  }
   w.document.open()
   w.document.write(html)
   w.document.close()
