@@ -64,6 +64,7 @@ export function BuildingDecisionsPanel({
   const [required, setRequired] = useState('2')
   const [signerName, setSignerName] = useState('')
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null)
+  const [notifyingId, setNotifyingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof isMobileProp === 'boolean') return
@@ -186,6 +187,49 @@ export function BuildingDecisionsPanel({
       toast.success('הקישור הועתק')
     } catch {
       toast.error('העתקה נכשלה')
+    }
+  }
+
+  async function notifyResidents(decisionId: string) {
+    setNotifyingId(decisionId)
+    setSaving(true)
+    try {
+      const res = await fetchWithTimeout('/api/building-governance/decisions/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          decision_id: decisionId,
+          all_residents: true,
+          channels: ['sms'],
+          send_messages: true,
+        }),
+      })
+      const json = (await res.json()) as {
+        error?: string
+        created?: number
+        attempted?: number
+        sms_sent?: number
+        hint?: string | null
+      }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      const created = Number(json.created ?? 0)
+      const attempted = Number(json.attempted ?? 0)
+      const smsSent = Number(json.sms_sent ?? 0)
+      const base =
+        created > 0
+          ? `נוצרה בקשת חתימה ל־${created} דיירים באזור האישי`
+          : attempted > 0
+            ? 'לא נוצרו בקשות חדשות (ייתכן שכבר נשלח)'
+            : 'לא נמצאו דיירים לשליחה'
+      toast.success(smsSent > 0 ? `${base} · SMS: ${smsSent}` : base)
+      if (json.hint) toast.info(json.hint)
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'שליחה לדיירים נכשלה')
+    } finally {
+      setNotifyingId(null)
+      setSaving(false)
     }
   }
 
@@ -318,34 +362,46 @@ export function BuildingDecisionsPanel({
               ) : null}
 
               {(d.status === 'open' || d.status === 'draft') && (
-                <div
-                  style={{
-                    ...styles.addSigner,
-                    ...(isMobile ? styles.addSignerMobile : null),
-                  }}
-                >
-                  <input
-                    value={activeDecisionId === d.id ? signerName : ''}
-                    onFocus={() => setActiveDecisionId(d.id)}
-                    onChange={(ev) => {
-                      setActiveDecisionId(d.id)
-                      setSignerName(ev.target.value)
-                    }}
-                    placeholder="שם החותם"
-                    style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
-                    maxLength={200}
-                  />
+                <>
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="primary"
                     size={isMobile ? 'md' : 'sm'}
-                    disabled={saving || activeDecisionId !== d.id}
-                    onClick={() => void addSigner(d.id)}
+                    disabled={saving || notifyingId === d.id}
+                    onClick={() => void notifyResidents(d.id)}
                     style={isMobile ? styles.fullBtn : undefined}
                   >
-                    קישור חתימה
+                    {notifyingId === d.id ? 'שולח…' : 'שליחה לאזור אישי'}
                   </Button>
-                </div>
+                  <div
+                    style={{
+                      ...styles.addSigner,
+                      ...(isMobile ? styles.addSignerMobile : null),
+                    }}
+                  >
+                    <input
+                      value={activeDecisionId === d.id ? signerName : ''}
+                      onFocus={() => setActiveDecisionId(d.id)}
+                      onChange={(ev) => {
+                        setActiveDecisionId(d.id)
+                        setSignerName(ev.target.value)
+                      }}
+                      placeholder="שם החותם"
+                      style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
+                      maxLength={200}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size={isMobile ? 'md' : 'sm'}
+                      disabled={saving || activeDecisionId !== d.id}
+                      onClick={() => void addSigner(d.id)}
+                      style={isMobile ? styles.fullBtn : undefined}
+                    >
+                      קישור חתימה
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           ))}

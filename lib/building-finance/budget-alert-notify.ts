@@ -3,6 +3,7 @@ import {
   computeBudgetUtilization,
   yearElapsedFraction,
 } from '@/lib/building-finance/budget-math'
+import { fetchBuildingExpenseSum } from '@/lib/building-finance/expense-sums'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 import { notifyTenantManagerService } from '@/lib/building-governance/service-notify'
 import { logAudit } from '@/lib/audit'
@@ -67,7 +68,7 @@ export async function maybeNotifyBudgetAlert(
     return { checked: false, alerted: false, skippedReason: 'no_period' }
   }
 
-  const [{ data: budget }, { data: expenseRows }, { data: project }] = await Promise.all([
+  const [{ data: budget }, expenseSum, { data: project }] = await Promise.all([
     admin
       .from('building_budgets')
       .select('amount_planned')
@@ -76,14 +77,12 @@ export async function maybeNotifyBudgetAlert(
       .eq('period_key', periodKey)
       .is('category_id', null)
       .maybeSingle(),
-    admin
-      .from('building_expenses')
-      .select('amount')
-      .eq('client_id', opts.clientId)
-      .eq('project_id', opts.projectId)
-      .eq('budget_period_key', periodKey)
-      .is('voided_at', null)
-      .limit(500),
+    fetchBuildingExpenseSum(admin, {
+      clientId: opts.clientId,
+      projectId: opts.projectId,
+      mode: 'period_key',
+      periodKey,
+    }),
     admin
       .from('projects')
       .select('name')
@@ -97,10 +96,7 @@ export async function maybeNotifyBudgetAlert(
     return { checked: true, alerted: false, skippedReason: 'no_budget' }
   }
 
-  const spent = (expenseRows ?? []).reduce(
-    (sum, row) => sum + Number((row as { amount?: number }).amount ?? 0),
-    0
-  )
+  const spent = expenseSum.spent
 
   const utilization = computeBudgetUtilization({
     period_key: periodKey,

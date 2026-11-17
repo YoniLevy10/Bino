@@ -99,6 +99,13 @@ describe('collection charge ops URL helpers', () => {
     )
   })
 
+  it('canonicalizes notify URL away from *.vercel.app APP_URL', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://bamakor.vercel.app'
+    expect(buildGrowWebhookNotifyUrl()).toBe(
+      'https://bino.casa/api/webhook/grow?token=hook-secret'
+    )
+  })
+
   it('omits notify URL when webhook secret missing', () => {
     process.env.GROW_WEBHOOK_SECRET = ''
     expect(buildGrowWebhookNotifyUrl()).toBeNull()

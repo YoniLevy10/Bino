@@ -255,6 +255,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `GROW_PRICE_QUOTE` | GetLink `price_quote` (not `quote_price`) |
 | `GROW_REGISTER_IS_DIRECT_DEBIT` | `1` sandbox / usually `0` live unless Grow says otherwise |
 | `GROW_REGISTER_BASE_URL` | Optional; defaults to devregister / registerapi by `GROW_ENV` |
+| `GROW_GET_TRANSACTION_INFO_ENABLED` | Optional; `true`/`1` enables server-only `getGrowTransactionInfo` (default off; not wired into payment webhooks) |
 | `GROW_P1_RECURRING_ENABLED` | Optional; must be exact `true` to unlock recurring standing-order code paths — **default off**; no prod activation without Grow sandbox + owner OK |
 | `GROW_P1_TOKENIZATION_ENABLED` | Optional; exact `true` only — card token save/charge; default off (`saveCardToken` stays `'0'`) |
 | `GROW_P1_REFUNDS_ENABLED` | Optional; exact `true` only — Grow `refundTransaction`; default off |
