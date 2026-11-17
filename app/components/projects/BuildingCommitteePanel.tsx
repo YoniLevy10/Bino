@@ -257,9 +257,6 @@ export function BuildingCommitteePanel({
         </div>
       )}
 
-      <p style={styles.hint}>
-        שלב הבא (Wave 4b): קישור אוטומטי לדיירים בפנקס + מורשי חתימה להחלטות.
-      </p>
     </div>
   )
 }
@@ -353,12 +350,6 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textMuted,
     fontSize: theme.typography.fontSize.sm,
     padding: '20px 0',
-  },
-  hint: {
-    margin: 0,
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.textMuted,
-    lineHeight: 1.45,
   },
   lockBox: {
     padding: theme.spacing.xl,

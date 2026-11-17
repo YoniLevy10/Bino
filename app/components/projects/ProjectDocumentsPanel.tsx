@@ -148,7 +148,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
   return (
     <Card
       title="מסמכים"
-      subtitle="חוזים, תוכניות, מסמכים — עד 15MB (PDF, תמונות, Office, ZIP)"
+      subtitle="עד 15MB — PDF, תמונות, Office, ZIP"
       actions={
         <>
           <input

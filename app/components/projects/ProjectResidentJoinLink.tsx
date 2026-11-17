@@ -95,7 +95,7 @@ export function ProjectResidentJoinLink({ projectId, projectName }: Props) {
   return (
     <Card
       title="קישור לאזור אישי לדיירים"
-      subtitle="קישור אחד לבניין — שולחים בקבוצת הוואטסאפ. כניסה בטלפון + סיסמה מספרית ב-SMS."
+      subtitle="קישור לבניין — וואטסאפ; כניסה בטלפון + SMS."
     >
       {loading ? (
         <p style={styles.muted}>טוען…</p>
@@ -119,8 +119,8 @@ export function ProjectResidentJoinLink({ projectId, projectName }: Props) {
           </div>
           <p style={styles.hint}>
             {enabled
-              ? 'הקישור פעיל. דייר רשום מזין טלפון ומקבל סיסמה מספרית משתנה ב-SMS.'
-              : 'בלחיצה על העתקה/שליחה הקישור יופעל אוטומטית לפרויקט זה.'}
+              ? 'פעיל — טלפון + סיסמה ב-SMS.'
+              : 'העתקה או שליחה מפעילה את הקישור.'}
           </p>
         </div>
       )}
