@@ -773,6 +773,22 @@ export const notifyBuildingDecisionResidentsBodySchema = z
     }
   })
 
+/** Hub — remind pending signers (SMS/email; WA only inside Meta 24h session). */
+export const remindBuildingDecisionBodySchema = z.object({
+  project_id: z.string().uuid(),
+  decision_id: z.string().uuid(),
+  channels: z.array(z.enum(['sms', 'email'])).min(1).max(2).optional(),
+  send_messages: z.boolean().optional(),
+  limit: z.number().int().min(1).max(40).optional(),
+})
+
+/** Hub — attach optional project document (PDF) to a decision for summary link. */
+export const attachBuildingDecisionDocumentBodySchema = z.object({
+  project_id: z.string().uuid(),
+  decision_id: z.string().uuid(),
+  document_id: z.string().uuid().nullable(),
+})
+
 /** Resident portal — submit signature for a building decision. */
 export const residentSignBuildingDecisionBodySchema = z.object({
   signature_data_url: z

@@ -39,3 +39,15 @@ node scripts/composio-sync-meta-templates.mjs create ticket_closed --suffix=bama
 - Image-header templates (e.g. `worker_completion_photo`) — create in Meta UI.
 - Mapping a client-specific `name_suffix` into runtime send env (`WHATSAPP_META_TEMPLATE_*`) if you diverge from the default platform names.
 - WABA display name / webhook / App Secret tasks remain in the panel checklist.
+
+## Building decision reminders (HSM gap)
+
+Manager «תזכורת לחתימה» (`POST /api/building-governance/decisions/remind`) uses:
+
+| Channel | When |
+|---------|------|
+| SMS (019) | Primary when `BUILDING_GOVERNANCE_AUTO_NOTIFY` is on |
+| Email (Resend) | When signer has email |
+| WhatsApp free-form | **Only** inside Meta 24h customer-care session |
+
+There is **no** approved Meta UTILITY (HSM) template in the Composio catalog for building-decision / signature reminders yet. Do **not** send free-form WA outside the session window (Meta policy). To enable cold WA reminders later: create + approve a UTILITY template (e.g. `building_decision_reminder`) via this panel / `scripts/composio-sync-meta-templates.mjs`, then wire send — until then SMS/email only.

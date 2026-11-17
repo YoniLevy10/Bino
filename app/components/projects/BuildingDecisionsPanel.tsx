@@ -3,12 +3,15 @@
 /**
  * Building Hub — החלטות tab (Wave 4).
  * Create/list decisions + signature request links; majority auto-passes via public sign API.
+ * PR-I: summary report + reminders (same panel — no duplicate screens).
  */
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { DECISION_STATUS_LABELS_HE } from '@/lib/building-governance/roles'
+import type { DecisionSummaryPayload } from '@/lib/building-governance/decision-summary'
+import { openDecisionSummaryPrint } from '@/lib/building-governance/decision-summary-print'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 
@@ -65,6 +68,10 @@ export function BuildingDecisionsPanel({
   const [signerName, setSignerName] = useState('')
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null)
   const [notifyingId, setNotifyingId] = useState<string | null>(null)
+  const [summaryById, setSummaryById] = useState<Record<string, DecisionSummaryPayload>>({})
+  const [summaryOpenId, setSummaryOpenId] = useState<string | null>(null)
+  const [summaryLoadingId, setSummaryLoadingId] = useState<string | null>(null)
+  const [remindLoadingId, setRemindLoadingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof isMobileProp === 'boolean') return
@@ -233,6 +240,72 @@ export function BuildingDecisionsPanel({
     }
   }
 
+  async function loadSummary(decisionId: string, opts?: { print?: boolean }) {
+    setSummaryLoadingId(decisionId)
+    try {
+      const res = await fetchWithTimeout(
+        `/api/building-governance/decisions/summary?project_id=${encodeURIComponent(projectId)}&decision_id=${encodeURIComponent(decisionId)}`
+      )
+      const json = (await res.json()) as {
+        summary?: DecisionSummaryPayload
+        error?: string
+      }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      if (!json.summary) throw new Error('סיכום ריק')
+      setSummaryById((prev) => ({ ...prev, [decisionId]: json.summary! }))
+      setSummaryOpenId(decisionId)
+      if (opts?.print) {
+        const ok = openDecisionSummaryPrint(json.summary)
+        if (!ok) toast.error('חסימת חלון הדפסה — אפשרו pop-up')
+        else toast.success('סיכום מוכן להדפסה / PDF')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'טעינת סיכום נכשלה')
+    } finally {
+      setSummaryLoadingId(null)
+    }
+  }
+
+  async function sendReminders(decisionId: string) {
+    setRemindLoadingId(decisionId)
+    try {
+      const res = await fetchWithTimeout('/api/building-governance/decisions/remind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          decision_id: decisionId,
+          channels: ['sms', 'email'],
+        }),
+      })
+      const json = (await res.json()) as {
+        error?: string
+        sms_sent?: number
+        email_sent?: number
+        wa_session_sent?: number
+        wa_skipped_outside_session?: number
+        attempted?: number
+        hint?: string | null
+      }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      const parts = [
+        `תזכורות: ${json.attempted ?? 0}`,
+        `SMS ${json.sms_sent ?? 0}`,
+        `אימייל ${json.email_sent ?? 0}`,
+        `WA ${json.wa_session_sent ?? 0}`,
+      ]
+      toast.success(parts.join(' · '))
+      if (json.hint) toast.info(json.hint)
+      if (summaryOpenId === decisionId) {
+        await loadSummary(decisionId)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'שליחת תזכורות נכשלה')
+    } finally {
+      setRemindLoadingId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div style={styles.center}>
@@ -323,7 +396,58 @@ export function BuildingDecisionsPanel({
                 חתימות: {d.signed_count}/{d.required_signatures} · התקדמות לרוב:{' '}
                 {d.majority_pct}%
                 {d.majority_reached ? ' · הושג רוב' : ''}
+                {' · '}
+                סף {Math.round(Number(d.majority_threshold) * 100)}%
               </p>
+
+              <div
+                style={{
+                  ...styles.actionsRow,
+                  ...(isMobile ? styles.actionsRowMobile : null),
+                }}
+              >
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size={isMobile ? 'md' : 'sm'}
+                  disabled={summaryLoadingId === d.id}
+                  onClick={() => void loadSummary(d.id)}
+                  style={isMobile ? styles.fullBtn : undefined}
+                >
+                  {summaryLoadingId === d.id
+                    ? 'טוען סיכום…'
+                    : summaryOpenId === d.id
+                      ? 'רענון סיכום'
+                      : 'סיכום החלטה'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size={isMobile ? 'md' : 'sm'}
+                  disabled={summaryLoadingId === d.id}
+                  onClick={() => void loadSummary(d.id, { print: true })}
+                  style={isMobile ? styles.fullBtn : undefined}
+                >
+                  הדפסה / PDF
+                </Button>
+                {(d.status === 'open' || d.status === 'draft') &&
+                (d.signature_requests || []).some((s) => s.status === 'pending') ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size={isMobile ? 'md' : 'sm'}
+                    disabled={remindLoadingId === d.id || saving}
+                    onClick={() => void sendReminders(d.id)}
+                    style={isMobile ? styles.fullBtn : undefined}
+                  >
+                    {remindLoadingId === d.id ? 'שולח תזכורות…' : 'תזכורת לחתימה'}
+                  </Button>
+                ) : null}
+              </div>
+
+              {summaryOpenId === d.id && summaryById[d.id] ? (
+                <DecisionSummaryInline summary={summaryById[d.id]} isMobile={isMobile} />
+              ) : null}
 
               {(d.signature_requests || []).length > 0 ? (
                 <div style={styles.sigList}>
@@ -408,6 +532,70 @@ export function BuildingDecisionsPanel({
         </div>
       )}
 
+      <p style={styles.hint}>
+        תזכורות: SMS/אימייל. WhatsApp חופשי רק בחלון 24 שעות; מחוץ לחלון נדרשת תבנית UTILITY
+        מאושרת (HSM) — עדיין לא בקטלוג governance.
+      </p>
+    </div>
+  )
+}
+
+function DecisionSummaryInline({
+  summary,
+  isMobile,
+}: {
+  summary: DecisionSummaryPayload
+  isMobile: boolean
+}) {
+  return (
+    <div style={styles.summaryBox}>
+      <p style={styles.summaryTitle}>סיכום החלטה</p>
+      <p style={styles.progress}>
+        בעד {summary.votes.approve} · נגד {summary.votes.oppose} · נמנע{' '}
+        {summary.votes.abstain} · ממתין {summary.votes.pending}
+      </p>
+      <p style={styles.progress}>
+        {summary.majority_pct}% מול סף {Math.round(summary.majority_threshold * 100)}% (
+        {summary.majority_need}/{summary.required_signatures})
+        {summary.majority_reached ? ' · הושג רוב' : ''}
+      </p>
+      {summary.pdf.download_url ? (
+        <p style={styles.progress}>
+          PDF:{' '}
+          <a href={summary.pdf.download_url} target="_blank" rel="noopener noreferrer">
+            {summary.pdf.file_name || 'פתיחת מסמך'}
+          </a>
+        </p>
+      ) : (
+        <p style={styles.progress}>PDF: לא צורף מסמך להחלטה</p>
+      )}
+      <div style={styles.summarySigners}>
+        {summary.signers.slice(0, isMobile ? 8 : 12).map((s) => (
+          <span key={s.id} style={styles.summaryChip}>
+            {s.signer_name}
+            {s.effective_choice
+              ? ` · ${
+                  s.effective_choice === 'approve'
+                    ? 'בעד'
+                    : s.effective_choice === 'oppose'
+                      ? 'נגד'
+                      : 'נמנע'
+                }`
+              : s.status === 'pending'
+                ? ' · ממתין'
+                : ''}
+            {s.signed_at ? ` · ${new Date(s.signed_at).toLocaleDateString('he-IL')}` : ''}
+          </span>
+        ))}
+      </div>
+      {summary.audit_refs.length > 0 ? (
+        <p style={styles.progress}>
+          audit: {summary.audit_refs.slice(0, 4).map((a) => a.action).join(' · ')}
+          {summary.audit_refs.length > 4 ? '…' : ''}
+        </p>
+      ) : (
+        <p style={styles.progress}>audit: אין עדיין רשומות להחלטה</p>
+      )}
     </div>
   )
 }
@@ -454,6 +642,44 @@ const styles: Record<string, CSSProperties> = {
   fullBtn: {
     width: '100%',
     minHeight: 48,
+  },
+  actionsRow: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    alignItems: 'center',
+  },
+  actionsRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  summaryBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    padding: '10px 12px',
+    background: theme.colors.background,
+    borderRadius: theme.radius.md,
+    border: `1px dashed ${theme.colors.border}`,
+  },
+  summaryTitle: {
+    margin: 0,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+  },
+  summarySigners: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 6,
+  },
+  summaryChip: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textSecondary,
+    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.sm,
+    padding: '4px 8px',
   },
   list: { display: 'flex', flexDirection: 'column', gap: 10 },
   card: {
@@ -532,6 +758,12 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.textMuted,
     fontSize: theme.typography.fontSize.sm,
     padding: '16px 0',
+  },
+  hint: {
+    margin: 0,
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textMuted,
+    lineHeight: 1.45,
   },
   lockBox: {
     padding: theme.spacing.xl,
