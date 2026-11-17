@@ -56,14 +56,15 @@ describe('PR-B reports period + paid KPI contract', () => {
     expect(roundMoney(grow.collected - expenseSum.recorded_spend)).toBe(300)
 
     const apiKpiShape = {
+      ...utilization,
       spent: expenseSum.recorded_spend,
       recorded_spend: expenseSum.recorded_spend,
       paid_spend: expenseSum.paid_spend,
       utilization_basis: 'recorded' as const,
       utilization_basis_label_he: 'ניצול תקציב לפי הוצאות רשומות (לא רק שולם)',
-      ...utilization,
     }
     expect(apiKpiShape.utilization_basis).toBe('recorded')
+    expect(apiKpiShape.spent).toBe(expenseSum.recorded_spend)
     expect(apiKpiShape.paid_spend).toBeLessThan(apiKpiShape.recorded_spend)
   })
 })
