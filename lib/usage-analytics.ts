@@ -75,6 +75,7 @@ const FEATURE_LABELS: Record<UsageFeatureKey, string> = {
   campaigns: 'קמפיינים SMS',
   collections: 'גביית ועד',
   finance: 'הכנסות והוצאות',
+  bank: 'חשבון בנק',
   reports: 'דוחות כספיים',
   settings: 'הגדרות',
   addons: 'תוספים',

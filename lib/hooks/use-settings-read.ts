@@ -32,6 +32,11 @@ export type SettingsReadRow = {
   grow_onboarding_completed_at?: string | null
   grow_package_name?: string | null
   grow_encrypted_lead?: string | null
+  icount_enabled?: boolean | null
+  icount_cid?: string | null
+  icount_paypage_id?: string | null
+  icount_api_token_set?: boolean
+  collections_payment_provider?: 'grow' | 'icount' | string | null
   error?: string
 }
 

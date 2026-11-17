@@ -10,6 +10,12 @@ import {
   findOtherClientUsingGrowUserId,
   normalizeGrowUserId,
 } from '@/lib/grow-credentials'
+import {
+  assertTenantCanEnableIcount,
+  normalizeIcountApiToken,
+  normalizeIcountCid,
+  normalizeIcountPaypageId,
+} from '@/lib/icount-credentials'
 import { normalizePhone019 } from '@/lib/sms-019-core'
 
 export async function POST(req: Request) {
@@ -33,6 +39,21 @@ export async function POST(req: Request) {
   if ('grow_user_id' in payload) {
     payload.grow_user_id = normalizeGrowUserId(
       payload.grow_user_id as string | null | undefined
+    )
+  }
+  if ('icount_cid' in payload) {
+    payload.icount_cid = normalizeIcountCid(
+      payload.icount_cid as string | null | undefined
+    )
+  }
+  if ('icount_paypage_id' in payload) {
+    payload.icount_paypage_id = normalizeIcountPaypageId(
+      payload.icount_paypage_id as string | null | undefined
+    )
+  }
+  if ('icount_api_token' in payload) {
+    payload.icount_api_token = normalizeIcountApiToken(
+      payload.icount_api_token as string | null | undefined
     )
   }
   // 019SMS rejects alphanumeric senders (status 515). Persist only normalized phones.
@@ -99,6 +120,69 @@ export async function POST(req: Request) {
           { status: 409 }
         )
       }
+    }
+  }
+
+  const touchesIcount =
+    'icount_enabled' in payload ||
+    'icount_cid' in payload ||
+    'icount_api_token' in payload ||
+    'icount_paypage_id' in payload ||
+    'collections_payment_provider' in payload
+  if (touchesIcount) {
+    const { data: currentIcount, error: icountErr } = await admin
+      .from('clients')
+      .select('icount_enabled, icount_cid, icount_api_token, icount_paypage_id')
+      .eq('id', clientId)
+      .maybeSingle()
+
+    if (icountErr || !currentIcount) {
+      return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
+    }
+
+    const nextCid =
+      payload.icount_cid !== undefined
+        ? (payload.icount_cid as string | null)
+        : currentIcount.icount_cid
+    const nextPaypage =
+      payload.icount_paypage_id !== undefined
+        ? (payload.icount_paypage_id as string | null)
+        : currentIcount.icount_paypage_id
+    const nextToken =
+      payload.icount_api_token !== undefined
+        ? (payload.icount_api_token as string | null)
+        : currentIcount.icount_api_token
+    const nextEnabled =
+      payload.icount_enabled !== undefined
+        ? Boolean(payload.icount_enabled)
+        : currentIcount.icount_enabled === true
+
+    const icountEnable = assertTenantCanEnableIcount({
+      enabled: nextEnabled,
+      cid: nextCid,
+      hasToken: Boolean((nextToken || '').trim()),
+      paypageId: nextPaypage,
+    })
+    if (!icountEnable.ok) {
+      return NextResponse.json({ error: icountEnable.error }, { status: 400 })
+    }
+
+    if (
+      payload.collections_payment_provider === 'icount' &&
+      !assertTenantCanEnableIcount({
+        enabled: true,
+        cid: nextCid,
+        hasToken: Boolean((nextToken || '').trim()),
+        paypageId: nextPaypage,
+      }).ok
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'לא ניתן להעביר ספק גבייה ל־iCount לפני cid, טוקן API ו־paypage_id.',
+        },
+        { status: 400 }
+      )
     }
   }
 

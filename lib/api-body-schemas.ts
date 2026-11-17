@@ -149,6 +149,16 @@ export const settingsUpdateBodySchema = z
     grow_legal_email: z.string().max(200).nullable().optional(),
     grow_enabled: z.boolean().optional(),
     grow_user_id: z.string().max(80).nullable().optional(),
+    /** Direct iCount collections (Grow dual-run). Token is server-only. */
+    icount_enabled: z.boolean().optional(),
+    icount_cid: z.string().max(120).nullable().optional(),
+    icount_api_token: z.string().max(500).nullable().optional(),
+    icount_paypage_id: z.string().max(80).nullable().optional(),
+    collections_payment_provider: z.enum(['grow', 'icount']).optional(),
+    financy_enabled: z.boolean().optional(),
+    financy_client_id: z.string().max(200).nullable().optional(),
+    financy_client_secret: z.string().max(500).nullable().optional(),
+    financy_user_id: z.string().max(200).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'אין שדות לעדכון' })
 
@@ -520,6 +530,15 @@ export const projectPilotSmsBodySchema = z.object({
 
 export const deleteProjectDocumentBodySchema = z.object({
   document_id: z.string().uuid(),
+})
+
+/** יצירת תיקיית מסמכים עצמאית / לפי בניין / תת־תיקיה. */
+export const createDocumentFolderBodySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  /** Optional building; omit/null = independent client-wide folder. Ignored when parent_id is set (inherited). */
+  project_id: z.string().uuid().nullable().optional(),
+  /** Optional parent folder for nesting (max depth 2). */
+  parent_id: z.string().uuid().nullable().optional(),
 })
 
 /** מחיקת תקלות — נבחרות או כולן (soft delete). */

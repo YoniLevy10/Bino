@@ -34,8 +34,9 @@ describe('navIdFromPathname', () => {
     expect(navIdFromPathname('/collections')).toBe('collections')
   })
 
-  it('maps finance and financial reports distinctly', () => {
+  it('maps finance workspace vs dedicated bank route', () => {
     expect(navIdFromPathname('/finance')).toBe('finance')
-    expect(navIdFromPathname('/finance/reports')).toBe('reports')
+    expect(navIdFromPathname('/finance/reports')).toBe('finance')
+    expect(navIdFromPathname('/finance/bank')).toBe('bank')
   })
 })

@@ -35,19 +35,19 @@ describe('client nav features', () => {
     for (const required of REQUIRED_NAV_FEATURE_IDS) {
       expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toContain(required)
     }
-    expect(REQUIRED_NAV_FEATURE_IDS).toEqual(['dashboard', 'tickets', 'finance', 'reports'])
+    expect(REQUIRED_NAV_FEATURE_IDS).toEqual(['dashboard', 'tickets', 'finance', 'bank'])
     expect(isSetupPackageNavFeatures(getSetupPackageNavFeatures())).toBe(true)
     expect(describeClientNavFeaturesMode(getSetupPackageNavFeatures())).toBe('setup_package')
   })
 
-  it('filters sidebar items when enabled list is set (finance/reports always stay)', () => {
+  it('filters sidebar items when enabled list is set (finance + bank always stay)', () => {
     const items = resolveSidebarNavItems(null, ['dashboard', 'tickets', 'projects'])
     expect(items.map((i) => i.id)).toEqual([
       'dashboard',
       'tickets',
       'projects',
       'finance',
-      'reports',
+      'bank',
     ])
   })
 
@@ -66,7 +66,7 @@ describe('client nav features', () => {
       'site_tours',
       'summary',
       'finance',
-      'reports',
+      'bank',
       'qr',
       'whatsapp_templates',
       'pending_residents',
@@ -75,8 +75,9 @@ describe('client nav features', () => {
     expect(DEFAULT_SIDEBAR_NAV_ORDER).not.toContain('qr')
   })
 
-  it('treats finance/reports as always-on core nav', () => {
+  it('treats finance (and legacy bank/reports tabs) as always-on core nav', () => {
     expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'finance')).toBe(true)
     expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'reports')).toBe(true)
+    expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'bank')).toBe(true)
   })
 })

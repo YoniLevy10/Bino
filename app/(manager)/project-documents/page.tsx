@@ -3,21 +3,19 @@
 import { Suspense } from 'react'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
-import { AddonProjectPicker } from '@/app/components/addons/AddonProjectPicker'
-import { ProjectDocumentsPanel } from '@/app/components/projects/ProjectDocumentsPanel'
+import { DocumentsFolderGrid } from '@/app/components/projects/DocumentsFolderGrid'
 import { LoadingSpinner } from '@/app/components/ui'
 
 function ProjectDocumentsPageInner() {
   return (
     <AddonFeaturePageShell
       addonKey={PAID_ADDON_KEYS.project_documents}
-      title="מסמכים חשבונאיים"
-      mobileSubtitle="ארכיון קבצים לפי בניין"
-      desktopSubtitle="העלאה, הורדה וארכיון מסמכים לפי פרויקט"
+      title="מסמכים"
+      mobileSubtitle="כרטיס לכל בניין — בתוך הבניין תתי־תיקיות וקבצים"
+      desktopSubtitle="בחרו בניין כדי לנהל מסמכים, תתי־תיקיות וקבצים"
+      contentMaxWidth={1200}
     >
-      <AddonProjectPicker emptyHint="הוסיפו בניין בדף פרויקטים כדי לנהל מסמכים.">
-        {(project) => <ProjectDocumentsPanel projectId={project.id} />}
-      </AddonProjectPicker>
+      <DocumentsFolderGrid />
     </AddonFeaturePageShell>
   )
 }

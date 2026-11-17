@@ -31,26 +31,56 @@ export async function GET(req: Request) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)
   if (!auth.ok) return auth.response
 
-  const projectId = new URL(req.url).searchParams.get('project_id')?.trim()
-  if (!projectId) {
-    return NextResponse.json({ error: 'חסר project_id' }, { status: 400 })
+  const url = new URL(req.url)
+  const projectId = url.searchParams.get('project_id')?.trim() || null
+  const folderId = url.searchParams.get('folder_id')?.trim() || null
+
+  if (!projectId && !folderId) {
+    return NextResponse.json({ error: 'חסר project_id או folder_id' }, { status: 400 })
   }
 
   const admin = getSupabaseAdmin()
-  const { data: project } = await admin
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('client_id', auth.ctx.clientId)
-    .maybeSingle()
-  if (!project) return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
+  let resolvedProjectId = projectId
+  let resolvedFolderId = folderId
 
-  const { data: rows, error } = await admin
+  if (folderId) {
+    const { data: folder } = await admin
+      .from('document_folders')
+      .select('id, project_id')
+      .eq('id', folderId)
+      .eq('client_id', auth.ctx.clientId)
+      .maybeSingle()
+    if (!folder) return NextResponse.json({ error: 'תיקיה לא נמצאה' }, { status: 404 })
+    resolvedFolderId = (folder as { id: string }).id
+    const folderProjectId = (folder as { project_id: string | null }).project_id
+    if (projectId && folderProjectId && projectId !== folderProjectId) {
+      return NextResponse.json({ error: 'תיקיה לא שייכת לפרויקט' }, { status: 400 })
+    }
+    if (!resolvedProjectId) resolvedProjectId = folderProjectId
+  } else if (projectId) {
+    const { data: project } = await admin
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('client_id', auth.ctx.clientId)
+      .maybeSingle()
+    if (!project) return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
+  }
+
+  let query = admin
     .from('project_documents')
-    .select('id, file_name, mime_type, file_size, notes, created_at, storage_path')
+    .select('id, file_name, mime_type, file_size, notes, created_at, storage_path, folder_id, project_id')
     .eq('client_id', auth.ctx.clientId)
-    .eq('project_id', projectId)
     .order('created_at', { ascending: false })
+    .limit(500)
+
+  if (resolvedFolderId) {
+    query = query.eq('folder_id', resolvedFolderId)
+  } else if (resolvedProjectId) {
+    query = query.eq('project_id', resolvedProjectId)
+  }
+
+  const { data: rows, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -64,6 +94,8 @@ export async function GET(req: Request) {
         notes: string | null
         created_at: string
         storage_path: string
+        folder_id: string | null
+        project_id: string | null
       }
       const { data: signed } = await admin.storage
         .from(BUCKET)
@@ -75,6 +107,8 @@ export async function GET(req: Request) {
         file_size: r.file_size,
         notes: r.notes,
         created_at: r.created_at,
+        folder_id: r.folder_id,
+        project_id: r.project_id,
         download_url: signed?.signedUrl ?? null,
       }
     })
@@ -94,13 +128,43 @@ export async function POST(req: Request) {
   }
 
   const formData = await req.formData()
-  const projectId = String(formData.get('project_id') ?? '').trim()
+  let projectId = String(formData.get('project_id') ?? '').trim() || null
+  const folderId = String(formData.get('folder_id') ?? '').trim() || null
   const file = formData.get('file')
   const notes = String(formData.get('notes') ?? '').trim().slice(0, 500) || null
 
-  if (!projectId) return NextResponse.json({ error: 'חסר project_id' }, { status: 400 })
+  if (!projectId && !folderId) {
+    return NextResponse.json({ error: 'חסר project_id או folder_id' }, { status: 400 })
+  }
   if (!file || !(file instanceof Blob)) {
     return NextResponse.json({ error: 'חסר קובץ' }, { status: 400 })
+  }
+
+  let resolvedFolderId: string | null = folderId
+  if (folderId) {
+    const { data: folder } = await admin
+      .from('document_folders')
+      .select('id, project_id')
+      .eq('id', folderId)
+      .eq('client_id', auth.ctx.clientId)
+      .maybeSingle()
+    if (!folder) return NextResponse.json({ error: 'תיקיה לא נמצאה' }, { status: 404 })
+    resolvedFolderId = (folder as { id: string }).id
+    const folderProjectId = (folder as { project_id: string | null }).project_id
+    if (projectId && folderProjectId && projectId !== folderProjectId) {
+      return NextResponse.json({ error: 'תיקיה לא שייכת לפרויקט' }, { status: 400 })
+    }
+    if (!projectId) projectId = folderProjectId
+  }
+
+  if (projectId) {
+    const { data: project } = await admin
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('client_id', auth.ctx.clientId)
+      .maybeSingle()
+    if (!project) return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
   }
 
   const mime = file.type || 'application/octet-stream'
@@ -112,17 +176,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'סוג קובץ לא נתמך' }, { status: 400 })
   }
 
-  const { data: project } = await admin
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('client_id', auth.ctx.clientId)
-    .maybeSingle()
-  if (!project) return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
-
   const originalName = file instanceof File ? file.name : 'document'
   const fileName = safeFileName(originalName)
-  const storagePath = `${auth.ctx.clientId}/${projectId}/${Date.now()}-${fileName}`
+  const scope = projectId ?? (resolvedFolderId ? `folder-${resolvedFolderId}` : 'unscoped')
+  const storagePath = `${auth.ctx.clientId}/${scope}/${Date.now()}-${fileName}`
   const buf = Buffer.from(await file.arrayBuffer())
 
   const { error: upErr } = await admin.storage.from(BUCKET).upload(storagePath, buf, {
@@ -138,6 +195,7 @@ export async function POST(req: Request) {
     .insert({
       client_id: auth.ctx.clientId,
       project_id: projectId,
+      folder_id: resolvedFolderId,
       file_name: fileName,
       storage_path: storagePath,
       mime_type: mime,
@@ -145,7 +203,7 @@ export async function POST(req: Request) {
       notes,
       uploaded_by: auth.ctx.userId,
     })
-    .select('id, file_name, mime_type, file_size, notes, created_at')
+    .select('id, file_name, mime_type, file_size, notes, created_at, folder_id, project_id')
     .single()
 
   if (insErr) {

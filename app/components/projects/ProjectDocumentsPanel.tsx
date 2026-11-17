@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { Button, Card, theme } from '../ui'
+import { Button, theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 type DocRow = {
@@ -18,8 +18,13 @@ type DocRow = {
 }
 
 type Props = {
-  projectId: string
+  /** Building scope; optional when folder is independent. */
+  projectId?: string | null
+  folderId?: string | null
+  folderName?: string | null
 }
+
+const FILE_HOVER_BG = '#F3EFE9'
 
 function formatBytes(n: number | null): string {
   if (n == null) return '—'
@@ -28,7 +33,17 @@ function formatBytes(n: number | null): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function ProjectDocumentsPanel({ projectId }: Props) {
+function mimeLabel(mime: string | null, fileName: string): string {
+  if (mime?.includes('pdf')) return 'PDF'
+  if (mime?.startsWith('image/')) return 'תמונה'
+  if (mime?.includes('sheet') || /\.xlsx?$/i.test(fileName)) return 'Excel'
+  if (mime?.includes('word') || /\.docx?$/i.test(fileName)) return 'Word'
+  if (mime?.includes('zip') || /\.zip$/i.test(fileName)) return 'ZIP'
+  const ext = fileName.split('.').pop()
+  return ext ? ext.toUpperCase() : 'קובץ'
+}
+
+export function ProjectDocumentsPanel({ projectId = null, folderId = null, folderName = null }: Props) {
   const [docs, setDocs] = useState<DocRow[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -39,6 +54,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
   const [sendVia, setSendVia] = useState<'none' | 'sms' | 'whatsapp'>('whatsapp')
   const [signSending, setSignSending] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   useFocusTrap(modalRef, signDoc != null)
@@ -53,10 +69,12 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetchWithTimeout(
-        `/api/projects/documents?project_id=${encodeURIComponent(projectId)}`
-      )
-      const json = await res.json() as { documents?: DocRow[]; error?: string }
+      const params = new URLSearchParams()
+      if (folderId) params.set('folder_id', folderId)
+      else if (projectId) params.set('project_id', projectId)
+      else throw new Error('חסר מזהה תיקיה או פרויקט')
+      const res = await fetchWithTimeout(`/api/projects/documents?${params.toString()}`)
+      const json = (await res.json()) as { documents?: DocRow[]; error?: string }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       setDocs(json.documents ?? [])
     } catch (e) {
@@ -65,7 +83,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [projectId])
+  }, [folderId, projectId])
 
   useEffect(() => {
     void load()
@@ -75,13 +93,14 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
     setUploading(true)
     try {
       const fd = new FormData()
-      fd.append('project_id', projectId)
+      if (folderId) fd.append('folder_id', folderId)
+      if (projectId) fd.append('project_id', projectId)
       fd.append('file', file)
       const res = await fetchWithTimeout('/api/projects/documents', {
         method: 'POST',
         body: fd,
       })
-      const json = await res.json() as { error?: string }
+      const json = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('הקובץ הועלה')
       await load()
@@ -101,7 +120,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ document_id: doc.id }),
       })
-      const json = await res.json() as { error?: string }
+      const json = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('נמחק')
       setDocs((prev) => prev.filter((d) => d.id !== doc.id))
@@ -112,6 +131,10 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
 
   async function onSendForSign() {
     if (!signDoc) return
+    if (!projectId) {
+      toast.error('שליחה לחתימה זמינה לתיקיות המשויכות לבניין')
+      return
+    }
     if (!signUrl.trim()) {
       toast.error('נא להזין קישור לחתימה (DocuSign / Comsign)')
       return
@@ -131,7 +154,7 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
           send_via: sendVia,
         }),
       })
-      const json = await res.json() as { error?: string }
+      const json = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('בקשת חתימה נשלחה')
       setSignDoc(null)
@@ -145,67 +168,106 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
     }
   }
 
+  const sectionLabel = folderId ? 'קבצים' : 'מסמכים'
+  const hint = folderName
+    ? `${folderName} · עד 15MB — PDF, תמונות, Office, ZIP`
+    : 'עד 15MB — PDF, תמונות, Office, ZIP'
+
   return (
-    <Card
-      title="מסמכים"
-      subtitle="עד 15MB — PDF, תמונות, Office, ZIP"
-      actions={
-        <>
-          <input
-            ref={fileRef}
-            type="file"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) void onUpload(f)
-            }}
-          />
-          <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} loading={uploading}>
-            העלאת קובץ
-          </Button>
-        </>
-      }
-    >
+    <section style={styles.section}>
+      <div style={styles.sectionHead}>
+        <span style={styles.sectionLabel}>{sectionLabel}</span>
+        <div style={styles.sectionLine} />
+        <span style={styles.sectionCount}>{loading ? '…' : docs.length}</span>
+        <input
+          ref={fileRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void onUpload(f)
+          }}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          loading={uploading}
+          style={{ flexShrink: 0 }}
+        >
+          העלאת קובץ
+        </Button>
+      </div>
+      <p style={styles.hint}>{hint}</p>
+
       {loading ? (
         <p style={styles.muted}>טוען...</p>
       ) : docs.length === 0 ? (
-        <p style={styles.muted}>אין מסמכים בפרויקט — העלו קובץ ראשון.</p>
+        <p style={styles.muted}>
+          {folderId ? 'אין מסמכים בתיקיה — העלו קובץ ראשון.' : 'אין מסמכים בפרויקט — העלו קובץ ראשון.'}
+        </p>
       ) : (
-        <ul style={styles.list}>
-          {docs.map((doc) => (
-            <li key={doc.id} style={styles.item}>
-              <div style={styles.itemMain}>
-                <span style={styles.fileName}>{doc.file_name}</span>
-                <span style={styles.meta}>
-                  {formatBytes(doc.file_size)} ·{' '}
+        <div
+          style={{
+            ...styles.grid,
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))',
+          }}
+        >
+          {docs.map((doc) => {
+            const hovered = hoveredId === doc.id
+            return (
+              <div
+                key={doc.id}
+                onMouseEnter={() => setHoveredId(doc.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                style={{
+                  ...styles.card,
+                  background: hovered ? FILE_HOVER_BG : theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  transform: hovered ? 'translateY(-1px)' : 'none',
+                  width: isMobile ? '100%' : undefined,
+                }}
+              >
+                <span style={styles.cardName}>{doc.file_name}</span>
+                <span style={styles.cardMeta}>
+                  {mimeLabel(doc.mime_type, doc.file_name)} · {formatBytes(doc.file_size)}
+                </span>
+                <span style={styles.cardFooter}>
                   {new Date(doc.created_at).toLocaleDateString('he-IL')}
                 </span>
+                <div style={styles.cardActions}>
+                  {doc.download_url ? (
+                    <a
+                      href={doc.download_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.link}
+                    >
+                      הורדה
+                    </a>
+                  ) : null}
+                  {projectId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSignDoc(doc)
+                        setSignerName('')
+                        setSignerPhone('')
+                        setSignUrl('')
+                      }}
+                      style={styles.signBtn}
+                    >
+                      חתימה
+                    </button>
+                  ) : null}
+                  <button type="button" onClick={() => void onDelete(doc)} style={styles.deleteBtn}>
+                    מחק
+                  </button>
+                </div>
               </div>
-              <div style={styles.itemActions}>
-                {doc.download_url && (
-                  <a href={doc.download_url} target="_blank" rel="noopener noreferrer" style={styles.link}>
-                    הורדה
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSignDoc(doc)
-                    setSignerName('')
-                    setSignerPhone('')
-                    setSignUrl('')
-                  }}
-                  style={styles.signBtn}
-                >
-                  שליחה לחתימה
-                </button>
-                <button type="button" onClick={() => void onDelete(doc)} style={styles.deleteBtn}>
-                  מחק
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+            )
+          })}
+        </div>
       )}
 
       {signDoc && (
@@ -227,46 +289,60 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
             <h5 id="sign-doc-title" style={styles.modalTitle}>
               שליחה לחתימה — {signDoc.file_name}
             </h5>
-            <div className={isMobile ? 'app-modal-sheet-scroll' : undefined} style={isMobile ? styles.modalScroll : undefined}>
-            <label style={styles.modalLabel} htmlFor="sign-url">קישור חתימה (DocuSign / Comsign)</label>
-            <input
-              id="sign-url"
-              type="url"
-              value={signUrl}
-              onChange={(e) => setSignUrl(e.target.value)}
-              style={styles.modalInput}
-              dir="ltr"
-              placeholder="https://..."
-            />
-            <label style={styles.modalLabel} htmlFor="signer-name">שם החותם</label>
-            <input
-              id="signer-name"
-              value={signerName}
-              onChange={(e) => setSignerName(e.target.value)}
-              style={styles.modalInput}
-            />
-            <label style={styles.modalLabel} htmlFor="signer-phone">טלפון (SMS / WhatsApp)</label>
-            <input
-              id="signer-phone"
-              type="tel"
-              value={signerPhone}
-              onChange={(e) => setSignerPhone(e.target.value)}
-              style={styles.modalInput}
-              placeholder="05xxxxxxxx"
-            />
-            <label style={styles.modalLabel} htmlFor="send-via">שליחת הקישור</label>
-            <select
-              id="send-via"
-              value={sendVia}
-              onChange={(e) => setSendVia(e.target.value as typeof sendVia)}
-              style={styles.modalInput}
+            <div
+              className={isMobile ? 'app-modal-sheet-scroll' : undefined}
+              style={isMobile ? styles.modalScroll : undefined}
             >
-              <option value="whatsapp">WhatsApp</option>
-              <option value="sms">SMS</option>
-              <option value="none">שמירה בלבד (ללא שליחה)</option>
-            </select>
+              <label style={styles.modalLabel} htmlFor="sign-url">
+                קישור חתימה (DocuSign / Comsign)
+              </label>
+              <input
+                id="sign-url"
+                type="url"
+                value={signUrl}
+                onChange={(e) => setSignUrl(e.target.value)}
+                style={styles.modalInput}
+                dir="ltr"
+                placeholder="https://..."
+              />
+              <label style={styles.modalLabel} htmlFor="signer-name">
+                שם החותם
+              </label>
+              <input
+                id="signer-name"
+                value={signerName}
+                onChange={(e) => setSignerName(e.target.value)}
+                style={styles.modalInput}
+              />
+              <label style={styles.modalLabel} htmlFor="signer-phone">
+                טלפון (SMS / WhatsApp)
+              </label>
+              <input
+                id="signer-phone"
+                type="tel"
+                value={signerPhone}
+                onChange={(e) => setSignerPhone(e.target.value)}
+                style={styles.modalInput}
+                placeholder="05xxxxxxxx"
+              />
+              <label style={styles.modalLabel} htmlFor="send-via">
+                שליחת הקישור
+              </label>
+              <select
+                id="send-via"
+                value={sendVia}
+                onChange={(e) => setSendVia(e.target.value as typeof sendVia)}
+                style={styles.modalInput}
+              >
+                <option value="whatsapp">WhatsApp</option>
+                <option value="sms">SMS</option>
+                <option value="none">שמירה בלבד (ללא שליחה)</option>
+              </select>
             </div>
-            <div className={isMobile ? 'app-modal-sheet-footer' : undefined} style={styles.modalActions}>
+            <div
+              className={isMobile ? 'app-modal-sheet-footer' : undefined}
+              style={styles.modalActions}
+            >
               <Button variant="secondary" size="sm" onClick={() => setSignDoc(null)}>
                 ביטול
               </Button>
@@ -277,32 +353,94 @@ export function ProjectDocumentsPanel({ projectId }: Props) {
           </div>
         </div>
       )}
-    </Card>
+    </section>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  muted: { margin: 0, fontSize: 14, color: theme.colors.textMuted },
-  list: { listStyle: 'none', margin: 0, padding: 0 },
-  item: {
+  section: {
     display: 'flex',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  sectionHead: {
+    display: 'flex',
     alignItems: 'center',
     gap: 12,
-    padding: '10px 0',
-    borderBottom: `1px solid ${theme.colors.border}`,
   },
-  itemMain: { flex: 1, minWidth: 0 },
-  fileName: { display: 'block', fontWeight: 600, fontSize: 14, wordBreak: 'break-all' },
-  meta: { fontSize: 11, color: theme.colors.textMuted },
-  itemActions: { display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 },
-  link: { fontSize: 13, color: theme.colors.primary, textDecoration: 'none' },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+    whiteSpace: 'nowrap',
+  },
+  sectionLine: {
+    flex: 1,
+    height: 1,
+    background: theme.colors.border,
+  },
+  sectionCount: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
+    fontWeight: 500,
+  },
+  hint: {
+    margin: 0,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    lineHeight: 1.4,
+  },
+  muted: { margin: 0, fontSize: 14, color: theme.colors.textMuted },
+  grid: {
+    display: 'grid',
+    gap: 12,
+  },
+  card: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 4,
+    textAlign: 'right',
+    padding: '16px 16px 14px',
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    transition: `background ${theme.motion.fast}, border-color ${theme.motion.fast}, transform ${theme.motion.fast}`,
+    fontFamily: 'inherit',
+    boxShadow: theme.shadows.xs,
+  },
+  cardName: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
+    lineHeight: 1.3,
+    wordBreak: 'break-word',
+  },
+  cardMeta: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  cardFooter: {
+    marginTop: 4,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+  cardActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  link: { fontSize: 13, color: theme.colors.primary, textDecoration: 'none', fontWeight: 600 },
   signBtn: {
     background: 'none',
     border: 'none',
     color: theme.colors.primary,
     cursor: 'pointer',
     fontSize: 13,
+    fontWeight: 600,
+    padding: 0,
+    fontFamily: 'inherit',
   },
   deleteBtn: {
     background: 'none',
@@ -310,6 +448,9 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.error,
     cursor: 'pointer',
     fontSize: 13,
+    fontWeight: 600,
+    padding: 0,
+    fontFamily: 'inherit',
   },
   modalBackdrop: {
     position: 'fixed',
