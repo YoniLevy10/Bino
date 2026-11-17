@@ -14,8 +14,8 @@ Smoke runner: `npm run test:bamakor-smoke`
 
 ## 0) Start-of-task gate (read before coding)
 
-1. Re-read this rule + other always-apply rules (product differentiation, auth middleware, no Supabase preview branches).
-2. State in your plan which north-star / ops risk this change touches (or “none — docs/rules only”).
+1. Re-read this rule + other always-apply rules (product differentiation, auth middleware, no Supabase preview branches, **no paid actions**).
+2. State in your plan which north-star / ops risk this change touches (or “none — docs/rules only”). Never create/enable/renew/upgrade anything that can bill without owner written approval in this turn (see `.cursor/rules/no-paid-actions.mdc`).
 3. Prefer the smallest change that proves the outcome. Do **not** start broad audits, full-table scans, or multi-hour analysis loops when a targeted fix/check answers the question.
 
 ---
@@ -100,10 +100,11 @@ Auth/middleware/RLS changes additionally require the login smoke in `.cursor/rul
 - [ ] Runtime logs/errors reviewed for regressions when runtime could be affected
 - [ ] CI addressed; Bamakor smoke run for deployable changes
 - [ ] Preview URL (if any) is supplemental evidence only
+- [ ] No paid / billable actions taken without owner written approval in this turn (or N/A)
 - [ ] PR / summary states: smoke result + log check result
 
 ---
 
 ## Hebrew (owner intent)
 
-כל סוכן — לא משנה מה המשימה — חייב לעבור על רשימת הכללים הזו: לעשות profiling שלא שורף זמן; לבדוק לוגים פנימיים שלא נשבר הייצור; לא להריץ שאילתות לא רלוונטיות שמאיטות; ולא להסתפק ב־Preview — חובה לבדוק מול `https://bamakor.vercel.app` (סביבת בדיקה לסוכנים) בנוסף ל־CI.
+כל סוכן — לא משנה מה המשימה — חייב לעבור על רשימת הכללים הזו: לעשות profiling שלא שורף זמן; לבדוק לוגים פנימיים שלא נשבר הייצור; לא להריץ שאילתות לא רלוונטיות שמאיטות; ולא להסתפק ב־Preview — חובה לבדוק מול `https://bamakor.vercel.app` (סביבת בדיקה לסוכנים) בנוסף ל־CI. ובלי פעולות בתשלום בלי אישור כתוב מפורש של הבעלים באותו תור.
