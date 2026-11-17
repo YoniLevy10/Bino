@@ -2037,6 +2037,12 @@ body.wa-sheet-open [data-app-main] {
   gap: 6px;
 }
 
+.resident-approvals-tabs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
 .resident-decisions-layout {
   display: grid;
   gap: 14px;

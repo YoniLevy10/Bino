@@ -39,7 +39,11 @@ type Decision = {
   status: string
   majority_threshold: number
   required_signatures: number
+  document_id?: string | null
   signed_count: number
+  approve_count?: number
+  oppose_count?: number
+  abstain_count?: number
   majority_reached: boolean
   majority_pct: number
   created_at: string
@@ -65,6 +69,7 @@ export function BuildingDecisionsPanel({
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [required, setRequired] = useState('2')
+  const [documentId, setDocumentId] = useState('')
   const [signerName, setSignerName] = useState('')
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null)
   const [notifyingId, setNotifyingId] = useState<string | null>(null)
@@ -122,6 +127,7 @@ export function BuildingDecisionsPanel({
     const reqN = Math.max(1, Math.min(500, Number(required) || 1))
     setSaving(true)
     try {
+      const docId = documentId.trim() || null
       const res = await fetchWithTimeout('/api/building-governance/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,6 +138,7 @@ export function BuildingDecisionsPanel({
           required_signatures: reqN,
           majority_threshold: 0.5,
           status: 'open',
+          document_id: docId,
         }),
       })
       const json = (await res.json()) as { error?: string; decision?: { id: string } }
@@ -139,6 +146,7 @@ export function BuildingDecisionsPanel({
       toast.success('החלטה נוצרה')
       setTitle('')
       setBody('')
+      setDocumentId('')
       setActiveDecisionId(json.decision?.id ?? null)
       await load()
     } catch (err) {
@@ -369,6 +377,16 @@ export function BuildingDecisionsPanel({
             style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
           />
         </label>
+        <label style={styles.label}>
+          מזהה מסמך בניין (PDF, אופציונלי)
+          <input
+            value={documentId}
+            onChange={(ev) => setDocumentId(ev.target.value)}
+            placeholder="UUID ממסמכי הבניין"
+            style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
+            maxLength={36}
+          />
+        </label>
         <Button
           type="submit"
           variant="primary"
@@ -392,9 +410,14 @@ export function BuildingDecisionsPanel({
                 </span>
               </div>
               {d.body ? <p style={styles.bodyText}>{d.body}</p> : null}
+              {d.document_id ? (
+                <p style={styles.progress}>PDF מצורף: {d.document_id}</p>
+              ) : null}
               <p style={styles.progress}>
-                חתימות: {d.signed_count}/{d.required_signatures} · התקדמות לרוב:{' '}
-                {d.majority_pct}%
+                בעד: {d.approve_count ?? d.signed_count}/{d.required_signatures}
+                {typeof d.oppose_count === 'number' ? ` · נגד: ${d.oppose_count}` : ''}
+                {typeof d.abstain_count === 'number' ? ` · נמנע: ${d.abstain_count}` : ''}{' '}
+                · התקדמות לרוב: {d.majority_pct}%
                 {d.majority_reached ? ' · הושג רוב' : ''}
                 {' · '}
                 סף {Math.round(Number(d.majority_threshold) * 100)}%

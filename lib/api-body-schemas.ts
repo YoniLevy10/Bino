@@ -725,6 +725,8 @@ export const createBuildingDecisionBodySchema = z.object({
   majority_threshold: z.number().gt(0).lte(1).optional(),
   required_signatures: z.number().int().min(1).max(500).optional(),
   status: z.enum(['draft', 'open']).optional(),
+  /** Optional project_documents id (PDF) attached for resident viewing before sign. */
+  document_id: z.string().uuid().nullable().optional(),
   /** Create + notify signature links for committee members with phones (default true when open). */
   fanout_committee: z.boolean().optional(),
 })
@@ -796,6 +798,8 @@ export const residentSignBuildingDecisionBodySchema = z.object({
     .min(32)
     .max(900_000)
     .refine((v) => v.startsWith('data:image/'), { message: 'נדרש חתימה כ־data URL' }),
+  /** Default approve when omitted (backward compat with signature-only clients). */
+  vote_choice: z.enum(['approve', 'oppose', 'abstain']).optional(),
 })
 
 /** Hub — batch resident portal join invites. */
@@ -813,6 +817,8 @@ export const submitBuildingSignatureBodySchema = z.object({
     .max(900_000)
     .refine((v) => v.startsWith('data:image/'), { message: 'נדרש חתימה כ־data URL' }),
   signer_name: z.string().trim().min(1).max(200).optional(),
+  /** Default approve when omitted. */
+  vote_choice: z.enum(['approve', 'oppose', 'abstain']).optional(),
 })
 
 /** Superadmin — create UTILITY WhatsApp template via Composio → Meta (service only). */
