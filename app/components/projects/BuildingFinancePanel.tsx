@@ -71,6 +71,7 @@ export function BuildingFinancePanel({
   const yearKey = currentYearKey()
   const [viewportMobile, setViewportMobile] = useState(false)
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
+  const [yearSpend, setYearSpend] = useState(0)
   const [budget, setBudget] = useState<BudgetRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
@@ -100,9 +101,12 @@ export function BuildingFinancePanel({
     setLocked(false)
     setLockMessage(null)
     try {
-      const [expRes, budRes] = await Promise.all([
+      const [expRes, sumRes, budRes] = await Promise.all([
         fetchWithTimeout(
           `/api/building-finance/expenses?project_id=${encodeURIComponent(projectId)}&limit=50`
+        ),
+        fetchWithTimeout(
+          `/api/building-finance/expenses/summary?project_id=${encodeURIComponent(projectId)}&period_key=${encodeURIComponent(yearKey)}&mode=year_or_period`
         ),
         fetchWithTimeout(
           `/api/building-finance/budgets?project_id=${encodeURIComponent(projectId)}&period_key=${encodeURIComponent(yearKey)}`
@@ -118,6 +122,7 @@ export function BuildingFinancePanel({
         setLocked(true)
         setLockMessage(expJson.error || 'הנהלת חשבונות בניין כבויה כרגע בפלטפורמה')
         setExpenses([])
+        setYearSpend(0)
         setBudget(null)
         return
       }
@@ -125,6 +130,14 @@ export function BuildingFinancePanel({
         throw new Error(errorMessageFromResponseJson(expJson, `שגיאה ${expRes.status}`))
       }
       setExpenses(expJson.expenses ?? [])
+
+      if (sumRes.ok) {
+        const sumJson = (await sumRes.json()) as { spent?: number }
+        setYearSpend(Number(sumJson.spent) || 0)
+      } else {
+        // Fallback only if summary fails — list is capped; prefer 0 over silent undercount lie.
+        setYearSpend(0)
+      }
 
       if (budRes.ok) {
         const budJson = (await budRes.json()) as { budgets?: BudgetRow[] }
@@ -137,6 +150,7 @@ export function BuildingFinancePanel({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינת כספים נכשלה')
       setExpenses([])
+      setYearSpend(0)
       setBudget(null)
     } finally {
       setLoading(false)
@@ -146,12 +160,6 @@ export function BuildingFinancePanel({
   useEffect(() => {
     void load()
   }, [load])
-
-  const yearSpend = useMemo(() => {
-    return expenses
-      .filter((e) => e.expense_date.startsWith(yearKey) || e.budget_period_key === yearKey)
-      .reduce((sum, e) => sum + Number(e.amount || 0), 0)
-  }, [expenses, yearKey])
 
   const utilization = useMemo(() => {
     const planned = budget?.amount_planned ?? 0

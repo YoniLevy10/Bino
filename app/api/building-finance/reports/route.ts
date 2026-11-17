@@ -11,13 +11,14 @@ import {
   type FinancePeriodGranularity,
 } from '@/lib/building-finance/period'
 import { aggregateBuildingReport } from '@/lib/building-finance/report-aggregate'
+import { fetchBuildingExpenseSum } from '@/lib/building-finance/expense-sums'
 import { computeBudgetUtilization } from '@/lib/building-finance/budget-math'
 import { roundMoney } from '@/lib/unit-ledger'
 import { getLogger } from '@/lib/logging'
 
 export const dynamic = 'force-dynamic'
 
-/** Hard cap — index on (client_id, project_id, expense_date); never open-ended. */
+/** Hard cap for P&L line preview only — KPI totals use DB SUM (no row cap). */
 const EXPENSE_ROW_CAP = 500
 const GROW_CHARGE_CAP = 400
 
@@ -86,7 +87,8 @@ export async function GET(req: Request) {
 
   const [
     expensesRes,
-    prevExpensesRes,
+    periodSumRes,
+    prevSumRes,
     exactBudgetRes,
     annualBudgetRes,
     categoriesRes,
@@ -103,17 +105,37 @@ export async function GET(req: Request) {
       .lte('expense_date', period.end_date)
       .order('expense_date', { ascending: false })
       .limit(EXPENSE_ROW_CAP),
+    fetchBuildingExpenseSum(admin, {
+      clientId: auth.ctx.clientId,
+      projectId,
+      mode: 'date_range',
+      startDate: period.start_date,
+      endDate: period.end_date,
+    }).then(
+      (sum) => ({ sum, error: null as Error | null }),
+      (err: unknown) => ({
+        sum: null,
+        error: err instanceof Error ? err : new Error(String(err)),
+      })
+    ),
     previous
-      ? admin
-          .from('building_expenses')
-          .select('amount')
-          .eq('client_id', auth.ctx.clientId)
-          .eq('project_id', projectId)
-          .is('voided_at', null)
-          .gte('expense_date', previous.start_date)
-          .lte('expense_date', previous.end_date)
-          .limit(EXPENSE_ROW_CAP)
-      : Promise.resolve({ data: [] as { amount: number }[], error: null }),
+      ? fetchBuildingExpenseSum(admin, {
+          clientId: auth.ctx.clientId,
+          projectId,
+          mode: 'date_range',
+          startDate: previous.start_date,
+          endDate: previous.end_date,
+        }).then(
+          (sum) => ({ sum, error: null as Error | null }),
+          (err: unknown) => ({
+            sum: null,
+            error: err instanceof Error ? err : new Error(String(err)),
+          })
+        )
+      : Promise.resolve({
+          sum: { spent: 0, expense_count: 0 },
+          error: null as Error | null,
+        }),
     admin
       .from('building_budgets')
       .select('amount_planned, period_key')
@@ -159,9 +181,27 @@ export async function GET(req: Request) {
     lineLimit: 100,
   })
 
+  let totalsIncomplete = false
+  let spent = agg.spent
+  if (periodSumRes.error || !periodSumRes.sum) {
+    totalsIncomplete = true
+    getLogger().warn('BUILDING_FINANCE', 'reports period sum failed; using preview spent', {
+      clientId: auth.ctx.clientId,
+      err: periodSumRes.error?.message,
+    })
+  } else {
+    spent = periodSumRes.sum.spent
+  }
+
   let previousSpent = 0
-  for (const row of prevExpensesRes.data ?? []) {
-    previousSpent = roundMoney(previousSpent + Number(row.amount || 0))
+  if (prevSumRes.error || !prevSumRes.sum) {
+    totalsIncomplete = true
+    getLogger().warn('BUILDING_FINANCE', 'reports previous period sum failed', {
+      clientId: auth.ctx.clientId,
+      err: prevSumRes.error?.message,
+    })
+  } else {
+    previousSpent = prevSumRes.sum.spent
   }
 
   const { planned, planned_source } = resolvePlannedForPeriod({
@@ -179,13 +219,15 @@ export async function GET(req: Request) {
   const utilization = computeBudgetUtilization({
     period_key: period.period_key,
     planned,
-    spent: agg.spent,
+    spent,
     elapsedFraction: period.elapsed_fraction,
   })
 
-  const spendDelta = roundMoney(agg.spent - previousSpent)
+  const spendDelta = roundMoney(spent - previousSpent)
   const spendDeltaPct =
     previousSpent > 0 ? roundMoney((spendDelta / previousSpent) * 100) : null
+
+  const linesTruncated = agg.truncated || expenses.length >= EXPENSE_ROW_CAP
 
   /** Optional Grow/collections read-only card — never writes; skip quietly if locked. */
   let grow: {
@@ -231,7 +273,7 @@ export async function GET(req: Request) {
           collected,
           outstanding,
           billed,
-          net_vs_expenses: roundMoney(collected - agg.spent),
+          net_vs_expenses: roundMoney(collected - spent),
         }
       }
     } else {
@@ -276,13 +318,17 @@ export async function GET(req: Request) {
       by_vendor: agg.by_vendor,
     },
     pnl: {
-      expenses_total: agg.spent,
+      expenses_total: spent,
       income_grow_collected: grow?.available ? grow.collected : null,
       net: grow?.available ? grow.net_vs_expenses : null,
       lines: agg.lines,
-      truncated: agg.truncated || expenses.length >= EXPENSE_ROW_CAP,
+      /** @deprecated use lines_truncated — kept for older clients */
+      truncated: linesTruncated,
+      lines_truncated: linesTruncated,
+      totals_incomplete: totalsIncomplete,
       row_cap: EXPENSE_ROW_CAP,
       row_count: expenses.length,
+      expense_count: periodSumRes.sum?.expense_count ?? expenses.length,
     },
     grow,
   })
