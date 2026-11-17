@@ -5,29 +5,75 @@ import {
 } from '@/lib/building-finance/expense-sums'
 
 describe('parseExpenseSumPayload', () => {
-  it('parses RPC row shape', () => {
-    expect(parseExpenseSumPayload([{ spent: '1500.5', expense_count: '12' }])).toEqual({
+  it('parses RPC row shape with paid_spend', () => {
+    expect(
+      parseExpenseSumPayload([
+        {
+          spent: '1500.5',
+          paid_spend: '900.25',
+          expense_count: '12',
+          paid_expense_count: '4',
+        },
+      ])
+    ).toEqual({
       spent: 1500.5,
+      recorded_spend: 1500.5,
+      paid_spend: 900.25,
       expense_count: 12,
+      paid_expense_count: 4,
     })
   })
 
   it('parses aggregate sum/count aliases', () => {
     expect(parseExpenseSumPayload({ sum: 200, count: 3 })).toEqual({
       spent: 200,
+      recorded_spend: 200,
+      paid_spend: 0,
       expense_count: 3,
+      paid_expense_count: 0,
     })
   })
 
   it('returns zeros for empty/null payloads', () => {
-    expect(parseExpenseSumPayload(null)).toEqual({ spent: 0, expense_count: 0 })
-    expect(parseExpenseSumPayload([])).toEqual({ spent: 0, expense_count: 0 })
+    expect(parseExpenseSumPayload(null)).toEqual({
+      spent: 0,
+      recorded_spend: 0,
+      paid_spend: 0,
+      expense_count: 0,
+      paid_expense_count: 0,
+    })
+    expect(parseExpenseSumPayload([])).toEqual({
+      spent: 0,
+      recorded_spend: 0,
+      paid_spend: 0,
+      expense_count: 0,
+      paid_expense_count: 0,
+    })
   })
 
   it('clamps negative and non-finite values', () => {
-    expect(parseExpenseSumPayload({ spent: -10, expense_count: Number.NaN })).toEqual({
+    expect(
+      parseExpenseSumPayload({
+        spent: -10,
+        paid_spend: Number.NaN,
+        expense_count: Number.NaN,
+      })
+    ).toEqual({
       spent: 0,
+      recorded_spend: 0,
+      paid_spend: 0,
       expense_count: 0,
+      paid_expense_count: 0,
+    })
+  })
+
+  it('prefers recorded_spend alias when present', () => {
+    expect(
+      parseExpenseSumPayload({ recorded_spend: 50, spent: 99, paid_spend: 10 })
+    ).toMatchObject({
+      recorded_spend: 50,
+      spent: 50,
+      paid_spend: 10,
     })
   })
 })

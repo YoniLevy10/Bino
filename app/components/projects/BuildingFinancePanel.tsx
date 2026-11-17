@@ -72,6 +72,7 @@ export function BuildingFinancePanel({
   const [viewportMobile, setViewportMobile] = useState(false)
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [yearSpend, setYearSpend] = useState(0)
+  const [yearPaidSpend, setYearPaidSpend] = useState(0)
   const [budget, setBudget] = useState<BudgetRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
@@ -123,6 +124,7 @@ export function BuildingFinancePanel({
         setLockMessage(expJson.error || 'הנהלת חשבונות בניין כבויה כרגע בפלטפורמה')
         setExpenses([])
         setYearSpend(0)
+        setYearPaidSpend(0)
         setBudget(null)
         return
       }
@@ -132,11 +134,17 @@ export function BuildingFinancePanel({
       setExpenses(expJson.expenses ?? [])
 
       if (sumRes.ok) {
-        const sumJson = (await sumRes.json()) as { spent?: number }
-        setYearSpend(Number(sumJson.spent) || 0)
+        const sumJson = (await sumRes.json()) as {
+          spent?: number
+          recorded_spend?: number
+          paid_spend?: number
+        }
+        setYearSpend(Number(sumJson.recorded_spend ?? sumJson.spent) || 0)
+        setYearPaidSpend(Number(sumJson.paid_spend) || 0)
       } else {
         // Fallback only if summary fails — list is capped; prefer 0 over silent undercount lie.
         setYearSpend(0)
+        setYearPaidSpend(0)
       }
 
       if (budRes.ok) {
@@ -151,6 +159,7 @@ export function BuildingFinancePanel({
       toast.error(e instanceof Error ? e.message : 'טעינת כספים נכשלה')
       setExpenses([])
       setYearSpend(0)
+      setYearPaidSpend(0)
       setBudget(null)
     } finally {
       setLoading(false)
@@ -284,9 +293,15 @@ export function BuildingFinancePanel({
 
       <div style={styles.kpiRow}>
         <div style={styles.kpi}>
-          <span style={styles.kpiLabel}>הוצאות {yearKey}</span>
+          <span style={styles.kpiLabel}>הוצאות רשומות {yearKey}</span>
           <span style={{ ...styles.kpiValue, color: theme.colors.kpiNegative }}>
             {formatIls(utilization.spent)}
+          </span>
+        </div>
+        <div style={styles.kpi}>
+          <span style={styles.kpiLabel}>שולם בפועל {yearKey}</span>
+          <span style={{ ...styles.kpiValue, color: theme.colors.kpiNegative }}>
+            {formatIls(yearPaidSpend)}
           </span>
         </div>
         <div style={styles.kpi}>
@@ -306,13 +321,14 @@ export function BuildingFinancePanel({
           </span>
         </div>
         <div style={styles.kpi}>
-          <span style={styles.kpiLabel}>ניצול</span>
+          <span style={styles.kpiLabel}>ניצול (רשום)</span>
           <span style={styles.kpiValue}>
             {utilization.utilization_pct == null ? '—' : `${utilization.utilization_pct}%`}
             {utilization.over_pace ? (
               <span style={styles.paceWarn}> · מעל קצב</span>
             ) : null}
           </span>
+          <span style={styles.kpiHint}>לפי הוצאות רשומות — לא רק שולם</span>
         </div>
       </div>
 
@@ -538,6 +554,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textPrimary,
+  },
+  kpiHint: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textMuted,
   },
   paceWarn: {
     color: theme.colors.kpiNegative,
