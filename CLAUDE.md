@@ -51,9 +51,11 @@ Canonical Hebrew + always-apply Cursor rule: `.cursor/rules/bino-product-differe
 
 ---
 
-## Payments — Grow only
+## Payments — Grow (collections) + Financy (bank / books)
 
-Collections / VaadPay use **Grow** only. Morning (Green Invoice) app code, webhooks, and settings writes were removed. Legacy DB columns (`greeninvoice_*` on `clients` / `collection_charges`) may remain for old rows — **read fallback** of `greeninvoice_payment_url` is OK; do **not** write `greeninvoice_*` for new charges. Prefer `grow_payment_url`.
+Collections / VaadPay still use **Grow** for resident payment links (legacy). Morning (Green Invoice) direct app code/webhooks were removed — connect Morning/iCount via **Financy** integrations instead (`docs/planning/BINO_FINANCY_CAPABILITY_MAP.md`). Legacy DB columns (`greeninvoice_*`) may remain for old rows — **read fallback** of `greeninvoice_payment_url` is OK; do **not** write `greeninvoice_*` for new charges. Prefer `grow_payment_url` for Grow charges.
+
+Bank OS: Financy REST gateway in `lib/bank/*` — never call Financy from the browser; store `financy_*` credentials via `/api/settings/update` + admin.
 
 ---
 

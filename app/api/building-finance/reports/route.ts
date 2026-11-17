@@ -349,6 +349,61 @@ export async function GET(req: Request) {
   const debts = grow?.available ? grow.outstanding : 0
   const cashflow = grow?.available ? roundMoney(income - recordedSpend) : null
 
+  /** Bound bank AIS card for the same period (Financy sync). */
+  let bank: {
+    available: boolean
+    credits: number
+    debits: number
+    net: number
+    transfer_succeeded: number
+    tx_count: number
+  } | null = null
+  try {
+    const [txRes, trRes] = await Promise.all([
+      admin
+        .from('bank_transactions')
+        .select('amount')
+        .eq('client_id', auth.ctx.clientId)
+        .eq('project_id', projectId)
+        .gte('booked_at', period.start_date)
+        .lte('booked_at', period.end_date)
+        .limit(500),
+      admin
+        .from('bank_transfers')
+        .select('amount, status')
+        .eq('client_id', auth.ctx.clientId)
+        .eq('project_id', projectId)
+        .eq('status', 'succeeded')
+        .gte('created_at', `${period.start_date}T00:00:00.000Z`)
+        .lte('created_at', `${period.end_date}T23:59:59.999Z`)
+        .limit(200),
+    ])
+    if (!txRes.error) {
+      let credits = 0
+      let debits = 0
+      for (const row of txRes.data ?? []) {
+        const n = Number(row.amount) || 0
+        if (n >= 0) credits = roundMoney(credits + n)
+        else debits = roundMoney(debits + Math.abs(n))
+      }
+      const transferSucceeded = !trRes.error
+        ? roundMoney(
+            (trRes.data ?? []).reduce((s, r) => s + (Number(r.amount) || 0), 0)
+          )
+        : 0
+      bank = {
+        available: true,
+        credits,
+        debits,
+        net: roundMoney(credits - debits),
+        transfer_succeeded: transferSucceeded,
+        tx_count: (txRes.data ?? []).length,
+      }
+    }
+  } catch {
+    bank = null
+  }
+
   return NextResponse.json({
     project: { id: project.id, name: project.name },
     period: {
@@ -389,11 +444,15 @@ export async function GET(req: Request) {
       by_payment_status: agg.by_payment_status,
       by_vendor: agg.by_vendor,
     },
+    bank,
     pnl: {
       expenses_total: recordedSpend,
       recorded_spend: recordedSpend,
       paid_spend: paidSpend,
       income_grow_collected: grow?.available ? grow.collected : null,
+      income_bank_credits: bank?.available ? bank.credits : null,
+      bank_debits: bank?.available ? bank.debits : null,
+      bank_net: bank?.available ? bank.net : null,
       net: grow?.available ? grow.net_vs_expenses : null,
       lines: agg.lines,
       /** @deprecated use lines_truncated — kept for older clients */

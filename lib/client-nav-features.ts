@@ -16,7 +16,7 @@ export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
   'tickets',
   'finance',
-  'reports',
+  'bank',
 ]
 
 /** Paid add-ons — not in sidebar; not in setup package (~10k NIS). */
@@ -36,7 +36,7 @@ export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'site_tours',
   'summary',
   'finance',
-  'reports',
+  'bank',
   'qr',
   'whatsapp_templates',
   'pending_residents',
@@ -101,7 +101,10 @@ export function isNavFeatureEnabled(
   featureId: SidebarNavItemId
 ): boolean {
   // Core nav — always available (same class as dashboard / tickets).
-  if (featureId === 'finance' || featureId === 'reports') return true
+  if (featureId === 'finance' || featureId === 'bank' || featureId === 'reports') {
+    // bank/reports are workspace tabs under finance — always allowed with finance.
+    return true
+  }
   if (!enabledFeatures || enabledFeatures.length === 0) return true
   return enabledFeatures.includes(featureId)
 }
@@ -155,8 +158,8 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
 
 export function navItemIdForPathname(pathname: string): SidebarNavItemId | null {
   if (pathname in PATH_TO_NAV_ID) return PATH_TO_NAV_ID[pathname]
-  if (pathname === '/finance/reports' || pathname.startsWith('/finance/reports/')) return 'reports'
-  if (pathname.startsWith('/finance/')) return 'finance'
+  if (pathname === '/finance/bank' || pathname.startsWith('/finance/bank/')) return 'bank'
+  if (pathname === '/finance' || pathname.startsWith('/finance/')) return 'finance'
   if (pathname.startsWith('/settings/whatsapp-templates')) return 'whatsapp_templates'
   return null
 }

@@ -34,6 +34,8 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
 
 describe('whatsapp-send transient retry + meta capture', () => {
   beforeEach(() => {
+    // Unit tests exercise live Meta fetch path — not staging outbound mock.
+    vi.stubEnv('BINO_OUTBOUND_MODE', 'live')
     vi.mocked(fetchWithTimeout).mockReset()
     vi.mocked(insertWhatsAppSendFailure).mockClear()
   })

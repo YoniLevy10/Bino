@@ -33,6 +33,7 @@ import {
   growProjectStatusView,
 } from '@/lib/grow-project-status'
 import { loadGrowOnboardDraft, saveGrowOnboardDraft } from '@/lib/grow-onboard-draft'
+import { FinancySettingsPanel } from '@/app/components/settings/FinancySettingsPanel'
 
 type ClientRow = SettingsReadRow
 
@@ -40,6 +41,7 @@ const TABS = [
   { id: 'general', label: 'כללי' },
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
+  { id: 'financy', label: 'Financy / בנק' },
   { id: 'grow', label: 'Grow' },
   { id: 'ios', label: 'iOS' },
   { id: 'team', label: 'משתמשי משרד' },
@@ -1315,6 +1317,10 @@ function SettingsPageInner() {
                   </div>
                 </div>
               </Card>
+            )}
+
+            {activeTab === 'financy' && (
+              <FinancySettingsPanel styles={styles} />
             )}
 
             {activeTab === 'grow' && (

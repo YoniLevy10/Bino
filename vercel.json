@@ -15,6 +15,7 @@
     { "path": "/api/cron/weekly-ops-digest", "schedule": "0 5 * * 5" },
     { "path": "/api/cron/preventive-maintenance", "schedule": "0 7 * * 0" },
     { "path": "/api/cron/collections-bulk-send-resume", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron/building-budget-alert", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/building-budget-alert", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/bank-sync", "schedule": "15 4 * * *" }
   ]
 }
