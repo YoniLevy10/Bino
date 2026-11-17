@@ -38,6 +38,14 @@ export function isGovernanceDemoSafePhone(phone: string | null | undefined): boo
 export function isGovernanceOutboundPhoneAllowed(phone: string | null | undefined): boolean {
   if (!isBuildingGovernanceAutoNotifyEnabled()) return false
   if (!phone?.trim()) return false
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().toLowerCase()
+  const outboundMode = (process.env.BINO_OUTBOUND_MODE || '').trim().toLowerCase()
+  const isStagingHost =
+    appUrl.includes('staging.bino.casa') || appUrl.includes('://staging.')
+  // Staging / mock: never treat as production outbound, even if VERCEL_ENV is odd.
+  if (isStagingHost || outboundMode === 'mock' || outboundMode === 'sandbox') {
+    return isGovernanceDemoSafePhone(phone)
+  }
   const vercelEnv = (process.env.VERCEL_ENV || '').trim().toLowerCase()
   const isProdRuntime =
     vercelEnv === 'production' ||

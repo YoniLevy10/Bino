@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { isOutboundLiveAllowed, outboundMockResult } from '@/lib/outbound-mode'
 
 export async function sendResendEmail(opts: {
   to: string
@@ -6,6 +7,11 @@ export async function sendResendEmail(opts: {
   body: string
   from?: string
 }): Promise<{ ok: true; id?: string } | { ok: false; error: string }> {
+  if (!isOutboundLiveAllowed()) {
+    outboundMockResult('email', { to: opts.to, subject: opts.subject })
+    return { ok: true, id: 'mock-outbound' }
+  }
+
   const apiKey = (process.env.RESEND_API_KEY || '').trim()
   if (!apiKey) {
     return { ok: false, error: 'RESEND_API_KEY לא מוגדר' }

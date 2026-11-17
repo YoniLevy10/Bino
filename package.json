@@ -25,7 +25,10 @@
     "demo:opsbrain-user": "npx tsx scripts/ensure-opsbrain-demo-user.ts",
     "load:isolated": "node scripts/load/run.mjs",
     "load:isolated:guard-test": "vitest run scripts/load/guard.test.mjs",
-    "test:bamakor-smoke": "node scripts/agent-bamakor-smoke.mjs"
+    "test:bamakor-smoke": "node scripts/agent-bamakor-smoke.mjs",
+    "test:staging-smoke": "node scripts/agent-staging-smoke.mjs",
+    "seed:staging": "node scripts/seed-staging-demo.mjs",
+    "db:staging:start": "npx supabase start"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.78.0",

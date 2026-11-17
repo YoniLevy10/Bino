@@ -45,6 +45,19 @@ export type GrowPlatformConfig = {
 }
 
 export function readGrowPlatformConfig(): GrowPlatformConfig | null {
+  // Staging mock mode: refuse Grow entirely (no charges). Sandbox keys OK when mode=sandbox.
+  try {
+    // Lazy require-style import avoided; inline env check keeps this module free of cycles.
+    const mode = (process.env.BINO_OUTBOUND_MODE || '').trim().toLowerCase()
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim().toLowerCase()
+    const stagingHost = appUrl.includes('staging.bino.casa') || appUrl.includes('://staging.')
+    if (mode === 'mock' || (stagingHost && mode !== 'sandbox' && mode !== 'live')) {
+      return null
+    }
+  } catch {
+    // ignore
+  }
+
   const apiKey = (process.env.GROW_API_KEY || '').trim()
   // Prefer dedicated header secret; fall back only if Grow reuses the body key.
   const xApiKey = (process.env.GROW_X_API_KEY || process.env.GROW_API_KEY || '').trim()
@@ -52,8 +65,13 @@ export function readGrowPlatformConfig(): GrowPlatformConfig | null {
   const walletPageCode = (process.env.GROW_WALLET_PAGE_CODE || pageCode).trim()
   const webhookSecret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
   if (!apiKey || !xApiKey || !pageCode || !webhookSecret) return null
+  const env = parseGrowEnv(process.env.GROW_ENV)
+  // Staging / non-live must never select Grow production endpoints.
+  const forcedSandbox =
+    (process.env.BINO_OUTBOUND_MODE || '').trim().toLowerCase() === 'sandbox' ||
+    (process.env.NEXT_PUBLIC_APP_URL || '').toLowerCase().includes('staging.bino.casa')
   return {
-    env: parseGrowEnv(process.env.GROW_ENV),
+    env: forcedSandbox ? 'sandbox' : env,
     apiKey,
     xApiKey,
     pageCode,
