@@ -14,13 +14,15 @@ import { assertProjectForClient } from '@/lib/building-governance/project-guard'
 import {
   buildingSignPublicPath,
   computeMajorityProgress,
+  countVoteChoices,
 } from '@/lib/building-governance/roles'
+import { assertDocumentForProject } from '@/lib/building-governance/decision-document'
 import { getLogger } from '@/lib/logging'
 
 export const dynamic = 'force-dynamic'
 
 const DECISION_SELECT =
-  'id, project_id, title, body, status, majority_threshold, required_signatures, created_at, closed_at'
+  'id, project_id, title, body, status, majority_threshold, required_signatures, document_id, created_at, closed_at'
 
 type DecisionRow = {
   id: string
@@ -30,6 +32,7 @@ type DecisionRow = {
   status: string
   majority_threshold: number
   required_signatures: number
+  document_id: string | null
   created_at: string
   closed_at: string | null
 }
@@ -44,6 +47,7 @@ type SigRow = {
   resident_id: string | null
   signed_at: string | null
   created_at: string
+  vote_choice: string | null
 }
 
 type RecipientRow = {
@@ -99,7 +103,7 @@ export async function GET(req: Request) {
     const { data: sigData, error: sigErr } = await admin
       .from('building_signature_requests')
       .select(
-        'id, decision_id, token, signer_name, signer_phone, resident_id, status, signed_at, created_at'
+        'id, decision_id, token, signer_name, signer_phone, resident_id, status, signed_at, created_at, vote_choice'
       )
       .eq('client_id', auth.ctx.clientId)
       .in('decision_id', ids)
@@ -183,16 +187,19 @@ export async function GET(req: Request) {
   const enriched = rows.map((d) => {
     const related = sigs.filter((s) => s.decision_id === d.id)
     const relatedRecipients = recipients.filter((r) => r.decision_id === d.id)
-    const signedCount = related.filter((s) => s.status === 'signed').length
+    const tallies = countVoteChoices(related)
     const progress = computeMajorityProgress({
-      signedCount,
+      approveCount: tallies.approve,
       requiredSignatures: d.required_signatures,
       majorityThreshold: Number(d.majority_threshold),
     })
     return {
       ...d,
       majority_threshold: Number(d.majority_threshold),
-      signed_count: signedCount,
+      signed_count: tallies.signed,
+      approve_count: tallies.approve,
+      oppose_count: tallies.oppose,
+      abstain_count: tallies.abstain,
       majority_reached: progress.reached,
       majority_pct: progress.pct,
       signature_requests: related.map((s) => ({
@@ -201,6 +208,7 @@ export async function GET(req: Request) {
         signer_phone: s.signer_phone,
         resident_id: s.resident_id,
         status: s.status,
+        vote_choice: s.vote_choice,
         signed_at: s.signed_at,
         created_at: s.created_at,
         // Relative path — client prefixes origin (localhost OK on private server).
@@ -264,6 +272,18 @@ export async function POST(req: Request) {
   const gate = await assertProjectForClient(admin, body.project_id, auth.ctx.clientId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
+  const documentId: string | null = body.document_id ?? null
+  if (documentId) {
+    const docGate = await assertDocumentForProject(admin, {
+      documentId,
+      clientId: auth.ctx.clientId,
+      projectId: body.project_id,
+    })
+    if (!docGate.ok) {
+      return NextResponse.json({ error: docGate.error }, { status: docGate.status })
+    }
+  }
+
   const now = new Date().toISOString()
   const { data, error } = await admin
     .from('building_decisions')
@@ -275,6 +295,7 @@ export async function POST(req: Request) {
       status: body.status ?? 'open',
       majority_threshold: body.majority_threshold ?? 0.5,
       required_signatures: body.required_signatures ?? 1,
+      document_id: documentId,
       created_by: auth.ctx.userId,
       created_at: now,
       updated_at: now,

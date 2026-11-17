@@ -77,6 +77,7 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const now = new Date().toISOString()
+  const voteChoice = parsed.data.vote_choice ?? 'approve'
   const signerName =
     (membership.resident_name || '').trim() ||
     (membership.apartment_number ? `דירה ${membership.apartment_number}` : 'דייר/ת')
@@ -89,6 +90,7 @@ export async function POST(req: Request, ctx: Ctx) {
       .update({
         status: 'signed',
         signature_data_url: parsed.data.signature_data_url,
+        vote_choice: voteChoice,
         signed_at: now,
         signer_name: signerName,
         unit_id: membership.unit_id,
@@ -121,6 +123,7 @@ export async function POST(req: Request, ctx: Ctx) {
         unit_id: membership.unit_id,
         status: 'signed',
         signature_data_url: parsed.data.signature_data_url,
+        vote_choice: voteChoice,
         signed_at: now,
         expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       })
@@ -152,7 +155,9 @@ export async function POST(req: Request, ctx: Ctx) {
   return NextResponse.json({
     ok: true,
     signature_request_id: requestId,
+    vote_choice: voteChoice,
     decision_passed: majority.passed,
     signed_count: majority.signedCount,
+    approve_count: majority.approveCount,
   })
 }

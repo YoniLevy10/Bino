@@ -33,7 +33,7 @@ const NAV = [
   },
   {
     href: '/resident/decisions',
-    label: 'החלטות',
+    label: 'אישורים',
     icon: 'info' as const,
     match: (p: string) => p.startsWith('/resident/decisions'),
   },

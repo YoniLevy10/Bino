@@ -135,11 +135,13 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const now = new Date().toISOString()
+  const voteChoice = parsed.data.vote_choice ?? 'approve'
   const { error: upErr } = await admin
     .from('building_signature_requests')
     .update({
       status: 'signed',
       signature_data_url: parsed.data.signature_data_url,
+      vote_choice: voteChoice,
       signed_at: now,
       ...(parsed.data.signer_name ? { signer_name: parsed.data.signer_name } : {}),
     })

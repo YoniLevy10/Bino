@@ -45,7 +45,7 @@ type HomePayload = {
 const QUICK_ACTIONS = [
   { href: '/resident/tickets', label: 'פתיחת תקלה', hint: 'דיווח מהיר', badgeKey: null },
   { href: '/resident/payments', label: 'תשלומים', hint: 'יתרות וחיובים', badgeKey: null },
-  { href: '/resident/decisions', label: 'החלטות', hint: 'חתימה והצבעה', badgeKey: 'approvals' as const },
+  { href: '/resident/decisions', label: 'אישורים', hint: 'חתימות והצבעה', badgeKey: 'approvals' as const },
   { href: '/resident/information', label: 'מידע', hint: 'הודעות ומסמכים', badgeKey: null },
 ] as const
 
