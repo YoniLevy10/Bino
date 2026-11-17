@@ -203,6 +203,7 @@ export function BuildingHubModal({
         projectId={project.id}
         projectName={project.name}
         isMobile={isMobile}
+        openTickets={openTickets}
       />
     )
   } else if (tab === 'reports') {
@@ -643,12 +644,16 @@ const styles: Record<string, CSSProperties> = {
   },
   tabBarMobile: {
     padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    overflowX: 'clip',
-    // Keep tabs in normal flow inside the portal panel — sticky + z-index here
-    // stacked a second chrome layer over דוחות/כספים and blocked taps.
+    // Single-row scrollable tabs (not 2×4 wrap) — still relative, never sticky.
+    // Panel/body keep overflow-x: clip (#292); only the tab bar scrolls horizontally.
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    WebkitOverflowScrolling: 'touch',
+    overscrollBehaviorX: 'contain',
     position: 'relative' as const,
     zIndex: 1,
     flexShrink: 0,
+    scrollbarWidth: 'none' as const,
   },
   tabTrack: {
     display: 'flex',
@@ -661,10 +666,12 @@ const styles: Record<string, CSSProperties> = {
     boxSizing: 'border-box' as const,
   },
   tabTrackMobile: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-    gap: 4,
+    display: 'flex',
+    flexWrap: 'nowrap' as const,
     alignItems: 'stretch',
+    gap: 4,
+    width: 'max-content',
+    minWidth: '100%',
   },
   tab: {
     flex: '1 1 0',
@@ -689,10 +696,12 @@ const styles: Record<string, CSSProperties> = {
     transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
   },
   tabCompact: {
-    padding: '8px 4px',
+    flex: '0 0 auto',
+    padding: '10px 12px',
     fontSize: theme.typography.fontSize.xs,
     minHeight: 44,
-    whiteSpace: 'normal',
+    minWidth: 72,
+    whiteSpace: 'nowrap',
     textAlign: 'center' as const,
     borderRadius: theme.radius.md,
     lineHeight: 1.15,

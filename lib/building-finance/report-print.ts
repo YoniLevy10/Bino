@@ -43,6 +43,14 @@ export type ReportPrintPayload = {
     outstanding: number
     net_vs_expenses: number | null
   } | null
+  statement?: {
+    income: number
+    debts: number
+    expenses: number
+    cashflow: number | null
+    income_available: boolean
+    basis_label_he: string
+  } | null
   pnl: {
     expenses_total: number
     income_grow_collected: number | null
@@ -133,6 +141,31 @@ export function buildReportPrintHtml(payload: ReportPrintPayload): string {
     payload.kpi.spend_delta_pct != null
       ? ` (${payload.kpi.spend_delta_pct > 0 ? '+' : ''}${payload.kpi.spend_delta_pct}%)`
       : ''
+  const statement = payload.statement
+  const statementIncome =
+    statement?.income_available || payload.grow
+      ? formatIls(statement?.income ?? payload.grow?.collected ?? 0)
+      : '—'
+  const statementDebts =
+    statement?.income_available || payload.grow
+      ? formatIls(statement?.debts ?? payload.grow?.outstanding ?? 0)
+      : '—'
+  const statementCashflow =
+    statement?.cashflow != null
+      ? formatIls(statement.cashflow)
+      : payload.pnl.net != null
+        ? formatIls(payload.pnl.net)
+        : '—'
+  const statementBlock = `<section>
+        <h2>סיכום תקופה — הכנסות / חובות / הוצאות / תזרים</h2>
+        <p class="muted">${esc(statement?.basis_label_he || 'בסיס רשום (הוצאות שאינן מבוטלות)')}</p>
+        <div class="kpi-grid">
+          <div class="kpi"><span class="kpi-l">הכנסות</span><span class="kpi-v pos">${esc(statementIncome)}</span></div>
+          <div class="kpi"><span class="kpi-l">חובות</span><span class="kpi-v">${esc(statementDebts)}</span></div>
+          <div class="kpi"><span class="kpi-l">הוצאות</span><span class="kpi-v neg">${esc(formatIls(statement?.expenses ?? payload.kpi.spent))}</span></div>
+          <div class="kpi"><span class="kpi-l">תזרים</span><span class="kpi-v">${esc(statementCashflow)}</span></div>
+        </div>
+      </section>`
   const growBlock = payload.grow
     ? `<section>
         <h2>גבייה (Grow)</h2>
@@ -259,10 +292,12 @@ export function buildReportPrintHtml(payload: ReportPrintPayload): string {
     </div>
   </header>
 
+  ${statementBlock}
+
   <section>
     <h2>מדדים עיקריים</h2>
     <div class="kpi-grid">
-      <div class="kpi"><span class="kpi-l">הוצאות</span><span class="kpi-v neg">${esc(formatIls(payload.kpi.spent))}</span></div>
+      <div class="kpi"><span class="kpi-l">הוצאות רשומות</span><span class="kpi-v neg">${esc(formatIls(payload.kpi.spent))}</span></div>
       <div class="kpi"><span class="kpi-l">תקציב מתוכנן</span><span class="kpi-v">${esc(formatIls(payload.kpi.planned))}</span></div>
       <div class="kpi"><span class="kpi-l">יתרה</span><span class="kpi-v ${payload.kpi.remaining < 0 ? 'neg' : 'pos'}">${esc(formatIls(payload.kpi.remaining))}</span></div>
       <div class="kpi"><span class="kpi-l">ניצול</span><span class="kpi-v">${esc(util)}${payload.kpi.over_pace ? ' · מעל קצב' : ''}</span></div>

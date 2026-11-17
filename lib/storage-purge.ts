@@ -14,6 +14,7 @@ export const DURABLE_STORAGE_BUCKETS = [
   'ticket-attachments',
   'project-documents',
   'client-logos',
+  'building-expense-receipts',
 ] as const
 
 export type DurableStorageBucket = (typeof DURABLE_STORAGE_BUCKETS)[number]
