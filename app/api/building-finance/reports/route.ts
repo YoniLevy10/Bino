@@ -12,6 +12,7 @@ import {
 } from '@/lib/building-finance/period'
 import { aggregateBuildingReport } from '@/lib/building-finance/report-aggregate'
 import { fetchBuildingExpenseSum } from '@/lib/building-finance/expense-sums'
+import { aggregateGrowPeriodCard } from '@/lib/building-finance/grow-period-card'
 import { computeBudgetUtilization } from '@/lib/building-finance/budget-math'
 import { roundMoney } from '@/lib/unit-ledger'
 import { getLogger } from '@/lib/logging'
@@ -133,7 +134,13 @@ export async function GET(req: Request) {
           })
         )
       : Promise.resolve({
-          sum: { spent: 0, expense_count: 0 },
+          sum: {
+            spent: 0,
+            recorded_spend: 0,
+            paid_spend: 0,
+            expense_count: 0,
+            paid_expense_count: 0,
+          },
           error: null as Error | null,
         }),
     admin
@@ -182,7 +189,8 @@ export async function GET(req: Request) {
   })
 
   let totalsIncomplete = false
-  let spent = agg.spent
+  let recordedSpend = agg.spent
+  let paidSpend = 0
   if (periodSumRes.error || !periodSumRes.sum) {
     totalsIncomplete = true
     getLogger().warn('BUILDING_FINANCE', 'reports period sum failed; using preview spent', {
@@ -190,7 +198,8 @@ export async function GET(req: Request) {
       err: periodSumRes.error?.message,
     })
   } else {
-    spent = periodSumRes.sum.spent
+    recordedSpend = periodSumRes.sum.recorded_spend
+    paidSpend = periodSumRes.sum.paid_spend
   }
 
   let previousSpent = 0
@@ -201,7 +210,7 @@ export async function GET(req: Request) {
       err: prevSumRes.error?.message,
     })
   } else {
-    previousSpent = prevSumRes.sum.spent
+    previousSpent = prevSumRes.sum.recorded_spend
   }
 
   const { planned, planned_source } = resolvePlannedForPeriod({
@@ -216,14 +225,16 @@ export async function GET(req: Request) {
         : null,
   })
 
+  /** Budget utilization uses recorded (non-void) spend — not cash-paid only. */
+  const utilizationBasis = 'recorded' as const
   const utilization = computeBudgetUtilization({
     period_key: period.period_key,
     planned,
-    spent,
+    spent: recordedSpend,
     elapsedFraction: period.elapsed_fraction,
   })
 
-  const spendDelta = roundMoney(spent - previousSpent)
+  const spendDelta = roundMoney(recordedSpend - previousSpent)
   const spendDeltaPct =
     previousSpent > 0 ? roundMoney((spendDelta / previousSpent) * 100) : null
 
@@ -236,6 +247,12 @@ export async function GET(req: Request) {
     outstanding: number
     billed: number
     net_vs_expenses: number | null
+    labels: {
+      collected: string
+      outstanding: string
+      billed: string
+    } | null
+    collected_date_basis: string | null
   } | null = null
 
   try {
@@ -245,9 +262,13 @@ export async function GET(req: Request) {
       PAID_ADDON_KEYS.collections
     )
     if (hasCollections) {
-      const { data: charges, error: chargesError } = await admin
+      /**
+       * Two bounded reads: created-in-period (billed/outstanding) + paid-in-period (collected).
+       * Merge by row identity then aggregate with documented date semantics.
+       */
+      const createdWindow = admin
         .from('collection_charges')
-        .select('status, amount, paid_at, created_at')
+        .select('id, status, amount, paid_at, updated_at, created_at')
         .eq('client_id', auth.ctx.clientId)
         .eq('project_id', projectId)
         .gte('created_at', `${period.start_date}T00:00:00.000Z`)
@@ -255,25 +276,50 @@ export async function GET(req: Request) {
         .order('created_at', { ascending: false })
         .limit(GROW_CHARGE_CAP)
 
-      if (!chargesError && charges) {
-        let collected = 0
-        let outstanding = 0
-        let billed = 0
-        for (const row of charges) {
-          const amount = Number(row.amount) || 0
-          if (row.status === 'cancelled') continue
-          billed = roundMoney(billed + amount)
-          if (row.status === 'paid') collected = roundMoney(collected + amount)
-          else if (row.status === 'sent' || row.status === 'draft' || row.status === 'failed') {
-            outstanding = roundMoney(outstanding + amount)
+      const paidWindow = admin
+        .from('collection_charges')
+        .select('id, status, amount, paid_at, updated_at, created_at')
+        .eq('client_id', auth.ctx.clientId)
+        .eq('project_id', projectId)
+        .eq('status', 'paid')
+        .gte('paid_at', `${period.start_date}T00:00:00.000Z`)
+        .lte('paid_at', `${period.end_date}T23:59:59.999Z`)
+        .order('paid_at', { ascending: false })
+        .limit(GROW_CHARGE_CAP)
+
+      const [createdRes, paidRes] = await Promise.all([createdWindow, paidWindow])
+      if (!createdRes.error && !paidRes.error) {
+        const byId = new Map<
+          string,
+          {
+            status: string
+            amount: number
+            paid_at: string | null
+            updated_at: string | null
+            created_at: string
           }
+        >()
+        for (const row of [...(createdRes.data ?? []), ...(paidRes.data ?? [])]) {
+          byId.set(row.id, {
+            status: row.status,
+            amount: Number(row.amount) || 0,
+            paid_at: row.paid_at,
+            updated_at: row.updated_at,
+            created_at: row.created_at,
+          })
         }
+        const card = aggregateGrowPeriodCard([...byId.values()], {
+          startDate: period.start_date,
+          endDate: period.end_date,
+        })
         grow = {
           available: true,
-          collected,
-          outstanding,
-          billed,
-          net_vs_expenses: roundMoney(collected - spent),
+          collected: card.collected,
+          outstanding: card.outstanding,
+          billed: card.billed,
+          net_vs_expenses: roundMoney(card.collected - recordedSpend),
+          labels: card.labels,
+          collected_date_basis: card.collected_date_basis,
         }
       }
     } else {
@@ -283,6 +329,8 @@ export async function GET(req: Request) {
         outstanding: 0,
         billed: 0,
         net_vs_expenses: null,
+        labels: null,
+        collected_date_basis: null,
       }
     }
   } catch {
@@ -292,6 +340,8 @@ export async function GET(req: Request) {
       outstanding: 0,
       billed: 0,
       net_vs_expenses: null,
+      labels: null,
+      collected_date_basis: null,
     }
   }
 
@@ -307,6 +357,12 @@ export async function GET(req: Request) {
     },
     kpi: {
       ...utilization,
+      /** spent remains recorded for backward compat */
+      spent: recordedSpend,
+      recorded_spend: recordedSpend,
+      paid_spend: paidSpend,
+      utilization_basis: utilizationBasis,
+      utilization_basis_label_he: 'ניצול תקציב לפי הוצאות רשומות (לא רק שולם)',
       planned_source,
       previous_spent: previousSpent,
       spend_delta: spendDelta,
@@ -318,7 +374,9 @@ export async function GET(req: Request) {
       by_vendor: agg.by_vendor,
     },
     pnl: {
-      expenses_total: spent,
+      expenses_total: recordedSpend,
+      recorded_spend: recordedSpend,
+      paid_spend: paidSpend,
       income_grow_collected: grow?.available ? grow.collected : null,
       net: grow?.available ? grow.net_vs_expenses : null,
       lines: agg.lines,

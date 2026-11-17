@@ -52,9 +52,13 @@ type ReportResponse = {
     period_key: string
     planned: number
     spent: number
+    recorded_spend?: number
+    paid_spend?: number
     remaining: number
     utilization_pct: number | null
     over_pace: boolean
+    utilization_basis?: 'recorded' | 'paid'
+    utilization_basis_label_he?: string
     planned_source: 'exact' | 'annual_prorata' | 'none'
     previous_spent: number
     spend_delta: number
@@ -67,6 +71,8 @@ type ReportResponse = {
   }
   pnl: {
     expenses_total: number
+    recorded_spend?: number
+    paid_spend?: number
     income_grow_collected: number | null
     net: number | null
     lines: ReportLine[]
@@ -82,6 +88,12 @@ type ReportResponse = {
     outstanding: number
     billed: number
     net_vs_expenses: number | null
+    labels?: {
+      collected: string
+      outstanding: string
+      billed: string
+    } | null
+    collected_date_basis?: string | null
   } | null
   error?: string
   code?: string
@@ -235,9 +247,11 @@ export function BuildingReportsPanel({
     const summary = [
       `# דוח בניין — ${projectName}`,
       `# תקופה: ${report.period.label_he} (${report.period.start_date}–${report.period.end_date})`,
-      `# הוצאות: ${report.kpi.spent}`,
+      `# הוצאות רשומות: ${report.kpi.recorded_spend ?? report.kpi.spent}`,
+      `# שולם בפועל: ${report.kpi.paid_spend ?? 0}`,
       `# תקציב: ${report.kpi.planned}`,
       `# יתרה: ${report.kpi.remaining}`,
+      `# בסיס ניצול: רשום`,
       '',
       header.join(','),
       ...rows,
@@ -451,9 +465,15 @@ export function BuildingReportsPanel({
         <>
           <div style={styles.kpiRow}>
             <div style={styles.kpi}>
-              <span style={styles.kpiLabel}>הוצאות</span>
+              <span style={styles.kpiLabel}>הוצאות רשומות</span>
               <span style={{ ...styles.kpiValue, color: theme.colors.kpiNegative }}>
-                {formatIls(report.kpi.spent)}
+                {formatIls(report.kpi.recorded_spend ?? report.kpi.spent)}
+              </span>
+            </div>
+            <div style={styles.kpi}>
+              <span style={styles.kpiLabel}>שולם בפועל</span>
+              <span style={{ ...styles.kpiValue, color: theme.colors.kpiNegative }}>
+                {formatIls(report.kpi.paid_spend ?? 0)}
               </span>
             </div>
             <div style={styles.kpi}>
@@ -476,7 +496,7 @@ export function BuildingReportsPanel({
               </span>
             </div>
             <div style={styles.kpi}>
-              <span style={styles.kpiLabel}>ניצול</span>
+              <span style={styles.kpiLabel}>ניצול (רשום)</span>
               <span style={styles.kpiValue}>
                 {report.kpi.utilization_pct == null
                   ? '—'
@@ -484,6 +504,10 @@ export function BuildingReportsPanel({
                 {report.kpi.over_pace ? (
                   <span style={styles.paceWarn}> · מעל קצב</span>
                 ) : null}
+              </span>
+              <span style={styles.kpiHint}>
+                {report.kpi.utilization_basis_label_he ||
+                  'ניצול תקציב לפי הוצאות רשומות (לא רק שולם)'}
               </span>
             </div>
           </div>
@@ -522,17 +546,27 @@ export function BuildingReportsPanel({
                 }}
               >
                   <div>
-                    <span style={styles.kpiLabel}>נגבה</span>
+                    <span style={styles.kpiLabel}>
+                      {report.grow.labels?.collected || 'נגבה לפי תאריך תשלום'}
+                    </span>
                     <div style={{ ...styles.kpiValue, color: theme.colors.kpiPositive }}>
                       {formatIls(report.grow.collected)}
                     </div>
                   </div>
                   <div>
-                    <span style={styles.kpiLabel}>פתוח</span>
+                    <span style={styles.kpiLabel}>
+                      {report.grow.labels?.outstanding || 'פתוח לפי תאריך יצירה'}
+                    </span>
                     <div style={styles.kpiValue}>{formatIls(report.grow.outstanding)}</div>
                   </div>
                   <div>
-                    <span style={styles.kpiLabel}>נטו מול הוצאות</span>
+                    <span style={styles.kpiLabel}>
+                      {report.grow.labels?.billed || 'חויב לפי תאריך יצירה'}
+                    </span>
+                    <div style={styles.kpiValue}>{formatIls(report.grow.billed)}</div>
+                  </div>
+                  <div>
+                    <span style={styles.kpiLabel}>נטו מול הוצאות רשומות</span>
                   <div
                     style={{
                       ...styles.kpiValue,
@@ -552,9 +586,15 @@ export function BuildingReportsPanel({
           <div style={styles.pnlCard}>
             <p style={styles.sectionTitle}>רו״ח תמציתי</p>
             <div style={styles.pnlRow}>
-              <span>הוצאות תחזוקה</span>
+              <span>הוצאות רשומות</span>
               <span style={{ color: theme.colors.kpiNegative }}>
-                ({formatIls(report.pnl.expenses_total)})
+                ({formatIls(report.pnl.recorded_spend ?? report.pnl.expenses_total)})
+              </span>
+            </div>
+            <div style={styles.pnlRow}>
+              <span>הוצאות ששולמו</span>
+              <span style={{ color: theme.colors.kpiNegative }}>
+                ({formatIls(report.pnl.paid_spend ?? 0)})
               </span>
             </div>
             {report.pnl.income_grow_collected != null ? (

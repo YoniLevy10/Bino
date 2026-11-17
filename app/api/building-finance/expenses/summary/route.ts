@@ -88,8 +88,14 @@ export async function GET(req: Request) {
       mode,
       start_date: period.start_date,
       end_date: period.end_date,
-      spent: sum.spent,
+      /** recorded (non-void) — alias for backward compat */
+      spent: sum.recorded_spend,
+      recorded_spend: sum.recorded_spend,
+      paid_spend: sum.paid_spend,
       expense_count: sum.expense_count,
+      paid_expense_count: sum.paid_expense_count,
+      utilization_basis: 'recorded',
+      utilization_basis_label_he: 'ניצול תקציב לפי הוצאות רשומות (לא רק שולם)',
       totals_incomplete: false,
     })
   } catch (e) {
