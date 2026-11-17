@@ -109,7 +109,7 @@ describeLive('3. Critical columns', () => {
     ['clients',           ['id', 'name', 'plan_tier', 'max_workers', 'whatsapp_phone_number_id', 'buildings_allowed']],
     ['organizations',     ['id', 'name', 'slug', 'client_id', 'is_active', 'created_at']],
     ['organization_users',['id', 'organization_id', 'user_id', 'role', 'created_at']],
-    ['projects',          ['id', 'client_id', 'name', 'project_code', 'organization_id', 'assigned_worker_id', 'is_active']],
+    ['projects',          ['id', 'client_id', 'name', 'project_code', 'organization_id', 'assigned_worker_id', 'is_active', 'whatsapp_group_invite_url']],
     ['tickets',           ['id', 'client_id', 'ticket_number', 'status', 'priority', 'description',
                            'deleted_at', 'merged_into_ticket_id', 'ticket_metadata',
                            'project_id', 'reporter_phone', 'reporter_name',

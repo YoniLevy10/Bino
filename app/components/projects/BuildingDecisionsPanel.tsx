@@ -13,6 +13,11 @@ import type { DecisionSummaryPayload } from '@/lib/building-governance/decision-
 import { openDecisionSummaryPrint } from '@/lib/building-governance/decision-summary-print'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
+import { WhatsAppBuildingShareButton } from '@/app/components/shared/WhatsAppBuildingShareButton'
+import {
+  absoluteBuildingDecisionInviteUrl,
+  buildBuildingDecisionShareMessage,
+} from '@/lib/whatsapp-building-share'
 
 type SignatureRequest = {
   id: string
@@ -60,6 +65,9 @@ type EligibleVoters = {
 type Props = {
   projectId: string
   projectName: string
+  /** projects.whatsapp_group_invite_url */
+  groupInviteUrl?: string | null
+  onGroupInviteSaved?: (url: string | null) => void
   isMobile?: boolean
 }
 
@@ -78,6 +86,8 @@ function percentInputToThreshold(raw: string): number {
 export function BuildingDecisionsPanel({
   projectId,
   projectName,
+  groupInviteUrl = null,
+  onGroupInviteSaved,
   isMobile: isMobileProp,
 }: Props) {
   const [viewportMobile, setViewportMobile] = useState(false)
@@ -86,6 +96,13 @@ export function BuildingDecisionsPanel({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [missingTable, setMissingTable] = useState(false)
+  const [localGroupInvite, setLocalGroupInvite] = useState<string | null>(
+    groupInviteUrl ?? null
+  )
+
+  useEffect(() => {
+    setLocalGroupInvite(groupInviteUrl ?? null)
+  }, [groupInviteUrl, projectId])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [required, setRequired] = useState('2')
@@ -653,6 +670,27 @@ export function BuildingDecisionsPanel({
                   >
                     {notifyingId === d.id ? 'שולח…' : 'שליחה לאזור אישי'}
                   </Button>
+                  <div style={styles.waShareBlock}>
+                    <WhatsAppBuildingShareButton
+                      projectId={projectId}
+                      groupInviteUrl={localGroupInvite}
+                      shareMessage={buildBuildingDecisionShareMessage({
+                        projectName,
+                        decisionTitle: d.title,
+                        inviteUrl: absoluteBuildingDecisionInviteUrl({
+                          projectId,
+                          decisionId: d.id,
+                        }),
+                      })}
+                      onGroupInviteSaved={(url) => {
+                        setLocalGroupInvite(url)
+                        onGroupInviteSaved?.(url)
+                      }}
+                      size={isMobile ? 'md' : 'sm'}
+                      fullWidth={isMobile}
+                      shareLabel="שיתוף לקבוצת וואטסאפ"
+                    />
+                  </div>
                   <div
                     style={{
                       ...styles.addSigner,
@@ -760,6 +798,9 @@ function DecisionSummaryInline({
 const styles: Record<string, CSSProperties> = {
   root: { display: 'flex', flexDirection: 'column', gap: theme.spacing.lg },
   center: { display: 'flex', justifyContent: 'center', padding: 40 },
+  waShareBlock: {
+    marginTop: 4,
+  },
   intro: {
     margin: 0,
     fontSize: theme.typography.fontSize.sm,

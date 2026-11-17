@@ -18,10 +18,11 @@ export type ProjectListRow = {
   client_id?: string | null
   assigned_worker_id?: string | null
   manager_phone?: string | null
+  whatsapp_group_invite_url?: string | null
 }
 
 const PROJECTS_LIST_SELECT =
-  'id, name, project_code, address, address_en, qr_identifier, is_active, created_at, client_id, assigned_worker_id'
+  'id, name, project_code, address, address_en, qr_identifier, is_active, created_at, client_id, assigned_worker_id, whatsapp_group_invite_url'
 
 export async function fetchProjectsList(clientId: string): Promise<ProjectListRow[]> {
   const { data, error } = await withClientId(

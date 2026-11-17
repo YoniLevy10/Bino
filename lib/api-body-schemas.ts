@@ -66,6 +66,8 @@ export const updateProjectBodySchema = z
     qr_identifier: z.string().max(200).nullable().optional(),
     is_active: z.boolean().optional(),
     assigned_worker_id: z.union([z.string().uuid(), z.literal(''), z.null()]).optional(),
+    /** Building WhatsApp group invite (chat.whatsapp.com/…) — null clears. */
+    whatsapp_group_invite_url: z.string().max(500).nullable().optional(),
   })
   .refine(
     (v) =>
@@ -75,7 +77,8 @@ export const updateProjectBodySchema = z
       v.address_en !== undefined ||
       v.qr_identifier !== undefined ||
       v.is_active !== undefined ||
-      v.assigned_worker_id !== undefined,
+      v.assigned_worker_id !== undefined ||
+      v.whatsapp_group_invite_url !== undefined,
     { message: 'נדרש לפחות שדה אחד לעדכון' }
   )
 

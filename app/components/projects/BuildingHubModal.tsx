@@ -42,6 +42,7 @@ export type BuildingHubProject = {
   is_active: boolean
   client_id: string
   assigned_worker_id?: string | null
+  whatsapp_group_invite_url?: string | null
 }
 
 export type BuildingHubWorker = { id: string; full_name: string }
@@ -93,6 +94,8 @@ type Props = {
   onToggleActive: (project: BuildingHubProject) => void
   onDelete: (project: BuildingHubProject) => void
   onOpenTicket: (ticketId: string) => void
+  /** Persist WA group invite from Decisions empty-state / settings. */
+  onWhatsAppGroupInviteSaved?: (projectId: string, url: string | null) => void
 }
 
 export function BuildingHubModal({
@@ -111,6 +114,7 @@ export function BuildingHubModal({
   onToggleActive,
   onDelete,
   onOpenTicket,
+  onWhatsAppGroupInviteSaved,
 }: Props) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
@@ -237,6 +241,8 @@ export function BuildingHubModal({
       <BuildingDecisionsPanel
         projectId={project.id}
         projectName={project.name}
+        groupInviteUrl={project.whatsapp_group_invite_url ?? null}
+        onGroupInviteSaved={(url) => onWhatsAppGroupInviteSaved?.(project.id, url)}
         isMobile={isMobile}
       />
     )

@@ -6,6 +6,7 @@ import { updateProjectBodySchema } from '@/lib/api-body-schemas'
 import { sanitizeString } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
 import { getLogger } from '@/lib/logging'
+import { normalizeWhatsAppGroupInviteUrl } from '@/lib/whatsapp-building-share'
 
 export async function POST(req: Request) {
   const logger = getLogger()
@@ -28,7 +29,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: validated.error.flatten() }, { status: 400 })
     }
 
-    const { project_id, assigned_worker_id, ...fields } = validated.data
+    const { project_id, assigned_worker_id, whatsapp_group_invite_url, ...fields } =
+      validated.data
 
     const { data: existing, error: fetchErr } = await admin
       .from('projects')
@@ -51,6 +53,20 @@ export async function POST(req: Request) {
     if (assigned_worker_id !== undefined) {
       payload.assigned_worker_id =
         assigned_worker_id === '' || assigned_worker_id === null ? null : assigned_worker_id
+    }
+    if (whatsapp_group_invite_url !== undefined) {
+      if (whatsapp_group_invite_url === null || whatsapp_group_invite_url.trim() === '') {
+        payload.whatsapp_group_invite_url = null
+      } else {
+        const normalized = normalizeWhatsAppGroupInviteUrl(whatsapp_group_invite_url)
+        if (!normalized) {
+          return NextResponse.json(
+            { error: 'קישור קבוצת וואטסאפ לא תקין — נדרש chat.whatsapp.com/…', requestId },
+            { status: 400 }
+          )
+        }
+        payload.whatsapp_group_invite_url = normalized
+      }
     }
 
     const { data: updated, error } = await admin

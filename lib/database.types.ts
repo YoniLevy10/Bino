@@ -1628,6 +1628,7 @@ export type Database = {
           project_code: string
           qr_identifier: string | null
           sla_hours: number
+          whatsapp_group_invite_url: string | null
         }
         Insert: {
           address?: string | null
@@ -1643,6 +1644,7 @@ export type Database = {
           project_code: string
           qr_identifier?: string | null
           sla_hours?: number
+          whatsapp_group_invite_url?: string | null
         }
         Update: {
           address?: string | null
@@ -1658,6 +1660,7 @@ export type Database = {
           project_code?: string
           qr_identifier?: string | null
           sla_hours?: number
+          whatsapp_group_invite_url?: string | null
         }
         Relationships: [
           {

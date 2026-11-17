@@ -61,6 +61,7 @@ type ProjectRow = {
   created_at: string
   client_id: string
   assigned_worker_id?: string | null
+  whatsapp_group_invite_url?: string | null
 }
 
 type WorkerRow = { id: string; full_name: string }
@@ -73,6 +74,7 @@ type ProjectForm = {
   qr_identifier: string
   is_active: boolean
   assigned_worker_id: string
+  whatsapp_group_invite_url: string
 }
 
 type TicketRow = {
@@ -95,11 +97,12 @@ const emptyForm: ProjectForm = {
   qr_identifier: '',
   is_active: true,
   assigned_worker_id: '',
+  whatsapp_group_invite_url: '',
 }
 
 const PROJECTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const PROJECTS_LIST_SELECT =
-  'id, name, project_code, address, address_en, qr_identifier, is_active, created_at, client_id, assigned_worker_id'
+  'id, name, project_code, address, address_en, qr_identifier, is_active, created_at, client_id, assigned_worker_id, whatsapp_group_invite_url'
 
 type ProjectsCache = {
   projects: ProjectRow[]
@@ -109,7 +112,7 @@ type ProjectsCache = {
 
 function readProjectsCache(clientId: string): ProjectsCache | null {
   try {
-    const raw = localStorage.getItem(`bamakor_projects_v1_${clientId}`)
+    const raw = localStorage.getItem(`bamakor_projects_v2_${clientId}`)
     if (!raw) return null
     const parsed = JSON.parse(raw) as ProjectsCache
     if (Date.now() - parsed.savedAt > PROJECTS_CACHE_TTL_MS) return null
@@ -121,7 +124,7 @@ function readProjectsCache(clientId: string): ProjectsCache | null {
 
 function writeProjectsCache(clientId: string, data: Omit<ProjectsCache, 'savedAt'>) {
   try {
-    localStorage.setItem(`bamakor_projects_v1_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
+    localStorage.setItem(`bamakor_projects_v2_${clientId}`, JSON.stringify({ ...data, savedAt: Date.now() }))
   } catch {}
 }
 
@@ -293,6 +296,7 @@ export default function ProjectsPage() {
       qr_identifier: project.qr_identifier || '',
       is_active: project.is_active,
       assigned_worker_id: project.assigned_worker_id || '',
+      whatsapp_group_invite_url: project.whatsapp_group_invite_url || '',
     })
     setDrawerOpen(true)
   }
@@ -441,6 +445,7 @@ export default function ProjectsPage() {
                 address_en: payload.address_en,
                 is_active: payload.is_active,
                 assigned_worker_id: payload.assigned_worker_id,
+                whatsapp_group_invite_url: form.whatsapp_group_invite_url.trim() || null,
               }),
             },
             MUTATION_FETCH_TIMEOUT_MS
@@ -754,6 +759,22 @@ export default function ProjectsPage() {
             />
           </div>
 
+          {editingProject ? (
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>קבוצת וואטסאפ של הבניין</label>
+              <input
+                value={form.whatsapp_group_invite_url}
+                onChange={(e) => updateForm('whatsapp_group_invite_url', e.target.value)}
+                placeholder="https://chat.whatsapp.com/…"
+                style={{ ...styles.input, direction: 'ltr' }}
+                dir="ltr"
+              />
+              <span style={styles.formHint}>
+                קישור הזמנה לקבוצה — לשיתוף החלטות וקישורים לקבוצת הדיירים (לא שליחה אוטומטית)
+              </span>
+            </div>
+          ) : null}
+
           <div style={styles.formGroup}>
             <label style={styles.checkboxLabel}>
               <input
@@ -811,6 +832,19 @@ export default function ProjectsPage() {
           if (selectedProject) void deleteProject(selectedProject)
         }}
         onOpenTicket={(ticketId) => router.push(ticketDetailPath(ticketId))}
+        onWhatsAppGroupInviteSaved={(projectId, url) => {
+          setProjects((prev) =>
+            prev.map((p) =>
+              p.id === projectId ? { ...p, whatsapp_group_invite_url: url } : p
+            )
+          )
+          setSelectedProject((prev) =>
+            prev && prev.id === projectId
+              ? { ...prev, whatsapp_group_invite_url: url }
+              : prev
+          )
+          void refetchProjects()
+        }}
       />
     </>
   )
