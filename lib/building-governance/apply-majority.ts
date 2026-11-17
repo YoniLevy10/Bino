@@ -1,13 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { dedupeResidentBoundSignedRows } from '@/lib/building-governance/eligible-voters'
 import {
   computeMajorityProgress,
   countVoteChoices,
 } from '@/lib/building-governance/roles'
 
 /**
- * Recount approve votes for a decision; mark `passed` when majority threshold is met.
- * Oppose / abstain do not count toward majority. NULL vote_choice = approve (compat).
- * Safe to call after any signature write (public token or resident portal).
+ * Recount resident-bound approve votes; mark `passed` when majority threshold is met.
+ * - Only stubs with `resident_id` count (anonymous name-only stubs excluded).
+ * - One vote per unit (dedupe); oppose/abstain do not support majority.
+ * - NULL vote_choice = approve (compat with PR-H).
  */
 export async function applyDecisionMajorityIfReached(
   admin: SupabaseClient,
@@ -30,17 +32,24 @@ export async function applyDecisionMajorityIfReached(
     return { passed: false, signedCount: 0, approveCount: 0 }
   }
 
-  const { data: signedRows } = await admin
+  const { data: sigRows } = await admin
     .from('building_signature_requests')
-    .select('id, status, vote_choice')
+    .select('status, resident_id, unit_id, vote_choice')
     .eq('decision_id', opts.decisionId)
     .eq('client_id', opts.clientId)
     .eq('status', 'signed')
+    .not('resident_id', 'is', null)
     .limit(500)
 
-  const tallies = countVoteChoices(
-    (signedRows ?? []) as Array<{ status: string; vote_choice: string | null }>
+  const unique = dedupeResidentBoundSignedRows(
+    (sigRows ?? []) as Array<{
+      status: string
+      resident_id: string | null
+      unit_id: string | null
+      vote_choice: string | null
+    }>
   )
+  const tallies = countVoteChoices(unique)
   const progress = computeMajorityProgress({
     approveCount: tallies.approve,
     requiredSignatures: decision.required_signatures,

@@ -1,9 +1,8 @@
 'use client'
 
 /**
- * Building Hub — החלטות tab (Wave 4).
- * Create/list decisions + signature request links; majority auto-passes via public sign API.
- * PR-I: summary report + reminders (same panel — no duplicate screens).
+ * Building Hub — החלטות tab (Wave 4 / PR-C + PR-D notify + PR-I summary).
+ * Majority uses eligible unit denominator; threshold editable; notify + summary/reminders.
  */
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
@@ -22,6 +21,7 @@ type SignatureRequest = {
   status: string
   signed_at: string | null
   sign_path: string
+  resident_id?: string | null
   /** @deprecated prefer sign_path + client origin */
   sign_url?: string
 }
@@ -39,21 +39,40 @@ type Decision = {
   status: string
   majority_threshold: number
   required_signatures: number
-  document_id?: string | null
   signed_count: number
   approve_count?: number
   oppose_count?: number
   abstain_count?: number
   majority_reached: boolean
   majority_pct: number
+  majority_need?: number
   created_at: string
   signature_requests: SignatureRequest[]
+}
+
+type EligibleVoters = {
+  count: number
+  unit_count: number
+  mapped_resident_count: number
+  basis: string
 }
 
 type Props = {
   projectId: string
   projectName: string
   isMobile?: boolean
+}
+
+function thresholdToPercentInput(threshold: number): string {
+  const pct = Math.round(Number(threshold) * 100)
+  if (!Number.isFinite(pct) || pct <= 0) return '50'
+  return String(Math.min(100, Math.max(1, pct)))
+}
+
+function percentInputToThreshold(raw: string): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return 0.5
+  return Math.min(1, Math.max(0.01, n / 100))
 }
 
 export function BuildingDecisionsPanel({
@@ -63,16 +82,18 @@ export function BuildingDecisionsPanel({
 }: Props) {
   const [viewportMobile, setViewportMobile] = useState(false)
   const [decisions, setDecisions] = useState<Decision[]>([])
+  const [eligible, setEligible] = useState<EligibleVoters | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [missingTable, setMissingTable] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [required, setRequired] = useState('2')
-  const [documentId, setDocumentId] = useState('')
+  const [thresholdPct, setThresholdPct] = useState('50')
   const [signerName, setSignerName] = useState('')
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null)
   const [notifyingId, setNotifyingId] = useState<string | null>(null)
+  const [editThresholdById, setEditThresholdById] = useState<Record<string, string>>({})
   const [summaryById, setSummaryById] = useState<Record<string, DecisionSummaryPayload>>({})
   const [summaryOpenId, setSummaryOpenId] = useState<string | null>(null)
   const [summaryLoadingId, setSummaryLoadingId] = useState<string | null>(null)
@@ -95,7 +116,11 @@ export function BuildingDecisionsPanel({
       const res = await fetchWithTimeout(
         `/api/building-governance/decisions?project_id=${encodeURIComponent(projectId)}`
       )
-      const json = (await res.json()) as { decisions?: Decision[]; error?: string }
+      const json = (await res.json()) as {
+        decisions?: Decision[]
+        eligible_voters?: EligibleVoters
+        error?: string
+      }
       if (!res.ok) {
         const msg = errorMessageFromResponseJson(json, `שגיאה ${res.status}`)
         if (/relation|does not exist|schema cache|building_decision/i.test(msg)) {
@@ -105,7 +130,18 @@ export function BuildingDecisionsPanel({
         }
         throw new Error(msg)
       }
-      setDecisions(json.decisions ?? [])
+      const list = json.decisions ?? []
+      setDecisions(list)
+      const ev = json.eligible_voters ?? null
+      setEligible(ev)
+      if (ev && ev.count > 0) {
+        setRequired(String(ev.count))
+      }
+      const nextEdit: Record<string, string> = {}
+      for (const d of list) {
+        nextEdit[d.id] = thresholdToPercentInput(d.majority_threshold)
+      }
+      setEditThresholdById(nextEdit)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינת החלטות נכשלה')
       setDecisions([])
@@ -124,10 +160,18 @@ export function BuildingDecisionsPanel({
       toast.error('נא להזין כותרת החלטה')
       return
     }
+    const eligibleCount = eligible?.count ?? 0
+    if (eligibleCount === 0) {
+      const reqN = Math.max(1, Math.min(500, Number(required) || 0))
+      if (!reqN) {
+        toast.error('אין דירות זכאיות — יש להזין ידנית מספר חתימות נדרש')
+        return
+      }
+    }
     const reqN = Math.max(1, Math.min(500, Number(required) || 1))
+    const majorityThreshold = percentInputToThreshold(thresholdPct)
     setSaving(true)
     try {
-      const docId = documentId.trim() || null
       const res = await fetchWithTimeout('/api/building-governance/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,21 +180,50 @@ export function BuildingDecisionsPanel({
           title: title.trim(),
           body: body.trim() || null,
           required_signatures: reqN,
-          majority_threshold: 0.5,
+          majority_threshold: majorityThreshold,
           status: 'open',
-          document_id: docId,
         }),
       })
-      const json = (await res.json()) as { error?: string; decision?: { id: string } }
+      const json = (await res.json()) as {
+        error?: string
+        decision?: { id: string }
+        eligible_warning?: string | null
+      }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
-      toast.success('החלטה נוצרה')
+      if (json.eligible_warning) toast.error(json.eligible_warning)
+      else toast.success('החלטה נוצרה')
       setTitle('')
       setBody('')
-      setDocumentId('')
       setActiveDecisionId(json.decision?.id ?? null)
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'יצירה נכשלה')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveThreshold(decisionId: string) {
+    const raw = editThresholdById[decisionId]
+    const majorityThreshold = percentInputToThreshold(raw ?? '50')
+    setSaving(true)
+    try {
+      const res = await fetchWithTimeout('/api/building-governance/decisions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          decision_id: decisionId,
+          majority_threshold: majorityThreshold,
+        }),
+      })
+      const json = (await res.json()) as { error?: string; eligible_warning?: string | null }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      if (json.eligible_warning) toast.error(json.eligible_warning)
+      else toast.success('סף הרוב עודכן')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'עדכון נכשל')
     } finally {
       setSaving(false)
     }
@@ -334,11 +407,27 @@ export function BuildingDecisionsPanel({
     )
   }
 
+  const eligibleCount = eligible?.count ?? 0
+  const showManualRequired = eligibleCount === 0
+
   return (
     <div style={styles.root}>
       <p style={styles.intro}>
-        החלטות ל־<strong>{projectName}</strong> — קישור חתימה לכל חותם; ברוב → «אושרה».
+        החלטות ל־<strong>{projectName}</strong> — המכנה הוא מספר דירות עם דייר ממופה
+        {eligibleCount > 0 ? ` (${eligibleCount})` : ''}. רוב נספר רק מחתימות דיירים מזוהים.
+        סף הרוב ניתן להגדרה לכל החלטה.
       </p>
+
+      {showManualRequired ? (
+        <p style={styles.warn} role="status">
+          לא נמצאו דירות עם דייר ממופה — יש להזין ידנית את מספר החתימות הנדרש.
+        </p>
+      ) : (
+        <p style={styles.meta} role="status">
+          זכאים: {eligibleCount} דירות · יחידות: {eligible?.unit_count ?? 0} · דיירים ממופים:{' '}
+          {eligible?.mapped_resident_count ?? 0}
+        </p>
+      )}
 
       <form onSubmit={onCreate} style={styles.form}>
         <label style={styles.label}>
@@ -366,27 +455,36 @@ export function BuildingDecisionsPanel({
           />
         </label>
         <label style={styles.label}>
-          מספר חתימות נדרש (לרוב)
+          סף רוב (%)
           <input
             type="number"
             min={1}
-            max={500}
+            max={100}
             inputMode="numeric"
-            value={required}
-            onChange={(ev) => setRequired(ev.target.value)}
+            value={thresholdPct}
+            onChange={(ev) => setThresholdPct(ev.target.value)}
             style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
           />
         </label>
-        <label style={styles.label}>
-          מזהה מסמך בניין (PDF, אופציונלי)
-          <input
-            value={documentId}
-            onChange={(ev) => setDocumentId(ev.target.value)}
-            placeholder="UUID ממסמכי הבניין"
-            style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
-            maxLength={36}
-          />
-        </label>
+        {showManualRequired ? (
+          <label style={styles.label}>
+            מספר חתימות נדרש (ידני — אין זכאים ממופים)
+            <input
+              type="number"
+              min={1}
+              max={500}
+              inputMode="numeric"
+              value={required}
+              onChange={(ev) => setRequired(ev.target.value)}
+              style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
+            />
+          </label>
+        ) : (
+          <p style={styles.meta}>
+            מכנה אוטומטי ביצירה: {eligibleCount}. סף: {thresholdPct}% → כ־
+            {Math.ceil(eligibleCount * percentInputToThreshold(thresholdPct))} חתימות דיירים.
+          </p>
+        )}
         <Button
           type="submit"
           variant="primary"
@@ -410,9 +508,6 @@ export function BuildingDecisionsPanel({
                 </span>
               </div>
               {d.body ? <p style={styles.bodyText}>{d.body}</p> : null}
-              {d.document_id ? (
-                <p style={styles.progress}>PDF מצורף: {d.document_id}</p>
-              ) : null}
               <p style={styles.progress}>
                 בעד: {d.approve_count ?? d.signed_count}/{d.required_signatures}
                 {typeof d.oppose_count === 'number' ? ` · נגד: ${d.oppose_count}` : ''}
@@ -422,6 +517,43 @@ export function BuildingDecisionsPanel({
                 {' · '}
                 סף {Math.round(Number(d.majority_threshold) * 100)}%
               </p>
+
+              {(d.status === 'open' || d.status === 'draft') && (
+                <div
+                  style={{
+                    ...styles.addSigner,
+                    ...(isMobile ? styles.addSignerMobile : null),
+                  }}
+                >
+                  <label style={{ ...styles.label, flex: 1, margin: 0 }}>
+                    סף רוב (%)
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      inputMode="numeric"
+                      value={
+                        editThresholdById[d.id] ??
+                        thresholdToPercentInput(d.majority_threshold)
+                      }
+                      onChange={(ev) =>
+                        setEditThresholdById((prev) => ({ ...prev, [d.id]: ev.target.value }))
+                      }
+                      style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size={isMobile ? 'md' : 'sm'}
+                    disabled={saving}
+                    onClick={() => void saveThreshold(d.id)}
+                    style={isMobile ? styles.fullBtn : undefined}
+                  >
+                    שמירת סף
+                  </Button>
+                </div>
+              )}
 
               <div
                 style={{
@@ -483,7 +615,8 @@ export function BuildingDecisionsPanel({
                       }}
                     >
                       <span style={styles.sigName}>
-                        {s.signer_name} —{' '}
+                        {s.signer_name}
+                        {s.resident_id ? '' : ' (לא נספר לרוב)'} —{' '}
                         {s.status === 'signed'
                           ? 'נחתם'
                           : s.status === 'pending'
@@ -533,7 +666,7 @@ export function BuildingDecisionsPanel({
                         setActiveDecisionId(d.id)
                         setSignerName(ev.target.value)
                       }}
-                      placeholder="שם החותם"
+                      placeholder="שם החותם (קישור ציבורי — לא נספר לרוב בלי דייר)"
                       style={{ ...styles.input, ...(isMobile ? styles.inputMobile : null) }}
                       maxLength={200}
                     />
@@ -556,8 +689,9 @@ export function BuildingDecisionsPanel({
       )}
 
       <p style={styles.hint}>
-        תזכורות: SMS/אימייל. WhatsApp חופשי רק בחלון 24 שעות; מחוץ לחלון נדרשת תבנית UTILITY
-        מאושרת (HSM) — עדיין לא בקטלוג governance.
+        רוב = חתימות דיירים מזוהים ÷ דירות זכאיות ≥ סף. חתימות אנונימיות נשמרות לביקורת אך לא
+        נספרות. תזכורות: SMS/אימייל. WhatsApp חופשי רק בחלון 24 שעות; מחוץ לחלון נדרשת תבנית
+        UTILITY מאושרת (HSM) — עדיין לא בקטלוג governance.
       </p>
     </div>
   )
@@ -631,6 +765,21 @@ const styles: Record<string, CSSProperties> = {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textSecondary,
     lineHeight: 1.5,
+  },
+  meta: {
+    margin: 0,
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textMuted,
+    lineHeight: 1.45,
+  },
+  warn: {
+    margin: 0,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.warning,
+    background: theme.colors.warningMuted,
+    borderRadius: theme.radius.md,
+    padding: '10px 12px',
+    lineHeight: 1.45,
   },
   form: {
     display: 'grid',
@@ -768,7 +917,7 @@ const styles: Record<string, CSSProperties> = {
   addSigner: {
     display: 'flex',
     gap: 8,
-    alignItems: 'center',
+    alignItems: 'flex-end',
     marginTop: 4,
   },
   addSignerMobile: {
