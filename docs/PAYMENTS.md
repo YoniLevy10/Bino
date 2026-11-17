@@ -60,6 +60,20 @@ Grow שולח לרוב `application/x-www-form-urlencoded` עם מפתחות `da
 
 כפילויות: עדכון ל־`paid` רק כש־`status != paid`. כשל Approve: החיוב נשאר שולם; נשמר `grow_approve_status=failed` + כפתור «נסה לאשר שוב» (דורש `grow_transaction_token` מה-callback המקורי).
 
+**בסיס URL ל־notify:** `buildGrowWebhookNotifyUrl` / `buildGrowInvoiceNotifyUrl` / `buildGrowRegisterWebhookUrl` נבנים מ־`getPublicAppUrl()` → `NEXT_PUBLIC_APP_URL` כשהוא לא `*.vercel.app`, אחרת `https://bino.casa`. לא לרשום `bamakor.vercel.app` בקישורי notify חדשים (alias ישן נשאר לקבלת callbacks בלבד — ראו `docs/DOMAIN.md`).
+
+## getTransactionInfo (אופציונלי, מאחורי דגל)
+
+| | |
+|---|---|
+| API | `POST …/getTransactionInfo` — `pageCode` + `transactionId` + `transactionToken` ([מסמכי Grow](https://developers.grow.business/reference/get-transaction-info)) |
+| קוד Bino | `getGrowTransactionInfo` / `parseGrowTransactionInfoResponse` ב־`lib/grow-client.ts` |
+| דגל | `GROW_GET_TRANSACTION_INFO_ENABLED=true` (ברירת מחדל: כבוי) |
+| שימוש | **לא** מחובר ל־webhook התשלום. לייעוץ ops / reconciliation אחרי אישור Grow שה־pageCode מורשה |
+| דרישות מ־Grow | אישור גישה ל־API על ה־pageCode של הפלטפורמה; אימות צורת תשובה (flat `data` מול `data.transactions[]`) בסנדבוקס לפני הפעלה בפרוד |
+
+אל תפעילו את הדגל בפרודקשן בלי בדיקת רגרסיה ובלי אישור Grow.
+
 ## Apple Pay
 
 קובץ אימות דומיין: `public/.well-known/apple-developer-merchantid-domain-association` (תואם קובץ production מליאל; חי ב־`bino.casa`, וגם ב־alias `bamakor.vercel.app`). רישום הדומיין החדש בדשבורד Grow/Apple — פעולה חיצונית אצלם. ראו גם `docs/DOMAIN.md`.
