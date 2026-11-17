@@ -752,6 +752,31 @@ export const createBuildingDecisionBodySchema = z.object({
   fanout_committee: z.boolean().optional(),
 })
 
+/** Wave 4 — patch open/draft decision threshold / required / title. */
+export const updateBuildingDecisionBodySchema = z
+  .object({
+    project_id: z.string().uuid(),
+    decision_id: z.string().uuid(),
+    title: z.string().trim().min(1).max(300).optional(),
+    body: z.string().trim().max(8000).nullable().optional(),
+    majority_threshold: z.number().gt(0).lte(1).optional(),
+    /** Manual override only when eligible voters are unavailable (server may ignore if eligible > 0). */
+    required_signatures: z.number().int().min(1).max(500).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (
+      v.title === undefined &&
+      v.body === undefined &&
+      v.majority_threshold === undefined &&
+      v.required_signatures === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'נדרש לפחות שדה אחד לעדכון',
+      })
+    }
+  })
+
 /** Wave 4 — create signature request for a decision. */
 export const createSignatureRequestBodySchema = z.object({
   project_id: z.string().uuid(),

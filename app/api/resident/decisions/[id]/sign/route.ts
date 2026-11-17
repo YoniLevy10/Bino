@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { requireResidentContext } from '@/lib/resident-portal/context'
 import { residentSignBuildingDecisionBodySchema } from '@/lib/api-body-schemas'
 import { applyDecisionMajorityIfReached } from '@/lib/building-governance/apply-majority'
+import { auditBuildingSignatureSign } from '@/lib/building-governance/sign-audit'
+import { hashSignatureContent } from '@/lib/building-governance/signature-content'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { getLogger } from '@/lib/logging'
 
@@ -12,7 +14,8 @@ type Ctx = { params: Promise<{ id: string }> }
 
 /**
  * POST — authenticated resident signs an open building decision (canvas data-URL).
- * Writes building_signature_requests (resident_id / unit_id) and may flip decision → passed.
+ * Writes building_signature_requests (resident_id / unit_id / vote_choice) and may flip → passed.
+ * Duplicate votes for the same resident are blocked. Signed rows are never deleted.
  */
 export async function POST(req: Request, ctx: Ctx) {
   const auth = await requireResidentContext({ request: req, allowPicker: true })
@@ -72,12 +75,31 @@ export async function POST(req: Request, ctx: Ctx) {
     .eq('resident_id', membership.resident_id)
     .maybeSingle()
 
+  const contentHash = hashSignatureContent(parsed.data.signature_data_url)
+  const voteChoice = parsed.data.vote_choice ?? 'approve'
+
   if (existing && (existing as { status: string }).status === 'signed') {
-    return NextResponse.json({ ok: true, already_signed: true })
+    await auditBuildingSignatureSign({
+      clientId: membership.client_id,
+      userId,
+      decisionId,
+      signatureRequestId: (existing as { id: string }).id,
+      projectId: membership.project_id,
+      residentId: membership.resident_id,
+      unitId: membership.unit_id,
+      signatureDataUrl: parsed.data.signature_data_url,
+      source: 'resident_portal',
+      alreadySigned: true,
+    })
+    return NextResponse.json({
+      ok: true,
+      already_signed: true,
+      content_hash: contentHash,
+      vote_choice: voteChoice,
+    })
   }
 
   const now = new Date().toISOString()
-  const voteChoice = parsed.data.vote_choice ?? 'approve'
   const signerName =
     (membership.resident_name || '').trim() ||
     (membership.apartment_number ? `דירה ${membership.apartment_number}` : 'דייר/ת')
@@ -90,6 +112,7 @@ export async function POST(req: Request, ctx: Ctx) {
       .update({
         status: 'signed',
         signature_data_url: parsed.data.signature_data_url,
+        signature_content_hash: contentHash,
         vote_choice: voteChoice,
         signed_at: now,
         signer_name: signerName,
@@ -123,6 +146,7 @@ export async function POST(req: Request, ctx: Ctx) {
         unit_id: membership.unit_id,
         status: 'signed',
         signature_data_url: parsed.data.signature_data_url,
+        signature_content_hash: contentHash,
         vote_choice: voteChoice,
         signed_at: now,
         expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
@@ -131,9 +155,13 @@ export async function POST(req: Request, ctx: Ctx) {
       .single()
 
     if (insErr || !inserted) {
-      // Unique race — treat as already signed / retry path.
       if (insErr?.code === '23505' || /duplicate|unique/i.test(insErr?.message || '')) {
-        return NextResponse.json({ ok: true, already_signed: true })
+        return NextResponse.json({
+          ok: true,
+          already_signed: true,
+          content_hash: contentHash,
+          vote_choice: voteChoice,
+        })
       }
       getLogger().error(
         'BUILDING_GOVERNANCE',
@@ -146,6 +174,18 @@ export async function POST(req: Request, ctx: Ctx) {
     requestId = (inserted as { id: string }).id
   }
 
+  await auditBuildingSignatureSign({
+    clientId: membership.client_id,
+    userId,
+    decisionId,
+    signatureRequestId: requestId,
+    projectId: membership.project_id,
+    residentId: membership.resident_id,
+    unitId: membership.unit_id,
+    signatureDataUrl: parsed.data.signature_data_url,
+    source: 'resident_portal',
+  })
+
   const majority = await applyDecisionMajorityIfReached(admin, {
     decisionId,
     clientId: membership.client_id,
@@ -155,6 +195,7 @@ export async function POST(req: Request, ctx: Ctx) {
   return NextResponse.json({
     ok: true,
     signature_request_id: requestId,
+    content_hash: contentHash,
     vote_choice: voteChoice,
     decision_passed: majority.passed,
     signed_count: majority.signedCount,

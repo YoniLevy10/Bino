@@ -9,20 +9,24 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import {
   createBuildingDecisionBodySchema,
   createSignatureRequestBodySchema,
+  updateBuildingDecisionBodySchema,
 } from '@/lib/api-body-schemas'
 import { assertProjectForClient } from '@/lib/building-governance/project-guard'
+import {
+  dedupeResidentBoundSignedRows,
+  loadEligibleVoterCount,
+} from '@/lib/building-governance/eligible-voters'
 import {
   buildingSignPublicPath,
   computeMajorityProgress,
   countVoteChoices,
 } from '@/lib/building-governance/roles'
-import { assertDocumentForProject } from '@/lib/building-governance/decision-document'
 import { getLogger } from '@/lib/logging'
 
 export const dynamic = 'force-dynamic'
 
 const DECISION_SELECT =
-  'id, project_id, title, body, status, majority_threshold, required_signatures, document_id, created_at, closed_at'
+  'id, project_id, title, body, status, majority_threshold, required_signatures, created_at, closed_at'
 
 type DecisionRow = {
   id: string
@@ -32,7 +36,6 @@ type DecisionRow = {
   status: string
   majority_threshold: number
   required_signatures: number
-  document_id: string | null
   created_at: string
   closed_at: string | null
 }
@@ -45,9 +48,10 @@ type SigRow = {
   signer_name: string
   signer_phone: string | null
   resident_id: string | null
+  unit_id: string | null
+  vote_choice: string | null
   signed_at: string | null
   created_at: string
-  vote_choice: string | null
 }
 
 type RecipientRow = {
@@ -103,7 +107,7 @@ export async function GET(req: Request) {
     const { data: sigData, error: sigErr } = await admin
       .from('building_signature_requests')
       .select(
-        'id, decision_id, token, signer_name, signer_phone, resident_id, status, signed_at, created_at, vote_choice'
+        'id, decision_id, token, signer_name, signer_phone, resident_id, unit_id, status, signed_at, created_at, vote_choice'
       )
       .eq('client_id', auth.ctx.clientId)
       .in('decision_id', ids)
@@ -184,10 +188,28 @@ export async function GET(req: Request) {
       .map((s) => [`${s.decision_id}:${s.resident_id}`, s] as const)
   )
 
+  let eligible: {
+    eligibleCount: number
+    unitCount: number
+    mappedResidentCount: number
+  } = { eligibleCount: 0, unitCount: 0, mappedResidentCount: 0 }
+  try {
+    eligible = await loadEligibleVoterCount(admin, {
+      clientId: auth.ctx.clientId,
+      projectId,
+    })
+  } catch (e) {
+    getLogger().warn('BUILDING_GOVERNANCE', 'eligible voters load failed', {
+      err: e instanceof Error ? e.message : String(e),
+      clientId: auth.ctx.clientId,
+    })
+  }
+
   const enriched = rows.map((d) => {
     const related = sigs.filter((s) => s.decision_id === d.id)
     const relatedRecipients = recipients.filter((r) => r.decision_id === d.id)
-    const tallies = countVoteChoices(related)
+    const uniqueResident = dedupeResidentBoundSignedRows(related)
+    const tallies = countVoteChoices(uniqueResident)
     const progress = computeMajorityProgress({
       approveCount: tallies.approve,
       requiredSignatures: d.required_signatures,
@@ -202,6 +224,7 @@ export async function GET(req: Request) {
       abstain_count: tallies.abstain,
       majority_reached: progress.reached,
       majority_pct: progress.pct,
+      majority_need: progress.need,
       signature_requests: related.map((s) => ({
         id: s.id,
         signer_name: s.signer_name,
@@ -238,7 +261,15 @@ export async function GET(req: Request) {
     }
   })
 
-  return NextResponse.json({ decisions: enriched })
+  return NextResponse.json({
+    decisions: enriched,
+    eligible_voters: {
+      count: eligible.eligibleCount,
+      unit_count: eligible.unitCount,
+      mapped_resident_count: eligible.mappedResidentCount,
+      basis: 'project_units_with_mapped_resident',
+    },
+  })
 }
 
 /** Create a decision (default status: open). */
@@ -272,18 +303,36 @@ export async function POST(req: Request) {
   const gate = await assertProjectForClient(admin, body.project_id, auth.ctx.clientId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const documentId: string | null = body.document_id ?? null
-  if (documentId) {
-    const docGate = await assertDocumentForProject(admin, {
-      documentId,
+  let eligibleCount = 0
+  let eligibleWarning: string | null = null
+  try {
+    const eligible = await loadEligibleVoterCount(admin, {
       clientId: auth.ctx.clientId,
       projectId: body.project_id,
     })
-    if (!docGate.ok) {
-      return NextResponse.json({ error: docGate.error }, { status: docGate.status })
-    }
+    eligibleCount = eligible.eligibleCount
+  } catch (e) {
+    getLogger().warn('BUILDING_GOVERNANCE', 'eligible voters on create failed', {
+      err: e instanceof Error ? e.message : String(e),
+      clientId: auth.ctx.clientId,
+    })
   }
 
+  // Prefer live eligible unit count as denominator when available; else manual + warn.
+  let requiredSignatures: number
+  if (eligibleCount > 0) {
+    requiredSignatures = Math.min(500, Math.max(1, eligibleCount))
+  } else if (body.required_signatures != null) {
+    requiredSignatures = body.required_signatures
+    eligibleWarning =
+      'לא נמצאו דירות עם דייר ממופה — נעשה שימוש במספר החתימות הידני. מומלץ לקשר דיירים לדירות.'
+  } else {
+    requiredSignatures = 1
+    eligibleWarning =
+      'לא נמצאו דירות עם דייר ממופה — יש להזין ידנית את מספר החתימות הנדרש.'
+  }
+
+  const majorityThreshold = body.majority_threshold ?? 0.5
   const now = new Date().toISOString()
   const { data, error } = await admin
     .from('building_decisions')
@@ -293,9 +342,8 @@ export async function POST(req: Request) {
       title: body.title,
       body: body.body ?? null,
       status: body.status ?? 'open',
-      majority_threshold: body.majority_threshold ?? 0.5,
-      required_signatures: body.required_signatures ?? 1,
-      document_id: documentId,
+      majority_threshold: majorityThreshold,
+      required_signatures: requiredSignatures,
       created_by: auth.ctx.userId,
       created_at: now,
       updated_at: now,
@@ -337,7 +385,15 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ decision: data, fanout }, { status: 201 })
+  return NextResponse.json(
+    {
+      decision: data,
+      fanout,
+      eligible_count: eligibleCount,
+      eligible_warning: eligibleWarning,
+    },
+    { status: 201 }
+  )
 }
 
 /** Create a signature request link for an existing decision. */
@@ -387,6 +443,32 @@ export async function PUT(req: Request) {
   }
   if (decision.status !== 'open' && decision.status !== 'draft') {
     return NextResponse.json({ error: 'לא ניתן להוסיף חתימות להחלטה סגורה' }, { status: 400 })
+  }
+
+  // Block obvious duplicate name stubs (majority only counts resident_id votes anyway).
+  const normalizedName = body.signer_name.trim().toLowerCase()
+  const { data: existingStubs } = await admin
+    .from('building_signature_requests')
+    .select('id, signer_name, signer_phone, status')
+    .eq('client_id', auth.ctx.clientId)
+    .eq('decision_id', body.decision_id)
+    .in('status', ['pending', 'signed'])
+    .limit(100)
+
+  const dup = (existingStubs ?? []).find((s) => {
+    const row = s as { signer_name: string; signer_phone: string | null }
+    const sameName = (row.signer_name || '').trim().toLowerCase() === normalizedName
+    if (!sameName) return false
+    const phone = (body.signer_phone || '').trim()
+    const existingPhone = (row.signer_phone || '').trim()
+    if (phone && existingPhone) return phone === existingPhone
+    return true
+  })
+  if (dup) {
+    return NextResponse.json(
+      { error: 'קיים כבר קישור חתימה לאותו חותם בהחלטה זו', code: 'DUPLICATE_SIGNER' },
+      { status: 409 }
+    )
   }
 
   const token = randomBytes(24).toString('hex')
@@ -460,4 +542,112 @@ export async function PUT(req: Request) {
     },
     { status: 201 }
   )
+}
+
+/** Update open/draft decision fields (threshold, title, optional manual required). */
+export async function PATCH(req: Request) {
+  const auth = await requireSessionWriteAccess()
+  if (!auth.ok) return auth.response
+
+  let raw: unknown
+  try {
+    raw = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'גוף JSON לא תקין' }, { status: 400 })
+  }
+
+  const parsed = updateBuildingDecisionBodySchema.safeParse(raw)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  }
+  const body = parsed.data
+
+  const admin = getSupabaseAdmin()
+  const rl = await checkAuthenticatedPostRouteLimit(
+    admin,
+    auth.ctx.userId,
+    'building-governance-decision-patch'
+  )
+  if (rl.isLimited) {
+    return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.' }, { status: 429 })
+  }
+
+  const gate = await assertProjectForClient(admin, body.project_id, auth.ctx.clientId)
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  const { data: decision, error: dErr } = await admin
+    .from('building_decisions')
+    .select(DECISION_SELECT)
+    .eq('id', body.decision_id)
+    .eq('client_id', auth.ctx.clientId)
+    .eq('project_id', body.project_id)
+    .maybeSingle()
+
+  if (dErr) {
+    return NextResponse.json({ error: 'שגיאה בטעינת החלטה' }, { status: 500 })
+  }
+  if (!decision) {
+    return NextResponse.json({ error: 'החלטה לא נמצאה' }, { status: 404 })
+  }
+  const row = decision as DecisionRow
+  if (row.status !== 'open' && row.status !== 'draft') {
+    return NextResponse.json({ error: 'לא ניתן לערוך החלטה סגורה' }, { status: 400 })
+  }
+
+  let eligibleCount = 0
+  try {
+    const eligible = await loadEligibleVoterCount(admin, {
+      clientId: auth.ctx.clientId,
+      projectId: body.project_id,
+    })
+    eligibleCount = eligible.eligibleCount
+  } catch (e) {
+    getLogger().warn('BUILDING_GOVERNANCE', 'eligible voters on patch failed', {
+      err: e instanceof Error ? e.message : String(e),
+    })
+  }
+
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+  if (body.title !== undefined) patch.title = body.title
+  if (body.body !== undefined) patch.body = body.body
+  if (body.majority_threshold !== undefined) patch.majority_threshold = body.majority_threshold
+
+  let eligibleWarning: string | null = null
+  if (eligibleCount > 0) {
+    patch.required_signatures = Math.min(500, Math.max(1, eligibleCount))
+  } else if (body.required_signatures !== undefined) {
+    patch.required_signatures = body.required_signatures
+    eligibleWarning =
+      'לא נמצאו דירות עם דייר ממופה — נעשה שימוש במספר החתימות הידני.'
+  }
+
+  const { data: updated, error } = await admin
+    .from('building_decisions')
+    .update(patch)
+    .eq('id', body.decision_id)
+    .eq('client_id', auth.ctx.clientId)
+    .in('status', ['open', 'draft'])
+    .select(DECISION_SELECT)
+    .maybeSingle()
+
+  if (error) {
+    getLogger().error(
+      'BUILDING_GOVERNANCE',
+      'decision patch failed',
+      new Error(error.message),
+      { clientId: auth.ctx.clientId }
+    )
+    return NextResponse.json({ error: 'עדכון החלטה נכשל' }, { status: 500 })
+  }
+  if (!updated) {
+    return NextResponse.json({ error: 'החלטה לא נמצאה או סגורה' }, { status: 404 })
+  }
+
+  return NextResponse.json({
+    decision: updated,
+    eligible_count: eligibleCount,
+    eligible_warning: eligibleWarning,
+  })
 }

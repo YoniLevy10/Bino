@@ -86,7 +86,8 @@ export function residentDecisionInvitePath(
 }
 
 /**
- * Majority progress vs eligible/threshold.
+ * Majority progress vs required denominator × threshold.
+ * Prefer `requiredSignatures` = eligible unit count (see eligible-voters.ts).
  * Counts **approve** only (oppose/abstain do not support).
  * `signedCount` kept as alias for approveCount (backward compat).
  */
@@ -98,7 +99,11 @@ export function computeMajorityProgress(opts: {
   majorityThreshold: number
 }): { pct: number; reached: boolean; need: number; approveCount: number } {
   const required = Math.max(1, opts.requiredSignatures)
-  const need = Math.ceil(required * opts.majorityThreshold)
+  const threshold =
+    Number.isFinite(opts.majorityThreshold) && opts.majorityThreshold > 0
+      ? Math.min(1, opts.majorityThreshold)
+      : 0.5
+  const need = Math.ceil(required * threshold)
   const approveCount = Math.max(0, opts.approveCount ?? opts.signedCount ?? 0)
   const pct = Math.min(100, Math.round((approveCount / need) * 100))
   return { pct, reached: approveCount >= need, need, approveCount }

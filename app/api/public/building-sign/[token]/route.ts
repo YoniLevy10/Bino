@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { submitBuildingSignatureBodySchema } from '@/lib/api-body-schemas'
 import { applyDecisionMajorityIfReached } from '@/lib/building-governance/apply-majority'
+import { auditBuildingSignatureSign } from '@/lib/building-governance/sign-audit'
+import { hashSignatureContent } from '@/lib/building-governance/signature-content'
 import { getLogger } from '@/lib/logging'
 import { checkIpPostRouteLimit } from '@/lib/rate-limit'
 
@@ -40,6 +42,7 @@ export async function GET(_req: Request, ctx: Ctx) {
         .from('building_signature_requests')
         .update({ status: 'expired' })
         .eq('id', reqRow.id)
+        .eq('status', 'pending')
     }
     return NextResponse.json({ error: 'פג תוקף קישור החתימה', code: 'EXPIRED' }, { status: 410 })
   }
@@ -109,7 +112,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const { data: reqRow, error } = await admin
     .from('building_signature_requests')
-    .select('id, status, expires_at, decision_id, client_id, project_id')
+    .select('id, status, expires_at, decision_id, client_id, project_id, resident_id, unit_id')
     .eq('token', token)
     .maybeSingle()
 
@@ -120,8 +123,28 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!reqRow) {
     return NextResponse.json({ error: 'קישור חתימה לא נמצא' }, { status: 404 })
   }
+
+  const contentHash = hashSignatureContent(parsed.data.signature_data_url)
+  const voteChoice = parsed.data.vote_choice ?? 'approve'
+
   if (reqRow.status === 'signed') {
-    return NextResponse.json({ ok: true, already_signed: true })
+    await auditBuildingSignatureSign({
+      clientId: reqRow.client_id,
+      decisionId: reqRow.decision_id,
+      signatureRequestId: reqRow.id,
+      projectId: reqRow.project_id,
+      residentId: reqRow.resident_id,
+      unitId: reqRow.unit_id,
+      signatureDataUrl: parsed.data.signature_data_url,
+      source: 'public_token',
+      alreadySigned: true,
+    })
+    return NextResponse.json({
+      ok: true,
+      already_signed: true,
+      content_hash: contentHash,
+      vote_choice: voteChoice,
+    })
   }
   if (reqRow.status !== 'pending') {
     return NextResponse.json({ error: 'לא ניתן לחתום על בקשה זו' }, { status: 400 })
@@ -131,27 +154,49 @@ export async function POST(req: Request, ctx: Ctx) {
       .from('building_signature_requests')
       .update({ status: 'expired' })
       .eq('id', reqRow.id)
+      .neq('status', 'signed')
     return NextResponse.json({ error: 'פג תוקף קישור החתימה', code: 'EXPIRED' }, { status: 410 })
   }
 
   const now = new Date().toISOString()
-  const voteChoice = parsed.data.vote_choice ?? 'approve'
-  const { error: upErr } = await admin
+  const { data: updated, error: upErr } = await admin
     .from('building_signature_requests')
     .update({
       status: 'signed',
       signature_data_url: parsed.data.signature_data_url,
+      signature_content_hash: contentHash,
       vote_choice: voteChoice,
       signed_at: now,
       ...(parsed.data.signer_name ? { signer_name: parsed.data.signer_name } : {}),
     })
     .eq('id', reqRow.id)
     .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
 
   if (upErr) {
     getLogger().error('BUILDING_GOVERNANCE', 'public sign save failed', new Error(upErr.message))
     return NextResponse.json({ error: 'שמירת החתימה נכשלה' }, { status: 500 })
   }
+  if (!updated) {
+    return NextResponse.json({
+      ok: true,
+      already_signed: true,
+      content_hash: contentHash,
+      vote_choice: voteChoice,
+    })
+  }
+
+  await auditBuildingSignatureSign({
+    clientId: reqRow.client_id,
+    decisionId: reqRow.decision_id,
+    signatureRequestId: reqRow.id,
+    projectId: reqRow.project_id,
+    residentId: reqRow.resident_id,
+    unitId: reqRow.unit_id,
+    signatureDataUrl: parsed.data.signature_data_url,
+    source: 'public_token',
+  })
 
   await applyDecisionMajorityIfReached(admin, {
     decisionId: reqRow.decision_id,
@@ -159,5 +204,5 @@ export async function POST(req: Request, ctx: Ctx) {
     now,
   })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, content_hash: contentHash, vote_choice: voteChoice })
 }
