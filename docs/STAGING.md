@@ -12,13 +12,16 @@
 
 Production **לא** נותק: webhooks, crons, secrets, דומיינים נשארו כמו שהיו.
 
-## משתמש בדיקות (מנהל)
+## משתמש בדיקות (מנהל) — מסונכרן עם דמו סביון
+
+אותו חשבון כמו הדמו בפרודקשן (DB מקומי מבודד — לא נתוני לקוחות חיים):
 
 | שדה | ערך |
 |-----|-----|
-| Email | `staging-admin@bino.casa` |
-| Password | `BinoStaging2026!` |
-| Client | `[STAGING] חברת ניהול דמו` |
+| Email | `savion@bino.com` |
+| Password | `Savion2026!` |
+| Client | `סביון` (`07773bb3-4969-4bce-8ce2-faab3b26383c`) |
+| Org | `a281af3c-99b6-4a4a-a5ba-9498e05e984e` |
 
 נוצר ע״י: `npm run seed:staging` (אחרי `npx supabase start`).
 
