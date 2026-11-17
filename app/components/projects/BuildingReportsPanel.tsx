@@ -85,6 +85,9 @@ type ReportResponse = {
     recorded_spend?: number
     paid_spend?: number
     income_grow_collected: number | null
+    income_bank_credits?: number | null
+    bank_debits?: number | null
+    bank_net?: number | null
     net: number | null
     lines: ReportLine[]
     truncated: boolean
@@ -93,6 +96,14 @@ type ReportResponse = {
     row_count: number
     expense_count?: number
   }
+  bank?: {
+    available: boolean
+    credits: number
+    debits: number
+    net: number
+    transfer_succeeded: number
+    tx_count: number
+  } | null
   grow: {
     available: boolean
     collected: number
@@ -627,6 +638,37 @@ export function BuildingReportsPanel({
 
           {report.grow?.available ? (
             <div style={styles.growCard}>
+              {report.bank?.available ? (
+                <>
+                  <p style={styles.sectionTitle}>חשבון בנק (Financy)</p>
+                  <div style={styles.kpiRow}>
+                    <div style={styles.kpi}>
+                      <span style={styles.kpiLabel}>זיכויים</span>
+                      <span style={{ ...styles.kpiValue, color: theme.colors.kpiPositive }}>
+                        {formatIls(report.bank.credits)}
+                      </span>
+                    </div>
+                    <div style={styles.kpi}>
+                      <span style={styles.kpiLabel}>חיובים</span>
+                      <span style={{ ...styles.kpiValue, color: theme.colors.kpiNegative }}>
+                        {formatIls(report.bank.debits)}
+                      </span>
+                    </div>
+                    <div style={styles.kpi}>
+                      <span style={styles.kpiLabel}>נטו בנק</span>
+                      <span style={styles.kpiValue}>{formatIls(report.bank.net)}</span>
+                    </div>
+                    <div style={styles.kpi}>
+                      <span style={styles.kpiLabel}>העברות שאושרו</span>
+                      <span style={styles.kpiValue}>
+                        {formatIls(report.bank.transfer_succeeded)}
+                      </span>
+                      <span style={styles.kpiHint}>{report.bank.tx_count} תנועות</span>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
               <p style={styles.sectionTitle}>גבייה (Grow) — קריאה בלבד</p>
               <div
                 style={{

@@ -1493,6 +1493,64 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          id: string
+          client_id: string
+          project_id: string | null
+          parent_id: string | null
+          depth: number
+          name: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          project_id?: string | null
+          parent_id?: string | null
+          depth?: number
+          name: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          project_id?: string | null
+          parent_id?: string | null
+          depth?: number
+          name?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_documents: {
         Row: {
           building_id: string | null
@@ -1501,10 +1559,11 @@ export type Database = {
           created_at: string
           file_name: string
           file_size: number | null
+          folder_id: string | null
           id: string
           mime_type: string | null
           notes: string | null
-          project_id: string
+          project_id: string | null
           published_at: string | null
           storage_path: string
           uploaded_by: string | null
@@ -1517,10 +1576,11 @@ export type Database = {
           created_at?: string
           file_name: string
           file_size?: number | null
+          folder_id?: string | null
           id?: string
           mime_type?: string | null
           notes?: string | null
-          project_id: string
+          project_id?: string | null
           published_at?: string | null
           storage_path: string
           uploaded_by?: string | null
@@ -1533,10 +1593,11 @@ export type Database = {
           created_at?: string
           file_name?: string
           file_size?: number | null
+          folder_id?: string | null
           id?: string
           mime_type?: string | null
           notes?: string | null
-          project_id?: string
+          project_id?: string | null
           published_at?: string | null
           storage_path?: string
           uploaded_by?: string | null
@@ -1548,6 +1609,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
             referencedColumns: ["id"]
           },
           {

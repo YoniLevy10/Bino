@@ -1,5 +1,6 @@
 import { CLIENT_GROW_LEGAL_SETTINGS_SELECT } from '@/lib/client-grow-legal'
 import { CLIENT_GROW_PAYMENTS_SELECT } from '@/lib/grow-credentials'
+import { CLIENT_ICOUNT_PAYMENTS_SAFE_SELECT } from '@/lib/icount-credentials'
 
 /** GetLink / onboarding status fields safe for settings UI (no secrets). */
 export const CLIENT_GROW_ONBOARDING_SELECT = [
@@ -30,9 +31,12 @@ export const CLIENT_SETTINGS_SAFE_SELECT = [
   CLIENT_GROW_LEGAL_SETTINGS_SELECT,
   CLIENT_GROW_PAYMENTS_SELECT,
   CLIENT_GROW_ONBOARDING_SELECT,
+  // icount_api_token intentionally omitted (server-only).
+  CLIENT_ICOUNT_PAYMENTS_SAFE_SELECT,
 ].join(', ')
 
 /** Server-only select — used to derive *_set flags, never returned to the client. */
-export const CLIENT_SETTINGS_SECRET_PROBE_SELECT = 'whatsapp_access_token'
+export const CLIENT_SETTINGS_SECRET_PROBE_SELECT =
+  'whatsapp_access_token, icount_api_token'
 
 export const CLIENT_SETTINGS_READ_SELECT = `${CLIENT_SETTINGS_SAFE_SELECT}, ${CLIENT_SETTINGS_SECRET_PROBE_SELECT}`

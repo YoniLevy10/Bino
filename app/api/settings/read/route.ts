@@ -24,11 +24,16 @@ export async function GET() {
   const whatsapp_access_token_set = Boolean(
     typeof row.whatsapp_access_token === 'string' && row.whatsapp_access_token.trim()
   )
+  const icount_api_token_set = Boolean(
+    typeof row.icount_api_token === 'string' && row.icount_api_token.trim()
+  )
 
   delete row.whatsapp_access_token
+  delete row.icount_api_token
 
   return NextResponse.json({
     ...row,
     whatsapp_access_token_set,
+    icount_api_token_set,
   })
 }

@@ -27,8 +27,8 @@ import {
 import { CollapsibleSection } from '@/app/components/shared/CollapsibleSection'
 import { ResidentPortalDocsPanel } from '@/app/components/projects/ResidentPortalDocsPanel'
 import { ProjectAdvancedActions } from '@/app/components/projects/ProjectAdvancedActions'
-import { BuildingFinancePanel } from '@/app/components/projects/BuildingFinancePanel'
-import { BuildingReportsPanel } from '@/app/components/projects/BuildingReportsPanel'
+import { FinanceWorkspace } from '@/app/components/finance/FinanceWorkspace'
+import { BuildingBankPanel } from '@/app/components/projects/BuildingBankPanel'
 import { BuildingCommitteePanel } from '@/app/components/projects/BuildingCommitteePanel'
 import { BuildingResidentsPanel } from '@/app/components/projects/BuildingResidentsPanel'
 import { BuildingDecisionsPanel } from '@/app/components/projects/BuildingDecisionsPanel'
@@ -59,7 +59,7 @@ export type BuildingHubTicket = {
 type HubTab =
   | 'overview'
   | 'finance'
-  | 'reports'
+  | 'bank'
   | 'committee'
   | 'docs'
   | 'residents'
@@ -69,7 +69,7 @@ type HubTab =
 const TABS: { id: HubTab; label: string }[] = [
   { id: 'overview', label: 'סקירה' },
   { id: 'finance', label: 'כספים' },
-  { id: 'reports', label: 'דוחות' },
+  { id: 'bank', label: 'חשבון בנק' },
   { id: 'committee', label: 'ועד' },
   { id: 'docs', label: 'מסמכים' },
   { id: 'residents', label: 'דיירים' },
@@ -199,21 +199,17 @@ export function BuildingHubModal({
     )
   } else if (tab === 'finance') {
     body = (
-      <BuildingFinancePanel
-        projectId={project.id}
-        projectName={project.name}
-        isMobile={isMobile}
-        openTickets={openTickets}
-      />
-    )
-  } else if (tab === 'reports') {
-    body = (
-      <BuildingReportsPanel
+      <FinanceWorkspace
+        embedded
+        forcedSection="expenses"
         projectId={project.id}
         projectName={project.name}
         isMobile={isMobile}
       />
     )
+  } else if (tab === 'bank') {
+    // Business-wide bank account (same for every building under this client).
+    body = <BuildingBankPanel isMobile={isMobile} />
   } else if (tab === 'committee') {
     body = (
       <BuildingCommitteePanel

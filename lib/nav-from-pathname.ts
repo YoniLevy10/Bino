@@ -19,7 +19,11 @@ export function navIdFromPathname(pathname: string): string | null {
     return null
   }
 
-  // Prefer longest href match so /finance/reports maps to reports, not finance.
+  // חשבון בנק is its own nav surface; other /finance/* stay under finance.
+  if (pathname === '/finance/bank' || pathname.startsWith('/finance/bank/')) return 'bank'
+  if (pathname === '/finance' || pathname.startsWith('/finance/')) return 'finance'
+
+  // Prefer longest href match for other registry routes.
   let bestId: string | null = null
   let bestLen = -1
   for (const [id, item] of Object.entries(SIDEBAR_NAV_REGISTRY) as [SidebarNavItemId, { href: string }][]) {

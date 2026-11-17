@@ -25,6 +25,7 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'campaigns',
   'collections',
   'finance',
+  'bank',
   'reports',
 ] as const
 
@@ -106,7 +107,7 @@ export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'attendance',
   'collections',
   'finance',
-  'reports',
+  'bank',
   'project_documents',
   'summary',
   'calendar',
@@ -125,10 +126,13 @@ export const SECONDARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = []
  * Collapsible sidebar group "ניהול כספים".
  * Children reuse existing screens; visibility still follows addon/pin rules.
  */
+/**
+ * ניהול כספים: גבייה · כספים (הוצאות/דוחות) · חשבון בנק עסקי (לקוח, לא בניין) · מסמכים.
+ */
 export const FINANCE_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'collections',
   'finance',
-  'reports',
+  'bank',
   'project_documents',
 ] as const
 
@@ -262,9 +266,16 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   finance: {
     id: 'finance',
     href: '/finance',
-    label: 'הכנסות והוצאות',
+    label: 'כספים',
     icon: 'chart',
   },
+  bank: {
+    id: 'bank',
+    href: '/finance/bank',
+    label: 'חשבון בנק',
+    icon: 'coin',
+  },
+  /** Deep-link — reports live under כספים workspace tabs; not a separate sidebar row. */
   reports: {
     id: 'reports',
     href: '/finance/reports',
@@ -289,7 +300,7 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'attendance',
   'collections',
   'finance',
-  'reports',
+  'bank',
   'project_documents',
   'summary',
 ]
@@ -380,7 +391,7 @@ export function resolveSidebarNavItems(
     }
     // Core finance/reports always show (like dashboard/tickets) even when a
     // saved enabled_nav_features allowlist predates them.
-    if (id === 'finance' || id === 'reports') {
+    if (id === 'finance' || id === 'bank') {
       return true
     }
     // Auto addons (WhatsApp / attendance / collections): show whenever
@@ -453,9 +464,13 @@ export function isNavItemActive(pathname: string, item: Pick<SidebarNavItem, 'hr
   if (item.href === '/addons') {
     return pathname === '/addons' || pathname.startsWith('/addons/')
   }
-  // Keep /finance and /finance/reports as distinct nav targets.
+  // כספים (הוצאות/דוחות) vs חשבון בנק — separate highlight targets.
   if (item.href === '/finance') {
-    return pathname === '/finance'
+    if (pathname.startsWith('/finance/bank')) return false
+    return pathname === '/finance' || pathname.startsWith('/finance/')
+  }
+  if (item.href === '/finance/bank') {
+    return pathname === '/finance/bank' || pathname.startsWith('/finance/bank/')
   }
   if (item.href === '/finance/reports') {
     return pathname === '/finance/reports' || pathname.startsWith('/finance/reports/')

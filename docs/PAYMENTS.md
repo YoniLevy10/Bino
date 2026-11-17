@@ -9,7 +9,27 @@ Bino לא סולקת ולא מחזיקה כסף. אין «חשבון תשלומ�
 Bino: יוצרת חיוב, שולחת SMS, מקבלת S2S, מסמנת «שולם», ApproveTransaction, מייל אישור, חשבונית (אם Grow שולח)
 ```
 
-## למה Grow ישירות (לא Morning)
+**החלטת בעלים (מיגרציה):** עסקת Grow הסתיימה — יעד הגבייה הוא **iCount API ישיר** (לא Financy).  
+תוכנית + dual-run + צ׳קליסט credentials: [`docs/ICOUNT_COLLECTIONS_MIGRATION_HE.md`](./ICOUNT_COLLECTIONS_MIGRATION_HE.md).  
+עד P0 ירוק: Grow נשאר ברירת מחדל; קוד Grow לא נמחק.
+
+## Financy (בנק + ספרים) — מקביל לגבייה
+
+שכבת **חשבון הבנק** (`/finance/bank`) רצה דרך Financy Open Finance:
+
+- חיבור בנק / iCount / חשבונית ירוקה ב־[Financy Settings](https://financy.open-finance.ai/settings)
+- מפתחות `financy_*` על `clients` (שמירה ב־`/api/settings/update`)
+- AIS → `bank_accounts` / `bank_transactions`; PIS העברות → `bank_transfers`
+- ספרים/receivables דרך `/api/building-finance/bank/books` ו־`/api/collections/financy-receivables`
+- Webhook העברות: `/api/webhook/financy-payment?token=FINANCY_WEBHOOK_SECRET`
+- Cron סנכרון: `/api/cron/bank-sync`
+
+Financy→iCount = **ספרים בלבד** — לא מחליף קישורי תשלום / IPN / סימון שולם.  
+Grow נשאר לחיובים קיימים עד dual-run iCount (ראו מסמך המיגרציה).
+
+פירוט יכולות: `docs/planning/BINO_FINANCY_CAPABILITY_MAP.md`.
+
+## למה Grow ישירות (לא Morning) — מצב נוכחי עד iCount P0
 
 Grow מחברים את Bino כפלטפורמה:
 
