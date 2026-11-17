@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       admin,
       BUILDING_EXPENSE_RECEIPTS_BUCKET,
       [storagePath],
-      'receipt_sign_rollback'
+      'upload_rollback'
     )
     return NextResponse.json({ error: 'יצירת קישור קבלה נכשלה' }, { status: 500 })
   }
