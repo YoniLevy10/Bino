@@ -77,3 +77,20 @@ Grow שולח לרוב `application/x-www-form-urlencoded` עם מפתחות `da
 ## Apple Pay
 
 קובץ אימות דומיין: `public/.well-known/apple-developer-merchantid-domain-association` (תואם קובץ production מליאל; חי ב־`bino.casa`, וגם ב־alias `bamakor.vercel.app`). רישום הדומיין החדש בדשבורד Grow/Apple — פעולה חיצונית אצלם. ראו גם `docs/DOMAIN.md`.
+
+## Grow P1 / P2 — הרחבות (כבויות כברירת מחדל)
+
+**P1 (דרישות + gates בלבד):** הוראת קבע, tokenization בהסכמה, זיכויים, בחירת חבילה בצירוף, שיתוף חשבונית בפורטל, התאמת דוחות — **לא מופעלים בפרוד**. קוראי הדגלים: `lib/grow-p1-gates.ts`. הפעלה רק עם `GROW_P1_*_ENABLED=true` **אחרי** אימות sandbox אצל Grow + אישור בעלים.
+
+| משתנה | תפקיד | ברירת מחדל |
+|--------|--------|------------|
+| `GROW_P1_RECURRING_ENABLED` | הוראת קבע | כבוי |
+| `GROW_P1_TOKENIZATION_ENABLED` | שמירת טוקן כרטיס | כבוי |
+| `GROW_P1_REFUNDS_ENABLED` | זיכוי Grow API | כבוי |
+| `GROW_P1_PACKAGE_PICKER_ENABLED` | בחירת חבילה ב־GetLink | כבוי |
+| `GROW_P1_INVOICE_SHARE_ENABLED` | שיתוף קישור חשבונית בפורטל | כבוי |
+| `GROW_P1_FINANCE_RECON_UI_ENABLED` | UI התאמה לדוחות | כבוי |
+
+קישור חשבונית **קריאה בלבד** באזור אישי (`grow_invoice_url`) כבר קיים בלי דגל — אין שינוי במסלול webhook.
+
+**P2 (מחקר בלבד):** יתרות/תנועות, משיכות/תשלום לספקים, כרטיס דיגיטלי לוועד, עמלת פלטפורמה — דורשים אישור Grow; **אין** קוד הפעלה.
