@@ -255,6 +255,7 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `GROW_PRICE_QUOTE` | GetLink `price_quote` (not `quote_price`) |
 | `GROW_REGISTER_IS_DIRECT_DEBIT` | `1` sandbox / usually `0` live unless Grow says otherwise |
 | `GROW_REGISTER_BASE_URL` | Optional; defaults to devregister / registerapi by `GROW_ENV` |
+| `GROW_GET_TRANSACTION_INFO_ENABLED` | Optional; `true`/`1` enables server-only `getGrowTransactionInfo` (default off; not wired into payment webhooks) |
 | `LEGAL_BUSINESS_NAME` | Platform-only display name on `/vaad-pay` + `/contact` (not used for a tenant's Grow page) |
 | `LEGAL_PHONE` | Platform-only contact phone on public legal pages |
 | `LEGAL_ADDRESS` | Platform-only address on public legal pages |

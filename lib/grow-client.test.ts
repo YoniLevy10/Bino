@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   approveGrowTransaction,
+  buildGrowInvoiceNotifyUrl,
+  getGrowTransactionInfo,
   isGrowApiSuccessStatus,
   parseGrowPaymentLinkResponse,
+  parseGrowTransactionInfoResponse,
 } from '@/lib/grow-client'
-import { parseGrowEnv, readGrowPlatformConfig, sanitizeGrowPlainText } from '@/lib/grow-config'
+import {
+  isGrowGetTransactionInfoEnabled,
+  parseGrowEnv,
+  readGrowPlatformConfig,
+  sanitizeGrowPlainText,
+} from '@/lib/grow-config'
 
 vi.mock('@/lib/fetch-timeout', () => ({
   fetchWithTimeout: vi.fn(),
@@ -157,5 +165,144 @@ describe('approveGrowTransaction', () => {
       platform
     )
     expect(result).toEqual({ ok: true })
+  })
+})
+
+describe('buildGrowInvoiceNotifyUrl', () => {
+  const prevApp = process.env.NEXT_PUBLIC_APP_URL
+  const prevSite = process.env.NEXT_PUBLIC_SITE_URL
+  const prevSecret = process.env.GROW_WEBHOOK_SECRET
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = prevApp
+    process.env.NEXT_PUBLIC_SITE_URL = prevSite
+    process.env.GROW_WEBHOOK_SECRET = prevSecret
+  })
+
+  it('builds bino.casa invoice webhook URL', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://bino.casa'
+    process.env.GROW_WEBHOOK_SECRET = 'hook-secret'
+    expect(buildGrowInvoiceNotifyUrl()).toBe(
+      'https://bino.casa/api/webhook/grow-invoice?token=hook-secret'
+    )
+  })
+
+  it('refuses *.vercel.app APP_URL and falls back to canonical host', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://bamakor.vercel.app'
+    delete process.env.NEXT_PUBLIC_SITE_URL
+    process.env.GROW_WEBHOOK_SECRET = 'hook-secret'
+    expect(buildGrowInvoiceNotifyUrl()).toBe(
+      'https://bino.casa/api/webhook/grow-invoice?token=hook-secret'
+    )
+  })
+})
+
+describe('isGrowGetTransactionInfoEnabled', () => {
+  it('defaults off; accepts 1/true/on/yes', () => {
+    expect(isGrowGetTransactionInfoEnabled(undefined)).toBe(false)
+    expect(isGrowGetTransactionInfoEnabled('')).toBe(false)
+    expect(isGrowGetTransactionInfoEnabled('0')).toBe(false)
+    expect(isGrowGetTransactionInfoEnabled('1')).toBe(true)
+    expect(isGrowGetTransactionInfoEnabled('true')).toBe(true)
+    expect(isGrowGetTransactionInfoEnabled('ON')).toBe(true)
+  })
+})
+
+describe('parseGrowTransactionInfoResponse', () => {
+  it('parses flat data shape as paid', () => {
+    const parsed = parseGrowTransactionInfoResponse({
+      status: 1,
+      data: {
+        status: 'שולם',
+        statusCode: 2,
+        sum: '50',
+        transactionId: '33500000',
+        transactionToken: 'tok',
+        processId: '5000000',
+        paymentLinkProcessId: '355555',
+        asmachta: '300000209',
+      },
+    })
+    expect(parsed).toMatchObject({
+      paid: true,
+      sum: '50',
+      transactionId: '33500000',
+      asmachta: '300000209',
+    })
+  })
+
+  it('parses transactions[] shape', () => {
+    const parsed = parseGrowTransactionInfoResponse({
+      status: '1',
+      data: {
+        processId: '123',
+        transactions: [{ statusCode: '2', status: 'שולם', sum: '3', transactionId: '9' }],
+      },
+    })
+    expect(parsed?.paid).toBe(true)
+    expect(parsed?.sum).toBe('3')
+    expect(parsed?.transactionId).toBe('9')
+    expect(parsed?.processId).toBe('123')
+  })
+
+  it('rejects non-success status', () => {
+    expect(parseGrowTransactionInfoResponse({ status: 0, data: { statusCode: 2 } })).toBeNull()
+  })
+})
+
+describe('getGrowTransactionInfo', () => {
+  const platform = {
+    env: 'sandbox' as const,
+    apiKey: 'body-key',
+    xApiKey: 'header-key',
+    pageCode: 'page',
+    walletPageCode: 'page',
+    webhookSecret: 'hook',
+  }
+  const prevFlag = process.env.GROW_GET_TRANSACTION_INFO_ENABLED
+
+  beforeEach(() => {
+    vi.mocked(fetchWithTimeout).mockReset()
+  })
+
+  afterEach(() => {
+    if (prevFlag === undefined) delete process.env.GROW_GET_TRANSACTION_INFO_ENABLED
+    else process.env.GROW_GET_TRANSACTION_INFO_ENABLED = prevFlag
+  })
+
+  it('does not call Grow when feature flag is off', async () => {
+    delete process.env.GROW_GET_TRANSACTION_INFO_ENABLED
+    const result = await getGrowTransactionInfo(
+      { transactionId: 'tx-1', transactionToken: 'tok-1' },
+      platform
+    )
+    expect(result).toEqual({
+      ok: false,
+      error: 'getTransactionInfo כבוי (GROW_GET_TRANSACTION_INFO_ENABLED)',
+      code: 'DISABLED',
+    })
+    expect(fetchWithTimeout).not.toHaveBeenCalled()
+  })
+
+  it('posts /getTransactionInfo when flag enabled', async () => {
+    process.env.GROW_GET_TRANSACTION_INFO_ENABLED = 'true'
+    vi.mocked(fetchWithTimeout).mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({
+        status: 1,
+        data: { statusCode: 2, status: 'שולם', sum: '10', transactionId: 'tx-1' },
+      }),
+    } as Response)
+
+    const result = await getGrowTransactionInfo(
+      { transactionId: 'tx-1', transactionToken: 'tok-1' },
+      platform
+    )
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.data.paid).toBe(true)
+    expect(fetchWithTimeout).toHaveBeenCalledTimes(1)
+    const [url] = vi.mocked(fetchWithTimeout).mock.calls[0]
+    expect(String(url)).toContain('/getTransactionInfo')
   })
 })

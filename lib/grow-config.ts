@@ -102,6 +102,18 @@ export function isGrowRegisterConfigured(): boolean {
   return readGrowRegisterConfig() != null
 }
 
+/**
+ * Opt-in for Grow `/getTransactionInfo` client (ops / reconciliation).
+ * Default off — do not enable in production until Grow confirms pageCode access
+ * and Bino has regression coverage for any webhook use.
+ */
+export function isGrowGetTransactionInfoEnabled(
+  raw: string | null | undefined = process.env.GROW_GET_TRANSACTION_INFO_ENABLED
+): boolean {
+  const v = (raw || '').trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on'
+}
+
 export function growSdkEnvironment(env: GrowEnv = parseGrowEnv(process.env.GROW_ENV)): 'DEV' | 'PRODUCTION' {
   return env === 'sandbox' ? 'DEV' : 'PRODUCTION'
 }
