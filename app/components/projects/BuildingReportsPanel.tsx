@@ -71,7 +71,10 @@ type ReportResponse = {
     net: number | null
     lines: ReportLine[]
     truncated: boolean
+    lines_truncated?: boolean
+    totals_incomplete?: boolean
     row_count: number
+    expense_count?: number
   }
   grow: {
     available: boolean
@@ -589,8 +592,16 @@ export function BuildingReportsPanel({
           <div>
             <div style={styles.listHeader}>
               <p style={styles.sectionTitle}>פירוט הוצאות</p>
-              {report.pnl.truncated ? (
-                <span style={styles.muted}>מוצגות שורות מוגבלות ({report.pnl.row_count})</span>
+              {report.pnl.totals_incomplete ? (
+                <span style={styles.muted}>סיכום התקופה חלקי — בדקו שוב מאוחר יותר</span>
+              ) : report.pnl.lines_truncated || report.pnl.truncated ? (
+                <span style={styles.muted}>
+                  מוצגות שורות מוגבלות ({report.pnl.row_count}
+                  {report.pnl.expense_count != null
+                    ? ` מתוך ${report.pnl.expense_count}`
+                    : ''}
+                  ) — הסה״כ מלא
+                </span>
               ) : null}
             </div>
             {report.pnl.lines.length === 0 ? (
