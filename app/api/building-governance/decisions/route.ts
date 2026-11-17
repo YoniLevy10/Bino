@@ -272,7 +272,7 @@ export async function POST(req: Request) {
   const gate = await assertProjectForClient(admin, body.project_id, auth.ctx.clientId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  let documentId: string | null = body.document_id ?? null
+  const documentId: string | null = body.document_id ?? null
   if (documentId) {
     const docGate = await assertDocumentForProject(admin, {
       documentId,
