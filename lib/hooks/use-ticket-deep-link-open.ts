@@ -47,9 +47,10 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const ticketId =
-      parseTicketIdFromSearchParams(searchParams) ||
-      parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
+    // Prefer window.location over Next useSearchParams. clearDeepLink / markDeepLink use
+    // history.replaceState/pushState, which update location immediately while Next's
+    // searchParams can lag — reading Next first caused close → brief re-open of the same ticket.
+    const ticketId = parseTicketIdFromSearchParams(new URLSearchParams(window.location.search))
     if (!ticketId || deepLinkHandledRef.current === ticketId) return
     if (selectedTicketId === ticketId) {
       deepLinkHandledRef.current = ticketId
@@ -70,6 +71,7 @@ export function useTicketDeepLinkOpen<T extends { id: string }>({
         onOpenTicketRef.current(mapFetchedTicket(fetched), { skipDeepLink: true })
       }
     })()
+    // searchParams kept in deps so App Router navigations still re-run; location is the source of truth.
   }, [tickets, selectedTicketId, mapFetchedTicket, resolveClientId, searchParams])
 
   useEffect(() => {
