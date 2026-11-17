@@ -27,6 +27,7 @@ type HomePayload = {
     status: string
     can_pay: boolean
   } | null
+  pendingApprovals?: number
   pinnedAnnouncement: { id: string; title: string; body: string } | null
   amenitiesToday: Array<{
     id: string
@@ -42,10 +43,10 @@ type HomePayload = {
 }
 
 const QUICK_ACTIONS = [
-  { href: '/resident/tickets', label: 'פתיחת תקלה', hint: 'דיווח מהיר' },
-  { href: '/resident/payments', label: 'תשלומים', hint: 'יתרות וחיובים' },
-  { href: '/resident/decisions', label: 'החלטות', hint: 'חתימה והצבעה' },
-  { href: '/resident/information', label: 'מידע', hint: 'הודעות ומסמכים' },
+  { href: '/resident/tickets', label: 'פתיחת תקלה', hint: 'דיווח מהיר', badgeKey: null },
+  { href: '/resident/payments', label: 'תשלומים', hint: 'יתרות וחיובים', badgeKey: null },
+  { href: '/resident/decisions', label: 'החלטות', hint: 'חתימה והצבעה', badgeKey: 'approvals' as const },
+  { href: '/resident/information', label: 'מידע', hint: 'הודעות ומסמכים', badgeKey: null },
 ] as const
 
 function amenityHours(a: HomePayload['amenitiesToday'][number]): string {
@@ -92,6 +93,7 @@ export default function ResidentHomePage() {
   const apartment = data.membership?.apartment_number
   const building = data.membership?.project_name
   const balance = Number(data.openBalance || 0)
+  const pendingApprovals = Math.max(0, Number(data.pendingApprovals || 0))
 
   return (
     <div className={`resident-home ${isMobile ? 'is-mobile' : 'is-desktop'}`}>
@@ -123,13 +125,47 @@ export default function ResidentHomePage() {
         </div>
       </section>
 
+      {pendingApprovals > 0 ? (
+        <Link
+          href="/resident/decisions"
+          className="resident-home-approvals-banner resident-btn-press"
+          aria-label={`${pendingApprovals} אישורים ממתינים לחתימה`}
+        >
+          <span className="resident-home-approvals-banner-label">אישורים ממתינים</span>
+          <span className="resident-home-approvals-banner-count">
+            {pendingApprovals > 99 ? '99+' : pendingApprovals}
+          </span>
+        </Link>
+      ) : null}
+
       <nav className="resident-home-actions" aria-label="פעולות מהירות">
-        {QUICK_ACTIONS.map((action) => (
-          <Link key={action.href} href={action.href} className="resident-home-action resident-btn-press">
-            <span className="resident-home-action-label">{action.label}</span>
-            <span className="resident-home-action-hint">{action.hint}</span>
-          </Link>
-        ))}
+        {QUICK_ACTIONS.map((action) => {
+          const showBadge = action.badgeKey === 'approvals' && pendingApprovals > 0
+          return (
+            <Link
+              key={action.href}
+              href={action.href}
+              className="resident-home-action resident-btn-press"
+              aria-label={
+                showBadge
+                  ? `${action.label} — ${pendingApprovals} ממתינים`
+                  : undefined
+              }
+            >
+              <span className="resident-home-action-label-row">
+                <span className="resident-home-action-label">{action.label}</span>
+                {showBadge ? (
+                  <span className="resident-home-action-badge">
+                    {pendingApprovals > 99 ? '99+' : pendingApprovals}
+                  </span>
+                ) : null}
+              </span>
+              <span className="resident-home-action-hint">
+                {showBadge ? `${pendingApprovals} ממתינים לחתימה` : action.hint}
+              </span>
+            </Link>
+          )
+        })}
       </nav>
 
       <div className="resident-home-secondary">

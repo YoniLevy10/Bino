@@ -65,6 +65,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [pendingApprovals, setPendingApprovals] = useState(0)
 
   const hideChrome =
     pathname === '/resident/login' ||
@@ -73,6 +74,20 @@ export function ResidentShell({ children }: { children: ReactNode }) {
     pathname.startsWith('/resident/demo') ||
     pathname.startsWith('/resident/accept-invite') ||
     pathname.startsWith('/resident/sandbox')
+
+  const refreshPendingApprovals = useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout('/api/resident/approvals/pending')
+      if (!res.ok) {
+        setPendingApprovals(0)
+        return
+      }
+      const json = (await res.json()) as { pendingApprovals?: number }
+      setPendingApprovals(Math.max(0, Number(json.pendingApprovals || 0)))
+    } catch {
+      setPendingApprovals(0)
+    }
+  }, [])
 
   const loadMemberships = useCallback(async () => {
     if (hideChrome) {
@@ -96,6 +111,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
         }
         setError(json.error || 'טעינת דירות נכשלה')
         setMemberships([])
+        setPendingApprovals(0)
         return
       }
       const list = json.memberships || []
@@ -103,6 +119,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       if (list.length === 0) {
         setError('אין חברות פעילה בפורטל. פנו לחברת הניהול לקבלת הזמנה.')
         setActiveId(null)
+        setPendingApprovals(0)
       } else {
         // API orders oldest→newest; prefer newest so demo re-login wins over stale rows.
         const preferred = list[list.length - 1]!
@@ -114,6 +131,9 @@ export function ResidentShell({ children }: { children: ReactNode }) {
         })
         if (!ctxRes.ok) {
           setError('לא ניתן להפעיל את הדירה — התחברו מחדש דרך קישור הבניין או /resident/demo')
+          setPendingApprovals(0)
+        } else {
+          await refreshPendingApprovals()
         }
       }
     } catch (e) {
@@ -121,7 +141,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [hideChrome, router])
+  }, [hideChrome, router, refreshPendingApprovals])
 
   useEffect(() => {
     void loadMemberships()
@@ -139,6 +159,7 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       setError(json.error || 'בחירת דירה נכשלה')
       return
     }
+    await refreshPendingApprovals()
     router.refresh()
     window.location.href = pathname || '/resident'
   }
@@ -289,17 +310,31 @@ export function ResidentShell({ children }: { children: ReactNode }) {
       <nav className="lg-tabbar" aria-label="ניווט פורטל דיירים" style={tabbarStyle}>
         {NAV.map((item) => {
           const activeNav = item.match(pathname || '')
+          const showBadge =
+            item.href === '/resident/decisions' && pendingApprovals > 0
           return (
             <Link
               key={item.href}
               href={item.href}
               className={activeNav ? 'lg-nav-active' : undefined}
+              aria-label={
+                showBadge
+                  ? `${item.label} — ${pendingApprovals} ממתינים`
+                  : undefined
+              }
               style={{
                 ...residentShellStyles.tabItem,
                 ...(activeNav ? residentShellStyles.tabItemActive : null),
               }}
             >
-              <ResidentNavIcon name={item.icon} active={activeNav} />
+              <span className="resident-shell-tab-icon-wrap">
+                <ResidentNavIcon name={item.icon} active={activeNav} />
+                {showBadge ? (
+                  <span className="resident-shell-tab-badge">
+                    {pendingApprovals > 99 ? '99+' : pendingApprovals}
+                  </span>
+                ) : null}
+              </span>
               <span>{item.label}</span>
             </Link>
           )
