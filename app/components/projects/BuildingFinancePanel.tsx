@@ -114,9 +114,9 @@ export function BuildingFinancePanel({
         error?: string
         code?: string
       }
-      if (expRes.status === 403 && expJson.code === 'ADDON_REQUIRED') {
+      if (expJson.code === 'FINANCE_PLATFORM_DISABLED') {
         setLocked(true)
-        setLockMessage(expJson.error || 'תוסף הנהלת חשבונות אינו פעיל בחשבון')
+        setLockMessage(expJson.error || 'הנהלת חשבונות בניין כבויה כרגע בפלטפורמה')
         setExpenses([])
         setBudget(null)
         return
@@ -187,10 +187,10 @@ export function BuildingFinancePanel({
         }),
       })
       const json = (await res.json()) as { error?: string; code?: string }
-      if (res.status === 403 && json.code === 'ADDON_REQUIRED') {
+      if (json.code === 'FINANCE_PLATFORM_DISABLED') {
         setLocked(true)
-        setLockMessage(json.error || 'תוסף הנהלת חשבונות אינו פעיל')
-        throw new Error(json.error || 'תוסף לא פעיל')
+        setLockMessage(json.error || 'הנהלת חשבונות בניין כבויה כרגע בפלטפורמה')
+        throw new Error(json.error || 'הנהלת חשבונות כבויה בפלטפורמה')
       }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success('הוצאה נשמרה')
@@ -226,6 +226,11 @@ export function BuildingFinancePanel({
         }),
       })
       const json = (await res.json()) as { error?: string; code?: string }
+      if (json.code === 'FINANCE_PLATFORM_DISABLED') {
+        setLocked(true)
+        setLockMessage(json.error || 'הנהלת חשבונות בניין כבויה כרגע בפלטפורמה')
+        throw new Error(json.error || 'הנהלת חשבונות כבויה בפלטפורמה')
+      }
       if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
       toast.success(`תקציב ${yearKey} עודכן`)
       await load()
@@ -250,8 +255,9 @@ export function BuildingFinancePanel({
         <p style={styles.lockTitle}>הנהלת חשבונות בניין</p>
         <p style={styles.lockBody}>{lockMessage}</p>
         <p style={styles.lockHint}>
-          בשרת פרטי: ודאו ש־<code>BUILDING_FINANCE_DEV_UNLOCK=true</code> ב־.env.local והפעילו מחדש את
-          השרת. בפרוד: הפעילו את התוסף בסופר־אדמין.
+          פיצ׳ר ליבה — נשלט ב־kill-switch של הפלטפורמה (
+          <code>BUILDING_FINANCE_ENABLED</code>
+          ). אין תוסף בתשלום להפעלה.
         </p>
       </div>
     )
