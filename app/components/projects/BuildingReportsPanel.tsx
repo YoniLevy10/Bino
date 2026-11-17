@@ -176,9 +176,9 @@ export function BuildingReportsPanel({
       })
       const res = await fetchWithTimeout(`/api/building-finance/reports?${qs.toString()}`)
       const json = (await res.json()) as ReportResponse
-      if (res.status === 403 && json.code === 'ADDON_REQUIRED') {
+      if (json.code === 'FINANCE_PLATFORM_DISABLED') {
         setLocked(true)
-        setLockMessage(json.error || 'תוסף הנהלת חשבונות אינו פעיל בחשבון')
+        setLockMessage(json.error || 'הנהלת חשבונות בניין כבויה כרגע בפלטפורמה')
         setReport(null)
         return
       }
@@ -305,8 +305,9 @@ export function BuildingReportsPanel({
         <p style={styles.lockTitle}>דוחות הנהלת חשבונות</p>
         <p style={styles.lockBody}>{lockMessage}</p>
         <p style={styles.lockHint}>
-          בשרת פרטי: ודאו ש־<code>BUILDING_FINANCE_DEV_UNLOCK=true</code> ב־.env.local והפעילו מחדש את
-          השרת. בפרוד: הפעילו את התוסף בסופר־אדמין.
+          פיצ׳ר ליבה — נשלט ב־kill-switch של הפלטפורמה (
+          <code>BUILDING_FINANCE_ENABLED</code>
+          ). אין תוסף בתשלום להפעלה.
         </p>
       </div>
     )
