@@ -255,6 +255,12 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `GROW_PRICE_QUOTE` | GetLink `price_quote` (not `quote_price`) |
 | `GROW_REGISTER_IS_DIRECT_DEBIT` | `1` sandbox / usually `0` live unless Grow says otherwise |
 | `GROW_REGISTER_BASE_URL` | Optional; defaults to devregister / registerapi by `GROW_ENV` |
+| `GROW_P1_RECURRING_ENABLED` | Optional; must be exact `true` to unlock recurring standing-order code paths — **default off**; no prod activation without Grow sandbox + owner OK |
+| `GROW_P1_TOKENIZATION_ENABLED` | Optional; exact `true` only — card token save/charge; default off (`saveCardToken` stays `'0'`) |
+| `GROW_P1_REFUNDS_ENABLED` | Optional; exact `true` only — Grow `refundTransaction`; default off |
+| `GROW_P1_PACKAGE_PICKER_ENABLED` | Optional; exact `true` only — multi-package GetLink UI; default off |
+| `GROW_P1_INVOICE_SHARE_ENABLED` | Optional; exact `true` only — portal invoice share UX; default off |
+| `GROW_P1_FINANCE_RECON_UI_ENABLED` | Optional; exact `true` only — Grow↔finance recon UI; default off |
 | `LEGAL_BUSINESS_NAME` | Platform-only display name on `/vaad-pay` + `/contact` (not used for a tenant's Grow page) |
 | `LEGAL_PHONE` | Platform-only contact phone on public legal pages |
 | `LEGAL_ADDRESS` | Platform-only address on public legal pages |
