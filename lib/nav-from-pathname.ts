@@ -19,10 +19,16 @@ export function navIdFromPathname(pathname: string): string | null {
     return null
   }
 
+  // Prefer longest href match so /finance/reports maps to reports, not finance.
+  let bestId: string | null = null
+  let bestLen = -1
   for (const [id, item] of Object.entries(SIDEBAR_NAV_REGISTRY) as [SidebarNavItemId, { href: string }][]) {
     if (item.href === pathname || (item.href !== '/' && pathname.startsWith(`${item.href}/`))) {
-      return id
+      if (item.href.length > bestLen) {
+        bestLen = item.href.length
+        bestId = id
+      }
     }
   }
-  return null
+  return bestId
 }

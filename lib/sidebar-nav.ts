@@ -107,12 +107,12 @@ export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'collections',
   'finance',
   'reports',
+  'project_documents',
+  'summary',
   'calendar',
   'professionals',
   'pilot_sms',
-  'project_documents',
   'campaigns',
-  'summary',
 ]
 
 /** @deprecated use TENANT_SIDEBAR_NAV_IDS — kept as alias for primary flat sidebar. */
@@ -120,6 +120,19 @@ export const PRIMARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = TENANT_SIDEB
 
 /** No secondary "תפעול" group — remaining tools are under תוספים. */
 export const SECONDARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = []
+
+/**
+ * Collapsible sidebar group "ניהול כספים".
+ * Children reuse existing screens; visibility still follows addon/pin rules.
+ */
+export const FINANCE_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
+  'collections',
+  'finance',
+  'reports',
+  'project_documents',
+] as const
+
+export const FINANCE_NAV_GROUP_LABEL = 'ניהול כספים'
 
 export function isTenantSidebarNavId(id: string): boolean {
   return (TENANT_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
@@ -133,13 +146,19 @@ export function isSecondarySidebarNavId(id: string): boolean {
   return (SECONDARY_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
 }
 
+export function isFinanceSidebarNavId(id: string): boolean {
+  return (FINANCE_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
+}
+
 export function splitSidebarNavSections(items: SidebarNavItem[]): {
   primary: SidebarNavItem[]
+  finance: SidebarNavItem[]
   secondary: SidebarNavItem[]
   extras: SidebarNavItem[]
   addons: SidebarNavItem | null
 } {
   const primary: SidebarNavItem[] = []
+  const finance: SidebarNavItem[] = []
   const secondary: SidebarNavItem[] = []
   const extras: SidebarNavItem[] = []
   let addons: SidebarNavItem | null = null
@@ -148,11 +167,41 @@ export function splitSidebarNavSections(items: SidebarNavItem[]): {
       addons = item
       continue
     }
+    if (isFinanceSidebarNavId(item.id)) {
+      finance.push(item)
+      continue
+    }
     if (isPrimarySidebarNavId(item.id)) primary.push(item)
     else if (isSecondarySidebarNavId(item.id)) secondary.push(item)
     else extras.push(item)
   }
-  return { primary, secondary, extras, addons }
+  finance.sort((a, b) => {
+    const ai = FINANCE_SIDEBAR_NAV_IDS.indexOf(a.id as SidebarNavItemId)
+    const bi = FINANCE_SIDEBAR_NAV_IDS.indexOf(b.id as SidebarNavItemId)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
+  return { primary, finance, secondary, extras, addons }
+}
+
+/** Split flat primary items around the finance group anchor for desktop/mobile chrome. */
+export function splitPrimaryAroundFinanceGroup(primary: SidebarNavItem[]): {
+  before: SidebarNavItem[]
+  after: SidebarNavItem[]
+} {
+  const firstFinanceOrder = Math.min(
+    ...FINANCE_SIDEBAR_NAV_IDS.map((id) => {
+      const idx = TENANT_SIDEBAR_NAV_IDS.indexOf(id)
+      return idx === -1 ? Number.POSITIVE_INFINITY : idx
+    })
+  )
+  const before: SidebarNavItem[] = []
+  const after: SidebarNavItem[] = []
+  for (const item of primary) {
+    const idx = TENANT_SIDEBAR_NAV_IDS.indexOf(item.id as SidebarNavItemId)
+    if (idx !== -1 && idx < firstFinanceOrder) before.push(item)
+    else after.push(item)
+  }
+  return { before, after }
 }
 
 export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
@@ -163,7 +212,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   residents: { id: 'residents', href: '/residents', label: 'דיירים', icon: 'building' },
   workers: { id: 'workers', href: '/workers', label: 'העובדים שלי', icon: 'users' },
   site_tours: { id: 'site_tours', href: '/site-tours', label: 'סיורים', icon: 'folder' },
-  summary: { id: 'summary', href: '/summary', label: 'סיכום', icon: 'chart' },
+  summary: { id: 'summary', href: '/summary', label: 'דוחות', icon: 'chart' },
   calendar: { id: 'calendar', href: '/calendar', label: 'יומן משרד', icon: 'grid' },
   attendance: { id: 'attendance', href: '/attendance', label: 'החתמת עובדים', icon: 'clock' },
   professionals: { id: 'professionals', href: '/professionals', label: 'אנשי מקצוע', icon: 'users' },
@@ -189,7 +238,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   project_documents: {
     id: 'project_documents',
     href: '/project-documents',
-    label: 'מסמכים',
+    label: 'מסמכים חשבונאיים',
     icon: 'folder',
   },
   whatsapp_inbox: {
@@ -213,13 +262,13 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   finance: {
     id: 'finance',
     href: '/finance',
-    label: 'כספים',
+    label: 'הכנסות והוצאות',
     icon: 'chart',
   },
   reports: {
     id: 'reports',
     href: '/finance/reports',
-    label: 'דוחות',
+    label: 'דוחות כספיים',
     icon: 'chart',
   },
 }
@@ -241,6 +290,7 @@ export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'collections',
   'finance',
   'reports',
+  'project_documents',
   'summary',
 ]
 
@@ -402,6 +452,13 @@ export function isNavItemActive(pathname: string, item: Pick<SidebarNavItem, 'hr
   }
   if (item.href === '/addons') {
     return pathname === '/addons' || pathname.startsWith('/addons/')
+  }
+  // Keep /finance and /finance/reports as distinct nav targets.
+  if (item.href === '/finance') {
+    return pathname === '/finance'
+  }
+  if (item.href === '/finance/reports') {
+    return pathname === '/finance/reports' || pathname.startsWith('/finance/reports/')
   }
   return pathname === item.href
 }

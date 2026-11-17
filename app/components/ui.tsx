@@ -27,7 +27,13 @@ import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
 import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
 import { useClientBranding } from './ClientBrandingContext'
 import { useSidebarNav } from './SidebarNavContext'
-import { isNavItemActive, shouldShowMobileBottomNav, splitSidebarNavSections } from '@/lib/sidebar-nav'
+import {
+  FINANCE_NAV_GROUP_LABEL,
+  isNavItemActive,
+  shouldShowMobileBottomNav,
+  splitPrimaryAroundFinanceGroup,
+  splitSidebarNavSections,
+} from '@/lib/sidebar-nav'
 import { AppSplashScreen } from './AppSplashScreen'
 import { shouldShowAppSplash } from '@/lib/app-splash-session'
 import { ticketStatusLabelHe } from '@/lib/ticket-status'
@@ -315,13 +321,26 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
     }).catch(() => {})
   }, [])
 
-  const { primary, secondary, extras, addons } = useMemo(() => splitSidebarNavSections(navItems), [navItems])
+  const { primary, finance, secondary, extras, addons } = useMemo(
+    () => splitSidebarNavSections(navItems),
+    [navItems]
+  )
+  const { before: primaryBeforeFinance, after: primaryAfterFinance } = useMemo(
+    () => splitPrimaryAroundFinanceGroup(primary),
+    [primary]
+  )
   const opsItems = useMemo(() => [...secondary, ...extras], [secondary, extras])
   const opsHasActive = opsItems.some((item) => isNavItemActive(pathname, item))
+  const financeHasActive = finance.some((item) => isNavItemActive(pathname, item))
+  const [financeOpen, setFinanceOpen] = useState(false)
 
   useEffect(() => {
     if (opsHasActive) setOpsOpen(true)
   }, [opsHasActive])
+
+  useEffect(() => {
+    if (financeHasActive) setFinanceOpen(true)
+  }, [financeHasActive])
 
   // Avoid dev-time hydration mismatches (Turbopack/HMR) by not SSR-rendering the menu.
   if (hidden) return null
@@ -331,7 +350,7 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
   const navLinkBase = navy ? sidebarStyles.navLinkNavy : sidebarStyles.navLink
   const navLinkActive = navy ? sidebarStyles.navLinkActiveNavy : sidebarStyles.navLinkActive
 
-  function renderNavLink(item: (typeof navItems)[number]) {
+  function renderNavLink(item: (typeof navItems)[number], nested = false) {
     const isActive = isNavItemActive(pathname, item)
     return (
       <Link
@@ -341,6 +360,7 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
         className={isActive ? 'lg-nav-active' : undefined}
         style={{
           ...navLinkBase,
+          ...(nested ? sidebarStyles.navLinkNested : {}),
           ...(isActive ? navLinkActive : {}),
           ...(item.locked ? sidebarStyles.navLinkLocked : {}),
         }}
@@ -353,6 +373,42 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
           )}
         </span>
       </Link>
+    )
+  }
+
+  function renderCollapsibleGroup(opts: {
+    label: string
+    open: boolean
+    setOpen: (next: boolean | ((v: boolean) => boolean)) => void
+    hasActive: boolean
+    items: (typeof navItems)
+  }) {
+    if (opts.items.length === 0) return null
+    return (
+      <div style={sidebarStyles.opsGroup}>
+        <button
+          type="button"
+          onClick={() => opts.setOpen((v) => !v)}
+          style={{
+            ...sidebarStyles.opsToggle,
+            ...(navy ? { color: theme.colors.navText } : {}),
+            ...(opts.hasActive
+              ? navy
+                ? { color: theme.colors.textInverse }
+                : sidebarStyles.opsToggleActive
+              : {}),
+          }}
+          aria-expanded={opts.open}
+        >
+          <span>{opts.label}</span>
+          <span aria-hidden style={sidebarStyles.opsChevron}>
+            {opts.open ? '▾' : '◂'}
+          </span>
+        </button>
+        {opts.open ? (
+          <div style={sidebarStyles.opsList}>{opts.items.map((item) => renderNavLink(item, true))}</div>
+        ) : null}
+      </div>
     )
   }
 
@@ -404,31 +460,22 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
 
       <div style={sidebarStyles.navColumn}>
         <nav style={sidebarStyles.nav}>
-          {primary.map(renderNavLink)}
-          {opsItems.length > 0 && (
-            <div style={sidebarStyles.opsGroup}>
-              <button
-                type="button"
-                onClick={() => setOpsOpen((v) => !v)}
-                style={{
-                  ...sidebarStyles.opsToggle,
-                  ...(navy ? { color: theme.colors.navText } : {}),
-                  ...(opsHasActive
-                    ? navy
-                      ? { color: theme.colors.textInverse }
-                      : sidebarStyles.opsToggleActive
-                    : {}),
-                }}
-                aria-expanded={opsOpen}
-              >
-                <span>תפעול</span>
-                <span aria-hidden style={sidebarStyles.opsChevron}>
-                  {opsOpen ? '▾' : '◂'}
-                </span>
-              </button>
-              {opsOpen ? <div style={sidebarStyles.opsList}>{opsItems.map(renderNavLink)}</div> : null}
-            </div>
-          )}
+          {primaryBeforeFinance.map((item) => renderNavLink(item))}
+          {renderCollapsibleGroup({
+            label: FINANCE_NAV_GROUP_LABEL,
+            open: financeOpen,
+            setOpen: setFinanceOpen,
+            hasActive: financeHasActive,
+            items: finance,
+          })}
+          {primaryAfterFinance.map((item) => renderNavLink(item))}
+          {renderCollapsibleGroup({
+            label: 'תפעול',
+            open: opsOpen,
+            setOpen: setOpsOpen,
+            hasActive: opsHasActive,
+            items: opsItems,
+          })}
           {addons ? renderNavLink(addons) : null}
         </nav>
         <div
@@ -650,6 +697,11 @@ const sidebarStyles: Record<string, CSSProperties> = {
   navLinkLocked: {
     border: `1px dashed ${theme.colors.borderStrong}`,
     background: theme.colors.muted,
+  },
+  navLinkNested: {
+    paddingInlineStart: '20px',
+    minHeight: '40px',
+    fontSize: '13px',
   },
   navLockBadge: {
     display: 'inline-block',
@@ -1228,8 +1280,37 @@ export function MobileMenu({
   const { displayName, logoUrl } = useClientBranding()
   const { navItems } = useSidebarNav()
   const appSearch = useAppSearch()
+  const { primary, finance, secondary, extras, addons } = useMemo(
+    () => splitSidebarNavSections(navItems),
+    [navItems]
+  )
+  const { before: primaryBeforeFinance, after: primaryAfterFinance } = useMemo(
+    () => splitPrimaryAroundFinanceGroup(primary),
+    [primary]
+  )
+  const opsItems = useMemo(() => [...secondary, ...extras], [secondary, extras])
 
   if (!open) return null
+
+  function renderMobileNavLink(item: (typeof navItems)[number], nested = false) {
+    const isActive = isNavItemActive(pathname, item)
+    return (
+      <Link
+        key={item.id}
+        href={item.href}
+        onClick={onClose}
+        {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
+        style={{
+          ...mobileMenuStyles.navLink,
+          ...(nested ? mobileMenuStyles.navLinkNested : {}),
+          ...(isActive ? mobileMenuStyles.navLinkActive : {}),
+        }}
+      >
+        <NavIcon type={item.icon} active={isActive} />
+        <span style={mobileMenuStyles.navLabel}>{item.label}</span>
+      </Link>
+    )
+  }
 
   return (
     <>
@@ -1288,24 +1369,21 @@ export function MobileMenu({
             </button>
           ) : null}
           <nav style={mobileMenuStyles.nav}>
-            {navItems.map((item) => {
-              const isActive = isNavItemActive(pathname, item)
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  onClick={onClose}
-                  {...navLinkPrefetchHandlers(item.href, router.prefetch, prefetchOpts)}
-                  style={{
-                    ...mobileMenuStyles.navLink,
-                    ...(isActive ? mobileMenuStyles.navLinkActive : {}),
-                  }}
-                >
-                  <NavIcon type={item.icon} active={isActive} />
-                  <span style={mobileMenuStyles.navLabel}>{item.label}</span>
-                </Link>
-              )
-            })}
+            {primaryBeforeFinance.map((item) => renderMobileNavLink(item))}
+            {finance.length > 0 ? (
+              <div style={mobileMenuStyles.groupBlock}>
+                <div style={mobileMenuStyles.groupLabel}>{FINANCE_NAV_GROUP_LABEL}</div>
+                {finance.map((item) => renderMobileNavLink(item, true))}
+              </div>
+            ) : null}
+            {primaryAfterFinance.map((item) => renderMobileNavLink(item))}
+            {opsItems.length > 0 ? (
+              <div style={mobileMenuStyles.groupBlock}>
+                <div style={mobileMenuStyles.groupLabel}>תפעול</div>
+                {opsItems.map((item) => renderMobileNavLink(item, true))}
+              </div>
+            ) : null}
+            {addons ? renderMobileNavLink(addons) : null}
           </nav>
           <div style={mobileMenuStyles.settingsNav}>
             <Link
@@ -1471,6 +1549,26 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
   navLinkActive: {
     background: theme.colors.primaryMuted,
     color: theme.colors.primary,
+  },
+  navLinkNested: {
+    paddingInlineStart: '20px',
+    minHeight: '44px',
+    fontSize: '14px',
+  },
+  groupBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    marginTop: '8px',
+    marginBottom: '4px',
+  },
+  groupLabel: {
+    padding: '8px 12px 4px',
+    fontSize: '12px',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase' as const,
+    color: theme.colors.textMuted,
   },
   navLabel: {
     fontSize: '14px',

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   ADDON_ONLY_SIDEBAR_NAV_IDS,
   DEFAULT_SIDEBAR_NAV_ORDER,
+  FINANCE_NAV_GROUP_LABEL,
+  FINANCE_SIDEBAR_NAV_IDS,
   PRIMARY_SIDEBAR_NAV_IDS,
   SIDEBAR_NAV_REGISTRY,
   TENANT_SIDEBAR_NAV_IDS,
@@ -11,6 +13,7 @@ import {
   shouldShowMobileBottomNav,
   MOBILE_BOTTOM_PRIMARY_IDS,
   splitMobileBottomNav,
+  splitPrimaryAroundFinanceGroup,
   splitSidebarNavSections,
 } from '@/lib/sidebar-nav'
 import { appendAddonsNavAlways, injectPaidAddonNavItems } from '@/lib/addons-nav'
@@ -109,9 +112,10 @@ describe('resolveSidebarNavItems', () => {
       new Set(['whatsapp_inbox', 'collections', 'professionals', 'project_documents'] as const)
     )
     expect(items.map((i) => i.id)).toContain('finance')
-    expect(items.find((i) => i.id === 'finance')?.label).toBe('כספים')
+    expect(items.find((i) => i.id === 'finance')?.label).toBe('הכנסות והוצאות')
     expect(items.map((i) => i.id)).toContain('reports')
-    expect(items.find((i) => i.id === 'reports')?.label).toBe('דוחות')
+    expect(items.find((i) => i.id === 'reports')?.label).toBe('דוחות כספיים')
+    expect(items.find((i) => i.id === 'summary')?.label).toBe('דוחות')
     const financeIdx = items.findIndex((i) => i.id === 'finance')
     const reportsIdx = items.findIndex((i) => i.id === 'reports')
     expect(reportsIdx).toBe(financeIdx + 1)
@@ -196,14 +200,52 @@ describe('splitMobileBottomNav', () => {
 })
 
 describe('splitSidebarNavSections', () => {
-  it('keeps the curated tenant list flat (no תפעול group)', () => {
+  it('groups finance children under ניהול כספים and keeps operational דוחות separate', () => {
     const items = appendAddonsNavAlways(resolveSidebarNavItems(null))
-    const { primary, secondary, extras, addons } = splitSidebarNavSections(items)
-    expect(primary.map((i) => i.id)).toEqual(FREE_SIDEBAR_IDS)
+    const { primary, finance, secondary, extras, addons } = splitSidebarNavSections(items)
+    expect(finance.map((i) => i.id)).toEqual(['finance', 'reports'])
+    expect(finance.map((i) => i.label)).toEqual(['הכנסות והוצאות', 'דוחות כספיים'])
+    expect(FINANCE_NAV_GROUP_LABEL).toBe('ניהול כספים')
+    expect(FINANCE_SIDEBAR_NAV_IDS).toEqual([
+      'collections',
+      'finance',
+      'reports',
+      'project_documents',
+    ])
+    expect(primary.map((i) => i.id)).toEqual(
+      FREE_SIDEBAR_IDS.filter((id) => !FINANCE_SIDEBAR_NAV_IDS.includes(id))
+    )
+    expect(primary.find((i) => i.id === 'summary')?.label).toBe('דוחות')
     expect(secondary).toEqual([])
     expect(extras).toEqual([])
     expect(addons?.id).toBe('addons')
     expect(PRIMARY_SIDEBAR_NAV_IDS).toEqual(TENANT_SIDEBAR_NAV_IDS)
+
+    const paid = appendAddonsNavAlways(
+      resolveSidebarNavItems(null, null, new Set(['collections', 'project_documents'] as const))
+    )
+    const paidSplit = splitSidebarNavSections(paid)
+    expect(paidSplit.finance.map((i) => i.id)).toEqual(['collections', 'finance', 'reports'])
+    // project_documents stays pin-only — not auto-injected into the finance group
+    expect(paidSplit.finance.map((i) => i.id)).not.toContain('project_documents')
+
+    const pinnedDocs = appendAddonsNavAlways(
+      resolveSidebarNavItems(
+        [...DEFAULT_SIDEBAR_NAV_ORDER, 'project_documents'],
+        null,
+        new Set(['collections', 'project_documents'] as const)
+      )
+    )
+    expect(splitSidebarNavSections(pinnedDocs).finance.map((i) => i.id)).toEqual([
+      'collections',
+      'finance',
+      'reports',
+      'project_documents',
+    ])
+
+    const { before, after } = splitPrimaryAroundFinanceGroup(paidSplit.primary)
+    expect(before.map((i) => i.id)).toContain('dashboard')
+    expect(after.map((i) => i.id)).toContain('summary')
   })
 })
 
@@ -244,17 +286,27 @@ describe('addon nav hrefs', () => {
     expect(SIDEBAR_NAV_REGISTRY.attendance.label).toBe('החתמת עובדים')
   })
 
-  it('labels finance as כספים and shows as core without paid entitlement', () => {
-    expect(SIDEBAR_NAV_REGISTRY.finance.label).toBe('כספים')
+  it('labels finance as הכנסות והוצאות and shows as core without paid entitlement', () => {
+    expect(SIDEBAR_NAV_REGISTRY.finance.label).toBe('הכנסות והוצאות')
     const items = resolveSidebarNavItems(null, null, new Set())
     expect(items.map((i) => i.id)).toContain('finance')
   })
 
-  it('labels reports as דוחות and shows as core without paid entitlement', () => {
+  it('labels financial reports as דוחות כספיים and shows as core without paid entitlement', () => {
     expect(SIDEBAR_NAV_REGISTRY.reports.href).toBe('/finance/reports')
-    expect(SIDEBAR_NAV_REGISTRY.reports.label).toBe('דוחות')
+    expect(SIDEBAR_NAV_REGISTRY.reports.label).toBe('דוחות כספיים')
     const items = resolveSidebarNavItems(null, null, new Set())
     expect(items.map((i) => i.id)).toContain('reports')
+  })
+
+  it('labels operational summary as דוחות at /summary', () => {
+    expect(SIDEBAR_NAV_REGISTRY.summary.href).toBe('/summary')
+    expect(SIDEBAR_NAV_REGISTRY.summary.label).toBe('דוחות')
+  })
+
+  it('labels project documents as מסמכים חשבונאיים under finance IA', () => {
+    expect(SIDEBAR_NAV_REGISTRY.project_documents.href).toBe('/project-documents')
+    expect(SIDEBAR_NAV_REGISTRY.project_documents.label).toBe('מסמכים חשבונאיים')
   })
 })
 

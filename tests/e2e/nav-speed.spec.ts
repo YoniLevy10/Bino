@@ -104,7 +104,7 @@ const SCREENS: Screen[] = [
   },
   {
     href: '/summary',
-    label: 'סיכום',
+    label: 'דוחות',
     marker: (page) =>
       page
         .getByText('בריאות המערכת', { exact: true })

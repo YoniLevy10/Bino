@@ -33,4 +33,9 @@ describe('navIdFromPathname', () => {
     expect(navIdFromPathname('/campaigns')).toBe('campaigns')
     expect(navIdFromPathname('/collections')).toBe('collections')
   })
+
+  it('maps finance and financial reports distinctly', () => {
+    expect(navIdFromPathname('/finance')).toBe('finance')
+    expect(navIdFromPathname('/finance/reports')).toBe('reports')
+  })
 })

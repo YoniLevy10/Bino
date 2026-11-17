@@ -155,6 +155,7 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
 
 export function navItemIdForPathname(pathname: string): SidebarNavItemId | null {
   if (pathname in PATH_TO_NAV_ID) return PATH_TO_NAV_ID[pathname]
+  if (pathname === '/finance/reports' || pathname.startsWith('/finance/reports/')) return 'reports'
   if (pathname.startsWith('/finance/')) return 'finance'
   if (pathname.startsWith('/settings/whatsapp-templates')) return 'whatsapp_templates'
   return null
@@ -169,7 +170,7 @@ export function normalizeEnabledNavFeaturesPayload(
   }
   for (const required of REQUIRED_NAV_FEATURE_IDS) {
     if (!parsed.includes(required)) {
-      return { ok: false, error: 'לוח בקרה, תקלות, כספים ודוחות חייבים להישאר פעילים' }
+      return { ok: false, error: 'לוח בקרה, תקלות, הכנסות והוצאות ודוחות כספיים חייבים להישאר פעילים' }
     }
   }
   return { ok: true, value: parsed }
