@@ -653,8 +653,18 @@ export const createBuildingExpenseBodySchema = z.object({
   category_id: z.string().uuid().nullable().optional(),
   vendor_name: z.string().max(200).nullable().optional(),
   professional_id: z.string().uuid().nullable().optional(),
+  ticket_id: z.string().uuid().nullable().optional(),
   description: z.string().max(2000).nullable().optional(),
-  receipt_url: z.string().url().max(2000).nullable().optional(),
+  /** Absolute URL or durable `storage:…` path from receipt upload. */
+  receipt_url: z
+    .string()
+    .max(2000)
+    .refine(
+      (v) => /^https?:\/\//i.test(v) || v.startsWith('storage:'),
+      'receipt_url must be https URL or storage: path'
+    )
+    .nullable()
+    .optional(),
   payment_status: z.enum(['unpaid', 'partial', 'paid']).optional(),
   budget_period_key: z
     .string()
@@ -662,6 +672,17 @@ export const createBuildingExpenseBodySchema = z.object({
     .nullable()
     .optional(),
   idempotency_key: z.string().min(8).max(120),
+})
+
+/** Building finance — create expense category. */
+export const createBuildingExpenseCategoryBodySchema = z.object({
+  name_he: z.string().trim().min(1).max(80),
+  key: z
+    .string()
+    .regex(/^[a-z0-9_]{2,40}$/)
+    .optional(),
+  project_id: z.string().uuid().nullable().optional(),
+  sort_order: z.number().int().min(0).max(10_000).optional(),
 })
 
 /** Building finance — upsert annual/period budget. */

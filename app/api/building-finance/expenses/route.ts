@@ -4,8 +4,53 @@ import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { createBuildingExpenseBodySchema } from '@/lib/api-body-schemas'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
+import {
+  BUILDING_EXPENSE_RECEIPTS_BUCKET,
+  RECEIPT_SIGNED_URL_TTL_SEC,
+  decodeReceiptStoragePath,
+  isExternalReceiptUrl,
+} from '@/lib/building-finance/receipt-storage'
 import { roundMoney } from '@/lib/unit-ledger'
 import { getLogger } from '@/lib/logging'
+
+type ExpenseListRow = {
+  id: string
+  project_id: string
+  category_id: string | null
+  vendor_name: string | null
+  professional_id: string | null
+  ticket_id: string | null
+  amount: number
+  currency: string
+  expense_date: string
+  description: string | null
+  receipt_url: string | null
+  payment_status: string
+  budget_period_key: string | null
+  created_at: string
+  voided_at: string | null
+}
+
+async function attachSignedReceiptUrls(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  rows: ExpenseListRow[]
+): Promise<Array<ExpenseListRow & { receipt_download_url: string | null }>> {
+  return Promise.all(
+    rows.map(async (row) => {
+      const path = decodeReceiptStoragePath(row.receipt_url)
+      if (path) {
+        const { data } = await admin.storage
+          .from(BUILDING_EXPENSE_RECEIPTS_BUCKET)
+          .createSignedUrl(path, RECEIPT_SIGNED_URL_TTL_SEC)
+        return { ...row, receipt_download_url: data?.signedUrl ?? null }
+      }
+      if (isExternalReceiptUrl(row.receipt_url)) {
+        return { ...row, receipt_download_url: row.receipt_url }
+      }
+      return { ...row, receipt_download_url: null }
+    })
+  )
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +95,7 @@ export async function GET(req: Request) {
   const { data, error } = await admin
     .from('building_expenses')
     .select(
-      'id, project_id, category_id, vendor_name, professional_id, amount, currency, expense_date, description, payment_status, budget_period_key, created_at, voided_at'
+      'id, project_id, category_id, vendor_name, professional_id, ticket_id, amount, currency, expense_date, description, receipt_url, payment_status, budget_period_key, created_at, voided_at'
     )
     .eq('client_id', auth.ctx.clientId)
     .eq('project_id', projectId)
@@ -68,7 +113,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'שגיאה בטעינת הוצאות' }, { status: 500 })
   }
 
-  return NextResponse.json({ expenses: data ?? [] })
+  const expenses = await attachSignedReceiptUrls(admin, (data ?? []) as ExpenseListRow[])
+  return NextResponse.json({ expenses })
 }
 
 /** Create a building expense (idempotent). */
@@ -115,6 +161,53 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'פרויקט לא נמצא' }, { status: 404 })
   }
 
+  if (body.ticket_id) {
+    const { data: ticket, error: ticketError } = await admin
+      .from('tickets')
+      .select('id')
+      .eq('id', body.ticket_id)
+      .eq('client_id', auth.ctx.clientId)
+      .eq('project_id', body.project_id)
+      .maybeSingle()
+    if (ticketError) {
+      return NextResponse.json({ error: 'שגיאה באימות תקלה' }, { status: 500 })
+    }
+    if (!ticket) {
+      return NextResponse.json({ error: 'תקלה לא נמצאה בבניין זה' }, { status: 400 })
+    }
+  }
+
+  if (body.professional_id) {
+    const { data: pro, error: proError } = await admin
+      .from('professionals')
+      .select('id')
+      .eq('id', body.professional_id)
+      .eq('client_id', auth.ctx.clientId)
+      .is('deleted_at', null)
+      .maybeSingle()
+    if (proError) {
+      return NextResponse.json({ error: 'שגיאה באימות איש מקצוע' }, { status: 500 })
+    }
+    if (!pro) {
+      return NextResponse.json({ error: 'איש מקצוע לא נמצא' }, { status: 400 })
+    }
+  }
+
+  if (body.category_id) {
+    const { data: cat, error: catError } = await admin
+      .from('building_expense_categories')
+      .select('id')
+      .eq('id', body.category_id)
+      .eq('client_id', auth.ctx.clientId)
+      .maybeSingle()
+    if (catError) {
+      return NextResponse.json({ error: 'שגיאה באימות קטגוריה' }, { status: 500 })
+    }
+    if (!cat) {
+      return NextResponse.json({ error: 'קטגוריה לא נמצאה' }, { status: 400 })
+    }
+  }
+
   const amount = roundMoney(body.amount)
   const row = {
     client_id: auth.ctx.clientId,
@@ -122,6 +215,7 @@ export async function POST(req: Request) {
     category_id: body.category_id ?? null,
     vendor_name: body.vendor_name ?? null,
     professional_id: body.professional_id ?? null,
+    ticket_id: body.ticket_id ?? null,
     amount,
     currency: 'ILS',
     expense_date: body.expense_date ?? undefined,
@@ -137,7 +231,7 @@ export async function POST(req: Request) {
     .from('building_expenses')
     .upsert(row, { onConflict: 'client_id,idempotency_key', ignoreDuplicates: false })
     .select(
-      'id, project_id, category_id, vendor_name, amount, currency, expense_date, description, payment_status, budget_period_key, created_at'
+      'id, project_id, category_id, vendor_name, professional_id, ticket_id, amount, currency, expense_date, description, receipt_url, payment_status, budget_period_key, created_at'
     )
     .single()
 

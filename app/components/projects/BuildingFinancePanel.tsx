@@ -1,8 +1,9 @@
 'use client'
 
 /**
- * Building Hub — Finance tab (Wave 3 Phase 1).
- * Expenses list + create + annual budget vs spend (north-star: עלות תחזוקה לבניין).
+ * Building Hub — Finance tab (Wave 3 Phase 1 + PR-F/G).
+ * Expenses list + create + categories/receipts/professional/ticket + annual budget.
+ * North-star: עלות תחזוקה לבניין.
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
@@ -13,6 +14,13 @@ import {
   yearElapsedFraction,
 } from '@/lib/building-finance/budget-math'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
+import {
+  fetchProfessionalsPage,
+  type ProfessionalListRow,
+} from '@/lib/hooks/use-professionals-list'
+import { supabase } from '@/lib/supabase'
+import { withClientId } from '@/lib/supabase/with-client-id'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 
 type ExpenseRow = {
@@ -24,6 +32,11 @@ type ExpenseRow = {
   description: string | null
   payment_status: string
   budget_period_key: string | null
+  category_id: string | null
+  professional_id: string | null
+  ticket_id: string | null
+  receipt_url: string | null
+  receipt_download_url?: string | null
   created_at: string
 }
 
@@ -34,10 +47,27 @@ type BudgetRow = {
   currency: string
 }
 
+type CategoryRow = {
+  id: string
+  key: string
+  name_he: string
+  is_system: boolean
+  sort_order: number
+}
+
+type TicketOption = {
+  id: string
+  ticket_number: number
+  description?: string | null
+  status: string
+}
+
 type Props = {
   projectId: string
   projectName: string
   isMobile?: boolean
+  /** Optional open tickets from BuildingHubModal — avoids duplicate fetch. */
+  openTickets?: TicketOption[]
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -67,10 +97,15 @@ export function BuildingFinancePanel({
   projectId,
   projectName,
   isMobile: isMobileProp,
+  openTickets: openTicketsProp,
 }: Props) {
   const yearKey = currentYearKey()
+  const { data: tenantClientId } = useTenantClientId()
   const [viewportMobile, setViewportMobile] = useState(false)
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
+  const [categories, setCategories] = useState<CategoryRow[]>([])
+  const [professionals, setProfessionals] = useState<ProfessionalListRow[]>([])
+  const [tickets, setTickets] = useState<TicketOption[]>([])
   const [yearSpend, setYearSpend] = useState(0)
   const [yearPaidSpend, setYearPaidSpend] = useState(0)
   const [budget, setBudget] = useState<BudgetRow | null>(null)
@@ -79,12 +114,20 @@ export function BuildingFinancePanel({
   const [lockMessage, setLockMessage] = useState<string | null>(null)
   const [savingExpense, setSavingExpense] = useState(false)
   const [savingBudget, setSavingBudget] = useState(false)
+  const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const [savingCategory, setSavingCategory] = useState(false)
 
   const [amount, setAmount] = useState('')
   const [vendor, setVendor] = useState('')
   const [description, setDescription] = useState('')
   const [expenseDate, setExpenseDate] = useState(todayIsoDate)
   const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'partial' | 'paid'>('unpaid')
+  const [categoryId, setCategoryId] = useState('')
+  const [professionalId, setProfessionalId] = useState('')
+  const [ticketId, setTicketId] = useState('')
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
+  const [receiptLabel, setReceiptLabel] = useState<string | null>(null)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [budgetInput, setBudgetInput] = useState('')
 
   useEffect(() => {
@@ -97,12 +140,18 @@ export function BuildingFinancePanel({
 
   const isMobile = typeof isMobileProp === 'boolean' ? isMobileProp : viewportMobile
 
+  const categoryNameById = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const c of categories) map[c.id] = c.name_he
+    return map
+  }, [categories])
+
   const load = useCallback(async () => {
     setLoading(true)
     setLocked(false)
     setLockMessage(null)
     try {
-      const [expRes, sumRes, budRes] = await Promise.all([
+      const [expRes, sumRes, budRes, catRes] = await Promise.all([
         fetchWithTimeout(
           `/api/building-finance/expenses?project_id=${encodeURIComponent(projectId)}&limit=50`
         ),
@@ -111,6 +160,9 @@ export function BuildingFinancePanel({
         ),
         fetchWithTimeout(
           `/api/building-finance/budgets?project_id=${encodeURIComponent(projectId)}&period_key=${encodeURIComponent(yearKey)}`
+        ),
+        fetchWithTimeout(
+          `/api/building-finance/categories?project_id=${encodeURIComponent(projectId)}`
         ),
       ])
 
@@ -126,6 +178,7 @@ export function BuildingFinancePanel({
         setYearSpend(0)
         setYearPaidSpend(0)
         setBudget(null)
+        setCategories([])
         return
       }
       if (!expRes.ok) {
@@ -142,7 +195,6 @@ export function BuildingFinancePanel({
         setYearSpend(Number(sumJson.recorded_spend ?? sumJson.spent) || 0)
         setYearPaidSpend(Number(sumJson.paid_spend) || 0)
       } else {
-        // Fallback only if summary fails — list is capped; prefer 0 over silent undercount lie.
         setYearSpend(0)
         setYearPaidSpend(0)
       }
@@ -155,12 +207,20 @@ export function BuildingFinancePanel({
       } else {
         setBudget(null)
       }
+
+      if (catRes.ok) {
+        const catJson = (await catRes.json()) as { categories?: CategoryRow[] }
+        setCategories(catJson.categories ?? [])
+      } else {
+        setCategories([])
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'טעינת כספים נכשלה')
       setExpenses([])
       setYearSpend(0)
       setYearPaidSpend(0)
       setBudget(null)
+      setCategories([])
     } finally {
       setLoading(false)
     }
@@ -169,6 +229,58 @@ export function BuildingFinancePanel({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!tenantClientId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const page = await fetchProfessionalsPage(tenantClientId, { limit: 100 })
+        if (!cancelled) {
+          setProfessionals(page.rows.filter((p) => p.is_active))
+        }
+      } catch {
+        if (!cancelled) setProfessionals([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tenantClientId])
+
+  useEffect(() => {
+    if (openTicketsProp && openTicketsProp.length > 0) {
+      setTickets(openTicketsProp)
+      return
+    }
+    if (!tenantClientId || !projectId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await withClientId(
+          supabase
+            .from('tickets')
+            .select('id, ticket_number, description, status')
+            .eq('project_id', projectId)
+            .in('status', ['OPEN', 'IN_PROGRESS', 'ESCORT'])
+            .order('ticket_number', { ascending: false })
+            .limit(40),
+          tenantClientId
+        )
+        if (cancelled) return
+        if (error) {
+          setTickets([])
+          return
+        }
+        setTickets((data ?? []) as TicketOption[])
+      } catch {
+        if (!cancelled) setTickets([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [openTicketsProp, projectId, tenantClientId])
 
   const utilization = useMemo(() => {
     const planned = budget?.amount_planned ?? 0
@@ -179,6 +291,68 @@ export function BuildingFinancePanel({
       elapsedFraction: yearElapsedFraction(),
     })
   }, [budget, yearKey, yearSpend])
+
+  async function onUploadReceipt(file: File | null) {
+    if (!file) return
+    setUploadingReceipt(true)
+    try {
+      const fd = new FormData()
+      fd.set('project_id', projectId)
+      fd.set('file', file)
+      const res = await fetchWithTimeout('/api/building-finance/receipts', {
+        method: 'POST',
+        body: fd,
+      })
+      const json = (await res.json()) as {
+        receipt_url?: string
+        file_name?: string
+        error?: string
+        code?: string
+      }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      setReceiptUrl(json.receipt_url ?? null)
+      setReceiptLabel(json.file_name || file.name)
+      toast.success('קבלה הועלתה')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'העלאת קבלה נכשלה')
+    } finally {
+      setUploadingReceipt(false)
+    }
+  }
+
+  async function onCreateCategory(e: FormEvent) {
+    e.preventDefault()
+    const name = newCategoryName.trim()
+    if (!name) {
+      toast.error('שם קטגוריה נדרש')
+      return
+    }
+    setSavingCategory(true)
+    try {
+      const res = await fetchWithTimeout('/api/building-finance/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_he: name, project_id: null }),
+      })
+      const json = (await res.json()) as {
+        category?: CategoryRow
+        error?: string
+      }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      if (json.category) {
+        setCategories((prev) =>
+          [...prev, json.category!].sort((a, b) => a.sort_order - b.sort_order)
+        )
+        setCategoryId(json.category.id)
+      }
+      setNewCategoryName('')
+      toast.success('קטגוריה נוספה')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'שמירת קטגוריה נכשלה')
+    } finally {
+      setSavingCategory(false)
+    }
+  }
 
   async function onCreateExpense(e: FormEvent) {
     e.preventDefault()
@@ -199,6 +373,10 @@ export function BuildingFinancePanel({
           vendor_name: vendor.trim() || null,
           description: description.trim() || null,
           payment_status: paymentStatus,
+          category_id: categoryId || null,
+          professional_id: professionalId || null,
+          ticket_id: ticketId || null,
+          receipt_url: receiptUrl,
           budget_period_key: yearKey,
           idempotency_key: `ui-${projectId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
         }),
@@ -216,6 +394,11 @@ export function BuildingFinancePanel({
       setDescription('')
       setPaymentStatus('unpaid')
       setExpenseDate(todayIsoDate())
+      setCategoryId('')
+      setProfessionalId('')
+      setTicketId('')
+      setReceiptUrl(null)
+      setReceiptLabel(null)
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'שמירת הוצאה נכשלה')
@@ -289,6 +472,7 @@ export function BuildingFinancePanel({
     <div style={styles.root}>
       <p style={styles.intro}>
         כספי בניין ל־<strong>{projectName}</strong> — הוצאות ותקציב שנתי (נפרד מגביית Grow).
+        סיכום הוצאות על בסיס רשום (כל הסטטוסים שאינם מבוטלים).
       </p>
 
       <div style={styles.kpiRow}>
@@ -392,14 +576,19 @@ export function BuildingFinancePanel({
             />
           </label>
           <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
-            ספק / נותן שירות
-            <input
-              type="text"
-              value={vendor}
-              onChange={(ev) => setVendor(ev.target.value)}
+            קטגוריה
+            <select
+              value={categoryId}
+              onChange={(ev) => setCategoryId(ev.target.value)}
               style={inputStyle}
-              maxLength={200}
-            />
+            >
+              <option value="">ללא קטגוריה</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name_he}
+                </option>
+              ))}
+            </select>
           </label>
           <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
             סטטוס תשלום
@@ -414,6 +603,82 @@ export function BuildingFinancePanel({
               <option value="partial">חלקי</option>
               <option value="paid">שולם</option>
             </select>
+          </label>
+          <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
+            ספק / נותן שירות
+            <input
+              type="text"
+              value={vendor}
+              onChange={(ev) => setVendor(ev.target.value)}
+              style={inputStyle}
+              maxLength={200}
+            />
+          </label>
+          <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
+            איש מקצוע
+            <select
+              value={professionalId}
+              onChange={(ev) => setProfessionalId(ev.target.value)}
+              style={inputStyle}
+            >
+              <option value="">ללא שיוך</option>
+              {professionals.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.full_name}
+                  {p.trade ? ` · ${p.trade}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
+            קישור לתקלה
+            <select
+              value={ticketId}
+              onChange={(ev) => setTicketId(ev.target.value)}
+              style={inputStyle}
+            >
+              <option value="">ללא תקלה</option>
+              {tickets.map((t) => (
+                <option key={t.id} value={t.id}>
+                  #{t.ticket_number}
+                  {t.description ? ` — ${t.description.slice(0, 40)}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
+            קבלה (PDF / תמונה)
+            <input
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              onChange={(ev) => {
+                const file = ev.target.files?.[0] ?? null
+                void onUploadReceipt(file)
+                ev.target.value = ''
+              }}
+              style={{ ...inputStyle, paddingTop: 10 }}
+              disabled={uploadingReceipt}
+            />
+            {uploadingReceipt ? (
+              <span style={styles.hint}>מעלה…</span>
+            ) : receiptLabel ? (
+              <span style={styles.hint}>
+                {receiptLabel}
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReceiptUrl(null)
+                    setReceiptLabel(null)
+                  }}
+                  style={styles.linkBtn}
+                >
+                  הסר
+                </button>
+              </span>
+            ) : (
+              <span style={styles.hint}>אופציונלי</span>
+            )}
           </label>
         </div>
         <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
@@ -430,10 +695,38 @@ export function BuildingFinancePanel({
         <Button
           type="submit"
           variant="primary"
-          disabled={savingExpense}
+          disabled={savingExpense || uploadingReceipt}
           style={isMobile ? styles.fullBtn : undefined}
         >
           {savingExpense ? 'שומר…' : 'הוסף הוצאה'}
+        </Button>
+      </form>
+
+      <form
+        onSubmit={onCreateCategory}
+        style={{
+          ...styles.categoryForm,
+          ...(isMobile ? styles.budgetFormMobile : null),
+        }}
+      >
+        <label style={{ ...styles.label, ...(isMobile ? styles.labelMobile : null) }}>
+          קטגוריה מותאמת
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={(ev) => setNewCategoryName(ev.target.value)}
+            style={inputStyle}
+            maxLength={80}
+            placeholder="למשל: איטום גג"
+          />
+        </label>
+        <Button
+          type="submit"
+          variant="secondary"
+          disabled={savingCategory}
+          style={isMobile ? styles.fullBtn : undefined}
+        >
+          {savingCategory ? 'שומר…' : 'הוסף קטגוריה'}
         </Button>
       </form>
 
@@ -471,9 +764,22 @@ export function BuildingFinancePanel({
                 <span style={styles.listMeta}>
                   {row.expense_date}
                   {row.vendor_name ? ` · ${row.vendor_name}` : ''}
+                  {row.category_id && categoryNameById[row.category_id]
+                    ? ` · ${categoryNameById[row.category_id]}`
+                    : ''}
                 </span>
                 {row.description ? (
                   <span style={styles.listDesc}>{row.description}</span>
+                ) : null}
+                {row.receipt_download_url ? (
+                  <a
+                    href={row.receipt_download_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.receiptLink}
+                  >
+                    קבלה
+                  </a>
                 ) : null}
               </div>
               <span
@@ -573,6 +879,37 @@ const styles: Record<string, CSSProperties> = {
   budgetFormMobile: {
     flexDirection: 'column',
     alignItems: 'stretch',
+  },
+  categoryForm: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    border: `1px dashed ${theme.colors.border}`,
+    background: theme.colors.surface,
+  },
+  hint: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textMuted,
+    fontWeight: theme.typography.fontWeight.normal,
+  },
+  linkBtn: {
+    border: 'none',
+    background: 'transparent',
+    color: theme.colors.primary,
+    cursor: 'pointer',
+    padding: 0,
+    font: 'inherit',
+    textDecoration: 'underline',
+  },
+  receiptLink: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary,
+    textDecoration: 'none',
+    marginTop: 2,
   },
   expenseForm: {
     display: 'flex',

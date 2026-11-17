@@ -63,6 +63,17 @@ type ReportResponse = {
     previous_spent: number
     spend_delta: number
     spend_delta_pct: number | null
+    spend_basis?: 'recorded' | 'paid'
+    spend_basis_label_he?: string
+  }
+  statement?: {
+    income: number
+    debts: number
+    expenses: number
+    cashflow: number | null
+    income_available: boolean
+    basis: 'recorded' | 'paid'
+    basis_label_he: string
   }
   breakdown: {
     by_category: ReportBucket[]
@@ -291,6 +302,16 @@ export function BuildingReportsPanel({
             net_vs_expenses: report.grow.net_vs_expenses,
           }
         : null,
+      statement: report.statement
+        ? {
+            income: report.statement.income,
+            debts: report.statement.debts,
+            expenses: report.statement.expenses,
+            cashflow: report.statement.cashflow,
+            income_available: report.statement.income_available,
+            basis_label_he: report.statement.basis_label_he,
+          }
+        : null,
       pnl: {
         expenses_total: report.pnl.expenses_total,
         income_grow_collected: report.pnl.income_grow_collected,
@@ -349,7 +370,8 @@ export function BuildingReportsPanel({
       </div>
 
       <p style={styles.intro}>
-        דוח ל־<strong>{projectName}</strong> — תקציב מול ביצוע ועלות תחזוקה.
+        דוח ל־<strong>{projectName}</strong> — הכנסות / חובות / הוצאות / תזרים, תקציב מול ביצוע
+        ועלות תחזוקה.
       </p>
 
       <div
@@ -463,6 +485,73 @@ export function BuildingReportsPanel({
 
       {report ? (
         <>
+          <div style={styles.statementSection}>
+            <div style={styles.statementHeader}>
+              <p style={styles.sectionTitle}>סיכום תקופה</p>
+              <span style={styles.basisBadge}>
+                {report.statement?.basis_label_he ||
+                  report.kpi.spend_basis_label_he ||
+                  'בסיס רשום'}
+              </span>
+            </div>
+            <div
+              style={{
+                ...styles.statementGrid,
+                ...(isMobile ? styles.statementGridMobile : null),
+              }}
+              data-report-statement="true"
+            >
+              <div style={styles.statementCard}>
+                <span style={styles.kpiLabel}>הכנסות</span>
+                <span style={{ ...styles.kpiValue, color: theme.colors.kpiPositive }}>
+                  {report.statement?.income_available || report.grow?.available
+                    ? formatIls(report.statement?.income ?? report.grow?.collected ?? 0)
+                    : '—'}
+                </span>
+                {!report.statement?.income_available && !report.grow?.available ? (
+                  <span style={styles.kpiHint}>גבייה Grow לא זמינה</span>
+                ) : (
+                  <span style={styles.kpiHint}>נגבה בתקופה</span>
+                )}
+              </div>
+              <div style={styles.statementCard}>
+                <span style={styles.kpiLabel}>חובות</span>
+                <span style={styles.kpiValue}>
+                  {report.statement?.income_available || report.grow?.available
+                    ? formatIls(report.statement?.debts ?? report.grow?.outstanding ?? 0)
+                    : '—'}
+                </span>
+                <span style={styles.kpiHint}>פתוח לגבייה</span>
+              </div>
+              <div style={styles.statementCard}>
+                <span style={styles.kpiLabel}>הוצאות</span>
+                <span style={{ ...styles.kpiValue, color: theme.colors.kpiNegative }}>
+                  {formatIls(report.statement?.expenses ?? report.kpi.spent)}
+                </span>
+                <span style={styles.kpiHint}>רשום · סיכום מלא</span>
+              </div>
+              <div style={styles.statementCard}>
+                <span style={styles.kpiLabel}>תזרים</span>
+                <span
+                  style={{
+                    ...styles.kpiValue,
+                    color:
+                      (report.statement?.cashflow ?? report.pnl.net ?? 0) >= 0
+                        ? theme.colors.kpiPositive
+                        : theme.colors.kpiNegative,
+                  }}
+                >
+                  {report.statement?.cashflow != null
+                    ? formatIls(report.statement.cashflow)
+                    : report.pnl.net != null
+                      ? formatIls(report.pnl.net)
+                      : '—'}
+                </span>
+                <span style={styles.kpiHint}>הכנסות − הוצאות</span>
+              </div>
+            </div>
+          </div>
+
           <div style={styles.kpiRow}>
             <div style={styles.kpi}>
               <span style={styles.kpiLabel}>הוצאות רשומות</span>
@@ -809,6 +898,54 @@ const styles: Record<string, CSSProperties> = {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textSecondary,
     lineHeight: 1.45,
+  },
+  statementSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+  },
+  statementHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    flexWrap: 'wrap' as const,
+  },
+  basisBadge: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textMuted,
+    background: theme.colors.surfaceInset,
+    border: `1px solid ${theme.colors.borderSubtle}`,
+    borderRadius: theme.radius.sm,
+    padding: '4px 8px',
+    lineHeight: 1.3,
+    maxWidth: '100%',
+  },
+  statementGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+  },
+  statementGridMobile: {
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  },
+  statementCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surfaceElevated,
+    minWidth: 0,
+    maxWidth: '100%',
+    overflowWrap: 'anywhere',
   },
   controls: {
     display: 'flex',

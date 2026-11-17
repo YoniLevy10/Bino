@@ -345,6 +345,10 @@ export async function GET(req: Request) {
     }
   }
 
+  const income = grow?.available ? grow.collected : 0
+  const debts = grow?.available ? grow.outstanding : 0
+  const cashflow = grow?.available ? roundMoney(income - spent) : null
+
   return NextResponse.json({
     project: { id: project.id, name: project.name },
     period: {
@@ -367,6 +371,19 @@ export async function GET(req: Request) {
       previous_spent: previousSpent,
       spend_delta: spendDelta,
       spend_delta_pct: spendDeltaPct,
+      /** Until PR-B dual KPIs land — headline spend is recorded (non-void). */
+      spend_basis: 'recorded' as const,
+      spend_basis_label_he: 'בסיס רשום (כל ההוצאות שאינן מבוטלות)',
+    },
+    /** Four-block building statement: income / debts / expenses / cashflow. */
+    statement: {
+      income,
+      debts,
+      expenses: spent,
+      cashflow,
+      income_available: !!grow?.available,
+      basis: 'recorded' as const,
+      basis_label_he: 'הוצאות ותזרים על בסיס רשום; הכנסות/חובות מ־Grow כשזמין',
     },
     breakdown: {
       by_category: agg.by_category,

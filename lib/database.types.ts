@@ -234,6 +234,7 @@ export type Database = {
           professional_id: string | null
           project_id: string
           receipt_url: string | null
+          ticket_id: string | null
           vendor_name: string | null
           void_reason: string | null
           voided_at: string | null
@@ -254,6 +255,7 @@ export type Database = {
           professional_id?: string | null
           project_id: string
           receipt_url?: string | null
+          ticket_id?: string | null
           vendor_name?: string | null
           void_reason?: string | null
           voided_at?: string | null
@@ -274,6 +276,7 @@ export type Database = {
           professional_id?: string | null
           project_id?: string
           receipt_url?: string | null
+          ticket_id?: string | null
           vendor_name?: string | null
           void_reason?: string | null
           voided_at?: string | null
@@ -305,6 +308,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_expenses_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
