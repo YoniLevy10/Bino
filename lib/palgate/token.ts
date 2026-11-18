@@ -125,7 +125,7 @@ function aesEncDec(state: Uint8Array, key: Uint8Array, encrypt: boolean): void {
       for (let i = 0; i < BLOCK_SIZE; i++) {
         state[i] = S_BOX[state[i] ^ key[i]]
       }
-      let buf1 = state[1]
+      const buf1 = state[1]
       state[1] = state[5]
       state[5] = state[9]
       state[9] = state[13]
@@ -170,7 +170,7 @@ function aesEncDec(state: Uint8Array, key: Uint8Array, encrypt: boolean): void {
     }
 
     if (encrypt) {
-      let buf1 = state[13]
+      const buf1 = state[13]
       state[13] = state[9]
       state[9] = state[5]
       state[5] = state[1]
