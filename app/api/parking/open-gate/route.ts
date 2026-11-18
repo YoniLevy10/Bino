@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedRateLimitSparse } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 import { openPalGateDevice } from '@/lib/palgate/client'
-import { getParkingVehicleForClient } from '@/lib/palgate/parking-vehicles'
+import {
+  getParkingVehicleByPlate,
+  getParkingVehicleForClient,
+} from '@/lib/palgate/parking-vehicles'
 import { requirePalGatePilotWrite } from '@/lib/palgate/require-pilot'
 
 const bodySchema = z.object({
@@ -11,16 +14,23 @@ const bodySchema = z.object({
   plate: z.string().min(2).max(40).optional(),
 })
 
+function allowOpenWithoutVehicle(): boolean {
+  return (process.env.PALGATE_ALLOW_OPEN_WITHOUT_VEHICLE || '').trim() === 'true'
+}
+
 export async function POST(req: Request) {
   const auth = await requirePalGatePilotWrite()
   if (!auth.ok) return auth.response
 
-  const rl = await checkAuthenticatedPostRouteLimit(
+  // Gate opens are sensitive — tighter than generic POST (5/min).
+  const rl = await checkAuthenticatedRateLimitSparse(
     auth.ctx.admin,
-    auth.ctx.userId,
-    'parking-open-gate'
+    `post:user:${auth.ctx.userId.slice(0, 64)}:parking-open-gate`,
+    5,
+    60_000,
+    { failOpenOnRpcError: false, dbSyncEvery: 1 }
   )
-  if (rl.isLimited) {
+  if (('rpcFailed' in rl && rl.rpcFailed) || rl.isLimited) {
     return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.' }, { status: 429 })
   }
 
@@ -56,6 +66,34 @@ export async function POST(req: Request) {
         { status: 500 }
       )
     }
+  } else if (plate) {
+    try {
+      const vehicle = await getParkingVehicleByPlate(auth.ctx.admin, {
+        clientId: auth.ctx.clientId,
+        plate,
+      })
+      if (!vehicle) {
+        return NextResponse.json(
+          { error: 'לוחית לא רשומה בחניון — רשמו רכב לפני פתיחת שער' },
+          { status: 400 }
+        )
+      }
+      plate = vehicle.plate
+      vehicleId = vehicle.id
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'שגיאה בטעינת רכב' },
+        { status: 500 }
+      )
+    }
+  } else if (!allowOpenWithoutVehicle()) {
+    return NextResponse.json(
+      {
+        error: 'נדרשת לוחית רשומה לפני פתיחת שער (או העבירו vehicle_id)',
+        code: 'PALGATE_VEHICLE_REQUIRED',
+      },
+      { status: 400 }
+    )
   }
 
   const result = await openPalGateDevice()

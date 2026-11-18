@@ -92,3 +92,19 @@ export async function getParkingVehicleForClient(
   if (error) throw new Error(error.message)
   return (data as ParkingVehicleRow | null) ?? null
 }
+
+export async function getParkingVehicleByPlate(
+  admin: SupabaseClient,
+  opts: { clientId: string; plate: string }
+): Promise<ParkingVehicleRow | null> {
+  const plate = normalizeParkingPlate(opts.plate)
+  const { data, error } = await admin
+    .from('parking_vehicles')
+    .select('id, client_id, plate, label, created_at, created_by')
+    .eq('client_id', opts.clientId)
+    .eq('plate', plate)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return (data as ParkingVehicleRow | null) ?? null
+}
