@@ -10,12 +10,14 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const auth = await requirePalGatePilotWrite()
   if (!auth.ok) return auth.response
 
-  const limited = await checkAuthenticatedPostRouteLimit(
+  const rl = await checkAuthenticatedPostRouteLimit(
     auth.ctx.admin,
     auth.ctx.userId,
     'parking-vehicles-delete'
   )
-  if (limited) return limited
+  if (rl.isLimited) {
+    return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.' }, { status: 429 })
+  }
 
   const { id } = await ctx.params
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {

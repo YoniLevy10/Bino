@@ -15,12 +15,14 @@ export async function POST(req: Request) {
   const auth = await requirePalGatePilotWrite()
   if (!auth.ok) return auth.response
 
-  const limited = await checkAuthenticatedPostRouteLimit(
+  const rl = await checkAuthenticatedPostRouteLimit(
     auth.ctx.admin,
     auth.ctx.userId,
     'parking-open-gate'
   )
-  if (limited) return limited
+  if (rl.isLimited) {
+    return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.' }, { status: 429 })
+  }
 
   let json: unknown = {}
   try {
