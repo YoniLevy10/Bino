@@ -267,6 +267,12 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `GROW_REGISTER_IS_DIRECT_DEBIT` | `1` sandbox / usually `0` live unless Grow says otherwise |
 | `GROW_REGISTER_BASE_URL` | Optional; defaults to devregister / registerapi by `GROW_ENV` |
 | `GROW_GET_TRANSACTION_INFO_ENABLED` | Optional; `true`/`1` enables server-only `getGrowTransactionInfo` (default off; not wired into payment webhooks) |
+| `PALGATE_PILOT_CLIENT_ID` | Optional override; defaults to Savion OpsBrain `07773bb3-4969-4bce-8ce2-faab3b26383c`. Hard-scopes חניונים / open-gate |
+| `PALGATE_SESSION_TOKEN_HEX` | PalGate Linked Device session token (32 hex chars) — Savion pilot only |
+| `PALGATE_PHONE_NUMBER` | PalGate account phone digits (e.g. `9725…`) |
+| `PALGATE_TOKEN_TYPE` | `sms` / `primary` / `secondary` (or `0`/`1`/`2`) |
+| `PALGATE_DEVICE_ID` | Gate device id (`DEVICE` or `DEVICE:2`) |
+| `PALGATE_BASE_URL` | Optional; default `https://api1.pal-es.com` |
 | `GROW_P1_RECURRING_ENABLED` | Optional; must be exact `true` to unlock recurring standing-order code paths — **default off**; no prod activation without Grow sandbox + owner OK |
 | `GROW_P1_TOKENIZATION_ENABLED` | Optional; exact `true` only — card token save/charge; default off (`saveCardToken` stays `'0'`) |
 | `GROW_P1_REFUNDS_ENABLED` | Optional; exact `true` only — Grow `refundTransaction`; default off |

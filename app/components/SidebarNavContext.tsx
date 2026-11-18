@@ -166,10 +166,13 @@ function buildNavItems(
   orderIds: SidebarNavItemId[],
   enabledFeatures: SidebarNavItemId[] | null,
   enabledAddonKeys: string[],
-  navLabels: SidebarNavLabels
+  navLabels: SidebarNavLabels,
+  includeParkingPilot = false
 ): SidebarNavItem[] {
   const paidNavIds = new Set(navIdsForEnabledAddonKeys(enabledAddonKeys))
-  const base = resolveSidebarNavItems(orderIds, enabledFeatures, paidNavIds)
+  const base = resolveSidebarNavItems(orderIds, enabledFeatures, paidNavIds, null, {
+    includeParkingPilot,
+  })
   const withPaid = injectPaidAddonNavItems(base, enabledAddonKeys)
   return applySidebarNavLabels(appendAddonsNavAlways(withPaid), navLabels)
 }
@@ -257,6 +260,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
           sidebar_nav_order?: unknown
           sidebar_nav_labels?: unknown
           enabled_nav_features?: unknown
+          palgate_pilot?: boolean
           error?: string
         }
         if (!res.ok) {
@@ -396,7 +400,14 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   )
 
   const navItems = useMemo(
-    () => buildNavItems(orderIds, enabledFeatures, enabledAddonKeys, navLabels),
+    () =>
+      buildNavItems(
+        orderIds,
+        enabledFeatures,
+        enabledAddonKeys,
+        navLabels,
+        orderIds.includes('parking')
+      ),
     [orderIds, enabledFeatures, enabledAddonKeys, navLabels]
   )
 
