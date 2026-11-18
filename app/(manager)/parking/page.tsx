@@ -155,7 +155,10 @@ export default function ParkingPage() {
       {isMobile ? (
         <MobileHeader title="חניונים" onMenuClick={openMenu} />
       ) : (
-        <PageHeader title="חניונים" subtitle="פיילוט סביון — מספר רכב ופתיחת שער PalGate" />
+        <PageHeader
+          title="חניונים"
+          subtitle="פיילוט סביון — ממתין לחיבור ספק / Linked Device"
+        />
       )}
 
       <div style={{ padding: isMobile ? '12px 16px' : '0 0 24px', maxWidth: 720, margin: '0 auto' }}>
@@ -164,8 +167,20 @@ export default function ParkingPage() {
         ) : (
           <>
             <Card style={{ marginBottom: 16, padding: 16 }}>
+              <p
+                style={{
+                  margin: '0 0 10px',
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                  color: theme.colors.warning,
+                  fontWeight: 600,
+                }}
+              >
+                פיילוט לא־רשמי: אין API מסחרי מ־PalGate. פתיחת שער דורשת Linked Device + משתני
+                שרת. עד אישור ספק / הגדרת env — השער לא ייפתח מהענן.
+              </p>
               <p style={{ margin: '0 0 8px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
-                הוסיפו מספר רכב (או מזהה), ואז פתחו את השער מהמערכת. הפיילוט פעיל רק בלקוח סביון.
+                הוסיפו מספר רכב (או מזהה) לרישום פנימי ב־BINO. הפיילוט פעיל רק בלקוח סביון.
               </p>
               <p
                 style={{
