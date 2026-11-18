@@ -77,6 +77,7 @@ const FEATURE_LABELS: Record<UsageFeatureKey, string> = {
   finance: 'הכנסות והוצאות',
   bank: 'חשבון בנק',
   reports: 'דוחות כספיים',
+  parking: 'חניונים',
   settings: 'הגדרות',
   addons: 'תוספים',
   whatsapp_bot: 'בוט WhatsApp (דיירים)',

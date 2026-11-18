@@ -105,6 +105,12 @@ export function isNavFeatureEnabled(
     // bank/reports are workspace tabs under finance — always allowed with finance.
     return true
   }
+  // Parking / PalGate is never granted by DB allowlist alone — middleware + API
+  // hard-scope to Savion. Treat as "feature exists" for path mapping; tenant
+  // gate is client-id based (isPalGatePilotClient).
+  if (featureId === 'parking') {
+    return true
+  }
   if (!enabledFeatures || enabledFeatures.length === 0) return true
   return enabledFeatures.includes(featureId)
 }
@@ -154,6 +160,7 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
   '/qr': 'qr',
   '/settings/whatsapp-templates': 'whatsapp_templates',
   '/pending-residents': 'pending_residents',
+  '/parking': 'parking',
 }
 
 export function navItemIdForPathname(pathname: string): SidebarNavItemId | null {
@@ -217,7 +224,7 @@ export function allNavFeatureOptions(): { id: SidebarNavItemId; label: string }[
 /** Core tabs only — premium add-ons are managed via client_paid_addons in superadmin. */
 export function coreNavFeatureOptions(): { id: SidebarNavItemId; label: string }[] {
   const premium = new Set<string>(PREMIUM_NAV_FEATURE_IDS)
-  return allNavFeatureOptions().filter(({ id }) => !premium.has(id))
+  return allNavFeatureOptions().filter(({ id }) => !premium.has(id) && id !== 'parking')
 }
 
 export function mergePremiumNavFeaturesForSync(

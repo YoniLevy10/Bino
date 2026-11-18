@@ -27,6 +27,7 @@ export const SIDEBAR_NAV_ITEM_IDS = [
   'finance',
   'bank',
   'reports',
+  'parking',
 ] as const
 
 export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
@@ -114,6 +115,7 @@ export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'professionals',
   'pilot_sms',
   'campaigns',
+  'parking',
 ]
 
 /** @deprecated use TENANT_SIDEBAR_NAV_IDS — kept as alias for primary flat sidebar. */
@@ -282,6 +284,13 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
     label: 'דוחות כספיים',
     icon: 'chart',
   },
+  /** Savion PalGate pilot only — injected via nav-config, not default order. */
+  parking: {
+    id: 'parking',
+    href: '/parking',
+    label: 'חניונים',
+    icon: 'car',
+  },
 }
 
 /**
@@ -367,11 +376,17 @@ export function parseSidebarNavOrderFromDb(value: unknown): SidebarNavItemId[] |
   return ids.length > 0 ? ids : null
 }
 
+export type ResolveSidebarNavOptions = {
+  /** Savion PalGate pilot — allow `parking` when present in customOrder. */
+  includeParkingPilot?: boolean
+}
+
 export function resolveSidebarNavItems(
   customOrder: SidebarNavItemId[] | null | undefined,
   enabledFeatures?: SidebarNavItemId[] | null,
   paidNavIds?: ReadonlySet<SidebarNavItemId>,
-  customLabels?: SidebarNavLabels | null
+  customLabels?: SidebarNavLabels | null,
+  opts?: ResolveSidebarNavOptions
 ): SidebarNavItem[] {
   const seen = new Set<SidebarNavItemId>()
   const result: SidebarNavItem[] = []
@@ -384,6 +399,11 @@ export function resolveSidebarNavItems(
 
   const includeId = (id: SidebarNavItemId): boolean => {
     if (!isTenantSidebarNavId(id)) return false
+    // PalGate / חניונים — only when caller opts in (Savion pilot). Never default-on.
+    if (id === 'parking') {
+      if (!opts?.includeParkingPilot) return false
+      return Boolean(customOrder?.includes('parking'))
+    }
     if (isAddonOnlySidebarNavId(id) && !paidNavIds?.has(id)) return false
     // Pin-only addons require an explicit sidebar_nav_order entry.
     if (isAddonOnlySidebarNavId(id) && !isAutoSidebarAddonNavId(id)) {
