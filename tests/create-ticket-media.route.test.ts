@@ -9,11 +9,11 @@ const TEST_TICKET_ID = '33333333-3333-3333-3333-333333333333'
 const uploadedStoragePaths: string[] = []
 const insertedAttachments: Array<Record<string, unknown>> = []
 
-vi.mock('@/lib/api-auth', () => ({
+vi.mock('@/lib/auth-api/api-auth', () => ({
   requireSessionClientId: vi.fn().mockResolvedValue({ ok: false, response: null }),
 }))
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/shared/rate-limit', () => ({
   checkAuthenticatedPostRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
   checkIpPostRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
   checkPublicReportSourceBurstLimit: vi.fn().mockResolvedValue({ isLimited: false }),
@@ -21,7 +21,7 @@ vi.mock('@/lib/rate-limit', () => ({
   checkPublicReportClientHourlyCeiling: vi.fn().mockResolvedValue({ isLimited: false }),
 }))
 
-vi.mock('@/lib/plan-quota-check', () => ({
+vi.mock('@/lib/plans/plan-quota-check', () => ({
   checkTicketsMonthlyQuota: vi.fn().mockResolvedValue({ ok: true, current: 1, max: 100 }),
 }))
 
@@ -29,11 +29,11 @@ vi.mock('@/lib/assign-ticket-worker', () => ({
   autoAssignTicketFromProject: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/push-notifications', () => ({
+vi.mock('@/lib/push/push-notifications', () => ({
   notifyNewTicketPush: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isGooglePlacesConfigured } from '@/lib/sales-leads/config'
 import {

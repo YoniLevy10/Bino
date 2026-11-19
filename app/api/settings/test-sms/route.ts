@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms/sms-send'
 
 export async function POST() {
   const requestId = `test-sms-${Date.now()}`

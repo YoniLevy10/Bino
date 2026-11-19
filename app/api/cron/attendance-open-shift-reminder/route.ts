@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { getLogger } from '@/lib/logging'
-import { notifyWorkerOpenShiftReminderPush } from '@/lib/push-notifications'
-import { listWorkerStampEnabledClientIds } from '@/lib/worker-stamp-clients'
+import { getLogger } from '@/lib/shared/logging'
+import { notifyWorkerOpenShiftReminderPush } from '@/lib/push/push-notifications'
+import { listWorkerStampEnabledClientIds } from '@/lib/worker/worker-stamp-clients'
 
 const REMINDER_HOURS = 9
 

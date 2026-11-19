@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import {
   COLLECTION_CHARGE_STATUSES,
   type CollectionChargeStatus,
-} from '@/lib/collection-charges'
+} from '@/lib/collections/collection-charges'
 import { fetchAllRows } from '@/lib/supabase/fetch-all-rows'
 
 type ChargeAggRow = { status: string; amount: number | string }

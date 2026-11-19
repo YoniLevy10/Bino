@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { resendCollectionChargeBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
-import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collection-receipt-email'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collections/collection-receipt-email'
 
 /**
  * POST — resend BINO payment confirmation email (Resend) for a paid charge.

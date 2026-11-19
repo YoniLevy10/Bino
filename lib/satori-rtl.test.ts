@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { satoriVisualRtl } from '@/lib/satori-rtl'
+import { satoriVisualRtl } from '@/lib/seo/satori-rtl'
 
 describe('satoriVisualRtl', () => {
   it('fully reverses Hebrew-only lines for Satori', () => {

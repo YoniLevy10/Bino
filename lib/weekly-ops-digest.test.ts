@@ -3,7 +3,7 @@ import {
   buildWeeklyDigestStats,
   formatWeeklyOpsDigestSms,
   israelWeekStartIso,
-} from '@/lib/weekly-ops-digest'
+} from '@/lib/ops/weekly-ops-digest'
 
 const NOW = new Date('2026-11-06T09:50:00.000Z')
 

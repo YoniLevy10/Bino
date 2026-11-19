@@ -7,18 +7,18 @@ import { Drawer, Button, LoadingSpinner, StatusBadge, theme } from '@/app/compon
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { fetchWithTimeout, DEFAULT_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, DEFAULT_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import {
   COLLECTION_CHARGE_STATUS_COLORS,
   COLLECTION_CHARGE_STATUS_LABELS,
   formatChargeAmountIls,
   type CollectionChargeListItem,
   type CollectionChargeStatus,
-} from '@/lib/collection-charges'
-import { formatReporterPhoneForDisplay, normalizeReporterPhone } from '@/lib/reporter-display'
-import { ticketDetailPath } from '@/lib/ticket-deep-link'
-import { ticketStatusLabelHe } from '@/lib/ticket-status'
-import { toast } from '@/lib/error-handler'
+} from '@/lib/collections/collection-charges'
+import { formatReporterPhoneForDisplay, normalizeReporterPhone } from '@/lib/reporter/reporter-display'
+import { ticketDetailPath } from '@/lib/tickets/ticket-deep-link'
+import { ticketStatusLabelHe } from '@/lib/tickets/ticket-status'
+import { toast } from '@/lib/errors/error-handler'
 
 const RECENT_TICKETS_LIMIT = 8
 const RECENT_CHARGES_LIMIT = 5

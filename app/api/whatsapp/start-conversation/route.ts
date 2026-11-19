@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
-import { whatsappStartConversationBodySchema } from '@/lib/whatsapp-api-schemas'
-import { whatsAppConversationPhoneKey } from '@/lib/whatsapp-message-store'
-import { normalizePhone } from '@/lib/residents-whatsapp'
-import { isDisplayableResidentName } from '@/lib/whatsapp-inbox-display'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
+import { whatsappStartConversationBodySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
+import { whatsAppConversationPhoneKey } from '@/lib/whatsapp/whatsapp-message-store'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
+import { isDisplayableResidentName } from '@/lib/whatsapp/whatsapp-inbox-display'
 
 export async function POST(req: Request) {
   if (!isWhatsAppInboxV2Enabled()) {

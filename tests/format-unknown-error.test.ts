@@ -3,7 +3,7 @@ import {
   formatUnknownError,
   formatUnknownErrorMessage,
   toError,
-} from '@/lib/format-unknown-error'
+} from '@/lib/errors/format-unknown-error'
 
 describe('formatUnknownError', () => {
   it('reads message from plain PostgREST objects', () => {

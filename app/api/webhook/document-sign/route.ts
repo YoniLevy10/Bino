@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 const logger = getLogger()
 

@@ -2,10 +2,10 @@
 
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { isFetchTimeoutError } from '@/lib/fetch-with-timeout'
-import { whatsappUiFetch } from '@/lib/whatsapp-ui-fetch'
-import type { WhatsAppInboxContext } from '@/lib/whatsapp-inbox-context'
-import { queryKeys } from '@/lib/query-keys'
+import { isFetchTimeoutError } from '@/lib/shared/fetch-with-timeout'
+import { whatsappUiFetch } from '@/lib/whatsapp/whatsapp-ui-fetch'
+import type { WhatsAppInboxContext } from '@/lib/whatsapp/whatsapp-inbox-context'
+import { queryKeys } from '@/lib/shared/query-keys'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 export type WhatsAppConversationRow = {

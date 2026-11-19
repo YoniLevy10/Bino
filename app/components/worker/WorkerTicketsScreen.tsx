@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { isTicketInTreatment } from '@/lib/ticket-status'
+import { isTicketInTreatment } from '@/lib/tickets/ticket-status'
 import { WorkerTicketListSkeleton } from '../page-skeleton'
 import { theme } from '../ui'
 import type { WorkerTicketCardTicket } from './WorkerTicketCard'

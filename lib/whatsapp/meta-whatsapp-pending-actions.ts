@@ -1,0 +1,132 @@
+/**
+ * Actions that still need Meta Business Manager / Developer Console for some steps.
+ * UTILITY message templates can also be submitted via Composio
+ * (`/api/superadmin/meta-templates` + MetaWhatsAppPendingPanel) — Meta approval remains manual.
+ */
+
+export type MetaPendingAction = {
+  id: string
+  title: string
+  description: string
+  /** submitted = waiting Meta review; todo = not started */
+  status: 'submitted' | 'todo' | 'optional'
+  href?: string
+}
+
+export const META_WHATSAPP_PENDING_ACTIONS: MetaPendingAction[] = [
+  {
+    id: 'ticket_closed',
+    title: 'אישור תבנית ticket_closed',
+    description:
+      'Utility · עברית · משתנה {{1}} = שם בניין. בלי אישור — דייר לא מקבל הודעה על סגירה מחוץ ל-24 שעות.',
+    status: 'submitted',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'sla_escalation',
+    title: 'יצירת תבנית sla_escalation_resident',
+    description:
+      'Utility · עברית · {{1}}=מספר פנייה, {{2}}=תיאור קצר. דוגמה: "שלום, הפנייה #{{1}} בנושא {{2}} עדיין בטיפול."',
+    status: 'submitted',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'ticket_status_in_progress',
+    title: 'יצירת תבנית ticket_status_in_progress',
+    description:
+      'Utility · עברית · {{1}}=שם בניין, {{2}}=מספר תקלה, {{3}}=סטטוס. נשלח רק כשמתג «עדכן דייר בשינוי סטטוס» דלוק.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'ticket_status_waiting_parts',
+    title: 'יצירת תבנית ticket_status_waiting_parts',
+    description:
+      'Utility · עברית · {{1}}=שם בניין, {{2}}=מספר תקלה, {{3}}=סטטוס. נשלח רק כשמתג «עדכן דייר בשינוי סטטוס» דלוק.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'manager_reply',
+    title: 'יצירת תבנית manager_reply (+ כפתור קיבלתי)',
+    description:
+      'Utility · עברית · {{1}}=שם נמען, {{2}}=הודעת המנהל מהקומפוז · Footer «צוות הניהול» · QUICK_REPLY «קיבלתי». פותח שיחה מתיבת WhatsApp מחוץ ל-24 שעות.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'worker_completion_photo',
+    title: 'יצירת תבנית worker_completion_photo',
+    description:
+      'Utility · עברית · Header=תמונה דינמית · {{1}}=שם בניין. נדרש לשליחת תמונת סיום תיקון לדייר מחוץ ל-24 שעות.',
+    status: 'todo',
+    href: 'https://business.facebook.com/wa/manage/message-templates/',
+  },
+  {
+    id: 'waba_cleanup',
+    title: 'מחיקת 2 חשבונות WABA כפולים',
+    description:
+      'השאירו רק 1310695487595011 (055-974-0732). מחקו את 1320727389950379 ו-1893485084635441.',
+    status: 'optional',
+    href: 'https://business.facebook.com/settings/whatsapp-business-accounts',
+  },
+  {
+    id: 'display_name',
+    title: 'שינוי שם תצוגה "אייפון" → Bino',
+    description: 'Phone Numbers → Edit display name — מה שהדייר רואה בראש הצ\'אט.',
+    status: 'optional',
+    href: 'https://business.facebook.com/wa/manage/phone-numbers/',
+  },
+  {
+    id: 'app_secret',
+    title: 'WHATSAPP_APP_SECRET ב-Vercel',
+    description: 'Meta Developer → App → Settings → Basic → App Secret. מאבטח את ה-webhook (אופציונלי — לא חוסם שליחה).',
+    status: 'optional',
+    href: 'https://developers.facebook.com/apps/',
+  },
+  {
+    id: 'message_status_webhook',
+    title: 'Webhook: message_status (delivered/read)',
+    description: 'Meta Developer → Webhooks → Subscribe to message_status. אחרי זה נחבר בקוד.',
+    status: 'optional',
+    href: 'https://developers.facebook.com/apps/',
+  },
+]
+
+/** Live WABA + phone — for reference in settings panel. */
+export const META_LIVE_WABA_ID = '1310695487595011'
+export const META_LIVE_PHONE_NUMBER_ID = '1114529741736592'
+export const META_LIVE_DISPLAY_PHONE = '055-974-0732'
+
+export function metaTemplateNameTicketClosed(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_TICKET_CLOSED?.trim() || 'ticket_closed'
+}
+
+export function metaTemplateNameSlaEscalation(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_SLA_ESCALATION?.trim() || 'sla_escalation_resident'
+}
+
+export function metaTemplateNameWorkerAssignment(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_WORKER_ASSIGNMENT?.trim() || 'worker_assignment_notice'
+}
+
+export function metaTemplateNameManagerReply(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_MANAGER_REPLY?.trim() || 'manager_reply'
+}
+
+export function metaTemplateNameWorkerCompletionPhoto(): string {
+  return process.env.WHATSAPP_META_TEMPLATE_WORKER_COMPLETION_PHOTO?.trim() || 'worker_completion_photo'
+}
+
+export function metaTemplateNameTicketStatusInProgress(): string {
+  return (
+    process.env.WHATSAPP_META_TEMPLATE_TICKET_STATUS_IN_PROGRESS?.trim() || 'ticket_status_in_progress'
+  )
+}
+
+export function metaTemplateNameTicketStatusWaitingParts(): string {
+  return (
+    process.env.WHATSAPP_META_TEMPLATE_TICKET_STATUS_WAITING_PARTS?.trim() ||
+    'ticket_status_waiting_parts'
+  )
+}

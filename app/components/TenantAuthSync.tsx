@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/utils/supabase/client'
-import { clearTenantBrowserCaches, LAST_AUTH_UID_KEY } from '@/lib/tenant-browser-cache'
+import { clearTenantBrowserCaches, LAST_AUTH_UID_KEY } from '@/lib/tenant/tenant-browser-cache'
 
 /**
  * Clears tenant branding / client-id caches when auth user changes or signs out.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectiveMaxWorkers } from '@/lib/plan-limits'
+import { effectiveMaxWorkers } from '@/lib/plans/plan-limits'
 
 describe('effectiveMaxWorkers', () => {
   it('prefers per-client override over catalog and plan defaults', () => {

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Suspense, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { isValidBuildingAssetSlug } from '@/lib/building-asset-public'
 
 type AssetPayload = {

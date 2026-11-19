@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { getLegalSiteConfig } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { VaadPayContent } from '@/app/components/legal/VaadPayContent'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 
 const origin = getMarketingSiteOrigin()
 

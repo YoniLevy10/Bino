@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   RESIDENT_STATUS_NOTIFY_LOG_ACTION,
   RESIDENT_STATUS_NOTIFY_WHITELIST,
-} from '@/lib/reporter-ticket-status-notify'
+} from '@/lib/reporter/reporter-ticket-status-notify'
 
 describe('resident status WA whitelist', () => {
   it('allows only IN_PROGRESS and WAITING_PARTS', () => {

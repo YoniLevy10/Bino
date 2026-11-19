@@ -6,12 +6,12 @@
  */
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
 import { DECISION_STATUS_LABELS_HE } from '@/lib/building-governance/roles'
 import type { DecisionSummaryPayload } from '@/lib/building-governance/decision-summary'
 import { openDecisionSummaryPrint } from '@/lib/building-governance/decision-summary-print'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 
 type SignatureRequest = {

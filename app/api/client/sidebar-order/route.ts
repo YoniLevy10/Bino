@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { z } from 'zod'
 import { logAudit } from '@/lib/audit'
 import {
@@ -9,7 +9,7 @@ import {
   sidebarNavOrderSchema,
   type SidebarNavItemId,
 } from '@/lib/sidebar-nav'
-import { isPalGatePilotClient } from '@/lib/palgate/pilot'
+import { isPalGateAccessAllowed } from '@/lib/palgate/access'
 
 const bodySchema = z.object({
   order: sidebarNavOrderSchema,
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   }
 
   let nextOrder = [...validated.data.order] as SidebarNavItemId[]
-  if (!isPalGatePilotClient(clientId)) {
+  if (!(await isPalGateAccessAllowed(admin, clientId))) {
     nextOrder = nextOrder.filter((id) => id !== 'parking')
   }
 

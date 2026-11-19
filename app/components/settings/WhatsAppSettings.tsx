@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { theme } from '../ui'
-import { WHATSAPP_COEXISTENCE_NOTE } from '@/lib/wa-broadcast'
+import { WHATSAPP_COEXISTENCE_NOTE } from '@/lib/whatsapp/wa-broadcast'
 
 export interface WhatsAppSettingsProps {
   isConnected?: boolean

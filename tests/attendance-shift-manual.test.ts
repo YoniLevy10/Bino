@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildManualShiftRow } from '@/lib/attendance-shift-manual'
+import { buildManualShiftRow } from '@/lib/attendance/attendance-shift-manual'
 
 describe('buildManualShiftRow', () => {
   it('creates closed shift from times', () => {

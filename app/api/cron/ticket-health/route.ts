@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
-import { runTicketMediaHealthProbe } from '@/lib/ticket-media-health'
-import { notifyPlatformOps } from '@/lib/platform-ops-alert'
+import { getLogger } from '@/lib/shared/logging'
+import { runTicketMediaHealthProbe } from '@/lib/tickets/ticket-media-health'
+import { notifyPlatformOps } from '@/lib/ops/platform-ops-alert'
 
 /**
  * Cron: ticket + media health probe. Emails platform ops on degraded/error.

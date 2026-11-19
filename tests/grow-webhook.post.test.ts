@@ -15,11 +15,11 @@ const preflightGrowWebhookSumCheck = vi.fn()
 const recordGrowApproveResult = vi.fn()
 const notifyPlatformOps = vi.fn()
 
-vi.mock('@/lib/grow-client', () => ({
+vi.mock('@/lib/payments/grow-client', () => ({
   approveGrowTransaction: (...args: unknown[]) => approveGrowTransaction(...args),
 }))
 
-vi.mock('@/lib/collection-charge-ops', () => ({
+vi.mock('@/lib/collections/collection-charge-ops', () => ({
   findChargeIdsByGrowIds: (...args: unknown[]) => findChargeIdsByGrowIds(...args),
   markChargePaidByGrowIds: (...args: unknown[]) => markChargePaidByGrowIds(...args),
   persistGrowTransactionIds: (...args: unknown[]) => persistGrowTransactionIds(...args),
@@ -27,7 +27,7 @@ vi.mock('@/lib/collection-charge-ops', () => ({
   recordGrowApproveResult: (...args: unknown[]) => recordGrowApproveResult(...args),
 }))
 
-vi.mock('@/lib/platform-ops-alert', () => ({
+vi.mock('@/lib/ops/platform-ops-alert', () => ({
   notifyPlatformOps: (...args: unknown[]) => notifyPlatformOps(...args),
 }))
 
@@ -35,7 +35,7 @@ vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: () => ({ mocked: true }),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -43,7 +43,7 @@ vi.mock('@/lib/logging', () => ({
   }),
 }))
 
-vi.mock('@/lib/grow-config', () => ({
+vi.mock('@/lib/payments/grow-config', () => ({
   readGrowPlatformConfig: () => ({
     env: 'sandbox',
     apiKey: 'k',

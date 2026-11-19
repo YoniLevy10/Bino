@@ -14,10 +14,10 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { PAID_ADDON_KEYS, type AddonEntitlement, type PaidAddonKey } from '@/lib/paid-addons'
-import { ADDONS_CACHE_PREFIX, tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { PAID_ADDON_KEYS, type AddonEntitlement, type PaidAddonKey } from '@/lib/addons/paid-addons'
+import { ADDONS_CACHE_PREFIX, tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 export type { AddonEntitlement }

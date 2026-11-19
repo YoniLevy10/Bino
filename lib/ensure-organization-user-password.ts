@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OrgUserRole } from '@/lib/invite-organization-user'
-import { higherOrgRole, isOrgUserRole } from '@/lib/org-role'
+import { higherOrgRole, isOrgUserRole } from '@/lib/auth-api/org-role'
 
 const MIN_PASSWORD_LENGTH = 8
 

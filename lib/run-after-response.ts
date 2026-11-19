@@ -1,5 +1,5 @@
 import { after } from 'next/server'
-import { formatUnknownError } from '@/lib/format-unknown-error'
+import { formatUnknownError } from '@/lib/errors/format-unknown-error'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 /**
@@ -77,7 +77,7 @@ export async function logRunAfterFailure(
   if (!options?.alertOps) return
 
   try {
-    const { notifyPlatformOps } = await import('@/lib/platform-ops-alert')
+    const { notifyPlatformOps } = await import('@/lib/ops/platform-ops-alert')
     // Await so Fluid/serverless waitUntil (via after()) keeps the isolate alive
     // until the ops email/send settles — void risked freeze drop.
     await notifyPlatformOps({

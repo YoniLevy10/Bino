@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ResidentPortalMembershipView } from '@/lib/resident-portal/types'
-import type { CollectionChargeStatus } from '@/lib/collection-charges'
+import type { CollectionChargeStatus } from '@/lib/collections/collection-charges'
 
 /** Whitelist fields safe for resident portal (no merchant tokens). */
 export type ResidentChargeView = {

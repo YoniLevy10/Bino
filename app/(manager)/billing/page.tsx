@@ -26,15 +26,15 @@ import {
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plan-pricing'
-import type { PlanPricingCatalogRow } from '@/lib/plan-pricing'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { formatLimitHe, formatPlanPriceDisplay, formatPlanPriceIls } from '@/lib/plans/plan-pricing'
+import type { PlanPricingCatalogRow } from '@/lib/plans/plan-pricing'
 import { usePaidAddons } from '@/app/components/PaidAddonsContext'
-import type { PlanTier } from '@/lib/plan-limits'
+import type { PlanTier } from '@/lib/plans/plan-limits'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 
 type PlanLimits = {
   buildings: number

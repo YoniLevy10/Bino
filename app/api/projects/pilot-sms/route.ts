@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { projectPilotSmsBodySchema } from '@/lib/api-body-schemas'
-import { runProjectPilotSms } from '@/lib/project-pilot-sms'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { runProjectPilotSms } from '@/lib/projects/project-pilot-sms'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */

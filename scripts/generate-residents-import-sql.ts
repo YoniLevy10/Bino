@@ -8,8 +8,8 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { normalizeProjectNameForMatch } from '../lib/parse-residents-directory-pdf'
-import { normalizePhone } from '../lib/residents-whatsapp'
+import { normalizeProjectNameForMatch } from '../lib/residents/parse-residents-directory-pdf'
+import { normalizePhone } from '../lib/residents/residents-whatsapp'
 
 type ParsedRow = {
   project_name: string

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { listAllPlanPricingAdmin, getBillingPlatformSettings } from '@/lib/plan-pricing'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { listAllPlanPricingAdmin, getBillingPlatformSettings } from '@/lib/plans/plan-pricing'
 import { z } from 'zod'
 
 const patchPlanSchema = z.object({

@@ -7,8 +7,8 @@ import { fetchBuildingExpenseSum } from '@/lib/building-finance/expense-sums'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 import { notifyTenantManagerService } from '@/lib/building-governance/service-notify'
 import { logAudit } from '@/lib/audit'
-import { getLogger } from '@/lib/logging'
-import { getPublicAppUrl } from '@/lib/public-app-url'
+import { getLogger } from '@/lib/shared/logging'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
 
 export type BudgetAlertKind = 'overspent' | 'over_pace'
 

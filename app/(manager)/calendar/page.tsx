@@ -6,10 +6,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense, type CSSProperties } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
   CALENDAR_EVENT_TYPE_LABELS,
@@ -25,8 +25,8 @@ import {
   MAINTENANCE_CADENCE_COLORS,
   MAINTENANCE_CADENCE_LABELS,
   type MaintenanceCadence,
-} from '@/lib/maintenance-cadence'
-import { startGoogleCalendarConnect } from '@/lib/google-calendar-connect'
+} from '@/lib/maintenance/maintenance-cadence'
+import { startGoogleCalendarConnect } from '@/lib/google/google-calendar-connect'
 import { CalendarMonthGrid } from '@/app/components/calendar/CalendarMonthGrid'
 import {
   MobileHeader,

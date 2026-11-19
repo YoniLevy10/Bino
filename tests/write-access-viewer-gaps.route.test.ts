@@ -4,7 +4,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextResponse } from 'next/server'
-import { canOrgRoleWrite } from '@/lib/org-role'
+import { canOrgRoleWrite } from '@/lib/auth-api/org-role'
 
 function viewerDeniedResponse() {
   return NextResponse.json(
@@ -27,7 +27,7 @@ const viewerCtx = {
   role: 'viewer' as const,
 }
 
-vi.mock('@/lib/api-auth', () => ({
+vi.mock('@/lib/auth-api/api-auth', () => ({
   requireSessionClientId: vi.fn(),
   requireSessionWriteAccess: vi.fn(),
 }))
@@ -37,7 +37,7 @@ vi.mock('@/lib/require-paid-addon', () => ({
   requireClientPaidAddon: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/shared/rate-limit', () => ({
   checkAuthenticatedPostRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
   checkAuthenticatedReadRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
   checkIpPostRouteLimit: vi.fn().mockResolvedValue({ isLimited: false }),
@@ -47,7 +47,7 @@ vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: vi.fn(() => ({ from: vi.fn() })),
 }))
 
-vi.mock('@/lib/plan-quota-check', () => ({
+vi.mock('@/lib/plans/plan-quota-check', () => ({
   checkTicketsMonthlyQuota: vi.fn().mockResolvedValue({ ok: true, current: 1, max: 100 }),
 }))
 
@@ -55,7 +55,7 @@ vi.mock('@/lib/recommendations/record-event', () => ({
   recordRecommendationEvent: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -68,7 +68,7 @@ vi.mock('@/lib/logging', () => ({
   }),
 }))
 
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { requireClientPaidAddon, requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { POST as dismissPost } from '@/app/api/recommendations/dismiss/route'
 import { POST as snoozePost } from '@/app/api/recommendations/snooze/route'

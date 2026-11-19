@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
 
 const requireSessionWriteAccess = vi.fn()
 
-vi.mock('@/lib/api-auth', () => ({
+vi.mock('@/lib/auth-api/api-auth', () => ({
   requireSessionWriteAccess: (...args: unknown[]) => requireSessionWriteAccess(...args),
 }))
 
@@ -15,11 +15,11 @@ vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: vi.fn(() => ({})),
 }))
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/shared/rate-limit', () => ({
   checkAuthenticatedPostRouteLimit: vi.fn(async () => ({ isLimited: false })),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -40,15 +40,15 @@ vi.mock('@/lib/run-after-response', () => ({
   shouldSyncTicketNotifications: () => false,
 }))
 
-vi.mock('@/lib/reporter-ticket-closed-notify', () => ({
+vi.mock('@/lib/reporter/reporter-ticket-closed-notify', () => ({
   notifyReporterIfTicketNewlyClosed: vi.fn(),
 }))
 
-vi.mock('@/lib/reporter-ticket-status-notify', () => ({
+vi.mock('@/lib/reporter/reporter-ticket-status-notify', () => ({
   notifyReporterOnStatusChange: vi.fn(),
 }))
 
-vi.mock('@/lib/tenant-owned-refs', () => ({
+vi.mock('@/lib/tenant/tenant-owned-refs', () => ({
   assertWorkerOwnedByClient: vi.fn(async () => undefined),
 }))
 

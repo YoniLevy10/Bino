@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldShowPageLoadError } from '@/lib/page-load-error'
+import { shouldShowPageLoadError } from '@/lib/errors/page-load-error'
 
 describe('shouldShowPageLoadError', () => {
   it('clears error after a successful fetch', () => {

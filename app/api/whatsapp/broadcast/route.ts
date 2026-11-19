@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { waBroadcastBodySchema } from '@/lib/whatsapp-api-schemas'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { waBroadcastBodySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
 import {
   enqueueWhatsAppBroadcast,
   markWaBroadcastRun,
   runWhatsAppBroadcast,
-} from '@/lib/wa-broadcast'
-import { listWaBroadcastTemplates } from '@/lib/wa-broadcast-policy'
+} from '@/lib/whatsapp/wa-broadcast'
+import { listWaBroadcastTemplates } from '@/lib/whatsapp/wa-broadcast-policy'
 import { runAfterResponse } from '@/lib/run-after-response'
 import { getWaBroadcastRun } from '@/lib/notification-runs'
 

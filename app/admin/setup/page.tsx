@@ -18,8 +18,8 @@ import { useState, type CSSProperties } from 'react'
 import { theme, Button, Card } from '../../components/ui'
 import { LoadingButton } from '../../components/LoadingButton'
 import { SuperadminMfaGate } from '@/app/superadmin/components/SuperadminMfaGate'
-import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
-import type { PlanTier } from '@/lib/plan-limits'
+import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plans/plan-display'
+import type { PlanTier } from '@/lib/plans/plan-limits'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ProjectInput = { name: string; project_code: string; address: string }

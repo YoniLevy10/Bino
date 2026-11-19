@@ -1,27 +1,27 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
-import { getConfiguredGrowWebhookUrl } from '@/lib/collection-charge-ops'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
+import { getConfiguredGrowWebhookUrl } from '@/lib/collections/collection-charge-ops'
 import {
   CLIENT_GROW_LEGAL_SETTINGS_SELECT,
   getClientGrowPagePath,
   growLegalFromClientRow,
-} from '@/lib/client-grow-legal'
+} from '@/lib/client/client-grow-legal'
 import {
   CLIENT_GROW_PAYMENTS_SELECT,
   buildGrowCollectionsAccountStatus,
   isGrowCollectionsConfigured,
   type ClientGrowPaymentsRow,
-} from '@/lib/grow-credentials'
-import { isGrowPlatformConfigured } from '@/lib/grow-config'
+} from '@/lib/payments/grow-credentials'
+import { isGrowPlatformConfigured } from '@/lib/payments/grow-config'
 import {
   listClientProjectGrowRows,
   loadProjectGrowRow,
   projectGrowAccountStatus,
   resolveGrowMerchant,
-} from '@/lib/project-grow'
+} from '@/lib/projects/project-grow'
 
 /** Per-tenant / per-building Grow account readiness. */
 export async function GET(req: Request) {

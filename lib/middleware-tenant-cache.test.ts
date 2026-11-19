@@ -5,7 +5,7 @@ import {
   clearMiddlewareTenantCache,
   readMiddlewareTenantCache,
   writeMiddlewareTenantCache,
-} from '@/lib/middleware-tenant-cache'
+} from '@/lib/tenant/middleware-tenant-cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 function reqWithCookie(value: string | undefined): NextRequest {

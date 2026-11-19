@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/shared/public-origin'
 import {
   getPublicAppUrl,
   getPublicPayUrl,
   getPublicTicketsUrl,
   getWorkerPortalUrl,
-} from '@/lib/public-app-url'
+} from '@/lib/shared/public-app-url'
 
 describe('public-app-url', () => {
   afterEach(() => {

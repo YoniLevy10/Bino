@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { TICKET_STATUSES } from '@/lib/ticket-status'
+import { TICKET_STATUSES } from '@/lib/tickets/ticket-status'
 import * as path from 'path'
 import * as fs from 'fs'
 

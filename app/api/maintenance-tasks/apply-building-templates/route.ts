@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { applyBuildingTemplatesBodySchema } from '@/lib/api-body-schemas'
-import { assertProjectOwnedByClient } from '@/lib/tenant-owned-refs'
+import { assertProjectOwnedByClient } from '@/lib/tenant/tenant-owned-refs'
 import {
   BUILDING_MAINTENANCE_TEMPLATES,
   checklistFromTexts,
   firstDueIsoForCadence,
-} from '@/lib/maintenance-task-templates'
-import { syncMaintenanceTaskToCalendar } from '@/lib/maintenance-task-calendar-sync'
+} from '@/lib/maintenance/maintenance-task-templates'
+import { syncMaintenanceTaskToCalendar } from '@/lib/maintenance/maintenance-task-calendar-sync'
 
 export async function POST(req: Request) {
   const auth = await requireSessionWriteAccess()

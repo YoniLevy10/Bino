@@ -1,4 +1,4 @@
-import { TICKET_STATUSES, type TicketStatus } from '@/lib/ticket-status'
+import { TICKET_STATUSES, type TicketStatus } from '@/lib/tickets/ticket-status'
 
 /** Status value stored in DB for closed tickets. */
 export const CLOSED_TICKET_STATUS = 'CLOSED' as const

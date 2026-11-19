@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { MarketingLeadLink } from '@/app/components/marketing/MarketingLeadLink'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 
 const origin = getMarketingSiteOrigin()
 

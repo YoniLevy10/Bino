@@ -5,8 +5,8 @@
 
 import { NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { TICKET_STATUSES } from '@/lib/ticket-status'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { TICKET_STATUSES } from '@/lib/tickets/ticket-status'
+import { checkRateLimit } from '@/lib/shared/rate-limit'
 
 // ============================================================================
 // 1. TYPES & INTERFACES

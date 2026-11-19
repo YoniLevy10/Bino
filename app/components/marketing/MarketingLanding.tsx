@@ -7,10 +7,10 @@ import {
   MARKETING_COPY,
   type MarketingCopy,
   type MarketingLocale,
-} from '@/lib/marketing-copy'
-import { trackMarketingEvent } from '@/lib/marketing-analytics'
-import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
-import { BINO_PUBLIC_HOST } from '@/lib/marketing-site'
+} from '@/lib/marketing/marketing-copy'
+import { trackMarketingEvent } from '@/lib/marketing/marketing-analytics'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/shared/public-origin'
+import { BINO_PUBLIC_HOST } from '@/lib/marketing/marketing-site'
 import { MarketingLeadLink } from './MarketingLeadLink'
 import { WhatsAppIcon } from './WhatsAppIcon'
 

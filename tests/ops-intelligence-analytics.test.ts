@@ -9,8 +9,8 @@ import {
   pct,
   percentile,
   type OpsIntelligenceReport,
-} from '@/lib/ops-intelligence-analytics'
-import type { OpsTicket } from '@/lib/ops-intelligence-slices'
+} from '@/lib/ops/ops-intelligence-analytics'
+import type { OpsTicket } from '@/lib/ops/ops-intelligence-slices'
 
 describe('ops-intelligence helpers', () => {
   it('hoursBetween / median / avg / pct', () => {

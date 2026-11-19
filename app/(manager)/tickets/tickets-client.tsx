@@ -26,7 +26,7 @@
  *  - "הודעת סגירה" → POST /api/notify-reporter-ticket-closed
  */
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
@@ -34,7 +34,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
-import { parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
+import { parseTicketIdFromSearchParams } from '@/lib/tickets/ticket-deep-link'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
@@ -44,19 +44,19 @@ import {
   type OpenTicketRow,
 } from '@/lib/hooks/use-open-tickets'
 import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
-import { queryKeys } from '@/lib/query-keys'
-import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
-import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import { queryKeys } from '@/lib/shared/query-keys'
+import { tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
+import type { TicketDetailRow } from '@/lib/tickets/ticket-detail-types'
 import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { shouldShowPageLoadError } from '@/lib/page-load-error'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { shouldShowPageLoadError } from '@/lib/errors/page-load-error'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
-} from '@/lib/reporter-closed-notify-toast'
+} from '@/lib/reporter/reporter-closed-notify-toast'
 import {
   MobileHeader,
   useMobileMenu,
@@ -75,7 +75,7 @@ import {
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
-import { useIsMobile } from '@/lib/use-is-mobile'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { removeTicketFromListState } from '@/lib/open-tickets'
 import { PageListSkeleton } from '@/app/components/page-skeleton'
@@ -92,155 +92,26 @@ import { VirtualizedList } from '@/app/components/VirtualizedList'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { CloseTicketConfirmSheet } from '@/app/components/tickets/CloseTicketConfirmSheet'
 import {
-  OPEN_TICKET_STATUS_FILTER_OPTIONS,
   ticketStatusLabelHe,
   isTicketInTreatment,
-} from '@/lib/ticket-status'
-import { ticketsListExportFilename } from '@/lib/export-filename'
+} from '@/lib/tickets/ticket-status'
+import { ticketsListExportFilename } from '@/lib/shared/export-filename'
 
-type TicketRow = {
-  id: string
-  ticket_number: number
-  client_id?: string | null
-  project_id?: string | null
-  project_code?: string
-  project_name?: string
-  reporter_phone?: string | null
-  reporter_name?: string | null
-  description?: string | null
-  status: string
-  priority?: string | null
-  assigned_worker_id?: string | null
-  building_number?: string | null
-  created_at?: string
-  closed_at?: string | null
-  projects?:
-    | { name?: string | null; project_code?: string | null }[]
-    | { name?: string | null; project_code?: string | null }
-    | null
-}
-
-type AttachmentRow = {
-  id: string
-  ticket_id: string
-  file_name: string | null
-  file_url: string | null
-  mime_type: string | null
-  attachment_type: string
-  whatsapp_media_id: string | null
-  created_at: string | null
-  signed_url?: string | null
-}
-
-type WorkerRow = {
-  id: string
-  full_name: string
-  phone?: string | null
-  email?: string | null
-  role?: string | null
-  is_active?: boolean | null
-}
-
-type ProjectRow = {
-  id: string
-  name: string
-  project_code: string
-}
-
-const statusOptions = [
-  ...OPEN_TICKET_STATUS_FILTER_OPTIONS.slice(0, 1),
-  { label: 'כל הטיפול', value: 'IN_TREATMENT' },
-  ...OPEN_TICKET_STATUS_FILTER_OPTIONS.slice(1),
-]
-
-const REFRESH_DEBOUNCE_MS = 30_000
-const TICKETS_INITIAL_LIMIT = 200
-
-const MOBILE_QUICK_STATUS_CHIPS: { label: string; value: string }[] = [
-  { label: 'הכל', value: 'ALL' },
-  { label: 'חדשות', value: 'NEW' },
-  { label: 'בטיפול', value: 'IN_PROGRESS' },
-  { label: 'דחופות', value: 'URGENT' },
-]
-
-const priorityOptions = [
-  { label: 'כל העדיפויות', value: 'ALL' },
-  { label: 'דחופה', value: 'URGENT' },
-  { label: 'גבוהה', value: 'HIGH' },
-  { label: 'בינונית', value: 'MEDIUM' },
-  { label: 'נמוכה', value: 'LOW' },
-]
-
-const TICKETS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
-
-type TicketsCache = {
-  tickets: TicketRow[]
-  workers: WorkerRow[]
-  projects: ProjectRow[]
-  ticketsTruncated: boolean
-  savedAt: number
-}
-
-function readTicketsCache(clientId: string): TicketsCache | null {
-  try {
-    const key = `bamakor_tickets_v2_${clientId}`
-    const raw = localStorage.getItem(key)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as TicketsCache
-    if (Date.now() - parsed.savedAt > TICKETS_CACHE_TTL_MS) return null
-    return parsed
-  } catch { return null }
-}
-
-function writeTicketsCache(clientId: string, data: Omit<TicketsCache, 'savedAt'>) {
-  try {
-    const key = `bamakor_tickets_v2_${clientId}`
-    localStorage.setItem(key, JSON.stringify({ ...data, savedAt: Date.now() }))
-  } catch { /* storage full or unavailable */ }
-}
-
-function normalizeOpenTicketRows(rows: OpenTicketRow[]): TicketRow[] {
-  return rows.map((ticket) => {
-    const project = Array.isArray(ticket.projects) ? ticket.projects[0] : ticket.projects
-    return {
-      id: ticket.id,
-      ticket_number: Number(ticket.ticket_number),
-      client_id: ticket.client_id,
-      project_id: ticket.project_id,
-      project_code: project?.project_code || '',
-      project_name: project?.name || '',
-      reporter_phone: ticket.reporter_phone,
-      reporter_name: ticket.reporter_name,
-      description: ticket.description,
-      status: ticket.status,
-      priority: ticket.priority,
-      assigned_worker_id: ticket.assigned_worker_id,
-      building_number: ticket.building_number,
-      created_at: ticket.created_at,
-      closed_at: ticket.closed_at,
-      projects: ticket.projects,
-    }
-  })
-}
-
-function ticketRowsToOpenRows(tickets: TicketRow[]): OpenTicketRow[] {
-  return tickets.map((t) => ({
-    id: t.id,
-    ticket_number: t.ticket_number,
-    client_id: t.client_id,
-    project_id: t.project_id,
-    reporter_phone: t.reporter_phone,
-    reporter_name: t.reporter_name,
-    description: t.description,
-    status: t.status,
-    priority: t.priority,
-    assigned_worker_id: t.assigned_worker_id,
-    building_number: t.building_number,
-    created_at: t.created_at || '',
-    closed_at: t.closed_at,
-    projects: t.projects ?? { name: t.project_name, project_code: t.project_code },
-  }))
-}
+import type { TicketRow, AttachmentRow, WorkerRow, ProjectRow } from './tickets-types'
+import {
+  statusOptions,
+  REFRESH_DEBOUNCE_MS,
+  TICKETS_INITIAL_LIMIT,
+  MOBILE_QUICK_STATUS_CHIPS,
+  priorityOptions,
+} from './tickets-constants'
+import {
+  readTicketsCache,
+  writeTicketsCache,
+  normalizeOpenTicketRows,
+  ticketRowsToOpenRows,
+} from './tickets-cache'
+import { styles } from './tickets-styles'
 
 export default function TicketsPage() {
   const router = useRouter()
@@ -772,8 +643,8 @@ export default function TicketsPage() {
       addJsonSheet,
       setCellStyle,
       downloadExcelWorkbook,
-    } = await import('@/lib/excel-workbook')
-    const { STATUS_STYLES, PRIORITY_STYLES } = await import('@/lib/excel-style')
+    } = await import('@/lib/excel/excel-workbook')
+    const { STATUS_STYLES, PRIORITY_STYLES } = await import('@/lib/excel/excel-style')
     const list = filteredTickets
     const rows = list.map((t) => ({
       '#': t.ticket_number,
@@ -990,7 +861,7 @@ export default function TicketsPage() {
     if (!selectedTicket) return
     setSavingTicket(true)
     try {
-      const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
+      const { saveDashboardTicket } = await import('@/lib/dashboard/dashboard-ticket-save')
       const { didAssign, closedNow, reporter_has_phone, whatsapp_sent, notifications_queued } = await saveDashboardTicket({
         ticketId: selectedTicket.id,
         priority: draftPriority,
@@ -1844,314 +1715,3 @@ export default function TicketsPage() {
   )
 }
 
-const styles: Record<string, CSSProperties> = {
-  content: {
-    padding: '32px 40px',
-    maxWidth: '1400px',
-    margin: '0 auto',
-  },
-  kpiGrid: {
-    display: 'grid',
-    gap: '16px',
-    marginBottom: '12px',
-  },
-  closedHint: {
-    fontSize: '13px',
-    color: theme.colors.textMuted,
-    margin: '0 0 16px',
-    lineHeight: 1.45,
-  },
-  mobileStatRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: '10px',
-    marginBottom: '16px',
-  },
-  mobileStat: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: '4px',
-    minHeight: '62px',
-    padding: '12px 12px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.cardBorder}`,
-    background: theme.colors.cardBackground,
-    color: theme.colors.textSecondary,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    textAlign: 'right',
-    boxSizing: 'border-box',
-  },
-  mobileStatActive: {
-    borderColor: theme.colors.borderSelected,
-    background: theme.colors.blueSoft,
-    color: theme.colors.primary,
-  },
-  mobileStatValue: {
-    fontSize: '20px',
-    fontWeight: 800,
-    letterSpacing: '-0.03em',
-    fontVariantNumeric: 'tabular-nums',
-    color: 'inherit',
-    lineHeight: 1.1,
-  },
-  mobileStatLabel: {
-    fontSize: '12px',
-    fontWeight: 700,
-    color: 'inherit',
-  },
-  mobileQueueHead: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '12px',
-    marginBottom: '2px',
-  },
-  mobileQueueCount: {
-    fontSize: '13px',
-    fontWeight: 700,
-    color: theme.colors.textSecondary,
-  },
-  chipRow: {
-    display: 'flex',
-    gap: '8px',
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
-    paddingBottom: '4px',
-  },
-  chip: {
-    flex: '0 0 auto',
-    padding: '8px 14px',
-    minHeight: '40px',
-    borderRadius: theme.radius.md,
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: theme.colors.cardBorder,
-    background: theme.colors.cardBackground,
-    color: theme.colors.textSecondary,
-    fontSize: '13px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
-  },
-  chipActive: {
-    borderColor: theme.colors.borderSelected,
-    background: theme.colors.blueSoft,
-    color: theme.colors.primary,
-  },
-  mobileCardList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    padding: '14px 16px 12px',
-  },
-  filtersRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '20px 24px',
-    borderBottom: `1px solid ${theme.colors.border}`,
-  },
-  filterGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '64px 0',
-  },
-  tableContainer: {
-    overflowX: 'auto',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    textAlign: 'start',
-    padding: '14px 20px',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: `1px solid ${theme.colors.border}`,
-    background: theme.colors.muted,
-  },
-  tr: {
-    cursor: 'pointer',
-    transition: 'background 0.15s ease',
-  },
-  td: {
-    padding: '16px 20px',
-    fontSize: '14px',
-    color: theme.colors.textPrimary,
-    borderBottom: `1px solid ${theme.colors.border}`,
-    verticalAlign: 'middle',
-  },
-  ticketNumber: {
-    fontWeight: 600,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  projectBadge: {
-    fontSize: '12px',
-    fontWeight: 500,
-    color: theme.colors.textMuted,
-    background: theme.colors.muted,
-    padding: '4px 8px',
-    borderRadius: theme.radius.sm,
-  },
-  descriptionText: {
-    color: theme.colors.textSecondary,
-    display: 'block',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  workerName: {
-    color: theme.colors.textSecondary,
-  },
-  ageText: {
-    color: theme.colors.textMuted,
-    fontSize: '13px',
-  },
-  drawerContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  tabBar: {
-    display: 'flex',
-    gap: '4px',
-    padding: '4px',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.md,
-  },
-  tab: {
-    flex: 1,
-    padding: '8px 0',
-    fontSize: '14px',
-    fontWeight: 500,
-    border: 'none',
-    borderRadius: theme.radius.sm,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-    fontFamily: 'inherit',
-  },
-  tabActive: {
-    background: theme.colors.surface,
-    color: theme.colors.primary,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  },
-  tabInactive: {
-    background: 'transparent',
-    color: theme.colors.textMuted,
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '16px',
-  },
-  formLabel: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: theme.colors.textSecondary,
-  },
-  formValue: {
-    fontSize: '15px',
-    color: theme.colors.textPrimary,
-  },
-  descriptionBox: {
-    padding: '14px',
-    background: theme.colors.muted,
-    borderRadius: theme.radius.md,
-    fontSize: '14px',
-    color: theme.colors.textPrimary,
-    lineHeight: 1.6,
-  },
-  attachmentGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '12px',
-  },
-  attachmentItem: {
-    display: 'block',
-    borderRadius: theme.radius.md,
-    overflow: 'hidden',
-    border: `1px solid ${theme.colors.border}`,
-    cursor: 'pointer',
-    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-  },
-  attachmentImage: {
-    width: '100%',
-    height: '80px',
-    objectFit: 'cover',
-  },
-  attachmentVideo: {
-    width: '100%',
-    height: '120px',
-    objectFit: 'cover',
-    display: 'block',
-    background: '#000',
-  },
-  attachmentFile: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '4px',
-    padding: '16px 8px',
-    background: theme.colors.muted,
-  },
-  attachmentName: {
-    fontSize: '11px',
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    maxWidth: '100%',
-  },
-  drawerActions: {
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'flex-end',
-    paddingTop: '16px',
-    borderTop: `1px solid ${theme.colors.border}`,
-    marginTop: '8px',
-  },
-  textarea: {
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    fontSize: '15px',
-    color: theme.colors.textPrimary,
-    resize: 'vertical',
-    minHeight: '100px',
-    fontFamily: 'inherit',
-  },
-  input: {
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    fontSize: '15px',
-    color: theme.colors.textPrimary,
-  },
-  errorText: {
-    color: theme.colors.error,
-    fontSize: '14px',
-    margin: 0,
-  },
-}

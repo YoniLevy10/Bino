@@ -35,8 +35,13 @@ const SPECS = {
   },
   manager_reply: {
     name: 'manager_reply',
-    body: 'שלום {{1}},\n\n{{2}}',
-    samples: ['יוני', 'הטכנאי יגיע מחר בין 9:00 ל-11:00'],
+    body:
+      'שלום {{1}},\n\n' +
+      '{{2}}\n\n' +
+      'לאישור קריאה לחצו «קיבלתי», או השיבו בהודעה.',
+    samples: ['יוני', 'נשמח לתאם הגעה מחר בין 9:00 ל-11:00. אפשר להשיב כאן.'],
+    footer: 'צוות הניהול',
+    buttons: [{ type: 'QUICK_REPLY', text: 'קיבלתי' }],
   },
   worker_assignment_notice: {
     name: 'worker_assignment_notice',
@@ -115,19 +120,54 @@ async function createTemplate(env, specKey, suffix) {
     process.exit(1)
   }
   const name = suffix ? `${spec.name}_${suffix}` : spec.name
-  const json = await executeTool(env, 'WHATSAPP_CREATE_MESSAGE_TEMPLATE', {
-    name,
-    category: 'UTILITY',
-    language: 'he',
-    allow_category_change: true,
-    components: [
-      {
-        type: 'BODY',
-        text: spec.body,
-        example: { body_text: [spec.samples] },
-      },
-    ],
-  })
+  const components = [
+    {
+      type: 'BODY',
+      text: spec.body,
+      example: { body_text: [spec.samples] },
+    },
+  ]
+  // FOOTER: Meta supports it; Composio tool schema may only list HEADER/BODY/BUTTONS —
+  // still send when present (passthrough). If create fails on FOOTER, retry without it.
+  if (spec.footer) {
+    components.push({ type: 'FOOTER', text: String(spec.footer).slice(0, 60) })
+  }
+  if (Array.isArray(spec.buttons) && spec.buttons.length > 0) {
+    components.push({
+      type: 'BUTTONS',
+      buttons: spec.buttons.map((b) => ({
+        type: b.type,
+        text: String(b.text || '').trim().slice(0, 25),
+        ...(b.url ? { url: b.url } : {}),
+        ...(b.phone_number ? { phone_number: b.phone_number } : {}),
+      })),
+    })
+  }
+  let json
+  try {
+    json = await executeTool(env, 'WHATSAPP_CREATE_MESSAGE_TEMPLATE', {
+      name,
+      category: 'UTILITY',
+      language: 'he',
+      allow_category_change: true,
+      components,
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    const withoutFooter = components.filter((c) => c.type !== 'FOOTER')
+    if (spec.footer && withoutFooter.length < components.length) {
+      console.warn(`Create with FOOTER failed (${msg}); retrying without FOOTER…`)
+      json = await executeTool(env, 'WHATSAPP_CREATE_MESSAGE_TEMPLATE', {
+        name,
+        category: 'UTILITY',
+        language: 'he',
+        allow_category_change: true,
+        components: withoutFooter,
+      })
+    } else {
+      throw err
+    }
+  }
   console.log(`Submitted: ${name}`)
   console.log(JSON.stringify(json?.data ?? json, null, 2))
   console.log('Meta review is usually PENDING first — approval can take minutes to days.')

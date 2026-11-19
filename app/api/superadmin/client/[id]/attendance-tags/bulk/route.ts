@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { buildNfcTagScanUrl, normalizeTagCode } from '@/lib/nfc-tag-utils'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { buildNfcTagScanUrl, normalizeTagCode } from '@/lib/nfc/nfc-tag-utils'
 
 type CreatedTag = {
   id: string

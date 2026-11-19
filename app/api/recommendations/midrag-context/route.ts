@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { suggestTradeFromTicketDescription } from '@/lib/midrag/ticket-trade-map'
 import { cityFromProjectAddress } from '@/lib/midrag/city-from-address'

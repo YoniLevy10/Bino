@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { postUnitLedgerCreditBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { ledgerIdempotencyKey, postLedgerCredit } from '@/lib/unit-ledger'
 
 /** POST — record a credit (יתרת זכות) on a unit / resident ledger. */

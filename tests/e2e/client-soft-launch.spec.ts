@@ -8,7 +8,7 @@ import path from 'node:path'
 import {
   LAUNCH_PLAYBOOK_HEADER,
   LIVE_SMOKE_CHECKS,
-} from '../../lib/client-launch-checklist'
+} from '../../lib/client/client-launch-checklist'
 
 const CLIENT_ID = '11111111-1111-1111-1111-111111111111'
 const PROJECT_CODE = 'BMK001'

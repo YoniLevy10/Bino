@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 
 const DISALLOW = [
   '/api/',

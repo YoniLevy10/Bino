@@ -12,9 +12,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   fetchWithTimeout,
   MUTATION_FETCH_TIMEOUT_MS,
-} from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+} from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { Button, LoadingSpinner, Select, theme } from '@/app/components/ui'
 

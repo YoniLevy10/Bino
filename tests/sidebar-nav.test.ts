@@ -15,7 +15,7 @@ import {
   splitPrimaryAroundFinanceGroup,
   splitSidebarNavSections,
 } from '@/lib/sidebar-nav'
-import { appendAddonsNavAlways, injectPaidAddonNavItems } from '@/lib/addons-nav'
+import { appendAddonsNavAlways, injectPaidAddonNavItems } from '@/lib/addons/addons-nav'
 
 const FREE_SIDEBAR_IDS = DEFAULT_SIDEBAR_NAV_ORDER.filter((id) => !ADDON_ONLY_SIDEBAR_NAV_IDS.includes(id))
 

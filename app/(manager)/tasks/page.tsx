@@ -18,10 +18,10 @@ import {
   fetchWithTimeout,
   MUTATION_FETCH_TIMEOUT_MS,
   WORKER_PHOTO_TIMEOUT_MS,
-} from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { isMaintenanceTaskForToday } from '@/lib/maintenance-task-day'
+} from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { isMaintenanceTaskForToday } from '@/lib/maintenance/maintenance-task-day'
 import {
   MAINTENANCE_CADENCES,
   MAINTENANCE_CADENCE_LABELS,
@@ -29,13 +29,13 @@ import {
   cadenceLabel,
   morningBucket,
   type MaintenanceCadence,
-} from '@/lib/maintenance-cadence'
+} from '@/lib/maintenance/maintenance-cadence'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import {
   normalizeChecklistItems,
   type MaintenanceChecklistItem,
-} from '@/lib/maintenance-checklist'
+} from '@/lib/maintenance/maintenance-checklist'
 import { TasksWeekBoard } from '@/app/components/tasks/TasksWeekBoard'
 import { TasksTemplatesBar } from '@/app/components/tasks/TasksTemplatesBar'
 import { buildingAssetPublicUrl } from '@/lib/building-asset-public'

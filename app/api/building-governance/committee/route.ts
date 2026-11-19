@@ -3,14 +3,14 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   requireSessionClientId,
   requireSessionWriteAccess,
-} from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+} from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   createCommitteeMemberBodySchema,
   updateCommitteeMemberBodySchema,
 } from '@/lib/api-body-schemas'
 import { assertProjectForClient } from '@/lib/building-governance/project-guard'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

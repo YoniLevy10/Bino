@@ -1,4 +1,4 @@
-import { getClientPublicOrigin } from '@/lib/public-origin'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 
 const SLUG_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
 

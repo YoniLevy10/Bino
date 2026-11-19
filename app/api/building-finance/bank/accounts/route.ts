@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import { isFinancyBankSyncEnabled } from '@/lib/bank/flags'
 import {

@@ -2,13 +2,14 @@
 
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
-import { clearAllTenantUiCaches } from '@/lib/tenant-browser-cache'
+import { clearAllTenantUiCaches } from '@/lib/tenant/tenant-browser-cache'
 import { formatEffectiveLimit, effectiveLimitsForClient } from '../helpers'
 import type { ClientRow, ClientTask, PlanCatalogRow } from '../types'
 import { PLAN_COLORS, PLAN_LABELS } from '../types'
 import { CopyButton } from './CopyButton'
 
 const ACTIONS: { task: Exclude<ClientTask, 'hub'>; label: string; danger?: boolean }[] = [
+  { task: 'onboarding', label: 'אשף הקמה מלא' },
   { task: 'launch', label: 'צ׳קליסט הקמה' },
   { task: 'plan', label: 'מנוי ומכסות' },
   { task: 'nav', label: 'תפריט ניווט' },
@@ -81,6 +82,14 @@ export function ClientHub({
       </div>
 
       <div className="sa-hub-primary">
+        <button
+          type="button"
+          className="sa-btn sa-btn-primary"
+          style={{ width: '100%', minHeight: 48, marginBottom: 12 }}
+          onClick={() => onOpenTask('onboarding')}
+        >
+          המשך הקמה מלאה
+        </button>
         {magicLink ? (
           <div className="sa-magic-box">
             <code dir="ltr">{magicLink}</code>

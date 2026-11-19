@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/fetch-timeout', () => ({
+vi.mock('@/lib/shared/fetch-timeout', () => ({
   fetchWithTimeout: vi.fn(),
 }))
 
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 import {
   build019SmsXml,
   get019SmsAuth,
@@ -12,7 +12,7 @@ import {
   post019SmsOnce,
   read019SmsTokenFromEnv,
   reset019SmsPasswordFallbackWarnForTests,
-} from '@/lib/sms-019-core'
+} from '@/lib/sms/sms-019-core'
 
 describe('019SMS token auth', () => {
   const keys = [

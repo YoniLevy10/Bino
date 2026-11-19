@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
-import { resolveClientIdForUserId } from '@/lib/tenant-resolution'
-import { TENANT_CID_LOCAL_KEY, TENANT_CID_SESSION_KEY } from '@/lib/tenant-browser-cache'
+import { resolveClientIdForUserId } from '@/lib/tenant/tenant-resolution'
+import { TENANT_CID_LOCAL_KEY, TENANT_CID_SESSION_KEY } from '@/lib/tenant/tenant-browser-cache'
 
 /**
  * מזהה `clients.id` לדפדפן לפי המשתמש המחובר:

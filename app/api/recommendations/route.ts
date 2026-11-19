@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { runClientDetectors } from '@/lib/recommendations/run-client-detectors'
 import {

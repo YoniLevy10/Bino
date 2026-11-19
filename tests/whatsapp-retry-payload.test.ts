@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildWhatsAppRetryPayload } from '@/lib/whatsapp-retry-payload'
-import { isWhatsAppFreeTextRetry } from '@/lib/whatsapp-meta-errors'
+import { buildWhatsAppRetryPayload } from '@/lib/whatsapp/whatsapp-retry-payload'
+import { isWhatsAppFreeTextRetry } from '@/lib/whatsapp/whatsapp-meta-errors'
 
 describe('buildWhatsAppRetryPayload', () => {
   it('retries ticket_reply free-text without requiring a Meta template name', () => {

@@ -75,7 +75,7 @@ describe('notifyNewTicketPush', () => {
   it('no-ops when VAPID keys are missing', async () => {
     delete process.env.VAPID_PUBLIC_KEY
     delete process.env.VAPID_PRIVATE_KEY
-    const { notifyNewTicketPush } = await import('@/lib/push-notifications')
+    const { notifyNewTicketPush } = await import('@/lib/push/push-notifications')
     const from = vi.fn()
     await notifyNewTicketPush({ from } as never, 'client-1', 'נזילה')
     expect(from).not.toHaveBeenCalled()
@@ -84,7 +84,7 @@ describe('notifyNewTicketPush', () => {
 
   it('scopes queries to client_id and includes client name in title', async () => {
     sendNotification.mockResolvedValue(undefined)
-    const { notifyNewTicketPush } = await import('@/lib/push-notifications')
+    const { notifyNewTicketPush } = await import('@/lib/push/push-notifications')
     const managerSub = { endpoint: 'https://fcm.googleapis.com/manager' }
     const workerSub = { endpoint: 'https://fcm.googleapis.com/worker' }
     const admin = mockAdmin({
@@ -123,7 +123,7 @@ describe('notifyNewTicketPush', () => {
 
   it('deletes expired manager subscriptions on 410', async () => {
     sendNotification.mockRejectedValue({ statusCode: 410 })
-    const { notifyNewTicketPush } = await import('@/lib/push-notifications')
+    const { notifyNewTicketPush } = await import('@/lib/push/push-notifications')
     const deleteEq = vi.fn(async () => ({ error: null }))
     const admin = mockAdmin({
       clientName: 'לקוח',

@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/use-visual-viewport-frame'
-import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
-import { toast } from '@/lib/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/hooks/use-visual-viewport-frame'
+import { whatsappUiFetch, whatsappUiMutate } from '@/lib/whatsapp/whatsapp-ui-fetch'
+import { toast } from '@/lib/errors/error-handler'
 import { formatPhoneLocalIl } from '@/lib/sales-leads/phone'
 import { Button, theme } from '../ui'
 import {
   threadHasUnrecoveredMedia,
   unrecoveredMediaLabel,
   type TicketAttachmentSummary,
-} from '@/lib/whatsapp-thread-media-status'
+} from '@/lib/whatsapp/whatsapp-thread-media-status'
 
 type Message = {
   id: string

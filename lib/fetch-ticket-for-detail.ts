@@ -1,6 +1,6 @@
 import { withClientId } from '@/lib/supabase/with-client-id'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import type { TicketDetailRow } from '@/lib/tickets/ticket-detail-types'
 
 const TICKET_DETAIL_SELECT = `
   id, ticket_number, client_id, project_id, reporter_phone, reporter_name,

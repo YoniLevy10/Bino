@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/fetch-timeout', () => ({
+vi.mock('@/lib/shared/fetch-timeout', () => ({
   fetchWithTimeout: vi.fn(),
 }))
 
-vi.mock('@/lib/error-logs-db', () => ({
+vi.mock('@/lib/errors/error-logs-db', () => ({
   insertWhatsAppSendFailure: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),
@@ -16,13 +16,13 @@ vi.mock('@/lib/logging', () => ({
   }),
 }))
 
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
-import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
+import { insertWhatsAppSendFailure } from '@/lib/errors/error-logs-db'
 import {
   sendRawWhatsAppPayloadWithCredentials,
   sendWhatsAppTemplateMessageWithCredentials,
   sendWhatsAppTextMessage,
-} from '@/lib/whatsapp-send'
+} from '@/lib/whatsapp/whatsapp-send'
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
   return {

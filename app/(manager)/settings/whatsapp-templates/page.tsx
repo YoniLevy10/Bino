@@ -19,9 +19,9 @@ import {
   SMS_TEMPLATE_EDITOR_DEFAULTS,
   SMS_TEMPLATE_VAR_NAMES,
   SMS_TEMPLATE_WHEN_SENT,
-} from '@/lib/whatsapp-template-keys'
-import { interpolateWhatsAppTemplate, interpolateSmsTemplate } from '@/lib/whatsapp-templates'
-import { whatsAppTemplatePreviewVars } from '@/lib/whatsapp-template-preview'
+} from '@/lib/whatsapp/whatsapp-template-keys'
+import { interpolateWhatsAppTemplate, interpolateSmsTemplate } from '@/lib/whatsapp/whatsapp-templates'
+import { whatsAppTemplatePreviewVars } from '@/lib/whatsapp/whatsapp-template-preview'
 import { ResidentWhatsAppFlowGuide } from '@/app/components/settings/ResidentWhatsAppFlowGuide'
 import {
   splitTrilingualTemplate,
@@ -29,10 +29,10 @@ import {
   mergeTrilingualWithDefaults,
   type TrilingualTemplateParts,
   type ResidentLang,
-} from '@/lib/whatsapp-bilingual-template'
-import { toast } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+} from '@/lib/whatsapp/whatsapp-bilingual-template'
+import { toast } from '@/lib/errors/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { TM } from '@/lib/toast-messages'
 import {
   MobileHeader,

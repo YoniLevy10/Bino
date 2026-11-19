@@ -4,12 +4,12 @@ import {
   listWhatsAppMessagesForConversation,
   loadWhatsAppThreadForPhone,
   whatsAppConversationPhoneKey,
-} from '@/lib/whatsapp-message-store'
-import { listTicketWhatsAppMessages } from '@/lib/whatsapp-ticket-reply'
+} from '@/lib/whatsapp/whatsapp-message-store'
+import { listTicketWhatsAppMessages } from '@/lib/whatsapp/whatsapp-ticket-reply'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { z } from 'zod'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
 
 const conversationIdSchema = z.string().uuid()
 

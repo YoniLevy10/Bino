@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 import { sendServiceSmsAndWhatsApp } from '@/lib/building-governance/service-notify'
-import { getResidentPortalJoinUrl } from '@/lib/public-origin'
-import { getPublicAppUrl } from '@/lib/public-app-url'
+import { getResidentPortalJoinUrl } from '@/lib/shared/public-origin'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
 import { logAudit } from '@/lib/audit'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 const BATCH_LIMIT = 40
 const BETWEEN_MS = 350

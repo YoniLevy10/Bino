@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { pushSubscribeBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   deleteManagerPushSubscriptionsForUser,
   pushSubscriptionEndpoint,
   upsertExclusiveManagerPushSubscription,
-} from '@/lib/push-subscription-tenant'
+} from '@/lib/push/push-subscription-tenant'
 
 export async function POST(req: Request) {
   try {

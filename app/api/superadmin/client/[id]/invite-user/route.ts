@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { inviteUserToClientOrganization } from '@/lib/invite-organization-user'
 import { ensureOrganizationUserWithPassword } from '@/lib/ensure-organization-user-password'
-import { getPublicAppUrl } from '@/lib/public-app-url'
-import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/shared/public-origin'
 
 const bodySchema = z
   .object({

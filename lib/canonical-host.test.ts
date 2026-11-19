@@ -3,7 +3,7 @@ import {
   buildCanonicalRedirectUrl,
   isCanonicalHostPassthroughPath,
   shouldRedirectVercelAppHostToCanonical,
-} from '@/lib/canonical-host'
+} from '@/lib/tenant/canonical-host'
 
 describe('canonical-host', () => {
   it('passthrough keeps webhooks, crons, and well-known', () => {

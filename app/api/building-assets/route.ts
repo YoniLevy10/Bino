@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { buildingAssetCreateBodySchema } from '@/lib/api-body-schemas'
-import { assertProjectOwnedByClient } from '@/lib/tenant-owned-refs'
+import { assertProjectOwnedByClient } from '@/lib/tenant/tenant-owned-refs'
 import { generateBuildingAssetPublicSlug } from '@/lib/building-asset-public'
 
 export async function GET(req: Request) {

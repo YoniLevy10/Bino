@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger, getAuditLogger } from '@/lib/logging'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
 import { sanitizeString } from '@/lib/api-validation'
 import { updateTicketBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { logAudit } from '@/lib/audit'
-import { isTicketStatus } from '@/lib/ticket-status'
-import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter-ticket-closed-notify'
-import { notifyReporterOnStatusChange } from '@/lib/reporter-ticket-status-notify'
+import { isTicketStatus } from '@/lib/tickets/ticket-status'
+import { notifyReporterIfTicketNewlyClosed } from '@/lib/reporter/reporter-ticket-closed-notify'
+import { notifyReporterOnStatusChange } from '@/lib/reporter/reporter-ticket-status-notify'
 import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
-import { assertWorkerOwnedByClient } from '@/lib/tenant-owned-refs'
+import { assertWorkerOwnedByClient } from '@/lib/tenant/tenant-owned-refs'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
 export const maxDuration = 60

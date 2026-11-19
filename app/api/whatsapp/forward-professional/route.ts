@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
-import { whatsappForwardProfessionalBodySchema } from '@/lib/whatsapp-api-schemas'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
+import { whatsappForwardProfessionalBodySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
 import { forwardTicketToProfessional } from '@/lib/forward-ticket-to-professional'
-import { buildInboxForwardDryRunPreview } from '@/lib/whatsapp-inbox-forward-preview'
+import { buildInboxForwardDryRunPreview } from '@/lib/whatsapp/whatsapp-inbox-forward-preview'
 
 export const maxDuration = 60
 

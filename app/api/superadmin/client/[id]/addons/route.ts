@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { mergePremiumNavFeaturesForSync, fetchClientEnabledNavFeatures } from '@/lib/client-nav-features'
+import { mergePremiumNavFeaturesForSync, fetchClientEnabledNavFeatures } from '@/lib/client/client-nav-features'
 import { z } from 'zod'
 
 

@@ -8,9 +8,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { sendManagerSMS } from '@/lib/sms-send'
-import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
-import { getLogger } from '@/lib/logging'
+import { sendManagerSMS } from '@/lib/sms/sms-send'
+import { sendWhatsAppTextMessage } from '@/lib/whatsapp/whatsapp-send'
+import { getLogger } from '@/lib/shared/logging'
 
 const WINDOW_DAYS = 30
 const HIGH_VOLUME_THRESHOLD = 5

@@ -2,11 +2,11 @@
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import { TM } from '@/lib/toast-messages'
 import { usePaidAddons } from '../PaidAddonsContext'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { ProfessionalRatingStars } from '@/app/components/professionals/ProfessionalRatingStars'
 import { compareProfessionalsByOperationalMemory } from '@/lib/hooks/use-professionals-list'
 

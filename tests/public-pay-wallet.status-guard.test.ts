@@ -12,11 +12,11 @@ let updateReturnsRow: { id: string; status: string } | null = {
 let reReadStatus: string | null = null
 let maybeSingleCalls = 0
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/shared/rate-limit', () => ({
   checkIpPostRouteLimit: vi.fn(async () => ({ isLimited: false })),
 }))
 
-vi.mock('@/lib/grow-config', () => ({
+vi.mock('@/lib/payments/grow-config', () => ({
   readGrowPlatformConfig: () => ({
     env: 'sandbox',
     apiKey: 'k',
@@ -28,7 +28,7 @@ vi.mock('@/lib/grow-config', () => ({
   growSdkEnvironment: () => 'dev',
 }))
 
-vi.mock('@/lib/collection-charge-ops', () => ({
+vi.mock('@/lib/collections/collection-charge-ops', () => ({
   buildGrowWebhookNotifyUrl: () => 'https://bino.casa/api/webhook/grow?token=hook',
   defaultSuccessFailureUrls: () => ({
     successUrl: 'https://bino.casa/pay/success',
@@ -47,7 +47,7 @@ vi.mock('@/lib/collection-charge-ops', () => ({
   })),
 }))
 
-vi.mock('@/lib/grow-client', () => ({
+vi.mock('@/lib/payments/grow-client', () => ({
   buildGrowInvoiceNotifyUrl: () => null,
   createGrowPaymentProcess: vi.fn(async () => ({
     ok: true,

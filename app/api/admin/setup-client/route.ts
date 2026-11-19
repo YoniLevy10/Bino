@@ -11,14 +11,15 @@
  * @body {SetupSchema} body — ראה setupSchema למטה
  */
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
-import { getSetupPackageNavFeatures } from '@/lib/client-nav-features'
-import { normalizeTier } from '@/lib/plan-limits'
-import { parseWorkerPhone } from '@/lib/worker-phones'
-import { getPublicAppUrl } from '@/lib/public-app-url'
-import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
+import { getSetupPackageNavFeatures } from '@/lib/client/client-nav-features'
+import { normalizeTier } from '@/lib/plans/plan-limits'
+import { parseWorkerPhone } from '@/lib/worker/worker-phones'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/shared/public-origin'
+import { normalizePhone019 } from '@/lib/sms/sms-019-core'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const setupSchema = z.object({
@@ -27,12 +28,16 @@ const setupSchema = z.object({
   plan_tier: z.enum(['starter', 'pro', 'business', 'enterprise']).default('starter'),
   /** אימייל מנהל הלקוח — ישלח הזמנה ל-Supabase Auth */
   admin_email: z.string().email(),
+  /** אופציונלי — יצירת משתמש עם סיסמה במקום הזמנה במייל */
+  admin_password: z.string().min(8).max(100).optional(),
   /** טלפון מנהל (לצורך WhatsApp כ-fallback) */
   admin_phone: z.string().max(40).optional(),
   /** מזהה מספר WhatsApp Business ב-Meta (Phone Number ID) */
   whatsapp_phone_number_id: z.string().max(100).optional(),
   /** הספרות שדיירים שולחים הודעה אליהן (לbuild QR link) */
   whatsapp_business_phone: z.string().max(40).optional(),
+  /** שולח 019SMS — 972… בלבד */
+  sms_sender_name: z.string().max(40).optional(),
   projects: z
     .array(
       z.object({
@@ -41,8 +46,9 @@ const setupSchema = z.object({
         address: z.string().max(500).optional(),
       })
     )
-    .min(1)
-    .max(100),
+    .max(100)
+    .optional()
+    .default([]),
   workers: z
     .array(
       z.object({
@@ -79,6 +85,17 @@ export async function POST(req: Request) {
   const appUrl = getPublicAppUrl() || BINO_PUBLIC_ORIGIN
 
   try {
+    let smsSender: string | null = null
+    if (d.sms_sender_name?.trim()) {
+      smsSender = normalizePhone019(d.sms_sender_name)
+      if (!smsSender) {
+        return NextResponse.json(
+          { error: 'sms_sender_name must be an Israeli mobile (05… / 9725…)' },
+          { status: 400 }
+        )
+      }
+    }
+
     // ── 1. Create client row ──────────────────────────────────────────────────
     const { data: clientRow, error: clientErr } = await supabase
       .from('clients')
@@ -88,6 +105,7 @@ export async function POST(req: Request) {
         whatsapp_phone_number_id: d.whatsapp_phone_number_id ?? null,
         whatsapp_business_phone: d.whatsapp_business_phone ?? null,
         manager_phone: d.admin_phone ?? null,
+        sms_sender_name: smsSender,
         /** New tenants: core tabs only; premium unlocked via superadmin after payment. */
         enabled_nav_features: getSetupPackageNavFeatures(),
       })
@@ -122,19 +140,34 @@ export async function POST(req: Request) {
     }
     const orgId = (orgRow as { id: string }).id
 
-    // ── 3. Invite admin user via Supabase Auth ────────────────────────────────
-    const { data: inviteData, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(
-      d.admin_email,
-      {
-        data: { client_id: clientId, organization_id: orgId },
-        redirectTo: `${appUrl}/auth/callback`,
+    // ── 3. Create or invite admin user via Supabase Auth ──────────────────────
+    let userId: string
+    let inviteSent = false
+    if (d.admin_password) {
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email: d.admin_email,
+        password: d.admin_password,
+        email_confirm: true,
+        user_metadata: { client_id: clientId, organization_id: orgId },
+      })
+      if (createErr || !created?.user) {
+        return NextResponse.json({ error: `User create failed: ${createErr?.message}` }, { status: 500 })
       }
-    )
-
-    if (inviteErr || !inviteData?.user) {
-      return NextResponse.json({ error: `Invite failed: ${inviteErr?.message}` }, { status: 500 })
+      userId = created.user.id
+    } else {
+      const { data: inviteData, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(
+        d.admin_email,
+        {
+          data: { client_id: clientId, organization_id: orgId },
+          redirectTo: `${appUrl}/auth/callback`,
+        }
+      )
+      if (inviteErr || !inviteData?.user) {
+        return NextResponse.json({ error: `Invite failed: ${inviteErr?.message}` }, { status: 500 })
+      }
+      userId = inviteData.user.id
+      inviteSent = true
     }
-    const userId = inviteData.user.id
 
     // ── 4. Link user to organization ──────────────────────────────────────────
     const { error: ouErr } = await supabase.from('organization_users').insert({
@@ -146,24 +179,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `organization_users insert failed: ${ouErr.message}` }, { status: 500 })
     }
 
-    // ── 5. Create projects ────────────────────────────────────────────────────
-    const projectInserts = d.projects.map((p) => ({
-      client_id: clientId,
-      organization_id: orgId,
-      name: p.name,
-      project_code: p.project_code.toUpperCase(),
-      address: p.address ?? null,
-      qr_identifier: `START_${p.project_code.toUpperCase()}`,
-      is_active: true,
-    }))
+    // ── 5. Create projects (optional at create — wizard can add later) ─────────
+    let projectRows: Array<{
+      id: string
+      name: string
+      project_code: string
+      qr_identifier: string | null
+    }> = []
+    if (d.projects.length > 0) {
+      const projectInserts = d.projects.map((p) => ({
+        client_id: clientId,
+        organization_id: orgId,
+        name: p.name,
+        project_code: p.project_code.toUpperCase(),
+        address: p.address ?? null,
+        qr_identifier: `START_${p.project_code.toUpperCase()}`,
+        is_active: true,
+      }))
 
-    const { data: projectRows, error: projectErr } = await supabase
-      .from('projects')
-      .insert(projectInserts)
-      .select('id, name, project_code, qr_identifier')
+      const { data: inserted, error: projectErr } = await supabase
+        .from('projects')
+        .insert(projectInserts)
+        .select('id, name, project_code, qr_identifier')
 
-    if (projectErr) {
-      return NextResponse.json({ error: `Projects creation failed: ${projectErr.message}` }, { status: 500 })
+      if (projectErr) {
+        return NextResponse.json({ error: `Projects creation failed: ${projectErr.message}` }, { status: 500 })
+      }
+      projectRows = (inserted ?? []) as typeof projectRows
     }
 
     // ── 6. Create workers ─────────────────────────────────────────────────────
@@ -231,7 +273,8 @@ export async function POST(req: Request) {
       organization_id: orgId,
       admin_user_id: userId,
       admin_email: d.admin_email,
-      invite_sent: true,
+      invite_sent: inviteSent,
+      password_set: Boolean(d.admin_password),
       workers_created: workersCreated,
       projects,
     })

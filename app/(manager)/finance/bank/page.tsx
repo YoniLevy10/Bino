@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { BuildingBankPanel } from '@/app/components/projects/BuildingBankPanel'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { LoadingSpinner, theme } from '@/app/components/ui'
 
 function FinanceBankInner() {

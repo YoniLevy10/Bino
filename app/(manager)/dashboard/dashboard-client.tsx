@@ -19,13 +19,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { shouldShowPageLoadError } from '@/lib/page-load-error'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { shouldShowPageLoadError } from '@/lib/errors/page-load-error'
 import { TM } from '@/lib/toast-messages'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
-import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+import type { TicketDetailRow } from '@/lib/tickets/ticket-detail-types'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
 import {
@@ -34,14 +34,14 @@ import {
   type OpenTicketRow,
 } from '@/lib/hooks/use-open-tickets'
 import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
-import { queryKeys } from '@/lib/query-keys'
-import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { queryKeys } from '@/lib/shared/query-keys'
+import { tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
 import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
 import {
   toastReporterClosedNotifySummary,
   type ReporterClosedNotifyApiBody,
-} from '@/lib/reporter-closed-notify-toast'
+} from '@/lib/reporter/reporter-closed-notify-toast'
 import { AttentionRequired } from '@/app/components/recommendations/AttentionRequired'
 import { MorningOpsBoard } from '@/app/components/dashboard/MorningOpsBoard'
 import {
@@ -67,7 +67,7 @@ const AddTicketModal = dynamic(
 )
 import { PageListSkeleton, PageKpiSkeleton } from '@/app/components/page-skeleton'
 import { ImageLightbox } from '@/app/components/shared/ImageLightbox'
-import { useIsMobile } from '@/lib/use-is-mobile'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 import { removeTicketFromListState } from '@/lib/open-tickets'
 import { TicketMobileCard } from '@/app/components/tickets/TicketMobileCard'
 import { CloseTicketConfirmSheet } from '@/app/components/tickets/CloseTicketConfirmSheet'
@@ -77,16 +77,21 @@ import {
   readTenantDashboardCache,
   secondaryCountsAreFresh,
   writeTenantDashboardCache,
-} from '@/lib/dashboard-tenant-cache'
-import { isTicketInTreatment } from '@/lib/ticket-status'
+} from '@/lib/dashboard/dashboard-tenant-cache'
+import { isTicketInTreatment } from '@/lib/tickets/ticket-status'
 import {
   EMPTY_DASHBOARD_TICKET_KPI_COUNTS,
   fetchDashboardTicketKpiCounts,
   resolveDashboardTicketKpiCounts,
   type DashboardTicketKpiCounts,
-} from '@/lib/dashboard-ticket-kpi-counts'
+} from '@/lib/dashboard/dashboard-ticket-kpi-counts'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import { consumeDashboardAddTicket, DASHBOARD_ADD_EVENT } from './dashboard-shell'
+import {
+  mapFetchedTicketRow,
+  formatOpenTicketsForDashboard,
+  type TicketRow,
+} from './dashboard-ticket-format'
 
 /** Resolve authenticated uid + tenant clientId before any cache paint. */
 async function resolveDashboardTenantScope(): Promise<{ uid: string; clientId: string }> {
@@ -95,23 +100,6 @@ async function resolveDashboardTenantScope(): Promise<{ uid: string; clientId: s
   const uid = sessionData.session?.user?.id
   if (!uid) throw new Error('נדרשת התחברות')
   return { uid, clientId }
-}
-
-type TicketRow = {
-  id: string
-  ticket_number: number
-  project_id?: string
-  project_code?: string
-  project_name?: string
-  client_id?: string | null
-  reporter_phone: string
-  reporter_name?: string | null
-  description: string
-  status: string
-  priority?: string
-  assigned_worker_id: string | null
-  created_at: string
-  closed_at: string | null
 }
 
 type TicketLog = {
@@ -125,24 +113,6 @@ type TicketLog = {
   created_at: string
 }
 
-function mapFetchedTicketRow(fetched: TicketDetailRow): TicketRow {
-  return {
-    id: fetched.id,
-    ticket_number: fetched.ticket_number,
-    project_id: fetched.project_id ?? undefined,
-    project_code: fetched.project_code,
-    project_name: fetched.project_name,
-    client_id: fetched.client_id ?? null,
-    reporter_phone: fetched.reporter_phone || '',
-    reporter_name: fetched.reporter_name,
-    description: fetched.description || '',
-    status: fetched.status,
-    priority: fetched.priority ?? undefined,
-    assigned_worker_id: fetched.assigned_worker_id ?? null,
-    created_at: fetched.created_at || '',
-    closed_at: fetched.closed_at ?? null,
-  }
-}
 type ProjectRow = {
   id: string
   name: string
@@ -151,28 +121,6 @@ type ProjectRow = {
 
 const DASHBOARD_OPEN_TICKETS_LIMIT = 50
 const REFRESH_DEBOUNCE_MS = 30_000
-
-function formatOpenTicketsForDashboard(rows: OpenTicketRow[]): TicketRow[] {
-  return rows.map((row) => {
-    const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
-    return {
-      id: row.id,
-      ticket_number: Number(row.ticket_number),
-      project_id: row.project_id ?? undefined,
-      client_id: row.client_id ?? null,
-      project_code: project?.project_code || '',
-      project_name: project?.name || '',
-      reporter_phone: row.reporter_phone || '',
-      reporter_name: row.reporter_name,
-      description: row.description || '',
-      status: row.status,
-      priority: row.priority ?? undefined,
-      assigned_worker_id: row.assigned_worker_id ?? null,
-      created_at: row.created_at || '',
-      closed_at: row.closed_at ?? null,
-    }
-  })
-}
 
 type DashboardCachePayload = {
   tickets: TicketRow[]
@@ -826,7 +774,7 @@ export default function DashboardPage() {
     setSavingTicket(true)
     await asyncHandler(
       async () => {
-        const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
+        const { saveDashboardTicket } = await import('@/lib/dashboard/dashboard-ticket-save')
         const { didAssign, closedNow, reporter_has_phone, whatsapp_sent, notifications_queued } = await saveDashboardTicket({
           ticketId: selectedTicket.id,
           description: draftDescription,
@@ -1646,3 +1594,4 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
   },
 }
+

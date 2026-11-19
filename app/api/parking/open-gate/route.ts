@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { checkAuthenticatedRateLimitSparse } from '@/lib/rate-limit'
+import { checkAuthenticatedRateLimitSparse } from '@/lib/shared/rate-limit'
 import { logAudit } from '@/lib/audit'
 import { openPalGateDevice } from '@/lib/palgate/client'
 import {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import {
   BUILDING_EXPENSE_RECEIPTS_BUCKET,
@@ -13,7 +13,7 @@ import {
   safeReceiptFileName,
 } from '@/lib/building-finance/receipt-storage'
 import { removeDurableStorageObjects } from '@/lib/storage-purge'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

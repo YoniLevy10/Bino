@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { resumeStaleCollectionBulkSendRuns } from '@/lib/collection-bulk-send'
+import { resumeStaleCollectionBulkSendRuns } from '@/lib/collections/collection-bulk-send'
 
 export const maxDuration = 60
 

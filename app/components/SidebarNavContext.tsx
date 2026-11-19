@@ -17,15 +17,15 @@ import {
 } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import {
   appendAddonsNavAlways,
   enabledAddonKeysFromEntitlements,
   getLockedAddonsCountFromEntitlements,
   injectPaidAddonNavItems,
-} from '@/lib/addons-nav'
-import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
-import { navIdsForEnabledAddonKeys } from '@/lib/paid-addons'
+} from '@/lib/addons/addons-nav'
+import { parseEnabledNavFeaturesFromDb } from '@/lib/client/client-nav-features'
+import { navIdsForEnabledAddonKeys } from '@/lib/addons/paid-addons'
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
   applySidebarNavLabels,
@@ -37,7 +37,7 @@ import {
   type SidebarNavItemId,
   type SidebarNavLabels,
 } from '@/lib/sidebar-nav'
-import { NAV_CACHE_PREFIX, tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { NAV_CACHE_PREFIX, tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
 import { usePaidAddons } from './PaidAddonsContext'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 

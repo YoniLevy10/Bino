@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePhone019, resolve019SmsSource, is019UnverifiedSourceError } from '@/lib/sms-019-core'
+import { normalizePhone019, resolve019SmsSource, is019UnverifiedSourceError } from '@/lib/sms/sms-019-core'
 import {
   buildResidentPortalOtpSms,
   RESIDENT_PHONE_NOT_REGISTERED_ERROR,
@@ -7,7 +7,7 @@ import {
   residentAuthEmailFromPhone,
   residentPhoneOtpHttpResult,
 } from '@/lib/resident-portal/phone-otp'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 
 describe('resident phone otp helpers', () => {
   it('normalizes Israeli mobiles consistently', () => {

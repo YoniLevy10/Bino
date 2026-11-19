@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { formatUnknownErrorMessage } from '@/lib/format-unknown-error'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { clientHasPaidAddon } from '@/lib/paid-addons'
+import { formatUnknownErrorMessage } from '@/lib/errors/format-unknown-error'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { clientHasPaidAddon } from '@/lib/addons/paid-addons'
 import { buildDedupeKey } from '../dedupe'
 import { CLIENT_COLLECTION_BUCKET_ID, type RecommendationDraft } from '../types'
 

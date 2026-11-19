@@ -1,5 +1,9 @@
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
-import { loadPalGatePilotCredentials } from '@/lib/palgate/credentials'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  loadPalGateCredentialsForClient,
+  loadPalGatePilotCredentials,
+} from '@/lib/palgate/credentials'
 import { generatePalGateDerivedToken } from '@/lib/palgate/token'
 
 export type PalGateOpenResult =
@@ -20,10 +24,16 @@ function buildOpenUrl(baseUrl: string, deviceId: string, outputNum: number): str
  */
 export async function openPalGateDevice(opts?: {
   outputNum?: number
+  admin?: SupabaseClient
+  clientId?: string
 }): Promise<PalGateOpenResult> {
   let creds
   try {
-    creds = loadPalGatePilotCredentials()
+    if (opts?.admin && opts.clientId) {
+      creds = await loadPalGateCredentialsForClient(opts.admin, opts.clientId)
+    } else {
+      creds = loadPalGatePilotCredentials()
+    }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }

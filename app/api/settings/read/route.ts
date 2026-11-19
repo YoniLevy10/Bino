@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { CLIENT_SETTINGS_READ_SELECT } from '@/lib/client-settings-select'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { CLIENT_SETTINGS_READ_SELECT } from '@/lib/client/client-settings-select'
 
 /** Tenant settings for dashboard UI — secrets never leave the server. */
 export async function GET() {

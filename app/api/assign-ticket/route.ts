@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { assignTicketToWorker } from '@/lib/assign-ticket-worker'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { getLogger, getAuditLogger } from '@/lib/logging'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
 import { assignWorkerBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { logAudit } from '@/lib/audit'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */

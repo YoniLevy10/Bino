@@ -3,13 +3,13 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   requireSessionClientId,
   requireSessionWriteAccess,
-} from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+} from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { attachBuildingDecisionDocumentBodySchema } from '@/lib/api-body-schemas'
 import { assertProjectForClient } from '@/lib/building-governance/project-guard'
 import { buildDecisionSummaryPayload } from '@/lib/building-governance/decision-summary'
 import { logAudit } from '@/lib/audit'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { checkRateLimitIpEndpoint, sanitizeString } from '@/lib/api-validation'
 import { publicResidentIntakeBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
-import { normalizePhone } from '@/lib/residents-whatsapp'
-import { getLogger } from '@/lib/logging'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
+import { getLogger } from '@/lib/shared/logging'
 import {
   decideResidentIntakeUpsert,
   intakeConflictMessage,
   intakePhoneLookupValues,
   isPostgresUniqueViolation,
   type IntakeResidentRow,
-} from '@/lib/resident-intake-upsert'
+} from '@/lib/residents/resident-intake-upsert'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const INTAKE_CANDIDATE_SELECT = 'id, project_id, deleted_at'

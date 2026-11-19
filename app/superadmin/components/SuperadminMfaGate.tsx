@@ -4,9 +4,9 @@ import { FormEvent, useCallback, useEffect, useState, type ReactNode } from 'rea
 import { QRCodeCanvas } from 'qrcode.react'
 import { LoadingButton } from '@/app/components/LoadingButton'
 import { supabase } from '@/lib/supabase'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 import { googleOAuthRedirect, isBinoIosShell, postOAuthURLToNativeShell } from '@/lib/native-shell'
-import { purgeLegacyAdminSecret } from '@/lib/admin-secret-session'
+import { purgeLegacyAdminSecret } from '@/lib/superadmin/admin-secret-session'
 
 type SessionStatus = {
   authenticated: boolean

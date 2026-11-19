@@ -3,13 +3,13 @@
 import type { ReactNode } from 'react'
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
-import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plan-display'
-import { normalizeTier, type PlanTier } from '@/lib/plan-limits'
+import { PLAN_SETUP_OPTIONS, planLimitsLine } from '@/lib/plans/plan-display'
+import { normalizeTier, type PlanTier } from '@/lib/plans/plan-limits'
 import {
   coreNavFeatureOptions,
   describeClientNavFeaturesMode,
   REQUIRED_NAV_FEATURE_IDS,
-} from '@/lib/client-nav-features'
+} from '@/lib/client/client-nav-features'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import { ClientPaidAddonsPanel } from '../PaidAddonsAdmin'
 import { ClientAttendanceTagsPanel } from '../ClientAttendanceTagsPanel'
@@ -35,7 +35,7 @@ function TaskShell({ title, onBack, children }: { title: string; onBack: () => v
 }
 
 export type ClientTaskViewProps = {
-  task: Exclude<ClientTask, 'hub'>
+  task: Exclude<ClientTask, 'hub' | 'onboarding'>
   client: ClientRow
   secret?: string
   catalog: PlanCatalogRow[]
@@ -264,6 +264,14 @@ export function ClientTaskView(p: ClientTaskViewProps) {
   if (p.task === 'buildings') {
     return (
       <TaskShell title="בניינים" onBack={p.onBack}>
+        <button
+          type="button"
+          className="sa-btn sa-btn-primary"
+          style={{ marginBottom: 12 }}
+          onClick={() => p.onOpenTask('onboarding')}
+        >
+          הוספת בניינים באשף (Excel / ידני)
+        </button>
         {p.client.projects.length === 0 ? (
           <p className="sa-empty">אין בניינים</p>
         ) : (

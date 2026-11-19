@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 
 export async function GET(req: NextRequest) {
   const auth = await requireSessionClientId()

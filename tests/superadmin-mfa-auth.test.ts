@@ -24,14 +24,14 @@ import {
   hasAppMetadataSuperadminFlag,
   isAal2,
   isSuperadminIdentity,
-} from '@/lib/superadmin-identity'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+} from '@/lib/superadmin/superadmin-identity'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import {
   hasLegacyAdminSecret,
   purgeLegacyAdminSecret,
   readAdminSecret,
   writeAdminSecret,
-} from '@/lib/admin-secret-session'
+} from '@/lib/superadmin/admin-secret-session'
 
 describe('isSuperadminIdentity', () => {
   beforeEach(() => {

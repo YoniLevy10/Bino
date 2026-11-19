@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
-import { SEO_GUIDES_HE } from '@/lib/seo-guides-he'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { SEO_GUIDES_HE } from '@/lib/seo/seo-guides-he'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const origin = getMarketingSiteOrigin()

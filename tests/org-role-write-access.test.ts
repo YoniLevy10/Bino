@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canOrgRoleWrite, higherOrgRole, isOrgUserRole, orgRoleRank } from '@/lib/org-role'
+import { canOrgRoleWrite, higherOrgRole, isOrgUserRole, orgRoleRank } from '@/lib/auth-api/org-role'
 
 describe('org role write gate (audit #04)', () => {
   it('recognizes roles', () => {

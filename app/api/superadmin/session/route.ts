@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
-import { isSuperadminIdentity } from '@/lib/superadmin-identity'
+import { isSuperadminIdentity } from '@/lib/superadmin/superadmin-identity'
 
 /**
  * GET /api/superadmin/session — status for the superadmin gate UI.

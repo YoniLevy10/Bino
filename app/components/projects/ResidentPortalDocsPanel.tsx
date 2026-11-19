@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
 import { Button, theme } from '../ui'
 
 type PortalDoc = {

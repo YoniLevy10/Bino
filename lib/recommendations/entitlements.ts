@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getClientEnabledAddonKeys, PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { getClientEnabledAddonKeys, PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import type { ManagementRecommendationRow, RecommendationAction, RecommendationType } from './types'
 
 const TYPE_REQUIRES_ADDON: Partial<Record<RecommendationType, string>> = {

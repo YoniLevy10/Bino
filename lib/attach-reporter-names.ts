@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizeReporterPhone, savedResidentDisplayName } from '@/lib/reporter-display'
+import { normalizeReporterPhone, savedResidentDisplayName } from '@/lib/reporter/reporter-display'
 
 type ResidentNameRow = {
   full_name: string

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
-import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/grow-webhook'
-import { extractGrowRegisterWebhook } from '@/lib/grow-register'
-import { normalizeGrowUserId } from '@/lib/grow-credentials'
-import { findOtherUsingGrowUserId } from '@/lib/project-grow'
+import { getLogger } from '@/lib/shared/logging'
+import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/payments/grow-webhook'
+import { extractGrowRegisterWebhook } from '@/lib/payments/grow-register'
+import { normalizeGrowUserId } from '@/lib/payments/grow-credentials'
+import { findOtherUsingGrowUserId } from '@/lib/projects/project-grow'
 
 /**
  * Grow merchant registration webhook (GetLink completion).

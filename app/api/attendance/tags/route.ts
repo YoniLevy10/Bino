@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { buildNfcTagScanUrl } from '@/lib/nfc-tag-utils'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { buildNfcTagScanUrl } from '@/lib/nfc/nfc-tag-utils'
 
 /** Tenant read-only: tag list (QR issued by Bino Super Admin). */
 export async function GET() {

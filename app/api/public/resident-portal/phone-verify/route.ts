@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import { verifyResidentPhoneOtp } from '@/lib/resident-portal/phone-otp'
 import { sanitizeId } from '@/lib/api-validation'
 import {

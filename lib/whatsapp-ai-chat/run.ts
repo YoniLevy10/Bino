@@ -4,23 +4,23 @@
  * description to the existing ticket-open path. Never runs unless the gate is on.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getLogger } from '@/lib/logging'
-import { getResidentPortalJoinUrl } from '@/lib/public-origin'
+import { getLogger } from '@/lib/shared/logging'
+import { getResidentPortalJoinUrl } from '@/lib/shared/public-origin'
 import {
   findApprovedResidentByPhoneClient,
   type ResidentRow,
-} from '@/lib/residents-whatsapp'
+} from '@/lib/residents/residents-whatsapp'
 import {
   extractMetaWaMessageId,
   loadWhatsAppThreadForPhone,
   persistWhatsAppMessage,
-} from '@/lib/whatsapp-message-store'
-import { saveResidentLanguage } from '@/lib/whatsapp-resident-language'
-import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
+} from '@/lib/whatsapp/whatsapp-message-store'
+import { saveResidentLanguage } from '@/lib/whatsapp/whatsapp-resident-language'
+import { sendWhatsAppTextMessage } from '@/lib/whatsapp/whatsapp-send'
 import { getActiveSession, type SessionRow } from '@/lib/whatsapp-webhook/session-expire'
 import { searchProjectsByBuilding } from '@/lib/whatsapp-webhook/project-selection'
-import type { ProjectRow } from '@/lib/whatsapp-interactive'
-import type { ResidentLang } from '@/lib/whatsapp-bilingual-template'
+import type { ProjectRow } from '@/lib/whatsapp/whatsapp-interactive'
+import type { ResidentLang } from '@/lib/whatsapp/whatsapp-bilingual-template'
 import {
   decideClientAiChatTurn,
   needBuildingReply,

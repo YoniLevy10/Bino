@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getIsraelDayBounds, isMaintenanceTaskForToday } from '@/lib/maintenance-task-day'
+import { getIsraelDayBounds, isMaintenanceTaskForToday } from '@/lib/maintenance/maintenance-task-day'
 
 describe('isMaintenanceTaskForToday', () => {
   it('includes open tasks with no due date', () => {

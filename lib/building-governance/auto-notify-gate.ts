@@ -1,4 +1,4 @@
-import { normalizePhone019 } from '@/lib/sms-019-core'
+import { normalizePhone019 } from '@/lib/sms/sms-019-core'
 
 /**
  * Feature flag for Hub / Finance / Governance auto-notify (SMS / WhatsApp / push).

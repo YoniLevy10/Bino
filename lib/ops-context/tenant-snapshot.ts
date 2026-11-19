@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { PAID_ADDON_KEYS, clientHasPaidAddon } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS, clientHasPaidAddon } from '@/lib/addons/paid-addons'
 import {
   listClientProjectGrowRows,
   projectGrowAccountStatus,
-} from '@/lib/project-grow'
+} from '@/lib/projects/project-grow'
 
 /** Cross-page operational signals for one tenant (bounded reads). */
 export type TenantOpsSnapshot = {

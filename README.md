@@ -10,6 +10,8 @@
 
 **סטאק:** Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + RLS) · Vercel · Zod · Vitest · Playwright · Sentry · Vercel Analytics / Speed Insights
 
+**ארכיטקטורה:** מפת מערכת קנונית — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (דומיינים, אבטחה, זרימות קריטיות). סידור `lib/`: [`docs/LIB_LAYOUT.md`](docs/LIB_LAYOUT.md). ארכיון ראיות ישנות: [`docs/archive/`](docs/archive/).
+
 ---
 
 ## סביבת עבודה

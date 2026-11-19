@@ -5,7 +5,7 @@
  * Add a vehicle plate / identifier, then open the home gate via PalGate cloud.
  */
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 import {
   MobileHeader,
   useMobileMenu,
@@ -15,8 +15,8 @@ import {
   EmptyState,
   theme,
 } from '@/app/components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 
 type Vehicle = {

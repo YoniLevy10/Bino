@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { assertClientNavFeatureEnabled } from '@/lib/client-nav-features'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { assertClientNavFeatureEnabled } from '@/lib/client/client-nav-features'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
 export async function requireSessionClientIdWithNavFeature(

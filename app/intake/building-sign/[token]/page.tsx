@@ -8,8 +8,8 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useParams } from 'next/navigation'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { theme } from '@/app/components/ui'
 
 type Payload = {

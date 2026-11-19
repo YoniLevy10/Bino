@@ -7,8 +7,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
 import {
   defaultPeriodKey,
   type FinancePeriodGranularity,
@@ -17,7 +17,7 @@ import {
   openBrandedReportPrint,
   REPORT_PRINT_FOOTER,
 } from '@/lib/building-finance/report-print'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useClientBranding } from '@/app/components/ClientBrandingContext'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 

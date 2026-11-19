@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
+import { queuePendingResidentApproval } from '@/lib/residents/pending-resident-from-ticket'
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 import { runAfterResponse } from '@/lib/run-after-response'
-import { notifyNewTicketPush } from '@/lib/push-notifications'
-import { uploadTicketAttachments } from '@/lib/ticket-attachment-upload'
-import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
-import { checkTicketsMonthlyQuota } from '@/lib/plan-quota-check'
+import { notifyNewTicketPush } from '@/lib/push/push-notifications'
+import { uploadTicketAttachments } from '@/lib/tickets/ticket-attachment-upload'
+import { whatsappDbPhoneKey } from '@/lib/whatsapp/whatsapp-test-phone'
+import { checkTicketsMonthlyQuota } from '@/lib/plans/plan-quota-check'
 import type { TicketScope } from '@/lib/resident-portal/types'
 
 export type CreateTicketInput = {

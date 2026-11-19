@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { sendWorkerAttendanceLinksBodySchema } from '@/lib/api-body-schemas'
-import { sendWorkerSMSAll } from '@/lib/sms-send'
-import { getWorkerPortalUrl } from '@/lib/public-app-url'
-import { collectWorkerPhones } from '@/lib/worker-phones'
+import { sendWorkerSMSAll } from '@/lib/sms/sms-send'
+import { getWorkerPortalUrl } from '@/lib/shared/public-app-url'
+import { collectWorkerPhones } from '@/lib/worker/worker-phones'
 
 /** Send personal portal links to field workers (onboarding for NFC). */
 export async function POST(req: Request) {

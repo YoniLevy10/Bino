@@ -5,11 +5,11 @@ import Image from 'next/image'
 import styles from './login.module.css'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 import { googleOAuthRedirect, isBinoIosShell, postOAuthURLToNativeShell } from '@/lib/native-shell'
-import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
+import { clearTenantBrowserCaches } from '@/lib/tenant/tenant-browser-cache'
 import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
-import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant-access'
+import { TENANT_ACCESS_DENIED_HE, TENANT_MULTI_CLIENT_DENIED_HE } from '@/lib/tenant/tenant-access'
 
 function GoogleIcon() {
   return (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { getConfiguredGrowWebhookUrl } from '@/lib/collection-charge-ops'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { getConfiguredGrowWebhookUrl } from '@/lib/collections/collection-charge-ops'
 
 /** Returns whether the Grow notify URL is configured on the server (Bino registers it per request). */
 export async function GET() {

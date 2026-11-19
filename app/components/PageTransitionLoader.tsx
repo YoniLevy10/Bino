@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { isWorkerPortalPath } from '@/lib/is-worker-portal-path'
-import { tryReadWorkerPortalBranding } from '@/lib/worker-branding'
+import { tryReadWorkerPortalBranding } from '@/lib/worker/worker-branding'
 import { useClientBranding, tryReadBrandingFromSessionCache } from './ClientBrandingContext'
 
 const DEFAULT_LOGO = '/bino-mark.png'

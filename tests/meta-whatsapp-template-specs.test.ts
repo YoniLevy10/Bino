@@ -5,7 +5,7 @@ import {
   getMetaTemplateSpecById,
   isMetaTemplateSpecComposable,
   sanitizeMetaTemplateNameSuffix,
-} from '@/lib/meta-whatsapp-template-specs'
+} from '@/lib/whatsapp/meta-whatsapp-template-specs'
 
 describe('meta whatsapp template specs (Composio create)', () => {
   it('ticket_closed is composable Utility', () => {
@@ -26,9 +26,32 @@ describe('meta whatsapp template specs (Composio create)', () => {
     expect(payload.category).toBe('UTILITY')
     expect(payload.name).toBe('ticket_closed_bamakor_house')
     expect(payload.language).toBe('he')
-    expect(payload.components[0]?.type).toBe('BODY')
-    expect(payload.components[0]?.text).toContain('{{1}}')
-    expect(payload.components[0]?.example?.body_text?.[0]?.[0]).toBeTruthy()
+    const body0 = payload.components[0]
+    expect(body0?.type).toBe('BODY')
+    if (body0?.type === 'BODY') {
+      expect(body0.text).toContain('{{1}}')
+      expect(body0.example?.body_text?.[0]?.[0]).toBeTruthy()
+    }
+  })
+
+  it('manager_reply create payload includes footer + QUICK_REPLY button', () => {
+    const spec = getMetaTemplateSpecById('manager_reply')!
+    expect(spec.buttonComponents?.[0]).toEqual({ type: 'QUICK_REPLY', text: 'קיבלתי' })
+    const payload = buildMetaTemplateCreatePayload(spec)
+    expect(payload.name).toBe('manager_reply')
+    const types = payload.components.map((c) => c.type)
+    expect(types).toEqual(['BODY', 'FOOTER', 'BUTTONS'])
+    const buttons = payload.components.find((c) => c.type === 'BUTTONS')
+    expect(buttons?.type).toBe('BUTTONS')
+    if (buttons?.type === 'BUTTONS') {
+      expect(buttons.buttons).toEqual([{ type: 'QUICK_REPLY', text: 'קיבלתי' }])
+    }
+    const body = payload.components.find((c) => c.type === 'BODY')
+    expect(body?.type).toBe('BODY')
+    if (body?.type === 'BODY') {
+      expect(body.text).toContain('{{2}}')
+      expect(body.text).toContain('קיבלתי')
+    }
   })
 
   it('sanitizes suffix and rejects empty junk', () => {

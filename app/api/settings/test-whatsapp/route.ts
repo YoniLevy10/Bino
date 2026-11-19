@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp-send'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp/whatsapp-send'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { settingsTestWhatsAppBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { getLogger, getAuditLogger } from '@/lib/logging'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
 
 /**
  * Sends a test WhatsApp using credentials stored on `clients` (not .env).

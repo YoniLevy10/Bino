@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   TICKET_ATTACHMENT_MAX_WORKER_BYTES,
   TICKET_ATTACHMENT_WORKER_MIME_TYPES,
-} from '@/lib/ticket-attachment-upload'
+} from '@/lib/tickets/ticket-attachment-upload'
 
 function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'

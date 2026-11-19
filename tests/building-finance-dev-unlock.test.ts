@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isBuildingFinanceDevUnlocked } from '@/lib/building-finance/dev-unlock'
-import { isNavFeatureEnabled } from '@/lib/client-nav-features'
+import { isNavFeatureEnabled } from '@/lib/client/client-nav-features'
 
 describe('isBuildingFinanceDevUnlocked (retired no-op)', () => {
   afterEach(() => {

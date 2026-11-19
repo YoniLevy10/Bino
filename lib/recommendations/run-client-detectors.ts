@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { formatUnknownErrorMessage } from '@/lib/format-unknown-error'
+import { formatUnknownErrorMessage } from '@/lib/errors/format-unknown-error'
 import { detectSlaUnassigned } from './detectors/sla-unassigned'
 import { detectMaintenanceOverdue } from './detectors/maintenance-overdue'
 import { detectProfessionalFollowup } from './detectors/professional-followup'

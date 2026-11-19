@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
 
 /** Shared RQ key — seed from sync cid cache so list queries do not wait on auth. */
 export const TENANT_CLIENT_ID_QUERY_KEY = ['tenant-client-id'] as const

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { isTicketInTreatment } from '@/lib/ticket-status'
-import { statusLabelHe } from '@/lib/whatsapp-intent'
+import { isTicketInTreatment } from '@/lib/tickets/ticket-status'
+import { statusLabelHe } from '@/lib/whatsapp/whatsapp-intent'
 
 export type TicketStatusRow = {
   ticket_number: number

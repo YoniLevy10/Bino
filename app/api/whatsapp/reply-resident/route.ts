@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { whatsappReplyResidentBodySchema } from '@/lib/whatsapp-api-schemas'
-import { sendTicketResidentWhatsAppReply } from '@/lib/whatsapp-ticket-reply'
-import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { whatsappReplyResidentBodySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
+import { sendTicketResidentWhatsAppReply } from '@/lib/whatsapp/whatsapp-ticket-reply'
+import { insertWhatsAppSendFailure } from '@/lib/errors/error-logs-db'
 
 export async function POST(req: Request) {
   const auth = await requireSessionWriteAccess()

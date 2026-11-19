@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
-import type { LaunchCheckItem } from '@/lib/client-launch-checklist'
+import type { LaunchCheckItem } from '@/lib/client/client-launch-checklist'
 import type { ClientTask } from './types'
 
 type PlaybookStep = { step: number; title: string; detail: string }

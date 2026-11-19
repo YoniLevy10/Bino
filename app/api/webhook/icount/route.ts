@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readIcountWebhookSecret } from '@/lib/icount-config'
+import { readIcountWebhookSecret } from '@/lib/payments/icount-config'
 
 export const runtime = 'nodejs'
 

@@ -5,8 +5,8 @@ import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { MarketingLeadLink } from '@/app/components/marketing/MarketingLeadLink'
 import { WhatsAppIcon } from '@/app/components/marketing/WhatsAppIcon'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
-import { waDemoUrl } from '@/lib/marketing-copy'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
+import { waDemoUrl } from '@/lib/marketing/marketing-copy'
 import '@/app/components/legal/legal-contact.css'
 
 const origin = getMarketingSiteOrigin()

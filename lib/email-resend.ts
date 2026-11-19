@@ -1,5 +1,5 @@
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
-import { isOutboundLiveAllowed, outboundMockResult } from '@/lib/outbound-mode'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
+import { isOutboundLiveAllowed, outboundMockResult } from '@/lib/shared/outbound-mode'
 
 export async function sendResendEmail(opts: {
   to: string

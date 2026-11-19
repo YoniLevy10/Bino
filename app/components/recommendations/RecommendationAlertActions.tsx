@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { Button, theme } from '@/app/components/ui'
 import { pickRecommendationScreenActions } from '@/lib/recommendations/screen-actions'
 import type { ManagementRecommendationRow, RecommendationAction } from '@/lib/recommendations/types'

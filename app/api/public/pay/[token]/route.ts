@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { chargePaymentUrl, formatChargeAmountIls } from '@/lib/collection-charges'
+import { chargePaymentUrl, formatChargeAmountIls } from '@/lib/collections/collection-charges'
 import { publicPayReceiptContactBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { normalizeReceiptEmail } from '@/lib/collection-receipt-email'
-import { normalizePhone019 } from '@/lib/sms-019-core'
-import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collection-receipt-email'
-import { ensureGrowPaymentLinkWithPayerEmail } from '@/lib/collection-charge-ops'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
+import { normalizeReceiptEmail } from '@/lib/collections/collection-receipt-email'
+import { normalizePhone019 } from '@/lib/sms/sms-019-core'
+import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collections/collection-receipt-email'
+import { ensureGrowPaymentLinkWithPayerEmail } from '@/lib/collections/collection-charge-ops'
 import {
   residentSafeDescription,
   residentSafeTitle,
-} from '@/lib/resident-safe-description'
+} from '@/lib/residents/resident-safe-description'
 
 type RouteContext = { params: Promise<{ token: string }> }
 

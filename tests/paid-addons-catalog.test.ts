@@ -3,9 +3,9 @@ import {
   buildPaidAddonsForDisplay,
   getLockedPaidAddonsCount,
   getPaidAddonCatalogEntry,
-} from '@/lib/paid-addons-catalog'
-import type { AddonEntitlement } from '@/lib/paid-addons'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+} from '@/lib/addons/paid-addons-catalog'
+import type { AddonEntitlement } from '@/lib/addons/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 
 function mockEntitlement(addon_key: string, enabled: boolean): AddonEntitlement {
   const base = getPaidAddonCatalogEntry(addon_key as keyof typeof PAID_ADDON_KEYS)

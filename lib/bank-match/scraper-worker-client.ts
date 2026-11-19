@@ -1,7 +1,7 @@
 import type { NormalizedBankTransaction } from '@/lib/bank-match/types'
 import type { ScraperPullResult } from '@/lib/bank-match/scraper-adapter'
 import { normalizeScraperCredentials } from '@/lib/bank-match/scraper-credentials-normalize'
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 
 export function getScraperWorkerUrl(): string | null {
   const raw = (process.env.BUILDING_BANK_SCRAPER_WORKER_URL || '').trim()

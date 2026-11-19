@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 
 /**
  * KPI: % of DONE maintenance tasks completed by worker without manager

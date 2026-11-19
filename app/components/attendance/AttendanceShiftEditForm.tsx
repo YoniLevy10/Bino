@@ -1,15 +1,15 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import {
   decimalHoursToMinutes,
   minutesToDecimalHours,
   parseDatetimeLocalValue,
   SHIFT_STATUS_HE,
   toDatetimeLocalValue,
-} from '@/lib/attendance-display'
+} from '@/lib/attendance/attendance-display'
 import { Button, theme } from '../ui'
 
 const SHIFT_STATUS_OPTIONS = [

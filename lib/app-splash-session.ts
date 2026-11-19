@@ -1,6 +1,6 @@
 /** Splash + fresh fetch only on first dashboard entry per browser tab session. */
 
-import { DASHBOARD_CACHE_LEGACY_KEY, DASHBOARD_CACHE_PREFIX, SPLASH_DONE_KEY } from '@/lib/tenant-browser-cache'
+import { DASHBOARD_CACHE_LEGACY_KEY, DASHBOARD_CACHE_PREFIX, SPLASH_DONE_KEY } from '@/lib/tenant/tenant-browser-cache'
 
 export { SPLASH_DONE_KEY }
 

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { checkAuthenticatedPostRouteLimit, checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
-import { formatZodError } from '@/lib/format-zod-error'
+import { checkAuthenticatedPostRouteLimit, checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { normalizeGrowUserId } from '@/lib/grow-credentials'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { normalizeGrowUserId } from '@/lib/payments/grow-credentials'
 import {
   assertProjectCanEnableGrow,
   findOtherUsingGrowUserId,
@@ -13,8 +13,8 @@ import {
   loadProjectGrowRow,
   projectGrowAccountStatus,
   PROJECT_GROW_SELECT,
-} from '@/lib/project-grow'
-import { isGrowPlatformConfigured } from '@/lib/grow-config'
+} from '@/lib/projects/project-grow'
+import { isGrowPlatformConfigured } from '@/lib/payments/grow-config'
 
 const patchSchema = z.object({
   project_id: z.string().uuid(),

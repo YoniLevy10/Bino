@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { attendanceEventReviewBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { applyShiftWhenEventApproved } from '@/lib/attendance-event-shift-apply'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { applyShiftWhenEventApproved } from '@/lib/attendance/attendance-event-shift-apply'
 
 export async function PATCH(req: Request) {
   const auth = await requireSessionWriteAccess()

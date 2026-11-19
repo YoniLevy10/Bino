@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 
 /** Ask server to attach stashed WhatsApp media to an open ticket. */
 export async function recoverWhatsAppMediaForTicket(ticketId: string): Promise<{

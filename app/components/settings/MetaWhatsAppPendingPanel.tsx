@@ -7,13 +7,13 @@ import {
   META_LIVE_WABA_ID,
   META_WHATSAPP_PENDING_ACTIONS,
   type MetaPendingAction,
-} from '@/lib/meta-whatsapp-pending-actions'
+} from '@/lib/whatsapp/meta-whatsapp-pending-actions'
 import {
   META_WHATSAPP_TEMPLATE_SPECS,
   formatMetaTemplateSpecForCopy,
-} from '@/lib/meta-whatsapp-template-specs'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+} from '@/lib/whatsapp/meta-whatsapp-template-specs'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 
 type LiveStatus =
   | 'APPROVED'

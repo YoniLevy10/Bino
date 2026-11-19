@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import { fetchOpenTickets, OPEN_TICKETS_SHARED_LIMIT } from '@/lib/hooks/use-open-tickets'
 import { fetchWorkersList } from '@/lib/hooks/use-workers-list'
 import { fetchProjectsList } from '@/lib/hooks/use-projects-list'

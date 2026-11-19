@@ -11,24 +11,24 @@ import {
   type AiIntakeBuildingCandidate,
   type AiIntakeDecision,
   type AiIntakeHistoryItem,
-} from '@/lib/whatsapp-ai'
+} from '@/lib/whatsapp/whatsapp-ai'
 import {
   normalizeResidentLang,
   type ResidentLang,
-} from '@/lib/whatsapp-bilingual-template'
+} from '@/lib/whatsapp/whatsapp-bilingual-template'
 import {
   acceptTicketDescriptionInSession,
   inferResidentLanguageFromText,
-} from '@/lib/whatsapp-intent'
-import { getLogger } from '@/lib/logging'
-import type { ProjectRow } from '@/lib/whatsapp-interactive'
+} from '@/lib/whatsapp/whatsapp-intent'
+import { getLogger } from '@/lib/shared/logging'
+import type { ProjectRow } from '@/lib/whatsapp/whatsapp-interactive'
 import {
   extractMetaWaMessageId,
   loadWhatsAppThreadForPhone,
   persistWhatsAppMessage,
-} from '@/lib/whatsapp-message-store'
-import { saveResidentLanguage } from '@/lib/whatsapp-resident-language'
-import { sendWhatsAppTextMessage } from '@/lib/whatsapp-send'
+} from '@/lib/whatsapp/whatsapp-message-store'
+import { saveResidentLanguage } from '@/lib/whatsapp/whatsapp-resident-language'
+import { sendWhatsAppTextMessage } from '@/lib/whatsapp/whatsapp-send'
 import { isStashRow } from '@/lib/whatsapp-webhook/building-search-stash'
 import { readLastReporterProject } from '@/lib/whatsapp-webhook/flow-ticket'
 import {

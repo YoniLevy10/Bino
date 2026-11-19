@@ -9,7 +9,7 @@ describe('tenant-resolution WhatsApp client fields', () => {
   const repoRoot = join(__dirname, '..')
 
   it('SELECT includes every waClient field used in webhook route', () => {
-    const resolutionSrc = readFileSync(join(repoRoot, 'lib/tenant-resolution.ts'), 'utf8')
+    const resolutionSrc = readFileSync(join(repoRoot, 'lib/tenant/tenant-resolution.ts'), 'utf8')
     const webhookSrc = readFileSync(join(repoRoot, 'app/api/webhook/whatsapp/route.ts'), 'utf8')
 
     const selectMatch = resolutionSrc.match(

@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   createMaintenanceTaskBodySchema,
   updateMaintenanceTaskBodySchema,
 } from '@/lib/api-body-schemas'
-import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
+import { withSignedAttachmentUrls } from '@/lib/tickets/ticket-attachment-url'
 import {
   assertProjectOwnedByClient,
   assertTicketOwnedByClient,
   assertWorkerOwnedByClient,
-} from '@/lib/tenant-owned-refs'
-import { notifyWorkerMaintenanceTaskAssigned } from '@/lib/notify-worker-maintenance-task'
+} from '@/lib/tenant/tenant-owned-refs'
+import { notifyWorkerMaintenanceTaskAssigned } from '@/lib/notify/notify-worker-maintenance-task'
 import { runAfterResponse } from '@/lib/run-after-response'
-import { normalizeMaintenanceCadence } from '@/lib/maintenance-cadence'
-import { syncMaintenanceTaskToCalendar } from '@/lib/maintenance-task-calendar-sync'
-import { normalizeChecklistItems } from '@/lib/maintenance-checklist'
-import { costIlsFromMinutes } from '@/lib/maintenance-task-cost'
-import { createNextMaintenanceOccurrence } from '@/lib/maintenance-create-next-occurrence'
+import { normalizeMaintenanceCadence } from '@/lib/maintenance/maintenance-cadence'
+import { syncMaintenanceTaskToCalendar } from '@/lib/maintenance/maintenance-task-calendar-sync'
+import { normalizeChecklistItems } from '@/lib/maintenance/maintenance-checklist'
+import { costIlsFromMinutes } from '@/lib/maintenance/maintenance-task-cost'
+import { createNextMaintenanceOccurrence } from '@/lib/maintenance/maintenance-create-next-occurrence'
 
 const TASK_SELECT =
   'id, client_id, project_id, assigned_worker_id, source_ticket_id, title, description, priority, status, due_at, notes, cadence, color_key, calendar_event_id, series_id, checklist_items, completed_by_user_id, completed_by_worker_id, asset_id, estimated_minutes, actual_cost_ils, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name, hourly_rate), tickets:source_ticket_id(id, ticket_number)'

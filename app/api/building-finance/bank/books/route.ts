@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import { isFinancyBooksEnabled, isFinancyClearingEnabled } from '@/lib/bank/flags'
 import { loadClientFinancyCredentials } from '@/lib/bank/financy-credentials'
@@ -17,7 +17,7 @@ import {
 } from '@/lib/bank/financy-gateway'
 import type { FinancyIntegration } from '@/lib/bank/types'
 import { z } from 'zod'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 
 export const dynamic = 'force-dynamic'
 

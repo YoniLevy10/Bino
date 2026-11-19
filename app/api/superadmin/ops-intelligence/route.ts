@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { buildOpsIntelligenceReport } from '@/lib/ops-intelligence-analytics'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { buildOpsIntelligenceReport } from '@/lib/ops/ops-intelligence-analytics'
 
 export async function GET(req: Request) {
   const auth = await requireSuperAdmin()

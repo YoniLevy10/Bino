@@ -11,7 +11,7 @@ import {
 } from '@/lib/sales-leads/discovery-mapping'
 import { getSalesSegmentSlugs } from '@/lib/sales-leads/config'
 import { assessBuyerFit, estimateBuildingsFromSignals, shouldKeepDiscoveredLead } from '@/lib/sales-leads/fit-score'
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 
 type OsmElement = {
   type: 'node' | 'way' | 'relation'

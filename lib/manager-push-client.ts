@@ -1,5 +1,5 @@
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { PUSH_FETCH_TIMEOUT_MS, acknowledgePushAlertsBestEffort, urlBase64ToUint8Array } from '@/lib/push-client-core'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { PUSH_FETCH_TIMEOUT_MS, acknowledgePushAlertsBestEffort, urlBase64ToUint8Array } from '@/lib/push/push-client-core'
 import {
   ensureServiceWorkerReady,
   isIosSafariLike,

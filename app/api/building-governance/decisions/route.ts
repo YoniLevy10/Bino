@@ -4,8 +4,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   requireSessionClientId,
   requireSessionWriteAccess,
-} from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+} from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   createBuildingDecisionBodySchema,
   createSignatureRequestBodySchema,
@@ -21,7 +21,7 @@ import {
   computeMajorityProgress,
   countVoteChoices,
 } from '@/lib/building-governance/roles'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

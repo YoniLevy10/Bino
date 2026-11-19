@@ -24,6 +24,7 @@ export function ClientsList({
   onSearch,
   onFilter,
   onOpenClient,
+  onNewClient,
 }: {
   clients: ClientRow[]
   filtered: ClientRow[]
@@ -36,6 +37,7 @@ export function ClientsList({
   onSearch: (q: string) => void
   onFilter: (f: ClientFilter) => void
   onOpenClient: (id: string) => void
+  onNewClient?: () => void
 }) {
   return (
     <div className="sa-clients-view">
@@ -52,6 +54,11 @@ export function ClientsList({
           <strong>{opsBadge}</strong>
           <span>שגיאות תפעול</span>
         </div>
+        {onNewClient ? (
+          <button type="button" className="sa-btn sa-btn-primary sa-new-client-btn" onClick={onNewClient}>
+            + לקוח חדש
+          </button>
+        ) : null}
       </div>
 
       <div className="sa-search-sticky">

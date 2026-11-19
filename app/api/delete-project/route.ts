@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { deleteProjectBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 
 /**
  * Soft-delete a project (audit #40): mark project + tickets + residents with deleted_at.

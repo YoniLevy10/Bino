@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
-import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms-send'
-import { isHealthCheckSmsAlertsEnabled } from '@/lib/env-readiness'
+import { getLogger } from '@/lib/shared/logging'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
+import { sendManagerSMS, getManagerPhoneFromEnv } from '@/lib/sms/sms-send'
+import { isHealthCheckSmsAlertsEnabled } from '@/lib/shared/env-readiness'
 
 /**
  * Periodic probe: pings DB + validates WhatsApp tokens + appends system_logs (Vercel cron).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldSignOutForTenantGate } from '@/lib/middleware-tenant-gate'
+import { shouldSignOutForTenantGate } from '@/lib/tenant/middleware-tenant-gate'
 
 describe('shouldSignOutForTenantGate', () => {
   it('signs out only for empty / multi-tenant access control', () => {

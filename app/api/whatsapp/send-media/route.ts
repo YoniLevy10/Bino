@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
 import {
   extractMetaWaMessageId,
   isWithinWhatsAppSessionWindow,
   persistWhatsAppMessage,
-} from '@/lib/whatsapp-message-store'
-import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
-import { normalizePhone } from '@/lib/residents-whatsapp'
-import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
+} from '@/lib/whatsapp/whatsapp-message-store'
+import { insertWhatsAppSendFailure } from '@/lib/errors/error-logs-db'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
+import { whatsappDbPhoneKey } from '@/lib/whatsapp/whatsapp-test-phone'
 import {
   mimeToOutboundKind,
   sendWhatsAppMediaByIdWithCredentials,
   uploadWhatsAppMediaToMeta,
   WA_INBOX_OUTBOUND_MAX_BYTES,
-} from '@/lib/whatsapp-outbound-media'
-import { buildWhatsAppMessageMediaPayload } from '@/lib/whatsapp-message-media'
+} from '@/lib/whatsapp/whatsapp-outbound-media'
+import { buildWhatsAppMessageMediaPayload } from '@/lib/whatsapp/whatsapp-message-media'
 
 export const maxDuration = 60
 

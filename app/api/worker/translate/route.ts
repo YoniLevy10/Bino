@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-import { translateToHebrew } from '@/lib/google-translate'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
+import { translateToHebrew } from '@/lib/google/google-translate'
 
 type Body = { token?: unknown; text?: unknown }
 

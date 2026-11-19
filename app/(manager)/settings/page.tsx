@@ -9,8 +9,8 @@
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { toast, asyncHandler } from '@/lib/error-handler'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast, asyncHandler } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { useTenantSettingsRead, type SettingsReadRow } from '@/lib/hooks/use-settings-read'
 import {
@@ -24,16 +24,16 @@ import {
   theme
 } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { CollapsibleSection } from '@/app/components/shared/CollapsibleSection'
 import { subscribeManagerPush } from '@/lib/manager-push-client'
 import {
   GROW_STATUS_TONE_COLOR,
   growProjectStatusView,
-} from '@/lib/grow-project-status'
-import { loadGrowOnboardDraft, saveGrowOnboardDraft } from '@/lib/grow-onboard-draft'
+} from '@/lib/payments/grow-project-status'
+import { loadGrowOnboardDraft, saveGrowOnboardDraft } from '@/lib/payments/grow-onboard-draft'
 import { FinancySettingsPanel } from '@/app/components/settings/FinancySettingsPanel'
 import { SettingsConnectionsHub } from '@/app/components/settings/SettingsConnectionsHub'
 import { ParkingSettingsPanel } from '@/app/components/settings/ParkingSettingsPanel'

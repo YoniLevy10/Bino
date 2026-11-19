@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { theme } from '../ui'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 import {
   isWorkerPushFullyEnabled,
   isWorkerPushSupported,
   subscribeWorkerPush,
-} from '@/lib/worker-push-client'
+} from '@/lib/worker/worker-push-client'
 
 const PUSH_BANNER_DISMISS_KEY = 'bino_worker_push_banner_dismissed'
 const BANNER_AUTO_DISMISS_MS = 10_000
@@ -198,7 +198,7 @@ export function WorkerPushSync({ token, onEnabled }: { token: string; onEnabled?
   useEffect(() => {
     if (!token) return
     void (async () => {
-      const { syncWorkerPushIfGranted } = await import('@/lib/worker-push-client')
+      const { syncWorkerPushIfGranted } = await import('@/lib/worker/worker-push-client')
       const ok = await syncWorkerPushIfGranted(token)
       if (ok) onEnabled?.()
     })()

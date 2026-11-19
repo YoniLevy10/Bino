@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ProjectRow } from '@/lib/whatsapp-interactive'
+import type { ProjectRow } from '@/lib/whatsapp/whatsapp-interactive'
 import { createPendingSelection, getPendingSelection, clearPendingSelection } from '@/lib/whatsapp-webhook/project-selection'
 
 export const STASHED_BUILDING_SEARCH_CODE = '__SEARCH__'

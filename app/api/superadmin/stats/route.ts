@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { parseEnabledNavFeaturesFromDb } from '@/lib/client/client-nav-features'
 
 export async function GET(req: Request) {
   const auth = await requireSuperAdmin()

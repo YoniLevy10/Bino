@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { normalizeLocalAttendanceState } from '@/lib/attendance-client'
-import { DUPLICATE_SCAN_WINDOW_MS, isDuplicateScan } from '@/lib/attendance-duplicate'
-import { mergeAttendanceStateFromBootstrap } from '@/lib/worker-attendance-bootstrap'
-import { executeNfcStampFlow, type NfcStampFlowDeps } from '@/lib/nfc-stamp-flow'
-import type { NfcTagRow, PendingAttendanceEvent, WorkerOfflineProfile } from '@/lib/attendance-types'
+import { normalizeLocalAttendanceState } from '@/lib/attendance/attendance-client'
+import { DUPLICATE_SCAN_WINDOW_MS, isDuplicateScan } from '@/lib/attendance/attendance-duplicate'
+import { mergeAttendanceStateFromBootstrap } from '@/lib/worker/worker-attendance-bootstrap'
+import { executeNfcStampFlow, type NfcStampFlowDeps } from '@/lib/nfc/nfc-stamp-flow'
+import type { NfcTagRow, PendingAttendanceEvent, WorkerOfflineProfile } from '@/lib/attendance/attendance-types'
 
 describe('attendance-client local state', () => {
   it('clears stale open shift after 10 hours offline', () => {

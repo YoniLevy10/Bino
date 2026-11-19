@@ -35,11 +35,11 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 
-vi.mock('@/lib/tenant-resolution', () => ({
+vi.mock('@/lib/tenant/tenant-resolution', () => ({
   resolveClientIdForUserId: (...args: unknown[]) => resolveClientIdForUserId(...args),
 }))
 
-vi.mock('@/lib/tenant-browser-cache', () => ({
+vi.mock('@/lib/tenant/tenant-browser-cache', () => ({
   TENANT_CID_SESSION_KEY: 'test_cid_session',
   TENANT_CID_LOCAL_KEY: 'bamakor_cid_local_v1',
 }))

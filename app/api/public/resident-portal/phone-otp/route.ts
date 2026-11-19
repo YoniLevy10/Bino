@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   requestResidentPhoneOtp,
   residentPhoneOtpHttpResult,

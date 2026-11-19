@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { createMetaWhatsappTemplateBodySchema } from '@/lib/api-body-schemas'
 import {
   createMetaTemplateViaComposio,
   getComposioMetaTemplatesConfig,
   syncMetaTemplateSpecsViaComposio,
-} from '@/lib/composio-meta-templates'
-import { getLogger } from '@/lib/logging'
+} from '@/lib/composio/composio-meta-templates'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

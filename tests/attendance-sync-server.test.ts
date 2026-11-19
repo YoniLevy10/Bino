@@ -3,8 +3,8 @@ import {
   computeSyncDelayMinutes,
   evaluateClientTimestamp,
   resolveEventTypeForTag,
-} from '@/lib/attendance-sync-server'
-import { ATTENDANCE_SYNC_DELAY_REVIEW_MINUTES } from '@/lib/attendance-types'
+} from '@/lib/attendance/attendance-sync-server'
+import { ATTENDANCE_SYNC_DELAY_REVIEW_MINUTES } from '@/lib/attendance/attendance-types'
 
 describe('attendance-sync-server', () => {
   it('computeSyncDelayMinutes returns minutes between client and server', () => {

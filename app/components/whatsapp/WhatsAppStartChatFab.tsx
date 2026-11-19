@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { whatsappUiFetch } from '@/lib/whatsapp-ui-fetch'
-import { startWhatsAppConversation } from '@/lib/whatsapp-inbox-hooks'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { whatsappUiFetch } from '@/lib/whatsapp/whatsapp-ui-fetch'
+import { startWhatsAppConversation } from '@/lib/whatsapp/whatsapp-inbox-hooks'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 import { formatPhoneLocalIl } from '@/lib/sales-leads/phone'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 
 type ResidentRow = {
   id: string
@@ -130,18 +130,8 @@ export function WhatsAppStartChatFab({
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        style={styles.fab}
-        aria-label="שיחה חדשה עם דייר"
-        onClick={() => setOpen(true)}
-      >
-        <span style={styles.fabIcon}>+</span>
-      </button>
-    )
-  }
+  /* Sheet-only: header "+" opens via forceOpen. Never render a floating FAB. */
+  if (!open) return null
 
   const sheet = (
     <div
@@ -230,24 +220,6 @@ function StartChatHeader() {
 }
 
 const styles: Record<string, CSSProperties> = {
-  fab: {
-    position: 'absolute',
-    left: 16,
-    bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-    width: 52,
-    height: 52,
-    borderRadius: '50%',
-    border: 'none',
-    background: '#00a884',
-    color: '#fff',
-    fontSize: 28,
-    lineHeight: 1,
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-    zIndex: 2,
-    touchAction: 'manipulation',
-  },
-  fabIcon: { display: 'block', marginTop: -2 },
   backdrop: {
     position: 'fixed',
     inset: 0,

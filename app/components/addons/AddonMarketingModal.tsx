@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonSidebarPinButton } from '@/app/components/addons/AddonSidebarPinButton'
-import { BINO_BRAND } from '@/lib/addons-nav'
-import { formatAddonPriceDisplay } from '@/lib/paid-addons'
-import type { PaidAddonDisplayEntry } from '@/lib/paid-addons-catalog'
+import { BINO_BRAND } from '@/lib/addons/addons-nav'
+import { formatAddonPriceDisplay } from '@/lib/addons/paid-addons'
+import type { PaidAddonDisplayEntry } from '@/lib/addons/paid-addons-catalog'
 import { Button, theme } from '../ui'
 
 type AddonMarketingModalProps = {

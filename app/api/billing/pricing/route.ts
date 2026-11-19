@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { normalizeTier } from '@/lib/plan-limits'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { normalizeTier } from '@/lib/plans/plan-limits'
 import {
   getBillingPlatformSettings,
   getPlanPricingRow,
   listActivePlanPricing,
-} from '@/lib/plan-pricing'
+} from '@/lib/plans/plan-pricing'
 
 export async function GET() {
   const auth = await requireSessionClientId()

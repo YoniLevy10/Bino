@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises'
 import path from 'path'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 import { MarkdownProse } from '@/app/components/legal/MarkdownProse'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 
 const origin = getMarketingSiteOrigin()
 

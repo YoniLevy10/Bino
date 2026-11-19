@@ -6,15 +6,15 @@ import { useSearchParams } from 'next/navigation'
 import { AddonFeaturePreview } from '@/app/components/addons/AddonFeaturePreview'
 import { AddonMarketingModal } from '@/app/components/addons/AddonMarketingModal'
 import { AddonSidebarPinButton } from '@/app/components/addons/AddonSidebarPinButton'
-import { BINO_BRAND } from '@/lib/addons-nav'
-import { formatAddonPriceDisplay } from '@/lib/paid-addons'
+import { BINO_BRAND } from '@/lib/addons/addons-nav'
+import { formatAddonPriceDisplay } from '@/lib/addons/paid-addons'
 import {
   buildPaidAddonsForDisplay,
   type PaidAddonDisplayEntry,
   type PaidAddonId,
-} from '@/lib/paid-addons-catalog'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { toast } from '@/lib/error-handler'
+} from '@/lib/addons/paid-addons-catalog'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { toast } from '@/lib/errors/error-handler'
 import {
   Card,
   MobileHeader,

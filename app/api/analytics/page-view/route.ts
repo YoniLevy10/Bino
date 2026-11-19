@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientIdLite } from '@/lib/api-auth'
-import { checkRateLimitMemoryOnly } from '@/lib/rate-limit'
+import { requireSessionClientIdLite } from '@/lib/auth-api/api-auth'
+import { checkRateLimitMemoryOnly } from '@/lib/shared/rate-limit'
 import { pageViewBodySchema } from '@/lib/api-body-schemas'
 import { navIdFromPathname } from '@/lib/nav-from-pathname'
 import { pageViewDedupeKey, rememberPageView, shouldRecordPageView } from '@/lib/page-view-write-dedupe'

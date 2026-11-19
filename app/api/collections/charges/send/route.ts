@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { sendCollectionChargeBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
-import type { CollectionChargeRow } from '@/lib/collection-charges'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import type { CollectionChargeRow } from '@/lib/collections/collection-charges'
 import {
   loadClientCollectionsRow,
   sendCollectionCharge,
   type ChargeProjectInfo,
   type ChargeResidentInfo,
   type ClientCollectionsRow,
-} from '@/lib/collection-charge-ops'
+} from '@/lib/collections/collection-charge-ops'
 
 export async function POST(req: Request) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.collections, { write: true })

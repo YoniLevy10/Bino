@@ -1,18 +1,18 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { listClientIdsForUserId } from '@/lib/tenant-resolution'
+import { listClientIdsForUserId } from '@/lib/tenant/tenant-resolution'
 import {
   fetchClientEnabledNavFeatures,
   isNavFeatureEnabled,
   navItemIdForPathname,
-} from '@/lib/client-nav-features'
+} from '@/lib/client/client-nav-features'
 import { SUPABASE_AUTH_COOKIE_OPTIONS } from '@/lib/supabase-cookie-options'
 import {
   clearMiddlewareTenantCache,
   readMiddlewareTenantCache,
   writeMiddlewareTenantCache,
-} from '@/lib/middleware-tenant-cache'
+} from '@/lib/tenant/middleware-tenant-cache'
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 import { isResidentPortalApiPath, isResidentPortalPath } from '@/lib/is-resident-portal-path'
 import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
@@ -20,11 +20,11 @@ import { isPalGatePilotClient } from '@/lib/palgate/pilot'
 import {
   buildCanonicalRedirectUrl,
   shouldRedirectVercelAppHostToCanonical,
-} from '@/lib/canonical-host'
+} from '@/lib/tenant/canonical-host'
 import {
   applyMiddlewareSupabaseCookies,
   redirectWithMiddlewareCookies,
-} from '@/lib/middleware-auth-cookies'
+} from '@/lib/tenant/middleware-auth-cookies'
 import { bearerFallbackJwt, shouldSignOutResolvedSession } from '@/lib/user-access-jwt'
 
 type Pending = { response: NextResponse }
@@ -423,17 +423,31 @@ export async function middleware(req: NextRequest) {
     return redirectWithCookies(pending, url)
   }
 
-  // PalGate / חניונים — hard pilot allowlist (Savion + Bamakor; before generic nav checks).
+  // PalGate / חניונים — allowlist OR per-client DB credentials (before generic nav checks).
   if (
     pathname === '/parking' ||
     pathname.startsWith('/parking/') ||
     pathname === '/api/parking' ||
     pathname.startsWith('/api/parking/')
   ) {
-    if (!isPalGatePilotClient(clientId)) {
+    let palgateOk = isPalGatePilotClient(clientId)
+    if (!palgateOk) {
+      try {
+        const admin = getSupabaseAdmin()
+        const { data: pgRow } = await admin
+          .from('clients')
+          .select('palgate_enabled')
+          .eq('id', clientId)
+          .maybeSingle()
+        palgateOk = (pgRow as { palgate_enabled?: boolean } | null)?.palgate_enabled === true
+      } catch {
+        palgateOk = false
+      }
+    }
+    if (!palgateOk) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
-          { error: 'פיילוט חניונים / PalGate זמין רק ללקוח סביון', code: 'PALGATE_PILOT_ONLY' },
+          { error: 'חניונים / PalGate לא מופעל ללקוח זה', code: 'PALGATE_PILOT_ONLY' },
           { status: 403 }
         )
       }

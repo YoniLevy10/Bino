@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { getWorkerAttendanceScanUrl } from '@/lib/public-app-url'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { getWorkerAttendanceScanUrl } from '@/lib/shared/public-app-url'
 
 function buildOnboardingMessageHe(scanUrl: string): string {
   return (

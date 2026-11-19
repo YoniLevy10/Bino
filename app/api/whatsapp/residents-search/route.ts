@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
-import { whatsappResidentsSearchQuerySchema } from '@/lib/whatsapp-api-schemas'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
+import { whatsappResidentsSearchQuerySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 
 export async function GET(req: NextRequest) {
   if (!isWhatsAppInboxV2Enabled()) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { clearAppBadgeBestEffort } from '@/lib/push-client-core'
+import { clearAppBadgeBestEffort } from '@/lib/push/push-client-core'
 
 /**
  * Native App Store behavior: any time the user opens / returns to the app,

@@ -1,6 +1,6 @@
 import type { UsageAnalyticsReport } from '@/lib/usage-analytics'
-import { addJsonSheet, createWorkbook, downloadExcelWorkbook } from '@/lib/excel-workbook'
-import { exportDateSuffix } from '@/lib/export-filename'
+import { addJsonSheet, createWorkbook, downloadExcelWorkbook } from '@/lib/excel/excel-workbook'
+import { exportDateSuffix } from '@/lib/shared/export-filename'
 
 const SIGNAL_HE: Record<string, string> = {
   core: 'ליבה',

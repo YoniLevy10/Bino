@@ -1,10 +1,10 @@
 import { createHash, randomInt } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizePhone } from '@/lib/residents-whatsapp'
-import { isWhatsAppPlaceholderResident } from '@/lib/residents-whatsapp'
-import { sendResidentSMS } from '@/lib/sms-send'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
+import { isWhatsAppPlaceholderResident } from '@/lib/residents/residents-whatsapp'
+import { sendResidentSMS } from '@/lib/sms/sms-send'
 import { logAudit } from '@/lib/audit'
-import { BINO_PUBLIC_ORIGIN, getEnvPublicOrigin } from '@/lib/public-origin'
+import { BINO_PUBLIC_ORIGIN, getEnvPublicOrigin } from '@/lib/shared/public-origin'
 import { isResidentPortalDevUnlocked } from '@/lib/resident-portal/dev-unlock'
 
 const OTP_TTL_MS = 10 * 60 * 1000

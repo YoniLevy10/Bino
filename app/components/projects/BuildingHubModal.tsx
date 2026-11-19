@@ -16,7 +16,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
 import {
   Button,
   LoadingSpinner,

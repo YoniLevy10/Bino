@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { formatAttendanceDateTime } from '@/lib/attendance-display'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { formatAttendanceDateTime } from '@/lib/attendance/attendance-display'
 import { Card, theme } from '../ui'
 
 type Summary = {

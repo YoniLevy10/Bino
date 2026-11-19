@@ -3,8 +3,8 @@ import {
   isWhatsAppPlaceholderResident,
   WHATSAPP_PLACEHOLDER_RESIDENT_NAME,
   findApprovedResidentByPhoneClient,
-} from '@/lib/residents-whatsapp'
-import { phonesLikelySameResident, reporterListedInProjectResidents } from '@/lib/pending-resident-from-ticket'
+} from '@/lib/residents/residents-whatsapp'
+import { phonesLikelySameResident, reporterListedInProjectResidents } from '@/lib/residents/pending-resident-from-ticket'
 
 describe('isWhatsAppPlaceholderResident', () => {
   it('treats auto-stub name as placeholder', () => {

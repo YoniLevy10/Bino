@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { sendWorkerSMSAll, type WorkerSmsBatchResult } from '@/lib/sms-send'
-import { collectWorkerPhones } from '@/lib/worker-phones'
-import { getWorkerPortalUrl } from '@/lib/public-app-url'
-import { notifyWorkerAssignedPush } from '@/lib/push-notifications'
-import { getLogger } from '@/lib/logging'
-import { notifyWorkerAssignmentWhatsApp, type WorkerAssignmentWaResult } from '@/lib/worker-assignment-wa-notify'
+import { sendWorkerSMSAll, type WorkerSmsBatchResult } from '@/lib/sms/sms-send'
+import { collectWorkerPhones } from '@/lib/worker/worker-phones'
+import { getWorkerPortalUrl } from '@/lib/shared/public-app-url'
+import { notifyWorkerAssignedPush } from '@/lib/push/push-notifications'
+import { getLogger } from '@/lib/shared/logging'
+import { notifyWorkerAssignmentWhatsApp, type WorkerAssignmentWaResult } from '@/lib/worker/worker-assignment-wa-notify'
 import { runAfterResponse, shouldSyncTicketNotifications } from '@/lib/run-after-response'
 
 export type AssignTicketToWorkerResult = {

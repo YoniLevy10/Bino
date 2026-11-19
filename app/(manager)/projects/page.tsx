@@ -18,16 +18,16 @@ import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired } from '@/lib/validators'
-import { ticketDetailPath } from '@/lib/ticket-deep-link'
+import { ticketDetailPath } from '@/lib/tickets/ticket-deep-link'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import {
   MobileHeader,
   useMobileMenu,
@@ -45,7 +45,7 @@ import {
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { BuildingHubModal } from '@/app/components/projects/BuildingHubModal'

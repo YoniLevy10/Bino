@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
-import { sendWorkerSMSAll, type WorkerSmsBatchResult } from '@/lib/sms-send'
-import { collectWorkerPhones, type WorkerPhoneSource } from '@/lib/worker-phones'
-import { getLogger } from '@/lib/logging'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
+import { sendWorkerSMSAll, type WorkerSmsBatchResult } from '@/lib/sms/sms-send'
+import { collectWorkerPhones, type WorkerPhoneSource } from '@/lib/worker/worker-phones'
+import { getLogger } from '@/lib/shared/logging'
 
 export type ForwardTicketToProfessionalResult = {
   ok: boolean

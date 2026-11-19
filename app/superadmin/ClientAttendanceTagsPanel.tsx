@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { QRCodeCanvas } from 'qrcode.react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 
 type TagRow = {
   id: string

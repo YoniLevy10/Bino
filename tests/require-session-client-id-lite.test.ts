@@ -17,15 +17,15 @@ vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: vi.fn(() => ({ __admin: true })),
 }))
 
-vi.mock('@/lib/singleton-client-server', () => ({
+vi.mock('@/lib/tenant/singleton-client-server', () => ({
   getSingletonClientId: (...args: unknown[]) => getSingletonClientId(...args),
 }))
 
-vi.mock('@/lib/org-role-resolve', () => ({
+vi.mock('@/lib/auth-api/org-role-resolve', () => ({
   resolveOrgRoleForUserClient: (...args: unknown[]) => resolveOrgRoleForUserClient(...args),
 }))
 
-import { requireSessionClientId, requireSessionClientIdLite } from '@/lib/api-auth'
+import { requireSessionClientId, requireSessionClientIdLite } from '@/lib/auth-api/api-auth'
 
 describe('requireSessionClientIdLite', () => {
   beforeEach(() => {

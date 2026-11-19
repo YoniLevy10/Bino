@@ -3,7 +3,7 @@ import {
   formatWhatsAppInboxDisplayLabel,
   isDisplayableResidentName,
   pickInboxResidentByPhone,
-} from '@/lib/whatsapp-inbox-display'
+} from '@/lib/whatsapp/whatsapp-inbox-display'
 
 describe('whatsapp inbox display', () => {
   it('shows resident name when saved', () => {

@@ -17,9 +17,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { isTicketInTreatment, ticketStatusLabelHe } from '@/lib/ticket-status'
-import { toast } from '@/lib/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { isTicketInTreatment, ticketStatusLabelHe } from '@/lib/tickets/ticket-status'
+import { toast } from '@/lib/errors/error-handler'
 import { TM } from '@/lib/toast-messages'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useTenantWorkersList } from '@/lib/hooks/use-workers-list'
@@ -40,15 +40,15 @@ import {
   theme
 } from '@/app/components/ui'
 import { downloadClosedTicketsExcel } from '@/lib/closed-tickets-excel'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import type { SummaryTicketRow } from '@/lib/summary-tickets'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import type { SummaryTicketRow } from '@/lib/summary/summary-tickets'
 import {
   computeSummaryRangeKpis,
   summaryPeriodKey,
   type SummaryPeriodValue,
-} from '@/lib/summary-kpi'
-import { summaryTicketToDetail, ticketDetailToSummaryRow } from '@/lib/summary-ticket-detail'
+} from '@/lib/summary/summary-kpi'
+import { summaryTicketToDetail, ticketDetailToSummaryRow } from '@/lib/summary/summary-ticket-detail'
 import { useManagerTicketDrawer } from '@/lib/hooks/use-manager-ticket-drawer'
 import { useTicketDeepLinkOpen } from '@/lib/hooks/use-ticket-deep-link-open'
 import { PageTransitionLoader, SectionLoader } from '@/app/components/page-skeleton'
@@ -772,7 +772,7 @@ export default function SummaryPage() {
 
     setExporting(true)
     try {
-      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel/excel-workbook')
       const projectTickets = sourceTicketsForExport
         .filter(
           (t) =>
@@ -799,7 +799,7 @@ export default function SummaryPage() {
         columnWidths: [22, 12, 6, 18, 18, 14, 42, 12, 10, 18],
       })
 
-      const { summaryProjectExportFilename } = await import('@/lib/export-filename')
+      const { summaryProjectExportFilename } = await import('@/lib/shared/export-filename')
       await downloadExcelWorkbook(wb, summaryProjectExportFilename(project.name, exportFilenameSuffix()))
       toast.success(TM.excelExported)
     } catch (err) {
@@ -865,7 +865,7 @@ export default function SummaryPage() {
 
     setExporting(true)
     try {
-      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel/excel-workbook')
 
       const kpiRows = [
         { מדד: 'פתוחות כעת', ערך: summary.openNow },

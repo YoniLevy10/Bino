@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { clientHasPaidAddon, PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
+import { clientHasPaidAddon, PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { z } from 'zod'
 
 function getRequestIp(req: NextRequest): string {

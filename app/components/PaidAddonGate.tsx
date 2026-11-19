@@ -5,7 +5,7 @@ import type { ReactNode, CSSProperties } from 'react'
 import { Card, Button, theme } from './ui'
 import { PageTransitionLoader } from './PageTransitionLoader'
 import { usePaidAddons } from './PaidAddonsContext'
-import { formatAddonPriceDisplay, type PaidAddonKey } from '@/lib/paid-addons'
+import { formatAddonPriceDisplay, type PaidAddonKey } from '@/lib/addons/paid-addons'
 
 type Props = {
   addonKey: PaidAddonKey

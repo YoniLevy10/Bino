@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState, Fragment, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import {
   buildMonthOptions,
   currentMonthKey,
@@ -12,7 +12,7 @@ import {
   monthBounds,
   monthBoundsFromKey,
   SHIFT_STATUS_HE,
-} from '@/lib/attendance-display'
+} from '@/lib/attendance/attendance-display'
 import { Button, Card, theme } from '../ui'
 import { PageTransitionLoader } from '../page-skeleton'
 import { AttendanceShiftEditForm } from './AttendanceShiftEditForm'
@@ -215,7 +215,7 @@ export function AttendanceShiftsReport({
   async function exportExcel() {
     setExporting(true)
     try {
-      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
+      const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel/excel-workbook')
 
       const detailRows = shifts.map((s) => {
         const rate = workerHourlyRate(s)

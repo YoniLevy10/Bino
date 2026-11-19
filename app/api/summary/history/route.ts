@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import {
   SUMMARY_TICKET_SELECT,
   formatSummaryTicket,
   type RawSummaryTicketRow,
-} from '@/lib/summary-tickets'
+} from '@/lib/summary/summary-tickets'
 
 const HISTORY_PAGE_SIZE = 200
 const HISTORY_HARD_MAX = 2000

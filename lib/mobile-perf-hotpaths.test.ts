@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { signTourPhotosParallel } from '@/lib/ticket-attachment-url'
+import { signTourPhotosParallel } from '@/lib/tickets/ticket-attachment-url'
 
 describe('signTourPhotosParallel', () => {
   it('signs all photos in one parallel wave (not nested sequential awaits)', async () => {

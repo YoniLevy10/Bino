@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { listWhatsAppConversations } from '@/lib/whatsapp-message-store'
+import { listWhatsAppConversations } from '@/lib/whatsapp/whatsapp-message-store'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
-import { whatsappConversationsQuerySchema } from '@/lib/whatsapp-api-schemas'
-import { listWhatsAppConversationsV2 } from '@/lib/whatsapp-inbox-list-enrich'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
+import { whatsappConversationsQuerySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
+import { listWhatsAppConversationsV2 } from '@/lib/whatsapp/whatsapp-inbox-list-enrich'
 
 export async function GET(req: NextRequest) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.whatsapp_inbox)

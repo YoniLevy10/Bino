@@ -24,7 +24,7 @@ import {
   type QueryStatRow,
   type QueryYieldUpdate,
 } from '@/lib/sales-leads/query-queue'
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 
 type PlacesTextSearchResult = {
   places?: Array<{

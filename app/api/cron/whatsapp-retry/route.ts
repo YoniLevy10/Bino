@@ -4,19 +4,19 @@ import { verifyCronRequest } from '@/lib/cron-auth'
 import {
   sendRawWhatsAppPayloadWithCredentials,
   type WhatsAppMetaError,
-} from '@/lib/whatsapp-send'
-import { notifyWhatsAppSendRetriesExhausted } from '@/lib/error-logs-db'
-import { getLogger } from '@/lib/logging'
+} from '@/lib/whatsapp/whatsapp-send'
+import { notifyWhatsAppSendRetriesExhausted } from '@/lib/errors/error-logs-db'
+import { getLogger } from '@/lib/shared/logging'
 import {
   extractWhatsAppMessageId,
   formatWhatsAppTemplateFailureMessage,
   isWhatsAppFreeTextRetry,
   resolveWhatsAppRetryTemplateName,
-} from '@/lib/whatsapp-meta-errors'
+} from '@/lib/whatsapp/whatsapp-meta-errors'
 import {
   buildWhatsAppRetryPayload,
   type WhatsAppRetryDetails,
-} from '@/lib/whatsapp-retry-payload'
+} from '@/lib/whatsapp/whatsapp-retry-payload'
 
 export const maxDuration = 60
 

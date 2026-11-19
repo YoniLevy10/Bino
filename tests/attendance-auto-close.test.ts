@@ -3,7 +3,7 @@ import {
   ATTENDANCE_AUTO_CLOSE_HOURS,
   computeAutoCloseTimes,
   isShiftStaleForAutoClose,
-} from '@/lib/attendance-auto-close'
+} from '@/lib/attendance/attendance-auto-close'
 
 describe('attendance-auto-close', () => {
   it('does not close shifts younger than 10 hours', () => {

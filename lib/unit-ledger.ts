@@ -3,7 +3,7 @@
  * All writes go through getSupabaseAdmin() from API routes.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CollectionChargeRow } from '@/lib/collection-charges'
+import type { CollectionChargeRow } from '@/lib/collections/collection-charges'
 
 export const LEDGER_ENTRY_TYPES = ['charge', 'payment', 'credit', 'reversal'] as const
 export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number]

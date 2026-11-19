@@ -1,21 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 import {
   findChargeIdsByGrowIds,
   markChargePaidByGrowIds,
   persistGrowTransactionIds,
   preflightGrowWebhookSumCheck,
   recordGrowApproveResult,
-} from '@/lib/collection-charge-ops'
-import { approveGrowTransaction } from '@/lib/grow-client'
-import { readGrowPlatformConfig } from '@/lib/grow-config'
+} from '@/lib/collections/collection-charge-ops'
+import { approveGrowTransaction } from '@/lib/payments/grow-client'
+import { readGrowPlatformConfig } from '@/lib/payments/grow-config'
 import {
   authorizeGrowWebhook,
   expandBracketFormKeys,
   extractGrowWebhookIds,
-} from '@/lib/grow-webhook'
-import { notifyPlatformOps } from '@/lib/platform-ops-alert'
+} from '@/lib/payments/grow-webhook'
+import { notifyPlatformOps } from '@/lib/ops/platform-ops-alert'
 
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()

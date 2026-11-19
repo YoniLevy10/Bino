@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 import { sendServiceSmsAndWhatsApp } from '@/lib/building-governance/service-notify'
 import { COMMITTEE_ROLE_LABELS_HE, type CommitteeRole } from '@/lib/building-governance/roles'
-import { getPublicAppUrl } from '@/lib/public-app-url'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
 import { logAudit } from '@/lib/audit'
 
 /** Optional welcome / signer invite when a committee member is added. */

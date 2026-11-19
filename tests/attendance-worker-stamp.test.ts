@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isDuplicateScan, DUPLICATE_SCAN_WINDOW_MS } from '@/lib/attendance-duplicate'
-import { formatShiftMinutes } from '@/lib/attendance-display'
+import { isDuplicateScan, DUPLICATE_SCAN_WINDOW_MS } from '@/lib/attendance/attendance-duplicate'
+import { formatShiftMinutes } from '@/lib/attendance/attendance-display'
 
 describe('attendance-duplicate', () => {
   it('rejects same tag only within short debounce (NFC double-fire)', () => {

@@ -6,11 +6,11 @@ import {
   listInboxReadyTemplates,
   WHATSAPP_INBOX_META_TEMPLATES,
   type InboxMetaTemplate,
-} from '@/lib/whatsapp-inbox-meta-templates'
+} from '@/lib/whatsapp/whatsapp-inbox-meta-templates'
 import {
   managerReplyTemplateParams,
   residentFirstNameForTemplate,
-} from '@/lib/whatsapp-inbox-context'
+} from '@/lib/whatsapp/whatsapp-inbox-context'
 
 describe('whatsapp inbox meta templates', () => {
   it('includes manager_reply template', () => {
@@ -24,6 +24,8 @@ describe('whatsapp inbox meta templates', () => {
     const preview = buildInboxTemplatePreview(tpl, ['יוני', 'נגיע מחר ב-9'])
     expect(preview).toContain('שלום יוני')
     expect(preview).toContain('נגיע מחר ב-9')
+    expect(preview).toContain('קיבלתי')
+    expect(preview).toContain('צוות הניהול')
     expect(preview).not.toContain('משרד')
   })
 

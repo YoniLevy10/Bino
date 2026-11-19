@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { sendManagerSMS } from '@/lib/sms-send'
-import { getLogger } from '@/lib/logging'
+import { sendManagerSMS } from '@/lib/sms/sms-send'
+import { getLogger } from '@/lib/shared/logging'
 /** Cap first-time SLA alerts per cron run to avoid backlog bursts. */
 const MAX_FIRST_ALERTS_PER_RUN = 10
 /** Ignore very old open tickets that pre-date SLA tracking. */

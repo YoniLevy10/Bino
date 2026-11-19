@@ -2952,6 +2952,8 @@ export type Database = {
           created_at: string
           defect_ticket_id: string | null
           id: string
+          manager_notes: string | null
+          manager_notes_updated_at: string | null
           notes: string | null
           project_id: string
           worker_id: string
@@ -2962,6 +2964,8 @@ export type Database = {
           created_at?: string
           defect_ticket_id?: string | null
           id?: string
+          manager_notes?: string | null
+          manager_notes_updated_at?: string | null
           notes?: string | null
           project_id: string
           worker_id: string
@@ -2972,6 +2976,8 @@ export type Database = {
           created_at?: string
           defect_ticket_id?: string | null
           id?: string
+          manager_notes?: string | null
+          manager_notes_updated_at?: string | null
           notes?: string | null
           project_id?: string
           worker_id?: string

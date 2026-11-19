@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { completeWorkerTicketWithPhoto } from '@/lib/worker-ticket-complete'
+import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
+import { completeWorkerTicketWithPhoto } from '@/lib/worker/worker-ticket-complete'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */
 export const maxDuration = 60

@@ -16,20 +16,20 @@ import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { tryReadSessionBoundClientId } from '@/lib/tenant-browser-cache'
+import { tryReadSessionBoundClientId } from '@/lib/tenant/tenant-browser-cache'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { shouldShowPageLoadError } from '@/lib/page-load-error'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { shouldShowPageLoadError } from '@/lib/errors/page-load-error'
 import {
   fetchWithTimeout,
   isFetchTimeoutError,
   MUTATION_FETCH_TIMEOUT_MS,
-} from '@/lib/fetch-with-timeout'
+} from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validateEmail } from '@/lib/validators'
-import { ticketDetailPath } from '@/lib/ticket-deep-link'
+import { ticketDetailPath } from '@/lib/tickets/ticket-deep-link'
 import { WORKERS_LIST_SELECT, useTenantWorkersList } from '@/lib/hooks/use-workers-list'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import {
   MobileHeader,
   useMobileMenu,
@@ -47,13 +47,13 @@ import {
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 import { shouldSkipStalePageCache } from '@/lib/app-splash-session'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import Link from 'next/link'
 import { usePaidAddons } from '@/app/components/PaidAddonsContext'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import {
   collectWorkerPhones,
   formatWorkerPhoneDisplay,
@@ -63,7 +63,7 @@ import {
   parseWorkerPhone,
   sanitizeExtraPhones,
   workerHasPhone,
-} from '@/lib/worker-phones'
+} from '@/lib/worker/worker-phones'
 
 type WorkerRow = {
   id: string

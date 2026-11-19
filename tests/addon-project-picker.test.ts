@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { navItemIdForPathname } from '@/lib/client-nav-features'
+import { navItemIdForPathname } from '@/lib/client/client-nav-features'
 
 describe('navItemIdForPathname', () => {
   it('maps dedicated add-on pages to nav ids', () => {

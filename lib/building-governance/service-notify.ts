@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { send019StaffSms } from '@/lib/sms'
-import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp-send'
-import { isWithinWhatsAppSessionWindow } from '@/lib/whatsapp-message-store'
-import { normalizePhone } from '@/lib/residents-whatsapp'
-import { getLogger } from '@/lib/logging'
+import { send019StaffSms } from '@/lib/sms/sms'
+import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp/whatsapp-send'
+import { isWithinWhatsAppSessionWindow } from '@/lib/whatsapp/whatsapp-message-store'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
+import { getLogger } from '@/lib/shared/logging'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 
 export type TenantNotifyCreds = {

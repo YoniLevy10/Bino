@@ -4,7 +4,7 @@ import {
   readMiddlewareTenantCache,
   writeMiddlewareTenantCache,
   clearMiddlewareTenantCache,
-} from '@/lib/middleware-tenant-cache'
+} from '@/lib/tenant/middleware-tenant-cache'
 
 function fakeResponse() {
   const jar = new Map<string, string>()

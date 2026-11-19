@@ -6,12 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const requireSessionClientIdLite = vi.fn()
 const requireSessionClientId = vi.fn()
 
-vi.mock('@/lib/api-auth', () => ({
+vi.mock('@/lib/auth-api/api-auth', () => ({
   requireSessionClientIdLite: (...args: unknown[]) => requireSessionClientIdLite(...args),
   requireSessionClientId: (...args: unknown[]) => requireSessionClientId(...args),
 }))
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/shared/rate-limit', () => ({
   checkRateLimitMemoryOnly: () => ({ isLimited: false }),
 }))
 
@@ -35,7 +35,7 @@ vi.mock('@/lib/supabase-admin', () => ({
   })),
 }))
 
-vi.mock('@/lib/paid-addons', () => ({
+vi.mock('@/lib/addons/paid-addons', () => ({
   listActiveAddonsCatalog: vi.fn(async () => []),
   getClientEnabledAddonKeys: vi.fn(async () => new Set<string>()),
 }))

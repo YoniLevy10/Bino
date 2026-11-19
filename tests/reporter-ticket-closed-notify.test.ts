@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockSendResident = vi.fn()
 const mockSendSms = vi.fn()
 
-vi.mock('@/lib/whatsapp-resident-outbound', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-resident-outbound', () => ({
   sendResidentTextOrTemplate: (...args: unknown[]) => mockSendResident(...args),
 }))
 
-vi.mock('@/lib/sms-send', () => ({
+vi.mock('@/lib/sms/sms-send', () => ({
   sendResidentSMS: (...args: unknown[]) => mockSendSms(...args),
 }))
 
-vi.mock('@/lib/whatsapp-templates', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-templates', () => ({
   resolveWhatsAppTemplateMessage: vi.fn(
     async (_admin: unknown, _clientId: unknown, _key: unknown, _fallback: unknown, vars: { project_name: string }) =>
       `שלום! התקלה שדיווחת בבניין ${vars.project_name} טופלה וסגורה.`
@@ -19,7 +19,7 @@ vi.mock('@/lib/whatsapp-templates', () => ({
   resolveSmsTemplateMessage: vi.fn(async () => 'sms-body'),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock('@/lib/logging', () => ({
 import {
   isRecentCloseNotifyForBuilding,
   notifyReporterTicketClosed,
-} from '@/lib/reporter-ticket-closed-notify'
+} from '@/lib/reporter/reporter-ticket-closed-notify'
 
 const CLIENT_ID = 'client-1'
 const TICKET_ID = 'ticket-1'

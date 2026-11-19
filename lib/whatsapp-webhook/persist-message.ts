@@ -2,10 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   extractMetaWaMessageId,
   persistWhatsAppMessage,
-} from '@/lib/whatsapp-message-store'
-import { sendWhatsAppInteractivePayloadWithCredentials } from '@/lib/whatsapp-send'
-import { buildProjectSelectionListPayload } from '@/lib/whatsapp-interactive'
-import type { ProjectRow } from '@/lib/whatsapp-interactive'
+} from '@/lib/whatsapp/whatsapp-message-store'
+import { sendWhatsAppInteractivePayloadWithCredentials } from '@/lib/whatsapp/whatsapp-send'
+import { buildProjectSelectionListPayload } from '@/lib/whatsapp/whatsapp-interactive'
+import type { ProjectRow } from '@/lib/whatsapp/whatsapp-interactive'
 
 export type WebhookOutboundPersisters = {
   persistOutboundText: (

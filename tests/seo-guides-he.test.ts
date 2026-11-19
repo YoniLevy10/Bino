@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { SEO_GUIDES_HE, getAllSeoGuideSlugs, getSeoGuide } from '@/lib/seo-guides-he'
-import { buildSeoGuideJsonLd } from '@/lib/seo-guide-jsonld'
+import { SEO_GUIDES_HE, getAllSeoGuideSlugs, getSeoGuide } from '@/lib/seo/seo-guides-he'
+import { buildSeoGuideJsonLd } from '@/lib/seo/seo-guide-jsonld'
 
 describe('seo-guides-he', () => {
   it('has unique slugs and Israel-focused copy', () => {

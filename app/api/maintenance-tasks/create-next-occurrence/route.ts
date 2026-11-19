@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { createNextOccurrenceBodySchema } from '@/lib/api-body-schemas'
-import { createNextMaintenanceOccurrence } from '@/lib/maintenance-create-next-occurrence'
+import { createNextMaintenanceOccurrence } from '@/lib/maintenance/maintenance-create-next-occurrence'
 
 export async function POST(req: Request) {
   const auth = await requireSessionWriteAccess()

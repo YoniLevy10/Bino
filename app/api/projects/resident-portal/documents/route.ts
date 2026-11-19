@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { removeDurableStorageObjects } from '@/lib/storage-purge'
 
 const BUCKET = 'project-documents' as const

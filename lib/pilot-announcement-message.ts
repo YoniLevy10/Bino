@@ -1,6 +1,6 @@
 /** Pilot welcome SMS — multilingual. No emoji (019SMS rejects them). */
 
-import { digitsForWaMeLink } from '@/lib/wa-me-phone'
+import { digitsForWaMeLink } from '@/lib/whatsapp/wa-me-phone'
 
 export function stripEmojiForSms(text: string): string {
   return text

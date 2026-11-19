@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { getLogger, getAuditLogger } from '@/lib/logging'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
 import {
   CLIENT_LOGOS_BUCKET,
   clientLogoExtension,
   ensureClientLogosBucket,
   resolveClientLogoMime,
   validateClientLogoFile,
-} from '@/lib/client-logo-upload'
+} from '@/lib/client/client-logo-upload'
 
 export async function POST(req: Request) {
   const logger = getLogger()

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { z } from 'zod'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
 
 const bodySchema = z.object({ professional_id: z.string().uuid() })

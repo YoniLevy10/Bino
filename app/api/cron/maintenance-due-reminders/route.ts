@@ -5,8 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { notifyWorkerMaintenanceTaskAssigned } from '@/lib/notify-worker-maintenance-task'
-import { getLogger } from '@/lib/logging'
+import { notifyWorkerMaintenanceTaskAssigned } from '@/lib/notify/notify-worker-maintenance-task'
+import { getLogger } from '@/lib/shared/logging'
 
 export const maxDuration = 60
 

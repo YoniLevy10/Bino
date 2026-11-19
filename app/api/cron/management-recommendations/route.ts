@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 import { runClientDetectors } from '@/lib/recommendations/run-client-detectors'
 
 /** In-app recommendations scan — does NOT send SMS/WhatsApp. */

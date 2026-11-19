@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import { suggestWorkerForTicketId } from '@/lib/recommendations/suggest-worker-for-ticket'
 
 export async function GET(req: Request) {

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
-import { getResidentPortalJoinUrl } from '@/lib/public-origin'
+import { getResidentPortalJoinUrl } from '@/lib/shared/public-origin'
 
 export async function GET(req: Request) {
   const auth = await requireSessionWriteAccess()

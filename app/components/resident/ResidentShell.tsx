@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { clearTenantBrowserCaches } from '@/lib/tenant-browser-cache'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { useIsMobile } from '@/lib/use-is-mobile'
+import { clearTenantBrowserCaches } from '@/lib/tenant/tenant-browser-cache'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 import {
   ResidentAmbientWash,
   ResidentAlert,

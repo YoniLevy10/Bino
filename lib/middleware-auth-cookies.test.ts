@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   applyMiddlewareSupabaseCookies,
   redirectWithMiddlewareCookies,
-} from '@/lib/middleware-auth-cookies'
-import { MIDDLEWARE_TENANT_COOKIE } from '@/lib/middleware-tenant-cache'
+} from '@/lib/tenant/middleware-auth-cookies'
+import { MIDDLEWARE_TENANT_COOKIE } from '@/lib/tenant/middleware-tenant-cache'
 
 function cookieNames(response: NextResponse): string[] {
   return response.headers.getSetCookie().map((header) => header.split('=')[0] ?? '')

@@ -1,8 +1,8 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import type { PaidAddonId } from '@/lib/paid-addons-catalog'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import type { PaidAddonId } from '@/lib/addons/paid-addons-catalog'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { theme } from '../ui'
 
 function LockOverlay() {

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, type CSSProperties } from 'react'
-import { forwardFromInbox, type ForwardDryRunPreview } from '@/lib/whatsapp-inbox-hooks'
+import { forwardFromInbox, type ForwardDryRunPreview } from '@/lib/whatsapp/whatsapp-inbox-hooks'
 import { useActiveProfessionalsForAssign } from '@/lib/hooks/use-professionals-list'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 import { Button } from '../ui'
 
 type Props = {

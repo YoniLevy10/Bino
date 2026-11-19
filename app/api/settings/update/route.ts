@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { settingsUpdateBodySchema } from '@/lib/api-body-schemas'
 import { logAudit } from '@/lib/audit'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import {
   assertTenantCanEnableGrow,
   findOtherClientUsingGrowUserId,
   normalizeGrowUserId,
-} from '@/lib/grow-credentials'
+} from '@/lib/payments/grow-credentials'
 import {
   assertTenantCanEnableIcount,
   normalizeIcountApiToken,
   normalizeIcountCid,
   normalizeIcountPaypageId,
-} from '@/lib/icount-credentials'
-import { normalizePhone019 } from '@/lib/sms-019-core'
+} from '@/lib/payments/icount-credentials'
+import { normalizePhone019 } from '@/lib/sms/sms-019-core'
 
 export async function POST(req: Request) {
   const auth = await requireSessionWriteAccess()

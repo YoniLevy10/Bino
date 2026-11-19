@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
 import { workerLogTourBodySchema } from '@/lib/api-body-schemas'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   TICKET_ATTACHMENT_MAX_WORKER_BYTES,
   TICKET_ATTACHMENT_WORKER_MIME_TYPES,
-} from '@/lib/ticket-attachment-upload'
+} from '@/lib/tickets/ticket-attachment-upload'
 import {
   createServerSignedAttachmentUrl,
   signTourPhotosParallel,
-} from '@/lib/ticket-attachment-url'
+} from '@/lib/tickets/ticket-attachment-url'
 
 const TOURS_LOOKBACK_DAYS = 30
 const TOURS_LIMIT = 80

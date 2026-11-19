@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp/whatsapp-recover-stashed-media'
 
 const bodySchema = z.object({
   ticket_id: z.string().uuid(),

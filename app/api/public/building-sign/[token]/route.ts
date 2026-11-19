@@ -4,8 +4,8 @@ import { submitBuildingSignatureBodySchema } from '@/lib/api-body-schemas'
 import { applyDecisionMajorityIfReached } from '@/lib/building-governance/apply-majority'
 import { auditBuildingSignatureSign } from '@/lib/building-governance/sign-audit'
 import { hashSignatureContent } from '@/lib/building-governance/signature-content'
-import { getLogger } from '@/lib/logging'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { getLogger } from '@/lib/shared/logging'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 
 export const dynamic = 'force-dynamic'
 

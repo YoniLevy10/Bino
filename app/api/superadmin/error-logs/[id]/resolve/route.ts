@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 
 export async function PATCH(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSuperAdmin()

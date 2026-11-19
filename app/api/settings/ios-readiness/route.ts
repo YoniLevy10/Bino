@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import { buildIosReadinessReport } from '@/lib/ios-readiness'
-import { BINO_PUBLIC_ORIGIN } from '@/lib/public-origin'
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { BINO_PUBLIC_ORIGIN } from '@/lib/shared/public-origin'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 
 export async function GET() {
   const auth = await requireSessionClientId()

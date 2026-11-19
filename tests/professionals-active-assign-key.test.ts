@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 
 describe('professionalsActiveAssign query key', () => {
   it('is stable across dashboard/tickets for the same client', () => {

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isValidBuildingAssetSlug } from '@/lib/building-asset-public'
-import { getLogger } from '@/lib/logging'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { getLogger } from '@/lib/shared/logging'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 
 export const dynamic = 'force-dynamic'
 

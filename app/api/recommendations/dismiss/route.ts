@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { dismissRecommendationBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { recordRecommendationEvent } from '@/lib/recommendations/record-event'
 
 export async function POST(req: Request) {

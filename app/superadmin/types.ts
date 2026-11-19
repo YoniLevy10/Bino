@@ -59,6 +59,7 @@ export type TabMode =
 export type ClientTask =
   | 'hub'
   | 'launch'
+  | 'onboarding'
   | 'plan'
   | 'nav'
   | 'addons'

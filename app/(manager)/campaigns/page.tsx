@@ -1,12 +1,12 @@
 'use client'
 
 import { Suspense, useEffect, useState, type CSSProperties } from 'react'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { AddonProjectPicker } from '@/app/components/addons/AddonProjectPicker'
-import { fetchWithTimeout, LONG_RUNNING_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
-import { WHATSAPP_COEXISTENCE_NOTE } from '@/lib/wa-broadcast'
+import { fetchWithTimeout, LONG_RUNNING_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
+import { WHATSAPP_COEXISTENCE_NOTE } from '@/lib/whatsapp/wa-broadcast'
 import { Button, Card, theme, LoadingSpinner } from '@/app/components/ui'
 
 async function pollNotificationRun(

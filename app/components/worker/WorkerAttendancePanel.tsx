@@ -3,20 +3,20 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import type { LocalAttendanceState } from '@/lib/attendance-types'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import type { LocalAttendanceState } from '@/lib/attendance/attendance-types'
 import {
   formatAttendanceDateTime,
   formatShiftMinutes,
   SHIFT_STATUS_HE,
-} from '@/lib/attendance-display'
+} from '@/lib/attendance/attendance-display'
 import {
   getLocalAttendanceState,
   getPendingAttendanceEvents,
   getWorkerOfflineProfile,
   initOfflineAttendanceDB,
 } from '@/lib/offline-attendance-db'
-import { fetchAndCacheWorkerAttendanceBootstrap } from '@/lib/worker-attendance-bootstrap'
+import { fetchAndCacheWorkerAttendanceBootstrap } from '@/lib/worker/worker-attendance-bootstrap'
 import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
 
 type ShiftRow = {

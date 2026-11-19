@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { toast, asyncHandler, validateResponse } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { toast, asyncHandler, validateResponse } from '@/lib/errors/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { LoadingSpinner } from '../components/ui'
 
 type ProjectRow = {

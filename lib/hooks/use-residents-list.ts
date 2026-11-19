@@ -3,9 +3,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 
 /** First-page size for warm nav — smaller than legacy 500 for faster paint. */
 export const RESIDENTS_PAGE_SIZE = 100

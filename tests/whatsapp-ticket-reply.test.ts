@@ -2,28 +2,28 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockSendResident = vi.fn()
 
-vi.mock('@/lib/whatsapp-resident-outbound', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-resident-outbound', () => ({
   sendResidentTextOrTemplate: (...args: unknown[]) => mockSendResident(...args),
 }))
 
-vi.mock('@/lib/whatsapp-inbox-context', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-inbox-context', () => ({
   loadWhatsAppInboxContext: vi.fn().mockResolvedValue({}),
   managerReplyTemplateParams: vi.fn().mockReturnValue([]),
 }))
 
-vi.mock('@/lib/meta-whatsapp-pending-actions', () => ({
+vi.mock('@/lib/whatsapp/meta-whatsapp-pending-actions', () => ({
   metaTemplateNameManagerReply: () => 'manager_reply',
 }))
 
-vi.mock('@/lib/whatsapp-message-store', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-message-store', () => ({
   isWithinWhatsAppSessionWindow: vi.fn().mockResolvedValue(true),
 }))
 
-vi.mock('@/lib/sms-send', () => ({
+vi.mock('@/lib/sms/sms-send', () => ({
   sendResidentSMS: vi.fn().mockResolvedValue(false),
 }))
 
-import { sendTicketResidentWhatsAppReply } from '@/lib/whatsapp-ticket-reply'
+import { sendTicketResidentWhatsAppReply } from '@/lib/whatsapp/whatsapp-ticket-reply'
 
 function makeAdmin(reporterPhone: string | null) {
   return {

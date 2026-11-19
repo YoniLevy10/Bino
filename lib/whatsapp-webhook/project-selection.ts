@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ProjectRow } from '@/lib/whatsapp-interactive'
-import { buildBuildingSearchQueries } from '@/lib/whatsapp-address-extract'
+import type { ProjectRow } from '@/lib/whatsapp/whatsapp-interactive'
+import { buildBuildingSearchQueries } from '@/lib/whatsapp/whatsapp-address-extract'
 import {
   rankProjectsByBuildingSearch,
   searchProjectsByBuildingFromList,
-} from '@/lib/whatsapp-building-search'
+} from '@/lib/whatsapp/whatsapp-building-search'
 
 export function searchProjectsInList(projects: ProjectRow[], searchText: string): ProjectRow[] {
   return searchProjectsByBuildingFromListWithVariants(projects, searchText)

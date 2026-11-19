@@ -4,14 +4,14 @@ import {
   requireSessionClientId,
   requireSessionWriteAccess,
   type SessionClientContext,
-} from '@/lib/api-auth'
+} from '@/lib/auth-api/api-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   addonRequiredMessageHe,
   clientHasPaidAddon,
   getCatalogRowForAddon,
   type PaidAddonKey,
-} from '@/lib/paid-addons'
+} from '@/lib/addons/paid-addons'
 
 export type RequirePaidAddonResult =
   | { ok: true }

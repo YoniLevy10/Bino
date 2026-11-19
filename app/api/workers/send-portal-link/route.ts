@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { sendWorkerPortalLinkBodySchema } from '@/lib/api-body-schemas'
-import { sendWorkerSMSAll } from '@/lib/sms-send'
-import { getWorkerPortalUrl } from '@/lib/public-app-url'
-import { collectWorkerPhones } from '@/lib/worker-phones'
+import { sendWorkerSMSAll } from '@/lib/sms/sms-send'
+import { getWorkerPortalUrl } from '@/lib/shared/public-app-url'
+import { collectWorkerPhones } from '@/lib/worker/worker-phones'
 
 export async function POST(req: Request) {
   try {

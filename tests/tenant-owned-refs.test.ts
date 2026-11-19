@@ -6,7 +6,7 @@ import {
   assertProjectOwnedByClient,
   assertWorkerOwnedByClient,
   assertTicketOwnedByClient,
-} from '@/lib/tenant-owned-refs'
+} from '@/lib/tenant/tenant-owned-refs'
 
 const CLIENT_A = 'client-a'
 const CLIENT_B = 'client-b'

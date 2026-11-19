@@ -22,7 +22,7 @@ describe('clearAppBadgeBestEffort', () => {
       },
     })
 
-    const { clearAppBadgeBestEffort } = await import('@/lib/push-client-core')
+    const { clearAppBadgeBestEffort } = await import('@/lib/push/push-client-core')
     await clearAppBadgeBestEffort()
 
     expect(clearAppBadge).toHaveBeenCalledTimes(1)

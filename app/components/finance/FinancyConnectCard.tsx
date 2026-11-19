@@ -11,9 +11,9 @@ import {
   fetchWithTimeout,
   LONG_RUNNING_FETCH_TIMEOUT_MS,
   MUTATION_FETCH_TIMEOUT_MS,
-} from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+} from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 
 const FINANCY_SETTINGS = 'https://financy.open-finance.ai/settings'

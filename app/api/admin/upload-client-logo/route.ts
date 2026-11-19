@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger, getAuditLogger } from '@/lib/logging'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
 import {
   CLIENT_LOGOS_BUCKET,
   clientLogoExtension,
   ensureClientLogosBucket,
   resolveClientLogoMime,
   validateClientLogoFile,
-} from '@/lib/client-logo-upload'
+} from '@/lib/client/client-logo-upload'
 
 
 export async function POST(req: Request) {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { isValidGaMeasurementId } from '@/lib/marketing-analytics'
+import { isValidGaMeasurementId } from '@/lib/marketing/marketing-analytics'
 
 describe('marketing-analytics', () => {
   it('accepts GA4 measurement ids', () => {
@@ -19,7 +19,7 @@ describe('marketing-analytics', () => {
 
     it('no-ops when window is missing', async () => {
       vi.stubEnv('NEXT_PUBLIC_GA_MEASUREMENT_ID', 'G-TEST12345')
-      const mod = await import('@/lib/marketing-analytics')
+      const mod = await import('@/lib/marketing/marketing-analytics')
       expect(() => mod.trackMarketingEvent('page_view')).not.toThrow()
     })
 
@@ -28,7 +28,7 @@ describe('marketing-analytics', () => {
       const gtag = vi.fn()
       // @ts-expect-error minimal browser stub for node vitest
       globalThis.window = { gtag, dataLayer: [] }
-      const mod = await import('@/lib/marketing-analytics')
+      const mod = await import('@/lib/marketing/marketing-analytics')
       mod.trackMarketingLead('whatsapp_demo', { locale: 'he' })
       expect(gtag).toHaveBeenCalledWith(
         'event',

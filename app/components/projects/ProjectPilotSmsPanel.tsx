@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { buildPilotAnnouncementSms, stripEmojiForSms } from '@/lib/pilot-announcement-message'
-import { fetchWithTimeout, LONG_RUNNING_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout, LONG_RUNNING_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import { supabase } from '@/lib/supabase'
 import { Button, Card, theme } from '../ui'
 

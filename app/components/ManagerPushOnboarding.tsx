@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from './ui'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 import {
   clearManagerPushAlerts,
   getManagerPushBlockedReason,

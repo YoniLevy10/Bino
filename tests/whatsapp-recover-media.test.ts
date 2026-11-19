@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reporterPhoneLookupKeys } from '@/lib/whatsapp-recover-stashed-media'
+import { reporterPhoneLookupKeys } from '@/lib/whatsapp/whatsapp-recover-stashed-media'
 
 describe('reporterPhoneLookupKeys', () => {
   it('includes raw and normalized 972 forms', () => {

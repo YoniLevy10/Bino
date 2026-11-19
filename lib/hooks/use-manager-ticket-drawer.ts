@@ -5,13 +5,13 @@ import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { fetchTicketForDetail } from '@/lib/fetch-ticket-for-detail'
 import { useTicketDetailData } from '@/lib/hooks/use-ticket-detail-data'
-import { summaryTicketToDetail } from '@/lib/summary-ticket-detail'
-import type { SummaryTicketRow } from '@/lib/summary-tickets'
-import type { TicketDetailRow } from '@/lib/ticket-detail-types'
-import { asyncHandler, toast } from '@/lib/error-handler'
+import { summaryTicketToDetail } from '@/lib/summary/summary-ticket-detail'
+import type { SummaryTicketRow } from '@/lib/summary/summary-tickets'
+import type { TicketDetailRow } from '@/lib/tickets/ticket-detail-types'
+import { asyncHandler, toast } from '@/lib/errors/error-handler'
 import { TM } from '@/lib/toast-messages'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toastReporterClosedNotifySummary } from '@/lib/reporter-closed-notify-toast'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toastReporterClosedNotifySummary } from '@/lib/reporter/reporter-closed-notify-toast'
 
 type OpenOpts = { toggle?: boolean }
 
@@ -85,7 +85,7 @@ export function useManagerTicketDrawer(opts?: { onRefresh?: () => void | Promise
     setSavingTicket(true)
     await asyncHandler(
       async () => {
-        const { saveDashboardTicket } = await import('@/lib/dashboard-ticket-save')
+        const { saveDashboardTicket } = await import('@/lib/dashboard/dashboard-ticket-save')
         const { didAssign, closedNow, reporter_has_phone, whatsapp_sent, notifications_queued } =
           await saveDashboardTicket({
           ticketId: selectedTicket.id,

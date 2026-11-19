@@ -8,7 +8,7 @@ import {
   PREMIUM_NAV_FEATURE_IDS,
   REQUIRED_NAV_FEATURE_IDS,
   SETUP_PACKAGE_NAV_FEATURE_IDS,
-} from '@/lib/client-nav-features'
+} from '@/lib/client/client-nav-features'
 import { DEFAULT_SIDEBAR_NAV_ORDER, resolveSidebarNavItems } from '@/lib/sidebar-nav'
 
 describe('client nav features', () => {

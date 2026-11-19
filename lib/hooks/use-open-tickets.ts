@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 /** Shared open-tickets fetch size — one RQ key for dashboard + tickets page. */

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { createDocumentFolderBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 type FolderRow = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summaryTicketToDetail, ticketDetailToSummaryRow } from '@/lib/summary-ticket-detail'
+import { summaryTicketToDetail, ticketDetailToSummaryRow } from '@/lib/summary/summary-ticket-detail'
 
 describe('summary-ticket-detail', () => {
   it('maps summary row to ticket detail row', () => {

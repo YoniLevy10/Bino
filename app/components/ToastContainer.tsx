@@ -6,7 +6,7 @@
  */
 
 import React from 'react'
-import { Toast, registerToastHandler } from '@/lib/error-handler'
+import { Toast, registerToastHandler } from '@/lib/errors/error-handler'
 import { theme } from './ui'
 
 const TOAST_Z_INDEX = 350

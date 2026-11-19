@@ -3,7 +3,7 @@ import type {
   NfcTagRow,
   PendingAttendanceEvent,
   WorkerOfflineProfile,
-} from '@/lib/attendance-types'
+} from '@/lib/attendance/attendance-types'
 
 const DB_NAME = 'bamakor_offline_attendance'
 const DB_VERSION = 2

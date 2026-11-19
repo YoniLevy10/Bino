@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import type { PaidAddonKey } from '@/lib/paid-addons'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import type { PaidAddonKey } from '@/lib/addons/paid-addons'
 import { PaidAddonGate } from '@/app/components/PaidAddonGate'
 import { AppShell, MobileHeader, useMobileMenu, PageHeader } from '../ui'
 
@@ -104,8 +104,19 @@ const styles: Record<string, CSSProperties> = {
   contentImmersiveMobile: {
     padding: 0,
     maxWidth: '100%',
+    flex: '1 1 0%',
+    minHeight: 0,
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   bodyImmersive: {
     gap: 0,
+    flex: '1 1 0%',
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'clip',
   },
 }

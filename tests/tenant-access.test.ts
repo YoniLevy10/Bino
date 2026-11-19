@@ -3,7 +3,7 @@ import {
   listClientIdsForUserId,
   resolveClientIdForUserId,
   requireClientIdForUser,
-} from '@/lib/tenant-resolution'
+} from '@/lib/tenant/tenant-resolution'
 
 function chainEqIn(resolveValue: unknown) {
   const terminal = {
@@ -184,7 +184,7 @@ describe('tenant resolution security', () => {
 
 describe('userHasTenantAccess', () => {
   it('returns false when resolveClientIdForUserId is null', async () => {
-    const { userHasTenantAccess } = await import('@/lib/tenant-access')
+    const { userHasTenantAccess } = await import('@/lib/tenant/tenant-access')
     const admin = {
       from: () => chainEqIn({ data: [], error: null }),
     } as unknown as Parameters<typeof userHasTenantAccess>[0]

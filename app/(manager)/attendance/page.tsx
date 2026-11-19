@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { monthBounds } from '@/lib/attendance-display'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { monthBounds } from '@/lib/attendance/attendance-display'
 import { useAttendanceDashboard } from '@/lib/hooks/use-attendance-dashboard'
 import {
   Card,
@@ -18,12 +18,12 @@ import {
 } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { AttendanceShiftsReport } from '@/app/components/attendance/AttendanceShiftsReport'
 import { AttendanceHelpContact } from '@/app/components/attendance/AttendanceHelpContact'
 import { AttendanceAnomalies, type AttendanceAnomaliesData } from '@/app/components/attendance/AttendanceAnomalies'
 import { AttendanceHistoryTab } from '@/app/components/attendance/AttendanceHistoryTab'
-import { EVENT_TYPE_HE } from '@/lib/attendance-display'
+import { EVENT_TYPE_HE } from '@/lib/attendance/attendance-display'
 
 type PageTab = 'current' | 'history'
 

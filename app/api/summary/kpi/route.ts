@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { TICKET_STATUSES_IN_TREATMENT } from '@/lib/ticket-status'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { TICKET_STATUSES_IN_TREATMENT } from '@/lib/tickets/ticket-status'
 import {
   SUMMARY_TICKET_SELECT,
   formatSummaryTicket,
   ticketRangeOrFilter,
   type RawSummaryTicketRow,
-} from '@/lib/summary-tickets'
+} from '@/lib/summary/summary-tickets'
 
 /** Cap sample rows for summary cards — full history is `/api/summary/history`. */
 const TICKETS_IN_RANGE_LIMIT = 200

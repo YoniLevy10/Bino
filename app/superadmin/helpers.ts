@@ -4,7 +4,7 @@ import {
   effectiveMaxWorkers,
   normalizeTier,
   type PlanCatalogLimits,
-} from '@/lib/plan-limits'
+} from '@/lib/plans/plan-limits'
 import type { ClientRow, EditState, PlanCatalogRow } from './types'
 
 export type NewClientForm = {

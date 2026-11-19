@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { getLogger } from '@/lib/logging'
-import { autoCloseAllStaleOpenShifts } from '@/lib/attendance-auto-close'
-import { listWorkerStampEnabledClientIds } from '@/lib/worker-stamp-clients'
+import { getLogger } from '@/lib/shared/logging'
+import { autoCloseAllStaleOpenShifts } from '@/lib/attendance/attendance-auto-close'
+import { listWorkerStampEnabledClientIds } from '@/lib/worker/worker-stamp-clients'
 
 /** Auto-close open shifts older than 10h (no checkout) so workers can clock in again. */
 export async function GET(req: NextRequest) {

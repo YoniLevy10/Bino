@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { getLogger } from '@/lib/shared/logging'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { ticketIdBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { notifyReporterTicketClosed } from '@/lib/reporter-ticket-closed-notify'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { notifyReporterTicketClosed } from '@/lib/reporter/reporter-ticket-closed-notify'
 
 /**
  * Called after a ticket is saved as CLOSED from the dashboard (e.g. /tickets) where

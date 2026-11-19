@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { bulkSendCollectionChargesBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { runAfterResponse } from '@/lib/run-after-response'
 import {
   getCollectionBulkSendRun,
   processCollectionBulkSendRun,
-} from '@/lib/collection-bulk-send'
-import { loadClientCollectionsRow } from '@/lib/collection-charge-ops'
+} from '@/lib/collections/collection-bulk-send'
+import { loadClientCollectionsRow } from '@/lib/collections/collection-charge-ops'
 
 export const maxDuration = 60
 

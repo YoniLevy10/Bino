@@ -4,8 +4,8 @@ import {
   BINO_MARKETING_DESCRIPTION_EN,
   BINO_MARKETING_TITLE,
   BINO_MARKETING_TITLE_EN,
-} from '@/lib/marketing-site'
-import { MARKETING_COPY } from '@/lib/marketing-copy'
+} from '@/lib/marketing/marketing-site'
+import { MARKETING_COPY } from '@/lib/marketing/marketing-copy'
 
 describe('marketing SEO meta lengths', () => {
   it('keeps HE/EN titles in the 50–60 SERP band', () => {
@@ -42,7 +42,7 @@ describe('marketing-social sameAs', () => {
     vi.stubEnv('NEXT_PUBLIC_SOCIAL_LINKEDIN', 'https://www.linkedin.com/company/bino')
     vi.stubEnv('NEXT_PUBLIC_SOCIAL_FACEBOOK', 'not-a-url')
     vi.stubEnv('NEXT_PUBLIC_SOCIAL_INSTAGRAM', '')
-    const { getMarketingSocialSameAs } = await import('@/lib/marketing-social')
+    const { getMarketingSocialSameAs } = await import('@/lib/marketing/marketing-social')
     expect(getMarketingSocialSameAs()).toEqual(['https://www.linkedin.com/company/bino'])
   })
 })

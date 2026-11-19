@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { buildNfcTagScanUrl } from '@/lib/nfc-tag-utils'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { buildNfcTagScanUrl } from '@/lib/nfc/nfc-tag-utils'
 
 /** Printable HTML sheet — one sticker block per tag (print to PDF from browser). */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

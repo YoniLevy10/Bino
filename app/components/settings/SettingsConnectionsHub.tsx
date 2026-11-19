@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, Card, theme } from '@/app/components/ui'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { useSidebarNav } from '@/app/components/SidebarNavContext'
 
 export type ConnectionDetailTab = 'whatsapp' | 'grow' | 'financy' | 'parking'

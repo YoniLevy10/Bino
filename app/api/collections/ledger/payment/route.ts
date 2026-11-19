@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { postUnitLedgerPaymentBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import {
   COLLECTION_CHARGE_ROW_SELECT,
   type CollectionChargeRow,
   type CollectionChargeStatus,
-} from '@/lib/collection-charges'
+} from '@/lib/collections/collection-charges'
 import {
   chargeAnchorFromRow,
   ledgerIdempotencyKey,

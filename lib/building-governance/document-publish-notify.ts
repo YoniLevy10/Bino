@@ -2,9 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 import { notifyTenantManagerService } from '@/lib/building-governance/service-notify'
-import { getPublicAppUrl } from '@/lib/public-app-url'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
 import { logAudit } from '@/lib/audit'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 async function notifyManagersPush(
   admin: SupabaseClient,

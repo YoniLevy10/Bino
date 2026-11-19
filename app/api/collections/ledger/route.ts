@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import {
   computeRunningBalances,
   listLedgerEntriesForUnit,
   syncChargesIntoLedger,
 } from '@/lib/unit-ledger'
-import { formatChargeAmountIls } from '@/lib/collection-charges'
+import { formatChargeAmountIls } from '@/lib/collections/collection-charges'
 
 /**
  * GET /api/collections/ledger?unit_id=… | resident_id=… [&project_id=…]

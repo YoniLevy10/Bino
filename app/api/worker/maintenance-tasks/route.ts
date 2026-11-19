@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   workerMaintenanceTaskCreateBodySchema,
   workerMaintenanceTaskUpdateBodySchema,
 } from '@/lib/api-body-schemas'
-import { assertProjectOwnedByClient } from '@/lib/tenant-owned-refs'
+import { assertProjectOwnedByClient } from '@/lib/tenant/tenant-owned-refs'
 import {
   TICKET_ATTACHMENT_WORKER_MIME_TYPES,
   TICKET_ATTACHMENT_MAX_WORKER_BYTES,
-} from '@/lib/ticket-attachment-upload'
-import { createServerSignedAttachmentUrl } from '@/lib/ticket-attachment-url'
+} from '@/lib/tickets/ticket-attachment-upload'
+import { createServerSignedAttachmentUrl } from '@/lib/tickets/ticket-attachment-url'
 
 function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
 
-    const { isMaintenanceTaskForToday } = await import('@/lib/maintenance-task-day')
+    const { isMaintenanceTaskForToday } = await import('@/lib/maintenance/maintenance-task-day')
     const tasks = (data || []).filter((row) =>
       todayOnly
         ? isMaintenanceTaskForToday({
@@ -99,7 +99,7 @@ export async function PATCH(req: NextRequest) {
       patch.notes = parsed.data.notes?.trim() || null
     }
     if (parsed.data.checklist_items !== undefined) {
-      const { normalizeChecklistItems } = await import('@/lib/maintenance-checklist')
+      const { normalizeChecklistItems } = await import('@/lib/maintenance/maintenance-checklist')
       patch.checklist_items = normalizeChecklistItems(parsed.data.checklist_items)
     }
 

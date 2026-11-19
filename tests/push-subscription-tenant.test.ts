@@ -6,7 +6,7 @@ describe('push-subscription-tenant', () => {
   })
 
   it('pushSubscriptionEndpoint reads endpoint from subscription JSON', async () => {
-    const { pushSubscriptionEndpoint } = await import('@/lib/push-subscription-tenant')
+    const { pushSubscriptionEndpoint } = await import('@/lib/push/push-subscription-tenant')
     expect(pushSubscriptionEndpoint({ endpoint: 'https://fcm.example/x' })).toBe(
       'https://fcm.example/x'
     )
@@ -15,7 +15,7 @@ describe('push-subscription-tenant', () => {
   })
 
   it('revokePushEndpointFromOtherTenants deletes same endpoint on other tenants', async () => {
-    const { revokePushEndpointFromOtherTenants } = await import('@/lib/push-subscription-tenant')
+    const { revokePushEndpointFromOtherTenants } = await import('@/lib/push/push-subscription-tenant')
     const endpoint = 'https://fcm.example/shared'
     const managerDeleteIn = vi.fn(async () => ({ error: null }))
     const workerDeleteIn = vi.fn(async () => ({ error: null }))
@@ -81,7 +81,7 @@ describe('push-subscription-tenant', () => {
 
   it('upsertExclusiveManagerPushSubscription upserts then revokes endpoint elsewhere', async () => {
     const { upsertExclusiveManagerPushSubscription } = await import(
-      '@/lib/push-subscription-tenant'
+      '@/lib/push/push-subscription-tenant'
     )
     const upsert = vi.fn(async () => ({ error: null }))
     const managerDeleteIn = vi.fn(async () => ({ error: null }))

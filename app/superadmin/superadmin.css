@@ -352,26 +352,24 @@
     display: none !important;
   }
 
-  /* Keep top tabs visible on phone — horizontal scroll, not hidden */
+  /* One nav: hide desktop tab bar; bottom nav is primary */
   .sa-tab-bar {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 4px;
-    margin: 0 0 12px;
-    padding: 4px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    display: none !important;
   }
 
-  .sa-tab-bar .sa-tab-btn {
-    flex: 0 0 auto;
-    min-width: max-content;
-    white-space: nowrap;
-    font-size: 13px;
-    padding: 10px 12px;
+  .sa-new-client-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .sa-wizard-steps {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sa-wizard-row-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .sa-bottom-nav {
@@ -2559,3 +2557,24 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Full client launch wizard ──────────────────────────────────────── */
+.sa-launch-wizard { max-width: 960px; margin: 0 auto; }
+.sa-wizard-steps { display: flex; gap: 6px; margin: 12px 0 8px; padding-bottom: 4px; }
+.sa-wizard-step {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 72px; padding: 8px 6px; border: 1px solid #e5e7eb; border-radius: 10px;
+  background: #fff; cursor: pointer; color: #6b7280;
+}
+.sa-wizard-step.is-active { border-color: #2563eb; background: #eff6ff; color: #1e3a8a; }
+.sa-wizard-step.is-done { border-color: #86efac; background: #f0fdf4; }
+.sa-wizard-step:disabled { opacity: 0.45; cursor: not-allowed; }
+.sa-wizard-step-num { font-weight: 700; font-size: 13px; }
+.sa-wizard-step-label { font-size: 11px; text-align: center; line-height: 1.2; }
+.sa-wizard-body { margin-top: 12px; }
+.sa-wizard-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sa-wizard-file-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sa-wizard-row-grid { display: grid; grid-template-columns: 1.4fr 0.8fr 1.2fr; gap: 8px; }
+.sa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.sa-new-client-btn { margin-inline-start: auto; }
+.sa-stats-row { align-items: center; }

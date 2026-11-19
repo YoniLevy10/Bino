@@ -7,13 +7,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
 import {
   computeBudgetUtilization,
   yearElapsedFraction,
 } from '@/lib/building-finance/budget-math'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 import {
   fetchProfessionalsPage,

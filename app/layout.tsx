@@ -8,7 +8,7 @@ import { PwaSessionResume } from "./components/PwaSessionResume";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { InstallPromptBanner } from "./components/InstallPromptBanner";
 import { StagingBanner } from "./components/StagingBanner";
-import { initializeLogger } from "@/lib/logging";
+import { initializeLogger } from "@/lib/shared/logging";
 import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -18,7 +18,7 @@ import {
   BINO_MARKETING_OG_DESCRIPTION,
   BINO_MARKETING_TITLE,
   getMarketingSiteOrigin,
-} from "@/lib/marketing-site";
+} from "@/lib/marketing/marketing-site";
 
 const heebo = Heebo({
   variable: "--font-heebo",

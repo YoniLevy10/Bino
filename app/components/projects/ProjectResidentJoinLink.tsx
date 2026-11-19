@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Button, Card, theme } from '../ui'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { getResidentPortalJoinUrl } from '@/lib/public-origin'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { getResidentPortalJoinUrl } from '@/lib/shared/public-origin'
 
 type Props = {
   projectId: string

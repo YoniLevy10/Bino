@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import { workerWhatsappReplyBodySchema } from '@/lib/api-body-schemas'
-import { listTicketWhatsAppMessages, sendTicketResidentWhatsAppReply } from '@/lib/whatsapp-ticket-reply'
-import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
+import { listTicketWhatsAppMessages, sendTicketResidentWhatsAppReply } from '@/lib/whatsapp/whatsapp-ticket-reply'
+import { insertWhatsAppSendFailure } from '@/lib/errors/error-logs-db'
 
 function clientIp(req: Request): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'

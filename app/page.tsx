@@ -1,15 +1,15 @@
 import type { Metadata } from 'next'
 import { MarketingLanding } from './components/marketing/MarketingLanding'
 import { MarketingAnalytics } from './components/marketing/MarketingAnalytics'
-import { buildMarketingJsonLd } from '@/lib/marketing-jsonld'
+import { buildMarketingJsonLd } from '@/lib/marketing/marketing-jsonld'
 import { getLegalSiteConfig } from '@/lib/legal-site-config'
-import { waDemoUrl } from '@/lib/marketing-copy'
+import { waDemoUrl } from '@/lib/marketing/marketing-copy'
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
   BINO_MARKETING_TITLE,
   getMarketingSiteOrigin,
-} from '@/lib/marketing-site'
+} from '@/lib/marketing/marketing-site'
 
 const origin = getMarketingSiteOrigin()
 

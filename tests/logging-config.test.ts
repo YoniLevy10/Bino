@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { buildDefaultLoggerConfig, LogLevel } from '@/lib/logging'
+import { buildDefaultLoggerConfig, LogLevel } from '@/lib/shared/logging'
 
 describe('buildDefaultLoggerConfig', () => {
   afterEach(() => {

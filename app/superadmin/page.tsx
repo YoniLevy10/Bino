@@ -1,17 +1,16 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
 import { supabase } from '@/lib/supabase'
-import { purgeLegacyAdminSecret } from '@/lib/admin-secret-session'
+import { purgeLegacyAdminSecret } from '@/lib/superadmin/admin-secret-session'
 import { SuperadminMfaGate } from './components/SuperadminMfaGate'
-import { PLAN_SETUP_OPTIONS } from '@/lib/plan-display'
 import { DEFAULT_SIDEBAR_NAV_ORDER, type SidebarNavItemId } from '@/lib/sidebar-nav'
 import {
   parseEnabledNavFeaturesFromDb,
   SETUP_PACKAGE_NAV_FEATURE_IDS,
-} from '@/lib/client-nav-features'
+} from '@/lib/client/client-nav-features'
 import { SuperadminOpsPanel } from '@/app/components/superadmin/SuperadminOpsPanel'
 import { MetaWhatsAppPendingPanel } from '@/app/components/settings/MetaWhatsAppPendingPanel'
 import { UsageAnalyticsPanel } from './UsageAnalyticsPanel'
@@ -21,16 +20,24 @@ import { DesktopTabBar } from './components/DesktopTabBar'
 import { ClientsList } from './components/ClientsList'
 import { ClientHub } from './components/ClientHub'
 import { ClientTaskView } from './components/ClientTaskView'
+import { ClientLaunchWizard } from './components/ClientLaunchWizard'
 import { SettingsView } from './components/SettingsView'
 import { SalesLeadsPanel } from './components/SalesLeadsPanel'
 import { SandboxLabPanel } from './SandboxLabPanel'
-import { clientHash, parseSuperadminHash, tabHash, writeHash } from './hashRoute'
+import {
+  clientHash,
+  launchNewHash,
+  onboardingHash,
+  parseSuperadminHash,
+  tabHash,
+  writeHash,
+} from './hashRoute'
+import type { LaunchWizardStepId } from './launchSteps'
 import {
   adminHeaders,
   editStateFromClient,
   emptyEditState,
   parseOptionalLimitInput,
-  type NewClientForm,
 } from './helpers'
 import type {
   ClientFilter,
@@ -40,17 +47,6 @@ import type {
   PlanCatalogRow,
   TabMode,
 } from './types'
-
-const EMPTY_NEW: NewClientForm = {
-  name: '',
-  email: '',
-  password: '',
-  phone: '',
-  plan_tier: 'starter',
-  max_workers: '',
-  buildings_allowed: '',
-  max_tickets_per_month: '',
-}
 
 function featuresForUi(raw: SidebarNavItemId[] | null): SidebarNavItemId[] {
   return raw?.length ? [...raw] : [...DEFAULT_SIDEBAR_NAV_ORDER]
@@ -73,15 +69,14 @@ function SuperAdminPanel({ email }: { email: string | null }) {
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [filter, setFilter] = useState<ClientFilter>('all')
   const [search, setSearch] = useState('')
-  const [showNewForm, setShowNewForm] = useState(false)
-  const [newClient, setNewClient] = useState<NewClientForm>(EMPTY_NEW)
-  const [creating, setCreating] = useState(false)
   const [magicLinks, setMagicLinks] = useState<Record<string, string>>({})
   const [magicLoadingId, setMagicLoadingId] = useState<string | null>(null)
   const [opsUnresolved, setOpsUnresolved] = useState(0)
   const [tab, setTab] = useState<TabMode>('clients')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [clientTask, setClientTask] = useState<ClientTask>('hub')
+  const [launchMode, setLaunchMode] = useState<'off' | 'new' | 'existing'>('off')
+  const [launchStep, setLaunchStep] = useState<LaunchWizardStepId>(1)
 
   const applyRoute = useCallback(() => {
     const route = parseSuperadminHash(typeof window !== 'undefined' ? window.location.hash : '')
@@ -89,11 +84,26 @@ function SuperAdminPanel({ email }: { email: string | null }) {
       setTab(route.tab)
       setSelectedClientId(null)
       setClientTask('hub')
+      setLaunchMode('off')
+      return
+    }
+    if (route.kind === 'launch_new') {
+      setTab('clients')
+      setSelectedClientId(null)
+      setClientTask('hub')
+      setLaunchMode('new')
+      setLaunchStep(route.step)
       return
     }
     setTab('clients')
     setSelectedClientId(route.clientId)
     setClientTask(route.task)
+    if (route.task === 'onboarding') {
+      setLaunchMode('existing')
+      setLaunchStep(route.launchStep ?? 2)
+    } else {
+      setLaunchMode('off')
+    }
   }, [])
 
   useEffect(() => {
@@ -101,7 +111,6 @@ function SuperAdminPanel({ email }: { email: string | null }) {
     window.addEventListener('hashchange', applyRoute)
     return () => window.removeEventListener('hashchange', applyRoute)
   }, [applyRoute])
-
 
   const loadClients = useCallback(async () => {
     setLoading(true)
@@ -178,6 +187,7 @@ function SuperAdminPanel({ email }: { email: string | null }) {
     setTab(next)
     setSelectedClientId(null)
     setClientTask('hub')
+    setLaunchMode('off')
     writeHash(tabHash(next))
   }
 
@@ -185,18 +195,36 @@ function SuperAdminPanel({ email }: { email: string | null }) {
     setTab('clients')
     setSelectedClientId(id)
     setClientTask(task)
+    if (task === 'onboarding') {
+      setLaunchMode('existing')
+      setLaunchStep(2)
+      writeHash(onboardingHash(id, 2))
+      return
+    }
+    setLaunchMode('off')
     writeHash(clientHash(id, task))
+  }
+
+  function startNewLaunch() {
+    setTab('clients')
+    setSelectedClientId(null)
+    setClientTask('hub')
+    setLaunchMode('new')
+    setLaunchStep(1)
+    writeHash(launchNewHash(1))
   }
 
   function backToList() {
     setSelectedClientId(null)
     setClientTask('hub')
+    setLaunchMode('off')
     writeHash(tabHash('clients'))
   }
 
   function backToHub() {
     if (!selectedClientId) return
     setClientTask('hub')
+    setLaunchMode('off')
     writeHash(clientHash(selectedClientId, 'hub'))
   }
 
@@ -326,47 +354,11 @@ function SuperAdminPanel({ email }: { email: string | null }) {
     }
   }
 
-  async function createClient(e: FormEvent) {
-    e.preventDefault()
-    setCreating(true)
-    setError('')
-    setSuccess('')
-    try {
-      const body: Record<string, unknown> = {
-        name: newClient.name.trim(),
-        email: newClient.email.trim(),
-        password: newClient.password,
-        phone: newClient.phone.trim() || undefined,
-        plan_tier: newClient.plan_tier,
-      }
-      if (newClient.max_workers.trim()) body.max_workers = Number(newClient.max_workers)
-      if (newClient.buildings_allowed.trim()) body.buildings_allowed = Number(newClient.buildings_allowed)
-      if (newClient.max_tickets_per_month.trim()) body.max_tickets_per_month = Number(newClient.max_tickets_per_month)
-      const res = await fetch('/api/superadmin/clients', {
-        method: 'POST',
-        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const json = (await res.json()) as { error?: string }
-      if (!res.ok) throw new Error(json.error || 'שגיאה ביצירה')
-      setSuccess('לקוח נוצר')
-      setNewClient(EMPTY_NEW)
-      setShowNewForm(false)
-      await loadClients()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה')
-    } finally {
-      setCreating(false)
-    }
-  }
-
   async function createMagicLink(clientId: string, email: string) {
     setMagicLoadingId(clientId)
     setError('')
     try {
-      // Clear tenant UI caches before issuing a magic link so opening it
-      // cannot briefly paint the previous client's dashboard/branding.
-      const { clearAllTenantUiCaches } = await import('@/lib/tenant-browser-cache')
+      const { clearAllTenantUiCaches } = await import('@/lib/tenant/tenant-browser-cache')
       clearAllTenantUiCaches()
       const res = await fetch('/api/superadmin/magic-link', {
         method: 'POST',
@@ -387,17 +379,21 @@ function SuperAdminPanel({ email }: { email: string | null }) {
     }
   }
 
-  const hideBottomNav = Boolean(selectedClientId && clientTask !== 'hub')
-
+  const hideBottomNav =
+    launchMode !== 'off' || Boolean(selectedClientId && clientTask !== 'hub')
 
   return (
     <div className="sa-page" dir="rtl">
       <header className="sa-topbar">
         <div className="sa-brand">
-          <span className="sa-brand-mark" aria-hidden>B</span>
+          <span className="sa-brand-mark" aria-hidden>
+            B
+          </span>
           <div>
             <h1 className="sa-header-title">Super Admin</h1>
-            <p className="sa-muted">{email ? `${email} · ` : ''}לקוחות, לידים, שימוש, תובנות ותפעול</p>
+            <p className="sa-muted">
+              {email ? `${email} · ` : ''}לקוחות, לידים, שימוש, תובנות ותפעול
+            </p>
           </div>
         </div>
         <div className="sa-topbar-actions sa-header-actions">
@@ -415,75 +411,52 @@ function SuperAdminPanel({ email }: { email: string | null }) {
         </div>
       </header>
 
-      <DesktopTabBar
-        tab={tab}
-        opsBadge={opsUnresolved}
-        onChange={goTab}
-        hidden={hideBottomNav}
-      />
+      <DesktopTabBar tab={tab} opsBadge={opsUnresolved} onChange={goTab} hidden={hideBottomNav} />
 
       {error ? <div className="sa-banner sa-banner-error">{error}</div> : null}
       {success ? <div className="sa-banner sa-banner-ok">{success}</div> : null}
 
       <main className={`sa-main${hideBottomNav ? '' : ' sa-page-with-nav'}`}>
-        {tab === 'clients' && !selectedClientId ? (
-          <>
-            <ClientsList
-              clients={clients}
-              filtered={filtered}
-              catalog={catalog}
-              loading={loading}
-              search={search}
-              filter={filter}
-              totalOpenTickets={totalOpenTickets}
-              opsBadge={opsUnresolved}
-              onSearch={setSearch}
-              onFilter={setFilter}
-              onOpenClient={(id) => openClient(id)}
-            />
-            <div className="sa-desktop-only" style={{ marginTop: 16 }}>
-              <button type="button" className="sa-btn sa-btn-primary" onClick={() => setShowNewForm((v) => !v)}>
-                {showNewForm ? 'סגור טופס' : '+ לקוח חדש'}
-              </button>
-              {showNewForm ? (
-                <form className="sa-panel" onSubmit={createClient} style={{ marginTop: 12 }}>
-                  <h3>הקמת לקוח</h3>
-                  <div className="sa-form-stack">
-                    <label>
-                      שם
-                      <input value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} required />
-                    </label>
-                    <label>
-                      אימייל אדמין
-                      <input type="email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} required />
-                    </label>
-                    <label>
-                      סיסמה
-                      <input type="password" value={newClient.password} onChange={(e) => setNewClient({ ...newClient, password: e.target.value })} required />
-                    </label>
-                    <label>
-                      טלפון
-                      <input value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
-                    </label>
-                    <label>
-                      תוכנית
-                      <select value={newClient.plan_tier} onChange={(e) => setNewClient({ ...newClient, plan_tier: e.target.value })}>
-                        {PLAN_SETUP_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <LoadingButton type="submit" loading={creating} className="sa-btn sa-btn-primary" style={{ marginTop: 12 }}>
-                    צור לקוח
-                  </LoadingButton>
-                </form>
-              ) : null}
-            </div>
-          </>
+        {tab === 'clients' && launchMode !== 'off' ? (
+          <ClientLaunchWizard
+            mode={launchMode === 'new' ? 'new' : 'existing'}
+            clientId={selectedClientId}
+            clientName={selectedClient?.name}
+            step={launchStep}
+            onCreated={(id) => {
+              setSelectedClientId(id)
+              setLaunchMode('existing')
+              void loadClients()
+            }}
+            onExit={() => {
+              if (selectedClientId) backToHub()
+              else backToList()
+            }}
+            onOpenTask={(task) => {
+              if (selectedClientId) openClient(selectedClientId, task)
+            }}
+            onClientsChanged={() => void loadClients()}
+          />
         ) : null}
 
-        {tab === 'clients' && selectedClient && clientTask === 'hub' ? (
+        {tab === 'clients' && launchMode === 'off' && !selectedClientId ? (
+          <ClientsList
+            clients={clients}
+            filtered={filtered}
+            catalog={catalog}
+            loading={loading}
+            search={search}
+            filter={filter}
+            totalOpenTickets={totalOpenTickets}
+            opsBadge={opsUnresolved}
+            onSearch={setSearch}
+            onFilter={setFilter}
+            onOpenClient={(id) => openClient(id)}
+            onNewClient={startNewLaunch}
+          />
+        ) : null}
+
+        {tab === 'clients' && launchMode === 'off' && selectedClient && clientTask === 'hub' ? (
           <ClientHub
             client={selectedClient}
             catalog={catalog}
@@ -497,7 +470,11 @@ function SuperAdminPanel({ email }: { email: string | null }) {
           />
         ) : null}
 
-        {tab === 'clients' && selectedClient && clientTask !== 'hub' ? (
+        {tab === 'clients' &&
+        launchMode === 'off' &&
+        selectedClient &&
+        clientTask !== 'hub' &&
+        clientTask !== 'onboarding' ? (
           <ClientTaskView
             task={clientTask}
             client={selectedClient}
@@ -523,7 +500,9 @@ function SuperAdminPanel({ email }: { email: string | null }) {
             deleteError={deleteError}
             onDelete={() => void deleteClient()}
             onUploadedLogo={(url) => {
-              setClients((prev) => prev.map((c) => (c.id === selectedClient.id ? { ...c, logo_url: url } : c)))
+              setClients((prev) =>
+                prev.map((c) => (c.id === selectedClient.id ? { ...c, logo_url: url } : c)),
+              )
             }}
             onBack={backToHub}
             onOpenTask={(task) => openClient(selectedClient.id, task)}
@@ -540,9 +519,7 @@ function SuperAdminPanel({ email }: { email: string | null }) {
 
         {tab === 'ops' ? (
           <div className="sa-tab-panel">
-            <SuperadminOpsPanel
-              onCountsChange={(c) => setOpsUnresolved(c.unresolved_errors)}
-            />
+            <SuperadminOpsPanel onCountsChange={(c) => setOpsUnresolved(c.unresolved_errors)} />
             <details className="sa-meta-details sa-collapsible">
               <summary>מדריך Meta WhatsApp</summary>
               <div className="sa-collapsible-body">
@@ -564,7 +541,7 @@ function SuperAdminPanel({ email }: { email: string | null }) {
           </div>
         ) : null}
 
-        {tab === 'settings' ? <SettingsView /> : null}
+        {tab === 'settings' ? <SettingsView onStartLaunch={startNewLaunch} /> : null}
       </main>
 
       <BottomNav tab={tab} opsBadge={opsUnresolved} onChange={goTab} hidden={hideBottomNav} />
@@ -593,7 +570,6 @@ function SuperAdminPanel({ email }: { email: string | null }) {
     </div>
   )
 }
-
 
 export default function SuperAdminPage() {
   return (

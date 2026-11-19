@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   buildGrowWebhookNotifyUrl,
   defaultSuccessFailureUrls,
   loadClientCollectionsRow,
   requireGrowMerchantForCharge,
-} from '@/lib/collection-charge-ops'
+} from '@/lib/collections/collection-charge-ops'
 import {
   buildGrowInvoiceNotifyUrl,
   createGrowPaymentProcess,
-} from '@/lib/grow-client'
-import { growSdkEnvironment, readGrowPlatformConfig } from '@/lib/grow-config'
+} from '@/lib/payments/grow-client'
+import { growSdkEnvironment, readGrowPlatformConfig } from '@/lib/payments/grow-config'
 import { z } from 'zod'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 
 type RouteContext = { params: Promise<{ token: string }> }
 

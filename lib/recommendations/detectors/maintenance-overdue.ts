@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getIsraelDayBounds } from '@/lib/maintenance-task-day'
+import { getIsraelDayBounds } from '@/lib/maintenance/maintenance-task-day'
 import { buildDedupeKey } from '../dedupe'
 import type { RecommendationDraft } from '../types'
 

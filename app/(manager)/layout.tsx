@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { AppShell } from '@/app/components/ui'
-import { useIsMobile } from '@/lib/use-is-mobile'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 
 /**
  * Persistent manager chrome — AppShell (sidebar / bottom nav / splash) stays mounted

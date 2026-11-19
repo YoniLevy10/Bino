@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { listAllAddonsCatalogAdmin } from '@/lib/paid-addons'
+import { listAllAddonsCatalogAdmin } from '@/lib/addons/paid-addons'
 import { z } from 'zod'
 
 

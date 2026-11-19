@@ -1,6 +1,6 @@
 {
   "title": "BINO",
-  "description": "Operating system for building-management companies: tickets, residents, field workers, WhatsApp intake, attendance, and billing in one place.",
+  "description": "Production multi-tenant Building Intelligence & Operations: WhatsApp intake, field workers, collections, and operational memory (recommendations / SLA) — not generic ticket CRUD.",
   "status": "Production",
   "visibility": true,
   "featured": true,
@@ -9,6 +9,6 @@
   "logo": "",
   "cover": "",
   "video": "",
-  "technologies": ["Next.js", "TypeScript", "Supabase", "Vercel"],
-  "tags": ["operations", "property", "whatsapp"]
+  "technologies": ["Next.js", "TypeScript", "Supabase", "Vercel", "WhatsApp", "Zod"],
+  "tags": ["operations", "multi-tenant", "whatsapp", "property", "saas"]
 }

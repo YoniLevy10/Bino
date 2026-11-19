@@ -8,7 +8,7 @@ import {
   CALENDAR_EVENT_TYPE_COLORS,
   type CalendarEventType,
 } from '@/lib/calendar-utils'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useEffect, useState } from 'react'
 
 const WEEKDAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש']

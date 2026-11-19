@@ -2,9 +2,9 @@ import {
   addJsonSheet,
   createWorkbook,
   downloadExcelWorkbook,
-} from '@/lib/excel-workbook'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
-import { ticketHistoryExportFilename } from '@/lib/export-filename'
+} from '@/lib/excel/excel-workbook'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
+import { ticketHistoryExportFilename } from '@/lib/shared/export-filename'
 
 export type ClosedTicketExportRow = {
   id: string

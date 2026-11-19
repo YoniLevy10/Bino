@@ -6,13 +6,13 @@ import {
   buildResidentIntakeShareMessage,
   buildResidentIntakeUrl,
   buildResidentIntakeWhatsAppShareUrl,
-} from '@/lib/resident-intake'
-import { getClientPublicOrigin, getResidentPortalJoinUrl } from '@/lib/public-origin'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+} from '@/lib/residents/resident-intake'
+import { getClientPublicOrigin, getResidentPortalJoinUrl } from '@/lib/shared/public-origin'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { usePaidAddons } from '../PaidAddonsContext'
 import { Button, theme } from '../ui'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 
 type ShareKind = 'resident_join' | 'resident_intake'
 

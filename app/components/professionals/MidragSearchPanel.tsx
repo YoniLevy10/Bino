@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Button, Card, Drawer, Select, theme } from '@/app/components/ui'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import {
   filterSectorsByQuery,
   midragAreaNames,

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import {
   PLAN_HEBREW_LABELS,
   PLAN_TIER_ORDER,
   planLimitsLine,
   planPriceLabel,
-} from '@/lib/plan-display'
-import { getPlanPricingRow } from '@/lib/plan-pricing'
+} from '@/lib/plans/plan-display'
+import { getPlanPricingRow } from '@/lib/plans/plan-pricing'
 import {
   PLAN_LIMITS,
   PLAN_PRICES,
@@ -16,7 +16,7 @@ import {
   getClientPlanRow,
   normalizeTier,
   type PlanTier,
-} from '@/lib/plan-limits'
+} from '@/lib/plans/plan-limits'
 
 function startOfMonthIso() {
   const d = new Date()

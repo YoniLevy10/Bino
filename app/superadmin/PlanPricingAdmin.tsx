@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
-import { formatPlanPriceIls, formatLimitHe } from '@/lib/plan-pricing'
+import { formatPlanPriceIls, formatLimitHe } from '@/lib/plans/plan-pricing'
 
 export type PlanPricingRow = {
   plan_tier: string

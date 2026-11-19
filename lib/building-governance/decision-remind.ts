@@ -15,8 +15,8 @@ import {
 } from '@/lib/building-governance/signature-link-notify'
 import { residentDecisionInvitePath } from '@/lib/building-governance/roles'
 import { GOVERNANCE_WA_HSM_NOTE_HE } from '@/lib/building-governance/decision-summary'
-import { getPublicAppUrl } from '@/lib/public-app-url'
-import { getLogger } from '@/lib/logging'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
+import { getLogger } from '@/lib/shared/logging'
 import { logAudit } from '@/lib/audit'
 
 const BATCH_LIMIT = 40

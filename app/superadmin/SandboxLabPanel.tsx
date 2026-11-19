@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { theme } from '@/app/components/ui'
 import { LoadingButton } from '@/app/components/LoadingButton'
-import type { SandboxStatus } from '@/lib/sandbox-lab'
+import type { SandboxStatus } from '@/lib/sandbox/sandbox-lab'
 
 type ActionResponse = {
   ok?: boolean

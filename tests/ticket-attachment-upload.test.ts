@@ -3,7 +3,7 @@ import {
   allowedMimeTypesForTicketAttachment,
   maxBytesForTicketAttachment,
   validateTicketAttachmentFile,
-} from '@/lib/ticket-attachment-upload'
+} from '@/lib/tickets/ticket-attachment-upload'
 
 describe('ticket attachment upload validation', () => {
   it('allows web images and videos', () => {

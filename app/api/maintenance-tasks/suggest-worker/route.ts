@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { suggestTaskWorkerBodySchema } from '@/lib/api-body-schemas'
-import { assertProjectOwnedByClient } from '@/lib/tenant-owned-refs'
+import { assertProjectOwnedByClient } from '@/lib/tenant/tenant-owned-refs'
 import { suggestWorkerForMaintenanceTask } from '@/lib/recommendations/suggest-worker-for-task'
 
 export async function POST(req: Request) {

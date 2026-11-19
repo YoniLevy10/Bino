@@ -27,7 +27,7 @@ function ticketsMissChain(table: string) {
   return chain
 }
 
-vi.mock('@/lib/api-auth', () => ({
+vi.mock('@/lib/auth-api/api-auth', () => ({
   requireSessionWriteAccess: (...args: unknown[]) => requireSessionWriteAccess(...args),
 }))
 
@@ -37,11 +37,11 @@ vi.mock('@/lib/supabase-admin', () => ({
   })),
 }))
 
-vi.mock('@/lib/rate-limit', () => ({
+vi.mock('@/lib/shared/rate-limit', () => ({
   checkAuthenticatedPostRouteLimit: vi.fn(async () => ({ isLimited: false })),
 }))
 
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -64,16 +64,16 @@ vi.mock('@/lib/run-after-response', () => ({
   shouldSyncTicketNotifications: () => false,
 }))
 
-vi.mock('@/lib/reporter-ticket-closed-notify', () => ({
+vi.mock('@/lib/reporter/reporter-ticket-closed-notify', () => ({
   notifyReporterIfTicketNewlyClosed: vi.fn(),
   notifyReporterTicketClosed: vi.fn(),
 }))
 
-vi.mock('@/lib/reporter-ticket-status-notify', () => ({
+vi.mock('@/lib/reporter/reporter-ticket-status-notify', () => ({
   notifyReporterOnStatusChange: vi.fn(),
 }))
 
-vi.mock('@/lib/tenant-owned-refs', () => ({
+vi.mock('@/lib/tenant/tenant-owned-refs', () => ({
   assertWorkerOwnedByClient: vi.fn(async () => ({ ok: true })),
 }))
 
@@ -81,16 +81,16 @@ vi.mock('@/lib/assign-ticket-worker', () => ({
   assignTicketToWorker: vi.fn(),
 }))
 
-vi.mock('@/lib/sms-send', () => ({
+vi.mock('@/lib/sms/sms-send', () => ({
   sendManagerSMS: vi.fn(),
   getManagerPhoneFromEnv: vi.fn(() => null),
 }))
 
-vi.mock('@/lib/whatsapp-templates', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-templates', () => ({
   resolveSmsTemplateMessage: vi.fn(),
 }))
 
-vi.mock('@/lib/whatsapp-template-keys', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-template-keys', () => ({
   SMS_TEMPLATE_EDITOR_DEFAULTS: {},
 }))
 

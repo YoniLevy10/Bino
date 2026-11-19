@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { whatsappSendBodySchema } from '@/lib/whatsapp-api-schemas'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { whatsappSendBodySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
 import {
   persistWhatsAppMessage,
   extractMetaWaMessageId,
   isWithinWhatsAppSessionWindow,
-} from '@/lib/whatsapp-message-store'
-import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp-send'
-import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+} from '@/lib/whatsapp/whatsapp-message-store'
+import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp/whatsapp-send'
+import { insertWhatsAppSendFailure } from '@/lib/errors/error-logs-db'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { whatsappDbPhoneKey } from '@/lib/whatsapp/whatsapp-test-phone'
 
 export async function POST(req: Request) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.whatsapp_inbox)

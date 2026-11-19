@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { createNfcTagBodySchema } from '@/lib/api-body-schemas'
-import { buildNfcTagScanUrl, normalizeTagCode } from '@/lib/nfc-tag-utils'
+import { buildNfcTagScanUrl, normalizeTagCode } from '@/lib/nfc/nfc-tag-utils'
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSuperAdmin()

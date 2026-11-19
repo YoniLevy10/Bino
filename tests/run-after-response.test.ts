@@ -19,7 +19,7 @@ vi.mock('@/lib/supabase-admin', () => ({
   }),
 }))
 
-vi.mock('@/lib/platform-ops-alert', () => ({
+vi.mock('@/lib/ops/platform-ops-alert', () => ({
   notifyPlatformOps: (...args: unknown[]) => notifyPlatformOps(...args),
 }))
 

@@ -6,10 +6,10 @@
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type DragEvent } from 'react'
 import Link from 'next/link'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import { weekRangeIso, dateKeyLocal } from '@/lib/calendar-utils'
-import { cadenceColor, cadenceLabel } from '@/lib/maintenance-cadence'
+import { cadenceColor, cadenceLabel } from '@/lib/maintenance/maintenance-cadence'
 import { Button, theme } from '@/app/components/ui'
 
 type WeekTask = {

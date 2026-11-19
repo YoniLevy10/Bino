@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 import { patchNfcTagActiveBodySchema } from '@/lib/api-body-schemas'
 
 /** Soft-disable / re-enable an NFC tag. Inactive tags reject stamps; physical sticker URL stays the same. */

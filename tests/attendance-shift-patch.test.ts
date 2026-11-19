@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   buildManagerShiftPatch,
   computeShiftTotalMinutes,
-} from '@/lib/attendance-shift-patch'
+} from '@/lib/attendance/attendance-shift-patch'
 import {
   decimalHoursToMinutes,
   minutesToDecimalHours,
   toDatetimeLocalValue,
-} from '@/lib/attendance-display'
+} from '@/lib/attendance/attendance-display'
 
 describe('computeShiftTotalMinutes', () => {
   it('computes minutes between start and end', () => {

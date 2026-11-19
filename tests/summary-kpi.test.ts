@@ -4,8 +4,8 @@ import {
   countClosedInRange,
   countOpenedInRange,
   summaryPeriodKey,
-} from '@/lib/summary-kpi'
-import { ticketRangeOrFilter } from '@/lib/summary-tickets'
+} from '@/lib/summary/summary-kpi'
+import { ticketRangeOrFilter } from '@/lib/summary/summary-tickets'
 
 describe('summaryPeriodKey', () => {
   it('uses stable all/custom keys', () => {

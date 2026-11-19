@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { useIsMobile } from '@/lib/use-is-mobile'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 import {
   ResidentAlert,
   ResidentMuted,

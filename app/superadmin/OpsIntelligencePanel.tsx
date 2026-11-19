@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import type { OpsIntelligenceReport, OpsSuggestion } from '@/lib/ops-intelligence-analytics'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import type { OpsIntelligenceReport, OpsSuggestion } from '@/lib/ops/ops-intelligence-analytics'
 import {
   buildBriefing,
   formatHoursHe,
@@ -11,7 +11,7 @@ import {
   type OpsBreakdown,
   type OpsSlice,
   type OpsWorkerRow,
-} from '@/lib/ops-intelligence-slices'
+} from '@/lib/ops/ops-intelligence-slices'
 
 type Tone = 'good' | 'warn' | 'neutral'
 

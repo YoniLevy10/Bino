@@ -4,7 +4,7 @@
  * Never used for cold automated outreach — enrichment for manual sales only.
  */
 
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 import { normalizePhone } from '@/lib/sales-leads/phone'
 
 export type WebsiteHarvestResult = {

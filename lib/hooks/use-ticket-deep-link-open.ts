@@ -10,8 +10,8 @@ import {
   pushTicketDeepLinkInUrl,
   setTicketDeepLinkInUrl,
   ticketDetailPath,
-} from '@/lib/ticket-deep-link'
-import type { TicketDetailRow } from '@/lib/ticket-detail-types'
+} from '@/lib/tickets/ticket-deep-link'
+import type { TicketDetailRow } from '@/lib/tickets/ticket-detail-types'
 
 type UseTicketDeepLinkOpenOptions<T extends { id: string }> = {
   tickets: T[]

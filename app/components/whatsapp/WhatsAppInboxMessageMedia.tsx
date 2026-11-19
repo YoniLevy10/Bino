@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { whatsappUiFetch } from '@/lib/whatsapp-ui-fetch'
-import { parseWhatsAppMessageMediaPayload } from '@/lib/whatsapp-message-media'
+import { whatsappUiFetch } from '@/lib/whatsapp/whatsapp-ui-fetch'
+import { parseWhatsAppMessageMediaPayload } from '@/lib/whatsapp/whatsapp-message-media'
 
 type Msg = {
   id: string

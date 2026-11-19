@@ -13,19 +13,19 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { withClientId } from '@/lib/supabase/with-client-id'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
 import {
   toastCollectionsBulkSendOutcome,
   toastCollectionsSmsOutcome,
-} from '@/lib/collections-notify-toast'
+} from '@/lib/collections/collections-notify-toast'
 import {
   fetchWithTimeout,
   DEFAULT_FETCH_TIMEOUT_MS,
   MUTATION_FETCH_TIMEOUT_MS,
   LONG_RUNNING_FETCH_TIMEOUT_MS,
-} from '@/lib/fetch-with-timeout'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+} from '@/lib/shared/fetch-with-timeout'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
   COLLECTION_CHARGE_STATUS_COLORS,
@@ -33,8 +33,8 @@ import {
   formatChargeAmountIls,
   type CollectionChargeListItem,
   type CollectionChargeStatus,
-} from '@/lib/collection-charges'
-import { residentMatchesQuery } from '@/lib/collection-resident-search'
+} from '@/lib/collections/collection-charges'
+import { residentMatchesQuery } from '@/lib/collections/collection-resident-search'
 import {
   Button,
   Drawer,
@@ -49,7 +49,7 @@ import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import {
   GROW_STATUS_TONE_COLOR,
   growProjectStatusView,
-} from '@/lib/grow-project-status'
+} from '@/lib/payments/grow-project-status'
 import { UnitLedgerDrawer } from '@/app/(manager)/collections/UnitLedgerDrawer'
 
 type GrowProjectSummary = {

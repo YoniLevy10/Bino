@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { createPortal } from 'react-dom'
 import { theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
-import { useChatSheetScrollLock } from '@/lib/use-visual-viewport-frame'
+import { useChatSheetScrollLock } from '@/lib/hooks/use-visual-viewport-frame'
 
 export type TicketDetailMobileShellProps = {
   open: boolean

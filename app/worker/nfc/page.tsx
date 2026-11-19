@@ -12,11 +12,11 @@ import { useSearchParams } from 'next/navigation'
 import { Button, theme } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
-import { normalizeWorkerToken, readWorkerToken, writeWorkerToken } from '@/lib/worker-portal-storage'
+import { normalizeWorkerToken, readWorkerToken, writeWorkerToken } from '@/lib/worker/worker-portal-storage'
 import { initOfflineAttendanceDB } from '@/lib/offline-attendance-db'
-import { executeNfcStampFlow, type NfcStampPhase } from '@/lib/nfc-stamp-flow'
+import { executeNfcStampFlow, type NfcStampPhase } from '@/lib/nfc/nfc-stamp-flow'
 import { syncPendingAttendanceEvents } from '@/lib/sync-attendance'
-import { normalizeTagCode } from '@/lib/nfc-tag-utils'
+import { normalizeTagCode } from '@/lib/nfc/nfc-tag-utils'
 
 type ScanPhase = 'loading' | NfcStampPhase
 

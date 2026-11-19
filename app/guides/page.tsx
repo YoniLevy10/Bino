@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { SeoGuideShell } from '@/app/components/marketing/SeoGuideArticle'
-import { SEO_GUIDES_HE } from '@/lib/seo-guides-he'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { SEO_GUIDES_HE } from '@/lib/seo/seo-guides-he'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 import '@/app/components/marketing/seo-guide.css'
 
 const origin = getMarketingSiteOrigin()

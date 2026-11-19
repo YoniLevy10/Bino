@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { sanitizeId } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
 

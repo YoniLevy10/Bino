@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import { theme } from '@/app/components/ui'
 import type { EntityType, ManagementRecommendationRow } from '@/lib/recommendations/types'
 import { RecommendationAlertActions } from '@/app/components/recommendations/RecommendationAlertActions'

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { autoCloseStaleOpenShiftsForWorker } from '@/lib/attendance-auto-close'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { autoCloseStaleOpenShiftsForWorker } from '@/lib/attendance/attendance-auto-close'
 
 function clientIp(req: NextRequest): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'

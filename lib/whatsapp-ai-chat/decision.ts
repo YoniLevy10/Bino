@@ -4,10 +4,10 @@
  * resident-portal link, or a ticket description for the existing open path.
  */
 import { generateText } from 'ai'
-import type { ResidentLang } from '@/lib/whatsapp-bilingual-template'
-import { normalizeResidentLang } from '@/lib/whatsapp-bilingual-template'
-import { acceptTicketDescriptionInSession } from '@/lib/whatsapp-intent'
-import { resolveWhatsAppAiModel } from '@/lib/whatsapp-ai-gateway'
+import type { ResidentLang } from '@/lib/whatsapp/whatsapp-bilingual-template'
+import { normalizeResidentLang } from '@/lib/whatsapp/whatsapp-bilingual-template'
+import { acceptTicketDescriptionInSession } from '@/lib/whatsapp/whatsapp-intent'
+import { resolveWhatsAppAiModel } from '@/lib/whatsapp/whatsapp-ai-gateway'
 
 export type AiChatAction = 'reply' | 'portal_link' | 'open_ticket'
 

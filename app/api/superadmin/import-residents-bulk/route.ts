@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { bulkImportResidentsFromParsed } from '@/lib/bulk-import-residents'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
+import { bulkImportResidentsFromParsed } from '@/lib/residents/bulk-import-residents'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
 
 const bodySchema = z.object({
   client_id: z.string().uuid(),

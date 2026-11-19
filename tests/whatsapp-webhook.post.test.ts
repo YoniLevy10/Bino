@@ -10,23 +10,23 @@ import { NextRequest } from 'next/server'
 
 const sendWhatsApp = vi.fn()
 
-vi.mock('@/lib/whatsapp-send', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-send', () => ({
   sendWhatsAppTextMessage: (...args: unknown[]) => sendWhatsApp(...args),
 }))
 
-vi.mock('@/lib/sms-send', () => ({
+vi.mock('@/lib/sms/sms-send', () => ({
   sendManagerSMS: vi.fn(),
   sendWorkerSMS: vi.fn(),
   getManagerPhoneFromEnv: vi.fn(),
 }))
 
-vi.mock('@/lib/whatsapp-media', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-media', () => ({
   downloadWhatsAppMedia: vi.fn(),
   uploadWhatsAppMediaToStorage: vi.fn(),
   createAttachmentRecord: vi.fn(),
 }))
 
-vi.mock('@/lib/pending-resident-from-ticket', () => ({
+vi.mock('@/lib/residents/pending-resident-from-ticket', () => ({
   queuePendingResidentApproval: vi.fn().mockResolvedValue(false),
 }))
 

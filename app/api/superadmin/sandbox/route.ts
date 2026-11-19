@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import type { SandboxAction } from '@/lib/sandbox-lab'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import type { SandboxAction } from '@/lib/sandbox/sandbox-lab'
 import {
   ensureSandbox,
   loadSandboxStatus,
@@ -12,7 +12,7 @@ import {
   sandboxSaveChannels,
   sandboxSendSms,
   sandboxSendWhatsApp,
-} from '@/lib/sandbox-lab-service'
+} from '@/lib/sandbox/sandbox-lab-service'
 
 export async function GET(req: Request) {
   const auth = await requireSuperAdmin()

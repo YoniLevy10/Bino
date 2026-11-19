@@ -8,11 +8,11 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { fetchResidentsPage, type ResidentListRow } from '@/lib/hooks/use-residents-list'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 import { ProjectResidentJoinLink } from '@/app/components/projects/ProjectResidentJoinLink'
 import { ProjectResidentIntakePanel } from '@/app/components/projects/ProjectResidentIntakePanel'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 
 type Props = {
   projectId: string

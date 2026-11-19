@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { MarketingAnalytics } from '@/app/components/marketing/MarketingAnalytics'
 import { SeoGuideArticle } from '@/app/components/marketing/SeoGuideArticle'
-import { buildSeoGuideJsonLd } from '@/lib/seo-guide-jsonld'
-import { getAllSeoGuideSlugs, getSeoGuide } from '@/lib/seo-guides-he'
-import { getMarketingSiteOrigin } from '@/lib/marketing-site'
+import { buildSeoGuideJsonLd } from '@/lib/seo/seo-guide-jsonld'
+import { getAllSeoGuideSlugs, getSeoGuide } from '@/lib/seo/seo-guides-he'
+import { getMarketingSiteOrigin } from '@/lib/marketing/marketing-site'
 
 type Props = { params: Promise<{ slug: string }> }
 

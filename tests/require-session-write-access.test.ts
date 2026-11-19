@@ -2,7 +2,7 @@
  * Unit tests for requireSessionWriteAccess + paid-addon write option.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { canOrgRoleWrite } from '@/lib/org-role'
+import { canOrgRoleWrite } from '@/lib/auth-api/org-role'
 
 const getUser = vi.fn()
 const getSingletonClientId = vi.fn()
@@ -20,16 +20,16 @@ vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: vi.fn(() => ({ __admin: true })),
 }))
 
-vi.mock('@/lib/singleton-client-server', () => ({
+vi.mock('@/lib/tenant/singleton-client-server', () => ({
   getSingletonClientId: (...args: unknown[]) => getSingletonClientId(...args),
 }))
 
-vi.mock('@/lib/org-role-resolve', () => ({
+vi.mock('@/lib/auth-api/org-role-resolve', () => ({
   resolveOrgRoleForUserClient: (...args: unknown[]) => resolveOrgRoleForUserClient(...args),
 }))
 
-vi.mock('@/lib/paid-addons', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/paid-addons')>()
+vi.mock('@/lib/addons/paid-addons', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/addons/paid-addons')>()
   return {
     ...actual,
     clientHasPaidAddon: (...args: unknown[]) => clientHasPaidAddon(...args),
@@ -37,9 +37,9 @@ vi.mock('@/lib/paid-addons', async (importOriginal) => {
   }
 })
 
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 
 describe('requireSessionWriteAccess', () => {
   beforeEach(() => {

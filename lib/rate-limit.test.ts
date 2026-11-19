@@ -10,7 +10,7 @@ import {
   checkPublicReportSourceBurstLimit,
   checkPublicReportSourceHourlyLimit,
   checkRateLimitMemoryOnly,
-} from '@/lib/rate-limit'
+} from '@/lib/shared/rate-limit'
 
 afterEach(() => {
   __resetRateLimitLocalBucketsForTests()

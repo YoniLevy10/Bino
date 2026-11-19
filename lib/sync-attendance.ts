@@ -1,11 +1,11 @@
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import type { AttendanceSyncEventInput, AttendanceSyncEventResult } from '@/lib/attendance-types'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import type { AttendanceSyncEventInput, AttendanceSyncEventResult } from '@/lib/attendance/attendance-types'
 import {
   getPendingAttendanceEvents,
   markPendingEventFailed,
   markPendingEventSynced,
 } from '@/lib/offline-attendance-db'
-import { readLastWorkerId } from '@/lib/worker-portal-storage'
+import { readLastWorkerId } from '@/lib/worker/worker-portal-storage'
 
 export type SyncAttendanceSummary = {
   synced: number

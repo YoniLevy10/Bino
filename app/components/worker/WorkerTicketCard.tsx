@@ -2,11 +2,11 @@
 
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, PriorityDot, StatusBadge, theme } from '../ui'
-import { isTicketStatus, ticketStatusLabelHe, type TicketStatus } from '@/lib/ticket-status'
+import { isTicketStatus, ticketStatusLabelHe, type TicketStatus } from '@/lib/tickets/ticket-status'
 import { formatRelativeTimeHe } from '@/lib/relative-time-he'
 import { telHref, wazeHref } from '@/lib/contact-links'
-import { toast } from '@/lib/error-handler'
-import { formatReporterNameAndPhone } from '@/lib/reporter-display'
+import { toast } from '@/lib/errors/error-handler'
+import { formatReporterNameAndPhone } from '@/lib/reporter/reporter-display'
 
 export type WorkerTicketCardTicket = {
   id: string

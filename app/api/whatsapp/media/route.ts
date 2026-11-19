@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { whatsappMediaQuerySchema } from '@/lib/whatsapp-api-schemas'
-import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
-import { parseWhatsAppMessageMediaPayload } from '@/lib/whatsapp-message-media'
-import { downloadWhatsAppMedia } from '@/lib/whatsapp-media'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { whatsappMediaQuerySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp/whatsapp-inbox-v2-flag'
+import { parseWhatsAppMessageMediaPayload } from '@/lib/whatsapp/whatsapp-message-media'
+import { downloadWhatsAppMedia } from '@/lib/whatsapp/whatsapp-media'
 
 export async function GET(req: NextRequest) {
   if (!isWhatsAppInboxV2Enabled()) {

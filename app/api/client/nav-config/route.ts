@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientIdLite } from '@/lib/api-auth'
-import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
-import { isPalGatePilotClient } from '@/lib/palgate/pilot'
+import { requireSessionClientIdLite } from '@/lib/auth-api/api-auth'
+import { parseEnabledNavFeaturesFromDb } from '@/lib/client/client-nav-features'
+import { isPalGateAccessAllowed } from '@/lib/palgate/access'
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
   parseSidebarNavOrderFromDb,
@@ -53,7 +53,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
-  const palgatePilot = isPalGatePilotClient(auth.ctx.clientId)
+  const palgatePilot = await isPalGateAccessAllowed(auth.ctx.admin, auth.ctx.clientId)
   const parsedOrder = parseSidebarNavOrderFromDb(row.sidebar_nav_order)
 
   return NextResponse.json({

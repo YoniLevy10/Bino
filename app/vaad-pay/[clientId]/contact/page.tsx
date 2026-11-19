@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { loadPublicGrowMerchant } from '@/lib/client-grow-legal-server'
-import { growLegalFromClientRow, growLegalToSiteConfig } from '@/lib/client-grow-legal'
+import { loadPublicGrowMerchant } from '@/lib/client/client-grow-legal-server'
+import { growLegalFromClientRow, growLegalToSiteConfig } from '@/lib/client/client-grow-legal'
 import { legalTelHref } from '@/lib/legal-site-config'
 import { LegalPublicShell } from '@/app/components/legal/LegalPublicShell'
 

@@ -4,19 +4,19 @@ const mockSendImage = vi.fn()
 const mockNotifyClosed = vi.fn()
 const mockSignedUrl = vi.fn()
 
-vi.mock('@/lib/whatsapp-ticket-reply', () => ({
+vi.mock('@/lib/whatsapp/whatsapp-ticket-reply', () => ({
   sendTicketResidentWhatsAppImage: (...args: unknown[]) => mockSendImage(...args),
 }))
 
-vi.mock('@/lib/reporter-ticket-closed-notify', () => ({
+vi.mock('@/lib/reporter/reporter-ticket-closed-notify', () => ({
   notifyReporterIfTicketNewlyClosed: (...args: unknown[]) => mockNotifyClosed(...args),
 }))
 
-vi.mock('@/lib/ticket-attachment-url', () => ({
+vi.mock('@/lib/tickets/ticket-attachment-url', () => ({
   createServerSignedAttachmentUrl: (...args: unknown[]) => mockSignedUrl(...args),
 }))
 
-import { completeWorkerTicketWithPhoto } from '@/lib/worker-ticket-complete'
+import { completeWorkerTicketWithPhoto } from '@/lib/worker/worker-ticket-complete'
 
 function makeAdmin(opts: {
   ticketStatus?: string

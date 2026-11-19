@@ -10,9 +10,9 @@ import {
   type RefObject,
 } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 import { Button, EmptyState, LoadingSpinner, SearchInput, Select, theme } from '../ui'

@@ -1,15 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import { Button, LoadingSpinner, type theme } from '../ui'
 import { WorkerMaintenanceCreate } from './WorkerMaintenanceCreate'
 import {
   normalizeChecklistItems,
   toggleChecklistItem,
   type MaintenanceChecklistItem,
-} from '@/lib/maintenance-checklist'
+} from '@/lib/maintenance/maintenance-checklist'
 
 type MaintenanceTask = {
   id: string

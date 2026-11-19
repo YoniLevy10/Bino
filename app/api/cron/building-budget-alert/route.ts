@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 import { isBuildingGovernanceAutoNotifyEnabled } from '@/lib/building-governance/auto-notify-gate'
 import { maybeNotifyBudgetAlert } from '@/lib/building-finance/budget-alert-notify'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'

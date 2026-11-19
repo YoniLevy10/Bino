@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { PAID_ADDON_KEYS, clientHasPaidAddon } from '@/lib/paid-addons'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { PAID_ADDON_KEYS, clientHasPaidAddon } from '@/lib/addons/paid-addons'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import {
   buildPeriodRange,
@@ -15,7 +15,7 @@ import { fetchBuildingExpenseSum } from '@/lib/building-finance/expense-sums'
 import { aggregateGrowPeriodCard } from '@/lib/building-finance/grow-period-card'
 import { computeBudgetUtilization } from '@/lib/building-finance/budget-math'
 import { roundMoney } from '@/lib/unit-ledger'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   sanitizeWhatsAppTemplateParam,
   sanitizeWhatsAppTemplateParams,
-} from '@/lib/whatsapp-template-params'
-import { isNonRetryableWhatsAppMetaError, whatsAppMetaErrorHint } from '@/lib/whatsapp-meta-errors'
+} from '@/lib/whatsapp/whatsapp-template-params'
+import { isNonRetryableWhatsAppMetaError, whatsAppMetaErrorHint } from '@/lib/whatsapp/whatsapp-meta-errors'
 
 describe('sanitizeWhatsAppTemplateParam', () => {
   it('strips newlines and tabs that trigger Meta 132018', () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   clearWhatsAppTenantCache,
   resolveClientIdByWhatsAppPhoneNumberId,
-} from '@/lib/tenant-resolution'
+} from '@/lib/tenant/tenant-resolution'
 
 function makeAdmin(rows: Record<string, unknown>[] | null, error: unknown = null) {
   const select = vi.fn().mockReturnValue({

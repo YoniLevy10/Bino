@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 import type { OpsBriefing } from '@/lib/ops-context/synthesize-briefing'
 import type { ManagementRecommendationRow } from '@/lib/recommendations/types'
 

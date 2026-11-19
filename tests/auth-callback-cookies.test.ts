@@ -13,7 +13,7 @@ vi.mock('next/headers', () => ({
   headers: async () => new Headers({ host: 'bino.casa', 'x-forwarded-proto': 'https' }),
 }))
 
-vi.mock('@/lib/site-url', () => ({
+vi.mock('@/lib/seo/site-url', () => ({
   getPublicSiteUrlFromHeaders: () => 'https://bino.casa',
 }))
 
@@ -21,7 +21,7 @@ vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: () => ({ from: vi.fn() }),
 }))
 
-vi.mock('@/lib/tenant-access', () => ({
+vi.mock('@/lib/tenant/tenant-access', () => ({
   userHasTenantAccess: vi.fn(async () => true),
 }))
 
@@ -29,11 +29,11 @@ vi.mock('@/lib/resident-portal/memberships', () => ({
   userHasActiveResidentMembership: vi.fn(async () => false),
 }))
 
-vi.mock('@/lib/google-calendar', () => ({
+vi.mock('@/lib/google/google-calendar', () => ({
   upsertGoogleCalendarConnection: vi.fn(),
 }))
 
-vi.mock('@/lib/singleton-client-server', () => ({
+vi.mock('@/lib/tenant/singleton-client-server', () => ({
   getSingletonClientId: vi.fn(async () => 'client-1'),
 }))
 

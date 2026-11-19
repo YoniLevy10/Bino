@@ -1,4 +1,4 @@
-import { getPublicAppUrl } from '@/lib/public-app-url'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
 
 export type LegalSiteConfig = {
   businessName: string

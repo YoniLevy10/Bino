@@ -1,8 +1,8 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { queryKeys } from '@/lib/query-keys'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { queryKeys } from '@/lib/shared/query-keys'
 import { useTenantClientId } from '@/lib/hooks/use-tenant-client-id'
 
 export type SettingsReadRow = {

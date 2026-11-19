@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { groupShiftsByMonthAndWorker, type AttendanceHistoryShift } from '@/lib/attendance-history'
-import { currentMonthKey, monthBoundsFromKey } from '@/lib/attendance-display'
+import { groupShiftsByMonthAndWorker, type AttendanceHistoryShift } from '@/lib/attendance/attendance-history'
+import { currentMonthKey, monthBoundsFromKey } from '@/lib/attendance/attendance-display'
 
 function shift(partial: Partial<AttendanceHistoryShift> & Pick<AttendanceHistoryShift, 'id' | 'worker_id' | 'started_at'>): AttendanceHistoryShift {
   return {

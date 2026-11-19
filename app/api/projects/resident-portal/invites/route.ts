@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { createResidentPortalInvite, revokeResidentPortalMembership } from '@/lib/resident-portal/invites'
-import { getResidentPortalAcceptInviteUrl } from '@/lib/public-origin'
+import { getResidentPortalAcceptInviteUrl } from '@/lib/shared/public-origin'
 import { sanitizeId } from '@/lib/api-validation'
 import type { ResidentPortalRole } from '@/lib/resident-portal/types'
 

@@ -6,7 +6,7 @@
 import { createHash } from 'crypto'
 import { parseBankCsvText } from '@/lib/bank-match/csv-parse'
 import type { NormalizedBankTransaction } from '@/lib/bank-match/types'
-import { parseWorkbookToMatrix } from '@/lib/excel-workbook'
+import { parseWorkbookToMatrix } from '@/lib/excel/excel-workbook'
 import {
   normalizeExcelDateColumns,
   parseOoxmlFirstSheetMatrix,

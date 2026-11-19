@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
-import { toast } from '@/lib/error-handler'
+import { toast } from '@/lib/errors/error-handler'
 import {
   MobileHeader,
   useMobileMenu,
@@ -31,14 +31,14 @@ import {
   EmptyState,
   theme
 } from '@/app/components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
-import { digitsForWaMeLink } from '@/lib/wa-me-phone'
+import { digitsForWaMeLink } from '@/lib/whatsapp/wa-me-phone'
 import { ProjectResidentIntakePanel } from '@/app/components/projects/ProjectResidentIntakePanel'
-import { buildResidentIntakeUrl } from '@/lib/resident-intake'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+import { buildResidentIntakeUrl } from '@/lib/residents/resident-intake'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 
 type ProjectRow = {
   id: string

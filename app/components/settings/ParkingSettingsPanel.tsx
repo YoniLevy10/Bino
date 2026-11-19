@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { Button, Card, LoadingSpinner, theme } from '@/app/components/ui'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
 
 type Creds = {
   configured: boolean

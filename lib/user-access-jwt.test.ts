@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canOrgRoleWrite } from '@/lib/org-role'
+import { canOrgRoleWrite } from '@/lib/auth-api/org-role'
 import {
   bearerFallbackJwt,
   extractUserAccessJwt,

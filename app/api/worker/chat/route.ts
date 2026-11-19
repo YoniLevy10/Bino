@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker-token-auth'
+import { resolveWorkerFromToken, verifyWorkerOwnsTicket } from '@/lib/worker/worker-token-auth'
 
 export async function GET(req: NextRequest) {
   try {

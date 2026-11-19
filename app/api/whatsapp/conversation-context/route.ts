@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { z } from 'zod'
-import { loadWhatsAppInboxContext } from '@/lib/whatsapp-inbox-context'
-import { isConversationWithinWhatsAppSession } from '@/lib/whatsapp-message-store'
+import { loadWhatsAppInboxContext } from '@/lib/whatsapp/whatsapp-inbox-context'
+import { isConversationWithinWhatsAppSession } from '@/lib/whatsapp/whatsapp-message-store'
 
 const querySchema = z.object({
   conversation_id: z.string().uuid(),

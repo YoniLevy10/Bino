@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { buildClientResendFrom, resolveClientEmailSlug } from '@/lib/client-email-from'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { buildClientResendFrom, resolveClientEmailSlug } from '@/lib/client/client-email-from'
 import {
   buildClientLaunchChecklist,
   LAUNCH_PLAYBOOK_HEADER,
   LIVE_SMOKE_CHECKS,
   PLATFORM_LAUNCH_NOTES,
-} from '@/lib/client-launch-checklist'
-import { growLegalFromClientRow } from '@/lib/client-grow-legal'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+} from '@/lib/client/client-launch-checklist'
+import { growLegalFromClientRow } from '@/lib/client/client-grow-legal'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { clientRowHasPalGateCredentials, type ClientPalGateRow } from '@/lib/palgate/access'
+import { isPalGatePilotClient } from '@/lib/palgate/pilot'
+import { readPalGateCredentialsStatus } from '@/lib/palgate/credentials'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -24,33 +27,41 @@ export async function GET(req: Request, context: RouteContext) {
 
   const admin = getSupabaseAdmin()
 
-  const [clientRes, projectsRes, workersRes, adminsRes, addonsRes] = await Promise.all([
-    admin
-      .from('clients')
-      .select(
-        `
+  const [clientRes, projectsRes, workersRes, residentsRes, adminsRes, addonsRes] =
+    await Promise.all([
+      admin
+        .from('clients')
+        .select(
+          `
         id, name, email_slug, logo_url, manager_phone, sms_sender_name,
         whatsapp_phone_number_id, whatsapp_access_token,
         grow_enabled, grow_user_id,
         grow_legal_business_name, grow_legal_phone, grow_legal_address, grow_legal_email,
-        financy_enabled, financy_client_id, financy_user_id
+        financy_enabled, financy_client_id, financy_user_id,
+        palgate_enabled, palgate_device_id, palgate_phone_number,
+        palgate_session_token_hex, palgate_token_type
       `
-      )
-      .eq('id', clientId)
-      .maybeSingle(),
-    admin.from('projects').select('id').eq('client_id', clientId),
-    admin.from('workers').select('id, is_active').eq('client_id', clientId).is('deleted_at', null),
-    admin.rpc('get_client_admin_emails') as unknown as Promise<{
-      data: { client_id: string; email: string }[] | null
-      error: unknown
-    }>,
-    admin
-      .from('client_paid_addons')
-      .select('addon_key, enabled')
-      .eq('client_id', clientId)
-      .eq('addon_key', PAID_ADDON_KEYS.collections)
-      .maybeSingle(),
-  ])
+        )
+        .eq('id', clientId)
+        .maybeSingle(),
+      admin.from('projects').select('id').eq('client_id', clientId),
+      admin.from('workers').select('id, is_active').eq('client_id', clientId).is('deleted_at', null),
+      admin
+        .from('residents')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', clientId)
+        .is('deleted_at', null),
+      admin.rpc('get_client_admin_emails') as unknown as Promise<{
+        data: { client_id: string; email: string }[] | null
+        error: unknown
+      }>,
+      admin
+        .from('client_paid_addons')
+        .select('addon_key, enabled')
+        .eq('client_id', clientId)
+        .eq('addon_key', PAID_ADDON_KEYS.collections)
+        .maybeSingle(),
+    ])
 
   if (clientRes.error) {
     return NextResponse.json({ error: clientRes.error.message }, { status: 500 })
@@ -77,21 +88,21 @@ export async function GET(req: Request, context: RouteContext) {
     financy_enabled: boolean | null
     financy_client_id: string | null
     financy_user_id: string | null
-  }
+  } & ClientPalGateRow
 
-  const SAVION_PILOT =
-    (process.env.PALGATE_PILOT_CLIENT_ID || '').trim() ||
-    '07773bb3-4969-4bce-8ce2-faab3b26383c'
   const financyConfigured =
     c.financy_enabled === true &&
     Boolean((c.financy_client_id || '').trim()) &&
     Boolean((c.financy_user_id || '').trim())
-  const palgateStatus =
-    clientId === SAVION_PILOT
-      ? ((process.env.PALGATE_SESSION_TOKEN_HEX || '').trim()
-          ? 'pilot_ready'
-          : 'waiting_vendor')
-      : 'n_a'
+
+  let palgateStatus: 'waiting_vendor' | 'pilot_ready' | 'n_a' = 'n_a'
+  if (clientRowHasPalGateCredentials(c)) {
+    palgateStatus = 'pilot_ready'
+  } else if (isPalGatePilotClient(clientId)) {
+    palgateStatus = readPalGateCredentialsStatus().configured ? 'pilot_ready' : 'waiting_vendor'
+  } else if (c.palgate_enabled === true) {
+    palgateStatus = 'waiting_vendor'
+  }
 
   const adminEmail =
     (adminsRes.data ?? []).find((a) => a.client_id === clientId)?.email?.trim() || null
@@ -104,6 +115,13 @@ export async function GET(req: Request, context: RouteContext) {
     clientName: c.name,
     emailSlug: c.email_slug,
   })
+
+  const residentsCount =
+    typeof residentsRes.count === 'number'
+      ? residentsRes.count
+      : Array.isArray(residentsRes.data)
+        ? residentsRes.data.length
+        : 0
 
   const snapshot = {
     clientName: c.name,
@@ -124,11 +142,12 @@ export async function GET(req: Request, context: RouteContext) {
     }).ready,
     collectionsAddonEnabled: addonsRes.data?.enabled === true,
     financyConfigured,
-    palgateStatus: palgateStatus as 'waiting_vendor' | 'pilot_ready' | 'n_a',
+    palgateStatus,
     emailSlug,
     emailFrom,
     buildingsCount: (projectsRes.data ?? []).length,
     workersActiveCount: (workersRes.data ?? []).filter((w) => w.is_active).length,
+    residentsCount,
     logoUrl: c.logo_url,
   }
 

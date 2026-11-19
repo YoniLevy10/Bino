@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getClientPlanRow, effectiveMaxBuildings } from '@/lib/plan-limits'
-import { getPlanPricingRow } from '@/lib/plan-pricing'
+import { getClientPlanRow, effectiveMaxBuildings } from '@/lib/plans/plan-limits'
+import { getPlanPricingRow } from '@/lib/plans/plan-pricing'
 import { sanitizeId, sanitizeString } from '@/lib/api-validation'
 import { createProjectBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { nextBmkProjectCode } from '@/lib/project-code'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { nextBmkProjectCode } from '@/lib/projects/project-code'
 
 export async function POST(req: Request) {
   const logger = getLogger()

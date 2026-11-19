@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { sendManagerSMS } from '@/lib/sms-send'
-import { getLogger } from '@/lib/logging'
-import { normalizePhone019 } from '@/lib/sms-019-core'
+import { sendManagerSMS } from '@/lib/sms/sms-send'
+import { getLogger } from '@/lib/shared/logging'
+import { normalizePhone019 } from '@/lib/sms/sms-019-core'
 import {
   WEEKLY_DIGEST_PILOT_CLIENT_ID,
   buildWeeklyDigestStats,
@@ -12,7 +12,7 @@ import {
   weeklyDigestOpsPhones,
   type DigestOpenTicket,
   type WeeklyDigestStats,
-} from '@/lib/weekly-ops-digest'
+} from '@/lib/ops/weekly-ops-digest'
 
 export const dynamic = 'force-dynamic'
 

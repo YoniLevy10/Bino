@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { AddonProjectPicker } from '@/app/components/addons/AddonProjectPicker'
 import { ProjectPilotSmsPanel } from '@/app/components/projects/ProjectPilotSmsPanel'

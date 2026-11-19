@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildDedupeKey } from '../dedupe'
 import type { RecommendationDraft } from '../types'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 
 function hoursAgo(ts: string): number {
   const t = new Date(ts).getTime()

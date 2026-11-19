@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { updateResidentBodySchema } from '@/lib/api-body-schemas'
 import { sanitizeString } from '@/lib/api-validation'
 import { logAudit } from '@/lib/audit'
-import { getLogger } from '@/lib/logging'
-import { formatZodError } from '@/lib/format-zod-error'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { getLogger } from '@/lib/shared/logging'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 
 type ResidentPhoneFields = {
   phone: string | null

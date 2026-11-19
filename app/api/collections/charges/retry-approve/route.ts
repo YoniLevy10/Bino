@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { formatZodError } from '@/lib/format-zod-error'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { approveGrowTransaction } from '@/lib/grow-client'
-import { recordGrowApproveResult } from '@/lib/collection-charge-ops'
+import { approveGrowTransaction } from '@/lib/payments/grow-client'
+import { recordGrowApproveResult } from '@/lib/collections/collection-charge-ops'
 
 const bodySchema = z.object({
   charge_id: z.string().uuid(),

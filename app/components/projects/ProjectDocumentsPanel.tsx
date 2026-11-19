@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { Button, Select, theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 

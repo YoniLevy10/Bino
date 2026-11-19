@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { type PaidAddonKey } from '@/lib/paid-addons'
+import { type PaidAddonKey } from '@/lib/addons/paid-addons'
 import { usePaidAddons } from '../PaidAddonsContext'
 
 type Props = {

@@ -13,8 +13,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
-import { bulkImportResidentsFromParsed } from '../lib/bulk-import-residents'
-import { parseResidentsDirectoryPdfText } from '../lib/parse-residents-directory-pdf'
+import { bulkImportResidentsFromParsed } from '../lib/residents/bulk-import-residents'
+import { parseResidentsDirectoryPdfText } from '../lib/residents/parse-residents-directory-pdf'
 
 function loadEnvLocal() {
   const envPath = path.resolve(process.cwd(), '.env.local')

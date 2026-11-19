@@ -4,7 +4,7 @@ import {
   ensureClientLogosBucket,
   resolveClientLogoMime,
   validateClientLogoFile,
-} from '@/lib/client-logo-upload'
+} from '@/lib/client/client-logo-upload'
 
 describe('client-logo-upload', () => {
   it('infers jpeg from file name when browser sends empty type', () => {

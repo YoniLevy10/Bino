@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit, checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit, checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { createWorkerAttendanceShiftBodySchema } from '@/lib/api-body-schemas'
-import { buildManualShiftRow } from '@/lib/attendance-shift-manual'
+import { buildManualShiftRow } from '@/lib/attendance/attendance-shift-manual'
 
 /** Tenant: shift rows for hours report / Excel export. */
 export async function GET(req: NextRequest) {

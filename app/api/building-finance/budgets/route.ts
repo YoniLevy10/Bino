@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
 import { upsertBuildingBudgetBodySchema } from '@/lib/api-body-schemas'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import { roundMoney } from '@/lib/unit-ledger'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

@@ -1,7 +1,17 @@
 'use client'
 
-/**
- * PWA-scoped alias for client setup.
- * Manifest scope is `/superadmin`, so `/admin/setup` opens outside the installed app.
- */
-export { default } from '../../admin/setup/page'
+import { useEffect } from 'react'
+
+/** Legacy /superadmin/setup → in-SPA launch wizard. */
+export default function SuperadminSetupRedirect() {
+  useEffect(() => {
+    window.location.replace('/superadmin#launch/new')
+  }, [])
+
+  return (
+    <main dir="rtl" style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
+      <p>מעבירים לאשף ההקמה…</p>
+      <a href="/superadmin#launch/new">לחצו כאן אם לא הועברתם אוטומטית</a>
+    </main>
+  )
+}

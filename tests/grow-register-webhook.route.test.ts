@@ -6,25 +6,25 @@ const extractGrowRegisterWebhook = vi.hoisted(() => vi.fn())
 const findOtherUsingGrowUserId = vi.hoisted(() => vi.fn())
 const normalizeGrowUserId = vi.hoisted(() => vi.fn((v: string) => v))
 
-vi.mock('@/lib/grow-webhook', () => ({
+vi.mock('@/lib/payments/grow-webhook', () => ({
   authorizeGrowWebhook,
   expandBracketFormKeys: (o: Record<string, string>) => o,
 }))
 vi.mock('@/lib/supabase-admin', () => ({ getSupabaseAdmin }))
-vi.mock('@/lib/grow-register', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/grow-register')>('@/lib/grow-register')
+vi.mock('@/lib/payments/grow-register', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/payments/grow-register')>('@/lib/payments/grow-register')
   return {
     ...actual,
     extractGrowRegisterWebhook,
   }
 })
-vi.mock('@/lib/grow-credentials', () => ({
+vi.mock('@/lib/payments/grow-credentials', () => ({
   normalizeGrowUserId,
 }))
-vi.mock('@/lib/project-grow', () => ({
+vi.mock('@/lib/projects/project-grow', () => ({
   findOtherUsingGrowUserId,
 }))
-vi.mock('@/lib/logging', () => ({
+vi.mock('@/lib/shared/logging', () => ({
   getLogger: () => ({ info: vi.fn(), error: vi.fn() }),
 }))
 

@@ -5,7 +5,7 @@ import {
   getEnvPublicOrigin,
   getResidentPortalJoinUrl,
   isVercelAppOrigin,
-} from '@/lib/public-origin'
+} from '@/lib/shared/public-origin'
 
 describe('public-origin', () => {
   afterEach(() => {

@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeString } from '@/lib/api-validation'
 import { createResidentBodySchema } from '@/lib/api-body-schemas'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { formatZodError } from '@/lib/format-zod-error'
-import { getLogger, getAuditLogger } from '@/lib/logging'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 
 export async function POST(req: Request) {
   const logger = getLogger()

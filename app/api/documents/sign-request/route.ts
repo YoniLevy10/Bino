@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { documentSignRequestBodySchema } from '@/lib/whatsapp-api-schemas'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { documentSignRequestBodySchema } from '@/lib/whatsapp/whatsapp-api-schemas'
 import { createDocumentSignRequest } from '@/lib/document-signing'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 
 export async function POST(req: Request) {
   const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents)

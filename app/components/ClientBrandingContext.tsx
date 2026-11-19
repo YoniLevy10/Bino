@@ -11,7 +11,7 @@ import {
   clearTenantBrowserCaches,
   LAST_AUTH_UID_KEY,
   TENANT_CID_SESSION_KEY,
-} from '@/lib/tenant-browser-cache'
+} from '@/lib/tenant/tenant-browser-cache'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 
 export type ClientBranding = {

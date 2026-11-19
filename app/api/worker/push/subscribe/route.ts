@@ -5,13 +5,13 @@ import {
   workerPushSubscribeBodySchema,
   workerPushUnsubscribeBodySchema,
 } from '@/lib/api-body-schemas'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
 import {
   deleteWorkerPushSubscriptionsForWorker,
   pushSubscriptionEndpoint,
   upsertExclusiveWorkerPushSubscription,
-} from '@/lib/push-subscription-tenant'
+} from '@/lib/push/push-subscription-tenant'
 
 function clientIp(req: Request): string {
   return (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown'

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger } from '@/lib/logging'
-import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/grow-webhook'
-import { findChargeIdsByGrowIds } from '@/lib/collection-charge-ops'
-import { sendCollectionInvoiceEmailIfNeeded } from '@/lib/collection-invoice-email'
-import { extractGrowInvoiceWebhookFields } from '@/lib/grow-invoice-webhook'
+import { getLogger } from '@/lib/shared/logging'
+import { authorizeGrowWebhook, expandBracketFormKeys } from '@/lib/payments/grow-webhook'
+import { findChargeIdsByGrowIds } from '@/lib/collections/collection-charge-ops'
+import { sendCollectionInvoiceEmailIfNeeded } from '@/lib/collections/collection-invoice-email'
+import { extractGrowInvoiceWebhookFields } from '@/lib/payments/grow-invoice-webhook'
 
 async function parsePayload(req: Request): Promise<unknown> {
   const contentType = (req.headers.get('content-type') || '').toLowerCase()

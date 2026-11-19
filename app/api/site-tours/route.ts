@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { signTourPhotosParallel } from '@/lib/ticket-attachment-url'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { signTourPhotosParallel } from '@/lib/tickets/ticket-attachment-url'
 
 /** Manager view: recent site tours with worker + notes + photos + defect link. */
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
   const { data, error } = await admin
     .from('worker_site_tours')
     .select(
-      'id, completed_at, notes, defect_ticket_id, project_id, worker_id, projects(name, address), workers:worker_id(full_name)'
+      'id, completed_at, notes, manager_notes, manager_notes_updated_at, defect_ticket_id, project_id, worker_id, projects(name, address), workers:worker_id(full_name)'
     )
     .eq('client_id', auth.ctx.clientId)
     .gte('completed_at', since.toISOString())
@@ -50,8 +50,12 @@ export async function GET() {
     const worker = Array.isArray(row.workers) ? row.workers[0] : row.workers
     return {
       id: row.id,
+      project_id: row.project_id,
+      worker_id: row.worker_id,
       completed_at: row.completed_at,
       notes: row.notes,
+      manager_notes: row.manager_notes ?? null,
+      manager_notes_updated_at: row.manager_notes_updated_at ?? null,
       defect_ticket_id: row.defect_ticket_id,
       project_name: (project as { name?: string } | null)?.name || '',
       project_address: (project as { address?: string } | null)?.address || null,

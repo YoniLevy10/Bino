@@ -8,7 +8,7 @@ import {
   isWhatsAppFreeTextRetry,
   resolveWhatsAppRetryTemplateName,
   whatsAppMetaErrorHint,
-} from '@/lib/whatsapp-meta-errors'
+} from '@/lib/whatsapp/whatsapp-meta-errors'
 
 describe('whatsapp-meta-errors', () => {
   it('maps Meta 132001 to template approval hint', () => {

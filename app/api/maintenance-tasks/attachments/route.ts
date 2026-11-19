@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { sanitizeId } from '@/lib/api-validation'
 import {
   TICKET_ATTACHMENT_MAX_IMAGE_BYTES,
   TICKET_ATTACHMENT_WEB_MIME_TYPES,
-} from '@/lib/ticket-attachment-upload'
-import { createServerSignedAttachmentUrl, withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
+} from '@/lib/tickets/ticket-attachment-upload'
+import { createServerSignedAttachmentUrl, withSignedAttachmentUrls } from '@/lib/tickets/ticket-attachment-url'
 
 export async function GET(req: NextRequest) {
   const auth = await requireSessionWriteAccess()

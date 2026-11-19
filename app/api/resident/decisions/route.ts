@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireResidentContext } from '@/lib/resident-portal/context'
 import { dedupeResidentBoundSignedRows } from '@/lib/building-governance/eligible-voters'
 import { computeMajorityProgress, countVoteChoices } from '@/lib/building-governance/roles'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

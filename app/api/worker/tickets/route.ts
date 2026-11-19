@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
 import { workerUpdateTicketBodySchema } from '@/lib/api-body-schemas'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { isWorkerSettableStatus } from '@/lib/ticket-status'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
+import { isWorkerSettableStatus } from '@/lib/tickets/ticket-status'
 import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
 
 export async function GET(req: NextRequest) {

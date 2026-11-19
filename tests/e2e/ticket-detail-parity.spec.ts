@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { ticketDetailPath } from '../../lib/ticket-deep-link'
+import { ticketDetailPath } from '../../lib/tickets/ticket-deep-link'
 
 test.describe('Ticket detail parity — routing', () => {
   test('deep link /tickets?ticket= loads login redirect without crash', async ({ page }) => {

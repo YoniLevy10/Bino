@@ -3,7 +3,7 @@ import {
   getMarketingGaMeasurementId,
   isValidGaMeasurementId,
   type MarketingPagePath,
-} from '@/lib/marketing-analytics'
+} from '@/lib/marketing/marketing-analytics'
 
 type MarketingAnalyticsProps = {
   /** Public marketing path only — never private/app routes. */

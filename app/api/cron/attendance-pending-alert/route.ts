@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { getLogger } from '@/lib/logging'
-import { notifyManagerAttendanceReview } from '@/lib/attendance-manager-notify'
+import { getLogger } from '@/lib/shared/logging'
+import { notifyManagerAttendanceReview } from '@/lib/attendance/attendance-manager-notify'
 
 /** Daily digest: notify managers with pending_review attendance events. */
 export async function GET(req: NextRequest) {

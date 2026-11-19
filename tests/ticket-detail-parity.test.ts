@@ -5,8 +5,8 @@ import {
   TICKET_DETAIL_ENTRY_POINTS,
   TICKET_DETAIL_NAV_SOURCES,
   TICKET_DETAIL_PARITY_FEATURES,
-} from '@/lib/ticket-detail-parity'
-import { ticketDetailPath, parseTicketIdFromSearchParams } from '@/lib/ticket-deep-link'
+} from '@/lib/tickets/ticket-detail-parity'
+import { ticketDetailPath, parseTicketIdFromSearchParams } from '@/lib/tickets/ticket-deep-link'
 
 const ROOT = join(__dirname, '..')
 

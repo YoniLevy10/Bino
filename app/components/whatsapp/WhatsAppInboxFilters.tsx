@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import type { InboxBuildingOption, InboxListFilters } from '@/lib/whatsapp-inbox-hooks'
+import type { InboxBuildingOption, InboxListFilters } from '@/lib/whatsapp/whatsapp-inbox-hooks'
 
 type Props = {
   filters: InboxListFilters

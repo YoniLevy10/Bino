@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireResidentContext } from '@/lib/resident-portal/context'
 import { createDecisionDocumentSignedUrl } from '@/lib/building-governance/decision-document'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { getLogger } from '@/lib/logging'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

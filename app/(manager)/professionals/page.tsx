@@ -6,8 +6,8 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { validateRequired, validatePhoneNumber } from '@/lib/validators'
 import {
@@ -16,7 +16,7 @@ import {
   formatWorkerPhoneDisplay,
   normalizeWorkerPhone,
   MAX_WORKER_EXTRA_PHONES,
-} from '@/lib/worker-phones'
+} from '@/lib/worker/worker-phones'
 import {
   MobileHeader,
   useMobileMenu,
@@ -32,14 +32,14 @@ import {
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
 import { PaidAddonGate } from '@/app/components/PaidAddonGate'
 import {
   MidragSearchPanel,
   focusMidragSearch,
 } from '@/app/components/professionals/MidragSearchPanel'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import type { FixlyDirectoryPerson } from '@/lib/fixly/pro-waitlist-directory'
 import {
   PROFESSIONALS_PAGE_SIZE,
@@ -47,7 +47,7 @@ import {
   isProfessionalsTableMissing,
   useTenantProfessionalsList,
 } from '@/lib/hooks/use-professionals-list'
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@/lib/shared/query-keys'
 import { ProfessionalRatingStars } from '@/app/components/professionals/ProfessionalRatingStars'
 
 type ProfessionalRow = {

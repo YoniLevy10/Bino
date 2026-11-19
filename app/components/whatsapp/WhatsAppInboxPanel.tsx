@@ -1,60 +1,62 @@
 'use client'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { isFetchTimeoutError } from '@/lib/fetch-with-timeout'
-import { whatsappUiMutate } from '@/lib/whatsapp-ui-fetch'
-import { toast } from '@/lib/error-handler'
-import { formatWhatsAppInboxDisplayLabel } from '@/lib/whatsapp-inbox-display'
+import { isFetchTimeoutError } from '@/lib/shared/fetch-with-timeout'
+import { whatsappUiMutate } from '@/lib/whatsapp/whatsapp-ui-fetch'
+import { toast } from '@/lib/errors/error-handler'
 import {
   buildInboxTemplatePreview,
   inboxTemplateRequiresOpenTicket,
   listInboxReadyTemplates,
   listInboxUiTemplates,
   type InboxMetaTemplate,
-} from '@/lib/whatsapp-inbox-meta-templates'
+} from '@/lib/whatsapp/whatsapp-inbox-meta-templates'
 import {
   inboxTemplateParamsFromContext,
   managerReplyTemplateParams,
   residentFirstNameForTemplate,
   type WhatsAppInboxContext,
-} from '@/lib/whatsapp-inbox-context'
+} from '@/lib/whatsapp/whatsapp-inbox-context'
 import {
   useWhatsAppInboxV2Conversations,
   useWhatsAppInboxMessages,
   useWhatsAppThreadMeta,
   sendWhatsAppInboxMedia,
-} from '@/lib/whatsapp-inbox-hooks'
-import { conversationHasUnread, markConversationRead } from '@/lib/whatsapp-inbox-unread-local'
+} from '@/lib/whatsapp/whatsapp-inbox-hooks'
+import { conversationHasUnread, markConversationRead } from '@/lib/whatsapp/whatsapp-inbox-unread-local'
 import { WhatsAppInboxFilters } from './WhatsAppInboxFilters'
 import { WhatsAppInboxMessageMedia } from './WhatsAppInboxMessageMedia'
 import { WhatsAppStartChatFab } from './WhatsAppStartChatFab'
 import { WhatsAppInboxForwardPro } from './WhatsAppInboxForwardPro'
-import { queryKeys } from '@/lib/query-keys'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/use-visual-viewport-frame'
-import { formatPhoneLocalIl } from '@/lib/sales-leads/phone'
+import { queryKeys } from '@/lib/shared/query-keys'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/hooks/use-visual-viewport-frame'
 import { useAppRefreshListener } from '@/lib/hooks/use-app-refresh'
 import { Button, Card, theme, useMobileMenuOptional } from '../ui'
-
-type Conversation = {
-  id: string
-  phone: string
-  last_message_at: string
-  last_message_preview: string | null
-  residents?: { full_name?: string; apartment_number?: string | null } | { full_name?: string; apartment_number?: string | null }[] | null
-}
-
-type Message = {
-  id: string
-  direction: 'in' | 'out'
-  body: string | null
-  message_type?: string | null
-  interactive_payload?: Record<string, unknown> | null
-  created_at: string
-  ticket_id: string | null
-}
+import {
+  residentLabel,
+  waInitials,
+  waAvatarColor,
+  waClock,
+  waListTime,
+  waDayLabel,
+  displayPhone,
+  formatInboxMessageBody,
+  type WhatsAppInboxConversation as Conversation,
+  type WhatsAppInboxMessage as Message,
+} from './whatsapp-inbox-helpers'
+import {
+  WaBackIcon,
+  WaSendIcon,
+  WaPlusIcon,
+  WaSearchIcon,
+  WaAttachIcon,
+  WaMenuIcon,
+  WaMark,
+} from './WhatsAppInboxIcons'
+import { styles } from './whatsapp-inbox-styles'
 
 type InboxConversation = Conversation & {
   building_name?: string | null
@@ -68,83 +70,6 @@ type InboxTemplateOption = {
   description: string
   params: { key: string; label: string; placeholder: string; maxLength: number }[]
   preview: string
-}
-
-const WA_AVATAR_COLORS = ['#00a884', '#53bdeb', '#7f66ff', '#e67e22', '#25d366', '#128c7e']
-
-function residentLabel(c: Conversation): string {
-  const r = Array.isArray(c.residents) ? c.residents[0] : c.residents
-  return formatWhatsAppInboxDisplayLabel(c.phone, r)
-}
-
-function waInitials(label: string): string {
-  const parts = label.replace(/[0-9+]/g, ' ').trim().split(/\s+/).filter((part) => part.length > 0)
-  if (parts.length === 0) return 'ש'
-  if (parts.length === 1) return parts[0].slice(0, 1)
-  return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`
-}
-
-function waAvatarColor(seed: string): string {
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
-  return WA_AVATAR_COLORS[hash % WA_AVATAR_COLORS.length]
-}
-
-function waClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-}
-
-function waListTime(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  if (date.toDateString() === now.toDateString()) return waClock(iso)
-  const yesterday = new Date(now)
-  yesterday.setDate(now.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) return 'אתמול'
-  return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
-}
-
-function waDayLabel(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  if (date.toDateString() === now.toDateString()) return 'היום'
-  const yesterday = new Date(now)
-  yesterday.setDate(now.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) return 'אתמול'
-  return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })
-}
-
-function displayPhone(phone: string): string {
-  return formatPhoneLocalIl(phone) ?? phone
-}
-
-function formatInboxMessageBody(m: Message): string {
-  const text = m.body?.trim()
-  if (text) return text
-  switch (m.message_type) {
-    case 'image':
-      return 'תמונה'
-    case 'video':
-      return 'וידאו'
-    case 'audio':
-      return 'הודעה קולית'
-    case 'document':
-      return 'מסמך'
-    case 'interactive':
-      return 'הודעה אינטראקטיבית'
-    case 'template':
-      return 'תבנית Meta'
-    case 'reaction':
-      return 'תגובה'
-    case 'sticker':
-      return 'מדבקה'
-    case 'location':
-      return 'מיקום'
-    case 'unsupported':
-      return 'הודעה לא נתמכת'
-    default:
-      return '—'
-  }
 }
 
 export function WhatsAppInboxPanel() {
@@ -390,7 +315,7 @@ export function WhatsAppInboxPanel() {
 
         const json = (await res.json()) as { error?: string }
         if (!res.ok) throw new Error(json.error || 'שליחה נכשלה')
-        toast.success('ההודעה נשלחה לדייר/ה — כשיגיב/תגיב אפשר לכתוב חופשי')
+        toast.success('נשלחה תבנית עם ההודעה שכתבתם — אחרי אישור אפשר לכתוב חופשי')
         setReply('')
         await refreshMessages(selected.id)
         await refreshConversations()
@@ -421,7 +346,7 @@ export function WhatsAppInboxPanel() {
 
           const tplJson = (await tplRes.json()) as { error?: string }
           if (!tplRes.ok) throw new Error(tplJson.error || 'שליחה דרך תבנית נכשלה')
-          toast.success('ההודעה נשלחה דרך תבנית Meta')
+          toast.success('נשלחה תבנית עם ההודעה שכתבתם')
           setReply('')
           await refreshMessages(selected.id)
           await refreshConversations()
@@ -622,7 +547,7 @@ export function WhatsAppInboxPanel() {
       <div className="wa-inbox-compose" style={styles.compose}>
         {!inSession && (
           <p style={styles.templateComposeHint}>
-            חלון 24 השעות סגור. ההודעה תישלח כתבנית, וכשהדייר יענה אפשר לכתוב חופשי.
+            תישלח תבנית עם ההודעה שכתבתם — אחרי «קיבלתי» או תשובה אפשר לכתוב חופשי.
           </p>
         )}
         {!inSession && reply.trim() && hasManagerReplyTemplate && (
@@ -809,11 +734,7 @@ export function WhatsAppInboxPanel() {
       <div className="wa-inbox-wrap" data-mobile-pane={mobilePane}>
         <aside
           className="wa-inbox-list"
-          style={{
-            ...styles.list,
-            position: 'relative',
-            ...styles.listFabPad,
-          }}
+          style={styles.list}
           aria-label="רשימת שיחות"
         >
           <div style={styles.listHeader}>
@@ -970,543 +891,4 @@ export function WhatsAppInboxPanel() {
     </Card>
     </div>
   )
-}
-
-function WaBackIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  )
-}
-
-function WaSendIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M3.2 11.3 20.4 3.1c.7-.3 1.4.4 1.1 1.1l-8.2 17.2c-.3.7-1.3.6-1.5-.1l-1.8-6.4-6.4-1.8c-.7-.2-.8-1.2-.1-1.5Z" />
-    </svg>
-  )
-}
-
-function WaPlusIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
-}
-
-function WaSearchIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667781" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </svg>
-  )
-}
-
-function WaAttachIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-    </svg>
-  )
-}
-
-function WaMenuIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <path d="M4 7h16M4 12h16M4 17h16" />
-    </svg>
-  )
-}
-
-function WaMark() {
-  return (
-    <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#8696a0" strokeWidth="1.2" aria-hidden>
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-
-const styles: Record<string, CSSProperties> = {
-  helpBanner: {
-    margin: 0,
-    padding: '12px 16px',
-    fontSize: 13,
-    lineHeight: 1.45,
-    color: theme.colors.textSecondary,
-    background: theme.colors.mutedSurface,
-    borderBottom: `1px solid ${theme.colors.border}`,
-  },
-  list: {
-    borderInlineEnd: '1px solid #e9edef',
-    overflow: 'auto',
-    minHeight: 0,
-    height: '100%',
-    background: '#fff',
-  },
-  listFabPad: {
-    paddingBottom: 88,
-  },
-  listHeader: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 1,
-    padding: '10px 16px',
-    paddingTop: 'calc(14px + env(safe-area-inset-top, 0px))',
-    background: '#fff',
-  },
-  listHeaderTop: { display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 },
-  listHeaderTitle: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#111b21',
-    letterSpacing: '-0.02em',
-  },
-  newChatHeaderBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: '50%',
-    border: 'none',
-    background: '#00a884',
-    color: '#fff',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    flexShrink: 0,
-    touchAction: 'manipulation',
-  },
-  searchWrap: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '0 12px',
-    minHeight: 36,
-    borderRadius: 8,
-    background: '#f0f2f5',
-  },
-  searchInput: {
-    flex: 1,
-    minWidth: 0,
-    border: 'none',
-    outline: 'none',
-    background: 'transparent',
-    fontFamily: 'inherit',
-    fontSize: 16,
-    color: '#111b21',
-    padding: '8px 0',
-  },
-  listItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    width: '100%',
-    textAlign: 'right',
-    padding: '10px 14px',
-    border: 'none',
-    borderBottom: '1px solid #f0f2f5',
-    background: '#fff',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  listItemActive: { background: '#f0f2f5' },
-  listBody: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
-  listTop: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
-  listTitle: {
-    fontWeight: 600,
-    fontSize: 16,
-    color: '#111b21',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  listTime: { flexShrink: 0, fontSize: 12, color: '#667781' },
-  listPreview: {
-    fontSize: 14,
-    color: '#667781',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: '50%',
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 700,
-  },
-  threadAvatar: {
-    width: 40,
-    height: 40,
-    fontSize: 15,
-  },
-  thread: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-    height: '100%',
-    overflow: 'hidden',
-    background: '#efeae2',
-  },
-  threadPortal: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    minHeight: 0,
-    width: '100%',
-    background: '#efeae2',
-  },
-  emptyThread: {
-    width: '100%',
-    margin: 'auto',
-    padding: '48px 20px',
-    textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    boxSizing: 'border-box',
-  },
-  emptyMark: {
-    width: 88,
-    height: 88,
-    borderRadius: '50%',
-    background: '#f0f2f5',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  emptyTitle: { fontSize: 20, fontWeight: 500, color: '#41525d', margin: 0, textAlign: 'center' },
-  emptyHint: {
-    margin: 0,
-    maxWidth: 260,
-    fontSize: 14,
-    lineHeight: 1.45,
-    color: '#667781',
-    textAlign: 'center',
-  },
-  threadHeader: {
-    padding: '6px 10px',
-    minHeight: 56,
-    borderBottom: '1px solid #e9edef',
-    display: 'flex',
-    flexWrap: 'nowrap',
-    gap: 8,
-    alignItems: 'center',
-    flexShrink: 0,
-    background: '#f0f2f5',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    border: 'none',
-    background: 'transparent',
-    color: '#54656f',
-    cursor: 'pointer',
-    padding: 0,
-    fontFamily: 'inherit',
-    flexShrink: 0,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  threadIdentity: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
-  threadTitle: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: '#111b21',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    lineHeight: 1.25,
-  },
-  threadMetaRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: '4px 8px',
-    minWidth: 0,
-  },
-  threadSub: {
-    fontSize: 12,
-    color: '#667781',
-    fontWeight: 400,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  sessionChip: {
-    flexShrink: 0,
-    fontSize: 11,
-    fontWeight: 600,
-    lineHeight: 1.2,
-    padding: '2px 8px',
-    borderRadius: 999,
-  },
-  sessionChipOpen: {
-    color: '#0b7a4b',
-    background: 'rgba(37, 211, 102, 0.16)',
-  },
-  sessionChipClosed: {
-    color: '#9a6700',
-    background: 'rgba(255, 193, 7, 0.18)',
-  },
-  badgeOpen: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: theme.colors.success,
-    background: theme.colors.successMuted,
-    padding: '3px 10px',
-    borderRadius: theme.radius.sm,
-  },
-  badgeClosed: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: theme.colors.warning,
-    background: theme.colors.warningMuted,
-    padding: '3px 10px',
-    borderRadius: theme.radius.sm,
-  },
-  messages: {
-    flex: '1 1 0%',
-    overflowY: 'auto',
-    padding: '8px 4%',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-    minHeight: 0,
-  },
-  messageBlock: { display: 'flex', flexDirection: 'column' },
-  dayChip: {
-    alignSelf: 'center',
-    margin: '6px 0',
-    padding: '5px 12px',
-    borderRadius: 8,
-    background: '#fff',
-    color: '#54656f',
-    fontSize: 12.5,
-    boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
-  },
-  messagesErrorBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    padding: 16,
-    borderRadius: theme.radius.md,
-    background: theme.colors.errorMuted,
-  },
-  messagesErrorText: {
-    margin: 0,
-    fontSize: 14,
-    fontWeight: 600,
-    color: theme.colors.error,
-    lineHeight: 1.45,
-  },
-  /* LTR row so WhatsApp sides stay stable in Hebrew RTL pages:
-     incoming (resident) left, outgoing (manager) right. */
-  bubbleRow: {
-    display: 'flex',
-    width: '100%',
-    direction: 'ltr',
-  },
-  bubbleRowIn: { justifyContent: 'flex-start' },
-  bubbleRowOut: { justifyContent: 'flex-end' },
-  bubble: {
-    maxWidth: '82%',
-    margin: '1px 0',
-    padding: '6px 9px 4px 9px',
-    borderRadius: 8,
-    fontSize: 14.2,
-    lineHeight: 1.4,
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-    columnGap: 8,
-    rowGap: 2,
-    boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
-  },
-  bubbleText: {
-    whiteSpace: 'pre-wrap',
-    minWidth: 0,
-    direction: 'rtl',
-    textAlign: 'right',
-    unicodeBidi: 'plaintext',
-  },
-  bubbleIn: {
-    background: '#fff',
-    color: '#111b21',
-    borderBottomLeftRadius: 2,
-  },
-  bubbleOut: {
-    background: '#d9fdd3',
-    color: '#111b21',
-    borderBottomRightRadius: 2,
-  },
-  time: {
-    marginInlineStart: 'auto',
-    fontSize: 11,
-    lineHeight: 1,
-    color: '#667781',
-    paddingBottom: 2,
-    whiteSpace: 'nowrap',
-    direction: 'ltr',
-  },
-  compose: {
-    padding: '4px 8px 6px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    flexShrink: 0,
-    background: '#f0f2f5',
-    borderTop: '1px solid #e9edef',
-  },
-  composeRow: { display: 'flex', alignItems: 'flex-end', gap: 6 },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: '50%',
-    border: 'none',
-    background: 'transparent',
-    color: '#54656f',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  iconBtnActive: { background: '#fff', color: '#00a884' },
-  iconBtnDisabled: { opacity: 0.45, cursor: 'default' },
-  hiddenFile: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    overflow: 'hidden',
-    clip: 'rect(0,0,0,0)',
-  },
-  unreadDot: {
-    display: 'inline-block',
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    background: '#25d366',
-    marginInlineStart: 6,
-    verticalAlign: 'middle',
-  },
-  srOnly: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    padding: 0,
-    margin: -1,
-    overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
-    whiteSpace: 'nowrap',
-    border: 0,
-  },
-  sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: '50%',
-    border: 'none',
-    background: '#00a884',
-    color: '#fff',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  sendBtnDisabled: { background: '#8696a0', cursor: 'default' },
-  sendWait: { fontSize: 18, lineHeight: 1 },
-  composeLabel: { fontSize: 13, fontWeight: 600, color: theme.colors.textSecondary, display: 'block', marginBottom: 4 },
-  closedHint: {
-    margin: 0,
-    fontSize: 13,
-    lineHeight: 1.45,
-    color: theme.colors.textSecondary,
-  },
-  templateComposeHint: {
-    margin: 0,
-    fontSize: 12,
-    lineHeight: 1.45,
-    color: theme.colors.textMuted,
-  },
-  quickActions: { display: 'flex', flexDirection: 'column', gap: 8 },
-  quickActionsTitle: { fontSize: 13, fontWeight: 700, color: theme.colors.textPrimary },
-  quickGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 },
-  quickBtn: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 4,
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    cursor: 'pointer',
-    textAlign: 'right',
-  },
-  quickBtnActive: {
-    borderColor: theme.colors.primary,
-    background: theme.colors.primaryMuted,
-  },
-  quickBtnDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-  quickBtnTitle: { fontSize: 14, fontWeight: 700, color: theme.colors.textPrimary },
-  quickBtnHint: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 1.35 },
-  quickPanel: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    padding: '12px 14px',
-    borderRadius: theme.radius.md,
-    background: theme.colors.surface,
-    border: `1px solid ${theme.colors.borderSubtle}`,
-  },
-  input: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    fontFamily: 'inherit',
-    fontSize: 16,
-    boxSizing: 'border-box',
-  },
-  previewBox: {
-    padding: '10px 12px',
-    borderRadius: theme.radius.md,
-    background: theme.colors.muted,
-    border: `1px solid ${theme.colors.borderSubtle}`,
-  },
-  previewLabel: { fontSize: 11, fontWeight: 600, color: theme.colors.textMuted, marginBottom: 6 },
-  previewText: { fontSize: 13, lineHeight: 1.45, color: theme.colors.textPrimary, whiteSpace: 'pre-wrap' },
-  textarea: {
-    flex: 1,
-    width: '100%',
-    resize: 'none',
-    minHeight: 40,
-    maxHeight: 120,
-    padding: '9px 14px',
-    borderRadius: 20,
-    border: 'none',
-    background: '#fff',
-    fontFamily: 'inherit',
-    fontSize: 16,
-    lineHeight: 1.35,
-    color: '#111b21',
-    boxSizing: 'border-box',
-  },
-  muted: { padding: 16, color: theme.colors.textMuted, margin: 0, fontSize: 13 },
 }

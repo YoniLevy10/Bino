@@ -3,7 +3,7 @@
  * Never call from the browser; server-only with per-tenant credentials.
  */
 
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 import {
   clearFinancyTokenCache,
   getFinancyAccessToken,

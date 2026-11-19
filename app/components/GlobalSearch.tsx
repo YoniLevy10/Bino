@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { withClientId } from '@/lib/supabase/with-client-id'
 import { theme } from './ui'
-import { ticketDetailPath } from '@/lib/ticket-deep-link'
+import { ticketDetailPath } from '@/lib/tickets/ticket-deep-link'
 
 type SearchResult = {
   id: string

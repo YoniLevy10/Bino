@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, type CSSProperties } from 'react'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
-import { toast } from '@/lib/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
 import { Button, Card, Select, theme } from '@/app/components/ui'
 
 type ProjectOpt = { id: string; name: string }

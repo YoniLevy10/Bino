@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { higherOrgRole, isOrgUserRole, type OrgUserRole } from '@/lib/org-role'
+import { higherOrgRole, isOrgUserRole, type OrgUserRole } from '@/lib/auth-api/org-role'
 
 export type { OrgUserRole }
 

@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { formatZodError } from '@/lib/format-zod-error'
-import { getPublicAppUrl } from '@/lib/public-app-url'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { formatZodError } from '@/lib/errors/format-zod-error'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
 import {
   buildGrowRegisterWebhookUrl,
   createGrowRegistrationLink,
   isGrowRegisterReady,
-} from '@/lib/grow-register'
-import { loadProjectGrowRow, PROJECT_GROW_SELECT } from '@/lib/project-grow'
+} from '@/lib/payments/grow-register'
+import { loadProjectGrowRow, PROJECT_GROW_SELECT } from '@/lib/projects/project-grow'
 
 const bodySchema = z.object({
   /** When set — GetLink binds to this building (preferred). */

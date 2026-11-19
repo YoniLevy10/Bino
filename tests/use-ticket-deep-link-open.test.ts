@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parseTicketIdFromSearchParams, TICKET_DEEP_LINK_PARAM } from '@/lib/ticket-deep-link'
+import { parseTicketIdFromSearchParams, TICKET_DEEP_LINK_PARAM } from '@/lib/tickets/ticket-deep-link'
 
 const ROOT = join(__dirname, '..')
 

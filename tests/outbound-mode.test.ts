@@ -4,7 +4,7 @@ import {
   isGrowOutboundAllowed,
   isOutboundLiveAllowed,
   isStagingRuntime,
-} from '@/lib/outbound-mode'
+} from '@/lib/shared/outbound-mode'
 
 describe('outbound-mode', () => {
   afterEach(() => {

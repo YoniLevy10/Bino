@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
-import { requireSessionClientId } from '@/lib/api-auth'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
 import { isBuildingFinancePlatformEnabled } from '@/lib/building-finance/platform-gate'
 import { buildPeriodRange, defaultPeriodKey } from '@/lib/building-finance/period'
 import {
   fetchBuildingExpenseSum,
   type ExpenseSumMode,
 } from '@/lib/building-finance/expense-sums'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

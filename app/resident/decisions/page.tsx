@@ -7,8 +7,8 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { useSignaturePad } from '@/app/components/SignaturePad'
 import {
   ResidentAlert,

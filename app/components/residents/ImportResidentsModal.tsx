@@ -3,15 +3,15 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Button, theme } from '../ui'
 import type { ResidentProjectRow } from './AddResidentModal'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import {
   buildResidentsImportPayload,
   parseResidentsWorkbook,
   type ParsedRow,
   type ResidentsColumnMapping,
   type ResidentsImportPayloadRow,
-} from '@/lib/import-residents-excel'
+} from '@/lib/residents/import-residents-excel'
 import { TM } from '@/lib/toast-messages'
 
 type DryRunSummary = {

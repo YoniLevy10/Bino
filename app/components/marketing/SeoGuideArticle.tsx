@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { MarketingLeadLink } from './MarketingLeadLink'
-import type { SeoGuide } from '@/lib/seo-guides-he'
-import { SEO_GUIDES_HE } from '@/lib/seo-guides-he'
-import { waDemoUrl } from '@/lib/marketing-copy'
+import type { SeoGuide } from '@/lib/seo/seo-guides-he'
+import { SEO_GUIDES_HE } from '@/lib/seo/seo-guides-he'
+import { waDemoUrl } from '@/lib/marketing/marketing-copy'
 import './seo-guide.css'
 
 const WA = waDemoUrl('he')

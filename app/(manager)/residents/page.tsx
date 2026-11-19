@@ -27,8 +27,8 @@ import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
-import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
@@ -36,8 +36,8 @@ import {
   fetchResidentsPage,
   useTenantResidentsList,
 } from '@/lib/hooks/use-residents-list'
-import { queryKeys } from '@/lib/query-keys'
-import { buildResidentIntakeUrl } from '@/lib/resident-intake'
+import { queryKeys } from '@/lib/shared/query-keys'
+import { buildResidentIntakeUrl } from '@/lib/residents/resident-intake'
 import type { ResidentProjectRow } from '@/app/components/residents/AddResidentModal'
 
 const AddResidentModal = dynamic(
@@ -80,8 +80,8 @@ import {
   theme
 } from '@/app/components/ui'
 import { VirtualizedList } from '@/app/components/VirtualizedList'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { pickResidentToKeep } from '@/lib/merge-residents'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { pickResidentToKeep } from '@/lib/merge/merge-residents'
 import { PageListSkeleton } from '@/app/components/page-skeleton'
 
 const MAIN_TAB_ACTIVE: CSSProperties = {
@@ -787,7 +787,7 @@ function ResidentsPageInner() {
   }
 
   async function exportCsv() {
-    const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel-workbook')
+    const { createWorkbook, addJsonSheet, downloadExcelWorkbook } = await import('@/lib/excel/excel-workbook')
     const rows = sorted.map((r) => ({
       'שם מלא': r.full_name,
       'טלפון': r.phone || '',

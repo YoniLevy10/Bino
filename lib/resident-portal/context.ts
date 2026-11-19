@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route-handler'
-import { getRequestUser } from '@/lib/request-user'
+import { getRequestUser } from '@/lib/auth-api/request-user'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import {
   getMembershipForUser,

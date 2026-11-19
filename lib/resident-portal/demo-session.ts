@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isResidentPortalDevUnlocked } from '@/lib/resident-portal/dev-unlock'
 import { issueResidentPortalLoginSession } from '@/lib/resident-portal/phone-otp'
-import { normalizePhone } from '@/lib/residents-whatsapp'
+import { normalizePhone } from '@/lib/residents/residents-whatsapp'
 
 const DEMO_NAME_PATTERN = '%DEMO%'
 const PREFERRED_DEMO_PHONE = '0500000101'

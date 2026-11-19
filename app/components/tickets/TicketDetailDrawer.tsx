@@ -6,8 +6,8 @@ import { Drawer, Button, Select, StatusBadge, PriorityDot, theme } from '../ui'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
 import { CollapsibleSection } from '../shared/CollapsibleSection'
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
+import { fetchWithTimeout } from '@/lib/shared/fetch-with-timeout'
+import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/tickets/ticket-status'
 import { ForwardToProfessionalBlock, type ProfessionalOption } from './ForwardToProfessionalBlock'
 import { EntityRecommendations } from '@/app/components/recommendations/EntityRecommendations'
 import { SuggestWorkerAssignButton } from '@/app/components/recommendations/SuggestWorkerAssignButton'
@@ -18,7 +18,7 @@ import {
   formatReporterNameAndPhone,
   normalizeReporterPhone,
   savedResidentDisplayName,
-} from '@/lib/reporter-display'
+} from '@/lib/reporter/reporter-display'
 import { TabBar } from '../ui/TabBar'
 import { TicketDetailMobileShell } from './TicketDetailMobileShell'
 import type {
@@ -26,7 +26,7 @@ import type {
   TicketDetailLog,
   TicketDetailRow,
   TicketMergeCandidate,
-} from '@/lib/ticket-detail-types'
+} from '@/lib/tickets/ticket-detail-types'
 
 export type { TicketDetailRow, TicketDetailAttachment, TicketDetailLog }
 

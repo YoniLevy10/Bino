@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { mergeResidentsBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { logAudit } from '@/lib/audit'
-import { getLogger } from '@/lib/logging'
-import { mergeResidentsForClient } from '@/lib/merge-residents'
+import { getLogger } from '@/lib/shared/logging'
+import { mergeResidentsForClient } from '@/lib/merge/merge-residents'
 
 export async function POST(req: Request) {
   const logger = getLogger()

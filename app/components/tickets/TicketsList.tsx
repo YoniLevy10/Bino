@@ -2,8 +2,8 @@
 
 import { useState, type CSSProperties } from 'react'
 import { Card, StatusBadge, SearchInput, FilterTabs, EmptyState, Button, theme } from '../ui'
-import { toast } from '@/lib/error-handler'
-import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/ticket-status'
+import { toast } from '@/lib/errors/error-handler'
+import { TICKET_STATUSES, ticketStatusLabelHe } from '@/lib/tickets/ticket-status'
 
 interface TicketRow {
   id: string

@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
-import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/error-handler'
+import { toast, asyncHandler, errorMessageFromResponseJson } from '@/lib/errors/error-handler'
 import {
   fetchWithTimeout,
   MUTATION_FETCH_TIMEOUT_MS,
   DEFAULT_FETCH_TIMEOUT_MS,
-} from '@/lib/fetch-with-timeout'
-import { formatChargeAmountIls, type CollectionChargeListItem } from '@/lib/collection-charges'
+} from '@/lib/shared/fetch-with-timeout'
+import { formatChargeAmountIls, type CollectionChargeListItem } from '@/lib/collections/collection-charges'
 import { Button, Drawer, Select, theme } from '@/app/components/ui'
 
 type LedgerEntryView = {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 import {
   FETCH_TIMEOUT_USER_MESSAGE,
   fetchWithTimeout,
-} from '@/lib/fetch-with-timeout'
+} from '@/lib/shared/fetch-with-timeout'
 
 describe('fetchWithTimeout', () => {
   afterEach(() => {

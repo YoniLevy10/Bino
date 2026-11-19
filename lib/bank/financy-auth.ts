@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '@/lib/fetch-timeout'
+import { fetchWithTimeout } from '@/lib/shared/fetch-timeout'
 
 const TOKEN_URL = 'https://api.open-finance.ai/oauth/token'
 const TOKEN_SKEW_MS = 60_000

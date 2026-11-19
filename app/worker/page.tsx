@@ -4,13 +4,13 @@ import dynamic from 'next/dynamic'
 import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { toast } from '@/lib/error-handler'
-import { fetchWithTimeout, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast } from '@/lib/errors/error-handler'
+import { fetchWithTimeout, WORKER_PHOTO_TIMEOUT_MS } from '@/lib/shared/fetch-with-timeout'
 import { TM } from '@/lib/toast-messages'
-import { toastReporterClosedNotifySummary } from '@/lib/reporter-closed-notify-toast'
+import { toastReporterClosedNotifySummary } from '@/lib/reporter/reporter-closed-notify-toast'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { writeWorkerPortalBranding, tryReadWorkerPortalBranding } from '@/lib/worker-branding'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
+import { writeWorkerPortalBranding, tryReadWorkerPortalBranding } from '@/lib/worker/worker-branding'
 import {
   AppShell,
   MobileHeader,
@@ -60,7 +60,7 @@ const WorkerMaintenancePanel = dynamic(
     })),
   { loading: () => null }
 )
-import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker-push-client'
+import { clearWorkerAppBadge, isWorkerPushFullyEnabled, subscribeWorkerPush } from '@/lib/worker/worker-push-client'
 import {
   clearWorkerToken,
   normalizeWorkerToken,
@@ -68,15 +68,15 @@ import {
   readWorkerToken,
   writeLastWorkerId,
   writeWorkerToken,
-} from '@/lib/worker-portal-storage'
-import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker-offline-cache'
-import { WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/ticket-status'
+} from '@/lib/worker/worker-portal-storage'
+import { readWorkerTicketsCache, writeWorkerTicketsCache, filterOpenWorkerTickets } from '@/lib/worker/worker-offline-cache'
+import { WORKER_STATUS_SELECT_OPTIONS, type TicketStatus } from '@/lib/tickets/ticket-status'
 import {
   applyWorkerThemeColor,
   readWorkerDarkMode,
   workerDarkColors,
   writeWorkerDarkMode,
-} from '@/lib/worker-theme'
+} from '@/lib/worker/worker-theme'
 
 type Worker = { id: string; full_name: string }
 type Ticket = {

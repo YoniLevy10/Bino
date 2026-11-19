@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { sidebarPinBodySchema } from '@/lib/api-body-schemas'
-import { formatZodError } from '@/lib/format-zod-error'
+import { formatZodError } from '@/lib/errors/format-zod-error'
 import { logAudit } from '@/lib/audit'
-import { getClientEnabledAddonKeys, navIdsForEnabledAddonKeys, PAID_ADDON_NAV_ID } from '@/lib/paid-addons'
-import { parseEnabledNavFeaturesFromDb } from '@/lib/client-nav-features'
+import { getClientEnabledAddonKeys, navIdsForEnabledAddonKeys, PAID_ADDON_NAV_ID } from '@/lib/addons/paid-addons'
+import { parseEnabledNavFeaturesFromDb } from '@/lib/client/client-nav-features'
 import {
   nextSidebarOrderAfterPinToggle,
   parseSidebarNavOrderFromDb,

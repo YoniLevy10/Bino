@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { WhatsAppInboxPanel } from '@/app/components/whatsapp/WhatsAppInboxPanel'
 import { LoadingSpinner } from '@/app/components/ui'

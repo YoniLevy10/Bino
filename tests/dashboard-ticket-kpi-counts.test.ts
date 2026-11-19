@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   EMPTY_DASHBOARD_TICKET_KPI_COUNTS,
   resolveDashboardTicketKpiCounts,
-} from '@/lib/dashboard-ticket-kpi-counts'
+} from '@/lib/dashboard/dashboard-ticket-kpi-counts'
 
 describe('resolveDashboardTicketKpiCounts', () => {
   it('prefers stored ticketKpis', () => {

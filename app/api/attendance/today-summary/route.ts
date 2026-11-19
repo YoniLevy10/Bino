@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { checkAuthenticatedReadRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedReadRouteLimit } from '@/lib/shared/rate-limit'
 import { requireClientPaidAddon } from '@/lib/require-paid-addon'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
+import { PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
 
 function todayBounds(): { start: string; end: string } {
   const start = new Date()

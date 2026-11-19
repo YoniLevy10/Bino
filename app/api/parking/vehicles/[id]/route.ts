@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { logAudit } from '@/lib/audit'
 import { deleteParkingVehicle } from '@/lib/palgate/parking-vehicles'
 import { requirePalGatePilotWrite } from '@/lib/palgate/require-pilot'

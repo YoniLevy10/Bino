@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { theme } from '../components/ui'
 import { LoadingButton } from '../components/LoadingButton'
-import { formatAddonPriceDisplay } from '@/lib/paid-addons'
+import { formatAddonPriceDisplay } from '@/lib/addons/paid-addons'
 
 export type CatalogRow = {
   addon_key: string

@@ -7,9 +7,9 @@ import {
   buildResidentIntakeWhatsAppShareUrl,
   intakeShareTemplateStorageKey,
   resolveResidentIntakeShareMessage,
-} from '@/lib/resident-intake'
-import { toast } from '@/lib/error-handler'
-import { getClientPublicOrigin } from '@/lib/public-origin'
+} from '@/lib/residents/resident-intake'
+import { toast } from '@/lib/errors/error-handler'
+import { getClientPublicOrigin } from '@/lib/shared/public-origin'
 import { Button, theme } from '../ui'
 
 type Props = {

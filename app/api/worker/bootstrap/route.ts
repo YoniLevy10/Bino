@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sanitizeId } from '@/lib/api-validation'
-import { checkIpPostRouteLimit } from '@/lib/rate-limit'
-import { clientHasPaidAddon, PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { resolveWorkerFromToken } from '@/lib/worker-token-auth'
+import { checkIpPostRouteLimit } from '@/lib/shared/rate-limit'
+import { clientHasPaidAddon, PAID_ADDON_KEYS } from '@/lib/addons/paid-addons'
+import { resolveWorkerFromToken } from '@/lib/worker/worker-token-auth'
 import { attachSavedResidentNames } from '@/lib/attach-reporter-names'
 
 function getRequestIp(req: NextRequest): string {

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSuperAdmin } from '@/lib/superadmin-auth'
-import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp-recover-stashed-media'
+import { requireSuperAdmin } from '@/lib/superadmin/superadmin-auth'
+import { recoverAllWhatsAppMediaForTicket } from '@/lib/whatsapp/whatsapp-recover-stashed-media'
 
 const bodySchema = z.object({
   client_id: z.string().uuid(),

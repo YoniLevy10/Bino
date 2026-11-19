@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import {
   trackMarketingLead,
   type MarketingLeadMethod,
-} from '@/lib/marketing-analytics'
+} from '@/lib/marketing/marketing-analytics'
 
 type MarketingLeadLinkProps = ComponentProps<'a'> & {
   method: MarketingLeadMethod

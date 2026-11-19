@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { withSignedAttachmentUrls } from '@/lib/ticket-attachment-url'
+import { withSignedAttachmentUrls } from '@/lib/tickets/ticket-attachment-url'
 import { recoverWhatsAppMediaForTicket } from '@/lib/recover-ticket-media-client'
-import { toast } from '@/lib/error-handler'
-import type { TicketDetailAttachment, TicketDetailLog } from '@/lib/ticket-detail-types'
+import { toast } from '@/lib/errors/error-handler'
+import type { TicketDetailAttachment, TicketDetailLog } from '@/lib/tickets/ticket-detail-types'
 
 export type TicketDetailDataTicketRef = {
   id: string

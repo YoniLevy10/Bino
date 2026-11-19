@@ -1,0 +1,875 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { buildGrowInvoiceNotifyUrl, createGrowPaymentLink } from '@/lib/payments/grow-client'
+import {
+  CLIENT_GROW_PAYMENTS_SELECT,
+  isGrowCollectionsConfigured,
+  type ClientGrowPaymentsRow,
+} from '@/lib/payments/grow-credentials'
+import { isGrowPlatformConfigured } from '@/lib/payments/grow-config'
+import { growCallbackSumMatchesCharge } from '@/lib/payments/grow-webhook'
+import { loadProjectGrowRow, resolveGrowMerchant } from '@/lib/projects/project-grow'
+import { sendResidentSMS } from '@/lib/sms/sms-send'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
+import {
+  buildPaymentSmsBody,
+  type CollectionChargeRow,
+  type CollectionChargeStatus,
+} from '@/lib/collections/collection-charges'
+import { sendCollectionReceiptEmailIfNeeded } from '@/lib/collections/collection-receipt-email'
+import {
+  chargeAnchorFromRow,
+  ensureLedgerChargeEntry,
+  postLedgerFullPaymentForCharge,
+} from '@/lib/unit-ledger'
+
+export type ChargeResidentInfo = {
+  id: string
+  full_name: string
+  phone: string | null
+  normalized_phone: string | null
+  apartment_number: string | null
+  email?: string | null
+}
+
+export type ChargeProjectInfo = {
+  id: string
+  name: string
+}
+
+function nowIso(): string {
+  return new Date().toISOString()
+}
+
+export function buildGrowWebhookNotifyUrl(): string | null {
+  const base = getPublicAppUrl()
+  const secret = (process.env.GROW_WEBHOOK_SECRET || '').trim()
+  if (!base || !secret) return null
+  const url = new URL(`${base}/api/webhook/grow`)
+  url.searchParams.set('token', secret)
+  return url.toString()
+}
+
+/** Absolute webhook URL Bino registers on each Grow payment request. */
+export function getConfiguredGrowWebhookUrl(): {
+  ok: true
+  url: string
+} | {
+  ok: false
+  error: string
+} {
+  const url = buildGrowWebhookNotifyUrl()
+  if (!url) {
+    return {
+      ok: false,
+      error:
+        'חסר GROW_WEBHOOK_SECRET או NEXT_PUBLIC_APP_URL בשרת. הגדירו ב-Vercel.',
+    }
+  }
+  return { ok: true, url }
+}
+
+export function buildPublicPayUrl(publicToken: string): string {
+  const base = getPublicAppUrl()
+  const path = `/pay/${encodeURIComponent(publicToken)}`
+  return base ? `${base}${path}` : path
+}
+
+export function defaultSuccessFailureUrls(
+  _row: ClientGrowPaymentsRow,
+  opts?: { publicToken?: string | null }
+): {
+  successUrl: string
+  failureUrl: string
+} {
+  const base = getPublicAppUrl()
+  const token = (opts?.publicToken || '').trim()
+  const successDefault = base
+    ? token
+      ? `${base}/pay/success?t=${encodeURIComponent(token)}`
+      : `${base}/pay/success`
+    : '/pay/success'
+  const failureDefault = base
+    ? token
+      ? `${base}/pay/failure?t=${encodeURIComponent(token)}`
+      : `${base}/pay/failure`
+    : '/pay/failure'
+  return { successUrl: successDefault, failureUrl: failureDefault }
+}
+
+export async function loadClientCollectionsRow(
+  admin: SupabaseClient,
+  clientId: string
+): Promise<ClientCollectionsRow | null> {
+  const { data, error } = await admin
+    .from('clients')
+    .select(`${CLIENT_GROW_PAYMENTS_SELECT}, sms_sender_name, name, logo_url`)
+    .eq('id', clientId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as ClientCollectionsRow
+}
+
+export type ClientCollectionsRow = ClientGrowPaymentsRow & {
+  sms_sender_name?: string | null
+  name?: string | null
+  logo_url?: string | null
+}
+
+export function requireConfiguredCredentials(row: ClientGrowPaymentsRow): {
+  ok: true
+  userId: string
+} | { ok: false; error: string } {
+  if (!isGrowPlatformConfigured()) {
+    return {
+      ok: false,
+      error: 'חסרים מפתחות Grow של Bino בשרת. פנו להנהלת Bino.',
+    }
+  }
+  if (!isGrowCollectionsConfigured(row)) {
+    return {
+      ok: false,
+      error:
+        'חשבון Grow של הבניין לא מוגדר. היכנסו לגבייה / הגדרות → Grow, חברו userId לכל בניין.',
+    }
+  }
+  return { ok: true, userId: row.grow_user_id!.trim() }
+}
+
+/** Resolve Grow merchant for a charge: project first, then client fallback. */
+export async function requireGrowMerchantForCharge(
+  admin: SupabaseClient,
+  opts: {
+    clientId: string
+    projectId: string | null | undefined
+    clientRow: ClientGrowPaymentsRow
+  }
+): Promise<{ ok: true; userId: string; source: 'project' | 'client' } | { ok: false; error: string }> {
+  if (!isGrowPlatformConfigured()) {
+    return {
+      ok: false,
+      error: 'חסרים מפתחות Grow של Bino בשרת. פנו להנהלת Bino.',
+    }
+  }
+  const project = opts.projectId
+    ? await loadProjectGrowRow(admin, opts.clientId, opts.projectId)
+    : null
+  const resolved = resolveGrowMerchant({
+    project,
+    client: opts.clientRow,
+    projectId: opts.projectId,
+  })
+  if (!resolved) {
+    return {
+      ok: false,
+      error: opts.projectId
+        ? 'לפניין הזה אין חשבון Grow. חברו userId לבניין בהגדרות → Grow (או השאירו חיבור ברמת הלקוח כגיבוי).'
+        : 'חשבון Grow לא מוגדר. חברו userId לבניין או ללקוח בהגדרות → Grow.',
+    }
+  }
+  return { ok: true, userId: resolved.userId, source: resolved.source }
+}
+
+function residentPhone(resident: ChargeResidentInfo | null | undefined): string | null {
+  const raw = resident?.normalized_phone?.trim() || resident?.phone?.trim() || ''
+  return raw || null
+}
+
+function paymentDescription(opts: {
+  title: string
+  apartment?: string | null
+  projectName?: string | null
+}): string {
+  const parts = [opts.title.trim()]
+  if (opts.apartment?.trim()) parts.push(`דירה ${opts.apartment.trim()}`)
+  if (opts.projectName?.trim()) parts.push(opts.projectName.trim())
+  return parts.filter(Boolean).join(' · ')
+}
+
+export type SendChargeResult =
+  | {
+      ok: true
+      charge: CollectionChargeRow
+      smsSent: boolean
+      payUrl: string
+    }
+  | { ok: false; error: string; code?: string }
+
+/** Create Grow payment request, mark sent, optionally SMS the Bino pay link. */
+export async function sendCollectionCharge(
+  admin: SupabaseClient,
+  opts: {
+    clientId: string
+    charge: CollectionChargeRow
+    resident: ChargeResidentInfo | null
+    project: ChargeProjectInfo | null
+    clientRow: ClientCollectionsRow
+    sendSms?: boolean
+  }
+): Promise<SendChargeResult> {
+  const { charge, resident, project, clientRow, clientId } = opts
+  const sendSms = opts.sendSms !== false
+
+  if (charge.status === 'paid') {
+    return { ok: false, error: 'החיוב כבר שולם', code: 'ALREADY_PAID' }
+  }
+  if (charge.status === 'cancelled') {
+    return { ok: false, error: 'החיוב בוטל', code: 'CANCELLED' }
+  }
+
+  const notifyUrl = buildGrowWebhookNotifyUrl()
+  if (!notifyUrl) {
+    return {
+      ok: false,
+      error:
+        'לא ניתן לשלוח חיוב: חסר GROW_WEBHOOK_SECRET בשרת. בלי זה סטטוס «שולם» לא יתעדכן אחרי תשלום.',
+      code: 'WEBHOOK_SECRET_MISSING',
+    }
+  }
+
+  const creds = await requireGrowMerchantForCharge(admin, {
+    clientId,
+    projectId: charge.project_id,
+    clientRow,
+  })
+  if (!creds.ok) return { ok: false, error: creds.error, code: 'NOT_CONFIGURED' }
+
+  let paymentUrl = charge.grow_payment_url || charge.greeninvoice_payment_url
+  let paymentLinkId = charge.grow_payment_link_id
+
+  if (!paymentUrl) {
+    const phone = residentPhone(resident)
+    if (!phone) {
+      return { ok: false, error: 'לדייר אין מספר טלפון — דרוש לדרישת תשלום ב-Grow', code: 'NO_PHONE' }
+    }
+    const { successUrl, failureUrl } = defaultSuccessFailureUrls(clientRow, {
+      publicToken: charge.public_token,
+    })
+    const description = paymentDescription({
+      title: charge.title,
+      apartment: resident?.apartment_number,
+      projectName: project?.name,
+    })
+
+    const form = await createGrowPaymentLink({
+      userId: creds.userId,
+      title: description,
+      amount: Number(charge.amount),
+      fullName: resident?.full_name || 'דייר',
+      phone,
+      // Prefer contact saved on /pay (receipt_email) — Grow needs it for official invoices.
+      email: charge.receipt_email || resident?.email,
+      successUrl,
+      cancelUrl: failureUrl,
+      notifyUrl,
+      publicToken: charge.public_token,
+      invoiceNotifyUrl: buildGrowInvoiceNotifyUrl(),
+    })
+
+    if (!form.ok) {
+      await admin
+        .from('collection_charges')
+        .update({
+          status: 'failed' satisfies CollectionChargeStatus,
+          updated_at: nowIso(),
+        })
+        .eq('id', charge.id)
+        .eq('client_id', clientId)
+      return { ok: false, error: form.error || 'יצירת דרישת תשלום נכשלה', code: 'FORM_FAILED' }
+    }
+
+    paymentUrl = form.url
+    paymentLinkId = form.paymentLinkProcessId || null
+  }
+
+  const publicPayUrl = buildPublicPayUrl(charge.public_token)
+  const phone = residentPhone(resident)
+  let smsSent = false
+
+  if (sendSms) {
+    if (!phone) {
+      smsSent = false
+    } else {
+      const body = buildPaymentSmsBody({
+        residentName: resident?.full_name || '',
+        title: charge.title,
+        amount: Number(charge.amount),
+        payUrl: publicPayUrl,
+        paymentReference: (charge as { payment_reference?: string | null }).payment_reference,
+      })
+      smsSent = await sendResidentSMS(
+        phone,
+        body,
+        clientRow.sms_sender_name ?? null,
+        clientId
+      )
+    }
+  }
+
+  const sentAt = charge.sent_at || nowIso()
+  // Audit #20: never overwrite paid/cancelled that flipped while Grow/SMS ran.
+  const { data: updated, error } = await admin
+    .from('collection_charges')
+    .update({
+      status: 'sent' satisfies CollectionChargeStatus,
+      grow_payment_url: paymentUrl,
+      grow_payment_link_id: paymentLinkId,
+      grow_user_id: creds.userId,
+      sent_at: sentAt,
+      updated_at: nowIso(),
+    })
+    .eq('id', charge.id)
+    .eq('client_id', clientId)
+    .in('status', ['draft', 'sent', 'failed'])
+    .select('*')
+    .maybeSingle()
+
+  if (error) {
+    return { ok: false, error: error.message || 'עדכון החיוב נכשל', code: 'UPDATE_FAILED' }
+  }
+  if (!updated) {
+    return {
+      ok: false,
+      error: 'סטטוס החיוב השתנה בזמן השליחה — רעננו את הרשימה',
+      code: 'STATUS_RACE',
+    }
+  }
+
+  const sentCharge = updated as CollectionChargeRow
+  // כרטסת דירה: charge line when payment request goes live (idempotent).
+  const ledgerCharge = await ensureLedgerChargeEntry(admin, chargeAnchorFromRow(sentCharge))
+  if (!ledgerCharge.ok) {
+    console.error('[collections] ledger charge entry failed', sentCharge.id, ledgerCharge.error)
+  }
+
+  return {
+    ok: true,
+    charge: sentCharge,
+    smsSent,
+    payUrl: publicPayUrl,
+  }
+}
+
+/** Resend SMS for an already-sent charge that has a payment URL. */
+export async function resendCollectionChargeSms(
+  admin: SupabaseClient,
+  opts: {
+    clientId: string
+    charge: CollectionChargeRow
+    resident: ChargeResidentInfo | null
+    clientRow: ClientCollectionsRow
+  }
+): Promise<{ ok: true; smsSent: boolean; payUrl: string } | { ok: false; error: string }> {
+  const { charge, resident, clientRow, clientId } = opts
+  // Audit #23: paid/cancelled must always block resend, even when a URL remains.
+  if (charge.status === 'paid') return { ok: false, error: 'החיוב כבר שולם' }
+  if (charge.status === 'cancelled') return { ok: false, error: 'החיוב בוטל' }
+  if (charge.status !== 'sent' && charge.status !== 'draft' && charge.status !== 'failed') {
+    return { ok: false, error: 'לא ניתן לשלוח מחדש חיוב במצב זה' }
+  }
+  if (!charge.grow_payment_url && !charge.greeninvoice_payment_url && !charge.public_token) {
+    return { ok: false, error: 'אין קישור תשלום לחיוב זה' }
+  }
+
+  const payUrl = buildPublicPayUrl(charge.public_token)
+  const phone = residentPhone(resident)
+  if (!phone) return { ok: false, error: 'לדייר אין מספר טלפון' }
+
+  const body = buildPaymentSmsBody({
+    residentName: resident?.full_name || '',
+    title: charge.title,
+    amount: Number(charge.amount),
+    payUrl,
+  })
+  const smsSent = await sendResidentSMS(
+    phone,
+    body,
+    clientRow.sms_sender_name ?? null,
+    clientId
+  )
+  if (!smsSent) return { ok: false, error: 'שליחת SMS נכשלה' }
+
+  if (charge.status === 'draft' && (charge.grow_payment_url || charge.greeninvoice_payment_url)) {
+    await admin
+      .from('collection_charges')
+      .update({
+        status: 'sent' satisfies CollectionChargeStatus,
+        sent_at: charge.sent_at || nowIso(),
+        updated_at: nowIso(),
+      })
+      .eq('id', charge.id)
+      .eq('client_id', clientId)
+  }
+
+  return { ok: true, smsSent, payUrl }
+}
+
+export async function cancelCollectionCharge(
+  admin: SupabaseClient,
+  opts: { clientId: string; chargeId: string }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: charge, error } = await admin
+    .from('collection_charges')
+    .select('*')
+    .eq('id', opts.chargeId)
+    .eq('client_id', opts.clientId)
+    .maybeSingle()
+
+  if (error || !charge) return { ok: false, error: 'חיוב לא נמצא' }
+  const row = charge as CollectionChargeRow
+  if (row.status === 'paid') return { ok: false, error: 'לא ניתן לבטל חיוב ששולם' }
+  if (row.status === 'cancelled') return { ok: true }
+
+  // Invalidate Bino public link. Keep grow_payment_link_id for forensics, but
+  // markChargePaidByGrowIds refuses cancelled rows (audit #22 local hardening).
+  // Full Grow-side link revoke depends on Grow API support (external).
+  const { data: cancelled, error: updErr } = await admin
+    .from('collection_charges')
+    .update({
+      status: 'cancelled' satisfies CollectionChargeStatus,
+      grow_payment_url: null,
+      greeninvoice_payment_url: null,
+      public_token: crypto.randomUUID(),
+      updated_at: nowIso(),
+    })
+    .eq('id', opts.chargeId)
+    .eq('client_id', opts.clientId)
+    .in('status', ['draft', 'sent', 'failed'])
+    .select('id')
+    .maybeSingle()
+
+  if (updErr) return { ok: false, error: updErr.message }
+  if (!cancelled) return { ok: false, error: 'סטטוס החיוב השתנה — לא בוטל' }
+  return { ok: true }
+}
+
+/**
+ * Recreate Grow payment link with payer email + invoiceNotifyUrl.
+ * Required for Grow official tax invoice / receipt webhook — links created
+ * without email never get grow_invoice_* callbacks.
+ */
+export async function ensureGrowPaymentLinkWithPayerEmail(
+  admin: SupabaseClient,
+  opts: {
+    chargeId: string
+    email: string
+  }
+): Promise<{ ok: true; paymentUrl: string } | { ok: false; error: string }> {
+  const email = (opts.email || '').trim().toLowerCase()
+  if (!email) return { ok: false, error: 'חסר מייל' }
+
+  const { data: charge, error } = await admin
+    .from('collection_charges')
+    .select(
+      `
+      id, client_id, project_id, title, amount, status, public_token, receipt_email,
+      grow_payment_url, greeninvoice_payment_url, grow_payment_link_id,
+      residents ( full_name, phone, normalized_phone, apartment_number, email ),
+      projects ( name )
+    `
+    )
+    .eq('id', opts.chargeId)
+    .maybeSingle()
+
+  if (error || !charge) return { ok: false, error: 'חיוב לא נמצא' }
+  const row = charge as unknown as CollectionChargeRow & {
+    client_id: string
+    project_id: string | null
+    residents: ChargeResidentInfo | ChargeResidentInfo[] | null
+    projects: ChargeProjectInfo | ChargeProjectInfo[] | null
+  }
+
+  if (row.status === 'paid') {
+    return {
+      ok: true,
+      paymentUrl: buildPublicPayUrl(row.public_token),
+    }
+  }
+  if (row.status === 'cancelled') {
+    return { ok: false, error: 'החיוב בוטל' }
+  }
+
+  const resident = Array.isArray(row.residents) ? row.residents[0] : row.residents
+  const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
+  const phone = residentPhone(resident)
+  if (!phone) {
+    return { ok: false, error: 'לדייר אין מספר טלפון — דרוש לדרישת תשלום ב-Grow' }
+  }
+
+  const clientRow = await loadClientCollectionsRow(admin, row.client_id)
+  if (!clientRow) return { ok: false, error: 'לקוח לא נמצא' }
+  const creds = await requireGrowMerchantForCharge(admin, {
+    clientId: row.client_id,
+    projectId: row.project_id,
+    clientRow,
+  })
+  if (!creds.ok) return { ok: false, error: creds.error }
+
+  const notifyUrl = buildGrowWebhookNotifyUrl()
+  if (!notifyUrl) {
+    return { ok: false, error: 'חסר GROW_WEBHOOK_SECRET בשרת' }
+  }
+
+  const { successUrl, failureUrl } = defaultSuccessFailureUrls(clientRow, {
+    publicToken: row.public_token,
+  })
+  const description = paymentDescription({
+    title: row.title,
+    apartment: resident?.apartment_number,
+    projectName: project?.name,
+  })
+
+  const form = await createGrowPaymentLink({
+    userId: creds.userId,
+    title: description,
+    amount: Number(row.amount),
+    fullName: resident?.full_name || 'דייר',
+    phone,
+    email,
+    successUrl,
+    cancelUrl: failureUrl,
+    notifyUrl,
+    publicToken: row.public_token,
+    invoiceNotifyUrl: buildGrowInvoiceNotifyUrl(),
+  })
+  if (!form.ok) {
+    return { ok: false, error: form.error || 'יצירת דרישת תשלום נכשלה' }
+  }
+
+  const now = nowIso()
+  const { data: updated, error: updErr } = await admin
+    .from('collection_charges')
+    .update({
+      receipt_email: email,
+      grow_payment_url: form.url,
+      grow_payment_link_id: form.paymentLinkProcessId || null,
+      grow_user_id: creds.userId,
+      updated_at: now,
+    })
+    .eq('id', row.id)
+    .eq('client_id', row.client_id)
+    .neq('status', 'paid')
+    .neq('status', 'cancelled')
+    .select('grow_payment_url')
+    .maybeSingle()
+
+  if (updErr || !updated) {
+    return { ok: false, error: updErr?.message || 'עדכון קישור התשלום נכשל' }
+  }
+
+  return { ok: true, paymentUrl: form.url }
+}
+
+/** Manual ops recovery when webhook missed a real payment. */
+export async function markCollectionChargePaidManual(
+  admin: SupabaseClient,
+  opts: { clientId: string; chargeId: string }
+): Promise<{ ok: true; charge: CollectionChargeRow } | { ok: false; error: string }> {
+  const { data: charge, error } = await admin
+    .from('collection_charges')
+    .select('*')
+    .eq('id', opts.chargeId)
+    .eq('client_id', opts.clientId)
+    .maybeSingle()
+
+  if (error || !charge) return { ok: false, error: 'חיוב לא נמצא' }
+  const row = charge as CollectionChargeRow
+  if (row.status === 'cancelled') {
+    return { ok: false, error: 'לא ניתן לסמן חיוב מבוטל כשולם' }
+  }
+  if (row.status === 'paid') {
+    const ledgerPay = await postLedgerFullPaymentForCharge(admin, {
+      charge: chargeAnchorFromRow(row),
+      source: 'manual',
+    })
+    if (!ledgerPay.ok) {
+      console.error('[collections] ledger payment after mark-paid (already paid)', opts.chargeId, ledgerPay.error)
+    }
+    return { ok: true, charge: row }
+  }
+
+  const paidAt = nowIso()
+  const { data: updated, error: updErr } = await admin
+    .from('collection_charges')
+    .update({
+      status: 'paid' satisfies CollectionChargeStatus,
+      paid_at: paidAt,
+      updated_at: paidAt,
+    })
+    .eq('id', opts.chargeId)
+    .eq('client_id', opts.clientId)
+    .select('*')
+    .single()
+
+  if (updErr || !updated) {
+    return { ok: false, error: updErr?.message || 'עדכון ל«שולם» נכשל' }
+  }
+  const paidRow = updated as CollectionChargeRow
+  const ledgerPay = await postLedgerFullPaymentForCharge(admin, {
+    charge: chargeAnchorFromRow(paidRow),
+    source: 'manual',
+  })
+  if (!ledgerPay.ok) {
+    console.error('[collections] ledger payment after mark-paid', opts.chargeId, ledgerPay.error)
+  }
+  // Await — fire-and-forget is dropped on Vercel after the webhook/response ends.
+  const receipt = await sendCollectionReceiptEmailIfNeeded(admin, opts.chargeId)
+  if (!receipt.sent && receipt.error) {
+    console.error('[collections] receipt email after mark-paid', opts.chargeId, receipt.error)
+  }
+  return { ok: true, charge: paidRow }
+}
+
+/**
+ * Sum-check unpaid candidates BEFORE ApproveTransaction.
+ * Missing callback sum → treat as ok (same as markChargePaidByGrowIds).
+ */
+export async function preflightGrowWebhookSumCheck(
+  admin: SupabaseClient,
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    processIds?: string[]
+    sum?: string | null
+  }
+): Promise<{ unpaidCount: number; sumRejected: number; sumOkIds: string[] }> {
+  const tokens = [...new Set(ids.publicTokens.filter(Boolean))]
+  const linkIds = [...new Set(ids.paymentLinkIds.filter(Boolean))]
+  const processIds = [...new Set((ids.processIds || []).filter(Boolean))]
+  if (tokens.length === 0 && linkIds.length === 0 && processIds.length === 0) {
+    return { unpaidCount: 0, sumRejected: 0, sumOkIds: [] }
+  }
+
+  const seen = new Set<string>()
+  const sumOkIds: string[] = []
+  let unpaidCount = 0
+  let sumRejected = 0
+
+  const scan = async (column: string, values: string[]) => {
+    if (values.length === 0) return
+    const { data, error } = await admin
+      .from('collection_charges')
+      .select('id, amount, status')
+      .in(column, values)
+      .neq('status', 'paid')
+      .neq('status', 'cancelled')
+    if (error) throw new Error(`grow_sum_preflight_failed: ${error.message}`)
+    for (const row of data ?? []) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      unpaidCount += 1
+      if (!growCallbackSumMatchesCharge(ids.sum, row.amount)) {
+        sumRejected += 1
+        console.error('[grow-webhook] sum mismatch — refusing Approve / mark paid', {
+          chargeId: row.id,
+          callbackSum: ids.sum,
+          chargeAmount: row.amount,
+        })
+        continue
+      }
+      sumOkIds.push(row.id)
+    }
+  }
+
+  await scan('public_token', tokens)
+  await scan('grow_payment_link_id', linkIds)
+  await scan('grow_process_id', processIds)
+  return { unpaidCount, sumRejected, sumOkIds }
+}
+
+export async function markChargePaidByGrowIds(
+  admin: SupabaseClient,
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    processIds?: string[]
+    transactionIds: string[]
+    transactionToken?: string | null
+    sum?: string | null
+  }
+): Promise<{ matched: number; newlyPaidIds: string[]; sumRejected: number }> {
+  const tokens = [...new Set(ids.publicTokens.filter(Boolean))]
+  const linkIds = [...new Set(ids.paymentLinkIds.filter(Boolean))]
+  const processIds = [...new Set((ids.processIds || []).filter(Boolean))]
+  const txIds = [...new Set(ids.transactionIds.filter(Boolean))]
+  if (
+    tokens.length === 0 &&
+    linkIds.length === 0 &&
+    processIds.length === 0 &&
+    txIds.length === 0
+  ) {
+    return { matched: 0, newlyPaidIds: [], sumRejected: 0 }
+  }
+
+  let matched = 0
+  let sumRejected = 0
+  const paidAt = nowIso()
+  const newlyPaidIds: string[] = []
+  const txPatch: Record<string, string> = {}
+  if (txIds.length === 1) txPatch.grow_transaction_id = txIds[0]
+  if (ids.transactionToken?.trim()) {
+    txPatch.grow_transaction_token = ids.transactionToken.trim()
+  }
+
+  const applyPaid = async (filter: { column: string; values: string[] }) => {
+    const { data: candidates, error: selErr } = await admin
+      .from('collection_charges')
+      .select(
+        'id, client_id, project_id, resident_id, unit_id, title, amount, period_label, status, paid_at, created_at'
+      )
+      .in(filter.column, filter.values)
+      .neq('status', 'paid')
+      .neq('status', 'cancelled')
+
+    if (selErr) {
+      throw new Error(`grow_mark_paid_select_failed: ${selErr.message}`)
+    }
+
+    const allowedIds: string[] = []
+    const candidateById = new Map<string, CollectionChargeRow>()
+    for (const row of candidates ?? []) {
+      if (!growCallbackSumMatchesCharge(ids.sum, row.amount)) {
+        sumRejected += 1
+        console.error('[grow-webhook] sum mismatch — refusing to mark paid', {
+          chargeId: row.id,
+          callbackSum: ids.sum,
+          chargeAmount: row.amount,
+        })
+        continue
+      }
+      allowedIds.push(row.id)
+      candidateById.set(row.id, row as CollectionChargeRow)
+    }
+    if (allowedIds.length === 0) return
+
+    const { data, error: updErr } = await admin
+      .from('collection_charges')
+      .update({
+        status: 'paid' satisfies CollectionChargeStatus,
+        paid_at: paidAt,
+        updated_at: paidAt,
+        ...txPatch,
+      })
+      .in('id', allowedIds)
+      .neq('status', 'paid')
+      .neq('status', 'cancelled')
+      .select(
+        'id, client_id, project_id, resident_id, unit_id, title, amount, period_label, status, paid_at, created_at'
+      )
+    if (updErr) {
+      throw new Error(`grow_mark_paid_update_failed: ${updErr.message}`)
+    }
+    matched += data?.length ?? 0
+    for (const row of data ?? []) {
+      if (!newlyPaidIds.includes(row.id)) newlyPaidIds.push(row.id)
+      const anchor = chargeAnchorFromRow({
+        ...(candidateById.get(row.id) || row),
+        ...row,
+        status: 'paid',
+        paid_at: paidAt,
+      } as CollectionChargeRow)
+      const ledgerPay = await postLedgerFullPaymentForCharge(admin, {
+        charge: anchor,
+        source: 'grow',
+      })
+      if (!ledgerPay.ok) {
+        console.error('[grow-webhook] ledger payment failed', row.id, ledgerPay.error)
+      }
+    }
+  }
+
+  if (tokens.length > 0) await applyPaid({ column: 'public_token', values: tokens })
+  if (linkIds.length > 0) await applyPaid({ column: 'grow_payment_link_id', values: linkIds })
+  if (processIds.length > 0) await applyPaid({ column: 'grow_process_id', values: processIds })
+
+  // Await receipt emails inside the Grow webhook request so serverless does not
+  // freeze mid-send (previous void/.catch left receipt_email_sent_at null).
+  for (const id of newlyPaidIds) {
+    const receipt = await sendCollectionReceiptEmailIfNeeded(admin, id)
+    if (!receipt.sent && receipt.error) {
+      console.error('[grow-webhook] receipt email failed', id, receipt.error)
+    }
+  }
+
+  return { matched, newlyPaidIds, sumRejected }
+}
+
+export async function recordGrowApproveResult(
+  admin: SupabaseClient,
+  opts: {
+    chargeIds: string[]
+    ok: boolean
+    error?: string | null
+    transactionId?: string | null
+    transactionToken?: string | null
+  }
+): Promise<void> {
+  if (opts.chargeIds.length === 0) return
+  const now = nowIso()
+  const { error } = await admin
+    .from('collection_charges')
+    .update({
+      grow_approve_status: opts.ok ? 'ok' : 'failed',
+      grow_approve_last_error: opts.ok ? null : (opts.error || 'ApproveTransaction failed').slice(0, 500),
+      grow_approve_at: now,
+      ...(opts.transactionId ? { grow_transaction_id: opts.transactionId } : {}),
+      ...(opts.transactionToken ? { grow_transaction_token: opts.transactionToken } : {}),
+      updated_at: now,
+    })
+    .in('id', opts.chargeIds)
+  if (error) {
+    throw new Error(`grow_record_approve_failed: ${error.message}`)
+  }
+}
+
+/** Persist transaction identifiers from S2S even when charge was already paid (idempotent webhook). */
+export async function persistGrowTransactionIds(
+  admin: SupabaseClient,
+  opts: {
+    chargeIds: string[]
+    transactionId?: string | null
+    transactionToken?: string | null
+  }
+): Promise<void> {
+  if (opts.chargeIds.length === 0) return
+  if (!opts.transactionId && !opts.transactionToken) return
+  const now = nowIso()
+  const { error } = await admin
+    .from('collection_charges')
+    .update({
+      ...(opts.transactionId ? { grow_transaction_id: opts.transactionId } : {}),
+      ...(opts.transactionToken ? { grow_transaction_token: opts.transactionToken } : {}),
+      updated_at: now,
+    })
+    .in('id', opts.chargeIds)
+  if (error) {
+    throw new Error(`grow_persist_txn_failed: ${error.message}`)
+  }
+}
+
+/** Resolve charge ids for approve / invoice updates (paid or matching identifiers). */
+export async function findChargeIdsByGrowIds(
+  admin: SupabaseClient,
+  ids: {
+    publicTokens: string[]
+    paymentLinkIds: string[]
+    processIds?: string[]
+    transactionIds?: string[]
+  }
+): Promise<string[]> {
+  const found = new Set<string>()
+  const run = async (column: string, values: string[]) => {
+    if (values.length === 0) return
+    const { data, error } = await admin
+      .from('collection_charges')
+      .select('id, status')
+      .in(column, values)
+      .neq('status', 'cancelled')
+    if (error) throw new Error(`grow_find_charges_failed: ${error.message}`)
+    for (const row of data ?? []) found.add(row.id)
+  }
+  await run('public_token', [...new Set(ids.publicTokens.filter(Boolean))])
+  await run('grow_payment_link_id', [...new Set(ids.paymentLinkIds.filter(Boolean))])
+  await run('grow_process_id', [...new Set((ids.processIds || []).filter(Boolean))])
+  await run('grow_transaction_id', [...new Set((ids.transactionIds || []).filter(Boolean))])
+  return [...found]
+}

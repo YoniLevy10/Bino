@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { createCalendarEventBodySchema } from '@/lib/api-body-schemas'
-import { syncEventToGoogleCalendar } from '@/lib/google-calendar'
+import { syncEventToGoogleCalendar } from '@/lib/google/google-calendar'
 
 export async function GET(req: NextRequest) {
   try {

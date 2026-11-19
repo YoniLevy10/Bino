@@ -12,8 +12,8 @@ import {
 } from '@/lib/building-governance/roles'
 import { sendServiceSmsAndWhatsApp } from '@/lib/building-governance/service-notify'
 import { sendResendEmail } from '@/lib/email-resend'
-import { getPublicAppUrl } from '@/lib/public-app-url'
-import { getLogger } from '@/lib/logging'
+import { getPublicAppUrl } from '@/lib/shared/public-app-url'
+import { getLogger } from '@/lib/shared/logging'
 import { logAudit } from '@/lib/audit'
 
 const BATCH_LIMIT = 80

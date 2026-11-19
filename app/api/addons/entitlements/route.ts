@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientIdLite } from '@/lib/api-auth'
+import { requireSessionClientIdLite } from '@/lib/auth-api/api-auth'
 import {
   getClientEnabledAddonKeys,
   listActiveAddonsCatalog,
   type AddonEntitlement,
-} from '@/lib/paid-addons'
+} from '@/lib/addons/paid-addons'
 
 /** Tenant dashboard: catalog prices + which add-ons are enabled for this client. */
 export async function GET() {

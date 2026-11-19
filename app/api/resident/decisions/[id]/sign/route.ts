@@ -5,8 +5,8 @@ import { residentSignBuildingDecisionBodySchema } from '@/lib/api-body-schemas'
 import { applyDecisionMajorityIfReached } from '@/lib/building-governance/apply-majority'
 import { auditBuildingSignatureSign } from '@/lib/building-governance/sign-audit'
 import { hashSignatureContent } from '@/lib/building-governance/signature-content'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
-import { getLogger } from '@/lib/logging'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
+import { getLogger } from '@/lib/shared/logging'
 
 export const dynamic = 'force-dynamic'
 

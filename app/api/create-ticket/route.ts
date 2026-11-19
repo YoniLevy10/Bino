@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getLogger, getAuditLogger } from '@/lib/logging'
-import { requireSessionClientId } from '@/lib/api-auth'
-import { canOrgRoleWrite } from '@/lib/org-role'
+import { getLogger, getAuditLogger } from '@/lib/shared/logging'
+import { requireSessionClientId } from '@/lib/auth-api/api-auth'
+import { canOrgRoleWrite } from '@/lib/auth-api/org-role'
 import { sanitizeId } from '@/lib/api-validation'
 import { createTicketJsonBodySchema } from '@/lib/api-body-schemas'
 import {
@@ -11,13 +11,13 @@ import {
   checkPublicReportClientHourlyCeiling,
   checkPublicReportSourceBurstLimit,
   checkPublicReportSourceHourlyLimit,
-} from '@/lib/rate-limit'
-import { notifyNewTicketPush } from '@/lib/push-notifications'
-import { whatsappDbPhoneKey } from '@/lib/whatsapp-test-phone'
-import { queuePendingResidentApproval } from '@/lib/pending-resident-from-ticket'
+} from '@/lib/shared/rate-limit'
+import { notifyNewTicketPush } from '@/lib/push/push-notifications'
+import { whatsappDbPhoneKey } from '@/lib/whatsapp/whatsapp-test-phone'
+import { queuePendingResidentApproval } from '@/lib/residents/pending-resident-from-ticket'
 import { autoAssignTicketFromProject } from '@/lib/assign-ticket-worker'
 import { runAfterResponse } from '@/lib/run-after-response'
-import { checkTicketsMonthlyQuota } from '@/lib/plan-quota-check'
+import { checkTicketsMonthlyQuota } from '@/lib/plans/plan-quota-check'
 import { createTicketShared } from '@/lib/tickets/create-ticket-service'
 
 /** Allow SMS/WhatsApp side-effects without Vercel hard-kill. */

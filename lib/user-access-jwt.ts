@@ -1,7 +1,7 @@
 import {
   shouldSignOutForTenantGate,
   type TenantGateKind,
-} from '@/lib/middleware-tenant-gate'
+} from '@/lib/tenant/middleware-tenant-gate'
 
 /**
  * Supabase user access tokens are JWTs (three base64url segments).

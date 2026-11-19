@@ -6,6 +6,8 @@ export type OpsBriefingPriority = {
   href: string
   urgency: Urgency
   domain: 'tickets' | 'maintenance' | 'collections' | 'grow' | 'building'
+  /** Optional LLM rationale (“why now”). */
+  whyNow?: string
 }
 
 /** One cross-page conclusion for the manager dashboard. */
@@ -16,6 +18,8 @@ export type OpsBriefing = {
   /** Which product areas fed this conclusion */
   domains: OpsBriefingPriority['domain'][]
   quiet: boolean
+  /** heuristic = local rules; llm = AI Gateway rewrite of the same surface. */
+  source?: 'heuristic' | 'llm'
 }
 
 function urgencyRank(u: Urgency): number {
@@ -161,6 +165,7 @@ export function synthesizeOpsBriefing(
       priorities: [],
       domains: [],
       quiet: true,
+      source: 'heuristic',
     }
   }
 
@@ -191,5 +196,6 @@ export function synthesizeOpsBriefing(
     priorities: top,
     domains: [...domains],
     quiet: false,
+    source: 'heuristic',
   }
 }

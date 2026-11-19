@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { resolveClientIdByWhatsAppPhoneNumberId } from '@/lib/tenant-resolution'
+import { resolveClientIdByWhatsAppPhoneNumberId } from '@/lib/tenant/tenant-resolution'
 import {
   parseAllIncomingWhatsAppMessages,
   extractWhatsAppPhoneNumberId,
   type ParsedWhatsAppMessage,
-} from '@/lib/whatsapp-parser'
-import { webhookDedupeMessageId } from '@/lib/whatsapp-webhook-dedupe'
-import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp-meta-signature'
-import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/rate-limit'
-import { getLogger } from '@/lib/logging'
-import { logCriticalOperationalFailure } from '@/lib/error-logs-db'
+} from '@/lib/whatsapp/whatsapp-parser'
+import { webhookDedupeMessageId } from '@/lib/whatsapp/whatsapp-webhook-dedupe'
+import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp/whatsapp-meta-signature'
+import { checkWhatsAppWebhookPhoneRateLimit } from '@/lib/shared/rate-limit'
+import { getLogger } from '@/lib/shared/logging'
+import { logCriticalOperationalFailure } from '@/lib/errors/error-logs-db'
 import {
   runWhatsAppInboundBackground,
   type WaWebhookTenant,

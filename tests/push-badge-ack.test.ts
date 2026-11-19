@@ -25,7 +25,7 @@ describe('acknowledgePushAlertsBestEffort', () => {
       },
     })
 
-    const { acknowledgePushAlertsBestEffort } = await import('@/lib/push-client-core')
+    const { acknowledgePushAlertsBestEffort } = await import('@/lib/push/push-client-core')
     await acknowledgePushAlertsBestEffort()
 
     expect(clearAppBadge).toHaveBeenCalledTimes(1)

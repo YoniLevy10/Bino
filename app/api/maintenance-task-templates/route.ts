@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
-import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/auth-api/api-auth'
+import { checkAuthenticatedPostRouteLimit } from '@/lib/shared/rate-limit'
 import { templateSetUpsertBodySchema } from '@/lib/api-body-schemas'
-import { BUILDING_MAINTENANCE_TEMPLATES } from '@/lib/maintenance-task-templates'
+import { BUILDING_MAINTENANCE_TEMPLATES } from '@/lib/maintenance/maintenance-task-templates'
 
 export async function GET() {
   const auth = await requireSessionClientId()

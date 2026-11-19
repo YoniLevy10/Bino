@@ -7,7 +7,7 @@
  *   2. client_whatsapp_ai_chat.enabled for that client
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getLogger } from '@/lib/logging'
+import { getLogger } from '@/lib/shared/logging'
 
 const logger = getLogger()
 

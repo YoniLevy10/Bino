@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { sidebarNavOrderSchema, sidebarNavLabelsSchema } from '@/lib/sidebar-nav'
-import { TICKET_STATUSES } from '@/lib/ticket-status'
+import { TICKET_STATUSES } from '@/lib/tickets/ticket-status'
 
 /** Beacon for dashboard tab analytics (optional nav_id; server can derive from path). */
 export const pageViewBodySchema = z.object({
@@ -295,6 +295,11 @@ export const workerLogTourBodySchema = z.object({
   project_id: z.string().uuid(),
   completed_at: z.string().datetime({ offset: true }).optional(),
   notes: z.string().max(2000).optional(),
+})
+
+/** Manager follow-up notes on a worker-logged site tour. Empty string clears. */
+export const patchSiteTourManagerNotesBodySchema = z.object({
+  manager_notes: z.string().max(2000).nullable(),
 })
 
 export const settingsTestWhatsAppBodySchema = z

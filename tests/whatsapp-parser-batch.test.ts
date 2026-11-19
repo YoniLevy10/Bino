@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseAllIncomingWhatsAppMessages, parseIncomingWhatsAppMessage } from '@/lib/whatsapp-parser'
+import { parseAllIncomingWhatsAppMessages, parseIncomingWhatsAppMessage } from '@/lib/whatsapp/whatsapp-parser'
 
 describe('whatsapp parser batch (audit #14)', () => {
   it('returns every message across entries/changes', () => {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
-import { getIsMobileViewport } from '@/lib/mobile-viewport'
+import { getIsMobileViewport } from '@/lib/shared/mobile-viewport'
 import { Card, EmptyState, LoadingSpinner, Select, theme } from '../ui'
 
 export type AddonProjectOption = {

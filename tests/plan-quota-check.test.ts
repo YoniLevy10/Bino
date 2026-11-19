@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { effectiveMaxTicketsPerMonth } from '@/lib/plan-limits'
+import { effectiveMaxTicketsPerMonth } from '@/lib/plans/plan-limits'
 
 describe('plan quota helpers', () => {
   it('effectiveMaxTicketsPerMonth respects plan tier', () => {

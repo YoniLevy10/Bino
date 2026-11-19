@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { send019StaffSms } from '@/lib/sms'
-import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp-send'
+import { send019StaffSms } from '@/lib/sms/sms'
+import { sendWhatsAppTextMessageWithCredentials } from '@/lib/whatsapp/whatsapp-send'
 
 export type CreateSignRequestInput = {
   clientId: string

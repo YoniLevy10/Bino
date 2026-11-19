@@ -5,7 +5,7 @@ import {
   parseConfirmButtonReplyId,
   parseLanguageButtonReplyId,
   parseLastProjectButtonReplyId,
-} from '@/lib/whatsapp-interactive'
+} from '@/lib/whatsapp/whatsapp-interactive'
 
 describe('whatsapp-interactive', () => {
   it('parseProjectListReplyId', () => {
