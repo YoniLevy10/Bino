@@ -2,19 +2,19 @@
 
 /**
  * חניונים — Savion PalGate pilot only.
+ * Add a vehicle plate / identifier, then open the home gate via PalGate cloud.
  */
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import Link from 'next/link'
 import { toast } from '@/lib/error-handler'
 import {
+  MobileHeader,
+  useMobileMenu,
+  PageHeader,
+  Card,
   Button,
   EmptyState,
-  KpiCard,
-  KpiRow,
-  StatusBadge,
   theme,
 } from '@/app/components/ui'
-import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
@@ -35,6 +35,7 @@ type StatusPayload = {
 }
 
 export default function ParkingPage() {
+  const { openMenu } = useMobileMenu()
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(true)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -150,137 +151,137 @@ export default function ParkingPage() {
   const credsOk = Boolean(status?.credentials?.configured)
 
   return (
-    <AddonFeaturePageShell
-      title="חניונים"
-      mobileSubtitle="פיילוט סביון · PalGate"
-      desktopSubtitle="פיילוט סביון — רישום רכבים ופתיחת שער (ממתין לאישור ספק)"
-      headerActions={
-        <Link href="/settings?tab=connections">
-          <Button variant="secondary" size="sm">
-            הגדרות חיבור
-          </Button>
-        </Link>
-      }
-    >
-      {loading ? (
-        <PageTransitionLoader />
+    <div style={{ paddingBottom: isMobile ? 88 : 32 }}>
+      {isMobile ? (
+        <MobileHeader title="חניונים" onMenuClick={openMenu} />
       ) : (
-        <div style={styles.stack}>
-          <div
-            role="status"
-            style={{
-              padding: '12px 14px',
-              borderRadius: theme.radius.lg,
-              border: `1px solid ${theme.colors.warning}`,
-              background: theme.colors.warningMuted,
-              color: theme.colors.textPrimary,
-              fontSize: 13,
-              lineHeight: 1.5,
-              fontWeight: 600,
-            }}
-          >
-            בתהליך פיתוח — פיילוט סביון בלבד. לא מוצר מוכן לכל הלקוחות; מפתחות ספק בשרת בלבד.
-          </div>
-          <KpiRow columns={3} isMobile={isMobile}>
-            <KpiCard label="רכבים רשומים" value={vehicles.length} />
-            <KpiCard
-              label="פיילוט"
-              value="סביון"
-              hint="מוגבל ללקוח הפיילוט"
-              accent="primary"
-            />
-            <KpiCard
-              label="חיבור PalGate"
-              value={credsOk ? 'מוגדר' : 'ממתין'}
-              hint={
-                credsOk
-                  ? 'אפשר לנסות פתיחת שער'
-                  : status?.credentials?.missing?.length
-                    ? `חסרים ${status.credentials.missing.length} מפתחות ספק`
-                    : 'חסרים מפתחות ספק'
-              }
-              accent={credsOk ? 'success' : 'warning'}
-            />
-          </KpiRow>
-
-          <div style={styles.banner}>
-            <StatusBadge status={credsOk ? 'ACTIVE' : 'WAITING_PARTS'} />
-            <p style={styles.bannerText}>
-              ממתינים לאישור PalGate. בינתיים אפשר לרשום רכבים. פתיחת שער בענן כבויה עד אישור +
-              Linked Device — פרטים ב«הגדרות → חיבורים».
-            </p>
-          </div>
-
-          <form onSubmit={onAdd} style={styles.formCard}>
-            <h3 style={styles.formTitle}>הוספת רכב</h3>
-            <label style={labelStyle}>
-              מספר רכב / מזהה
-              <input
-                value={plate}
-                onChange={(e) => setPlate(e.target.value)}
-                placeholder="לדוגמה 12-345-67"
-                dir="ltr"
-                style={inputStyle}
-                maxLength={40}
-                autoComplete="off"
-              />
-            </label>
-            <label style={labelStyle}>
-              תווית (אופציונלי)
-              <input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="רכב בית / אורח"
-                style={inputStyle}
-                maxLength={80}
-              />
-            </label>
-            <div style={styles.formActions}>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'שומר…' : 'הוסף רכב'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={openingLoose || !credsOk}
-                onClick={() => void onOpen()}
-              >
-                {openingLoose ? 'פותח שער…' : 'פתח שער עכשיו'}
-              </Button>
-            </div>
-          </form>
-
-          {vehicles.length === 0 ? (
-            <EmptyState title="אין רכבים עדיין" description="הוסיפו מספר רכב כדי לשמור מזהה לפתיחת שער." />
-          ) : (
-            <div style={styles.vehicleList}>
-              {vehicles.map((v) => (
-                <div key={v.id} style={styles.vehicleRow}>
-                  <div>
-                    <div style={styles.plate} dir="ltr">
-                      {v.plate}
-                    </div>
-                    {v.label ? <div style={styles.vehicleLabel}>{v.label}</div> : null}
-                  </div>
-                  <div style={styles.formActions}>
-                    <Button
-                      type="button"
-                      disabled={openingId === v.id || !credsOk}
-                      onClick={() => void onOpen(v)}
-                    >
-                      {openingId === v.id ? 'פותח…' : 'פתח שער'}
-                    </Button>
-                    <Button type="button" variant="secondary" onClick={() => void onDelete(v.id)}>
-                      מחק
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <PageHeader
+          title="חניונים"
+          subtitle="פיילוט סביון — ממתין לחיבור ספק / Linked Device"
+        />
       )}
-    </AddonFeaturePageShell>
+
+      <div style={{ padding: isMobile ? '12px 16px' : '0 0 24px', maxWidth: 720, margin: '0 auto' }}>
+        {loading ? (
+          <PageTransitionLoader />
+        ) : (
+          <>
+            <Card style={{ marginBottom: 16, padding: 16 }}>
+              <p
+                style={{
+                  margin: '0 0 10px',
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                  color: theme.colors.warning,
+                  fontWeight: 600,
+                }}
+              >
+                פיילוט לא־רשמי: אין API מסחרי מ־PalGate. פתיחת שער דורשת Linked Device + משתני
+                שרת. עד אישור ספק / הגדרת env — השער לא ייפתח מהענן.
+              </p>
+              <p style={{ margin: '0 0 8px', fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
+                הוסיפו מספר רכב (או מזהה) לרישום פנימי ב־BINO. הפיילוט פעיל רק בלקוח סביון.
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  color: credsOk ? theme.colors.success : theme.colors.warning,
+                  fontWeight: 600,
+                }}
+              >
+                {credsOk
+                  ? 'חיבור PalGate מוגדר בשרת'
+                  : `חסרים משתני סביבה: ${(status?.credentials?.missing || []).join(', ') || 'לא ידוע'}`}
+              </p>
+            </Card>
+
+            <Card style={{ marginBottom: 16, padding: 16 }}>
+              <form onSubmit={onAdd} style={{ display: 'grid', gap: 12 }}>
+                <label style={labelStyle}>
+                  מספר רכב / מזהה
+                  <input
+                    value={plate}
+                    onChange={(e) => setPlate(e.target.value)}
+                    placeholder="לדוגמה 12-345-67"
+                    dir="ltr"
+                    style={inputStyle}
+                    maxLength={40}
+                    autoComplete="off"
+                  />
+                </label>
+                <label style={labelStyle}>
+                  תווית (אופציונלי)
+                  <input
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    placeholder="רכב בית / אורח"
+                    style={inputStyle}
+                    maxLength={80}
+                  />
+                </label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'שומר…' : 'הוסף רכב'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={openingLoose || !credsOk}
+                    onClick={() => void onOpen()}
+                  >
+                    {openingLoose ? 'פותח שער…' : 'פתח שער עכשיו'}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+
+            {vehicles.length === 0 ? (
+              <EmptyState title="אין רכבים עדיין" description="הוסיפו מספר רכב כדי לשמור מזהה לפתיחת שער." />
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {vehicles.map((v) => (
+                  <Card key={v.id} style={{ padding: 14 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: 0.5 }} dir="ltr">
+                          {v.plate}
+                        </div>
+                        {v.label ? (
+                          <div style={{ fontSize: 13, color: theme.colors.textMuted, marginTop: 2 }}>
+                            {v.label}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button
+                          type="button"
+                          disabled={openingId === v.id || !credsOk}
+                          onClick={() => void onOpen(v)}
+                        >
+                          {openingId === v.id ? 'פותח…' : 'פתח שער'}
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={() => void onDelete(v.id)}>
+                          מחק
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -293,56 +294,10 @@ const labelStyle: CSSProperties = {
 }
 
 const inputStyle: CSSProperties = {
-  padding: '12px',
+  padding: '10px 12px',
   borderRadius: theme.radius.md,
   border: `1px solid ${theme.colors.border}`,
-  fontSize: 16,
+  fontSize: 15,
   width: '100%',
   boxSizing: 'border-box',
-  fontFamily: 'inherit',
-  background: theme.colors.surface,
-  color: theme.colors.textPrimary,
-}
-
-const styles: Record<string, CSSProperties> = {
-  stack: { display: 'flex', flexDirection: 'column', gap: 16 },
-  banner: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    padding: 16,
-    borderRadius: theme.radius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  bannerText: {
-    margin: 0,
-    fontSize: 14,
-    lineHeight: 1.5,
-    color: theme.colors.textSecondary,
-  },
-  formCard: {
-    display: 'grid',
-    gap: 12,
-    padding: 16,
-    borderRadius: theme.radius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  formTitle: { margin: 0, fontSize: 16, fontWeight: 700 },
-  formActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  vehicleList: { display: 'grid', gap: 10 },
-  vehicleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    flexWrap: 'wrap',
-    padding: 14,
-    borderRadius: theme.radius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-  },
-  plate: { fontWeight: 700, fontSize: 16, letterSpacing: 0.5 },
-  vehicleLabel: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
 }

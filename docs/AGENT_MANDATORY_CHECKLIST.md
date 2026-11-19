@@ -1,10 +1,10 @@
 # Agent mandatory checklist — Bamakor test gate
 
 **Status:** always-on for every Cursor / Cloud agent  
-**Always-apply rule:** `.cursor/rules/agent-mandatory-ops-checklist.mdc`  
+**Always-apply rules:** `.cursor/rules/agent-mandatory-ops-checklist.mdc`, `.cursor/rules/no-paid-actions.mdc`  
 **Smoke command:** `npm run test:bamakor-smoke`
 
-This document is the human-readable playbook. Agents must follow the Cursor rule even if they skip reading this file — but the rule points here for details.
+This document is the human-readable playbook. Agents must follow the Cursor rules even if they skip reading this file — but the rules point here for details.
 
 ---
 
@@ -16,6 +16,7 @@ Owner requirement (2026-10): every agent, on every task, must:
 2. **Check internal logs** so they do not break the live system.
 3. Avoid **irrelevant queries** that slow Bamakor / the app.
 4. Treat **`https://bamakor.vercel.app` as the agent test environment** — Preview URLs alone are not enough; verify on top of CI.
+5. **Never take paid / billable actions** (Vercel add-ons, Password Protection, Supabase Branching, paid domains, marketplace, Grow live charges, Meta paid products, plan upgrades, etc.) without the owner’s **explicit written approval in that turn** — see `.cursor/rules/no-paid-actions.mdc`.
 
 ---
 
@@ -39,6 +40,17 @@ So the smoke proves: alias redirect still works, canonical login is up, webhook 
 - Load tests (`scripts/load/*` refuses `bino.casa`; do not override onto Bamakor)
 - Bulk writes / customer tenant mutation “for testing”
 - Paid Supabase preview branches as a fake staging DB
+
+---
+
+## No paid actions (owner approval required)
+
+Always-apply rule: `.cursor/rules/no-paid-actions.mdc`
+
+- Do **not** create, enable, renew, upgrade, or otherwise incur a bill/charge without **explicit written owner approval in that turn**.
+- Includes: Vercel add-ons / Password Protection, Supabase Branching, paid domains, marketplace installs that bill, Grow live customer charges, Meta paid products, plan upgrades.
+- Also forbidden without that approval: “try the paid option,” enabling known-billable features, buying domains, upgrading plans.
+- If an action **might** bill → **stop, ask, do not proceed**.
 
 ---
 
@@ -69,6 +81,11 @@ So the smoke proves: alias redirect still works, canonical login is up, webhook 
 - [ ] `npm run test:bamakor-smoke` passed after deployable changes
 - [ ] Preview URL (if any) listed only as extra evidence
 
+### E — No paid actions
+
+- [ ] No billable create/enable/renew/upgrade without owner written approval in this turn
+- [ ] If anything might bill → stopped and asked (or N/A with reason)
+
 ---
 
 ## Smoke runner expectations
@@ -98,4 +115,4 @@ If the change touches `middleware.ts`, tenant resolution, `clients` RLS/GRANTs, 
 
 ## Hebrew (owner)
 
-מעכשיו לכל סוכן: profiling שלא שורף זמן; בדיקת לוגים שלא נשבר הייצור; בלי שאילתות מיותרות; ובנוסף ל־CI — בדיקה מול `bamakor.vercel.app` כסביבת טסט לסוכנים, לא רק Preview.
+מעכשיו לכל סוכן: profiling שלא שורף זמן; בדיקת לוגים שלא נשבר הייצור; בלי שאילתות מיותרות; ובנוסף ל־CI — בדיקה מול `bamakor.vercel.app` כסביבת טסט לסוכנים, לא רק Preview. ובלי פעולות בתשלום / שעלולות לחייב — אלא אם הבעלים אישר במפורש בכתב באותו תור.

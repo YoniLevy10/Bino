@@ -9,7 +9,7 @@ Multi-tenant SaaS for building maintenance management; SMS via 019SMS, WhatsApp 
 
 **Hard rule:** no agent may skip this — UI, docs, migrations, perf, sales, or otherwise.
 
-Always-apply Cursor rule (injected every chat): `.cursor/rules/agent-mandatory-ops-checklist.mdc`  
+Always-apply Cursor rules (injected every chat): `.cursor/rules/agent-mandatory-ops-checklist.mdc`, `.cursor/rules/no-paid-actions.mdc`  
 Playbook: `docs/AGENT_MANDATORY_CHECKLIST.md`  
 Smoke: `npm run test:bamakor-smoke`
 
@@ -19,8 +19,17 @@ Before claiming done:
 2. **Logs** — after runtime-affecting changes, check Vercel runtime errors for regressions (`CLIENTS_ACTIVE_QUERY_FAILED`, middleware 503, webhook 5xx, etc.).
 3. **Query discipline** — no irrelevant / unbounded live SQL or API sweeps that slow Bamakor.
 4. **Bamakor test gate** — Preview URL alone is **not** enough. Deployable changes must pass smoke against `https://bamakor.vercel.app` **in addition to CI**.
+5. **No paid actions** — do not create/enable/renew/upgrade anything that can bill (Vercel add-ons, Password Protection, Supabase Branching, paid domains, marketplace, Grow live charges, Meta paid products, plan upgrades) without the owner’s **explicit written approval in that turn**. If it might bill → stop and ask.
 
 `bamakor.vercel.app` is the agent test environment (live prod alias: browser → 308 `bino.casa`; webhooks/cron stay on alias). Canonical user URLs remain `https://bino.casa`. No load tests / customer writes on Bamakor. No paid Supabase preview branches as fake staging.
+
+---
+
+## No paid actions without owner approval — P0 (ALL agents)
+
+Always-apply rule: `.cursor/rules/no-paid-actions.mdc`.
+
+No agent may take any action that creates, enables, renews, upgrades, or can incur a bill/charge without the owner’s **explicit written approval in that turn**. Also forbidden without that approval: enabling known-billable features, “try the paid option,” creating paid preview DBs, buying domains, upgrading plans. Ambiguity → do not proceed.
 
 ---
 
@@ -258,6 +267,12 @@ Auth token is at `%APPDATA%\com.vercel.cli\Data\auth.json` — use with REST API
 | `GROW_REGISTER_IS_DIRECT_DEBIT` | `1` sandbox / usually `0` live unless Grow says otherwise |
 | `GROW_REGISTER_BASE_URL` | Optional; defaults to devregister / registerapi by `GROW_ENV` |
 | `GROW_GET_TRANSACTION_INFO_ENABLED` | Optional; `true`/`1` enables server-only `getGrowTransactionInfo` (default off; not wired into payment webhooks) |
+| `PALGATE_PILOT_CLIENT_ID` | Optional override; defaults to Savion OpsBrain `07773bb3-4969-4bce-8ce2-faab3b26383c`. Hard-scopes חניונים / open-gate |
+| `PALGATE_SESSION_TOKEN_HEX` | PalGate Linked Device session token (32 hex chars) — Savion pilot only |
+| `PALGATE_PHONE_NUMBER` | PalGate account phone digits (e.g. `9725…`) |
+| `PALGATE_TOKEN_TYPE` | `sms` / `primary` / `secondary` (or `0`/`1`/`2`) |
+| `PALGATE_DEVICE_ID` | Gate device id (`DEVICE` or `DEVICE:2`) |
+| `PALGATE_BASE_URL` | Optional; default `https://api1.pal-es.com` |
 | `GROW_P1_RECURRING_ENABLED` | Optional; must be exact `true` to unlock recurring standing-order code paths — **default off**; no prod activation without Grow sandbox + owner OK |
 | `GROW_P1_TOKENIZATION_ENABLED` | Optional; exact `true` only — card token save/charge; default off (`saveCardToken` stays `'0'`) |
 | `GROW_P1_REFUNDS_ENABLED` | Optional; exact `true` only — Grow `refundTransaction`; default off |

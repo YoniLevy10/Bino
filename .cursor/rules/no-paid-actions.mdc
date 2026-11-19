@@ -1,0 +1,35 @@
+---
+description: Never take paid / billable actions without owner written approval in that turn
+alwaysApply: true
+---
+
+# No paid actions without owner approval (P0 — every agent)
+
+**Hard rule:** No agent may take any action that creates, enables, renews, upgrades, or can incur a bill/charge — without the owner’s **explicit written approval in that turn**.
+
+This covers (non-exhaustive):
+
+- Vercel add-ons, Password Protection, custom environments that bill, plan upgrades
+- Supabase Branching / paid preview DBs (also see `no-supabase-preview-branches`)
+- Buying or renewing paid domains; marketplace installs that bill
+- Grow / payment providers: live charges to customers, enabling paid production paths without approval
+- Meta / WhatsApp paid products, ads, or billable API upgrades
+- Any other vendor upgrade, seat expansion, or “enable billing” toggle
+
+## Also forbidden without that written turn approval
+
+- Enabling features known to bill
+- Suggesting or executing “try the paid option” / paid workaround as the path forward
+- Creating paid preview DBs
+- Buying domains
+- Upgrading plans
+
+## If an action might bill
+
+**Stop. Ask the owner. Do not proceed.** Ambiguity defaults to **do not do it**.
+
+Free read-only inspection (docs, logs, status APIs that do not enable billing) is fine. Creating or enabling billable resources is not.
+
+## Hebrew (owner intent)
+
+אסור לכל סוכן לבצע פעולה שיוצרת, מפעילה, מחדשת, משדרגת או עלולה לייצר חיוב — בלי אישור כתוב מפורש של הבעלים באותו תור. אם יש ספק שזה עלול לעלות כסף: עצור, שאל, אל תמשיך.
