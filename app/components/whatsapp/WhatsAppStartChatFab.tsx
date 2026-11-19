@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { whatsappUiFetch } from '@/lib/whatsapp-ui-fetch'
 import { startWhatsAppConversation } from '@/lib/whatsapp-inbox-hooks'
 import { toast } from '@/lib/error-handler'
-import { Button } from '../ui'
 
 type ResidentRow = {
   id: string
@@ -40,6 +40,11 @@ export function WhatsAppStartChatFab({
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<ResidentRow[]>([])
+  const [portalReady, setPortalReady] = useState(false)
+
+  useEffect(() => {
+    setPortalReady(true)
+  }, [])
 
   const search = useCallback(async () => {
     setLoading(true)
@@ -63,6 +68,15 @@ export function WhatsAppStartChatFab({
     const t = window.setTimeout(() => void search(), 280)
     return () => window.clearTimeout(t)
   }, [open, search])
+
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
 
   async function pickResident(residentId: string) {
     try {
@@ -88,9 +102,18 @@ export function WhatsAppStartChatFab({
     )
   }
 
-  return (
-    <div style={styles.backdrop} role="dialog" aria-modal="true" aria-label="שיחה חדשה">
+  const sheet = (
+    <div
+      style={styles.backdrop}
+      role="dialog"
+      aria-modal="true"
+      aria-label="שיחה חדשה"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setOpen(false)
+      }}
+    >
       <div style={styles.sheet}>
+        <div style={styles.grab} aria-hidden />
         <StartChatHeader />
         <input
           value={query}
@@ -116,18 +139,21 @@ export function WhatsAppStartChatFab({
             </button>
           ))}
         </div>
-        <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+        <button type="button" style={styles.closeBtn} onClick={() => setOpen(false)}>
           סגור
-        </Button>
+        </button>
       </div>
     </div>
   )
+
+  if (!portalReady) return null
+  return createPortal(sheet, document.body)
 }
 
 function StartChatHeader() {
   return (
-    <div style={{ marginBottom: 8 }}>
-      <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>שיחה חדשה</h2>
+    <div style={{ marginBottom: 4 }}>
+      <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111b21' }}>שיחה חדשה</h2>
       <p style={{ margin: '4px 0 0', fontSize: 13, color: '#667781' }}>
         בחרו דייר מהבניין — בלי לחכות להודעה נכנסת.
       </p>
@@ -155,27 +181,41 @@ const styles: Record<string, CSSProperties> = {
   },
   fabIcon: { display: 'block', marginTop: -2 },
   backdrop: {
-    position: 'absolute',
+    position: 'fixed',
     inset: 0,
-    background: 'rgba(17, 27, 33, 0.45)',
+    /* Above MobileBottomNav (z=130) so the sheet can dock to the real screen bottom. */
+    zIndex: 140,
+    background: 'rgba(17, 27, 33, 0.4)',
     display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    zIndex: 3,
-    padding: 12,
-    paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+    alignItems: 'stretch',
+    padding: 0,
+    boxSizing: 'border-box',
   },
   sheet: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 520,
+    marginInline: 'auto',
     background: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: '10px 16px 16px',
+    paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
-    maxHeight: 'min(80%, 70dvh)',
+    maxHeight: 'min(72dvh, 640px)',
     boxSizing: 'border-box',
+    boxShadow: '0 -8px 28px rgba(0,0,0,0.12)',
+  },
+  grab: {
+    width: 36,
+    height: 4,
+    borderRadius: 999,
+    background: '#d1d7db',
+    alignSelf: 'center',
+    marginBottom: 4,
   },
   input: {
     width: '100%',
@@ -191,8 +231,9 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
-    minHeight: 120,
-    maxHeight: 'min(320px, 42dvh)',
+    minHeight: 48,
+    flex: '1 1 auto',
+    maxHeight: 'min(280px, 36dvh)',
     WebkitOverflowScrolling: 'touch',
   },
   item: {
@@ -207,5 +248,18 @@ const styles: Record<string, CSSProperties> = {
   },
   itemTitle: { display: 'block', fontWeight: 600, fontSize: 15, color: '#111b21' },
   itemSub: { display: 'block', fontSize: 12, color: '#667781', marginTop: 2 },
-  hint: { margin: 0, fontSize: 13, color: '#667781', padding: 8 },
+  hint: { margin: 0, fontSize: 13, color: '#667781', padding: '4px 2px' },
+  closeBtn: {
+    width: '100%',
+    minHeight: 44,
+    borderRadius: 10,
+    border: '1px solid #e9edef',
+    background: '#f0f2f5',
+    color: '#111b21',
+    fontSize: 15,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+  },
 }
