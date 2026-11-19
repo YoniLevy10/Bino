@@ -78,6 +78,7 @@ type NavCachePayload = {
   orderIds: SidebarNavItemId[]
   enabledFeatures: SidebarNavItemId[] | null
   navLabels: SidebarNavLabels
+  palgatePilot?: boolean
 }
 
 function readNavCache(
@@ -91,6 +92,7 @@ function readNavCache(
       orderIds: unknown
       enabledFeatures?: unknown
       navLabels?: unknown
+      palgatePilot?: unknown
       ts: number
     }
     if (typeof parsed.ts !== 'number') return null
@@ -104,6 +106,7 @@ function readNavCache(
       orderIds,
       enabledFeatures: parseEnabledNavFeaturesFromDb(parsed.enabledFeatures ?? null),
       navLabels: parseSidebarNavLabelsFromDb(parsed.navLabels ?? null),
+      palgatePilot: parsed.palgatePilot === true,
       ts: parsed.ts,
       stale,
     }
@@ -121,45 +124,45 @@ function readInitialNavState(): {
   orderIds: SidebarNavItemId[]
   enabledFeatures: SidebarNavItemId[] | null
   navLabels: SidebarNavLabels
+  palgatePilot: boolean
   isBootstrapped: boolean
   ts: number
 } {
-  if (typeof window === 'undefined') {
-    return {
-      orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
-      enabledFeatures: null,
-      navLabels: {},
-      isBootstrapped: false,
-      ts: 0,
-    }
+  const empty = {
+    orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER] as SidebarNavItemId[],
+    enabledFeatures: null as SidebarNavItemId[] | null,
+    navLabels: {} as SidebarNavLabels,
+    palgatePilot: false,
+    isBootstrapped: false,
+    ts: 0,
   }
+  if (typeof window === 'undefined') return empty
   const cid = tryReadSessionBoundClientId()
-  if (!cid) {
-    return {
-      orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
-      enabledFeatures: null,
-      navLabels: {},
-      isBootstrapped: false,
-      ts: 0,
-    }
-  }
+  if (!cid) return empty
   const cached = readNavCache(cid, { allowStale: true })
-  if (!cached) {
-    return {
-      orderIds: [...DEFAULT_SIDEBAR_NAV_ORDER],
-      enabledFeatures: null,
-      navLabels: {},
-      isBootstrapped: false,
-      ts: 0,
-    }
-  }
+  if (!cached) return empty
   return {
     orderIds: cached.orderIds,
     enabledFeatures: cached.enabledFeatures,
     navLabels: cached.navLabels,
+    palgatePilot: cached.palgatePilot === true,
     isBootstrapped: true,
     ts: cached.ts,
   }
+}
+
+/** Client-side mirror of nav-config `withParkingPilotOrder` — keeps stale caches honest. */
+function withParkingPilotOrderLocal(
+  order: SidebarNavItemId[],
+  pilot: boolean
+): SidebarNavItemId[] {
+  if (!pilot) return order.filter((id) => id !== 'parking')
+  if (order.includes('parking')) return order
+  const next = [...order]
+  const ticketsIdx = next.indexOf('tickets')
+  if (ticketsIdx >= 0) next.splice(ticketsIdx + 1, 0, 'parking')
+  else next.push('parking')
+  return next
 }
 
 function buildNavItems(
@@ -170,7 +173,8 @@ function buildNavItems(
   includeParkingPilot = false
 ): SidebarNavItem[] {
   const paidNavIds = new Set(navIdsForEnabledAddonKeys(enabledAddonKeys))
-  const base = resolveSidebarNavItems(orderIds, enabledFeatures, paidNavIds, null, {
+  const orderForResolve = withParkingPilotOrderLocal(orderIds, includeParkingPilot)
+  const base = resolveSidebarNavItems(orderForResolve, enabledFeatures, paidNavIds, null, {
     includeParkingPilot,
   })
   const withPaid = injectPaidAddonNavItems(base, enabledAddonKeys)
@@ -203,6 +207,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   const [orderIds, setOrderIds] = useState<SidebarNavItemId[]>([...DEFAULT_SIDEBAR_NAV_ORDER])
   const [enabledFeatures, setEnabledFeatures] = useState<SidebarNavItemId[] | null>(null)
   const [navLabels, setNavLabels] = useState<SidebarNavLabels>({})
+  const [palgatePilot, setPalgatePilot] = useState(false)
   const [isBootstrapped, setIsBootstrapped] = useState(false)
 
   const loadGenerationRef = useRef(0)
@@ -224,10 +229,16 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
   }, [addons, addonsReady])
 
   const applyNavState = useCallback(
-    (ids: SidebarNavItemId[], enabled: SidebarNavItemId[] | null, labels: SidebarNavLabels) => {
+    (
+      ids: SidebarNavItemId[],
+      enabled: SidebarNavItemId[] | null,
+      labels: SidebarNavLabels,
+      pilot = false
+    ) => {
       setOrderIds(ids)
       setEnabledFeatures(enabled)
       setNavLabels(labels)
+      setPalgatePilot(pilot)
     },
     []
   )
@@ -245,7 +256,12 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
           const cached = readNavCache(clientId, { allowStale: true })
           if (cached) {
             hadCachedState = true
-            applyNavState(cached.orderIds, cached.enabledFeatures, cached.navLabels)
+            applyNavState(
+              cached.orderIds,
+              cached.enabledFeatures,
+              cached.navLabels,
+              cached.palgatePilot === true
+            )
             setIsBootstrapped(true)
             lastSuccessfulFetchRef.current = cached.ts
             // Fresh cache: skip network. Stale: paint immediately, refresh below.
@@ -279,17 +295,19 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         const parsedOrder = parseSidebarNavOrderFromDb(json.sidebar_nav_order)
         const parsedEnabled = parseEnabledNavFeaturesFromDb(json.enabled_nav_features)
         const parsedLabels = parseSidebarNavLabelsFromDb(json.sidebar_nav_labels)
+        const nextPilot = json.palgate_pilot === true
         // Keep addon ids from DB order so enabled tenants can pin them via settings;
         // resolveSidebarNavItems filters by paidNavIds at render time.
         const nextIds =
           parsedOrder && parsedOrder.length > 0
             ? parsedOrder
             : [...DEFAULT_SIDEBAR_NAV_ORDER]
-        applyNavState(nextIds, parsedEnabled, parsedLabels)
+        applyNavState(nextIds, parsedEnabled, parsedLabels, nextPilot)
         writeNavCache(clientId, {
           orderIds: nextIds,
           enabledFeatures: parsedEnabled,
           navLabels: parsedLabels,
+          palgatePilot: nextPilot,
         })
         lastSuccessfulFetchRef.current = Date.now()
       } catch (e) {
@@ -301,7 +319,7 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
           console.warn('[SidebarNav] load failed:', message)
         }
         if (!hadCachedState) {
-          applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {})
+          applyNavState([...DEFAULT_SIDEBAR_NAV_ORDER], null, {}, false)
         }
       } finally {
         if (generation === loadGenerationRef.current) {
@@ -326,7 +344,12 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
     if (skipManagerNav) return
     const hydrated = readInitialNavState()
     if (!hydrated.isBootstrapped) return
-    applyNavState(hydrated.orderIds, hydrated.enabledFeatures, hydrated.navLabels)
+    applyNavState(
+      hydrated.orderIds,
+      hydrated.enabledFeatures,
+      hydrated.navLabels,
+      hydrated.palgatePilot
+    )
     setIsBootstrapped(true)
     lastSuccessfulFetchRef.current = hydrated.ts
   }, [skipManagerNav, applyNavState])
@@ -406,9 +429,9 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
         enabledFeatures,
         enabledAddonKeys,
         navLabels,
-        orderIds.includes('parking')
+        palgatePilot || orderIds.includes('parking')
       ),
-    [orderIds, enabledFeatures, enabledAddonKeys, navLabels]
+    [orderIds, enabledFeatures, enabledAddonKeys, navLabels, palgatePilot]
   )
 
   const { primary: mobileBottomPrimary, more: mobileBottomMore } = useMemo(
@@ -418,9 +441,9 @@ export function SidebarNavProvider({ children }: { children: ReactNode }) {
 
   const setLocalOrderIds = useCallback(
     (ids: SidebarNavItemId[]) => {
-      applyNavState(ids, enabledFeatures, navLabels)
+      applyNavState(ids, enabledFeatures, navLabels, palgatePilot)
     },
-    [applyNavState, enabledFeatures, navLabels]
+    [applyNavState, enabledFeatures, navLabels, palgatePilot]
   )
 
   const refreshNav = useCallback(

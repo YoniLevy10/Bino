@@ -114,8 +114,8 @@ export function isNavFeatureEnabled(
     return true
   }
   // Parking / PalGate is never granted by DB allowlist alone — middleware + API
-  // hard-scope to Savion. Treat as "feature exists" for path mapping; tenant
-  // gate is client-id based (isPalGatePilotClient).
+  // hard-scope to pilot tenants (Savion + Bamakor). Treat as "feature exists"
+  // for path mapping; tenant gate is client-id based (isPalGatePilotClient).
   if (featureId === 'parking') {
     return true
   }

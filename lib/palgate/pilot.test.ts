@@ -1,8 +1,10 @@
 import { describe, expect, it, afterEach } from 'vitest'
 import {
+  BAMAKOR_PALGATE_PILOT_CLIENT_ID,
   SAVION_PALGATE_PILOT_CLIENT_ID,
   isPalGatePilotClient,
   resolvePalGatePilotClientId,
+  resolvePalGatePilotClientIds,
 } from '@/lib/palgate/pilot'
 import { normalizeParkingPlate } from '@/lib/palgate/parking-vehicles'
 import {
@@ -12,7 +14,7 @@ import {
   sessionTokenFromHex,
 } from '@/lib/palgate/token'
 
-describe('PalGate Savion pilot gate', () => {
+describe('PalGate pilot gate', () => {
   const prev = process.env.PALGATE_PILOT_CLIENT_ID
 
   afterEach(() => {
@@ -20,17 +22,28 @@ describe('PalGate Savion pilot gate', () => {
     else process.env.PALGATE_PILOT_CLIENT_ID = prev
   })
 
-  it('allows only the Savion demo client by default', () => {
+  it('allows Savion + Bamakor by default', () => {
     delete process.env.PALGATE_PILOT_CLIENT_ID
+    expect(resolvePalGatePilotClientIds()).toEqual([
+      SAVION_PALGATE_PILOT_CLIENT_ID,
+      BAMAKOR_PALGATE_PILOT_CLIENT_ID,
+    ])
     expect(resolvePalGatePilotClientId()).toBe(SAVION_PALGATE_PILOT_CLIENT_ID)
     expect(isPalGatePilotClient(SAVION_PALGATE_PILOT_CLIENT_ID)).toBe(true)
+    expect(isPalGatePilotClient(BAMAKOR_PALGATE_PILOT_CLIENT_ID)).toBe(true)
     expect(isPalGatePilotClient('00000000-0000-0000-0000-000000000000')).toBe(false)
     expect(isPalGatePilotClient(null)).toBe(false)
   })
 
-  it('honors PALGATE_PILOT_CLIENT_ID override', () => {
+  it('honors PALGATE_PILOT_CLIENT_ID override (single or comma-separated)', () => {
     process.env.PALGATE_PILOT_CLIENT_ID = '11111111-1111-1111-1111-111111111111'
     expect(isPalGatePilotClient('11111111-1111-1111-1111-111111111111')).toBe(true)
+    expect(isPalGatePilotClient(SAVION_PALGATE_PILOT_CLIENT_ID)).toBe(false)
+
+    process.env.PALGATE_PILOT_CLIENT_ID =
+      '11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222'
+    expect(isPalGatePilotClient('11111111-1111-1111-1111-111111111111')).toBe(true)
+    expect(isPalGatePilotClient('22222222-2222-2222-2222-222222222222')).toBe(true)
     expect(isPalGatePilotClient(SAVION_PALGATE_PILOT_CLIENT_ID)).toBe(false)
   })
 })

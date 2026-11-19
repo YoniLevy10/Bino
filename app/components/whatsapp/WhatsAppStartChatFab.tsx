@@ -17,10 +17,26 @@ type ResidentRow = {
 type Props = {
   onStarted: (conversationId: string) => void
   buildingId?: string | null
+  /** Controlled open from header "+" (optional). */
+  forceOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function WhatsAppStartChatFab({ onStarted, buildingId }: Props) {
-  const [open, setOpen] = useState(false)
+export function WhatsAppStartChatFab({
+  onStarted,
+  buildingId,
+  forceOpen,
+  onOpenChange,
+}: Props) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = forceOpen ?? internalOpen
+  const setOpen = useCallback(
+    (next: boolean) => {
+      onOpenChange?.(next)
+      if (forceOpen === undefined) setInternalOpen(next)
+    },
+    [forceOpen, onOpenChange]
+  )
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<ResidentRow[]>([])
