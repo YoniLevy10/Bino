@@ -37,7 +37,6 @@ export type SidebarNavItemId = (typeof SIDEBAR_NAV_ITEM_IDS)[number]
  * Keep in sync with PREMIUM_NAV_FEATURE_IDS in client-nav-features.ts.
  */
 export const ADDON_ONLY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
-  'calendar',
   'attendance',
   'professionals',
   'pilot_sms',
@@ -73,22 +72,21 @@ export type SidebarNavItem = {
 
 /**
  * Daily-use items pinned to the mobile bottom bar.
- * WhatsApp chats are the busiest screen, then projects (buildings).
- * When the inbox addon is off, `splitMobileBottomNav` falls back to workers.
+ * Ops hub: dashboard + tasks first; WhatsApp when inbox addon is on.
  */
 export const MOBILE_BOTTOM_PRIMARY_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
   'tickets',
   'whatsapp_inbox',
-  'projects',
 ]
 
 /** Bottom bar when WhatsApp inbox is not in the visible nav. */
 export const MOBILE_BOTTOM_PRIMARY_FALLBACK_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
   'tickets',
   'projects',
-  'workers',
 ]
 
 /**
@@ -99,6 +97,7 @@ export const MOBILE_BOTTOM_PRIMARY_FALLBACK_IDS: readonly SidebarNavItemId[] = [
 export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
   'tasks',
+  'calendar',
   'tickets',
   'projects',
   'residents',
@@ -111,7 +110,6 @@ export const TENANT_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'bank',
   'project_documents',
   'summary',
-  'calendar',
   'professionals',
   'pilot_sms',
   'campaigns',
@@ -125,11 +123,8 @@ export const PRIMARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = TENANT_SIDEB
 export const SECONDARY_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = []
 
 /**
- * Collapsible sidebar group "ניהול כספים".
- * Children reuse existing screens; visibility still follows addon/pin rules.
- */
-/**
- * ניהול כספים: גבייה · כספים (הוצאות/דוחות) · חשבון בנק עסקי (לקוח, לא בניין) · מסמכים.
+ * Finance cluster in sidebar order (no group label in chrome).
+ * גבייה · כספים · חשבון בנק · מסמכים — visibility still follows addon/pin rules.
  */
 export const FINANCE_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'collections',
@@ -137,8 +132,6 @@ export const FINANCE_SIDEBAR_NAV_IDS: readonly SidebarNavItemId[] = [
   'bank',
   'project_documents',
 ] as const
-
-export const FINANCE_NAV_GROUP_LABEL = 'ניהול כספים'
 
 export function isTenantSidebarNavId(id: string): boolean {
   return (TENANT_SIDEBAR_NAV_IDS as readonly string[]).includes(id)
@@ -212,14 +205,14 @@ export function splitPrimaryAroundFinanceGroup(primary: SidebarNavItem[]): {
 
 export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
   dashboard: { id: 'dashboard', href: '/dashboard', label: 'לוח בקרה', icon: 'home' },
-  tasks: { id: 'tasks', href: '/tasks', label: 'ניהול משימות', icon: 'grid' },
+  tasks: { id: 'tasks', href: '/tasks', label: 'משימות', icon: 'grid' },
   tickets: { id: 'tickets', href: '/tickets', label: 'תקלות', icon: 'ticket' },
   projects: { id: 'projects', href: '/projects', label: 'פרויקטים', icon: 'folder' },
   residents: { id: 'residents', href: '/residents', label: 'דיירים', icon: 'building' },
   workers: { id: 'workers', href: '/workers', label: 'העובדים שלי', icon: 'users' },
   site_tours: { id: 'site_tours', href: '/site-tours', label: 'סיורים', icon: 'folder' },
   summary: { id: 'summary', href: '/summary', label: 'דוחות', icon: 'chart' },
-  calendar: { id: 'calendar', href: '/calendar', label: 'יומן משרד', icon: 'grid' },
+  calendar: { id: 'calendar', href: '/calendar', label: 'לוח שנה', icon: 'clock' },
   attendance: { id: 'attendance', href: '/attendance', label: 'החתמת עובדים', icon: 'clock' },
   professionals: { id: 'professionals', href: '/professionals', label: 'אנשי מקצוע', icon: 'users' },
   qr: { id: 'qr', href: '/qr', label: 'קודי QR', icon: 'qr' },
@@ -300,6 +293,7 @@ export const SIDEBAR_NAV_REGISTRY: Record<SidebarNavItemId, SidebarNavItem> = {
 export const DEFAULT_SIDEBAR_NAV_ORDER: SidebarNavItemId[] = [
   'dashboard',
   'tasks',
+  'calendar',
   'tickets',
   'projects',
   'residents',
@@ -409,9 +403,9 @@ export function resolveSidebarNavItems(
     if (isAddonOnlySidebarNavId(id) && !isAutoSidebarAddonNavId(id)) {
       if (!customOrder?.includes(id)) return false
     }
-    // Core finance/reports always show (like dashboard/tickets) even when a
-    // saved enabled_nav_features allowlist predates them.
-    if (id === 'finance' || id === 'bank') {
+    // Core ops hub + finance always show even when a saved
+    // enabled_nav_features allowlist predates them.
+    if (id === 'finance' || id === 'bank' || id === 'tasks' || id === 'calendar') {
       return true
     }
     // Auto addons (WhatsApp / attendance / collections): show whenever

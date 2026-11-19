@@ -91,7 +91,7 @@ export default function SiteToursPage() {
 const styles = {
   wrap: (mobile: boolean): CSSProperties => ({
     padding: mobile ? '16px 16px 32px' : '32px 40px',
-    maxWidth: mobile ? '100%' : 960,
+    maxWidth: mobile ? '100%' : 1400,
     margin: '0 auto',
     width: '100%',
     boxSizing: 'border-box',

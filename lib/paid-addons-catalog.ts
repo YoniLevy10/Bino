@@ -1,5 +1,9 @@
-import { PAID_ADDON_KEYS, type PaidAddonKey } from '@/lib/paid-addons'
-import type { AddonEntitlement } from '@/lib/paid-addons'
+import {
+  PAID_ADDON_KEYS,
+  isRetiredPaidAddonKey,
+  type PaidAddonKey,
+  type AddonEntitlement,
+} from '@/lib/paid-addons'
 
 export type PaidAddonId = PaidAddonKey
 
@@ -242,6 +246,7 @@ export type PaidAddonDisplayEntry = PaidAddonCatalogEntry & {
 /** Merge DB entitlements with static marketing for /addons cards. */
 export function buildPaidAddonsForDisplay(entitlements: AddonEntitlement[]): PaidAddonDisplayEntry[] {
   return entitlements
+    .filter((row) => !isRetiredPaidAddonKey(row.addon_key))
     .map((row) => {
       const base = CATALOG[row.addon_key as PaidAddonId]
       if (!base) return null

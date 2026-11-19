@@ -208,8 +208,14 @@ export function BuildingHubModal({
       />
     )
   } else if (tab === 'bank') {
-    // Business-wide bank account (same for every building under this client).
-    body = <BuildingBankPanel isMobile={isMobile} />
+    // Mgmt Financy account + per-building collections match when PoC flag is on.
+    body = (
+      <BuildingBankPanel
+        projectId={project.id}
+        projectName={project.name}
+        isMobile={isMobile}
+      />
+    )
   } else if (tab === 'committee') {
     body = (
       <BuildingCommitteePanel

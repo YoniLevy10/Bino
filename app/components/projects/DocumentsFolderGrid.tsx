@@ -16,7 +16,11 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 import { Button, EmptyState, LoadingSpinner, SearchInput, Select, theme } from '../ui'
-import { ProjectDocumentsPanel } from './ProjectDocumentsPanel'
+import {
+  ProjectDocumentsPanel,
+  PROJECT_DOCUMENT_DRAG_MIME,
+  type DocumentMoveFolderOption,
+} from './ProjectDocumentsPanel'
 
 export type DocumentFolderCard = {
   id: string
@@ -78,17 +82,27 @@ function FolderCardButton({
   folder,
   selected,
   hovered,
+  dropActive,
+  acceptDocumentDrop,
   onHover,
   onLeave,
   onOpen,
+  onDragOver,
+  onDragLeave,
+  onDrop,
   isMobile,
 }: {
   folder: DocumentFolderCard
   selected: boolean
   hovered: boolean
+  dropActive?: boolean
+  acceptDocumentDrop?: boolean
   onHover: () => void
   onLeave: () => void
   onOpen: () => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDragLeave?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
   isMobile: boolean
 }) {
   const childCount = folder.child_folder_count ?? 0
@@ -100,11 +114,20 @@ function FolderCardButton({
       onClick={onOpen}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
+      onDragOver={acceptDocumentDrop ? onDragOver : undefined}
+      onDragLeave={acceptDocumentDrop ? onDragLeave : undefined}
+      onDrop={acceptDocumentDrop ? onDrop : undefined}
       style={{
         ...styles.card,
-        background: selected ? FOLDER_SELECTED_BG : hovered ? FOLDER_HOVER_BG : theme.colors.surface,
-        borderColor: selected ? theme.colors.borderStrong : theme.colors.border,
-        transform: hovered ? 'translateY(-1px)' : 'none',
+        background: dropActive
+          ? '#E8F0E8'
+          : selected
+            ? FOLDER_SELECTED_BG
+            : hovered
+              ? FOLDER_HOVER_BG
+              : theme.colors.surface,
+        borderColor: dropActive ? theme.colors.primary : selected ? theme.colors.borderStrong : theme.colors.border,
+        transform: hovered || dropActive ? 'translateY(-1px)' : 'none',
         width: isMobile ? '100%' : undefined,
       }}
     >
@@ -143,8 +166,10 @@ export function DocumentsFolderGrid() {
   const [newName, setNewName] = useState('')
   const [newProjectId, setNewProjectId] = useState(projectFromUrl)
   const [creating, setCreating] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null)
+  const [docPanelRefresh, setDocPanelRefresh] = useState(0)
 
   const [detailFolder, setDetailFolder] = useState<DocumentFolderCard | null>(null)
   const [detailChildren, setDetailChildren] = useState<DocumentFolderCard[]>([])
@@ -245,6 +270,40 @@ export function DocumentsFolderGrid() {
     })
   }, [folders, filter, search])
 
+  const refreshAfterDocumentMove = useCallback(async () => {
+    if (folderFromUrl) await loadFolderDetail(folderFromUrl)
+    await loadRoots()
+    setDocPanelRefresh((n) => n + 1)
+  }, [folderFromUrl, loadFolderDetail, loadRoots])
+
+  async function onDropDocumentOnFolder(e: React.DragEvent, targetFolderId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDropTargetFolderId(null)
+    const documentId = e.dataTransfer.getData(PROJECT_DOCUMENT_DRAG_MIME)
+    if (!documentId) return
+    try {
+      const res = await fetchWithTimeout('/api/projects/documents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: documentId, folder_id: targetFolderId }),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      toast.success('הקובץ הועבר לתיקיה')
+      await refreshAfterDocumentMove()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'העברה נכשלה')
+    }
+  }
+
+  function onFolderDragOver(e: React.DragEvent, folderId: string) {
+    if (!e.dataTransfer.types.includes(PROJECT_DOCUMENT_DRAG_MIME)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropTargetFolderId(folderId)
+  }
+
   const { projectFolders, independentFolders } = useMemo(() => {
     const independent = filtered.filter((f) => f.independent)
     const projects = filtered
@@ -344,6 +403,10 @@ export function DocumentsFolderGrid() {
     const canCreateSub = detailFolder.can_create_subfolder !== false && (detailFolder.depth ?? 0) < 2
     const detailDisplayName = folderPrimaryLabel(detailFolder)
     const atProjectRoot = !detailFolder.independent && (detailFolder.depth ?? 0) === 0
+    const moveFolderOptions: DocumentMoveFolderOption[] = detailChildren.map((f) => ({
+      id: f.id,
+      label: folderPrimaryLabel(f),
+    }))
 
     function crumbLabel(
       crumb: BreadcrumbItem,
@@ -445,9 +508,14 @@ export function DocumentsFolderGrid() {
                   folder={folder}
                   selected={false}
                   hovered={hoveredId === folder.id}
+                  dropActive={dropTargetFolderId === folder.id}
+                  acceptDocumentDrop={!isMobile && moveFolderOptions.length > 0}
                   onHover={() => setHoveredId(folder.id)}
                   onLeave={() => setHoveredId(null)}
                   onOpen={() => openFolder(folder.id)}
+                  onDragOver={(e) => onFolderDragOver(e, folder.id)}
+                  onDragLeave={() => setDropTargetFolderId((id) => (id === folder.id ? null : id))}
+                  onDrop={(e) => void onDropDocumentOnFolder(e, folder.id)}
                   isMobile={isMobile}
                 />
               ))}
@@ -459,6 +527,9 @@ export function DocumentsFolderGrid() {
           projectId={detailFolder.project_id}
           folderId={detailFolder.id}
           folderName={detailDisplayName}
+          moveFolderOptions={moveFolderOptions}
+          onDocumentMoved={refreshAfterDocumentMove}
+          refreshToken={docPanelRefresh}
         />
 
         {createOpen && createAsSubfolder ? (

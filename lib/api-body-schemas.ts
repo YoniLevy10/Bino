@@ -176,6 +176,8 @@ export const createTicketJsonBodySchema = z.object({
   building_number: z.string().max(80).nullable().optional(),
   source: z.string().max(80).optional(),
   client_id: z.string().uuid().optional(),
+  /** ציוד ממדבקת QR /asset/{slug} */
+  asset_id: z.string().uuid().optional(),
 })
 
 export const ticketIdBodySchema = z.object({
@@ -360,6 +362,20 @@ export const forwardTicketToProfessionalBodySchema = z.object({
 export const maintenanceTaskStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'DONE'])
 export const maintenanceTaskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
 
+const maintenanceCadenceSchema = z.enum([
+  'one_off',
+  'weekly',
+  'monthly',
+  'quarterly',
+  'yearly',
+])
+
+const maintenanceChecklistItemBodySchema = z.object({
+  id: z.string().min(1).max(64),
+  text: z.string().min(1).max(200),
+  done_at: z.string().nullable(),
+})
+
 export const createMaintenanceTaskBodySchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(4000).nullable().optional(),
@@ -369,6 +385,13 @@ export const createMaintenanceTaskBodySchema = z.object({
   due_at: z.string().min(10).max(40).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
   source_ticket_id: z.string().uuid().nullable().optional(),
+  cadence: maintenanceCadenceSchema.optional(),
+  sync_to_calendar: z.boolean().optional(),
+  checklist_items: z.array(maintenanceChecklistItemBodySchema).max(40).optional(),
+  series_id: z.string().uuid().nullable().optional(),
+  asset_id: z.string().uuid().nullable().optional(),
+  estimated_minutes: z.number().int().min(1).max(24 * 60).nullable().optional(),
+  actual_cost_ils: z.number().min(0).max(1_000_000).nullable().optional(),
 })
 
 export const updateMaintenanceTaskBodySchema = z.object({
@@ -382,6 +405,66 @@ export const updateMaintenanceTaskBodySchema = z.object({
   due_at: z.string().min(10).max(40).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
   source_ticket_id: z.string().uuid().nullable().optional(),
+  cadence: maintenanceCadenceSchema.optional(),
+  sync_to_calendar: z.boolean().optional(),
+  checklist_items: z.array(maintenanceChecklistItemBodySchema).max(40).optional(),
+  series_id: z.string().uuid().nullable().optional(),
+  asset_id: z.string().uuid().nullable().optional(),
+  estimated_minutes: z.number().int().min(1).max(24 * 60).nullable().optional(),
+  actual_cost_ils: z.number().min(0).max(1_000_000).nullable().optional(),
+  create_next_occurrence: z.boolean().optional(),
+})
+
+export const applyBuildingTemplatesBodySchema = z
+  .object({
+    project_id: z.string().uuid().optional(),
+    project_ids: z.array(z.string().uuid()).max(20).optional(),
+    template_set_id: z.string().uuid().optional(),
+    preview_only: z.boolean().optional(),
+  })
+  .refine((v) => Boolean(v.project_id) || (v.project_ids && v.project_ids.length > 0), {
+    message: 'project_id or project_ids required',
+  })
+
+export const createNextOccurrenceBodySchema = z.object({
+  task_id: z.string().uuid(),
+})
+
+export const suggestTaskWorkerBodySchema = z.object({
+  project_id: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(4000).nullable().optional(),
+  assigned_worker_id: z.string().uuid().nullable().optional(),
+})
+
+export const createTicketFromTaskBodySchema = z.object({
+  task_id: z.string().uuid(),
+  description: z.string().min(1).max(4000).optional(),
+})
+
+export const buildingAssetCreateBodySchema = z.object({
+  project_id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  kind: z.string().min(1).max(40).optional(),
+  notes: z.string().max(1000).nullable().optional(),
+})
+
+export const templateSetUpsertBodySchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  items: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        cadence: maintenanceCadenceSchema,
+        priority: maintenanceTaskPrioritySchema.optional(),
+        checklist: z.array(z.string().min(1).max(200)).max(20).optional(),
+        estimated_minutes: z.number().int().min(1).max(24 * 60).optional(),
+        description: z.string().max(4000).optional(),
+      })
+    )
+    .min(1)
+    .max(40),
 })
 
 export const workerMaintenanceTaskCreateBodySchema = z.object({
@@ -398,6 +481,7 @@ export const workerMaintenanceTaskUpdateBodySchema = z.object({
   task_id: z.string().uuid(),
   status: maintenanceTaskStatusSchema.optional(),
   notes: z.string().max(2000).nullable().optional(),
+  checklist_items: z.array(maintenanceChecklistItemBodySchema).max(40).optional(),
 })
 
 export const workerEscortBodySchema = z.object({
@@ -504,7 +588,13 @@ export const deleteNfcTagBodySchema = z.object({
   tag_id: z.string().uuid(),
 })
 
-const calendarEventTypeSchema = z.enum(['committee', 'professional', 'internal', 'other'])
+const calendarEventTypeSchema = z.enum([
+  'committee',
+  'professional',
+  'internal',
+  'other',
+  'maintenance',
+])
 
 export const createCalendarEventBodySchema = z.object({
   title: z.string().min(1).max(300),
@@ -530,6 +620,11 @@ export const projectPilotSmsBodySchema = z.object({
 
 export const deleteProjectDocumentBodySchema = z.object({
   document_id: z.string().uuid(),
+})
+
+export const moveProjectDocumentBodySchema = z.object({
+  document_id: z.string().uuid(),
+  folder_id: z.string().uuid(),
 })
 
 /** יצירת תיקיית מסמכים עצמאית / לפי בניין / תת־תיקיה. */
@@ -896,4 +991,72 @@ export const createMetaWhatsappTemplateBodySchema = z.object({
   /** Override COMPOSIO_WHATSAPP_CONNECTED_ACCOUNT_ID (alias or id). */
   connected_account_id: z.string().trim().max(120).nullable().optional(),
   language: z.string().trim().max(16).nullable().optional(),
+})
+
+/** P0 bank-match — upsert building bank account + sync schedule. */
+export const buildingBankAccountUpsertBodySchema = z.object({
+  project_id: z.string().uuid(),
+  display_name: z.string().trim().max(200).optional().nullable(),
+  bank_code: z.string().trim().max(8).optional().nullable(),
+  branch_number: z.string().trim().max(8).optional().nullable(),
+  account_number: z.string().trim().max(32).optional().nullable(),
+  iban: z.string().trim().max(40).optional().nullable(),
+  provider: z.string().trim().max(40).optional().nullable(),
+  ingest_source: z.enum(['csv', 'scraper']).optional(),
+  sync_enabled: z.boolean().optional(),
+  sync_day_of_month: z.number().int().min(1).max(28).optional().nullable(),
+  /** Login fields for israeli-bank-scrapers — encrypted server-side, never returned. */
+  scraper_credentials: z.record(z.string(), z.string().max(200)).optional().nullable(),
+})
+
+export const bankMatchSyncNowBodySchema = z.object({
+  project_id: z.string().uuid(),
+})
+
+export const bankMatchImportCsvBodySchema = z
+  .object({
+    project_id: z.string().uuid(),
+    /** Legacy / paste path */
+    csv_text: z.string().max(2_000_000).optional(),
+    /** Base64 file body for CSV / Excel / PDF */
+    file_base64: z.string().max(12_000_000).optional(),
+    file_name: z.string().trim().max(260).optional(),
+    mime_type: z.string().trim().max(120).optional(),
+    run_match: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.csv_text?.trim() && !val.file_base64?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'נדרש csv_text או קובץ (file_base64)',
+      })
+    }
+  })
+
+export const bankMatchActionBodySchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('apply'),
+    project_id: z.string().uuid(),
+    transaction_id: z.string().uuid(),
+    charge_id: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal('unmatch'),
+    project_id: z.string().uuid(),
+    transaction_id: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal('run_pass'),
+    project_id: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal('suggest_ignore'),
+    project_id: z.string().uuid(),
+    transaction_id: z.string().uuid(),
+  }),
+])
+
+export const bankMatchRemindersBodySchema = z.object({
+  project_id: z.string().uuid(),
+  charge_ids: z.array(z.string().uuid()).max(100).optional(),
 })

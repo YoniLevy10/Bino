@@ -1,6 +1,7 @@
 import { fetchWithTimeout } from '@/lib/fetch-timeout'
 import { insertWhatsAppSendFailure } from '@/lib/error-logs-db'
 import { getLogger } from '@/lib/logging'
+import { isOutboundLiveAllowed, outboundMockResult } from '@/lib/outbound-mode'
 import {
   formatWhatsAppTemplateFailureMessage,
   formatWhatsAppTextFailureMessage,
@@ -127,6 +128,16 @@ async function sendWhatsAppCloudWithTransientRetry(
   metaErrorOut?: { current?: WhatsAppMetaError },
   logSuffix = ''
 ): Promise<Record<string, unknown> | null> {
+  if (!isOutboundLiveAllowed()) {
+    outboundMockResult('whatsapp', {
+      phoneNumberId: phoneNumberId ? '(set)' : '(missing)',
+      to: typeof payload.to === 'string' ? payload.to : undefined,
+      type: typeof payload.type === 'string' ? payload.type : undefined,
+      logSuffix,
+    })
+    return { messaging_product: 'whatsapp', mocked: true }
+  }
+
   for (let attempt = 1; attempt <= WHATSAPP_TRANSIENT_MAX_ATTEMPTS; attempt++) {
     const attemptMeta: { current?: WhatsAppMetaError } = {}
     const timeoutMs = attempt === 1 ? WHATSAPP_API_TIMEOUT_MS : WHATSAPP_API_RETRY_TIMEOUT_MS

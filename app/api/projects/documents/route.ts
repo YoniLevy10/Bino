@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
-import { deleteProjectDocumentBodySchema } from '@/lib/api-body-schemas'
+import { deleteProjectDocumentBodySchema, moveProjectDocumentBodySchema } from '@/lib/api-body-schemas'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { removeDurableStorageObjects } from '@/lib/storage-purge'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
@@ -216,6 +216,88 @@ export async function POST(req: Request) {
   return NextResponse.json({
     document: {
       ...(inserted as object),
+      download_url: signed?.signedUrl ?? null,
+    },
+  })
+}
+
+export async function PATCH(req: Request) {
+  const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.project_documents, { write: true })
+  if (!auth.ok) return auth.response
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const parsed = moveProjectDocumentBodySchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const admin = getSupabaseAdmin()
+  const rl = await checkAuthenticatedPostRouteLimit(admin, auth.ctx.userId, 'project-documents-move')
+  if (rl.isLimited) {
+    return NextResponse.json({ error: 'יותר מדי בקשות. נסו שוב בעוד דקה.' }, { status: 429 })
+  }
+
+  const { document_id: documentId, folder_id: folderId } = parsed.data
+
+  const { data: doc, error: docErr } = await admin
+    .from('project_documents')
+    .select('id, folder_id, project_id, storage_path')
+    .eq('id', documentId)
+    .eq('client_id', auth.ctx.clientId)
+    .maybeSingle()
+
+  if (docErr || !doc) {
+    return NextResponse.json({ error: 'מסמך לא נמצא' }, { status: 404 })
+  }
+
+  if ((doc as { folder_id: string | null }).folder_id === folderId) {
+    return NextResponse.json({ ok: true, document: { id: documentId, folder_id: folderId } })
+  }
+
+  const { data: folder, error: folderErr } = await admin
+    .from('document_folders')
+    .select('id, project_id')
+    .eq('id', folderId)
+    .eq('client_id', auth.ctx.clientId)
+    .maybeSingle()
+
+  if (folderErr || !folder) {
+    return NextResponse.json({ error: 'תיקיה לא נמצאה' }, { status: 404 })
+  }
+
+  const folderProjectId = (folder as { project_id: string | null }).project_id
+  const docProjectId = (doc as { project_id: string | null }).project_id
+  if (docProjectId && folderProjectId && docProjectId !== folderProjectId) {
+    return NextResponse.json({ error: 'המסמך והתיקיה לא שייכים לאותו בניין' }, { status: 400 })
+  }
+
+  const { data: updated, error: updErr } = await admin
+    .from('project_documents')
+    .update({
+      folder_id: folderId,
+      project_id: folderProjectId ?? docProjectId,
+    })
+    .eq('id', documentId)
+    .eq('client_id', auth.ctx.clientId)
+    .select('id, file_name, mime_type, file_size, notes, created_at, folder_id, project_id, storage_path')
+    .single()
+
+  if (updErr) {
+    return NextResponse.json({ error: updErr.message }, { status: 500 })
+  }
+
+  const row = updated as { storage_path: string }
+  const { data: signed } = await admin.storage.from(BUCKET).createSignedUrl(row.storage_path, 3600)
+
+  return NextResponse.json({
+    document: {
+      ...(updated as object),
       download_url: signed?.signedUrl ?? null,
     },
   })

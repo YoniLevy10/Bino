@@ -7,6 +7,7 @@ import { ClearAppBadgeOnActivate } from "./components/ClearAppBadgeOnActivate";
 import { PwaSessionResume } from "./components/PwaSessionResume";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { InstallPromptBanner } from "./components/InstallPromptBanner";
+import { StagingBanner } from "./components/StagingBanner";
 import { initializeLogger } from "@/lib/logging";
 import { AppProviders } from "./components/AppProviders";
 import { WorkTimer } from "./components/WorkTimer";
@@ -126,6 +127,7 @@ export default function RootLayout({
       className={`${heebo.variable} font-sans antialiased bg-background`}
     >
       <body className="min-h-screen flex flex-col bg-background text-foreground" dir="rtl">
+        <StagingBanner />
         <RegisterServiceWorker />
         <ClearAppBadgeOnActivate />
         <PwaSessionResume />

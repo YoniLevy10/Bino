@@ -1,10 +1,25 @@
-export type CalendarEventType = 'committee' | 'professional' | 'internal' | 'other'
+export type CalendarEventType =
+  | 'committee'
+  | 'professional'
+  | 'internal'
+  | 'other'
+  | 'maintenance'
 
 export const CALENDAR_EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
   committee: 'ועד בית',
   professional: 'איש מקצוע',
   internal: 'פנימי',
   other: 'אחר',
+  maintenance: 'תחזוקה מחזורית',
+}
+
+/** UI chip colors for calendar (maintenance mirrors cadence defaults via title prefix in sync) */
+export const CALENDAR_EVENT_TYPE_COLORS: Record<CalendarEventType, string> = {
+  committee: '#1d4ed8',
+  professional: '#7c3aed',
+  internal: '#0f766e',
+  other: '#64748b',
+  maintenance: '#0e7490',
 }
 
 export function monthRangeIso(year: number, month: number) {

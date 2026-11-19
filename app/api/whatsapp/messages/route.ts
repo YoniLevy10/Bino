@@ -9,6 +9,7 @@ import { listTicketWhatsAppMessages } from '@/lib/whatsapp-ticket-reply'
 import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 import { z } from 'zod'
+import { isWhatsAppInboxV2Enabled } from '@/lib/whatsapp-inbox-v2-flag'
 
 const conversationIdSchema = z.string().uuid()
 
@@ -40,12 +41,13 @@ export async function GET(req: Request) {
       if (!parsed.success) {
         return NextResponse.json({ error: 'מזהה שיחה לא תקין' }, { status: 400 })
       }
+      const richMedia = isWhatsAppInboxV2Enabled()
       const messages = await listWhatsAppMessagesForConversation(
         admin,
         auth.ctx.clientId,
         parsed.data,
         200,
-        { omitInteractivePayload: true }
+        { omitInteractivePayload: !richMedia }
       )
       return NextResponse.json({
         messages,

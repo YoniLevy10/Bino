@@ -8,21 +8,21 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { monthBounds } from '@/lib/attendance-display'
 import { useAttendanceDashboard } from '@/lib/hooks/use-attendance-dashboard'
 import {
-  AppShell,
-  MobileHeader,
-  useMobileMenu,
-  PageHeader,
   Card,
   Button,
   theme,
-} from '../components/ui'
-import { PageTransitionLoader } from '../components/page-skeleton'
-import { PaidAddonGate } from '../components/PaidAddonGate'
+  KpiCard,
+  KpiRow,
+  FilterTabs,
+  Select,
+} from '@/app/components/ui'
+import { PageTransitionLoader } from '@/app/components/page-skeleton'
+import { AddonFeaturePageShell } from '@/app/components/addons/AddonFeaturePageShell'
 import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { AttendanceShiftsReport } from '../components/attendance/AttendanceShiftsReport'
-import { AttendanceHelpContact } from '../components/attendance/AttendanceHelpContact'
-import { AttendanceAnomalies, type AttendanceAnomaliesData } from '../components/attendance/AttendanceAnomalies'
-import { AttendanceHistoryTab } from '../components/attendance/AttendanceHistoryTab'
+import { AttendanceShiftsReport } from '@/app/components/attendance/AttendanceShiftsReport'
+import { AttendanceHelpContact } from '@/app/components/attendance/AttendanceHelpContact'
+import { AttendanceAnomalies, type AttendanceAnomaliesData } from '@/app/components/attendance/AttendanceAnomalies'
+import { AttendanceHistoryTab } from '@/app/components/attendance/AttendanceHistoryTab'
 import { EVENT_TYPE_HE } from '@/lib/attendance-display'
 
 type PageTab = 'current' | 'history'
@@ -82,7 +82,6 @@ function formatShortTime(iso: string): string {
 }
 
 export default function AttendancePage() {
-  const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
   const [pageTab, setPageTab] = useState<PageTab>('current')
   const [syncFilter, setSyncFilter] = useState('')
@@ -166,48 +165,26 @@ export default function AttendancePage() {
   const activeNow = todaySummary?.active_now ?? []
   const missingCheckout = todaySummary?.missing_checkout ?? []
 
-  const kpiTiles = [
-    {
-      key: 'active',
-      value: kpis.active_workers_now,
-      label: 'בשטח עכשיו',
-      accent: theme.colors.primary,
-    },
-    {
-      key: 'ins',
-      value: kpis.clock_ins_today,
-      label: 'כניסות היום',
-      accent: theme.colors.textPrimary,
-    },
-    {
-      key: 'pending',
-      value: kpis.pending_review,
-      label: 'ממתינים לאישור',
-      accent: kpis.pending_review > 0 ? theme.colors.warning : theme.colors.textPrimary,
-    },
-    {
-      key: 'missing',
-      value: missingCheckoutCount,
-      label: 'חסרה יציאה',
-      accent: missingCheckoutCount > 0 ? theme.colors.error : theme.colors.textPrimary,
-    },
-  ]
-
   const currentTabContent = (
     <>
-      <div
-        style={{
-          ...styles.kpiGrid,
-          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
-        }}
-      >
-        {kpiTiles.map((tile) => (
-          <Card key={tile.key} style={{ ...styles.kpiCard, minWidth: 0 }}>
-            <div style={{ ...styles.kpiValue, color: tile.accent }}>{loading ? '—' : tile.value}</div>
-            <div style={styles.kpiLabel}>{tile.label}</div>
-          </Card>
-        ))}
-      </div>
+      <KpiRow columns={4} isMobile={isMobile} style={{ marginBottom: 16 }}>
+        <KpiCard
+          label="בשטח עכשיו"
+          value={loading ? '—' : kpis.active_workers_now}
+          accent="primary"
+        />
+        <KpiCard label="כניסות היום" value={loading ? '—' : kpis.clock_ins_today} />
+        <KpiCard
+          label="ממתינים לאישור"
+          value={loading ? '—' : kpis.pending_review}
+          accent={kpis.pending_review > 0 ? 'warning' : undefined}
+        />
+        <KpiCard
+          label="חסרה יציאה"
+          value={loading ? '—' : missingCheckoutCount}
+          accent={missingCheckoutCount > 0 ? 'error' : undefined}
+        />
+      </KpiRow>
 
       {(activeNow.length > 0 || missingCheckout.length > 0) && !loading ? (
         <Card style={styles.snapshotCard}>
@@ -255,15 +232,16 @@ export default function AttendancePage() {
         <p style={styles.hint}>מי נכנס ומתי — החודש הנוכחי. חודשים קודמים בלשונית «היסטוריה».</p>
         <div style={{ ...styles.filters, flexDirection: isMobile ? 'column' : 'row' }}>
           {kpis.pending_review > 0 ? (
-            <select
-              style={{ ...styles.input, width: isMobile ? '100%' : undefined }}
-              value={syncFilter}
-              onChange={(e) => setSyncFilter(e.target.value)}
-            >
-              <option value="">הכל</option>
-              <option value="pending_review">רק שדורשות בדיקה</option>
-              <option value="synced">תקין</option>
-            </select>
+            <Select
+              value={syncFilter || 'all'}
+              onChange={(v) => setSyncFilter(v === 'all' ? '' : v)}
+              options={[
+                { label: 'הכל', value: 'all' },
+                { label: 'רק שדורשות בדיקה', value: 'pending_review' },
+                { label: 'תקין', value: 'synced' },
+              ]}
+              style={{ width: isMobile ? '100%' : undefined }}
+            />
           ) : null}
           <Button
             variant="secondary"
@@ -360,103 +338,32 @@ export default function AttendancePage() {
   )
 
   return (
-    <AppShell isMobile={isMobile}>
-      <PaidAddonGate addonKey={PAID_ADDON_KEYS.worker_stamp}>
-        {isMobile && (
-          <MobileHeader
-            title="חתמת עובדים"
-            subtitle={pageTab === 'history' ? 'ארכיון חודשי' : currentMonthBounds.label}
-            onMenuClick={openMenu}
-          />
-        )}
-        <div
-          style={{
-            padding: isMobile ? '16px 16px 32px' : '32px 40px',
-            maxWidth: isMobile ? '100%' : 1200,
-            margin: '0 auto',
-            boxSizing: 'border-box',
-          }}
-        >
-          {!isMobile && (
-            <PageHeader
-              title="חתמת עובדים"
-              subtitle={
-                pageTab === 'history'
-                  ? 'ארכיון משמרות לפי חודש'
-                  : `מעקב שעות — ${currentMonthBounds.label}`
-              }
-            />
-          )}
-
-          <div style={styles.pageTabBar}>
-            <button
-              type="button"
-              onClick={() => setPageTab('current')}
-              style={{
-                ...styles.pageTab,
-                ...(pageTab === 'current' ? styles.pageTabActive : styles.pageTabInactive),
-              }}
-            >
-              חודש נוכחי
-            </button>
-            <button
-              type="button"
-              onClick={() => setPageTab('history')}
-              style={{
-                ...styles.pageTab,
-                ...(pageTab === 'history' ? styles.pageTabActive : styles.pageTabInactive),
-              }}
-            >
-              היסטוריה
-            </button>
-          </div>
-
-          {pageTab === 'history' ? <AttendanceHistoryTab isMobile={isMobile} /> : currentTabContent}
-        </div>
-      </PaidAddonGate>
-    </AppShell>
+    <AddonFeaturePageShell
+      addonKey={PAID_ADDON_KEYS.worker_stamp}
+      title="חתמת עובדים"
+      mobileSubtitle={pageTab === 'history' ? 'ארכיון חודשי' : currentMonthBounds.label}
+      desktopSubtitle={
+        pageTab === 'history'
+          ? 'ארכיון משמרות לפי חודש'
+          : `מעקב שעות — ${currentMonthBounds.label}`
+      }
+    >
+      <div style={{ marginBottom: 16 }}>
+        <FilterTabs
+          value={pageTab}
+          onChange={(v) => setPageTab(v as PageTab)}
+          options={[
+            { label: 'חודש נוכחי', value: 'current' },
+            { label: 'היסטוריה', value: 'history' },
+          ]}
+        />
+      </div>
+      {pageTab === 'history' ? <AttendanceHistoryTab isMobile={isMobile} /> : currentTabContent}
+    </AddonFeaturePageShell>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  pageTabBar: {
-    display: 'flex',
-    gap: '8px',
-    padding: '4px',
-    background: theme.colors.mutedSurface,
-    borderRadius: theme.radius.lg,
-    border: `1px solid ${theme.colors.border}`,
-    marginBottom: '20px',
-  },
-  pageTab: {
-    flex: 1,
-    minHeight: '48px',
-    padding: '12px 8px',
-    fontSize: '14px',
-    fontWeight: 600,
-    border: 'none',
-    borderRadius: theme.radius.md,
-    cursor: 'pointer',
-    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, box-shadow ${theme.motion.fast} ease`,
-    fontFamily: 'inherit',
-  },
-  pageTabActive: {
-    background: theme.colors.surface,
-    color: theme.colors.primary,
-    boxShadow: theme.shadows.xs,
-  },
-  pageTabInactive: {
-    background: 'transparent',
-    color: theme.colors.textMuted,
-  },
-  kpiGrid: {
-    display: 'grid',
-    gap: 12,
-    marginBottom: 16,
-  },
-  kpiCard: { padding: 16, textAlign: 'center' },
-  kpiValue: { fontSize: 28, fontWeight: 700 },
-  kpiLabel: { fontSize: 13, color: theme.colors.textMuted, marginTop: 4 },
   snapshotCard: { marginBottom: 16, padding: 16 },
   snapshotBlock: { marginBottom: 12 },
   snapshotLabel: {

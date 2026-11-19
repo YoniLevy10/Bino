@@ -32,6 +32,7 @@ describe('resident intake helpers', () => {
     })
     expect(msg).toContain('הרצל 12')
     expect(msg).toContain('https://bino.casa/intake?project=H12&client=c1')
+    expect(msg).toMatch(/שם|טלפון|דירה/)
     expect(msg).not.toMatch(/\p{Extended_Pictographic}/u)
   })
 

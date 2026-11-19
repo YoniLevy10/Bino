@@ -300,7 +300,8 @@ function ReportPageContent() {
           <div style={styles.headerBlock}>
             <h1 style={styles.title}>דיווח תקלה</h1>
             <p style={styles.subtitle}>
-              מלאו את הפרטים, והפנייה תועבר לטיפול.
+              כתבו בקצרה מה קרה → לחצו «שליחה». אין צורך באפליקציה. אם משהו לא ברור — פנו להנהלת
+              הבניין.
             </p>
           </div>
 

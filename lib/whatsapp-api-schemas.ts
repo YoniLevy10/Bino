@@ -23,6 +23,39 @@ export const whatsappReplyResidentBodySchema = z.object({
   body: z.string().min(1).max(4096),
 })
 
+export const whatsappConversationsQuerySchema = z.object({
+  building_id: z.string().uuid().optional(),
+  status: z.enum(['all', 'open_ticket', 'awaiting_reply', 'session_open', 'session_closed']).optional(),
+  unread_only: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+  unread_before: z.string().datetime().optional(),
+})
+
+export const whatsappMediaQuerySchema = z.object({
+  message_id: z.string().uuid(),
+})
+
+export const whatsappResidentsSearchQuerySchema = z.object({
+  q: z.string().max(80).optional(),
+  building_id: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+})
+
+export const whatsappStartConversationBodySchema = z.object({
+  resident_id: z.string().uuid().optional(),
+  phone: z.string().min(8).max(20).optional(),
+})
+
+export const whatsappForwardProfessionalBodySchema = z.object({
+  ticket_id: z.string().uuid(),
+  professional_id: z.string().uuid(),
+  note: z.string().max(500).nullable().optional(),
+  set_status_escort: z.boolean().optional(),
+  dry_run: z.boolean().optional(),
+})
+
 export const smsCampaignBodySchema = z.object({
   project_id: z.string().uuid(),
   campaign_name: z.string().max(120).optional(),

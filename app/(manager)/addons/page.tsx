@@ -236,7 +236,7 @@ export default function AddonsPage() {
 const styles: Record<string, CSSProperties> = {
   content: {
     padding: '32px 40px 48px',
-    maxWidth: '1120px',
+    maxWidth: '1400px',
     margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',

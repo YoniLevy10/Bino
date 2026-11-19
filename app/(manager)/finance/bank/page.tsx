@@ -20,8 +20,8 @@ function FinanceBankInner() {
   return (
     <AddonFeaturePageShell
       title="חשבון הבנק"
-      mobileSubtitle="חשבון עסקי אחד · כל הבניינים"
-      desktopSubtitle="זיכרון תפעולי כספי — יתרות, תנועות והעברות ברמת העסק"
+      mobileSubtitle="חשבון עסקי · גבייה לפי בניין"
+      desktopSubtitle="Financy ברמת העסק + התאמות גבייה לבניין"
       contentMaxWidth={1200}
       headerActions={
         <Link
@@ -45,6 +45,7 @@ function FinanceBankInner() {
         </Link>
       }
     >
+      {/* Financy is client-wide; building pick lives inside collections match below. */}
       <BuildingBankPanel isMobile={isMobile} />
     </AddonFeaturePageShell>
   )

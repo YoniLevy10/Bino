@@ -14,9 +14,28 @@ import {
 } from '@/lib/tenant-owned-refs'
 import { notifyWorkerMaintenanceTaskAssigned } from '@/lib/notify-worker-maintenance-task'
 import { runAfterResponse } from '@/lib/run-after-response'
+import { normalizeMaintenanceCadence } from '@/lib/maintenance-cadence'
+import { syncMaintenanceTaskToCalendar } from '@/lib/maintenance-task-calendar-sync'
+import { normalizeChecklistItems } from '@/lib/maintenance-checklist'
+import { costIlsFromMinutes } from '@/lib/maintenance-task-cost'
+import { createNextMaintenanceOccurrence } from '@/lib/maintenance-create-next-occurrence'
 
 const TASK_SELECT =
-  'id, client_id, project_id, assigned_worker_id, source_ticket_id, title, description, priority, status, due_at, notes, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name), tickets:source_ticket_id(id, ticket_number)'
+  'id, client_id, project_id, assigned_worker_id, source_ticket_id, title, description, priority, status, due_at, notes, cadence, color_key, calendar_event_id, series_id, checklist_items, completed_by_user_id, completed_by_worker_id, asset_id, estimated_minutes, actual_cost_ils, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name, hourly_rate), tickets:source_ticket_id(id, ticket_number)'
+
+/** Fallback when migrations 151+ not applied yet (42703 series_id / checklist). */
+const TASK_SELECT_LEGACY =
+  'id, client_id, project_id, assigned_worker_id, source_ticket_id, title, description, priority, status, due_at, notes, cadence, color_key, calendar_event_id, created_at, updated_at, completed_at, projects(name, address), workers:assigned_worker_id(full_name, hourly_rate), tickets:source_ticket_id(id, ticket_number)'
+
+function isMissingColumnError(message: string | undefined): boolean {
+  if (!message) return false
+  return (
+    /series_id/i.test(message) ||
+    /checklist_items/i.test(message) ||
+    /does not exist/i.test(message) ||
+    /42703/.test(message)
+  )
+}
 
 export async function GET(req: Request) {
   const auth = await requireSessionClientId()
@@ -30,24 +49,27 @@ export async function GET(req: Request) {
   const rawOffset = Number(url.searchParams.get('offset') || '0')
   const offset = Number.isFinite(rawOffset) ? Math.max(Math.floor(rawOffset), 0) : 0
   const filter = (url.searchParams.get('filter') || 'all').trim().toLowerCase()
+  const dueFrom = url.searchParams.get('from')?.trim() || null
+  const dueTo = url.searchParams.get('to')?.trim() || null
 
-  let tasksQuery = admin
-    .from('maintenance_tasks')
-    .select(TASK_SELECT)
-    .eq('client_id', clientId)
-    .is('deleted_at', null)
-    .order('due_at', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
-
-  if (filter === 'open') {
-    tasksQuery = tasksQuery.neq('status', 'DONE')
-  } else if (filter === 'done') {
-    tasksQuery = tasksQuery.eq('status', 'DONE')
+  function buildTasksQuery(cols: string) {
+    let q = admin
+      .from('maintenance_tasks')
+      .select(cols)
+      .eq('client_id', clientId)
+      .is('deleted_at', null)
+      .order('due_at', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    if (filter === 'open') q = q.neq('status', 'DONE')
+    else if (filter === 'done') q = q.eq('status', 'DONE')
+    if (dueFrom) q = q.gte('due_at', dueFrom)
+    if (dueTo) q = q.lt('due_at', dueTo)
+    return q
   }
 
-  const [tasksRes, workersRes, projectsRes, openCountRes] = await Promise.all([
-    tasksQuery,
+  const [tasksResInitial, workersRes, projectsRes, openCountRes] = await Promise.all([
+    buildTasksQuery(TASK_SELECT),
     admin
       .from('workers')
       .select('id, full_name')
@@ -65,13 +87,20 @@ export async function GET(req: Request) {
       .neq('status', 'DONE'),
   ])
 
+  let tasksRes = tasksResInitial
+  if (tasksRes.error && isMissingColumnError(tasksRes.error.message)) {
+    tasksRes = await buildTasksQuery(TASK_SELECT_LEGACY)
+  }
+
   if (tasksRes.error) {
     return NextResponse.json({ error: tasksRes.error.message }, { status: 500 })
   }
 
-  const tasks = tasksRes.data || []
+  // Dynamic select string → Supabase types as GenericStringError; cast for response shaping.
+  type TaskListRow = { id: string; status: string }
+  const tasks = (tasksRes.data || []) as unknown as TaskListRow[]
   const hasMore = tasks.length >= limit
-  const previewTaskIds = tasks.slice(0, 40).map((t) => t.id as string)
+  const previewTaskIds = tasks.slice(0, 40).map((t) => t.id)
 
   let attachmentsByTask: Record<
     string,
@@ -193,6 +222,11 @@ export async function POST(req: Request) {
   // Prefer explicit project_id; else inherit from linked ticket when present.
   const projectId = body.project_id || ticketOk.projectId || null
 
+  const cadence = normalizeMaintenanceCadence(body.cadence)
+  const checklist = body.checklist_items
+    ? normalizeChecklistItems(body.checklist_items)
+    : []
+
   const { data, error } = await admin
     .from('maintenance_tasks')
     .insert({
@@ -205,6 +239,12 @@ export async function POST(req: Request) {
       priority: body.priority || 'MEDIUM',
       due_at: body.due_at || null,
       notes: body.notes?.trim() || null,
+      cadence,
+      checklist_items: checklist,
+      series_id: body.series_id || null,
+      asset_id: body.asset_id || null,
+      estimated_minutes: body.estimated_minutes ?? null,
+      actual_cost_ils: body.actual_cost_ils ?? null,
       created_by: auth.ctx.userId,
       status: 'PENDING',
     })
@@ -213,6 +253,16 @@ export async function POST(req: Request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // First occurrence of a series: default series_id to task id when cadence is recurring
+  if (data?.id && !body.series_id && cadence !== 'one_off') {
+    await admin
+      .from('maintenance_tasks')
+      .update({ series_id: data.id, updated_at: new Date().toISOString() })
+      .eq('id', data.id)
+      .eq('client_id', auth.ctx.clientId)
+    ;(data as { series_id?: string }).series_id = data.id as string
   }
 
   if (body.assigned_worker_id && data?.id) {
@@ -225,7 +275,31 @@ export async function POST(req: Request) {
     })
   }
 
-  return NextResponse.json({ task: data })
+  let task = data
+  const wantCal = body.sync_to_calendar !== false
+  if (wantCal && data?.id && body.due_at) {
+    const calId = await syncMaintenanceTaskToCalendar(admin, {
+      clientId: auth.ctx.clientId,
+      userId: auth.ctx.userId,
+      taskId: data.id as string,
+      title: body.title.trim(),
+      dueAt: body.due_at,
+      cadence,
+      projectId,
+      calendarEventId: null,
+      status: 'PENDING',
+    })
+    if (calId) {
+      const { data: refreshed } = await admin
+        .from('maintenance_tasks')
+        .select(TASK_SELECT)
+        .eq('id', data.id)
+        .maybeSingle()
+      if (refreshed) task = refreshed
+    }
+  }
+
+  return NextResponse.json({ task })
 }
 
 export async function PATCH(req: Request) {
@@ -276,7 +350,9 @@ export async function PATCH(req: Request) {
 
   const { data: before } = await admin
     .from('maintenance_tasks')
-    .select('id, assigned_worker_id, title, source_ticket_id')
+    .select(
+      'id, assigned_worker_id, title, description, source_ticket_id, due_at, cadence, calendar_event_id, project_id, status, series_id, checklist_items, estimated_minutes, asset_id, notes, priority'
+    )
     .eq('id', task_id)
     .eq('client_id', auth.ctx.clientId)
     .is('deleted_at', null)
@@ -294,11 +370,51 @@ export async function PATCH(req: Request) {
   if (rest.priority !== undefined) patch.priority = rest.priority
   if (rest.status !== undefined) {
     patch.status = rest.status
-    patch.completed_at = rest.status === 'DONE' ? new Date().toISOString() : null
+    if (rest.status === 'DONE') {
+      patch.completed_at = new Date().toISOString()
+      patch.completed_by_user_id = auth.ctx.userId
+      patch.completed_by_worker_id = null
+      // Auto cost from worker rate × estimated minutes when not set
+      if (rest.actual_cost_ils === undefined) {
+        const workerId =
+          rest.assigned_worker_id !== undefined
+            ? rest.assigned_worker_id
+            : (before as { assigned_worker_id?: string | null }).assigned_worker_id
+        const minutes =
+          rest.estimated_minutes !== undefined
+            ? rest.estimated_minutes
+            : (before as { estimated_minutes?: number | null }).estimated_minutes
+        if (workerId && minutes) {
+          const { data: w } = await admin
+            .from('workers')
+            .select('hourly_rate')
+            .eq('id', workerId)
+            .eq('client_id', auth.ctx.clientId)
+            .maybeSingle()
+          const cost = costIlsFromMinutes(
+            (w as { hourly_rate?: number | null } | null)?.hourly_rate,
+            minutes
+          )
+          if (cost != null) patch.actual_cost_ils = cost
+        }
+      }
+    } else {
+      patch.completed_at = null
+      patch.completed_by_user_id = null
+      patch.completed_by_worker_id = null
+    }
   }
   if (rest.due_at !== undefined) patch.due_at = rest.due_at
   if (rest.notes !== undefined) patch.notes = rest.notes?.trim() || null
   if (rest.source_ticket_id !== undefined) patch.source_ticket_id = rest.source_ticket_id
+  if (rest.cadence !== undefined) patch.cadence = normalizeMaintenanceCadence(rest.cadence)
+  if (rest.checklist_items !== undefined) {
+    patch.checklist_items = normalizeChecklistItems(rest.checklist_items)
+  }
+  if (rest.series_id !== undefined) patch.series_id = rest.series_id
+  if (rest.asset_id !== undefined) patch.asset_id = rest.asset_id
+  if (rest.estimated_minutes !== undefined) patch.estimated_minutes = rest.estimated_minutes
+  if (rest.actual_cost_ils !== undefined) patch.actual_cost_ils = rest.actual_cost_ils
 
   const { data, error } = await admin
     .from('maintenance_tasks')
@@ -314,6 +430,30 @@ export async function PATCH(req: Request) {
   }
   if (!data) {
     return NextResponse.json({ error: 'משימה לא נמצאה' }, { status: 404 })
+  }
+
+  const wantCal = rest.sync_to_calendar !== false
+  if (wantCal) {
+    const row = data as {
+      id: string
+      title: string
+      due_at: string | null
+      cadence: string | null
+      calendar_event_id: string | null
+      project_id: string | null
+      status: string
+    }
+    await syncMaintenanceTaskToCalendar(admin, {
+      clientId: auth.ctx.clientId,
+      userId: auth.ctx.userId,
+      taskId: row.id,
+      title: row.title,
+      dueAt: row.due_at,
+      cadence: row.cadence,
+      projectId: row.project_id,
+      calendarEventId: row.calendar_event_id,
+      status: row.status,
+    })
   }
 
   const prevWorker = (before as { assigned_worker_id?: string | null }).assigned_worker_id || null
@@ -347,7 +487,52 @@ export async function PATCH(req: Request) {
     })
   }
 
-  return NextResponse.json({ task: data })
+  let nextOccurrenceId: string | null = null
+  // Explicit flag only — UI toast / button sets create_next_occurrence: true
+  if (rest.create_next_occurrence === true && (rest.status === 'DONE' || data.status === 'DONE')) {
+    const src = {
+      ...(before as Sourceish),
+      ...(data as object),
+    } as Sourceish
+    const spawned = await createNextMaintenanceOccurrence(admin, {
+      clientId: auth.ctx.clientId,
+      userId: auth.ctx.userId,
+      source: {
+        id: String(src.id),
+        title: String(src.title || ''),
+        description: src.description,
+        project_id: src.project_id,
+        assigned_worker_id: src.assigned_worker_id,
+        priority: src.priority,
+        notes: src.notes,
+        cadence: src.cadence,
+        due_at: src.due_at,
+        series_id: src.series_id,
+        checklist_items: src.checklist_items,
+        asset_id: src.asset_id,
+        estimated_minutes: src.estimated_minutes,
+      },
+    })
+    if (spawned.ok) nextOccurrenceId = spawned.taskId
+  }
+
+  return NextResponse.json({ task: data, next_occurrence_id: nextOccurrenceId })
+}
+
+type Sourceish = {
+  id: string
+  title?: string
+  description?: string | null
+  project_id?: string | null
+  assigned_worker_id?: string | null
+  priority?: string | null
+  notes?: string | null
+  cadence?: string | null
+  due_at?: string | null
+  series_id?: string | null
+  checklist_items?: unknown
+  asset_id?: string | null
+  estimated_minutes?: number | null
 }
 
 export async function DELETE(req: Request) {

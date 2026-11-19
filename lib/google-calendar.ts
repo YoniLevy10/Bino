@@ -26,6 +26,8 @@ export type BamakorCalendarEventForSync = {
   ends_at: string
   all_day: boolean
   google_event_id?: string | null
+  /** Google Calendar colorId 1–11 */
+  colorId?: string | null
 }
 
 function googleOAuthConfigured(): boolean {
@@ -54,6 +56,7 @@ function eventBody(ev: BamakorCalendarEventForSync) {
     location: ev.location || undefined,
     start: toGoogleDateTime(ev.starts_at, ev.all_day),
     end: toGoogleDateTime(ev.ends_at, ev.all_day),
+    ...(ev.colorId ? { colorId: String(ev.colorId) } : {}),
     extendedProperties: {
       private: { bamakor_event_id: ev.id },
     },
@@ -131,7 +134,15 @@ export async function loadGoogleCalendarConnection(
     .maybeSingle()
 
   if (error) {
-    console.error('[google-calendar] load connection', error.message)
+    // Missing table / schema-cache: treat as disconnected (no error spam).
+    const msg = error.message || ''
+    const missingTable =
+      /schema cache/i.test(msg) ||
+      /could not find the table/i.test(msg) ||
+      /google_calendar_connections/i.test(msg)
+    if (!missingTable) {
+      console.error('[google-calendar] load connection', error.message)
+    }
     return null
   }
   return data as GoogleCalendarConnectionRow | null

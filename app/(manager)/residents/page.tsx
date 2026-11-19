@@ -59,12 +59,20 @@ const ShareResidentIntakeLinkModal = dynamic(
     })),
   { loading: () => null }
 )
+const ResidentDetailDrawer = dynamic(
+  () =>
+    import('@/app/components/residents/ResidentDetailDrawer').then((m) => ({
+      default: m.ResidentDetailDrawer,
+    })),
+  { loading: () => null }
+)
 import {
   MobileHeader,
   useMobileMenu,
   PageHeader,
   Card,
   Button,
+  FilterTabs,
   EmptyState,
   ErrorState,
   SearchInput,
@@ -192,6 +200,7 @@ function ResidentsPageInner() {
 
   const [importOpen, setImportOpen] = useState(false)
   const [shareIntakeOpen, setShareIntakeOpen] = useState(false)
+  const [detailResident, setDetailResident] = useState<ResidentRow | null>(null)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
@@ -406,6 +415,21 @@ function ResidentsPageInner() {
     setAddNotes('')
     setAddProjectId(projectFilter !== 'ALL' ? projectFilter : '')
     setAddOpen(true)
+  }
+
+  function openDetail(r: ResidentRow) {
+    setDetailResident(r)
+  }
+
+  function closeDetail() {
+    setDetailResident(null)
+  }
+
+  function editFromDetail() {
+    if (!detailResident) return
+    const row = detailResident
+    closeDetail()
+    openEdit(row)
   }
 
   function openEdit(r: ResidentRow) {
@@ -895,13 +919,14 @@ function ResidentsPageInner() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
+      if (detailResident) { closeDetail(); return }
       if (addOpen) { closeResidentModal(); return }
       if (importOpen) { setImportOpen(false); return }
       if (shareIntakeOpen) { setShareIntakeOpen(false); return }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [addOpen, importOpen, shareIntakeOpen])
+  }, [addOpen, importOpen, shareIntakeOpen, detailResident])
 
   return (
     <>
@@ -926,22 +951,21 @@ function ResidentsPageInner() {
         )}
 
         <Card noPadding>
-          <div className="app-error-log-tabs" style={styles.mainTabs}>
-            <button
-              type="button"
-              style={mainTab === 'active' ? MAIN_TAB_ACTIVE : MAIN_TAB_INACTIVE}
-              onClick={() => switchMainTab('active')}
-            >
-              פעילים
-            </button>
-            <button
-              type="button"
-              style={mainTab === 'pending' ? MAIN_TAB_ACTIVE : MAIN_TAB_INACTIVE}
-              onClick={() => switchMainTab('pending')}
-            >
-              ממתינים לאישור
-              {pendingBadge > 0 && <span style={styles.pendingBadge}>{pendingBadge}</span>}
-            </button>
+          <div style={{ padding: '12px 16px 0' }}>
+            <FilterTabs
+              options={[
+                { label: 'פעילים', value: 'active' },
+                {
+                  label:
+                    pendingBadge > 0
+                      ? `ממתינים לאישור (${pendingBadge})`
+                      : 'ממתינים לאישור',
+                  value: 'pending',
+                },
+              ]}
+              value={mainTab}
+              onChange={(v) => switchMainTab(v as 'active' | 'pending')}
+            />
           </div>
 
           {pendingMounted && (
@@ -1154,17 +1178,28 @@ function ResidentsPageInner() {
                     maxHeight="min(72vh, 900px)"
                     renderItem={(r) => (
                       <div style={{ paddingBottom: 10 }}>
-                        <div style={{ background: selectedIds.has(r.id) ? theme.colors.primaryMuted : theme.colors.surface, border: `1px solid ${selectedIds.has(r.id) ? theme.colors.primary : theme.colors.border}`, borderRadius: theme.radius.md, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openDetail(r)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              openDetail(r)
+                            }
+                          }}
+                          style={{ background: selectedIds.has(r.id) ? theme.colors.primaryMuted : theme.colors.surface, border: `1px solid ${selectedIds.has(r.id) ? theme.colors.primary : theme.colors.border}`, borderRadius: theme.radius.md, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+                        >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                              <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} aria-label={`בחר ${r.full_name}`} />
+                              <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => toggleSelect(r.id)} onClick={(e) => e.stopPropagation()} aria-label={`בחר ${r.full_name}`} />
                               <span style={{ fontWeight: 600, fontSize: '15px', color: theme.colors.textPrimary }}>{r.full_name}</span>
                               {r.is_renter === true && <span style={styles.renterBadge}>שוכר</span>}
                             </div>
-                            <Button variant="secondary" size="sm" type="button" onClick={() => openEdit(r)}>עריכה</Button>
+                            <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); openEdit(r) }}>עריכה</Button>
                           </div>
                           {r.phone && (
-                            <button type="button" onClick={() => copyPhone(r.phone!)} title="לחץ להעתקה" style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: '14px', padding: 0, direction: 'ltr', textAlign: 'right', alignSelf: 'flex-start' }}>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); copyPhone(r.phone!) }} title="לחץ להעתקה" style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.primary, fontFamily: 'inherit', fontSize: '14px', padding: 0, direction: 'ltr', textAlign: 'right', alignSelf: 'flex-start' }}>
                               {r.phone}
                             </button>
                           )}
@@ -1174,7 +1209,13 @@ function ResidentsPageInner() {
                               <span>{r.email}</span>
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: theme.colors.textSecondary }}>
+                          <div
+                            style={{ display: 'flex', gap: '12px', fontSize: '13px', color: theme.colors.textSecondary }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDetail(r)
+                            }}
+                          >
                             {r.apartment_number && <span>דירה {r.apartment_number}</span>}
                             {projectName[r.project_id] && <span>{projectName[r.project_id]}</span>}
                           </div>
@@ -1207,8 +1248,15 @@ function ResidentsPageInner() {
                 </thead>
                 <tbody>
                   {sorted.map((r) => (
-                    <tr key={r.id} style={selectedIds.has(r.id) ? { background: theme.colors.primaryMuted } : undefined}>
-                      <td style={styles.td}>
+                    <tr
+                      key={r.id}
+                      onClick={() => openDetail(r)}
+                      style={{
+                        ...(selectedIds.has(r.id) ? { background: theme.colors.primaryMuted } : undefined),
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(r.id)}
@@ -1222,7 +1270,7 @@ function ResidentsPageInner() {
                           {r.is_renter === true && <span style={styles.renterBadge}>שוכר</span>}
                         </div>
                       </td>
-                      <td style={styles.td}>
+                      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
                         {r.phone ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                             <button
@@ -1245,7 +1293,15 @@ function ResidentsPageInner() {
                           </span>
                         ) : '—'}
                       </td>
-                      <td style={styles.td}>{r.apartment_number || '—'}</td>
+                      <td
+                        style={{ ...styles.td, ...(r.apartment_number ? styles.apartmentCellLink : undefined) }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDetail(r)
+                        }}
+                      >
+                        {r.apartment_number || '—'}
+                      </td>
                       <td style={styles.td}>{projectName[r.project_id] || '—'}</td>
                       <td style={{ ...styles.td, maxWidth: '220px', color: theme.colors.textSecondary }}>
                         {r.notes ? (
@@ -1256,7 +1312,7 @@ function ResidentsPageInner() {
                           '—'
                         )}
                       </td>
-                      <td style={styles.td}>
+                      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
                         <Button variant="secondary" size="sm" type="button" onClick={() => openEdit(r)}>
                           עריכה
                         </Button>
@@ -1340,12 +1396,22 @@ function ResidentsPageInner() {
         projects={projects}
         defaultProjectId={projectFilter !== 'ALL' ? projectFilter : ''}
       />
+
+      <ResidentDetailDrawer
+        open={Boolean(detailResident)}
+        resident={detailResident}
+        projectName={detailResident ? projectName[detailResident.project_id] || '' : ''}
+        tenantClientId={tenantClientId}
+        isMobile={isMobile}
+        onClose={closeDetail}
+        onEdit={editFromDetail}
+      />
     </>
   )
 }
 
 const styles: Record<string, CSSProperties> = {
-  content: { padding: '32px 40px', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
+  content: { padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
   mainTabs: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -1499,6 +1565,12 @@ const styles: Record<string, CSSProperties> = {
     fontSize: '14px',
     color: theme.colors.textPrimary,
     borderBottom: `1px solid ${theme.colors.border}`,
+  },
+  apartmentCellLink: {
+    color: theme.colors.primary,
+    fontWeight: 600,
+    textDecoration: 'underline',
+    textUnderlineOffset: '3px',
   },
   empty: { padding: '32px 24px', color: theme.colors.textMuted, textAlign: 'center' },
   friendlyEmpty: {

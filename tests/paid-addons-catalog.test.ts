@@ -50,17 +50,23 @@ describe('paid addons catalog', () => {
     )
     const display = buildPaidAddonsForDisplay(entitlements)
     expect(display.find((e) => e.id === 'pilot_sms')?.locked).toBe(false)
-    expect(display.find((e) => e.id === 'calendar')?.locked).toBe(true)
+    expect(display.find((e) => e.id === 'calendar')).toBeUndefined()
     expect(getLockedPaidAddonsCount(display)).toBeGreaterThanOrEqual(2)
   })
 
   it('featureHref points to dedicated add-on pages', () => {
     expect(getPaidAddonCatalogEntry('pilot_sms')?.featureHref).toBe('/pilot-sms')
     expect(getPaidAddonCatalogEntry('project_documents')?.featureHref).toBe('/project-documents')
-    expect(getPaidAddonCatalogEntry('calendar')?.featureHref).toBe('/calendar')
     expect(getPaidAddonCatalogEntry('worker_stamp')?.featureHref).toBe('/attendance')
     expect(getPaidAddonCatalogEntry('professionals')?.featureHref).toBe('/professionals')
     expect(getPaidAddonCatalogEntry('collections')?.featureHref).toBe('/collections')
+  })
+
+  it('hides retired calendar from /addons display (core feature)', () => {
+    const entitlements = ALL_KEYS.map((key) => mockEntitlement(key, false))
+    const display = buildPaidAddonsForDisplay(entitlements)
+    expect(display.find((e) => e.id === 'calendar')).toBeUndefined()
+    expect(getPaidAddonCatalogEntry('calendar')?.featureHref).toBe('/calendar')
   })
 
   it('does not treat building_finance as a paid catalog entry (core feature)', () => {

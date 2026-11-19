@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   ADDON_ONLY_SIDEBAR_NAV_IDS,
   DEFAULT_SIDEBAR_NAV_ORDER,
-  FINANCE_NAV_GROUP_LABEL,
   FINANCE_SIDEBAR_NAV_IDS,
   PRIMARY_SIDEBAR_NAV_IDS,
   SIDEBAR_NAV_REGISTRY,
@@ -30,18 +29,18 @@ describe('resolveSidebarNavItems', () => {
     }
   })
 
-  it('shows pinned paid addons only when enabled; never unpinned addons', () => {
+  it('shows calendar as core; pinned paid addons only when enabled', () => {
     const unpaid = resolveSidebarNavItems(
-      ['calendar', 'attendance', ...DEFAULT_SIDEBAR_NAV_ORDER],
+      ['attendance', ...DEFAULT_SIDEBAR_NAV_ORDER],
       null
     )
-    expect(unpaid.map((i) => i.id)).not.toContain('calendar')
+    expect(unpaid.map((i) => i.id)).toContain('calendar')
     expect(unpaid.map((i) => i.id)).not.toContain('attendance')
 
     const paid = resolveSidebarNavItems(
-      ['calendar', 'attendance', 'collections', ...DEFAULT_SIDEBAR_NAV_ORDER],
+      ['attendance', 'collections', ...DEFAULT_SIDEBAR_NAV_ORDER],
       null,
-      new Set(['calendar', 'attendance', 'collections'] as const)
+      new Set(['attendance', 'collections'] as const)
     )
     expect(paid.map((i) => i.id)).toContain('attendance')
     expect(paid.map((i) => i.id)).toContain('collections')
@@ -52,10 +51,10 @@ describe('resolveSidebarNavItems', () => {
     const paidUnpinned = resolveSidebarNavItems(
       null,
       null,
-      new Set(['calendar', 'professionals', 'attendance'] as const)
+      new Set(['professionals', 'attendance'] as const)
     )
     expect(paidUnpinned.map((i) => i.id)).toContain('attendance')
-    expect(paidUnpinned.map((i) => i.id)).not.toContain('calendar')
+    expect(paidUnpinned.map((i) => i.id)).toContain('calendar')
     expect(paidUnpinned.map((i) => i.id)).not.toContain('professionals')
   })
 
@@ -124,6 +123,7 @@ describe('resolveSidebarNavItems', () => {
     expect(items.map((i) => i.id)).toEqual([
       'dashboard',
       'tasks',
+      'calendar',
       'tickets',
       'projects',
       'residents',
@@ -144,6 +144,7 @@ describe('resolveSidebarNavItems', () => {
     expect(items.map((i) => i.id)).toEqual([
       'dashboard',
       'tasks',
+      'calendar',
       'tickets',
       'projects',
       'residents',
@@ -182,28 +183,27 @@ describe('splitMobileBottomNav', () => {
   it('keeps four primary slots and puts the rest in more', () => {
     const items = resolveSidebarNavItems(['summary', ...DEFAULT_SIDEBAR_NAV_ORDER])
     const { primary, more } = splitMobileBottomNav(items)
-    expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'projects', 'workers'])
+    expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tasks', 'tickets', 'projects'])
     expect(more.some((i) => i.id === 'summary')).toBe(true)
     expect(more.some((i) => i.id === 'dashboard')).toBe(false)
   })
 
-  it('pins WhatsApp chats and projects when the inbox is visible', () => {
+  it('pins tasks + WhatsApp when the inbox is visible', () => {
     const items = resolveSidebarNavItems(DEFAULT_SIDEBAR_NAV_ORDER, null, new Set(['whatsapp_inbox']))
     const { primary, more } = splitMobileBottomNav(items)
-    expect(MOBILE_BOTTOM_PRIMARY_IDS).toEqual(['dashboard', 'tickets', 'whatsapp_inbox', 'projects'])
-    expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tickets', 'whatsapp_inbox', 'projects'])
-    expect(more.some((i) => i.id === 'workers')).toBe(true)
+    expect(MOBILE_BOTTOM_PRIMARY_IDS).toEqual(['dashboard', 'tasks', 'tickets', 'whatsapp_inbox'])
+    expect(primary.map((i) => i.id)).toEqual(['dashboard', 'tasks', 'tickets', 'whatsapp_inbox'])
+    expect(more.some((i) => i.id === 'projects')).toBe(true)
     expect(more.some((i) => i.id === 'whatsapp_inbox')).toBe(false)
   })
 })
 
 describe('splitSidebarNavSections', () => {
-  it('groups finance children under ניהול כספים and keeps operational דוחות separate', () => {
+  it('clusters finance children in order and keeps operational דוחות separate', () => {
     const items = appendAddonsNavAlways(resolveSidebarNavItems(null))
     const { primary, finance, secondary, extras, addons } = splitSidebarNavSections(items)
     expect(finance.map((i) => i.id)).toEqual(['finance', 'bank'])
     expect(finance.map((i) => i.label)).toEqual(['כספים', 'חשבון בנק'])
-    expect(FINANCE_NAV_GROUP_LABEL).toBe('ניהול כספים')
     expect(FINANCE_SIDEBAR_NAV_IDS).toEqual([
       'collections',
       'finance',
@@ -248,9 +248,9 @@ describe('splitSidebarNavSections', () => {
 })
 
 describe('nextSidebarOrderAfterPinToggle', () => {
-  it('pins calendar onto the visible sidebar order', () => {
-    const paid = new Set(['calendar', 'attendance'] as const)
-    const next = nextSidebarOrderAfterPinToggle(null, null, paid, 'calendar', true)
+  it('keeps core calendar visible when toggling paid addons', () => {
+    const paid = new Set(['attendance'] as const)
+    const next = nextSidebarOrderAfterPinToggle(null, null, paid, 'attendance', true)
     expect(next).toContain('calendar')
     expect(next).toContain('dashboard')
     expect(next).toContain('attendance')
@@ -267,9 +267,10 @@ describe('nextSidebarOrderAfterPinToggle', () => {
 describe('injectPaidAddonNavItems', () => {
   it('does not auto-inject non-pinned enabled addons into the sidebar', () => {
     const base = resolveSidebarNavItems(null)
-    const withInject = injectPaidAddonNavItems(base, ['calendar', 'campaigns'])
+    const withInject = injectPaidAddonNavItems(base, ['campaigns'])
     expect(withInject.map((i) => i.id)).toEqual(base.map((i) => i.id))
-    expect(withInject.map((i) => i.id)).not.toContain('calendar')
+    expect(withInject.map((i) => i.id)).toContain('calendar')
+    expect(withInject.map((i) => i.id)).not.toContain('campaigns')
   })
 })
 

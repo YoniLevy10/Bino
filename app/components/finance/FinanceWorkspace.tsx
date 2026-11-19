@@ -12,7 +12,7 @@ import { AddonProjectPicker } from '@/app/components/addons/AddonProjectPicker'
 import { BuildingFinancePanel } from '@/app/components/projects/BuildingFinancePanel'
 import { BuildingBankPanel } from '@/app/components/projects/BuildingBankPanel'
 import { BuildingReportsPanel } from '@/app/components/projects/BuildingReportsPanel'
-import { theme } from '@/app/components/ui'
+import { FilterTabs } from '@/app/components/ui'
 
 export type FinanceWorkspaceSection = 'expenses' | 'bank' | 'reports'
 
@@ -101,41 +101,12 @@ export function FinanceWorkspace({
   const meta = META[section]
 
   const tabs = (
-    <div
-      role="tablist"
-      aria-label="כספים"
-      style={{
-        display: 'flex',
-        gap: 6,
-        flexWrap: 'wrap',
-        marginBottom: embedded ? 12 : 16,
-      }}
-    >
-      {SECTIONS.map((s) => {
-        const active = section === s.id
-        return (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onSelect(s.id)}
-            style={{
-              border: `1px solid ${active ? theme.colors.primary : theme.colors.border}`,
-              background: active ? theme.colors.surfaceSelected : theme.colors.surface,
-              color: active ? theme.colors.primary : theme.colors.textPrimary,
-              fontWeight: active ? 700 : 500,
-              borderRadius: 8,
-              padding: '8px 12px',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontFamily: 'inherit',
-            }}
-          >
-            {s.label}
-          </button>
-        )
-      })}
+    <div style={{ marginBottom: embedded ? 12 : 16 }}>
+      <FilterTabs
+        options={SECTIONS.map((s) => ({ label: s.label, value: s.id }))}
+        value={section}
+        onChange={(v) => onSelect(v as FinanceWorkspaceSection)}
+      />
     </div>
   )
 

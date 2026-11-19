@@ -34,8 +34,9 @@ export function buildResidentIntakeShareTemplate(projectName?: string): string {
   const name = (projectName || '').trim() || 'הבניין'
   return [
     `שלום,`,
-    `אנא מלאו את פרטי הדייר בקישור הקצר הבא עבור ${name}.`,
-    `זה לוקח פחות מדקה ועוזר לנו לעדכן את רשימת הדיירים במערכת התחזוקה.`,
+    `בבקשה מלאו פרטים קצרים עבור ${name}.`,
+    `לוחצים על הקישור → ממלאים שם, טלפון ומספר דירה → שולחים.`,
+    `זה לוקח פחות מדקה.`,
     `{url}`,
   ].join('\n')
 }

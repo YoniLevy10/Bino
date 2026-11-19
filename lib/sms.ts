@@ -9,6 +9,7 @@ import {
   SMS_019_SENDER,
 } from '@/lib/sms-019-core'
 import { sanitizeSmsCampaignBody } from '@/lib/sms-campaign-message'
+import { isOutboundLiveAllowed, outboundMockResult } from '@/lib/outbound-mode'
 
 const RETRIES = 3
 const BETWEEN_MS = 2000
@@ -64,6 +65,16 @@ export async function send019SmsWithRetries(
   ctx: Send019SmsRetryContext,
   opts?: { persistFailure?: boolean }
 ): Promise<{ ok: boolean; lastErr: string }> {
+  if (!isOutboundLiveAllowed()) {
+    outboundMockResult('sms', {
+      channel: ctx.channel,
+      destination: normalizedPhone,
+      source: from,
+      messageLength: message.length,
+    })
+    return { ok: true, lastErr: '' }
+  }
+
   let lastErr = 'unknown'
   const persistFailure = opts?.persistFailure !== false
 

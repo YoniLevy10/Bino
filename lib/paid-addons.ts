@@ -51,7 +51,11 @@ export function addonRequiredMessageHe(nameHe: string, priceIls: number): string
 }
 
 /** Core features formerly sold as add-ons — hide from catalog/entitlements UI. */
-const RETIRED_PAID_ADDON_KEYS = new Set(['building_finance'])
+const RETIRED_PAID_ADDON_KEYS = new Set(['building_finance', 'calendar'])
+
+export function isRetiredPaidAddonKey(key: string): boolean {
+  return RETIRED_PAID_ADDON_KEYS.has(key)
+}
 
 export async function listActiveAddonsCatalog(
   supabase: SupabaseClient
@@ -158,7 +162,6 @@ export const PAID_ADDON_NAV_ID: Record<PaidAddonKey, SidebarNavItemId> = {
 }
 
 const PAID_ADDON_NAV_ORDER: PaidAddonKey[] = [
-  PAID_ADDON_KEYS.calendar,
   PAID_ADDON_KEYS.worker_stamp,
   PAID_ADDON_KEYS.professionals,
   PAID_ADDON_KEYS.whatsapp_inbox,

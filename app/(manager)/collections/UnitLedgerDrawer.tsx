@@ -231,6 +231,7 @@ export function UnitLedgerDrawer(props: {
       onClose={onClose}
       title={`כרטסת · ${titleName}${unitPart ? ` · ${unitPart}` : ''}`}
       isMobile={isMobile}
+      placement="center"
       footer={
         <div style={styles.footer}>
           <Button variant="secondary" onClick={onClose}>
@@ -245,8 +246,29 @@ export function UnitLedgerDrawer(props: {
         <p style={styles.hint}>אין נתוני כרטסת להצגה.</p>
       ) : (
         <div style={styles.body}>
-          <div style={styles.balanceBox}>
-            <div style={styles.balanceLabel}>
+          <div
+            style={{
+              ...styles.balanceBox,
+              background:
+                ledger.balance_kind === 'debt'
+                  ? theme.colors.errorMuted
+                  : ledger.balance_kind === 'credit'
+                    ? theme.colors.successMuted
+                    : theme.colors.surface,
+              borderColor:
+                ledger.balance_kind === 'debt'
+                  ? theme.colors.error
+                  : ledger.balance_kind === 'credit'
+                    ? theme.colors.success
+                    : theme.colors.border,
+            }}
+          >
+            <div
+              style={{
+                ...styles.balanceLabel,
+                color: theme.colors.textPrimary,
+              }}
+            >
               {ledger.balance_kind === 'debt'
                 ? 'יתרת חוב'
                 : ledger.balance_kind === 'credit'
@@ -258,9 +280,9 @@ export function UnitLedgerDrawer(props: {
                 ...styles.balanceAmount,
                 color:
                   ledger.balance_kind === 'debt'
-                    ? '#b91c1c'
+                    ? theme.colors.error
                     : ledger.balance_kind === 'credit'
-                      ? '#15803d'
+                      ? theme.colors.success
                       : theme.colors.textPrimary,
               }}
             >
@@ -355,7 +377,8 @@ export function UnitLedgerDrawer(props: {
                       <div
                         style={{
                           ...styles.entryAmount,
-                          color: isDebt ? '#b91c1c' : '#15803d',
+                          color: isDebt ? theme.colors.error : theme.colors.success,
+                          fontWeight: 700,
                         }}
                       >
                         {isDebt ? '+' : '−'}
@@ -391,12 +414,12 @@ const styles: Record<string, CSSProperties> = {
     padding: '14px 16px',
     borderRadius: 14,
     border: `1px solid ${theme.colors.border}`,
-    background: '#f8fafc',
+    background: theme.colors.surface,
   },
   balanceLabel: {
     fontSize: 13,
-    fontWeight: 600,
-    color: theme.colors.textSecondary,
+    fontWeight: 700,
+    color: theme.colors.textPrimary,
   },
   balanceAmount: {
     marginTop: 4,
@@ -426,7 +449,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: theme.radius.md,
     border: `1px solid ${theme.colors.border}`,
     background: theme.colors.surface,
-    fontSize: 15,
+    fontSize: 16,
     color: theme.colors.textPrimary,
     width: '100%',
     boxSizing: 'border-box',

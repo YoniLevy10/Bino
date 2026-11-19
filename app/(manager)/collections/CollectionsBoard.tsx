@@ -40,6 +40,7 @@ import {
   Drawer,
   EmptyState,
   ErrorState,
+  FilterTabs,
   SearchInput,
   Select,
   theme,
@@ -820,12 +821,12 @@ export function CollectionsBoard() {
     )
   }
 
-  const statusTabs: { label: string; value: string; count?: number }[] = [
+  const statusTabs: { label: string; value: string }[] = [
     { label: 'הכל', value: 'all' },
-    { label: 'ממתינים', value: 'sent', count: chips.pending },
-    { label: 'שולם', value: 'paid', count: chips.paid },
+    { label: `ממתינים (${chips.pending})`, value: 'sent' },
+    { label: `שולם (${chips.paid})`, value: 'paid' },
     { label: 'טיוטה', value: 'draft' },
-    { label: 'נכשל', value: 'failed', count: chips.failed },
+    { label: `נכשל (${chips.failed})`, value: 'failed' },
   ]
 
   return (
@@ -974,28 +975,12 @@ export function CollectionsBoard() {
         </Button>
       </div>
 
-      <div style={styles.statusTabs} role="tablist" aria-label="סינון סטטוס">
-        {statusTabs.map((tab) => {
-          const active = statusFilter === tab.value
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setStatusFilter(tab.value)}
-              style={{
-                ...styles.statusTab,
-                ...(active ? styles.statusTabActive : null),
-              }}
-            >
-              {tab.label}
-              {typeof tab.count === 'number' ? (
-                <span style={styles.statusCount}>{tab.count}</span>
-              ) : null}
-            </button>
-          )
-        })}
+      <div style={{ marginBottom: 16 }}>
+        <FilterTabs
+          options={statusTabs}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
       <div style={{ ...styles.filters, flexDirection: isMobile ? 'column' : 'row' }}>

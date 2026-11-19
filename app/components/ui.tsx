@@ -28,7 +28,6 @@ import { unsubscribeManagerPushBestEffort } from '@/lib/manager-push-client'
 import { useClientBranding } from './ClientBrandingContext'
 import { useSidebarNav } from './SidebarNavContext'
 import {
-  FINANCE_NAV_GROUP_LABEL,
   isNavItemActive,
   shouldShowMobileBottomNav,
   splitPrimaryAroundFinanceGroup,
@@ -46,6 +45,9 @@ import { ManagerPushOnboarding, ManagerPushSync } from './ManagerPushOnboarding'
 import { PageViewTracker } from './PageViewTracker'
 import { PageTransitionLoader } from './PageTransitionLoader'
 import { theme } from './ui/theme'
+import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS } from '@/lib/fetch-with-timeout'
+import { toast } from '@/lib/error-handler'
+import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 
 const GlobalSearch = lazy(() => import('./GlobalSearch').then((m) => ({ default: m.GlobalSearch })))
 const RecommendationsBell = lazy(() =>
@@ -300,12 +302,16 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
   const pathname = usePathname()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { navItems } = useSidebarNav()
+  const { navItems, setLocalOrderIds, refreshNav } = useSidebarNav()
   const { displayName, logoUrl } = useClientBranding()
   const [mounted, setMounted] = useState(false)
   const [userEmail, setUserEmail] = useState('')
   const [userInitials, setUserInitials] = useState('?')
   const [opsOpen, setOpsOpen] = useState(false)
+  const [reorderMode, setReorderMode] = useState(false)
+  const [draftOrder, setDraftOrder] = useState<string[]>([])
+  const [reorderSaving, setReorderSaving] = useState(false)
+  const [dragId, setDragId] = useState<string | null>(null)
   const prefetchClientId = typeof window !== 'undefined' ? tryReadSessionBoundClientId() : null
   const prefetchOpts = { queryClient, clientId: prefetchClientId }
 
@@ -339,16 +345,10 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
   )
   const opsItems = useMemo(() => [...secondary, ...extras], [secondary, extras])
   const opsHasActive = opsItems.some((item) => isNavItemActive(pathname, item))
-  const financeHasActive = finance.some((item) => isNavItemActive(pathname, item))
-  const [financeOpen, setFinanceOpen] = useState(false)
 
   useEffect(() => {
     if (opsHasActive) setOpsOpen(true)
   }, [opsHasActive])
-
-  useEffect(() => {
-    if (financeHasActive) setFinanceOpen(true)
-  }, [financeHasActive])
 
   // Avoid dev-time hydration mismatches (Turbopack/HMR) by not SSR-rendering the menu.
   if (hidden) return null
@@ -464,27 +464,133 @@ export function Sidebar({ hidden, calmSurface = false }: { hidden?: boolean; cal
             ניהול אחזקה
           </div>
         </div>
+        <button
+          type="button"
+          title={reorderMode ? 'סיום סידור' : 'סידור תפריט'}
+          aria-label={reorderMode ? 'סיום סידור תפריט' : 'סידור תפריט בגרירה'}
+          aria-pressed={reorderMode}
+          onClick={() => {
+            if (reorderMode) {
+              setReorderMode(false)
+              setDraftOrder([])
+              setDragId(null)
+              return
+            }
+            setDraftOrder(navItems.filter((i) => !i.locked).map((i) => i.id))
+            setReorderMode(true)
+          }}
+          style={{
+            ...sidebarStyles.reorderBtn,
+            ...(navy ? { color: theme.colors.navText, borderColor: 'rgba(180,199,219,0.35)' } : {}),
+            ...(reorderMode ? { background: theme.colors.primaryMuted, color: theme.colors.primary } : {}),
+          }}
+        >
+          ⋮⋮
+        </button>
       </div>
 
       <div style={sidebarStyles.navColumn}>
         <nav style={sidebarStyles.nav}>
-          {primaryBeforeFinance.map((item) => renderNavLink(item))}
-          {renderCollapsibleGroup({
-            label: FINANCE_NAV_GROUP_LABEL,
-            open: financeOpen,
-            setOpen: setFinanceOpen,
-            hasActive: financeHasActive,
-            items: finance,
-          })}
-          {primaryAfterFinance.map((item) => renderNavLink(item))}
-          {renderCollapsibleGroup({
-            label: 'תפעול',
-            open: opsOpen,
-            setOpen: setOpsOpen,
-            hasActive: opsHasActive,
-            items: opsItems,
-          })}
-          {addons ? renderNavLink(addons) : null}
+          {reorderMode ? (
+            <>
+              <p
+                style={{
+                  margin: '0 0 8px',
+                  fontSize: 11,
+                  color: navy ? theme.colors.navText : theme.colors.textMuted,
+                  lineHeight: 1.4,
+                }}
+              >
+                גררו פריטים לשינוי סדר הכרטסיות בתפריט
+              </p>
+              {draftOrder.map((id) => {
+                const item = navItems.find((n) => n.id === id)
+                if (!item) return null
+                return (
+                  <div
+                    key={id}
+                    draggable
+                    onDragStart={() => setDragId(id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      if (!dragId || dragId === id) return
+                      setDraftOrder((prev) => {
+                        const next = [...prev]
+                        const from = next.indexOf(dragId)
+                        const to = next.indexOf(id)
+                        if (from < 0 || to < 0) return prev
+                        next.splice(from, 1)
+                        next.splice(to, 0, dragId)
+                        return next
+                      })
+                      setDragId(null)
+                    }}
+                    style={{
+                      ...navLinkBase,
+                      cursor: 'grab',
+                      opacity: dragId === id ? 0.5 : 1,
+                    }}
+                  >
+                    <NavIcon type={item.icon} active={false} onDark={navy} />
+                    <span style={sidebarStyles.navLabel}>{item.label}</span>
+                  </div>
+                )
+              })}
+              <Button
+                type="button"
+                size="sm"
+                disabled={reorderSaving}
+                onClick={() => {
+                  void (async () => {
+                    setReorderSaving(true)
+                    try {
+                      const order = draftOrder as SidebarNavItemId[]
+                      setLocalOrderIds(order)
+                      const res = await fetchWithTimeout(
+                        '/api/client/sidebar-order',
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ order }),
+                        },
+                        MUTATION_FETCH_TIMEOUT_MS
+                      )
+                      if (!res.ok) {
+                        toast.error('שמירת הסדר נכשלה')
+                        await refreshNav()
+                        return
+                      }
+                      toast.success('הסדר נשמר')
+                      await refreshNav()
+                      setReorderMode(false)
+                      setDraftOrder([])
+                    } catch {
+                      toast.error('שגיאת חיבור')
+                    } finally {
+                      setReorderSaving(false)
+                    }
+                  })()
+                }}
+                style={{ marginTop: 8, width: '100%' }}
+              >
+                {reorderSaving ? 'שומר…' : 'שמור סדר'}
+              </Button>
+            </>
+          ) : (
+            <>
+              {primaryBeforeFinance.map((item) => renderNavLink(item))}
+              {finance.map((item) => renderNavLink(item))}
+              {primaryAfterFinance.map((item) => renderNavLink(item))}
+              {renderCollapsibleGroup({
+                label: 'תפעול',
+                open: opsOpen,
+                setOpen: setOpsOpen,
+                hasActive: opsHasActive,
+                items: opsItems,
+              })}
+              {addons ? renderNavLink(addons) : null}
+            </>
+          )}
         </nav>
         <div
           style={{
@@ -591,6 +697,25 @@ const sidebarStyles: Record<string, CSSProperties> = {
     fontSize: '12px',
     color: theme.colors.textMuted,
     marginTop: '1px',
+  },
+  reorderBtn: {
+    flexShrink: 0,
+    width: 28,
+    height: 28,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.sm,
+    border: `1px solid ${theme.colors.border}`,
+    background: 'transparent',
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '-0.05em',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    padding: 0,
+    lineHeight: 1,
   },
   navColumn: {
     flex: 1,
@@ -1378,12 +1503,7 @@ export function MobileMenu({
           ) : null}
           <nav style={mobileMenuStyles.nav}>
             {primaryBeforeFinance.map((item) => renderMobileNavLink(item))}
-            {finance.length > 0 ? (
-              <div style={mobileMenuStyles.groupBlock}>
-                <div style={mobileMenuStyles.groupLabel}>{FINANCE_NAV_GROUP_LABEL}</div>
-                {finance.map((item) => renderMobileNavLink(item, true))}
-              </div>
-            ) : null}
+            {finance.map((item) => renderMobileNavLink(item))}
             {primaryAfterFinance.map((item) => renderMobileNavLink(item))}
             {opsItems.length > 0 ? (
               <div style={mobileMenuStyles.groupBlock}>
@@ -1880,16 +2000,16 @@ const kpiStyles: Record<string, CSSProperties> = {
   row: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     gap: theme.spacing.md,
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     width: '100%',
     minWidth: 0,
   },
   rowCompact: {
     gap: theme.spacing.sm,
     flexDirection: 'column',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   value: {
     fontSize: '30px',
@@ -1907,12 +2027,12 @@ const kpiStyles: Record<string, CSSProperties> = {
   labelCol: {
     flex: 1,
     minWidth: 0,
-    textAlign: 'right',
+    textAlign: 'start',
   },
   labelRow: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     gap: theme.spacing.sm,
     minWidth: 0,
   },
@@ -1933,6 +2053,8 @@ const kpiStyles: Record<string, CSSProperties> = {
     lineHeight: 1.35,
   },
   hint: {
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
     fontSize: '12px',
     color: theme.colors.textMuted,
     marginTop: theme.spacing.xs,
@@ -2436,8 +2558,8 @@ export function Drawer({
   children,
   footer,
   isMobile,
-  /** Desktop only. `center` matches BuildingHubModal; `side` is the classic end drawer. */
-  placement = 'side',
+  /** Desktop only. Default `center` (canon); `side` only for rare tool sheets. */
+  placement = 'center',
 }: {
   open: boolean
   onClose: () => void

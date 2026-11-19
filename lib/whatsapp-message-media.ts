@@ -2,14 +2,15 @@
 
 export type WhatsAppMessageMediaRef = {
   mediaId: string
-  kind: 'image' | 'video'
+  kind: 'image' | 'video' | 'document'
 }
 
 export function buildWhatsAppMessageMediaPayload(
   mediaId: string,
   kind: 'image' | 'video' | 'audio' | 'document' | undefined
 ): Record<string, string> {
-  const resolvedKind = kind === 'video' ? 'video' : 'image'
+  const resolvedKind =
+    kind === 'video' ? 'video' : kind === 'document' ? 'document' : 'image'
   return {
     whatsapp_media_id: mediaId,
     whatsapp_media_kind: resolvedKind,
@@ -23,7 +24,8 @@ export function parseWhatsAppMessageMediaPayload(
   const mediaId = payload.whatsapp_media_id
   if (typeof mediaId !== 'string' || !mediaId.trim()) return null
   const kindRaw = payload.whatsapp_media_kind
-  const kind = kindRaw === 'video' ? 'video' : 'image'
+  const kind =
+    kindRaw === 'video' ? 'video' : kindRaw === 'document' ? 'document' : 'image'
   return { mediaId: mediaId.trim(), kind }
 }
 
@@ -33,7 +35,10 @@ export function mergeWhatsAppInteractivePayload(
   mediaKind?: 'image' | 'video' | 'audio' | 'document' | null
 ): Record<string, unknown> | null {
   const merged: Record<string, unknown> = { ...(base ?? {}) }
-  if (mediaId?.trim() && (mediaKind === 'image' || mediaKind === 'video')) {
+  if (
+    mediaId?.trim() &&
+    (mediaKind === 'image' || mediaKind === 'video' || mediaKind === 'document')
+  ) {
     Object.assign(merged, buildWhatsAppMessageMediaPayload(mediaId, mediaKind))
   }
   if (Object.keys(merged).length === 0) return null

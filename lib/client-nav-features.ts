@@ -14,6 +14,8 @@ import {
 /** Always on — cannot be disabled from superadmin. */
 export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
+  'calendar',
   'tickets',
   'finance',
   'bank',
@@ -29,6 +31,7 @@ export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = ADDON_ONLY_S
 export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
   'tasks',
+  'calendar',
   'tickets',
   'projects',
   'residents',
@@ -100,9 +103,14 @@ export function isNavFeatureEnabled(
   enabledFeatures: SidebarNavItemId[] | null | undefined,
   featureId: SidebarNavItemId
 ): boolean {
-  // Core nav — always available (same class as dashboard / tickets).
-  if (featureId === 'finance' || featureId === 'bank' || featureId === 'reports') {
-    // bank/reports are workspace tabs under finance — always allowed with finance.
+  // Core nav — always available (ops hub + finance).
+  if (
+    featureId === 'finance' ||
+    featureId === 'bank' ||
+    featureId === 'reports' ||
+    featureId === 'tasks' ||
+    featureId === 'calendar'
+  ) {
     return true
   }
   // Parking / PalGate is never granted by DB allowlist alone — middleware + API

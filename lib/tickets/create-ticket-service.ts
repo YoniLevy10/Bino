@@ -27,6 +27,8 @@ export type CreateTicketInput = {
   /** When false, skip auto-assign (e.g. private unit tickets). Default true for common/unclear. */
   autoAssign?: boolean
   skipPendingResident?: boolean
+  /** Optional building_assets link (asset QR / maintenance). */
+  assetId?: string | null
 }
 
 export type CreateTicketResult = {
@@ -108,6 +110,7 @@ export async function createTicketShared(
     reporter_membership_id: input.reporterMembershipId ?? null,
     scope,
     portal_idempotency_key: input.portalIdempotencyKey ?? null,
+    asset_id: input.assetId ?? null,
   }
 
   const { data: createdTicket, error: ticketError } = await admin

@@ -19,7 +19,7 @@ function clientIp(req: NextRequest): string {
 }
 
 const TASK_SELECT =
-  'id, title, description, priority, status, due_at, notes, project_id, source_ticket_id, projects(name, address), tickets:source_ticket_id(id, ticket_number)'
+  'id, title, description, priority, status, due_at, notes, project_id, source_ticket_id, checklist_items, projects(name, address), tickets:source_ticket_id(id, ticket_number)'
 
 export async function GET(req: NextRequest) {
   try {
@@ -85,10 +85,22 @@ export async function PATCH(req: NextRequest) {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (parsed.data.status) {
       patch.status = parsed.data.status
-      patch.completed_at = parsed.data.status === 'DONE' ? new Date().toISOString() : null
+      if (parsed.data.status === 'DONE') {
+        patch.completed_at = new Date().toISOString()
+        patch.completed_by_worker_id = worker.id
+        patch.completed_by_user_id = null
+      } else {
+        patch.completed_at = null
+        patch.completed_by_worker_id = null
+        patch.completed_by_user_id = null
+      }
     }
     if (parsed.data.notes !== undefined) {
       patch.notes = parsed.data.notes?.trim() || null
+    }
+    if (parsed.data.checklist_items !== undefined) {
+      const { normalizeChecklistItems } = await import('@/lib/maintenance-checklist')
+      patch.checklist_items = normalizeChecklistItems(parsed.data.checklist_items)
     }
 
     const { data, error } = await admin

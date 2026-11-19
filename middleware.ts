@@ -204,6 +204,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||
     pathname.startsWith('/report') ||
+    pathname.startsWith('/asset') ||
     pathname.startsWith('/intake') ||
     pathname.startsWith('/pay') ||
     pathname === '/privacy' ||

@@ -222,8 +222,8 @@ describe('paid-addon mutating routes — write: true', () => {
     vi.clearAllMocks()
   })
 
-  it('calendar/events POST: viewer denied via paid-addon write gate', async () => {
-    vi.mocked(requireSessionClientPaidAddon).mockResolvedValue({
+  it('calendar/events POST: viewer denied via write gate (calendar is core)', async () => {
+    vi.mocked(requireSessionWriteAccess).mockResolvedValue({
       ok: false,
       response: viewerDeniedResponse(),
     })
@@ -236,11 +236,11 @@ describe('paid-addon mutating routes — write: true', () => {
     )
     expect(res.status).toBe(403)
     expect((await res.json()).code).toBe('VIEWER_READ_ONLY')
-    expect(requireSessionClientPaidAddon).toHaveBeenCalledWith(expect.anything(), { write: true })
+    expect(requireSessionWriteAccess).toHaveBeenCalled()
   })
 
   it('calendar/events POST: manager allowed past auth', async () => {
-    vi.mocked(requireSessionClientPaidAddon).mockResolvedValue({ ok: true, ctx: managerCtx })
+    vi.mocked(requireSessionWriteAccess).mockResolvedValue({ ok: true, ctx: managerCtx })
     const res = await calendarEventsPost(
       jsonReq('http://localhost/api/calendar/events', {
         title: 'בדיקה',
@@ -248,7 +248,7 @@ describe('paid-addon mutating routes — write: true', () => {
         ends_at: '2026-01-01T11:00:00.000Z',
       })
     )
-    expect(requireSessionClientPaidAddon).toHaveBeenCalledWith(expect.anything(), { write: true })
+    expect(requireSessionWriteAccess).toHaveBeenCalled()
     if (res.status === 403) {
       expect((await res.json()).code).not.toBe('VIEWER_READ_ONLY')
     }

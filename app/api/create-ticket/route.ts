@@ -45,6 +45,8 @@ type TicketRequestBody = {
   building_number?: unknown
   /** דיווח ציבורי: מזהה לקוח מהקישור (?client=) */
   client_id?: unknown
+  /** ציוד ממדבקת QR */
+  asset_id?: unknown
 }
 
 export async function POST(req: Request) {
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
         project_code: formData.get('project_code') || '',
         building_number: formData.get('building_number') || '',
         client_id: formData.get('client_id') || '',
+        asset_id: formData.get('asset_id') || '',
       }
 
       // Extract file attachments
@@ -115,6 +118,7 @@ export async function POST(req: Request) {
     const buildingNumberFromBody = body?.building_number
       ? String(body.building_number).trim()
       : null
+    const assetIdFromBody = sanitizeId(body?.asset_id)
 
     const auth = await requireSessionClientId()
     let bamakorClientId: string | null = null
@@ -236,6 +240,22 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'לא נמצא פרויקט' }, { status: 404 })
       }
 
+      let resolvedAssetId: string | null = null
+      if (assetIdFromBody) {
+        const { data: assetRow } = await supabaseAdmin
+          .from('building_assets')
+          .select('id')
+          .eq('id', assetIdFromBody)
+          .eq('client_id', bamakorClientId)
+          .eq('project_id', project.id)
+          .is('deleted_at', null)
+          .maybeSingle()
+        if (!assetRow) {
+          return NextResponse.json({ error: 'ציוד לא נמצא בבניין' }, { status: 400 })
+        }
+        resolvedAssetId = assetRow.id as string
+      }
+
       try {
         const created = await createTicketShared(supabaseAdmin, {
           clientId: project.client_id as string,
@@ -246,6 +266,7 @@ export async function POST(req: Request) {
           reporterPhone,
           buildingNumber: buildingNumberFromBody,
           files,
+          assetId: resolvedAssetId,
         })
         audit.logTicketCreated(project.client_id, created.ticketId, 'web_form')
         logger.info('TICKET_API', 'Ticket created from web form', {

@@ -2,6 +2,7 @@
 
 **Origin ראשי (קישורים / SMS / WhatsApp / SEO):** `https://bino.casa`  
 **www:** `https://www.bino.casa` → 308 ל־`bino.casa`  
+**Staging (בדיקות):** `https://staging.bino.casa` — ראו `docs/STAGING.md` (DB מבודד / mock outbound; לא ל־SMS חי)  
 **Alias webhook ישן (נשאר פעיל, לא לפרסום):** `https://bamakor.vercel.app` — Meta/Grow שעדיין מצביעים לשם  
 **Agent test gate (סוכנים):** אותו `https://bamakor.vercel.app` — חובת smoke אחרי שינויי קוד (`npm run test:bamakor-smoke`); Preview לבד לא מספיק. ראו `docs/AGENT_MANDATORY_CHECKLIST.md`.  
 **מייל Resend:** `{slug}@bino.casa`

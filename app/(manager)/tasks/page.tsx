@@ -22,8 +22,23 @@ import {
 import { toast } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { isMaintenanceTaskForToday } from '@/lib/maintenance-task-day'
+import {
+  MAINTENANCE_CADENCES,
+  MAINTENANCE_CADENCE_LABELS,
+  cadenceColor,
+  cadenceLabel,
+  morningBucket,
+  type MaintenanceCadence,
+} from '@/lib/maintenance-cadence'
 import { resolveBinoClientIdForBrowser } from '@/lib/bamakor-client'
 import { queryKeys } from '@/lib/query-keys'
+import {
+  normalizeChecklistItems,
+  type MaintenanceChecklistItem,
+} from '@/lib/maintenance-checklist'
+import { TasksWeekBoard } from '@/app/components/tasks/TasksWeekBoard'
+import { TasksTemplatesBar } from '@/app/components/tasks/TasksTemplatesBar'
+import { buildingAssetPublicUrl } from '@/lib/building-asset-public'
 
 type TaskRow = {
   id: string
@@ -33,11 +48,18 @@ type TaskRow = {
   status: string
   due_at: string | null
   notes: string | null
+  cadence?: string | null
+  calendar_event_id?: string | null
+  series_id?: string | null
+  checklist_items?: MaintenanceChecklistItem[] | null
+  estimated_minutes?: number | null
+  actual_cost_ils?: number | null
+  asset_id?: string | null
   project_id: string | null
   assigned_worker_id: string | null
   source_ticket_id?: string | null
   projects?: { name?: string | null; address?: string | null } | { name?: string | null; address?: string | null }[] | null
-  workers?: { full_name?: string | null } | { full_name?: string | null }[] | null
+  workers?: { full_name?: string | null; hourly_rate?: number | null } | { full_name?: string | null; hourly_rate?: number | null }[] | null
   tickets?:
     | { id?: string | null; ticket_number?: number | null }
     | { id?: string | null; ticket_number?: number | null }[]
@@ -54,7 +76,7 @@ type TaskAttachment = {
 type WorkerOpt = { id: string; full_name: string }
 type ProjectOpt = { id: string; name: string }
 
-type ListFilter = 'open' | 'today' | 'all'
+type ListFilter = 'morning' | 'open' | 'today' | 'all' | 'week'
 
 const PRIORITY_LABEL: Record<string, string> = {
   LOW: 'נמוכה',
@@ -109,8 +131,14 @@ const emptyForm = {
   workerId: '',
   priority: 'MEDIUM',
   dueAt: '',
+  cadence: 'one_off' as MaintenanceCadence,
   sourceTicketId: '',
   sourceTicketNumber: '',
+  checklist: [] as MaintenanceChecklistItem[],
+  checklistDraft: '',
+  estimatedMinutes: '' as string,
+  actualCostIls: '' as string,
+  assetId: '',
 }
 
 function ticketLinkMeta(row: TaskRow): { id: string; number: number | null } | null {
@@ -134,6 +162,8 @@ const TASKS_PAGE_SIZE = 100
 function apiFilterForList(listFilter: ListFilter): 'open' | 'all' {
   return listFilter === 'all' ? 'all' : 'open'
 }
+
+/** DoD: morning tab shows overdue/today/week with cadence colors — see FilterTabs «בוקר». */
 
 async function fetchMaintenanceTasksPage(
   filter: 'open' | 'all',
@@ -170,17 +200,20 @@ export default function TasksPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null)
   const [form, setForm] = useState(emptyForm)
-  const [listFilter, setListFilter] = useState<ListFilter>('open')
+  const [listFilter, setListFilter] = useState<ListFilter>('morning')
   const [groupByWorker, setGroupByWorker] = useState(false)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [attachmentsByTask, setAttachmentsByTask] = useState<Record<string, TaskAttachment[]>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
-  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const createFileRef = useRef<HTMLInputElement | null>(null)
+  const editFileRef = useRef<HTMLInputElement | null>(null)
   const [createFile, setCreateFile] = useState<File | null>(null)
   const [extraTasks, setExtraTasks] = useState<TaskRow[]>([])
   const [hasMoreTasks, setHasMoreTasks] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [assets, setAssets] = useState<
+    Array<{ id: string; name: string; project_id: string; public_slug?: string | null }>
+  >([])
+  const [suggestBusy, setSuggestBusy] = useState(false)
 
   const clientIdQuery = useQuery({
     queryKey: ['tenant-client-id'],
@@ -297,6 +330,21 @@ export default function TasksPage() {
   }, [tasksQuery.isError, tasksQuery.error])
 
   const visible = useMemo(() => {
+    if (listFilter === 'morning') {
+      return tasks
+        .filter((t) => t.status !== 'DONE')
+        .filter((t) => {
+          const b = morningBucket(t.due_at)
+          return b === 'overdue' || b === 'today' || b === 'week'
+        })
+        .sort((a, b) => {
+          const order = { overdue: 0, today: 1, week: 2, later: 3 } as const
+          const ba = morningBucket(a.due_at) || 'later'
+          const bb = morningBucket(b.due_at) || 'later'
+          if (order[ba] !== order[bb]) return order[ba] - order[bb]
+          return (a.due_at || '').localeCompare(b.due_at || '')
+        })
+    }
     if (listFilter === 'today') {
       return tasks.filter((t) => isMaintenanceTaskForToday({ dueAt: t.due_at, status: t.status }))
     }
@@ -339,12 +387,34 @@ export default function TasksPage() {
       workerId: t.assigned_worker_id || '',
       priority: t.priority || 'MEDIUM',
       dueAt: toLocalInput(t.due_at),
+      cadence: (t.cadence as MaintenanceCadence) || 'one_off',
       sourceTicketId: link?.id || '',
       sourceTicketNumber: link?.number != null ? String(link.number) : '',
+      checklist: normalizeChecklistItems(t.checklist_items),
+      checklistDraft: '',
+      estimatedMinutes: t.estimated_minutes != null ? String(t.estimated_minutes) : '',
+      actualCostIls: t.actual_cost_ils != null ? String(t.actual_cost_ils) : '',
+      assetId: t.asset_id || '',
     })
     setCreateFile(null)
     if (createFileRef.current) createFileRef.current.value = ''
     setDrawerOpen(true)
+    if (t.project_id) void loadAssets(t.project_id)
+  }
+
+  async function loadAssets(projectId: string) {
+    try {
+      const res = await fetchWithTimeout(
+        `/api/building-assets?project_id=${encodeURIComponent(projectId)}`
+      )
+      if (!res.ok) return
+      const json = (await res.json()) as {
+        assets?: Array<{ id: string; name: string; project_id: string; public_slug?: string | null }>
+      }
+      setAssets(json.assets || [])
+    } catch {
+      /* ignore */
+    }
   }
 
   function closeDrawer() {
@@ -354,6 +424,19 @@ export default function TasksPage() {
     setCreateFile(null)
   }
 
+  function taskPayloadExtras() {
+    const minutes = form.estimatedMinutes.trim()
+      ? Number.parseInt(form.estimatedMinutes, 10)
+      : null
+    const cost = form.actualCostIls.trim() ? Number.parseFloat(form.actualCostIls) : null
+    return {
+      checklist_items: form.checklist,
+      estimated_minutes: Number.isFinite(minutes) && minutes && minutes > 0 ? minutes : null,
+      actual_cost_ils: Number.isFinite(cost as number) && (cost as number) >= 0 ? cost : null,
+      asset_id: form.assetId || null,
+    }
+  }
+
   async function saveTask() {
     if (!form.title.trim()) {
       toast.error('נא למלא כותרת')
@@ -361,6 +444,7 @@ export default function TasksPage() {
     }
     setSaving(true)
     try {
+      const extras = taskPayloadExtras()
       if (editingTask) {
         const res = await fetchWithTimeout(
           '/api/maintenance-tasks',
@@ -376,7 +460,10 @@ export default function TasksPage() {
               assigned_worker_id: form.workerId || null,
               priority: form.priority,
               due_at: form.dueAt ? new Date(form.dueAt).toISOString() : null,
+              cadence: form.cadence,
+              sync_to_calendar: true,
               source_ticket_id: form.sourceTicketId || null,
+              ...extras,
             }),
           },
           MUTATION_FETCH_TIMEOUT_MS
@@ -401,7 +488,10 @@ export default function TasksPage() {
               assigned_worker_id: form.workerId || null,
               priority: form.priority,
               due_at: form.dueAt ? new Date(form.dueAt).toISOString() : null,
+              cadence: form.cadence,
+              sync_to_calendar: true,
               source_ticket_id: form.sourceTicketId || null,
+              ...extras,
             }),
           },
           MUTATION_FETCH_TIMEOUT_MS
@@ -451,8 +541,216 @@ export default function TasksPage() {
   async function toggleDone(t: TaskRow) {
     if (t.status === 'DONE') {
       await patchTask(t.id, { status: 'PENDING' })
-    } else {
-      await patchTask(t.id, { status: 'DONE' }, 'הושלמה')
+      return
+    }
+    const cadence = (t.cadence || 'one_off') as MaintenanceCadence
+    const wantsNext =
+      cadence !== 'one_off' &&
+      window.confirm('המשימה תושלם. ליצור את המופע הבא בסדרה?')
+    setBusyId(t.id)
+    try {
+      const res = await fetchWithTimeout(
+        '/api/maintenance-tasks',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task_id: t.id,
+            status: 'DONE',
+            create_next_occurrence: wantsNext,
+          }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        next_occurrence_id?: string | null
+      }
+      if (!res.ok) {
+        toast.error('עדכון נכשל')
+        return
+      }
+      if (wantsNext && json.next_occurrence_id) {
+        toast.success('הושלמה — נוצר המופע הבא')
+      } else {
+        toast.success('הושלמה')
+      }
+      await load()
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function createNextOccurrence(taskId: string) {
+    setBusyId(taskId)
+    try {
+      const res = await fetchWithTimeout(
+        '/api/maintenance-tasks/create-next-occurrence',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: taskId }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      if (!res.ok) {
+        toast.error('יצירת המופע הבא נכשלה')
+        return
+      }
+      toast.success('נוצר המופע הבא בסדרה')
+      await load()
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function suggestWorker() {
+    if (!form.projectId || !form.title.trim()) {
+      toast.error('בחרו בניין ומלאו כותרת להמלצה')
+      return
+    }
+    setSuggestBusy(true)
+    try {
+      const res = await fetchWithTimeout(
+        '/api/maintenance-tasks/suggest-worker',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: form.projectId,
+            title: form.title.trim(),
+            description: form.description.trim() || null,
+            assigned_worker_id: form.workerId || null,
+          }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        suggestion?: {
+          workerId?: string | null
+          worker_id?: string | null
+          reasonHe?: string
+          reason?: string
+        } | null
+      }
+      const workerId = json.suggestion?.workerId || json.suggestion?.worker_id
+      if (!res.ok || !workerId) {
+        toast.error('לא נמצאה המלצה')
+        return
+      }
+      setForm((f) => ({ ...f, workerId }))
+      toast.success(json.suggestion?.reasonHe || json.suggestion?.reason || 'הומלץ עובד')
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setSuggestBusy(false)
+    }
+  }
+
+  async function openTicketFromTask(taskId: string) {
+    setBusyId(taskId)
+    try {
+      const res = await fetchWithTimeout(
+        '/api/maintenance-tasks/create-ticket',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: taskId }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        ticket_id?: string
+        ticket_number?: number
+        error?: string
+      }
+      if (!res.ok || !json.ticket_id) {
+        toast.error(typeof json.error === 'string' ? json.error : 'פתיחת תקלה נכשלה')
+        return
+      }
+      toast.success(
+        json.ticket_number != null ? `נפתחה תקלה #${json.ticket_number}` : 'נפתחה תקלה'
+      )
+      window.location.href = `/tickets?ticket=${json.ticket_id}`
+    } catch {
+      toast.error('שגיאת חיבור')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function addAssetQuick() {
+    if (!form.projectId) {
+      toast.error('בחרו בניין לפני הוספת נכס')
+      return
+    }
+    const name = window.prompt('שם הנכס / הציוד')
+    if (!name?.trim()) return
+    try {
+      const res = await fetchWithTimeout(
+        '/api/building-assets',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_id: form.projectId, name: name.trim() }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        asset?: { id: string; name: string; project_id: string; public_slug?: string | null }
+      }
+      if (!res.ok || !json.asset) {
+        toast.error('יצירת נכס נכשלה')
+        return
+      }
+      setAssets((prev) => [...prev, json.asset!])
+      setForm((f) => ({ ...f, assetId: json.asset!.id }))
+      toast.success('נכס נוסף')
+    } catch {
+      toast.error('שגיאת חיבור')
+    }
+  }
+
+  async function openAssetQr(assetId: string) {
+    if (!assetId) {
+      toast.error('בחרו נכס')
+      return
+    }
+    try {
+      const res = await fetchWithTimeout(
+        '/api/building-assets/ensure-public-slug',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ asset_id: assetId }),
+        },
+        MUTATION_FETCH_TIMEOUT_MS
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        public_slug?: string
+        url?: string
+      }
+      if (!res.ok || !json.public_slug) {
+        toast.error(json.error || 'יצירת QR נכשלה')
+        return
+      }
+      setAssets((prev) =>
+        prev.map((a) => (a.id === assetId ? { ...a, public_slug: json.public_slug } : a))
+      )
+      const url = json.url || buildingAssetPublicUrl(json.public_slug)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success('קישור QR הועתק — אפשר להדביק במדבקה')
+      } catch {
+        toast.success('קישור QR נפתח')
+      }
+    } catch {
+      toast.error('שגיאת חיבור')
     }
   }
 
@@ -470,7 +768,6 @@ export default function TasksPage() {
         return
       }
       toast.success('המשימה נמחקה')
-      if (expandedId === taskId) setExpandedId(null)
       await load()
     } catch {
       toast.error('שגיאת חיבור')
@@ -520,7 +817,7 @@ export default function TasksPage() {
         {!isMobile && (
           <PageHeader
             title="משימות"
-            subtitle="משימות אחזקה — פתוחות, להיום והיסטוריה"
+            subtitle="לוח בוקר — עבר / היום / השבוע לפי צבע מחזוריות"
             actions={createBtn}
           />
         )}
@@ -531,27 +828,59 @@ export default function TasksPage() {
           </Button>
         ) : null}
 
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <Card noPadding>
-            <div
-              style={{
-                ...styles.filtersRow,
-                flexDirection: isMobile ? 'column' : 'row',
-                alignItems: isMobile ? 'stretch' : 'center',
-              }}
-            >
-              <div style={styles.filtersStart}>
-                <FilterTabs
-                  value={listFilter}
-                  onChange={(v) => setListFilter(v as ListFilter)}
-                  options={[
-                    { label: 'פתוחות', value: 'open' },
-                    { label: 'היום', value: 'today' },
-                    { label: 'הכל', value: 'all' },
-                  ]}
-                />
+        {!loading && projects.length > 0 ? (
+          <TasksTemplatesBar projects={projects} onApplied={() => void load()} />
+        ) : null}
+
+        <div
+          style={{
+            ...styles.filtersRow,
+            borderRadius: 12,
+            border: `1px solid ${theme.colors.border}`,
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center',
+          }}
+        >
+          <div style={styles.filtersStart}>
+            <FilterTabs
+              value={listFilter}
+              onChange={(v) => setListFilter(v as ListFilter)}
+              options={[
+                { label: 'בוקר', value: 'morning' },
+                { label: 'פתוחות', value: 'open' },
+                { label: 'היום', value: 'today' },
+                { label: 'שבוע', value: 'week' },
+                { label: 'הכל', value: 'all' },
+              ]}
+            />
+          </div>
+          {listFilter !== 'week' ? (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  fontSize: 12,
+                  color: theme.colors.textSecondary,
+                  alignItems: 'center',
+                }}
+                aria-label="אגדת צבעי מחזוריות"
+              >
+                {MAINTENANCE_CADENCES.filter((c) => c !== 'one_off').map((c) => (
+                  <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: cadenceColor(c),
+                        display: 'inline-block',
+                      }}
+                    />
+                    {MAINTENANCE_CADENCE_LABELS[c]}
+                  </span>
+                ))}
               </div>
               <label
                 style={{
@@ -567,8 +896,18 @@ export default function TasksPage() {
                 />
                 <span>לפי עובד</span>
               </label>
-            </div>
+            </>
+          ) : null}
+        </div>
 
+        {loading ? (
+          <LoadingSpinner />
+        ) : listFilter === 'week' ? (
+          <Card title="שבוע משולב" subtitle="משימות לפי due + אירועי לוח שנה — גררו משימה ליום אחר">
+            <TasksWeekBoard onChanged={() => void load()} />
+          </Card>
+        ) : (
+          <Card noPadding>
             {visible.length === 0 ? (
               <EmptyState
                 title="אין משימות להצגה"
@@ -587,8 +926,6 @@ export default function TasksPage() {
                     ) : null}
                     {group.items.map((t) => {
                       const done = t.status === 'DONE'
-                      const expanded = expandedId === t.id
-                      const atts = attachmentsByTask[t.id] || []
                       const busy = busyId === t.id
                       return (
                         <div key={t.id} style={styles.todoRow}>
@@ -613,18 +950,31 @@ export default function TasksPage() {
                             <button
                               type="button"
                               style={styles.todoBody}
-                              onClick={() => setExpandedId(expanded ? null : t.id)}
+                              onClick={() => openEdit(t)}
                             >
                               <div
                                 style={{
                                   ...styles.todoTitle,
                                   ...(done ? styles.todoTitleDone : null),
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
                                 }}
                               >
+                                <span
+                                  title={cadenceLabel(t.cadence)}
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: 999,
+                                    background: cadenceColor(t.cadence),
+                                    flexShrink: 0,
+                                  }}
+                                />
                                 {t.title}
                               </div>
                               <div style={styles.todoMeta}>
-                                {projectName(t)} · {relName(t)}
+                                {cadenceLabel(t.cadence)} · {projectName(t)} · {relName(t)}
                                 {t.due_at
                                   ? ` · ${new Date(t.due_at).toLocaleString('he-IL', {
                                       day: 'numeric',
@@ -633,128 +983,33 @@ export default function TasksPage() {
                                       minute: '2-digit',
                                     })}`
                                   : ''}
+                                {listFilter === 'morning' && t.due_at
+                                  ? ` · ${
+                                      morningBucket(t.due_at) === 'overdue'
+                                        ? 'באיחור'
+                                        : morningBucket(t.due_at) === 'today'
+                                          ? 'היום'
+                                          : 'השבוע'
+                                    }`
+                                  : ''}
                                 {t.priority === 'HIGH' || t.priority === 'URGENT'
                                   ? ` · ${PRIORITY_LABEL[t.priority]}`
                                   : ''}
+                                {t.calendar_event_id ? (
+                                  <>
+                                    {' · '}
+                                    <a
+                                      href="/calendar"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ color: theme.colors.primary, fontWeight: 600 }}
+                                    >
+                                      פתח בלוח שנה
+                                    </a>
+                                  </>
+                                ) : null}
                               </div>
                             </button>
                           </div>
-
-                          {expanded ? (
-                            <div
-                              style={{
-                                ...styles.expand,
-                                ...(isMobile ? { marginInlineStart: 0 } : null),
-                              }}
-                            >
-                              {(() => {
-                                const link = ticketLinkMeta(t)
-                                if (!link) return null
-                                const label =
-                                  link.number != null
-                                    ? `מקושר לתקלה #${link.number}`
-                                    : 'מקושר לתקלה'
-                                return (
-                                  <a href={`/tickets?ticket=${link.id}`} style={styles.ticketChip}>
-                                    {label}
-                                  </a>
-                                )
-                              })()}
-                              {t.description ? <p style={styles.desc}>{t.description}</p> : null}
-                              {t.notes ? <p style={styles.notesLine}>הערות: {t.notes}</p> : null}
-                              {atts.length > 0 ? (
-                                <div style={styles.attRow}>
-                                  {atts.map((a) =>
-                                    a.public_url && (a.mime_type || '').startsWith('image/') ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img
-                                        key={a.id}
-                                        src={a.public_url}
-                                        alt={a.file_name}
-                                        style={styles.thumb}
-                                      />
-                                    ) : (
-                                      <a
-                                        key={a.id}
-                                        href={a.public_url || '#'}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{ fontSize: 13 }}
-                                      >
-                                        {a.file_name}
-                                      </a>
-                                    )
-                                  )}
-                                </div>
-                              ) : null}
-                              <div
-                                style={{
-                                  ...styles.cardActions,
-                                  ...(isMobile ? styles.cardActionsMobile : null),
-                                }}
-                              >
-                                <Button
-                                  type="button"
-                                  size={isMobile ? 'md' : 'sm'}
-                                  variant="secondary"
-                                  onClick={() => openEdit(t)}
-                                  style={isMobile ? styles.actionBtnMobile : undefined}
-                                >
-                                  עריכה
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size={isMobile ? 'md' : 'sm'}
-                                  variant="secondary"
-                                  onClick={() => fileRefs.current[t.id]?.click()}
-                                  style={isMobile ? styles.actionBtnMobile : undefined}
-                                >
-                                  צרף קובץ
-                                </Button>
-                                <input
-                                  ref={(el) => {
-                                    fileRefs.current[t.id] = el
-                                  }}
-                                  type="file"
-                                  accept="image/*,application/pdf,video/mp4,video/webm"
-                                  style={{ display: 'none' }}
-                                  onChange={(e) => {
-                                    const f = e.target.files?.[0]
-                                    if (f) void uploadPhoto(t.id, f)
-                                    e.target.value = ''
-                                  }}
-                                />
-                                <Button
-                                  type="button"
-                                  size={isMobile ? 'md' : 'sm'}
-                                  variant="danger"
-                                  disabled={busy}
-                                  onClick={() => void deleteTask(t.id)}
-                                  style={isMobile ? styles.actionBtnMobile : undefined}
-                                >
-                                  מחיקה
-                                </Button>
-                              </div>
-                              <div style={{ marginTop: 8, minWidth: 0 }}>
-                                <select
-                                  style={styles.input}
-                                  value={t.assigned_worker_id || ''}
-                                  onChange={(e) =>
-                                    void patchTask(t.id, {
-                                      assigned_worker_id: e.target.value || null,
-                                    })
-                                  }
-                                >
-                                  <option value="">העבר לעובד…</option>
-                                  {workers.map((w) => (
-                                    <option key={w.id} value={w.id}>
-                                      {w.full_name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          ) : null}
                         </div>
                       )
                     })}
@@ -781,14 +1036,47 @@ export default function TasksPage() {
       <Drawer
         open={drawerOpen}
         onClose={closeDrawer}
-        title={editingTask ? 'עריכת משימה' : 'משימה חדשה'}
-        subtitle={editingTask ? 'עדכון פרטי המשימה' : 'הוספה לרשימת המשימות'}
+        title={editingTask ? editingTask.title || 'כרטסת משימה' : 'משימה חדשה'}
+        subtitle={
+          editingTask
+            ? `${cadenceLabel(editingTask.cadence)} · ${PRIORITY_LABEL[editingTask.priority] || editingTask.priority} · סידור מתקדם`
+            : 'הוספה לרשימת המשימות'
+        }
         isMobile={isMobile}
         footer={
           <div style={styles.drawerFooter}>
-            <Button type="button" variant="secondary" onClick={closeDrawer} disabled={saving}>
-              ביטול
-            </Button>
+            {editingTask ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busyId === editingTask.id}
+                  onClick={() => void toggleDone(editingTask)}
+                >
+                  {editingTask.status === 'DONE' ? 'פתח מחדש' : 'סמן הושלם'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busyId === editingTask.id}
+                  onClick={() => void openTicketFromTask(editingTask.id)}
+                >
+                  פתח תקלה
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={busyId === editingTask.id}
+                  onClick={() => void deleteTask(editingTask.id)}
+                >
+                  מחק
+                </Button>
+              </>
+            ) : (
+              <Button type="button" variant="secondary" onClick={closeDrawer} disabled={saving}>
+                ביטול
+              </Button>
+            )}
             <Button type="button" onClick={() => void saveTask()} disabled={saving}>
               {saving ? 'שומר…' : editingTask ? 'שמור' : 'צור משימה'}
             </Button>
@@ -839,7 +1127,11 @@ export default function TasksPage() {
             <select
               style={styles.input}
               value={form.projectId}
-              onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
+              onChange={(e) => {
+                const projectId = e.target.value
+                setForm((f) => ({ ...f, projectId, assetId: '' }))
+                if (projectId) void loadAssets(projectId)
+              }}
             >
               <option value="">ללא בניין</option>
               {projects.map((p) => (
@@ -850,18 +1142,29 @@ export default function TasksPage() {
             </select>
           </Field>
           <Field label="עובד אחראי">
-            <select
-              style={styles.input}
-              value={form.workerId}
-              onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
-            >
-              <option value="">ללא עובד</option>
-              {workers.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.full_name}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <select
+                style={{ ...styles.input, flex: 1, minWidth: 140 }}
+                value={form.workerId}
+                onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
+              >
+                <option value="">ללא עובד</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.full_name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={suggestBusy}
+                onClick={() => void suggestWorker()}
+              >
+                המלץ עובד
+              </Button>
+            </div>
           </Field>
           <Field label="עדיפות">
             <select
@@ -875,6 +1178,21 @@ export default function TasksPage() {
               <option value="URGENT">דחופה</option>
             </select>
           </Field>
+          <Field label="מחזוריות (צבע בלוח)">
+            <select
+              style={styles.input}
+              value={form.cadence}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, cadence: e.target.value as MaintenanceCadence }))
+              }
+            >
+              {MAINTENANCE_CADENCES.map((c) => (
+                <option key={c} value={c}>
+                  {MAINTENANCE_CADENCE_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field
             label="תאריך ושעה לביצוע"
             hint="אופציונלי — בלי תאריך המשימה נשארת פתוחה"
@@ -886,31 +1204,189 @@ export default function TasksPage() {
               onChange={(e) => setForm((f) => ({ ...f, dueAt: e.target.value }))}
             />
           </Field>
-          <Field label="קובץ / תמונה" full hint={createFile ? createFile.name : 'אופציונלי'}>
-            <div style={styles.attachRow}>
-              <Button type="button" variant="secondary" onClick={() => createFileRef.current?.click()}>
-                {createFile ? 'החלף קובץ' : 'צרף קובץ'}
+          <Field label="דקות משוערות">
+            <input
+              type="number"
+              min={1}
+              style={styles.input}
+              value={form.estimatedMinutes}
+              onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: e.target.value }))}
+              placeholder="למשל 45"
+            />
+          </Field>
+          <Field label="עלות בפועל (₪)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              style={styles.input}
+              value={form.actualCostIls}
+              onChange={(e) => setForm((f) => ({ ...f, actualCostIls: e.target.value }))}
+            />
+          </Field>
+          <Field label="נכס / ציוד" full>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <select
+                style={{ ...styles.input, flex: 1 }}
+                value={form.assetId}
+                onChange={(e) => setForm((f) => ({ ...f, assetId: e.target.value }))}
+                onFocus={() => {
+                  if (form.projectId) void loadAssets(form.projectId)
+                }}
+              >
+                <option value="">ללא נכס</option>
+                {assets.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="secondary" size="sm" onClick={() => void addAssetQuick()}>
+                + נכס
               </Button>
-              {createFile ? (
-                <button
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!form.assetId}
+                onClick={() => void openAssetQr(form.assetId)}
+              >
+                QR ציוד
+              </Button>
+            </div>
+          </Field>
+          <Field label="צ׳ק־ליסט" full>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {form.checklist.map((item) => (
+                <label key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(item.done_at)}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        checklist: f.checklist.map((c) =>
+                          c.id === item.id
+                            ? { ...c, done_at: e.target.checked ? new Date().toISOString() : null }
+                            : c
+                        ),
+                      }))
+                    }
+                  />
+                  <span style={{ flex: 1 }}>{item.text}</span>
+                  <button
+                    type="button"
+                    style={styles.clearAttach}
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        checklist: f.checklist.filter((c) => c.id !== item.id),
+                      }))
+                    }
+                  >
+                    הסר
+                  </button>
+                </label>
+              ))}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  style={styles.input}
+                  placeholder="פריט חדש"
+                  value={form.checklistDraft}
+                  onChange={(e) => setForm((f) => ({ ...f, checklistDraft: e.target.value }))}
+                />
+                <Button
                   type="button"
-                  style={styles.clearAttach}
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
-                    setCreateFile(null)
-                    if (createFileRef.current) createFileRef.current.value = ''
+                    const text = form.checklistDraft.trim()
+                    if (!text) return
+                    setForm((f) => ({
+                      ...f,
+                      checklistDraft: '',
+                      checklist: [
+                        ...f.checklist,
+                        {
+                          id: `c_${Date.now()}_${f.checklist.length}`,
+                          text,
+                          done_at: null,
+                        },
+                      ],
+                    }))
                   }}
                 >
-                  הסר
-                </button>
-              ) : null}
-              <input
-                ref={createFileRef}
-                type="file"
-                accept="image/*,application/pdf,video/mp4,video/webm"
-                style={{ display: 'none' }}
-                onChange={(e) => setCreateFile(e.target.files?.[0] || null)}
-              />
+                  הוסף
+                </Button>
+              </div>
             </div>
+          </Field>
+          <Field label="קובץ / תמונה" full hint={createFile ? createFile.name : 'אופציונלי'}>
+            <div style={styles.attachRow}>
+              {editingTask ? (
+                <>
+                  <Button type="button" variant="secondary" onClick={() => editFileRef.current?.click()}>
+                    צרף קובץ
+                  </Button>
+                  <input
+                    ref={editFileRef}
+                    type="file"
+                    accept="image/*,application/pdf,video/mp4,video/webm"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f && editingTask) void uploadPhoto(editingTask.id, f)
+                      e.target.value = ''
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Button type="button" variant="secondary" onClick={() => createFileRef.current?.click()}>
+                    {createFile ? 'החלף קובץ' : 'צרף קובץ'}
+                  </Button>
+                  {createFile ? (
+                    <button
+                      type="button"
+                      style={styles.clearAttach}
+                      onClick={() => {
+                        setCreateFile(null)
+                        if (createFileRef.current) createFileRef.current.value = ''
+                      }}
+                    >
+                      הסר
+                    </button>
+                  ) : null}
+                  <input
+                    ref={createFileRef}
+                    type="file"
+                    accept="image/*,application/pdf,video/mp4,video/webm"
+                    style={{ display: 'none' }}
+                    onChange={(e) => setCreateFile(e.target.files?.[0] || null)}
+                  />
+                </>
+              )}
+            </div>
+            {editingTask && (attachmentsByTask[editingTask.id] || []).length > 0 ? (
+              <div style={{ ...styles.attRow, marginTop: 10 }}>
+                {(attachmentsByTask[editingTask.id] || []).map((a) =>
+                  a.public_url && (a.mime_type || '').startsWith('image/') ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={a.id} src={a.public_url} alt={a.file_name} style={styles.thumb} />
+                  ) : (
+                    <a
+                      key={a.id}
+                      href={a.public_url || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: 13 }}
+                    >
+                      {a.file_name}
+                    </a>
+                  )
+                )}
+              </div>
+            ) : null}
           </Field>
         </div>
       </Drawer>
