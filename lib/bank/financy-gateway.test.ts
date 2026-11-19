@@ -4,6 +4,7 @@ import {
   extractAccountDisplayName,
   extractAccountType,
   extractBalanceAmount,
+  extractDebtorPaymentAccount,
   extractTxAmount,
   inferCreditorAccountType,
   isFinancyAccountDeleted,
@@ -114,5 +115,39 @@ describe('financy-gateway helpers', () => {
   it('inferCreditorAccountType detects IBAN vs BBAN', () => {
     expect(inferCreditorAccountType('IL620108000000099999999')).toBe('iban')
     expect(inferCreditorAccountType('123456')).toBe('bban')
+  })
+
+  it('extractDebtorPaymentAccount prefers parsed BBAN over IBAN', () => {
+    expect(
+      extractDebtorPaymentAccount({
+        id: 'a1',
+        accountType: 'CHECKING',
+        accountNumber: 'IL590110660000253950874',
+        parsedAccount: { bank: '11', branch: '066', number: '253950874' },
+      })
+    ).toEqual({
+      accountType: 'bban',
+      accountNumber: '11-066-253950874',
+    })
+    expect(
+      extractDebtorPaymentAccount({
+        id: 'a2',
+        accountType: 'CHECKING',
+        parsedAccount: { bank: '10', branch: '944', number: '50151142' },
+      })
+    ).toEqual({
+      accountType: 'bban',
+      accountNumber: '10-944-50151142',
+    })
+    expect(
+      extractDebtorPaymentAccount({
+        id: 'a3',
+        accountNumber: 'IL590110660000253950874',
+      })
+    ).toEqual({
+      accountType: 'iban',
+      accountNumber: 'IL590110660000253950874',
+    })
+    expect(extractDebtorPaymentAccount({ id: 'a4' })).toBeNull()
   })
 })

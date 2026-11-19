@@ -16,6 +16,7 @@ import {
 import type { SidebarNavItemId } from '@/lib/sidebar-nav'
 import { isResidentPortalApiPath, isResidentPortalPath } from '@/lib/is-resident-portal-path'
 import { userHasActiveResidentMembership } from '@/lib/resident-portal/memberships'
+import { isPalGatePilotClient } from '@/lib/palgate/pilot'
 import {
   buildCanonicalRedirectUrl,
   shouldRedirectVercelAppHostToCanonical,
@@ -203,6 +204,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/api/cron/') ||
     pathname.startsWith('/report') ||
+    pathname.startsWith('/asset') ||
     pathname.startsWith('/intake') ||
     pathname.startsWith('/pay') ||
     pathname === '/privacy' ||
@@ -419,6 +421,26 @@ export async function middleware(req: NextRequest) {
     const url = req.nextUrl.clone()
     url.pathname = '/dashboard'
     return redirectWithCookies(pending, url)
+  }
+
+  // PalGate / חניונים — hard Savion-only (before generic nav feature checks).
+  if (
+    pathname === '/parking' ||
+    pathname.startsWith('/parking/') ||
+    pathname === '/api/parking' ||
+    pathname.startsWith('/api/parking/')
+  ) {
+    if (!isPalGatePilotClient(clientId)) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'פיילוט חניונים / PalGate זמין רק ללקוח סביון', code: 'PALGATE_PILOT_ONLY' },
+          { status: 403 }
+        )
+      }
+      const url = req.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return redirectWithCookies(pending, url)
+    }
   }
 
   const navFeatureId = navItemIdForPathname(pathname)

@@ -17,6 +17,7 @@ import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { Button, LoadingSpinner, theme } from '@/app/components/ui'
 import { FinancyConnectCard } from '@/app/components/finance/FinancyConnectCard'
+import { BuildingBankMatchPanel } from '@/app/components/projects/BuildingBankMatchPanel'
 import {
   bankAccountKindLabelHe,
   isFinancyCardAccountType,
@@ -187,7 +188,11 @@ function integrationLabel(row: Record<string, unknown>): string {
   )
 }
 
-export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
+export function BuildingBankPanel({
+  projectId = null,
+  projectName = null,
+  isMobile: isMobileProp,
+}: Props) {
   const [isMobile, setIsMobile] = useState(Boolean(isMobileProp))
   const [section, setSection] = useState<BankPanelSection>('overview')
   const [loading, setLoading] = useState(true)
@@ -204,10 +209,15 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
   const [books, setBooks] = useState<Record<string, unknown> | null>(null)
   const [selectedIntegrationId, setSelectedIntegrationId] = useState<string>('')
   const [merchantId, setMerchantId] = useState('')
+  /** Bank-app transfer wizard: 1=who, 2=where, 3=amount, 4=confirm */
+  const [transferStep, setTransferStep] = useState(1)
   const [transferForm, setTransferForm] = useState({
     amount: '',
     payee_name: '',
     payee_account: '',
+    bank_code: '',
+    branch_number: '',
+    account_number: '',
     description: '',
   })
   const [creatingTransfer, setCreatingTransfer] = useState(false)
@@ -411,15 +421,68 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
     await loadCore()
   }
 
+  function resetTransferForm() {
+    setTransferForm({
+      amount: '',
+      payee_name: '',
+      payee_account: '',
+      bank_code: '',
+      branch_number: '',
+      account_number: '',
+      description: '',
+    })
+    setTransferStep(1)
+    setMerchantId('')
+  }
+
+  function composedPayeeAccount(): string {
+    if (transferForm.payee_account.trim()) {
+      return transferForm.payee_account.replace(/\s+/g, '')
+    }
+    const bank = transferForm.bank_code.replace(/\D/g, '')
+    const branch = transferForm.branch_number.replace(/\D/g, '')
+    const account = transferForm.account_number.replace(/\D/g, '')
+    if (bank && branch && account) {
+      return `${bank.padStart(2, '0')}-${branch.padStart(3, '0')}-${account}`
+    }
+    return ''
+  }
+
   async function onCreateTransfer(e: FormEvent) {
     e.preventDefault()
+    if (transferStep < 4) {
+      if (transferStep === 1 && !merchantId && !transferForm.payee_name.trim()) {
+        toast.error('הזינו שם מוטב או בחרו מוטב שמור')
+        return
+      }
+      if (
+        transferStep === 2 &&
+        !merchantId &&
+        !transferForm.payee_account.trim() &&
+        !(transferForm.bank_code && transferForm.branch_number && transferForm.account_number)
+      ) {
+        toast.error('הזינו בנק · סניף · חשבון, או IBAN')
+        return
+      }
+      if (transferStep === 3) {
+        const amount = Number(transferForm.amount)
+        if (!Number.isFinite(amount) || amount <= 0) {
+          toast.error('סכום לא תקין')
+          return
+        }
+      }
+      setTransferStep((s) => Math.min(4, s + 1))
+      return
+    }
+
     const amount = Number(transferForm.amount)
     if (!Number.isFinite(amount) || amount <= 0) {
       toast.error('סכום לא תקין')
       return
     }
-    if (!merchantId && (!transferForm.payee_name || !transferForm.payee_account)) {
-      toast.error('בחרו מוטב שמור או הזינו שם + מספר חשבון')
+    const payeeAccount = composedPayeeAccount()
+    if (!merchantId && (!transferForm.payee_name || !payeeAccount)) {
+      toast.error('בחרו מוטב שמור או הזינו שם + פרטי חשבון')
       return
     }
     setCreatingTransfer(true)
@@ -434,7 +497,22 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
             amount,
             merchant_id: merchantId || undefined,
             payee_name: merchantId ? undefined : transferForm.payee_name || undefined,
-            payee_account: merchantId ? undefined : transferForm.payee_account || undefined,
+            payee_account:
+              merchantId || !transferForm.payee_account.trim()
+                ? undefined
+                : transferForm.payee_account.trim(),
+            bank_code:
+              merchantId || transferForm.payee_account.trim()
+                ? undefined
+                : transferForm.bank_code || undefined,
+            branch_number:
+              merchantId || transferForm.payee_account.trim()
+                ? undefined
+                : transferForm.branch_number || undefined,
+            account_number:
+              merchantId || transferForm.payee_account.trim()
+                ? undefined
+                : transferForm.account_number || undefined,
             description: transferForm.description || undefined,
             allow_business: true,
           }),
@@ -449,7 +527,7 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
       const payUrl = typeof json.pay_url === 'string' ? json.pay_url : null
       toast.success('העברה נוצרה — אשרו בבנק דרך Financy')
       if (payUrl) window.open(payUrl, '_blank', 'noopener,noreferrer')
-      setTransferForm({ amount: '', payee_name: '', payee_account: '', description: '' })
+      resetTransferForm()
       await loadTransfers()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'שגיאה')
@@ -459,14 +537,14 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
   }
 
   async function onSaveMerchant() {
-    if (!transferForm.payee_name || !transferForm.payee_account) {
-      toast.error('שם מוטב ומספר חשבון נדרשים לשמירה')
+    const account = composedPayeeAccount()
+    if (!transferForm.payee_name || !account) {
+      toast.error('שם מוטב ופרטי חשבון נדרשים לשמירה')
       return
     }
     setSavingMerchant(true)
     try {
-      const account = transferForm.payee_account.replace(/\s+/g, '')
-      const isIban = /^IL/i.test(account) || account.length >= 20
+      const isIban = /^IL/i.test(account) || account.replace(/-/g, '').length >= 20
       const res = await fetchWithTimeout(
         '/api/building-finance/bank/merchants',
         {
@@ -842,48 +920,102 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
             <form onSubmit={onCreateTransfer} style={s.transferForm}>
               <p style={s.panelTitle}>העברה חדשה</p>
               <p style={s.muted}>
-                Financy יוצר תשלום PIS ומחזיר קישור אישור בבנק (payUrl). אחרי האישור חזרו לכאן
-                לרענון סטטוס.
+                שלב {transferStep} מתוך 4 · למי ← לאן ← כמה ← אישור
               </p>
-              <label style={s.field}>
-                מוטב שמור
-                <select
-                  style={s.input}
-                  value={merchantId}
-                  onChange={(ev) => setMerchantId(ev.target.value)}
-                >
-                  <option value="">— הזנה ידנית —</option>
-                  {merchants.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {merchantLabel(m)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={s.field}>
-                סכום
-                <input
-                  style={s.input}
-                  value={transferForm.amount}
-                  onChange={(ev) => setTransferForm((f) => ({ ...f, amount: ev.target.value }))}
-                  inputMode="decimal"
-                  required
-                />
-              </label>
-              {!merchantId ? (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                {[1, 2, 3, 4].map((n) => (
+                  <span
+                    key={n}
+                    style={{
+                      flex: 1,
+                      height: 4,
+                      borderRadius: 2,
+                      background:
+                        n <= transferStep
+                          ? theme.colors.primary
+                          : theme.colors.border,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {transferStep === 1 ? (
                 <>
                   <label style={s.field}>
-                    שם מוטב
+                    מוטב שמור
+                    <select
+                      style={s.input}
+                      value={merchantId}
+                      onChange={(ev) => setMerchantId(ev.target.value)}
+                    >
+                      <option value="">— הזנה ידנית —</option>
+                      {merchants.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {merchantLabel(m)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {!merchantId ? (
+                    <label style={s.field}>
+                      למי להעביר
+                      <input
+                        style={s.input}
+                        value={transferForm.payee_name}
+                        onChange={(ev) =>
+                          setTransferForm((f) => ({ ...f, payee_name: ev.target.value }))
+                        }
+                        placeholder="שם המוטב"
+                        autoFocus
+                      />
+                    </label>
+                  ) : null}
+                </>
+              ) : null}
+
+              {transferStep === 2 && !merchantId ? (
+                <>
+                  <label style={s.field}>
+                    קוד בנק
                     <input
                       style={s.input}
-                      value={transferForm.payee_name}
+                      value={transferForm.bank_code}
                       onChange={(ev) =>
-                        setTransferForm((f) => ({ ...f, payee_name: ev.target.value }))
+                        setTransferForm((f) => ({ ...f, bank_code: ev.target.value }))
                       }
+                      dir="ltr"
+                      inputMode="numeric"
+                      placeholder="למשל 10"
                     />
                   </label>
                   <label style={s.field}>
-                    מספר חשבון מוטב (IBAN / BBAN)
+                    סניף
+                    <input
+                      style={s.input}
+                      value={transferForm.branch_number}
+                      onChange={(ev) =>
+                        setTransferForm((f) => ({ ...f, branch_number: ev.target.value }))
+                      }
+                      dir="ltr"
+                      inputMode="numeric"
+                      placeholder="למשל 944"
+                    />
+                  </label>
+                  <label style={s.field}>
+                    מספר חשבון
+                    <input
+                      style={s.input}
+                      value={transferForm.account_number}
+                      onChange={(ev) =>
+                        setTransferForm((f) => ({ ...f, account_number: ev.target.value }))
+                      }
+                      dir="ltr"
+                      inputMode="numeric"
+                    />
+                  </label>
+                  <p style={s.muted}>או הדביקו IBAN במקום:</p>
+                  <label style={s.field}>
+                    IBAN (אופציונלי)
                     <input
                       style={s.input}
                       value={transferForm.payee_account}
@@ -891,6 +1023,7 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
                         setTransferForm((f) => ({ ...f, payee_account: ev.target.value }))
                       }
                       dir="ltr"
+                      placeholder="IL…"
                     />
                   </label>
                   <button
@@ -903,19 +1036,70 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
                   </button>
                 </>
               ) : null}
-              <label style={s.field}>
-                תיאור / אסמכתא
-                <input
-                  style={s.input}
-                  value={transferForm.description}
-                  onChange={(ev) =>
-                    setTransferForm((f) => ({ ...f, description: ev.target.value }))
-                  }
-                />
-              </label>
-              <Button type="submit" disabled={creatingTransfer}>
-                {creatingTransfer ? 'יוצר…' : 'צור העברה ואשר בבנק'}
-              </Button>
+
+              {transferStep === 2 && merchantId ? (
+                <p style={s.muted}>מוטב שמור נבחר — ממשיכים לסכום.</p>
+              ) : null}
+
+              {transferStep === 3 ? (
+                <>
+                  <label style={s.field}>
+                    כמה להעביר
+                    <input
+                      style={s.input}
+                      value={transferForm.amount}
+                      onChange={(ev) =>
+                        setTransferForm((f) => ({ ...f, amount: ev.target.value }))
+                      }
+                      inputMode="decimal"
+                      autoFocus
+                    />
+                  </label>
+                  <label style={s.field}>
+                    אסמכתא / תיאור
+                    <input
+                      style={s.input}
+                      value={transferForm.description}
+                      onChange={(ev) =>
+                        setTransferForm((f) => ({ ...f, description: ev.target.value }))
+                      }
+                    />
+                  </label>
+                </>
+              ) : null}
+
+              {transferStep === 4 ? (
+                <div style={{ marginBottom: 12 }}>
+                  <p style={s.panelTitle}>אישור לפני שליחה לבנק</p>
+                  <p style={s.muted}>
+                    {merchantId
+                      ? `מוטב שמור · ${formatIls(Number(transferForm.amount) || 0)}`
+                      : `${transferForm.payee_name} · ${composedPayeeAccount()} · ${formatIls(Number(transferForm.amount) || 0)}`}
+                  </p>
+                  {transferForm.description ? (
+                    <p style={s.muted}>אסמכתא: {transferForm.description}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {transferStep > 1 ? (
+                  <button
+                    type="button"
+                    style={s.textBtn}
+                    onClick={() => setTransferStep((n) => Math.max(1, n - 1))}
+                  >
+                    חזרה
+                  </button>
+                ) : null}
+                <Button type="submit" disabled={creatingTransfer}>
+                  {creatingTransfer
+                    ? 'יוצר…'
+                    : transferStep < 4
+                      ? 'המשך'
+                      : 'צור העברה ואשר בבנק'}
+                </Button>
+              </div>
             </form>
 
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -1254,6 +1438,13 @@ export function BuildingBankPanel({ isMobile: isMobileProp }: Props) {
           </div>
         )}
       </div>
+
+      {/* Collections match: Hub locks project; /finance/bank picks building inline here. */}
+      <BuildingBankMatchPanel
+        projectId={projectId}
+        projectName={projectName}
+        isMobile={isMobile}
+      />
 
       <style>{`
         @keyframes bankHeroIn {

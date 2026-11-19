@@ -21,10 +21,16 @@ import {
   type WhatsAppInboxContext,
 } from '@/lib/whatsapp-inbox-context'
 import {
-  useWhatsAppConversations,
-  useWhatsAppMessages,
+  useWhatsAppInboxV2Conversations,
+  useWhatsAppInboxMessages,
   useWhatsAppThreadMeta,
-} from '@/lib/hooks/use-whatsapp-conversations'
+  sendWhatsAppInboxMedia,
+} from '@/lib/whatsapp-inbox-hooks'
+import { conversationHasUnread, markConversationRead } from '@/lib/whatsapp-inbox-unread-local'
+import { WhatsAppInboxFilters } from './WhatsAppInboxFilters'
+import { WhatsAppInboxMessageMedia } from './WhatsAppInboxMessageMedia'
+import { WhatsAppStartChatFab } from './WhatsAppStartChatFab'
+import { WhatsAppInboxForwardPro } from './WhatsAppInboxForwardPro'
 import { queryKeys } from '@/lib/query-keys'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { useChatSheetScrollLock, useVisualViewportFrame } from '@/lib/use-visual-viewport-frame'
@@ -45,8 +51,15 @@ type Message = {
   direction: 'in' | 'out'
   body: string | null
   message_type?: string | null
+  interactive_payload?: Record<string, unknown> | null
   created_at: string
   ticket_id: string | null
+}
+
+type InboxConversation = Conversation & {
+  building_name?: string | null
+  last_inbound_at?: string | null
+  has_open_ticket?: boolean
 }
 
 type InboxTemplateOption = {
@@ -138,16 +151,20 @@ export function WhatsAppInboxPanel() {
   const queryClient = useQueryClient()
   const mobileMenu = useMobileMenuOptional()
   const {
+    inboxV2,
     conversations,
     isLoading: conversationsLoading,
     error: conversationsError,
     invalidate: invalidateConversations,
     refetch: refetchConversations,
     hasData: conversationsHasData,
-  } = useWhatsAppConversations()
+    filters: inboxFilters,
+    setFilters: setInboxFilters,
+    buildingOptions,
+  } = useWhatsAppInboxV2Conversations()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const messagesQuery = useWhatsAppMessages(selectedId)
+  const messagesQuery = useWhatsAppInboxMessages(selectedId)
   const metaQuery = useWhatsAppThreadMeta(selectedId)
   const messages = (messagesQuery.data ?? []) as Message[]
   const [sessionClosedLocally, setSessionClosedLocally] = useState(false)
@@ -185,6 +202,8 @@ export function WhatsAppInboxPanel() {
   const [templateParams, setTemplateParams] = useState<string[]>([])
   const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
   const [portalReady, setPortalReady] = useState(false)
+  const [attachBusy, setAttachBusy] = useState(false)
+  const attachInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
 
@@ -272,7 +291,10 @@ export function WhatsAppInboxPanel() {
     setActiveQuickAction(null)
     setTemplateParams([])
     setTemplatesOpen(false)
-  }, [selectedId])
+    if (selectedId && inboxV2) {
+      markConversationRead(selectedId)
+    }
+  }, [selectedId, inboxV2])
 
   useEffect(() => {
     if (!selectedId) return
@@ -416,6 +438,32 @@ export function WhatsAppInboxPanel() {
     }
   }
 
+  async function sendAttachment(file: File) {
+    if (!selected || !inboxV2 || attachBusy) return
+    const allowed = file.type.startsWith('image/') || file.type === 'application/pdf'
+    if (!allowed) {
+      toast.error('רק תמונה או PDF')
+      return
+    }
+    setAttachBusy(true)
+    try {
+      await sendWhatsAppInboxMedia(selected.phone, selected.id, file, reply.trim() || undefined)
+      setReply('')
+      toast.success('הקובץ נשלח')
+      await refreshMessages(selected.id)
+      await refreshConversations()
+    } catch (e) {
+      const err = e as Error & { code?: string }
+      if (err.code === 'WA_SESSION_EXPIRED') {
+        setSessionClosedLocally(true)
+      }
+      toast.error(err instanceof Error ? err.message : 'שליחת קובץ נכשלה')
+    } finally {
+      setAttachBusy(false)
+      if (attachInputRef.current) attachInputRef.current.value = ''
+    }
+  }
+
   async function sendQuickAction() {
     if (!selected || !activeQuickAction || !activeTemplate || sending) return
     if (missingParamIndices(activeTemplate, templateParams).length > 0) {
@@ -550,7 +598,17 @@ export function WhatsAppInboxPanel() {
                   }}
                 >
                   <div style={{ ...styles.bubble, ...(outgoing ? styles.bubbleOut : styles.bubbleIn) }}>
-                    <span style={styles.bubbleText}>{formatInboxMessageBody(m)}</span>
+                    {inboxV2 ? (
+                      <WhatsAppInboxMessageMedia
+                        message={m}
+                        fallbackText={formatInboxMessageBody(m)}
+                      />
+                    ) : (
+                      <span style={styles.bubbleText}>{formatInboxMessageBody(m)}</span>
+                    )}
+                    {inboxV2 && m.body?.trim() && (m.message_type === 'image' || m.message_type === 'document') ? (
+                      <span style={styles.bubbleText}>{m.body}</span>
+                    ) : null}
                     <span style={styles.time}>{waClock(m.created_at)}</span>
                   </div>
                 </div>
@@ -620,6 +678,12 @@ export function WhatsAppInboxPanel() {
             </div>
           </div>
         )}
+        {inboxV2 && inboxContext?.open_ticket ? (
+          <WhatsAppInboxForwardPro
+            ticketId={inboxContext.open_ticket.id}
+            ticketNumber={inboxContext.open_ticket.ticket_number}
+          />
+        ) : null}
         {activeQuickAction && activeTemplate && (
           <div style={styles.quickPanel}>
             {missingParamIndices(activeTemplate, templateParams).map((i) => {
@@ -663,6 +727,32 @@ export function WhatsAppInboxPanel() {
           </div>
         )}
         <div style={styles.composeRow}>
+          {inboxV2 ? (
+            <>
+              <input
+                ref={attachInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                style={styles.hiddenFile}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void sendAttachment(file)
+                }}
+              />
+              <button
+                type="button"
+                style={{
+                  ...styles.iconBtn,
+                  ...((attachBusy || !inSession) ? styles.iconBtnDisabled : {}),
+                }}
+                disabled={attachBusy || !inSession}
+                aria-label="צירוף תמונה או PDF"
+                onClick={() => attachInputRef.current?.click()}
+              >
+                <WaAttachIcon />
+              </button>
+            </>
+          ) : null}
           {!inSession && readyTemplates.length > 0 ? (
             <button
               type="button"
@@ -716,7 +806,15 @@ export function WhatsAppInboxPanel() {
     <div className="wa-app">
     <Card noPadding style={{ overflow: 'hidden', background: '#fff', border: '1px solid #e9edef' }}>
       <div className="wa-inbox-wrap" data-mobile-pane={mobilePane}>
-        <aside className="wa-inbox-list" style={styles.list} aria-label="רשימת שיחות">
+        <aside
+          className="wa-inbox-list"
+          style={{
+            ...styles.list,
+            position: 'relative',
+            ...(inboxV2 ? styles.listFabPad : null),
+          }}
+          aria-label="רשימת שיחות"
+        >
           <div style={styles.listHeader}>
             <div style={styles.listHeaderTop}>
               {isMobile && mobileMenu ? (
@@ -742,7 +840,23 @@ export function WhatsAppInboxPanel() {
                 style={styles.searchInput}
               />
             </label>
+            {inboxV2 ? (
+              <WhatsAppInboxFilters
+                filters={inboxFilters}
+                buildingOptions={buildingOptions}
+                onChange={setInboxFilters}
+              />
+            ) : null}
           </div>
+          {inboxV2 ? (
+            <WhatsAppStartChatFab
+              buildingId={inboxFilters.buildingId}
+              onStarted={(id) => {
+                setSelectedId(id)
+                void invalidateConversations()
+              }}
+            />
+          ) : null}
           {loading ? (
             <p style={styles.muted}>טוען שיחות…</p>
           ) : conversationsError && conversations.length === 0 ? (
@@ -767,8 +881,11 @@ export function WhatsAppInboxPanel() {
             <p style={styles.muted}>אין שיחות שמתאימות לחיפוש.</p>
           ) : (
             filteredConversations.map((c) => {
+              const row = c as InboxConversation
               const label = residentLabel(c)
               const active = selectedId === c.id
+              const unread =
+                inboxV2 && conversationHasUnread(c.id, row.last_inbound_at ?? null)
               return (
                 <button
                   key={c.id}
@@ -785,10 +902,16 @@ export function WhatsAppInboxPanel() {
                   </span>
                   <span style={styles.listBody}>
                     <span style={styles.listTop}>
-                      <span style={styles.listTitle}>{label}</span>
+                      <span style={styles.listTitle}>
+                        {label}
+                        {unread ? <span style={styles.unreadDot} aria-label="לא נקרא" /> : null}
+                      </span>
                       <span style={styles.listTime}>{waListTime(c.last_message_at)}</span>
                     </span>
-                    <span style={styles.listPreview}>{c.last_message_preview || '—'}</span>
+                    <span style={styles.listPreview}>
+                      {inboxV2 && row.building_name ? `${row.building_name} · ` : ''}
+                      {c.last_message_preview || '—'}
+                    </span>
                   </span>
                 </button>
               )
@@ -869,6 +992,14 @@ function WaSearchIcon() {
   )
 }
 
+function WaAttachIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  )
+}
+
 function WaMenuIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
@@ -901,6 +1032,9 @@ const styles: Record<string, CSSProperties> = {
     minHeight: 0,
     height: '100%',
     background: '#fff',
+  },
+  listFabPad: {
+    paddingBottom: 88,
   },
   listHeader: {
     position: 'sticky',
@@ -1224,6 +1358,23 @@ const styles: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   iconBtnActive: { background: '#fff', color: '#00a884' },
+  iconBtnDisabled: { opacity: 0.45, cursor: 'default' },
+  hiddenFile: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    clip: 'rect(0,0,0,0)',
+  },
+  unreadDot: {
+    display: 'inline-block',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: '#25d366',
+    marginInlineStart: 6,
+    verticalAlign: 'middle',
+  },
   srOnly: {
     position: 'absolute',
     width: 1,

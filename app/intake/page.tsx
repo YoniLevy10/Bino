@@ -166,9 +166,10 @@ function IntakePageContent() {
 
         <div style={styles.card}>
           <div style={styles.headerBlock}>
-            <h1 style={styles.title}>סקר דיירים קצר</h1>
+            <h1 style={styles.title}>רישום דייר — טופס קצר</h1>
             <p style={styles.subtitle}>
-              חמש שאלות בלבד — כדי שנוכל לעדכן את פרטי הקשר שלכם במערכת התחזוקה.
+              שלושה שדות חובה בלבד (שם, טלפון, דירה). לוחצים «שליחה» בסוף. אם משהו לא ברור —
+              פנו להנהלת הבניין.
             </p>
           </div>
 

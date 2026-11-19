@@ -9,10 +9,15 @@ import { isFinancyTransfersEnabled } from '@/lib/bank/flags'
 import { loadClientFinancyCredentials } from '@/lib/bank/financy-credentials'
 import {
   createPayment,
+  extractDebtorPaymentAccount,
+  extractPaymentPsuIds,
   getPaymentStatus,
   inferCreditorAccountType,
+  isFinancyCashAccountType,
   listMerchants,
+  normalizeFinancyAccountType,
 } from '@/lib/bank/financy-gateway'
+import type { FinancyAccount } from '@/lib/bank/types'
 import { BINO_PUBLIC_ORIGIN, getEnvPublicOrigin } from '@/lib/public-origin'
 
 export const dynamic = 'force-dynamic'
@@ -82,19 +87,26 @@ const createBodySchema = z
     description: z.string().max(500).optional(),
     payee_name: z.string().max(200).optional(),
     payee_account: z.string().max(80).optional(),
+    /** Bank-app style fields — composed to BBAN when payee_account omitted. */
+    bank_code: z.string().max(8).optional(),
+    branch_number: z.string().max(8).optional(),
+    account_number: z.string().max(32).optional(),
     creditor_account_type: z.enum(['iban', 'bban']).optional(),
     merchant_id: z.string().max(120).optional(),
+    /** Optional local bank_accounts.id — defaults to first cash (עו״ש/חיסכון) account. */
+    debtor_bank_account_id: z.string().uuid().optional(),
     external_id: z.string().max(64).optional(),
     allow_business: z.boolean().optional(),
   })
   .superRefine((val, ctx) => {
     if (val.merchant_id) return
-    if (!val.payee_name || !val.payee_account) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'נדרש מוטב שמור (merchant) או שם מוטב + מספר חשבון',
-      })
-    }
+    if (val.payee_name && val.payee_account) return
+    if (val.payee_name && val.bank_code && val.branch_number && val.account_number) return
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'נדרש מוטב שמור, או שם מוטב + חשבון (IBAN/BBAN), או שם + בנק/סניף/מספר חשבון',
+    })
   })
 
 export async function POST(req: Request) {
@@ -147,26 +159,108 @@ export async function POST(req: Request) {
     currency: body.currency || 'ILS',
     description: body.description || 'העברה עסקית BINO',
   }
-  if (!body.merchant_id && body.payee_account && body.payee_name) {
+  let resolvedPayeeAccount = body.payee_account?.replace(/\s+/g, '') || ''
+  if (
+    !body.merchant_id &&
+    !resolvedPayeeAccount &&
+    body.bank_code &&
+    body.branch_number &&
+    body.account_number
+  ) {
+    const { buildIsraeliBban } = await import('@/lib/bank-match/bban')
+    const bban = buildIsraeliBban({
+      bankCode: body.bank_code,
+      branchNumber: body.branch_number,
+      accountNumber: body.account_number,
+    })
+    if (!bban) {
+      return NextResponse.json(
+        { error: 'פרטי בנק/סניף/חשבון לא תקינים' },
+        { status: 400 }
+      )
+    }
+    resolvedPayeeAccount = bban
+  }
+
+  if (!body.merchant_id && resolvedPayeeAccount && body.payee_name) {
     paymentInformation.creditorName = body.payee_name
-    paymentInformation.creditorAccountNumber = body.payee_account.replace(/\s+/g, '')
+    paymentInformation.creditorAccountNumber = resolvedPayeeAccount
     paymentInformation.creditorAccountType =
       body.creditor_account_type ||
-      inferCreditorAccountType(body.payee_account)
+      inferCreditorAccountType(resolvedPayeeAccount)
   }
+
+  // Financy PIS: at least one side must be a connected AIS account.
+  // Outgoing pay-to-external-creditor → attach debtor from synced cash account.
+  let debtorAccountsQuery = admin
+    .from('bank_accounts')
+    .select('id, account_type, raw, synced_at')
+    .eq('client_id', auth.ctx.clientId)
+    .eq('provider', 'financy')
+    .order('synced_at', { ascending: false })
+    .limit(20)
+  if (body.debtor_bank_account_id) {
+    debtorAccountsQuery = debtorAccountsQuery.eq('id', body.debtor_bank_account_id)
+  }
+  const { data: debtorRows, error: debtorLoadErr } = await debtorAccountsQuery
+  if (debtorLoadErr) {
+    return NextResponse.json({ error: debtorLoadErr.message }, { status: 500 })
+  }
+  const cashRows = (debtorRows || []).filter((row) =>
+    isFinancyCashAccountType(row.account_type)
+  )
+  // Prefer CHECKING (עו״ש) over savings / other cash products.
+  const debtorSource =
+    cashRows.find((row) => normalizeFinancyAccountType(row.account_type) === 'CHECKING') ||
+    cashRows[0] ||
+    null
+  const debtorRaw = (debtorSource?.raw || null) as FinancyAccount | null
+  const debtor = extractDebtorPaymentAccount(debtorRaw)
+  if (!debtor) {
+    return NextResponse.json(
+      {
+        error:
+          'לא נמצא חשבון עו״ש מחובר ב־Financy לשליחת העברה. סנכרנו בנק ואז נסו שוב.',
+        code: 'FINANCY_DEBTOR_ACCOUNT_REQUIRED',
+      },
+      { status: 400 }
+    )
+  }
+  paymentInformation.debtorAccountType = debtor.accountType
+  paymentInformation.debtorAccountNumber = debtor.accountNumber
 
   const paymentBody: Record<string, unknown> = {
     redirectUrl,
     language: 'he',
     externalId,
+    // Allow business accounts in the bank journey; do NOT force isBusiness —
+    // that locks Financy into corporate-id fields and frozen truncated BBAN.
     allowBusiness: body.allow_business !== false,
     paymentInformation,
   }
   if (body.merchant_id) paymentBody.merchantId = body.merchant_id
+  const psu = extractPaymentPsuIds(debtorRaw)
+  if (psu.psuId) paymentBody.psuId = psu.psuId
+  if (psu.psuCorporateId) paymentBody.psuCorporateId = psu.psuCorporateId
 
   const created = await createPayment(loaded.creds, paymentBody)
   if (!created.ok) {
-    return NextResponse.json({ error: created.error }, { status: 502 })
+    console.error('[bank/transfers] Financy createPayment failed', {
+      status: created.status,
+      error: created.error,
+      hasMerchant: Boolean(body.merchant_id),
+      hasCreditor: Boolean(paymentInformation.creditorAccountNumber),
+      hasDebtor: Boolean(paymentInformation.debtorAccountNumber),
+      debtorType: debtor.accountType,
+      amount: body.amount,
+    })
+    return NextResponse.json(
+      {
+        error: created.error || 'יצירת העברה ב־Financy נכשלה',
+        code: 'FINANCY_PAYMENT_FAILED',
+      },
+      { status: 502 }
+    )
   }
 
   const paymentId = created.data.id
@@ -185,7 +279,7 @@ export async function POST(req: Request) {
       currency: body.currency || 'ILS',
       description: body.description || null,
       payee_name: body.payee_name || null,
-      payee_account: body.payee_account || null,
+      payee_account: resolvedPayeeAccount || body.payee_account || null,
       status,
       pay_url: payUrl,
       raw: created.data as unknown as Record<string, unknown>,
@@ -241,7 +335,7 @@ export async function PATCH(req: Request) {
 
   const { data: existing, error: loadErr } = await admin
     .from('bank_transfers')
-    .select('id, financy_payment_id, status')
+    .select('id, financy_payment_id, status, created_at')
     .eq('client_id', auth.ctx.clientId)
     .eq('id', validated.data.transfer_id)
     .maybeSingle()
@@ -255,7 +349,19 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: remote.error }, { status: 502 })
   }
 
-  const nextStatus = mapRemoteStatus(remote.data.status)
+  let nextStatus = mapRemoteStatus(remote.data.status)
+  // Abandon stale pending bank authorizations (TTL 48h) so UI does not stick forever.
+  const PENDING_TTL_MS = 48 * 60 * 60 * 1000
+  const createdAt = existing.created_at
+    ? new Date(String(existing.created_at)).getTime()
+    : 0
+  if (
+    (nextStatus === 'pending_bank' || nextStatus === 'created') &&
+    createdAt > 0 &&
+    Date.now() - createdAt > PENDING_TTL_MS
+  ) {
+    nextStatus = 'failed'
+  }
   const { data: updated, error: updErr } = await admin
     .from('bank_transfers')
     .update({

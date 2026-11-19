@@ -294,6 +294,7 @@ export async function sendCollectionCharge(
         title: charge.title,
         amount: Number(charge.amount),
         payUrl: publicPayUrl,
+        paymentReference: (charge as { payment_reference?: string | null }).payment_reference,
       })
       smsSent = await sendResidentSMS(
         phone,

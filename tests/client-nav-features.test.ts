@@ -20,7 +20,6 @@ describe('client nav features', () => {
 
   it('setup package excludes all premium addons', () => {
     expect(PREMIUM_NAV_FEATURE_IDS).toEqual([
-      'calendar',
       'attendance',
       'professionals',
       'pilot_sms',
@@ -35,15 +34,24 @@ describe('client nav features', () => {
     for (const required of REQUIRED_NAV_FEATURE_IDS) {
       expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toContain(required)
     }
-    expect(REQUIRED_NAV_FEATURE_IDS).toEqual(['dashboard', 'tickets', 'finance', 'bank'])
+    expect(REQUIRED_NAV_FEATURE_IDS).toEqual([
+      'dashboard',
+      'tasks',
+      'calendar',
+      'tickets',
+      'finance',
+      'bank',
+    ])
     expect(isSetupPackageNavFeatures(getSetupPackageNavFeatures())).toBe(true)
     expect(describeClientNavFeaturesMode(getSetupPackageNavFeatures())).toBe('setup_package')
   })
 
-  it('filters sidebar items when enabled list is set (finance + bank always stay)', () => {
+  it('filters sidebar items when enabled list is set (ops hub + finance always stay)', () => {
     const items = resolveSidebarNavItems(null, ['dashboard', 'tickets', 'projects'])
     expect(items.map((i) => i.id)).toEqual([
       'dashboard',
+      'tasks',
+      'calendar',
       'tickets',
       'projects',
       'finance',
@@ -51,14 +59,16 @@ describe('client nav features', () => {
     ])
   })
 
-  it('blocks calendar when not in enabled list', () => {
-    expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'calendar')).toBe(false)
+  it('keeps calendar as core even when omitted from enabled list', () => {
+    expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'calendar')).toBe(true)
+    expect(isNavFeatureEnabled(['dashboard', 'tickets'], 'tasks')).toBe(true)
   })
 
   it('setup package keeps free tools even when they are not top-level sidebar items', () => {
     expect(SETUP_PACKAGE_NAV_FEATURE_IDS).toEqual([
       'dashboard',
       'tasks',
+      'calendar',
       'tickets',
       'projects',
       'residents',

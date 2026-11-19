@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
+import { requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { upsertGoogleCalendarConnection } from '@/lib/google-calendar'
 import { z } from 'zod'
@@ -20,7 +19,7 @@ const bodySchema = z.object({
 export async function POST(req: Request) {
   const requestId = `gcal-save-${Date.now()}`
   try {
-    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

@@ -32,7 +32,8 @@ export async function GET(req: Request, context: RouteContext) {
         id, name, email_slug, logo_url, manager_phone, sms_sender_name,
         whatsapp_phone_number_id, whatsapp_access_token,
         grow_enabled, grow_user_id,
-        grow_legal_business_name, grow_legal_phone, grow_legal_address, grow_legal_email
+        grow_legal_business_name, grow_legal_phone, grow_legal_address, grow_legal_email,
+        financy_enabled, financy_client_id, financy_user_id
       `
       )
       .eq('id', clientId)
@@ -73,7 +74,24 @@ export async function GET(req: Request, context: RouteContext) {
     grow_legal_phone: string | null
     grow_legal_address: string | null
     grow_legal_email: string | null
+    financy_enabled: boolean | null
+    financy_client_id: string | null
+    financy_user_id: string | null
   }
+
+  const SAVION_PILOT =
+    (process.env.PALGATE_PILOT_CLIENT_ID || '').trim() ||
+    '07773bb3-4969-4bce-8ce2-faab3b26383c'
+  const financyConfigured =
+    c.financy_enabled === true &&
+    Boolean((c.financy_client_id || '').trim()) &&
+    Boolean((c.financy_user_id || '').trim())
+  const palgateStatus =
+    clientId === SAVION_PILOT
+      ? ((process.env.PALGATE_SESSION_TOKEN_HEX || '').trim()
+          ? 'pilot_ready'
+          : 'waiting_vendor')
+      : 'n_a'
 
   const adminEmail =
     (adminsRes.data ?? []).find((a) => a.client_id === clientId)?.email?.trim() || null
@@ -105,6 +123,8 @@ export async function GET(req: Request, context: RouteContext) {
       grow_legal_email: c.grow_legal_email,
     }).ready,
     collectionsAddonEnabled: addonsRes.data?.enabled === true,
+    financyConfigured,
+    palgateStatus: palgateStatus as 'waiting_vendor' | 'pilot_ready' | 'n_a',
     emailSlug,
     emailFrom,
     buildingsCount: (projectsRes.data ?? []).length,

@@ -14,6 +14,8 @@ import {
 /** Always on — cannot be disabled from superadmin. */
 export const REQUIRED_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
+  'tasks',
+  'calendar',
   'tickets',
   'finance',
   'bank',
@@ -29,6 +31,7 @@ export const PREMIUM_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = ADDON_ONLY_S
 export const SETUP_PACKAGE_NAV_FEATURE_IDS: readonly SidebarNavItemId[] = [
   'dashboard',
   'tasks',
+  'calendar',
   'tickets',
   'projects',
   'residents',
@@ -100,9 +103,20 @@ export function isNavFeatureEnabled(
   enabledFeatures: SidebarNavItemId[] | null | undefined,
   featureId: SidebarNavItemId
 ): boolean {
-  // Core nav — always available (same class as dashboard / tickets).
-  if (featureId === 'finance' || featureId === 'bank' || featureId === 'reports') {
-    // bank/reports are workspace tabs under finance — always allowed with finance.
+  // Core nav — always available (ops hub + finance).
+  if (
+    featureId === 'finance' ||
+    featureId === 'bank' ||
+    featureId === 'reports' ||
+    featureId === 'tasks' ||
+    featureId === 'calendar'
+  ) {
+    return true
+  }
+  // Parking / PalGate is never granted by DB allowlist alone — middleware + API
+  // hard-scope to Savion. Treat as "feature exists" for path mapping; tenant
+  // gate is client-id based (isPalGatePilotClient).
+  if (featureId === 'parking') {
     return true
   }
   if (!enabledFeatures || enabledFeatures.length === 0) return true
@@ -154,6 +168,7 @@ const PATH_TO_NAV_ID: Record<string, SidebarNavItemId> = {
   '/qr': 'qr',
   '/settings/whatsapp-templates': 'whatsapp_templates',
   '/pending-residents': 'pending_residents',
+  '/parking': 'parking',
 }
 
 export function navItemIdForPathname(pathname: string): SidebarNavItemId | null {
@@ -217,7 +232,7 @@ export function allNavFeatureOptions(): { id: SidebarNavItemId; label: string }[
 /** Core tabs only — premium add-ons are managed via client_paid_addons in superadmin. */
 export function coreNavFeatureOptions(): { id: SidebarNavItemId; label: string }[] {
   const premium = new Set<string>(PREMIUM_NAV_FEATURE_IDS)
-  return allNavFeatureOptions().filter(({ id }) => !premium.has(id))
+  return allNavFeatureOptions().filter(({ id }) => !premium.has(id) && id !== 'parking')
 }
 
 export function mergePremiumNavFeaturesForSync(

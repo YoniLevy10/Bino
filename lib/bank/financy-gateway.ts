@@ -325,6 +325,94 @@ export function inferCreditorAccountType(account: string): 'iban' | 'bban' {
   return 'bban'
 }
 
+export type FinancyPaymentSideAccount = {
+  accountType: 'iban' | 'bban'
+  accountNumber: string
+}
+
+/**
+ * Resolve debtor (payer) account details for PIS from a Financy AIS account.
+ * Outgoing transfers to an external creditor require a connected debtor account.
+ *
+ * Prefer Israeli BBAN (`bank-branch-number`) over IBAN: Financy's hosted Discount
+ * journey often freezes a truncated account when only IBAN is supplied.
+ */
+export function extractDebtorPaymentAccount(
+  account: FinancyAccount | Record<string, unknown> | null | undefined
+): FinancyPaymentSideAccount | null {
+  if (!account || typeof account !== 'object') return null
+  const a = account as {
+    accountNumber?: unknown
+    iban?: unknown
+    bban?: unknown
+    parsedAccount?: { number?: unknown; branch?: unknown; bank?: unknown }
+  }
+
+  const bank =
+    typeof a.parsedAccount?.bank === 'string' ? a.parsedAccount.bank.trim() : ''
+  const branch =
+    typeof a.parsedAccount?.branch === 'string' ? a.parsedAccount.branch.trim() : ''
+  const number =
+    typeof a.parsedAccount?.number === 'string' ? a.parsedAccount.number.trim() : ''
+  if (bank && branch && number) {
+    // Strip leading zeros on bank code so Discount is `11` not `011`.
+    const bankCode = bank.replace(/^0+(?=\d)/, '') || bank
+    return {
+      accountType: 'bban',
+      accountNumber: `${bankCode}-${branch}-${number}`,
+    }
+  }
+
+  if (typeof a.bban === 'string' && a.bban.trim()) {
+    return {
+      accountType: 'bban',
+      accountNumber: a.bban.replace(/\s+/g, ''),
+    }
+  }
+
+  const ibanCandidate =
+    (typeof a.iban === 'string' && a.iban.trim()) ||
+    (typeof a.accountNumber === 'string' && /^IL\d{2}/i.test(a.accountNumber.replace(/\s+/g, ''))
+      ? a.accountNumber.trim()
+      : '')
+  if (ibanCandidate) {
+    return {
+      accountType: 'iban',
+      accountNumber: ibanCandidate.replace(/\s+/g, '').toUpperCase(),
+    }
+  }
+
+  if (typeof a.accountNumber === 'string' && a.accountNumber.trim()) {
+    const cleaned = a.accountNumber.replace(/\s+/g, '')
+    return {
+      accountType: inferCreditorAccountType(cleaned),
+      accountNumber: cleaned,
+    }
+  }
+  return null
+}
+
+/** National / corporate id hints from AIS raw — prefill Financy PIS when present. */
+export function extractPaymentPsuIds(
+  account: FinancyAccount | Record<string, unknown> | null | undefined
+): { psuId?: string; psuCorporateId?: string } {
+  if (!account || typeof account !== 'object') return {}
+  const a = account as {
+    psuId?: unknown
+    psuCorporateId?: unknown
+    usage?: unknown
+  }
+  const psuId =
+    typeof a.psuId === 'string' && /^\d{5,9}$/.test(a.psuId.trim())
+      ? a.psuId.trim()
+      : undefined
+  const psuCorporateId =
+    typeof a.psuCorporateId === 'string' && /^\d{8,9}$/.test(a.psuCorporateId.trim())
+      ? a.psuCorporateId.trim()
+      : undefined
+  return { psuId, psuCorporateId }
+}
+
 /** Financy list route requires trailing slash (`GET /integrations/` → 200; bare `/integrations` → 404). */
 function normalizeFinancyIntegration(raw: FinancyIntegration): FinancyIntegration {
   const status = String(raw.status || '').toLowerCase()

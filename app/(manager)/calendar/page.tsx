@@ -13,6 +13,7 @@ import { getIsMobileViewport } from '@/lib/mobile-viewport'
 import { useTenantProjectsList } from '@/lib/hooks/use-projects-list'
 import {
   CALENDAR_EVENT_TYPE_LABELS,
+  CALENDAR_EVENT_TYPE_COLORS,
   dateKeyLocal,
   googleCalendarTemplateUrl,
   monthRangeIso,
@@ -20,6 +21,11 @@ import {
   weekRangeIso,
   type CalendarEventType,
 } from '@/lib/calendar-utils'
+import {
+  MAINTENANCE_CADENCE_COLORS,
+  MAINTENANCE_CADENCE_LABELS,
+  type MaintenanceCadence,
+} from '@/lib/maintenance-cadence'
 import { startGoogleCalendarConnect } from '@/lib/google-calendar-connect'
 import { CalendarMonthGrid } from '@/app/components/calendar/CalendarMonthGrid'
 import {
@@ -37,8 +43,6 @@ import {
   theme
 } from '@/app/components/ui'
 import { PageTransitionLoader } from '@/app/components/page-skeleton'
-import { PaidAddonGate } from '@/app/components/PaidAddonGate'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
 
 type CalendarEvent = {
   id: string
@@ -197,11 +201,13 @@ function CalendarPageInner() {
       setGcalBusy(false)
     }
   }
-  const eventCountByDay = useMemo(() => {
-    const map = new Map<string, number>()
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; title: string; event_type: string }>>()
     for (const ev of events) {
       const key = dateKeyLocal(new Date(ev.starts_at))
-      map.set(key, (map.get(key) || 0) + 1)
+      const list = map.get(key) || []
+      list.push({ id: ev.id, title: ev.title, event_type: ev.event_type })
+      map.set(key, list)
     }
     return map
   }, [events])
@@ -355,9 +361,8 @@ function CalendarPageInner() {
 
   return (
     <>
-      <PaidAddonGate addonKey={PAID_ADDON_KEYS.calendar}>
       {isMobile && (
-        <MobileHeader title="יומן משרד" subtitle={monthRange.label} onMenuClick={openMenu} />
+        <MobileHeader title="לוח שנה" subtitle={monthRange.label} onMenuClick={openMenu} />
       )}
 
       <div
@@ -368,10 +373,13 @@ function CalendarPageInner() {
       >
         {!isMobile && (
           <PageHeader
-            title="יומן משרד"
-            subtitle="פגישות ועד, אנשי מקצוע ואירועי משרד"
+            title="לוח שנה"
+            subtitle="פגישות ועד, אנשי מקצוע ומשימות תחזוקה מסונכרנות"
             actions={
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <Button variant="secondary" onClick={() => router.push('/tasks')}>
+                  מעבר למשימות
+                </Button>
                 {gcal?.connected ? (
                   <Button variant="secondary" onClick={() => void disconnectGoogleCalendar()} disabled={gcalBusy}>
                     נתק Google Calendar
@@ -450,7 +458,7 @@ function CalendarPageInner() {
                     year={cursor.year}
                     month={cursor.month}
                     selectedDay={selectedDay}
-                    eventCountByDay={eventCountByDay}
+                    eventsByDay={eventsByDay}
                     onSelectDay={(d) => setSelectedDay(d)}
                   />
                 </div>
@@ -481,6 +489,46 @@ function CalendarPageInner() {
                   ? selectedDay.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })
                   : 'אירועים'}
               </div>
+              <div
+                style={{
+                  padding: '0 20px 8px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  fontSize: 12,
+                  color: theme.colors.textSecondary,
+                }}
+              >
+                {(Object.keys(CALENDAR_EVENT_TYPE_LABELS) as CalendarEventType[]).map((k) => (
+                  <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: CALENDAR_EVENT_TYPE_COLORS[k],
+                        display: 'inline-block',
+                      }}
+                    />
+                    {CALENDAR_EVENT_TYPE_LABELS[k]}
+                  </span>
+                ))}
+                <span style={{ width: '100%', height: 0 }} />
+                {(['weekly', 'monthly', 'quarterly', 'yearly'] as MaintenanceCadence[]).map((c) => (
+                  <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: MAINTENANCE_CADENCE_COLORS[c],
+                        display: 'inline-block',
+                      }}
+                    />
+                    {MAINTENANCE_CADENCE_LABELS[c]}
+                  </span>
+                ))}
+              </div>
 
               {dayEvents.length === 0 ? (
                 <EmptyState
@@ -502,7 +550,17 @@ function CalendarPageInner() {
                       style={styles.eventRow}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={styles.typeBadge}>{CALENDAR_EVENT_TYPE_LABELS[ev.event_type]}</span>
+                        <span
+                          style={{
+                            ...styles.typeBadge,
+                            background:
+                              CALENDAR_EVENT_TYPE_COLORS[ev.event_type] ||
+                              CALENDAR_EVENT_TYPE_COLORS.other,
+                            color: '#fff',
+                          }}
+                        >
+                          {CALENDAR_EVENT_TYPE_LABELS[ev.event_type] || ev.event_type}
+                        </span>
                         <strong>{ev.title}</strong>
                       </div>
                       <div style={styles.eventMeta}>
@@ -606,7 +664,6 @@ function CalendarPageInner() {
           </div>
         ) : null}
       </Drawer>
-      </PaidAddonGate>
     </>
   )
 }

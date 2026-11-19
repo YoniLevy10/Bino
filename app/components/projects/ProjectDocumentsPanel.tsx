@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { toast, errorMessageFromResponseJson } from '@/lib/error-handler'
 import { getIsMobileViewport } from '@/lib/mobile-viewport'
-import { Button, theme } from '../ui'
+import { Button, Select, theme } from '../ui'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 type DocRow = {
@@ -17,11 +17,24 @@ type DocRow = {
   download_url: string | null
 }
 
+export const PROJECT_DOCUMENT_DRAG_MIME = 'application/x-bino-project-document-id'
+
+export type DocumentMoveFolderOption = {
+  id: string
+  label: string
+}
+
 type Props = {
   /** Building scope; optional when folder is independent. */
   projectId?: string | null
   folderId?: string | null
   folderName?: string | null
+  /** Target folders for mobile «העבר לתיקייה» and drag-drop hints. */
+  moveFolderOptions?: DocumentMoveFolderOption[]
+  /** After a successful move — refresh folder counts in parent. */
+  onDocumentMoved?: () => void | Promise<void>
+  /** Bumped by parent after external moves (e.g. drag-drop on folder card). */
+  refreshToken?: number
 }
 
 const FILE_HOVER_BG = '#F3EFE9'
@@ -43,7 +56,14 @@ function mimeLabel(mime: string | null, fileName: string): string {
   return ext ? ext.toUpperCase() : 'קובץ'
 }
 
-export function ProjectDocumentsPanel({ projectId = null, folderId = null, folderName = null }: Props) {
+export function ProjectDocumentsPanel({
+  projectId = null,
+  folderId = null,
+  folderName = null,
+  moveFolderOptions = [],
+  onDocumentMoved,
+  refreshToken = 0,
+}: Props) {
   const [docs, setDocs] = useState<DocRow[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -53,8 +73,10 @@ export function ProjectDocumentsPanel({ projectId = null, folderId = null, folde
   const [signUrl, setSignUrl] = useState('')
   const [sendVia, setSendVia] = useState<'none' | 'sms' | 'whatsapp'>('whatsapp')
   const [signSending, setSignSending] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [movingDocId, setMovingDocId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   useFocusTrap(modalRef, signDoc != null)
@@ -89,6 +111,11 @@ export function ProjectDocumentsPanel({ projectId = null, folderId = null, folde
     void load()
   }, [load])
 
+  useEffect(() => {
+    if (refreshToken === 0) return
+    void load()
+  }, [refreshToken, load])
+
   async function onUpload(file: File) {
     setUploading(true)
     try {
@@ -110,6 +137,37 @@ export function ProjectDocumentsPanel({ projectId = null, folderId = null, folde
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
     }
+  }
+
+  async function onMoveToFolder(doc: DocRow, targetFolderId: string) {
+    if (!targetFolderId || targetFolderId === folderId) return
+    setMovingDocId(doc.id)
+    try {
+      const res = await fetchWithTimeout('/api/projects/documents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: doc.id, folder_id: targetFolderId }),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(errorMessageFromResponseJson(json, `שגיאה ${res.status}`))
+      toast.success('הקובץ הועבר לתיקיה')
+      setDocs((prev) => prev.filter((d) => d.id !== doc.id))
+      await onDocumentMoved?.()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'העברה נכשלה')
+    } finally {
+      setMovingDocId(null)
+    }
+  }
+
+  function onDocDragStart(e: React.DragEvent, docId: string) {
+    setDraggingId(docId)
+    e.dataTransfer.setData(PROJECT_DOCUMENT_DRAG_MIME, docId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function onDocDragEnd() {
+    setDraggingId(null)
   }
 
   async function onDelete(doc: DocRow) {
@@ -218,6 +276,9 @@ export function ProjectDocumentsPanel({ projectId = null, folderId = null, folde
             return (
               <div
                 key={doc.id}
+                draggable={!isMobile && moveFolderOptions.length > 0}
+                onDragStart={(e) => onDocDragStart(e, doc.id)}
+                onDragEnd={onDocDragEnd}
                 onMouseEnter={() => setHoveredId(doc.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 style={{
@@ -226,6 +287,8 @@ export function ProjectDocumentsPanel({ projectId = null, folderId = null, folde
                   borderColor: theme.colors.border,
                   transform: hovered ? 'translateY(-1px)' : 'none',
                   width: isMobile ? '100%' : undefined,
+                  opacity: draggingId === doc.id ? 0.55 : 1,
+                  cursor: !isMobile && moveFolderOptions.length > 0 ? 'grab' : undefined,
                 }}
               >
                 <span style={styles.cardName}>{doc.file_name}</span>
@@ -235,6 +298,21 @@ export function ProjectDocumentsPanel({ projectId = null, folderId = null, folde
                 <span style={styles.cardFooter}>
                   {new Date(doc.created_at).toLocaleDateString('he-IL')}
                 </span>
+                {isMobile && moveFolderOptions.length > 0 ? (
+                  <div style={styles.moveRow}>
+                    <span style={styles.moveLabel}>העבר לתיקייה</span>
+                    <Select
+                      value=""
+                      onChange={(targetId) => {
+                        if (targetId && movingDocId !== doc.id) void onMoveToFolder(doc, targetId)
+                      }}
+                      options={[
+                        { label: 'בחרו תיקיה…', value: '' },
+                        ...moveFolderOptions.map((f) => ({ label: f.label, value: f.id })),
+                      ]}
+                    />
+                  </div>
+                ) : null}
                 <div style={styles.cardActions}>
                   {doc.download_url ? (
                     <a
@@ -423,6 +501,17 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 4,
     fontSize: 12,
     color: theme.colors.textMuted,
+  },
+  moveRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    marginTop: 10,
+  },
+  moveLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.colors.textSecondary,
   },
   cardActions: {
     display: 'flex',

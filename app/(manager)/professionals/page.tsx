@@ -907,7 +907,7 @@ function statusPill(active: boolean): CSSProperties {
 const styles: Record<string, CSSProperties> = {
   content: {
     padding: '32px 40px 48px',
-    maxWidth: 1200,
+    maxWidth: 1400,
     margin: '0 auto',
     width: '100%',
     minWidth: 0,

@@ -43,6 +43,7 @@ import {
   type ReporterClosedNotifyApiBody,
 } from '@/lib/reporter-closed-notify-toast'
 import { AttentionRequired } from '@/app/components/recommendations/AttentionRequired'
+import { MorningOpsBoard } from '@/app/components/dashboard/MorningOpsBoard'
 import {
   MobileHeader,
   useMobileMenu,
@@ -1005,10 +1006,11 @@ export default function DashboardPage() {
           />
         ) : (
           <>
+            <MorningOpsBoard />
             {isMobile ? (
               <>
                 <div style={styles.mobileHeroCard}>
-                  <p style={styles.mobileHeroEyebrow}>מה דורש טיפול היום</p>
+                  <p style={styles.mobileHeroEyebrow}>תקלות — משני לבוקר התפעולי</p>
                   <div style={styles.mobileHeroRow}>
                     <p style={styles.mobileHeroLabel}>תקלות פתוחות</p>
                     <p style={styles.mobileHeroValue}>{openTicketsCount}</p>
@@ -1186,32 +1188,19 @@ export default function DashboardPage() {
             )}
 
             {!isMobile && (
-              <>
-                <div style={styles.tasksShortcut}>
-                  <div>
-                    <div style={styles.tasksShortcutTitle}>משימות אחזקה</div>
-                    <div style={styles.tasksShortcutSub}>
-                      {openTasksCount ?? 0} משימות פתוחות לטיפול
-                    </div>
-                  </div>
-                  <Button variant="secondary" onClick={() => router.push('/tasks')}>
-                    פתיחת המשימות
-                  </Button>
-                </div>
-                <KpiRow columns={3} isMobile={false}>
-                  <KpiCard
-                    label="נסגרו"
-                    value={stats.closed}
-                    onClick={() => router.push('/summary?tab=history')}
-                  />
-                  {residentsCount !== null && (
-                    <KpiCard label="דיירים רשומים" value={residentsCount} />
-                  )}
-                  {workersCount !== null && (
-                    <KpiCard label="עובדים פעילים" value={workersCount} />
-                  )}
-                </KpiRow>
-              </>
+              <KpiRow columns={3} isMobile={false}>
+                <KpiCard
+                  label="נסגרו"
+                  value={stats.closed}
+                  onClick={() => router.push('/summary?tab=history')}
+                />
+                {residentsCount !== null && (
+                  <KpiCard label="דיירים רשומים" value={residentsCount} />
+                )}
+                {workersCount !== null && (
+                  <KpiCard label="עובדים פעילים" value={workersCount} />
+                )}
+              </KpiRow>
             )}
 
             {!isMobile && (

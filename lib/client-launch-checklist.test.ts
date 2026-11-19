@@ -17,6 +17,8 @@ const base: ClientLaunchSnapshot = {
   growUserId: 'uid',
   growLegalReady: true,
   collectionsAddonEnabled: true,
+  financyConfigured: true,
+  palgateStatus: 'n_a',
   emailSlug: 'bamakor',
   emailFrom: 'Bamakor <bamakor@bino.casa>',
   buildingsCount: 1,
@@ -25,18 +27,21 @@ const base: ClientLaunchSnapshot = {
 }
 
 describe('LAUNCH_PLAYBOOK_HEADER', () => {
-  it('lists 7 ordered live steps ending with live smoke', () => {
-    expect(LAUNCH_PLAYBOOK_HEADER.map((s) => s.step)).toEqual([1, 2, 3, 4, 5, 6, 7])
+  it('lists 8 ordered live steps including Financy then live smoke', () => {
+    expect(LAUNCH_PLAYBOOK_HEADER.map((s) => s.step)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
     expect(LAUNCH_PLAYBOOK_HEADER[1]?.title).toMatch(/019/)
     expect(LAUNCH_PLAYBOOK_HEADER[2]?.title).toMatch(/Meta/)
     expect(LAUNCH_PLAYBOOK_HEADER[4]?.title).toMatch(/Grow|GetLink/i)
-    expect(LAUNCH_PLAYBOOK_HEADER[6]?.title).toMatch(/בדיקות חיות|מקצה לקצה/)
+    expect(LAUNCH_PLAYBOOK_HEADER[5]?.title).toMatch(/Financy/)
+    expect(LAUNCH_PLAYBOOK_HEADER[6]?.title).toMatch(/Resend|תפעולי/)
+    expect(LAUNCH_PLAYBOOK_HEADER[7]?.title).toMatch(/בדיקות חיות|מקצה לקצה/)
   })
 
   it('exports live smoke checks for soft-launch', () => {
     expect(LIVE_SMOKE_CHECKS.length).toBeGreaterThanOrEqual(4)
     expect(LIVE_SMOKE_CHECKS.map((c) => c.id)).toContain('wa_inbound_ticket')
     expect(LIVE_SMOKE_CHECKS.map((c) => c.id)).toContain('grow_pay_1ils')
+    expect(LIVE_SMOKE_CHECKS.map((c) => c.id)).toContain('maintenance_qr_pilot')
   })
 })
 

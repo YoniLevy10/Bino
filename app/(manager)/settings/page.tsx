@@ -19,6 +19,7 @@ import {
   PageHeader,
   Card,
   Button,
+  FilterTabs,
   LoadingSpinner,
   theme
 } from '@/app/components/ui'
@@ -34,15 +35,20 @@ import {
 } from '@/lib/grow-project-status'
 import { loadGrowOnboardDraft, saveGrowOnboardDraft } from '@/lib/grow-onboard-draft'
 import { FinancySettingsPanel } from '@/app/components/settings/FinancySettingsPanel'
+import { SettingsConnectionsHub } from '@/app/components/settings/SettingsConnectionsHub'
+import { ParkingSettingsPanel } from '@/app/components/settings/ParkingSettingsPanel'
+import { useSidebarNav } from '@/app/components/SidebarNavContext'
 
 type ClientRow = SettingsReadRow
 
 const TABS = [
+  { id: 'connections', label: 'חיבורים' },
   { id: 'general', label: 'כללי' },
   { id: 'notifications', label: 'התראות' },
   { id: 'whatsapp', label: 'וואטסאפ / הטמעה' },
   { id: 'financy', label: 'Financy / בנק' },
   { id: 'grow', label: 'Grow' },
+  { id: 'parking', label: 'חניונים' },
   { id: 'ios', label: 'iOS' },
   { id: 'team', label: 'משתמשי משרד' },
 ] as const
@@ -54,7 +60,7 @@ function resolveSettingsTab(raw: string | null): TabId {
   if (raw === 'navigation') return 'general'
   if (raw === 'greeninvoice' || raw === 'morning') return 'grow'
   if (raw && TABS.some((t) => t.id === raw)) return raw as TabId
-  return 'general'
+  return 'connections'
 }
 
 type OrgUser = {
@@ -69,7 +75,16 @@ function SettingsPageInner() {
   const router = useRouter()
   const { openMenu } = useMobileMenu()
   const searchParams = useSearchParams()
-  const activeTab = resolveSettingsTab(searchParams.get('tab'))
+  const { orderIds } = useSidebarNav()
+  const showParkingTab = orderIds.includes('parking')
+  const rawTab = resolveSettingsTab(searchParams.get('tab'))
+  const activeTab: TabId =
+    rawTab === 'parking' && !showParkingTab ? 'connections' : rawTab
+
+  const visibleTabs = useMemo(
+    () => TABS.filter((t) => (t.id === 'parking' ? showParkingTab : true)),
+    [showParkingTab]
+  )
 
   function goTab(id: TabId) {
     router.replace(`/settings?tab=${encodeURIComponent(id)}`, { scroll: false })
@@ -890,7 +905,7 @@ function SettingsPageInner() {
         }}
       >
         {!isMobile && (
-          <PageHeader title="הגדרות" subtitle="כללי, התראות ווואטסאפ" />
+          <PageHeader title="הגדרות" subtitle="חיבורים, כללי, התראות וצוות" />
         )}
 
         {loadErrorBanner ? (
@@ -969,23 +984,26 @@ function SettingsPageInner() {
           <PageTransitionLoader />
         ) : (
           <>
-            <div className="app-error-log-tabs" style={styles.tabBar} role="tablist" aria-label="הגדרות">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === t.id}
-                  onClick={() => goTab(t.id)}
-                  style={{
-                    ...styles.tabBtn,
-                    ...(activeTab === t.id ? styles.tabBtnActive : {}),
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div style={{ marginBottom: 20 }}>
+              <FilterTabs
+                options={visibleTabs.map((t) => ({ label: t.label, value: t.id }))}
+                value={activeTab}
+                onChange={(v) => goTab(v as TabId)}
+              />
             </div>
+
+            {activeTab === 'connections' && (
+              <SettingsConnectionsHub
+                whatsappPhoneNumberId={waPhoneNumberId}
+                whatsappTokenSet={whatsappAccessTokenSet}
+                growEnabled={growEnabled}
+                growUserId={growUserId}
+                growOnboardStatus={growOnboardStatus}
+                onOpenDetail={(tab) => goTab(tab)}
+              />
+            )}
+
+            {activeTab === 'parking' && <ParkingSettingsPanel />}
 
             {activeTab === 'general' && (
               <Card noPadding>
@@ -2066,7 +2084,7 @@ export default function SettingsPage() {
 const styles: Record<string, CSSProperties> = {
   content: {
     padding: '32px 40px',
-    maxWidth: '900px',
+    maxWidth: '1400px',
     margin: '0 auto',
     outline: 'none',
     boxShadow: 'none',
@@ -2075,18 +2093,6 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'center',
     padding: '80px 0',
-  },
-  tabBar: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-    marginBottom: '24px',
-    padding: '12px 14px',
-    background: theme.colors.mutedSurface,
-    borderRadius: theme.radius.xl,
-    border: `1px solid ${theme.colors.border}`,
-    position: 'relative',
-    zIndex: 2,
   },
   waGrid: {
     display: 'grid',
@@ -2098,27 +2104,6 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
-  },
-  tabBtn: {
-    padding: '10px 16px',
-    borderRadius: theme.radius.md,
-    border: `1px solid ${theme.colors.border}`,
-    background: theme.colors.surface,
-    fontSize: '14px',
-    fontWeight: 500,
-    color: theme.colors.textSecondary,
-    cursor: 'pointer',
-    position: 'relative',
-    zIndex: 2,
-    minHeight: 44,
-    fontFamily: 'inherit',
-    transition: `background ${theme.motion.fast} ease, color ${theme.motion.fast} ease, border-color ${theme.motion.fast} ease`,
-  },
-  tabBtnActive: {
-    border: `1px solid ${theme.colors.primary}`,
-    background: theme.colors.blueSoft,
-    color: theme.colors.primary,
-    fontWeight: 600,
   },
   cardInner: {
     padding: '22px 24px',

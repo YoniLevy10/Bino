@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { PAID_ADDON_KEYS } from '@/lib/paid-addons'
-import { requireSessionClientPaidAddon } from '@/lib/require-paid-addon'
+import { requireSessionClientId, requireSessionWriteAccess } from '@/lib/api-auth'
 import { checkAuthenticatedPostRouteLimit } from '@/lib/rate-limit'
 import { createCalendarEventBodySchema } from '@/lib/api-body-schemas'
 import { syncEventToGoogleCalendar } from '@/lib/google-calendar'
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar)
+    const auth = await requireSessionClientId()
     if (!auth.ok) return auth.response
 
     const from = req.nextUrl.searchParams.get('from')
@@ -59,7 +58,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const requestId = `calendar-event-${Date.now()}`
   try {
-    const auth = await requireSessionClientPaidAddon(PAID_ADDON_KEYS.calendar, { write: true })
+    const auth = await requireSessionWriteAccess()
     if (!auth.ok) return auth.response
 
     const admin = getSupabaseAdmin()

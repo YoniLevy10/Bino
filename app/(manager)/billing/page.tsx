@@ -371,7 +371,7 @@ export default function BillingPage() {
 const styles: Record<string, CSSProperties> = {
   content: {
     padding: '32px 40px',
-    maxWidth: '1000px',
+    maxWidth: '1400px',
     margin: '0 auto',
     width: '100%',
     boxSizing: 'border-box',

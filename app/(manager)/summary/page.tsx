@@ -31,6 +31,7 @@ import {
   KpiRow,
   Card,
   Button,
+  FilterTabs,
   Select,
   SearchInput,
   EmptyState,
@@ -57,6 +58,8 @@ import { ImageLightbox } from '@/app/components/shared/ImageLightbox'
 const KPI_CACHE_KEY = 'bamakor_summary_kpi_v1'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const SUMMARY_FETCH_TIMEOUT_MS = 30_000
+const TICKETS_IN_RANGE_EXPANDED_KEY = 'bino_summary_tickets_in_range_expanded'
+const TICKETS_IN_RANGE_COLLAPSED_VISIBLE = 3
 
 type PageTab = 'summary' | 'history'
 
@@ -223,6 +226,14 @@ export default function SummaryPage() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [lightboxKind, setLightboxKind] = useState<'image' | 'video'>('image')
   const [isMobile, setIsMobile] = useState(false)
+  const [ticketsInRangeExpanded, setTicketsInRangeExpanded] = useState(() => {
+    if (typeof sessionStorage === 'undefined') return false
+    try {
+      return sessionStorage.getItem(TICKETS_IN_RANGE_EXPANDED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const [period, setPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('week')
   const [historyPeriod, setHistoryPeriod] = useState<'week' | 'month' | 'all' | 'custom'>('month')
   const [customFrom, setCustomFrom] = useState('')
@@ -490,6 +501,24 @@ export default function SummaryPage() {
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
   }, [ticketsInRange, activeRange])
+
+  const ticketsInRangeListCap = isMobile ? 8 : 12
+  const ticketsInRangeVisible = ticketsInRangeExpanded
+    ? ticketsInRangeSorted.slice(0, ticketsInRangeListCap)
+    : ticketsInRangeSorted.slice(0, TICKETS_IN_RANGE_COLLAPSED_VISIBLE)
+  const ticketsInRangeCanExpand = ticketsInRangeSorted.length > TICKETS_IN_RANGE_COLLAPSED_VISIBLE
+
+  function toggleTicketsInRangeExpanded() {
+    setTicketsInRangeExpanded((prev) => {
+      const next = !prev
+      try {
+        sessionStorage.setItem(TICKETS_IN_RANGE_EXPANDED_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore quota / private mode */
+      }
+      return next
+    })
+  }
 
   const historyClosedTickets = historyDataMatchesPeriod ? historyTickets : []
 
@@ -984,27 +1013,15 @@ export default function SummaryPage() {
           </div>
         )}
 
-        <div style={styles.pageTabBar}>
-          <button
-            type="button"
-            onClick={() => setPageTab('summary')}
-            style={{
-              ...styles.pageTab,
-              ...(pageTab === 'summary' ? styles.pageTabActive : styles.pageTabInactive),
-            }}
-          >
-            סיכום
-          </button>
-          <button
-            type="button"
-            onClick={() => setPageTab('history')}
-            style={{
-              ...styles.pageTab,
-              ...(pageTab === 'history' ? styles.pageTabActive : styles.pageTabInactive),
-            }}
-          >
-            היסטוריה
-          </button>
+        <div style={{ marginBottom: 20 }}>
+          <FilterTabs
+            options={[
+              { label: 'סיכום', value: 'summary' },
+              { label: 'היסטוריה', value: 'history' },
+            ]}
+            value={pageTab}
+            onChange={(v) => setPageTab(v as PageTab)}
+          />
         </div>
 
         {activeTabPeriod === 'custom' && (
@@ -1291,7 +1308,7 @@ export default function SummaryPage() {
                 style={{ marginBottom: '24px' }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 16px 16px' }}>
-                  {ticketsInRangeSorted.slice(0, isMobile ? 8 : 12).map((t) => (
+                  {ticketsInRangeVisible.map((t) => (
                     <button
                       key={t.id}
                       type="button"
@@ -1320,6 +1337,15 @@ export default function SummaryPage() {
                       </div>
                     </button>
                   ))}
+                  {ticketsInRangeCanExpand ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 4 }}>
+                      <Button type="button" variant="secondary" size="sm" onClick={toggleTicketsInRangeExpanded}>
+                        {ticketsInRangeExpanded
+                          ? 'הצג פחות'
+                          : `הצג עוד (${Math.min(ticketsInRangeSorted.length, ticketsInRangeListCap) - TICKETS_IN_RANGE_COLLAPSED_VISIBLE})`}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               </Card>
             )}

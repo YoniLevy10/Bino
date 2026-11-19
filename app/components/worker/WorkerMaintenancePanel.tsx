@@ -5,6 +5,11 @@ import { fetchWithTimeout, MUTATION_FETCH_TIMEOUT_MS, WORKER_PHOTO_TIMEOUT_MS } 
 import { toast } from '@/lib/error-handler'
 import { Button, LoadingSpinner, type theme } from '../ui'
 import { WorkerMaintenanceCreate } from './WorkerMaintenanceCreate'
+import {
+  normalizeChecklistItems,
+  toggleChecklistItem,
+  type MaintenanceChecklistItem,
+} from '@/lib/maintenance-checklist'
 
 type MaintenanceTask = {
   id: string
@@ -15,6 +20,7 @@ type MaintenanceTask = {
   due_at: string | null
   notes: string | null
   source_ticket_id?: string | null
+  checklist_items?: MaintenanceChecklistItem[] | null
   projects?: { name?: string | null; address?: string | null } | { name?: string | null; address?: string | null }[] | null
   tickets?:
     | { id?: string | null; ticket_number?: number | null }
@@ -69,7 +75,12 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
         return
       }
       const json = (await res.json()) as { tasks?: MaintenanceTask[] }
-      setTasks(json.tasks || [])
+      setTasks(
+        (json.tasks || []).map((t) => ({
+          ...t,
+          checklist_items: normalizeChecklistItems(t.checklist_items),
+        }))
+      )
     } catch {
       toast.error('טעינת משימות נכשלה')
     } finally {
@@ -85,13 +96,15 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
     if (refreshKey > 0) void load({ silent: true })
   }, [refreshKey, load])
 
-  async function updateStatus(taskId: string, status: string) {
+  async function patchTask(
+    taskId: string,
+    body: Record<string, unknown>,
+    okMsg?: string
+  ) {
     if (busyId) return
     setBusyId(taskId)
     const previous = tasks
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)))
     try {
-      const notes = noteById[taskId]?.trim() || undefined
       const res = await fetchWithTimeout(
         '/api/worker/maintenance-tasks',
         {
@@ -100,8 +113,8 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
           body: JSON.stringify({
             token,
             task_id: taskId,
-            status,
-            notes: notes || null,
+            notes: noteById[taskId]?.trim() || null,
+            ...body,
           }),
         },
         MUTATION_FETCH_TIMEOUT_MS
@@ -111,7 +124,7 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
         toast.error('עדכון נכשל')
         return
       }
-      toast.success(status === 'DONE' ? 'המשימה הושלמה' : 'הסטטוס עודכן')
+      if (okMsg) toast.success(okMsg)
       void load({ silent: true })
     } catch {
       setTasks(previous)
@@ -119,6 +132,19 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
     } finally {
       setBusyId(null)
     }
+  }
+
+  async function updateStatus(taskId: string, status: string) {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)))
+    await patchTask(taskId, { status }, status === 'DONE' ? 'המשימה הושלמה' : 'הסטטוס עודכן')
+  }
+
+  async function onToggleChecklist(task: MaintenanceTask, itemId: string, done: boolean) {
+    const next = toggleChecklistItem(normalizeChecklistItems(task.checklist_items), itemId, done)
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, checklist_items: next } : t))
+    )
+    await patchTask(task.id, { checklist_items: next })
   }
 
   async function uploadPhoto(taskId: string, file: File) {
@@ -153,11 +179,15 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
       {!loading && tasks.length === 0 ? (
         <div style={emptyStyles(colors).box} className="lg-glass">
           <p style={emptyStyles(colors).title}>אין משימות אחזקה להיום</p>
-          <p style={emptyStyles(colors).sub}>אפשר לפתוח משימה מכאן, או לחכות לשיוך מהמנהל.</p>
+          <p style={emptyStyles(colors).sub}>
+            כשיש משימה — סמנו את סעיפי הצ׳ק־ליסט ואז «סמן הושלם». עד אז אפשר לפתוח משימה חדשה או
+            לחכות לשיוך מהמנהל.
+          </p>
         </div>
       ) : null}
       {tasks.map((t) => {
         const busy = busyId === t.id
+        const checklist = normalizeChecklistItems(t.checklist_items)
         const statusLabel =
           t.status === 'IN_PROGRESS' ? 'בביצוע' : t.status === 'DONE' ? 'הושלמה' : 'ממתינה'
         return (
@@ -176,6 +206,26 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
             ) : null}
             {t.description ? <p style={cardStyles(colors).desc}>{t.description}</p> : null}
 
+            {checklist.length > 0 ? (
+              <div style={cardStyles(colors).checklist}>
+                <div style={cardStyles(colors).fieldLabel}>צ׳ק־ליסט</div>
+                {checklist.map((item) => (
+                  <label key={item.id} style={cardStyles(colors).checkRow}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.done_at)}
+                      disabled={busy || t.status === 'DONE'}
+                      onChange={(e) => void onToggleChecklist(t, item.id, e.target.checked)}
+                      style={{ width: 18, height: 18 }}
+                    />
+                    <span style={item.done_at ? { textDecoration: 'line-through', opacity: 0.7 } : undefined}>
+                      {item.text}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
+
             <label style={cardStyles(colors).field}>
               <span style={cardStyles(colors).fieldLabel}>הערה שלך</span>
               <textarea
@@ -190,11 +240,11 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
 
             <div style={cardStyles(colors).attachBox}>
               <div style={cardStyles(colors).attachText}>
-                <div style={cardStyles(colors).attachTitle}>תמונה / קובץ</div>
+                <div style={cardStyles(colors).attachTitle}>תמונה לפני / אחרי (מומלץ)</div>
                 <div style={cardStyles(colors).attachHint}>
                   {attachedNameById[t.id]
                     ? `צורף: ${attachedNameById[t.id]}`
-                    : 'צלמו או בחרו קובץ לתיעוד הביצוע'}
+                    : 'צלמו תיעוד לפני סגירה — עוזר לזיכרון התפעולי'}
                 </div>
               </div>
               <Button
@@ -232,8 +282,9 @@ export function WorkerMaintenancePanel({ token, colors, refreshKey = 0 }: Props)
                   type="button"
                   disabled={busy}
                   onClick={() => void updateStatus(t.id, 'DONE')}
+                  style={{ fontWeight: 800 }}
                 >
-                  סיום / השלמה
+                  סמן הושלם
                 </Button>
               ) : null}
             </div>
@@ -305,6 +356,15 @@ function cardStyles(colors: typeof theme.colors): Record<string, CSSProperties> 
       background: colors.primaryMuted,
     },
     desc: { fontSize: 14, margin: '0 0 12px', lineHeight: 1.45, wordBreak: 'break-word' },
+    checklist: { marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 },
+    checkRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      fontSize: 14,
+      color: colors.textPrimary,
+      minHeight: 40,
+    },
     field: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 },
     fieldLabel: { fontSize: 13, fontWeight: 700, color: colors.textSecondary },
     textarea: {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
-import { Drawer, Button, Select, theme } from '../ui'
+import { Drawer, Button, Select, StatusBadge, PriorityDot, theme } from '../ui'
 import { TicketWhatsAppThread } from './TicketWhatsAppThread'
 import { TicketAttachmentThumb } from '../shared/TicketAttachmentThumb'
 import { CollapsibleSection } from '../shared/CollapsibleSection'
@@ -293,6 +293,15 @@ export function TicketDetailDrawer({
 
   const drawerTitle = selectedTicket ? `תקלה #${selectedTicket.ticket_number}` : ''
   const drawerSubtitle = selectedTicket?.project_name || 'פרטי בניין'
+  const ticketAgeLabel = selectedTicket?.created_at
+    ? (() => {
+        const ms = Date.now() - new Date(selectedTicket.created_at).getTime()
+        const h = Math.floor(ms / 3_600_000)
+        if (h < 1) return 'לפני פחות משעה'
+        if (h < 48) return `לפני ${h} שע׳`
+        return `לפני ${Math.floor(h / 24)} ימים`
+      })()
+    : null
 
   const drawerBody = selectedTicket ? (
         <div style={{ ...styles.drawerContent, ...(isMobile ? styles.drawerContentMobile : {}) }}>
@@ -316,6 +325,57 @@ export function TicketDetailDrawer({
 
           {activeTab === 'details' && (
             <>
+              <div style={styles.decisionHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <StatusBadge status={draftStatus || selectedTicket.status} />
+                  {draftPriority || selectedTicket.priority ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                      <PriorityDot priority={draftPriority || selectedTicket.priority || 'MEDIUM'} />
+                      עדיפות
+                    </span>
+                  ) : null}
+                  {ticketAgeLabel ? (
+                    <span style={{ fontSize: 12, color: theme.colors.textMuted, fontWeight: 600 }}>
+                      {ticketAgeLabel}
+                    </span>
+                  ) : null}
+                </div>
+                <div style={styles.decisionZone}>
+                  <div style={styles.drawerLabel}>שיוך עובד — החלטה ראשונה</div>
+                  <select
+                    className="app-select-input"
+                    value={draftWorkerId}
+                    onChange={(e) => onWorkerChange(e.target.value)}
+                    style={{ ...styles.drawerSelect, ...mobileComfort }}
+                  >
+                    <option value="">לא משויך</option>
+                    {Object.entries(workersMap).map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedTicket.status !== 'CLOSED' ? (
+                    <SuggestWorkerAssignButton
+                      ticketId={selectedTicket.id}
+                      assignedWorkerId={draftWorkerId || selectedTicket.assigned_worker_id}
+                      ticketCreatedAt={selectedTicket.created_at}
+                      onAssigned={(workerId) => onWorkerChange(workerId)}
+                    />
+                  ) : null}
+                  <div style={styles.drawerLabel}>סטטוס</div>
+                  <Select
+                    value={draftStatus}
+                    onChange={onStatusChange}
+                    options={TICKET_STATUSES.map((status) => ({
+                      value: status,
+                      label: ticketStatusLabelHe(status),
+                    }))}
+                    style={{ width: '100%', ...mobileComfort }}
+                  />
+                </div>
+              </div>
+
               <div style={styles.drawerSection}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <div style={styles.drawerLabel}>תיאור</div>
@@ -344,47 +404,6 @@ export function TicketDetailDrawer({
                     <div style={styles.translationLabel}>תרגום</div>
                     {translation}
                   </div>
-                ) : null}
-              </div>
-
-              <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>סטטוס</div>
-                <select
-                  className="app-select-input"
-                  value={draftStatus}
-                  onChange={(e) => onStatusChange(e.target.value)}
-                  style={{ ...styles.drawerSelect, ...mobileComfort }}
-                >
-                  {TICKET_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {ticketStatusLabelHe(status)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.drawerSection}>
-                <div style={styles.drawerLabel}>עובד משויך</div>
-                <select
-                  className="app-select-input"
-                  value={draftWorkerId}
-                  onChange={(e) => onWorkerChange(e.target.value)}
-                  style={{ ...styles.drawerSelect, ...mobileComfort }}
-                >
-                  <option value="">לא משויך</option>
-                  {Object.entries(workersMap).map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                {selectedTicket.status !== 'CLOSED' ? (
-                  <SuggestWorkerAssignButton
-                    ticketId={selectedTicket.id}
-                    assignedWorkerId={draftWorkerId || selectedTicket.assigned_worker_id}
-                    ticketCreatedAt={selectedTicket.created_at}
-                    onAssigned={(workerId) => onWorkerChange(workerId)}
-                  />
                 ) : null}
               </div>
 
@@ -720,6 +739,21 @@ const styles: Record<string, CSSProperties> = {
   },
   drawerContentMobile: {
     gap: '18px',
+  },
+  decisionHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: '14px 16px',
+    borderRadius: theme.radius.lg,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    boxShadow: theme.shadows.xs,
+  },
+  decisionZone: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
   },
   drawerSection: {
     display: 'flex',

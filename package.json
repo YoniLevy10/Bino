@@ -28,7 +28,8 @@
     "test:bamakor-smoke": "node scripts/agent-bamakor-smoke.mjs",
     "test:staging-smoke": "node scripts/agent-staging-smoke.mjs",
     "seed:staging": "node scripts/seed-staging-demo.mjs",
-    "db:staging:start": "npx supabase start"
+    "db:staging:start": "npx supabase start",
+    "worker:bank-scraper": "node workers/bank-scraper/server.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.78.0",
@@ -40,7 +41,10 @@
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^7.0.93",
     "exceljs": "^4.4.0",
+    "israeli-bank-scrapers": "^6.13.0",
+    "jszip": "^3.10.2",
     "next": "16.4.5",
+    "pdf-parse": "^2.4.5",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",

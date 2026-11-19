@@ -7,6 +7,7 @@ export type WhatsAppInboxContext = {
   resident_name: string
   building_name: string | null
   open_ticket: {
+    id: string
     ticket_number: number
     description: string
   } | null
@@ -39,7 +40,7 @@ export async function loadWhatsAppInboxContext(
   opts: { phone: string; residentId?: string | null }
 ): Promise<WhatsAppInboxContext> {
   const normalizedPhone = normalizePhone(opts.phone)
-  const ticketSelect = 'ticket_number, description, status, projects(name)'
+  const ticketSelect = 'id, ticket_number, description, status, projects(name)'
 
   const residentPromise = (async () => {
     if (opts.residentId) {
@@ -98,6 +99,7 @@ export async function loadWhatsAppInboxContext(
 
   const openRow = openQuery.data?.[0] as
     | {
+        id: string
         ticket_number: number
         description: string | null
         projects?: { name?: string | null } | { name?: string | null }[]
@@ -106,6 +108,7 @@ export async function loadWhatsAppInboxContext(
 
   const open_ticket = openRow
     ? {
+        id: openRow.id,
         ticket_number: openRow.ticket_number,
         description: (openRow.description || 'ללא תיאור').trim().slice(0, 120),
       }

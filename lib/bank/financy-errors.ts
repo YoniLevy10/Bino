@@ -31,6 +31,9 @@ export function formatFinancyError(input: {
   if (/column clients\.financy_|does not exist/i.test(raw)) {
     return 'סכמת Financy עדיין לא הותקנה בדאטאבייס (migration 143). הריצו את supabase/migrations/143_financy_bank_os.sql בפרוד.'
   }
+  if (/debtor or the creditor account must be one of your own connected accounts/i.test(raw)) {
+    return 'העברה דורשת שחשבון המשלם יהיה חשבון בנק מחובר ב־Financy. סנכרנו חשבון עו״ש ואז נסו שוב.'
+  }
   return raw
 }
 

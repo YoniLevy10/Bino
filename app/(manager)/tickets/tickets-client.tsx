@@ -64,6 +64,7 @@ import {
   KpiRow,
   Card,
   Button,
+  FilterTabs,
   StatusBadge,
   PriorityDot,
   SearchInput,
@@ -1437,27 +1438,18 @@ export default function TicketsPage() {
                   תקלה חדשה
                 </Button>
               </div>
-              <div style={styles.chipRow}>
-                {MOBILE_QUICK_STATUS_CHIPS.map((chip) => (
-                  <button
-                    key={chip.value}
-                    type="button"
-                    onClick={() => applyMobileQuickChip(chip.value)}
-                    style={{
-                      ...styles.chip,
-                      ...(isMobileQuickChipActive(chip.value) ? styles.chipActive : {}),
-                    }}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={openMobileToolsDrawer}
-                  style={styles.chip}
-                >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <FilterTabs
+                  options={MOBILE_QUICK_STATUS_CHIPS}
+                  value={
+                    MOBILE_QUICK_STATUS_CHIPS.find((c) => isMobileQuickChipActive(c.value))?.value ??
+                    'ALL'
+                  }
+                  onChange={applyMobileQuickChip}
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={openMobileToolsDrawer}>
                   סינון{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (

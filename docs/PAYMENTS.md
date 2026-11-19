@@ -4,14 +4,26 @@
 
 Bino לא סולקת ולא מחזיקה כסף. אין «חשבון תשלומים של Bino».
 
+## מצב נוכחי (נעול 2026-11-18)
+
+| שכבה | תפקיד | סטטוס |
+|------|--------|--------|
+| **גבייה מדיירים** | `/pay` → סליקה → `collection_charges.paid` | **Grow פעיל** (ברירת מחדל). אין ניתוק. |
+| **בנק / Financy** | AIS, העברות יוצאות, ספרים | מחובר בהגדרות — **לא** מחליף קישור תשלום לדייר |
+| **bank-match** | CSV / התאמה → `paid` | PoC מאחורי `BANK_MATCH_POC_ENABLED` |
+| **iCount** | יעד מיגרציה ארוך־טווח | בקוד מאחורי דגלים — לא ברירת מחדל |
+
+«עסקת Grow הסתיימה» במסמכי מיגרציה = כוונת מוצר לעתיד, **לא** ניתוק טכני בפרוד.  
+מעקב ספקים: [`docs/VENDOR_INTEGRATIONS_TRACKER.md`](./VENDOR_INTEGRATIONS_TRACKER.md).
+
 ```
 דייר → /pay של Bino → קישור תשלום Grow ו/או ארנק SDK → כסף לחשבון Grow של הלקוח
 Bino: יוצרת חיוב, שולחת SMS, מקבלת S2S, מסמנת «שולם», ApproveTransaction, מייל אישור, חשבונית (אם Grow שולח)
 ```
 
-**החלטת בעלים (מיגרציה):** עסקת Grow הסתיימה — יעד הגבייה הוא **iCount API ישיר** (לא Financy).  
-תוכנית + dual-run + צ׳קליסט credentials: [`docs/ICOUNT_COLLECTIONS_MIGRATION_HE.md`](./ICOUNT_COLLECTIONS_MIGRATION_HE.md).  
-עד P0 ירוק: Grow נשאר ברירת מחדל; קוד Grow לא נמחק.
+**החלטת בעלים (מיגרציה עתידית):** יעד ארוך־טווח לגבייה יכול להיות **iCount API ישיר** (לא Financy).  
+תוכנית + dual-run: [`docs/ICOUNT_COLLECTIONS_MIGRATION_HE.md`](./ICOUNT_COLLECTIONS_MIGRATION_HE.md).  
+**עד החלטה אחרת בכתב: Grow נשאר ברירת מחדל; קוד Grow לא נמחק.**
 
 ## Financy (בנק + ספרים) — מקביל לגבייה
 

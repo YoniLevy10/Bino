@@ -65,6 +65,12 @@ export type CollectionChargeRow = {
   due_date?: string | null
   published_to_portal?: boolean
   unit_id?: string | null
+  payment_reference?: string | null
+  payment_confirmed_at?: string | null
+  payment_confirm_source?: string | null
+  funds_received_at?: string | null
+  bank_transaction_id?: string | null
+  gap_reminder_sent_at?: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -90,6 +96,8 @@ export const COLLECTION_CHARGE_ROW_SELECT = `
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, receipt_email, receipt_phone, receipt_email_sent_at,
   due_date, published_to_portal, unit_id,
+  payment_reference, payment_confirmed_at, payment_confirm_source, funds_received_at,
+  bank_transaction_id, gap_reminder_sent_at,
   created_by, created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
 
@@ -103,6 +111,8 @@ export const COLLECTION_CHARGE_LIST_SELECT = `
   greeninvoice_client_id, greeninvoice_document_id, greeninvoice_document_number,
   greeninvoice_payment_url, greeninvoice_payment_id,
   sent_at, paid_at, receipt_email, receipt_email_sent_at, due_date, published_to_portal, unit_id,
+  payment_reference, payment_confirmed_at, payment_confirm_source, funds_received_at,
+  bank_transaction_id, gap_reminder_sent_at,
   created_by, created_at, updated_at,
   residents ( id, full_name, phone, apartment_number, normalized_phone ),
   projects ( id, name )
@@ -138,12 +148,18 @@ export function buildPaymentSmsBody(opts: {
   title: string
   amount: number
   payUrl: string
+  paymentReference?: string | null
 }): string {
   const name = opts.residentName.trim() || 'דייר/ת'
   const title = opts.title.trim() || 'חיוב'
-  return [
+  const lines = [
     `שלום ${name},`,
     `לתשלום: ${title} בסך ${formatChargeAmountIls(opts.amount)}.`,
     `לתשלום מאובטח: ${opts.payUrl}`,
-  ].join('\n')
+  ]
+  const ref = (opts.paymentReference || '').trim()
+  if (ref) {
+    lines.push(`בהעברה בנקאית ציינו באסמכתא: ${ref}`)
+  }
+  return lines.join('\n')
 }

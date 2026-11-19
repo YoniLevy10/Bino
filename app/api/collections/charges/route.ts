@@ -167,6 +167,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'הדייר אינו שייך לפרויקט שנבחר' }, { status: 400 })
   }
 
+  const { generatePaymentReference } = await import('@/lib/bank-match/payment-reference')
+  const paymentReference = generatePaymentReference()
+
   const { data: inserted, error: insertErr } = await admin
     .from('collection_charges')
     .insert({
@@ -179,6 +182,7 @@ export async function POST(req: Request) {
       currency: 'ILS',
       status: 'draft',
       period_label: body.period_label?.trim() || null,
+      payment_reference: paymentReference,
       created_by: auth.ctx.userId,
       ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     })
