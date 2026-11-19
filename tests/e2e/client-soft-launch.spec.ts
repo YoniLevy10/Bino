@@ -53,7 +53,7 @@ test.describe('Soft launch — שערים ומסכים ציבוריים', () => 
   })
 
   test('playbook + live smoke constants cover soft-launch steps', () => {
-    expect(LAUNCH_PLAYBOOK_HEADER).toHaveLength(7)
+    expect(LAUNCH_PLAYBOOK_HEADER).toHaveLength(8)
     expect(LIVE_SMOKE_CHECKS.map((c) => c.id)).toEqual(
       expect.arrayContaining([
         'wa_inbound_ticket',
