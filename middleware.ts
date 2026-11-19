@@ -423,7 +423,7 @@ export async function middleware(req: NextRequest) {
     return redirectWithCookies(pending, url)
   }
 
-  // PalGate / חניונים — hard Savion-only (before generic nav feature checks).
+  // PalGate / חניונים — hard pilot allowlist (Savion + Bamakor; before generic nav checks).
   if (
     pathname === '/parking' ||
     pathname.startsWith('/parking/') ||

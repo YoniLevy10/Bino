@@ -1439,7 +1439,7 @@ export function MobileMenu({
           ...(isActive ? mobileMenuStyles.navLinkActive : {}),
         }}
       >
-        <NavIcon type={item.icon} active={isActive} />
+        <NavIcon type={item.icon} active={isActive} onDark />
         <span style={mobileMenuStyles.navLabel}>{item.label}</span>
       </Link>
     )
@@ -1448,7 +1448,7 @@ export function MobileMenu({
   return (
     <>
       <div style={mobileMenuStyles.overlay} onClick={onClose} />
-      <div className="lg-chrome" style={mobileMenuStyles.panel}>
+      <div style={mobileMenuStyles.panel} data-mobile-drawer="navy">
         <div style={mobileMenuStyles.header}>
           <div style={mobileMenuStyles.brand}>
             {logoUrl ? (
@@ -1497,7 +1497,7 @@ export function MobileMenu({
                 textAlign: 'right',
               }}
             >
-              <NavIcon type="search" />
+              <NavIcon type="search" onDark />
               <span style={mobileMenuStyles.navLabel}>חיפוש</span>
             </button>
           ) : null}
@@ -1523,7 +1523,7 @@ export function MobileMenu({
                 ...(pathname === '/settings' ? mobileMenuStyles.navLinkActive : {}),
               }}
             >
-              <NavIcon type="settings" active={pathname === '/settings'} />
+              <NavIcon type="settings" active={pathname === '/settings'} onDark />
               <span style={mobileMenuStyles.navLabel}>הגדרות</span>
             </Link>
             <div style={{ paddingInline: '8px', paddingTop: '8px' }}>
@@ -1591,6 +1591,11 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     animation: 'slideInFromInlineEnd 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+    /* Match desktop calmSurface sidebar (navy) — not pale lg-chrome glass. */
+    background: theme.colors.navy,
+    color: theme.colors.navText,
+    boxShadow: 'none',
+    border: 'none',
   },
   navColumn: {
     flex: 1,
@@ -1605,7 +1610,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     marginBottom: '24px',
     paddingBottom: '16px',
-    borderBottom: `1px solid ${theme.colors.border}`,
+    borderBottom: '1px solid rgba(180, 199, 219, 0.2)',
     flexShrink: 0,
   },
   brand: {
@@ -1628,7 +1633,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
   brandName: {
     fontSize: '17px',
     fontWeight: 700,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textInverse,
   },
   closeButton: {
     display: 'flex',
@@ -1638,7 +1643,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     height: '44px',
     borderRadius: theme.radius.md,
     background: 'transparent',
-    color: theme.colors.textMuted,
+    color: theme.colors.navText,
     border: 'none',
     cursor: 'pointer',
   },
@@ -1655,7 +1660,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
   settingsNav: {
     marginTop: 'auto',
     paddingTop: '16px',
-    borderTop: `1px solid ${theme.colors.border}`,
+    borderTop: '1px solid rgba(180, 199, 219, 0.2)',
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
@@ -1667,7 +1672,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     gap: '12px',
     padding: '12px 12px',
     borderRadius: theme.radius.md,
-    color: theme.colors.textSecondary,
+    color: theme.colors.navText,
     textDecoration: 'none',
     fontSize: '15px',
     fontWeight: 500,
@@ -1675,8 +1680,8 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     boxSizing: 'border-box',
   },
   navLinkActive: {
-    background: theme.colors.primaryMuted,
-    color: theme.colors.primary,
+    background: theme.colors.navySoft,
+    color: theme.colors.textInverse,
   },
   navLinkNested: {
     paddingInlineStart: '20px',
@@ -1696,7 +1701,7 @@ const mobileMenuStyles: Record<string, CSSProperties> = {
     fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase' as const,
-    color: theme.colors.textMuted,
+    color: theme.colors.navTextMuted,
   },
   navLabel: {
     fontSize: '14px',

@@ -11,6 +11,11 @@ afterEach(() => {
 })
 
 describe('whatsapp inbox v2 flag', () => {
+  it('defaults ON when unset (v2 shipped)', () => {
+    expect(isWhatsAppInboxV2ClientEnabled()).toBe(true)
+    expect(isWhatsAppInboxV2Enabled()).toBe(true)
+  })
+
   it('reads static NEXT_PUBLIC value for client enablement', () => {
     process.env.NEXT_PUBLIC_WHATSAPP_INBOX_V2 = 'true'
     expect(isWhatsAppInboxV2ClientEnabled()).toBe(true)
@@ -24,5 +29,7 @@ describe('whatsapp inbox v2 flag', () => {
     delete process.env.WHATSAPP_INBOX_V2
     process.env.NEXT_PUBLIC_WHATSAPP_INBOX_V2 = 'on'
     expect(isWhatsAppInboxV2Enabled()).toBe(true)
+    process.env.WHATSAPP_INBOX_V2 = 'false'
+    expect(isWhatsAppInboxV2Enabled()).toBe(false)
   })
 })

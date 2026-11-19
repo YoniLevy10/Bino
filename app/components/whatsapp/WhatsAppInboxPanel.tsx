@@ -200,6 +200,7 @@ export function WhatsAppInboxPanel() {
   const [sending, setSending] = useState(false)
   const [activeQuickAction, setActiveQuickAction] = useState<string | null>(null)
   const [templateParams, setTemplateParams] = useState<string[]>([])
+  const [startChatOpen, setStartChatOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => getIsMobileViewport())
   const [portalReady, setPortalReady] = useState(false)
   const [attachBusy, setAttachBusy] = useState(false)
@@ -811,7 +812,7 @@ export function WhatsAppInboxPanel() {
           style={{
             ...styles.list,
             position: 'relative',
-            ...(inboxV2 ? styles.listFabPad : null),
+            ...styles.listFabPad,
           }}
           aria-label="רשימת שיחות"
         >
@@ -829,6 +830,17 @@ export function WhatsAppInboxPanel() {
                 </button>
               ) : null}
               <div style={styles.listHeaderTitle}>שיחות</div>
+              <div style={{ flex: 1 }} />
+              <button
+                type="button"
+                style={styles.newChatHeaderBtn}
+                aria-label="שיחה חדשה עם דייר"
+                onClick={() => setStartChatOpen(true)}
+              >
+                <span aria-hidden style={{ fontSize: 22, lineHeight: 1, marginTop: -2 }}>
+                  +
+                </span>
+              </button>
             </div>
             <label style={styles.searchWrap}>
               <span style={styles.srOnly}>חיפוש שיחה</span>
@@ -848,15 +860,16 @@ export function WhatsAppInboxPanel() {
               />
             ) : null}
           </div>
-          {inboxV2 ? (
-            <WhatsAppStartChatFab
-              buildingId={inboxFilters.buildingId}
-              onStarted={(id) => {
-                setSelectedId(id)
-                void invalidateConversations()
-              }}
-            />
-          ) : null}
+          <WhatsAppStartChatFab
+            buildingId={inboxFilters.buildingId}
+            forceOpen={startChatOpen}
+            onOpenChange={setStartChatOpen}
+            onStarted={(id) => {
+              setSelectedId(id)
+              setStartChatOpen(false)
+              void invalidateConversations()
+            }}
+          />
           {loading ? (
             <p style={styles.muted}>טוען שיחות…</p>
           ) : conversationsError && conversations.length === 0 ? (
@@ -1051,6 +1064,20 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     color: '#111b21',
     letterSpacing: '-0.02em',
+  },
+  newChatHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    border: 'none',
+    background: '#00a884',
+    color: '#fff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+    touchAction: 'manipulation',
   },
   searchWrap: {
     display: 'flex',

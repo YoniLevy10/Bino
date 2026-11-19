@@ -633,11 +633,15 @@ body.wa-sheet-open [data-app-main] {
 @media (max-width: 768px) {
   .wa-app,
   .wa-app .lg-glass {
-    /* Stop above the floating tab bar. Negative margin cancels main's nav padding. */
+    /* Fill the viewport above the floating tab bar; cancel main's bottom-nav padding. */
     height: calc(100dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px));
     min-height: 0;
     max-height: calc(100dvh - var(--mobile-bottom-nav-height, 80px) - env(safe-area-inset-bottom, 0px));
     margin-bottom: calc(-1 * (var(--mobile-bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px)));
+    /* Kill empty gray band under the card when immersive parent is short. */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   .wa-inbox-compose {
@@ -651,6 +655,7 @@ body.wa-sheet-open [data-app-main] {
   .wa-inbox-wrap {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     height: 100%;
     max-height: 100%;
     min-height: 0;
@@ -674,13 +679,19 @@ body.wa-sheet-open [data-app-main] {
     overflow: auto !important;
     -webkit-overflow-scrolling: touch;
     box-sizing: border-box;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Room for FAB above bottom of list (bottom nav already accounted on .wa-app). */
+    padding-bottom: 72px;
   }
 
   .wa-app .lg-glass {
     border: none !important;
     border-radius: 0 !important;
     background: #fff !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
   }
 
   .wa-inbox-thread {

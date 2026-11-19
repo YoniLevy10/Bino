@@ -620,12 +620,16 @@ export function BuildingBankPanel({
   if (!enabled || !configured) {
     return (
       <div style={s.wrap}>
-        <div style={s.connectHero}>
-          <p style={s.connectEyebrow}>חשבון עסקי · BINO</p>
+        <div style={isMobile ? s.connectHeroMobile : s.connectHero}>
+          {!isMobile ? <p style={s.connectEyebrow}>חשבון עסקי · BINO</p> : null}
           <h2 style={s.connectTitle}>חברו את חשבון הבנק של העסק</h2>
-          <p style={s.connectLead}>
-            חיבור אחד לכל הבניינים — יתרות, תנועות, העברות וספרים דרך Financy.
-          </p>
+          {!isMobile ? (
+            <p style={s.connectLead}>
+              חיבור אחד לכל הבניינים — יתרות, תנועות, העברות וספרים דרך Financy.
+            </p>
+          ) : (
+            <p style={s.connectLead}>יתרות ותנועות דרך Financy</p>
+          )}
         </div>
         <FinancyConnectCard compact isMobile={isMobile} onConnected={() => void loadCore()} />
         <p style={s.mutedCenter}>
@@ -678,15 +682,23 @@ export function BuildingBankPanel({
 
   return (
     <div style={s.wrap}>
-      <section style={s.hero} aria-label="יתרת מזומן בחשבון העסק">
+      <section
+        style={isMobile ? s.heroMobileCompact : s.hero}
+        aria-label="יתרת מזומן בחשבון העסק"
+      >
         <div style={s.heroTop}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={s.heroEyebrow}>חשבון בנק כללי · כל הבניינים</p>
-            <p style={s.heroLabel}>יתרת מזומן (עו״ש / חיסכון)</p>
-            <p style={s.heroBalance} className="bank-hero-balance">
+            {!isMobile ? <p style={s.heroEyebrow}>חשבון בנק כללי · כל הבניינים</p> : null}
+            <p style={isMobile ? s.heroLabelMobile : s.heroLabel}>
+              {isMobile ? 'יתרת מזומן' : 'יתרת מזומן (עו״ש / חיסכון)'}
+            </p>
+            <p
+              style={isMobile ? s.heroBalanceMobile : s.heroBalance}
+              className="bank-hero-balance"
+            >
               {formatIls(totalBalance)}
             </p>
-            <p style={s.heroMeta}>
+            <p style={isMobile ? s.heroMetaMobile : s.heroMeta}>
               {accountMetaParts.join(' · ')}
               {connections.length > 0
                 ? ` · ${healthyConnections}/${connections.length} חיבורי בנק תקינים`
@@ -700,7 +712,7 @@ export function BuildingBankPanel({
               type="button"
               disabled={syncing}
               onClick={() => void onSync(false)}
-              style={isMobile ? { width: '100%', minHeight: 48 } : undefined}
+              style={isMobile ? { width: '100%', minHeight: 44 } : undefined}
             >
               {syncing ? 'מסנכרן…' : 'סנכרון'}
             </Button>
@@ -709,7 +721,7 @@ export function BuildingBankPanel({
               variant="secondary"
               disabled={syncing}
               onClick={() => void onSync(true)}
-              style={isMobile ? { width: '100%', minHeight: 48 } : undefined}
+              style={isMobile ? { width: '100%', minHeight: 44 } : undefined}
             >
               רענון בנק
             </Button>
@@ -1484,6 +1496,12 @@ function styles(isMobile: boolean, tabCount = 5): Record<string, CSSProperties> 
       background: `linear-gradient(115deg, ${theme.colors.surfaceActive} 0%, ${theme.colors.surface} 55%, ${theme.colors.background} 100%)`,
       boxShadow: theme.shadows.xs,
     },
+    connectHeroMobile: {
+      padding: '4px 0 0',
+      border: 'none',
+      background: 'transparent',
+      boxShadow: 'none',
+    },
     connectEyebrow: {
       margin: 0,
       fontSize: 12,
@@ -1492,15 +1510,15 @@ function styles(isMobile: boolean, tabCount = 5): Record<string, CSSProperties> 
       letterSpacing: '0.02em',
     },
     connectTitle: {
-      margin: '8px 0 0',
-      fontSize: isMobile ? 20 : 24,
+      margin: isMobile ? 0 : '8px 0 0',
+      fontSize: isMobile ? 17 : 24,
       fontWeight: 700,
       color: theme.colors.textPrimary,
       lineHeight: 1.3,
     },
     connectLead: {
-      margin: '8px 0 0',
-      fontSize: 14,
+      margin: '6px 0 0',
+      fontSize: isMobile ? 13 : 14,
       lineHeight: 1.55,
       color: theme.colors.textSecondary,
       maxWidth: 520,
@@ -1514,6 +1532,17 @@ function styles(isMobile: boolean, tabCount = 5): Record<string, CSSProperties> 
       background: `linear-gradient(120deg, ${theme.colors.navy} 0%, ${theme.colors.navySoft} 48%, #1e3a5f 100%)`,
       color: theme.colors.textInverse,
       boxShadow: theme.shadows.md,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    /** Compact balance strip — matches other mobile page titles, not a marketing hero. */
+    heroMobileCompact: {
+      padding: '12px 14px',
+      borderRadius: theme.radius.md,
+      border: `1px solid ${theme.colors.border}`,
+      background: theme.colors.surface,
+      color: theme.colors.textPrimary,
+      boxShadow: 'none',
       overflow: 'hidden',
       position: 'relative',
     },
@@ -1537,6 +1566,12 @@ function styles(isMobile: boolean, tabCount = 5): Record<string, CSSProperties> 
       fontWeight: 500,
       color: 'rgba(226, 232, 240, 0.85)',
     },
+    heroLabelMobile: {
+      margin: 0,
+      fontSize: 12,
+      fontWeight: 600,
+      color: theme.colors.textSecondary,
+    },
     heroBalance: {
       margin: '4px 0 0',
       fontSize: isMobile ? 36 : 44,
@@ -1545,15 +1580,29 @@ function styles(isMobile: boolean, tabCount = 5): Record<string, CSSProperties> 
       lineHeight: 1.1,
       fontVariantNumeric: 'tabular-nums',
     },
+    heroBalanceMobile: {
+      margin: '2px 0 0',
+      fontSize: 28,
+      fontWeight: 700,
+      letterSpacing: '-0.02em',
+      lineHeight: 1.15,
+      fontVariantNumeric: 'tabular-nums',
+      color: theme.colors.textPrimary,
+    },
     heroMeta: {
       margin: '10px 0 0',
       fontSize: 13,
       color: 'rgba(203, 213, 225, 0.9)',
     },
+    heroMetaMobile: {
+      margin: '6px 0 0',
+      fontSize: 12,
+      color: theme.colors.textMuted,
+    },
     heroEmpty: {
       margin: '16px 0 0',
       fontSize: 13,
-      color: 'rgba(203, 213, 225, 0.85)',
+      color: isMobile ? theme.colors.textMuted : 'rgba(203, 213, 225, 0.85)',
     },
     heroActions: {
       display: 'flex',

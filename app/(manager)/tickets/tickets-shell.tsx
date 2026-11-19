@@ -1,12 +1,17 @@
+/**
+ * Static tickets heading (desktop). Hidden on mobile via CSS so tickets-client's
+ * compact MobileHeader is the only title — no stacked "מרכז הניהול · BINO" hero.
+ */
 import { PageHeader } from '@/app/components/ui'
 
-/**
- * Static tickets heading. Action buttons portal into #tickets-header-actions
- * once the data bundle is on the page. The heading itself is not remounted.
- */
 export function TicketsShell() {
   return (
-    <div style={styles.wrap}>
+    <div className="tickets-shell-desktop-only" style={styles.wrap}>
+      <style>{`
+        @media (max-width: 768px) {
+          .tickets-shell-desktop-only { display: none !important; }
+        }
+      `}</style>
       <PageHeader
         title="ניהול תקלות"
         subtitle="חיפוש, סינון ושיוך — אותן יכולות, פריסה לפי עיצוב המסירה"
