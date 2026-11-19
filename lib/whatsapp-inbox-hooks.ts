@@ -168,11 +168,22 @@ export function useWhatsAppInboxMessages(conversationId: string | null) {
 
 export { useWhatsAppThreadMeta }
 
-export async function startWhatsAppConversation(residentId: string) {
+export async function startWhatsAppConversation(opts: {
+  residentId?: string
+  phone?: string
+}) {
+  const residentId = opts.residentId?.trim()
+  const phone = opts.phone?.trim()
+  if (!residentId && !phone) {
+    throw new Error('יש לבחור דייר או להזין טלפון')
+  }
   const res = await whatsappUiMutate('/api/whatsapp/start-conversation', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ resident_id: residentId }),
+    body: JSON.stringify({
+      ...(residentId ? { resident_id: residentId } : {}),
+      ...(phone ? { phone } : {}),
+    }),
   })
   const json = (await res.json()) as { conversation?: InboxV2Conversation; error?: string }
   if (!res.ok) throw new Error(json.error || 'יצירת שיחה נכשלה')
