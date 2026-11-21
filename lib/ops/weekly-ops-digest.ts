@@ -119,15 +119,24 @@ export function effectiveSlaHours(slaHours: number | null): number {
   return typeof slaHours === 'number' && slaHours > 0 ? slaHours : DEFAULT_SLA_HOURS
 }
 
+/** Human age for SMS — prefer days+hours once past a day (not raw 400 שעות). */
 function agePhrase(hours: number): string {
   const h = Math.max(0, Math.floor(hours))
   if (h < 1) return 'פתוחה פחות משעה'
   if (h === 1) return 'פתוחה שעה'
-  return `פתוחה ${h} שעות`
+  if (h < 24) return `פתוחה ${h} שעות`
+
+  const days = Math.floor(h / 24)
+  const rem = h % 24
+  const dayPart = days === 1 ? 'יום אחד' : `${days} ימים`
+  if (rem === 0) return `פתוחה ${dayPart}`
+  if (rem === 1) return `פתוחה ${dayPart} ושעה`
+  // Hebrew maqaf (U+05BE), not ASCII hyphen — safer for RTL SMS runs next to digits
+  return `פתוחה ${dayPart} ו־${rem} שעות`
 }
 
 function openedClosedLine(opened: number, closed: number): string {
-  if (opened === 0 && closed === 0) return 'השבוע לא נפתחו ולא נסגרו תקלות.'
+  if (opened === 0 && closed === 0) return 'לא נפתחו ולא נסגרו תקלות.'
   if (opened === 0) {
     return closed === 1 ? 'לא נפתחה אף תקלה, ונסגרה אחת.' : `לא נפתחה אף תקלה, ונסגרו ${closed}.`
   }
@@ -140,30 +149,31 @@ function openedClosedLine(opened: number, closed: number): string {
   return `נפתחו ${opened} תקלות ונסגרו ${closed}.`
 }
 
+/** Body under the "פתוחות עכשיו" section header (no repeated prefix). */
 function openNowLine(openNow: number, overdueNow: number): string {
   if (openNow === 0) return 'אין תקלות פתוחות.'
   if (overdueNow <= 0) {
     return openNow === 1
-      ? 'פתוחה תקלה אחת, בתוך זמן הטיפול.'
-      : `פתוחות עכשיו ${openNow}, כולן בתוך זמן הטיפול.`
+      ? 'תקלה אחת, בתוך זמן הטיפול.'
+      : `${openNow} תקלות, כולן בתוך זמן הטיפול.`
   }
   if (overdueNow >= openNow) {
     return openNow === 1
-      ? 'פתוחה תקלה אחת, והיא עברה את זמן הטיפול.'
-      : `פתוחות עכשיו ${openNow}, וכולן עברו את זמן הטיפול.`
+      ? 'תקלה אחת, והיא עברה את זמן הטיפול.'
+      : `${openNow} תקלות, כולן עברו את זמן הטיפול.`
   }
   const overduePart = overdueNow === 1 ? 'אחת עברה' : `${overdueNow} עברו`
-  return `פתוחות עכשיו ${openNow}, מתוכן ${overduePart} את זמן הטיפול.`
+  return `${openNow} תקלות, מתוכן ${overduePart} את זמן הטיפול.`
 }
 
 function recurringLine(opened: number, recurringOpened: number): string | null {
   if (recurringOpened <= 0 || opened <= 0) return null
   if (recurringOpened >= opened) {
     return opened === 1
-      ? 'התקלה שנפתחה היא חזרה על תקלה קודמת.'
-      : `כל ${opened} התקלות שנפתחו הן חזרה על תקלה קודמת.`
+      ? 'התקלה היחידה שנפתחה היא חזרה על תקלה קודמת.'
+      : `כל ${opened} התקלות שנפתחו השבוע הן חזרה על תקלה קודמת.`
   }
-  return `${recurringOpened} מתוך ${opened} התקלות שנפתחו הן חזרה על תקלה קודמת.`
+  return `${recurringOpened} מתוך ${opened} שנפתחו השבוע הן חזרה על תקלה קודמת.`
 }
 
 export function buildWeeklyDigestStats(input: {
@@ -213,22 +223,33 @@ export function buildWeeklyDigestStats(input: {
   }
 }
 
+/**
+ * Structured Hebrew SMS digest. Sections are short lines so the message
+ * stays scannable after delivery (019SMS preserves newlines once sanitize
+ * no longer collapses them). No emoji.
+ */
 export function formatWeeklyOpsDigestSms(stats: WeeklyDigestStats): string {
   const name = smsSafeDesc(stats.clientName)
   const lines: string[] = []
   if (name) lines.push(name)
   lines.push('סיכום השבוע', '')
+
+  lines.push('תנועה השבוע')
   lines.push(openedClosedLine(stats.opened, stats.closed))
+  lines.push('')
+
+  lines.push('פתוחות עכשיו')
   lines.push(openNowLine(stats.openNow, stats.overdueNow))
 
   if (stats.focus) {
     const building = smsSafeDesc(stats.focus.building)
-    const where = building ? ` ב${building}` : ''
     const label = stats.focus.overdue ? 'הכי דחופה' : 'עדיין פתוחה'
     lines.push('')
-    lines.push(`${label}: תקלה ${stats.focus.ticketNumber}${where}.`)
-    const state = stats.focus.unassigned ? 'עדיין בלי שיוך' : 'משויכת'
-    lines.push(`${state}, ${agePhrase(stats.focus.openHours)}.`)
+    lines.push(label)
+    lines.push(`תקלה ${stats.focus.ticketNumber}`)
+    if (building) lines.push(building)
+    lines.push(stats.focus.unassigned ? 'עדיין בלי שיוך' : 'משויכת')
+    lines.push(agePhrase(stats.focus.openHours))
     const snippet = residentSnippet(stats.focus.description)
     if (snippet) lines.push(snippet)
   }
@@ -236,6 +257,7 @@ export function formatWeeklyOpsDigestSms(stats: WeeklyDigestStats): string {
   const recurring = recurringLine(stats.opened, stats.recurringOpened)
   if (recurring) {
     lines.push('')
+    lines.push('תקלות חוזרות')
     lines.push(recurring)
   }
 

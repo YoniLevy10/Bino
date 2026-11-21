@@ -1,8 +1,10 @@
-/** Strip emoji and non-019-safe chars for SMS campaigns (019SMS fails on emoji). */
+/** Strip emoji and non-019-safe chars for SMS (019SMS fails on emoji). Preserves newlines for structured digests. */
 export function sanitizeSmsCampaignBody(text: string): string {
   return text
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
-    .replace(/\s+/g, ' ')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
 
