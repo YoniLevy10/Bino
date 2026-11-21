@@ -32,7 +32,7 @@ export const BINO_MARKETING_OG_DESCRIPTION =
  * Bump when OG card art/copy changes so WhatsApp / social scrapers refetch.
  * Keep in sync with query used by `binoOgImagePath()` in `lib/marketing/og-card.tsx`.
  */
-export const BINO_OG_IMAGE_VERSION = '2026-11-21-rtl2'
+export const BINO_OG_IMAGE_VERSION = '2026-11-21-rtl3'
 
 export const BINO_OG_SIZE = { width: 1200, height: 630 } as const
 
@@ -40,7 +40,7 @@ export const BINO_OG_ALT = 'BINO — זיכרון תפעולי חכם לכל ב�
 
 /** Absolute og:image URL with cache-bust query (WhatsApp caches aggressively by URL). */
 export function getMarketingOgImageUrl(): string {
-  return `${getMarketingSiteOrigin()}/opengraph-image?v=${BINO_OG_IMAGE_VERSION}`
+  return `${getMarketingSiteOrigin()}/opengraph-image.png?v=${BINO_OG_IMAGE_VERSION}`
 }
 
 export const BINO_MARKETING_TITLE_EN =

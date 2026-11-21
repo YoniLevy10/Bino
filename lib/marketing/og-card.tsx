@@ -323,5 +323,5 @@ export async function renderBinoOgPng(): Promise<Buffer> {
 }
 
 export function binoOgImagePath(): string {
-  return `/opengraph-image?v=${BINO_OG_IMAGE_VERSION}`
+  return `/opengraph-image.png?v=${BINO_OG_IMAGE_VERSION}`
 }

@@ -27,7 +27,7 @@ describe('BINO OG card', () => {
   }, 30_000)
 
   it('exposes a cache-busting og:image path', () => {
-    expect(binoOgImagePath()).toBe(`/opengraph-image?v=${BINO_OG_IMAGE_VERSION}`)
+    expect(binoOgImagePath()).toBe(`/opengraph-image.png?v=${BINO_OG_IMAGE_VERSION}`)
     expect(getMarketingOgImageUrl()).toContain(`v=${BINO_OG_IMAGE_VERSION}`)
   })
 })
