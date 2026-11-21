@@ -29,6 +29,7 @@
     "test:staging-smoke": "node scripts/agent-staging-smoke.mjs",
     "seed:staging": "node scripts/seed-staging-demo.mjs",
     "db:staging:start": "npx supabase start",
+    "generate:og": "npx tsx scripts/generate-og-image.mts",
     "worker:bank-scraper": "node workers/bank-scraper/server.mjs"
   },
   "dependencies": {
@@ -52,7 +53,9 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@playwright/test": "^1.48.0",
+    "satori": "^0.63.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.15.6",
