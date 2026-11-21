@@ -1,0 +1,107 @@
+/* /developers — reuses guide tokens; bilingual hub layout */
+
+.bino-dev .bino-guide__article {
+  max-width: 760px;
+}
+
+.bino-dev__lang-switch {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 22px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.bino-dev__lang-switch a {
+  color: var(--bino-muted);
+  text-decoration: none;
+}
+
+.bino-dev__lang-switch a:hover,
+.bino-dev__lang-switch a[aria-current='true'] {
+  color: var(--bino-blue);
+}
+
+.bino-dev__grid {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 32px;
+}
+
+@media (min-width: 720px) {
+  .bino-dev__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.bino-dev__card {
+  padding: 16px 14px;
+  border: 1px solid var(--bino-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.bino-dev__card h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.bino-dev__card p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--bino-ink-soft);
+}
+
+.bino-dev__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 28px;
+  padding: 0;
+  list-style: none;
+}
+
+.bino-dev__tools code {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(12, 17, 29, 0.06);
+  font-size: 0.82rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--bino-ink);
+}
+
+.bino-dev__en {
+  margin: 40px 0 28px;
+  padding: 22px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--bino-line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.bino-dev__en h2 {
+  margin: 0 0 10px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.bino-dev__en p {
+  margin: 0 0 12px;
+  line-height: 1.65;
+  color: var(--bino-ink-soft);
+}
+
+.bino-dev__status {
+  margin: 0 0 28px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border-inline-start: 3px solid var(--bino-blue);
+  background: rgba(10, 132, 255, 0.08);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--bino-ink-soft);
+}

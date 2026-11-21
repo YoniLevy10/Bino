@@ -67,6 +67,7 @@ export type MarketingCopy = {
   terms: string
   contact: string
   guides: string
+  developers: string
   waDemoText: string
 }
 
@@ -192,6 +193,7 @@ const HE: MarketingCopy = {
   terms: 'תקנון',
   contact: 'יצירת קשר',
   guides: 'מדריכים',
+  developers: 'מפתחים',
   waDemoText:
     'שלום, אני מעוניין/ת בהדגמה של BINO — זיכרון תפעולי לפרויקטים, בניינים ושטחים',
 }
@@ -318,6 +320,7 @@ const EN: MarketingCopy = {
   terms: 'Terms',
   contact: 'Contact',
   guides: 'Guides',
+  developers: 'Developers',
   waDemoText:
     'Hi — I would like a demo of BINO, operational memory for projects, buildings, and spaces',
 }

@@ -12,6 +12,9 @@ Primary surface: https://bino.casa/ (Hebrew) and https://bino.casa/en (English).
 - https://bino.casa/ — Hebrew marketing site (main positioning)
 - https://bino.casa/en — English marketing site
 - https://bino.casa/guides — Hebrew operational guides for management companies
+- https://bino.casa/developers — Open platform hub: Cursor-first MCP + Partner API for building ops memory, decision signals, and savings KPIs (free rate-limited read keys planned)
+- https://bino.casa/guides/tachzuka-ai-binyanim — AI building maintenance / operational intelligence (Hebrew)
+- https://bino.casa/guides/mcp-api-binyanim — MCP & Partner API for buildings (Hebrew)
 - https://bino.casa/savings-report — Sample savings report (lead magnet)
 - https://bino.casa/vaad-pay — Public Grow payment page (per-tenant)
 - https://bino.casa/contact — Contact (NAP)

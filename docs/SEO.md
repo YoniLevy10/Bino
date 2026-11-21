@@ -13,6 +13,7 @@ Ranking #1 is not a toggle — Google rewards useful Hebrew pages that match sea
 | Asset | Role |
 |-------|------|
 | `/` + `/en` | **Primary** — title/H1/support/audience/FAQ/JSON-LD position BINO as מערכת ניהול פרויקטים / בניינים / שטחים (not ועד-only) |
+| `/developers` | Open-platform discovery — MCP (Cursor-first) + Partner API messaging for AI platforms & Israeli partners; JSON-LD WebPage/FAQ |
 | `/savings-report` | Lead magnet (sample savings) |
 | Sitemap + JSON-LD (Organization, LocalBusiness, FAQ, SoftwareApplication) | Crawl + rich results on the homepage |
 | GA4 `generate_lead` | Measure which CTAs convert |
@@ -26,7 +27,15 @@ Ranking #1 is not a toggle — Google rewards useful Hebrew pages that match sea
 4. זיכרון תפעולי
 5. תוכנה לחברת ניהול
 
-Positioning: project / building / space ops — **not** “תוכנת ועד בית בלבד” and **not** generic Monday-style PM. Implementation is on `/` metadata + copy + JSON-LD, plus shipped Hebrew guides at `/guides` (`lib/seo-guides-he.ts`).
+Positioning: project / building / space ops — **not** “תוכנת ועד בית בלבד” and **not** generic Monday-style PM. Implementation is on `/` metadata + copy + JSON-LD, plus shipped Hebrew guides at `/guides` (`lib/seo/seo-guides-he.ts`), plus `/developers` for MCP / property API / AI-maintenance discovery.
+
+### Discovery / open-platform keywords (Wave A)
+
+6. תחזוקת בניינים עם AI / תקלות AI → `/guides/tachzuka-ai-binyanim` + `/developers`
+7. MCP API בניין / Partner API / property API → `/developers` + `/guides/mcp-api-binyanim`
+8. Building ops MCP / Cursor MCP (EN) → `/developers#en`
+
+Longer GTM roadmap lives in the project store plan (discovery SEO), not in paid ads.
 
 ### What will **not** get you to #1 overnight
 
@@ -44,7 +53,7 @@ Code alone cannot raise **Links F**. Complete these manually:
 
 1. [Search Console](https://search.google.com/search-console) → verify Domain `bino.casa` (or URL-prefix `https://bino.casa`)
 2. Submit sitemap: `https://bino.casa/sitemap.xml`
-3. Request indexing for `https://bino.casa/` and `https://bino.casa/en`
+3. Request indexing for `https://bino.casa/`, `https://bino.casa/en`, `https://bino.casa/developers`, and new guides under `/guides/`
 4. Create / verify **Google Business Profile** with website `https://bino.casa`
 5. Earn **3–5 real backlinks** (not PBNs):
    - Company LinkedIn post with link
@@ -93,7 +102,7 @@ Empty values are ignored. Do not create dead profiles only for the audit tool.
 | **Google Analytics 4** | Connected — property **bino**, Measurement ID in Vercel `NEXT_PUBLIC_GA_MEASUREMENT_ID` (`G-ZDW0GCWR7N`) |
 | **Google Search Console** | HTML verification in `app/layout.tsx` (override with `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`); prefer DNS TXT on domain |
 
-**Scope:** GA4 is limited to public marketing paths (`/`, `/en`, `/contact`, `/savings-report`, `/guides/*`). Private app routes and tokenized URLs are not tracked.
+**Scope:** GA4 is limited to public marketing paths (`/`, `/en`, `/contact`, `/savings-report`, `/developers`, `/guides/*`). Private app routes and tokenized URLs are not tracked.
 
 ### Lead / conversion events (GA4)
 
