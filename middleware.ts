@@ -213,6 +213,8 @@ export async function middleware(req: NextRequest) {
     pathname === '/en' ||
     pathname === '/guides' ||
     pathname.startsWith('/guides/') ||
+    pathname === '/developers' ||
+    pathname.startsWith('/developers/') ||
     pathname === '/vaad-pay' ||
     pathname.startsWith('/vaad-pay/') ||
     pathname.startsWith('/admin/') ||

@@ -30,6 +30,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...guides,
     {
+      url: `${origin}/developers`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: `${origin}/contact`,
       lastModified,
       changeFrequency: 'monthly',

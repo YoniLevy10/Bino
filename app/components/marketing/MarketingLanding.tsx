@@ -82,6 +82,7 @@ function MarketingHeader({ copy }: { copy: MarketingCopy }) {
           <a href="#impact">{copy.navImpact}</a>
           <a href="#how">{copy.navHow}</a>
           <Link href="/guides">{copy.guides}</Link>
+          <Link href="/developers">{copy.developers}</Link>
         </nav>
 
         <div className="bino-page-header__actions">
@@ -345,6 +346,7 @@ export function MarketingLanding({ whatsappHref }: { whatsappHref: string }) {
           <span>{copy.footerTagline}</span>
           <nav aria-label={copy.navLabel}>
             <Link href="/guides">{copy.guides}</Link>
+            <Link href="/developers">{copy.developers}</Link>
             <Link href="/privacy">{copy.privacy}</Link>
             <Link href="/terms">{copy.terms}</Link>
             <MarketingLeadLink href="/contact" method="contact_nav" locale={locale} placement="footer">

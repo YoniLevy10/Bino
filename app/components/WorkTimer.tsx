@@ -30,6 +30,8 @@ export function WorkTimer() {
     pathname === '/privacy' ||
     pathname === '/guides' ||
     pathname?.startsWith('/guides/') ||
+    pathname === '/developers' ||
+    pathname?.startsWith('/developers/') ||
     pathname === '/savings-report' ||
     pathname === '/vaad-pay' ||
     pathname?.startsWith('/vaad-pay/') ||

@@ -4,6 +4,7 @@ export type MarketingPagePath =
   | '/en'
   | '/contact'
   | '/savings-report'
+  | '/developers'
   | '/guides'
   | `/guides/${string}`
 

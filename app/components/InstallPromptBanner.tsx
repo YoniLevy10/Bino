@@ -53,6 +53,10 @@ export function InstallPromptBanner() {
     pathname === '/privacy' ||
     pathname === '/terms' ||
     pathname === '/contact' ||
+    pathname === '/developers' ||
+    pathname === '/guides' ||
+    pathname.startsWith('/guides/') ||
+    pathname === '/savings-report' ||
     pathname === '/vaad-pay' ||
     pathname.startsWith('/vaad-pay/') ||
     pathname.startsWith('/worker')
