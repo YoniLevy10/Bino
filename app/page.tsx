@@ -8,6 +8,9 @@ import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_OG_DESCRIPTION,
   BINO_MARKETING_TITLE,
+  BINO_OG_ALT,
+  BINO_OG_SIZE,
+  getMarketingOgImageUrl,
   getMarketingSiteOrigin,
 } from '@/lib/marketing/marketing-site'
 
@@ -39,11 +42,21 @@ export const metadata: Metadata = {
     url: `${origin}/`,
     type: 'website',
     siteName: 'BINO',
+    images: [
+      {
+        url: getMarketingOgImageUrl(),
+        width: BINO_OG_SIZE.width,
+        height: BINO_OG_SIZE.height,
+        alt: BINO_OG_ALT,
+        type: 'image/png',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: BINO_MARKETING_TITLE,
     description: BINO_MARKETING_OG_DESCRIPTION,
+    images: [getMarketingOgImageUrl()],
   },
   robots: {
     index: true,

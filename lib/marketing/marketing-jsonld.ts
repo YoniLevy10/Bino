@@ -1,6 +1,7 @@
 import {
   BINO_MARKETING_DESCRIPTION,
   BINO_MARKETING_TITLE,
+  getMarketingOgImageUrl,
   getMarketingSiteOrigin,
 } from '@/lib/marketing/marketing-site'
 import { MARKETING_COPY, waDemoUrl } from '@/lib/marketing/marketing-copy'
@@ -72,7 +73,7 @@ export function buildMarketingJsonLd() {
       inLanguage,
       primaryImageOfPage: {
         '@type': 'ImageObject',
-        url: `${origin}/opengraph-image`,
+        url: getMarketingOgImageUrl(),
       },
     },
     {

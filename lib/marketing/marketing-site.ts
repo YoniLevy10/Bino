@@ -28,6 +28,21 @@ export const BINO_MARKETING_DESCRIPTION =
 export const BINO_MARKETING_OG_DESCRIPTION =
   'BINO — מערכת ניהול פרויקטים, בניינים ושטחים בישראל. זיכרון תפעולי והוכחת חיסכון — לא רק ועד בית.'
 
+/**
+ * Bump when OG card art/copy changes so WhatsApp / social scrapers refetch.
+ * Keep in sync with query used by `binoOgImagePath()` in `lib/marketing/og-card.tsx`.
+ */
+export const BINO_OG_IMAGE_VERSION = '2026-11-21-rtl2'
+
+export const BINO_OG_SIZE = { width: 1200, height: 630 } as const
+
+export const BINO_OG_ALT = 'BINO — זיכרון תפעולי חכם לכל בניין'
+
+/** Absolute og:image URL with cache-bust query (WhatsApp caches aggressively by URL). */
+export function getMarketingOgImageUrl(): string {
+  return `${getMarketingSiteOrigin()}/opengraph-image?v=${BINO_OG_IMAGE_VERSION}`
+}
+
 export const BINO_MARKETING_TITLE_EN =
   'BINO — Project, building & space management (Israel)'
 
